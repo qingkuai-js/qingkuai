@@ -1,0 +1,46 @@
+{
+  "name": "qingkuai",
+  "license": "MIT",
+  "author": "lgq",
+  "type": "module",
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=14"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/runtime/index.js",
+      "types": "./dist/runtime/index.d.ts"
+    },
+    "./internal": {
+      "import": "./dist/runtime/internal.js",
+      "types": "./dist/runtime/internal.d.ts"
+    },
+    "./compiler": {
+      "import": "./dist/compiler/index.js",
+      "types": "./dist/compiler/index.d.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest",
+    "dev": "rollup -c -w",
+    "build": "rimraf dist && tsc && rollup -c && rimraf dist/types"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.25.3",
+    "@jridgewell/sourcemap-codec": "^1.5.0"
+  },
+  "devDependencies": {
+    "@babel/types": "^7.25.2",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.14.2",
+    "fs-extra": "^11.2.0",
+    "rimraf": "^6.0.1",
+    "rollup": "^4.18.0",
+    "rollup-plugin-dts": "^6.1.1",
+    "rollup-plugin-esbuild": "^6.1.1",
+    "typescript": "^5.4.5",
+    "vitest": "^2.0.5"
+  },
+  "description": "A lighteight(Qing) and fast(Kuai) front end framework, it will make you development work easier(QingKuai)"
+}

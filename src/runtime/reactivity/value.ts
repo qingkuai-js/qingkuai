@@ -1,0 +1,274 @@
+import type { AnyObject } from "../../util/types"
+import type { Setter, PGetHandler, PSetHandler, EffectListItem, PDeleteHandler } from "../types"
+
+import {
+    optc,
+    isNull,
+    isArray,
+    isNumber,
+    notEqual,
+    isFunction,
+    isUndefined
+} from "../../util/shared"
+import { usedEffectList } from "./state"
+import { runSyncEffect } from "./effect"
+import { scheduleUpdate } from "../schedule"
+import { isReactive } from "../../util/runtime"
+import { getCurrentInstance } from "../instance"
+import { BadReactivityLevel } from "../message/error"
+import { reflect, undef, RawValue, nil, IsProxy, Wrapper, noop } from "../constants"
+
+const react = reactGen()
+const constReact = reactGen(1)
+const destructuringReact = destructuringReactGen()
+const constDestructuringReact = destructuringReactGen(true)
+
+export class ReactivityWrapper {
+    declare proxy: any
+    declare effect: EffectListItem
+
+    constructor(
+        public raw: any,
+        public level: number,
+        public typeFlag: number,
+        public debugSetter: Setter,
+        initEffect?: EffectListItem
+    ) {
+        this.proxy = new Proxy(raw, this)
+        this.effect = initEffect || [new Set(), nil]
+    }
+
+    get: PGetHandler = (target, property, receiver) => {
+        // 特殊属性读取
+        if (property === IsProxy) {
+            return true
+        }
+        if (property === Wrapper) {
+            return this
+        }
+        if (property === RawValue) {
+            return this.raw
+        }
+
+        const { effect, typeFlag, level } = this
+        const propValue = reflect.get(target, property, receiver)
+
+        // 再次将某个子属性值包装为代理值，层级-1，共享副作用列表
+        const reactAgain = (nextTarget: any) => {
+            return react(nextTarget, level - 1, effect)
+        }
+
+        // 记录响应性值的副作用
+        usedEffectList.add(effect)
+
+        // 捕获Set、Map类型，它们的读写操作都在这里完成代理兼容
+        if (typeFlag & 6) {
+            if (!isFunction(propValue)) {
+                return propValue
+            }
+
+            return (...args: any) => {
+                const getRet = () => {
+                    return target[property](...args)
+                }
+
+                if (property === "forEach") {
+                    const [oriCallback, thisArg] = args
+                    return target[property]((ck: any, cv: any, cs: any) => {
+                        oriCallback(reactAgain(ck), reactAgain(cv), cs)
+                    }, thisArg)
+                }
+
+                if (property === "keys" || property === "values" || property === "entries") {
+                    const iterator = getRet()
+                    const oriIteratorNext = iterator.next
+                    iterator.next = () => {
+                        const nextRet = oriIteratorNext.call(iterator)
+                        if (!nextRet.done) {
+                            nextRet.value = reactAgain(nextRet.value)
+                        }
+                        return nextRet
+                    }
+                    return iterator
+                }
+
+                const [key, value] = args
+                const oriSize = target.size
+                const isSet = !(typeFlag & 4)
+                const isMapSet = !isSet && property === "set"
+                const preValue = isMapSet ? target.get(key) : undef
+                const valueChanged = isMapSet && notEqual(preValue, value)
+                if (
+                    property === "clear" ||
+                    property === "delete" ||
+                    property === (isSet ? "add" : "set")
+                ) {
+                    if (target.size !== oriSize || valueChanged) {
+                        processEffect(effect)
+                    }
+                }
+                return getRet()
+            }
+        }
+        return reactAgain(propValue)
+    }
+
+    set: PSetHandler = (target, property, value, receiver) => {
+        const { debugSetter, effect } = this
+        if (notEqual(target[property], value)) {
+            if (debugSetter !== noop) {
+                debugSetter(value)
+            }
+            // prettier-ignore
+            const ret = reflect.set(
+                target,
+                property,
+                value,
+                receiver
+            )
+            return processEffect(effect), ret
+        }
+        return true
+    }
+
+    deleteProperty: PDeleteHandler = (target, property) => {
+        processEffect(this.effect)
+        return reflect.deleteProperty(target, property)
+    }
+}
+
+// 获取代理值的原始值
+export function raw<T extends AnyObject>(v: T): T {
+    return (isReactive(v) ? v[RawValue] : v) as any
+}
+
+// 生成reactivity和constReact的方法
+// levelDown表示需要降低的层级，const声明时为1，var、let声明时为0，因为var和let声明
+// 会被作为最外层对象的$属性值，所以通过主动降低const的层级可以使用户侧层级参数的作用表现一致
+//
+// 该方法返回声明响应性依赖的方法，参数1是需要Proxy包装的目标
+// 第二和第三个参数分三种情况：1.非调试模式响应性声明、 2.调试模式响应性声明、3.递归调用
+// 参数2在上述三种情况下分别表示：响应层级、为调试变量赋值的setter方法、响应层级
+// 参数3在上述三种情况下分别表示：固定为undefined、响应层级、来自父响应性依赖的副作用（子代共享）
+// 当参数2为undefined或number类型时可以确定处于情况1，参数2为function类型时可以确定处于情况2，否则处于情况3
+//
+// los means Level or debug Setter, eol means init Effect or Level
+function reactGen(levelDown = 0) {
+    return (target?: any, los?: number | Setter, eol?: EffectListItem | number) => {
+        let level = Infinity
+        let debugSetter: Setter = noop
+        let effect: EffectListItem | undefined = undef
+
+        const isDebug = isFunction(los)
+        const eolIsNumber = isNumber(eol)
+        const eolIsUndefined = isUndefined(eol)
+        const isDeclaration = isDebug || eolIsNumber || eolIsUndefined
+
+        if (isDeclaration) {
+            if (!isDebug) {
+                if (!isUndefined(los)) {
+                    level = los
+                }
+            } else {
+                debugSetter = los
+                if (!eolIsUndefined) {
+                    level = eol as number
+                }
+            }
+            if (level - levelDown < 0) {
+                BadReactivityLevel(level)
+            }
+            level -= levelDown
+
+            if (isReactive(target)) {
+                target = target[RawValue]
+            }
+
+            // 声明响应式变量时需要将其作为对象的$属性
+            target = {
+                $: target
+            }
+        } else {
+            level = los as number
+            effect = eol as EffectListItem
+        }
+
+        const typeFlag = getTypeFlag(target)
+        if (!typeFlag || level < 0) {
+            return target
+        }
+
+        // prettier-ignore
+        const ret = new ReactivityWrapper(
+            target,
+            level,
+            typeFlag,
+            debugSetter,
+            effect
+        )
+        if (isDeclaration) {
+            const component = getCurrentInstance()
+            if (component) {
+                const { deps } = component.__
+                // if (conf.exposeDeps) {
+                //     deps.push(ret)
+                // }
+            }
+        }
+
+        // debug模式下的let声明会返回代理包装和原始值组成的数组
+        return isDebug ? [ret.proxy, ret.proxy.$] : ret.proxy
+    }
+}
+
+// 解构语法响应性声明，将解构出的每一个标识符都声明为响应性变量
+// 生成方法的第二个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个结构出来的标识符的setter
+export function destructuringReactGen(isConst = false) {
+    const reactFn = isConst ? constReact : react
+    return (dfnAndSetters: [(v: any) => any[], ...Setter[]], value: any, level = Infinity) => {
+        const [dfn, ...setters] = dfnAndSetters
+        const isDebug = !isUndefined(dfnAndSetters[1])
+
+        // 这里当使用const声明时也处于非调试模式，不过并不影响整体逻辑
+        if (!isDebug) {
+            return dfn(value).map(v => {
+                return reactFn(v, level)
+            })
+        }
+
+        // 调试模式
+        return dfn(value).map((v, i) => {
+            return reactFn(v, setters[i], level)
+        })
+    }
+}
+
+// 运行同步副作用，调度更新
+// run sync effects and scheduling update
+function processEffect(effect: EffectListItem) {
+    runSyncEffect(effect[1])
+    scheduleUpdate(effect[0])
+}
+
+// 获取传入值的类型位掩码，这里采用二进制位的方法是为了在Proxy中可以快速判断多种类型的组合
+function getTypeFlag(v: any) {
+    if (typeof v !== "object" || isNull(v)) {
+        return 0
+    }
+
+    if (isArray(v)) {
+        return 1
+    }
+
+    const vt = optc(v)
+    const referenceTypes = ["Object", "Set", "Map"]
+    for (let i = 0; i < 3; i++) {
+        if (vt === referenceTypes[i]) {
+            return 1 << i
+        }
+    }
+
+    return 0
+}
+
+export { react, constReact, destructuringReact, constDestructuringReact }
