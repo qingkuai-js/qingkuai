@@ -1,19 +1,33 @@
-import type { RegExpExecRet, TemplateAttribute, TemplateNode } from "../types"
+import type { ASTLocation, RegExpExecRet, TemplateAttribute, TemplateNode } from "../types"
 
+import {
+    TagIsNotClosing,
+    BadAttributeFormat,
+    InvalidTagInTemplate,
+    TemplateStartsWithEndTag,
+    AttributeValueIsNotQuoted,
+    NoBracketForAttributeExpression
+} from "../message/error"
 import {
     templateEndTagRE,
     templateContentRE,
     templateCloseTagRE,
     templateStartTagRE,
     templateAttributeRE,
-    conditionalCommentRE
+    templateInvalidAttrNameRE,
+    templateConditionalCommentRE,
+    templateNormalAttributeValueRE
 } from "../regular"
+import {
+    findOutOfSC,
+    newASTLocation,
+    newASTPosition,
+    getPositionOfEachChar
+} from "../../util/compiler/sundry"
+import { isNull } from "../../util/shared"
 import { inputDescriptor } from "../state"
 import { compilerOptions } from "../configuration"
 import { specialTags, selfClosingTags } from "../constants"
-import { findOutOfSC, newASTLocation, getPositionOfEachChar } from "../../util/compiler/sundry"
-import { InvalidTagInTemplate, TagIsNotClosing, TemplateStartsWithEndTag } from "../message/error"
-import { isUndefined } from "../../util/shared"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
 export function parseTemplate(source: string) {
@@ -101,45 +115,79 @@ export function parseTemplate(source: string) {
         // 解析属性
         // parse attributes
         while (!(closeMatched = templateCloseTagRE.exec(source))) {
-            const attr = templateAttributeRE.exec(source)!
-            const endIndex = index + attr[0].length
-            const startIndex = index + attr[1].length
-            const keyEndIndex = startIndex + attr[2].length
-            const valueStartIndex = endIndex - attr[4]?.length - 1
+            let attrValue = ""
+            let attrNameEndIndex = -1
+            let attrValueEndIndex = -1
+            let attrNameStartIndex = -1
+            let attrValueStartIndex = -1
+
+            const attrNameMatched = templateAttributeRE.exec(source)!
+            if (templateInvalidAttrNameRE.test(attrNameMatched[2])) {
+                BadAttributeFormat(attrNameMatched[2])
+            } else {
+                attrNameStartIndex = index + attrNameMatched[1].length
+                attrNameEndIndex = index + attrNameMatched[0].length
+                reduceSource(attrNameMatched[0].length)
+            }
+
+            // check whether attribute value is existing
+            const equalTokenIndex = source.indexOf("=")
+            if (equalTokenIndex !== -1) {
+                reduceSource(equalTokenIndex + 1)
+
+                if (!/^[!@#&]/.test(attrNameMatched[2])) {
+                    const valueMatched = templateNormalAttributeValueRE.exec(source)
+                    if (isNull(valueMatched)) {
+                        AttributeValueIsNotQuoted()
+                    } else {
+                        attrValue = valueMatched[3]
+                        attrValueStartIndex = index + valueMatched[1].length
+                        attrValueEndIndex = index + valueMatched[0].length - 1
+                    }
+                } else {
+                    const valueStartIndex = source.indexOf("{")
+                    const valueEndIndex = findEndCurlyBracket(source, valueStartIndex + 1)
+                    if (valueStartIndex === -1 || valueEndIndex === -1) {
+                        NoBracketForAttributeExpression()
+                    } else {
+                        attrValueEndIndex = index + valueEndIndex
+                        attrValueStartIndex = index + valueStartIndex + 1
+                        attrValue = source.slice(valueStartIndex + 1, valueEndIndex)
+                    }
+                }
+            }
+
+            const hasAttrValue = attrValueStartIndex !== -1
+            const attrValueLoc: ASTLocation = hasAttrValue
+                ? {
+                      start: positions[attrValueStartIndex],
+                      end: positions[attrValueEndIndex]
+                  }
+                : {
+                      start: newASTPosition(),
+                      end: newASTPosition()
+                  }
             const attrStruct: TemplateAttribute = {
                 key: {
-                    raw: attr[2],
+                    raw: attrNameMatched[2],
                     loc: {
-                        start: positions[startIndex],
-                        end: positions[keyEndIndex]
+                        start: positions[attrNameStartIndex],
+                        end: positions[attrNameEndIndex]
                     }
                 },
                 value: {
-                    raw: attr[4] || "",
-                    loc: {
-                        start: positions[valueStartIndex],
-                        end: positions[endIndex - 1]
-                    }
+                    raw: attrValue,
+                    loc: attrValueLoc
                 },
                 loc: {
-                    start: positions[startIndex],
-                    end: positions[endIndex]
+                    start: positions[attrNameStartIndex],
+                    end: positions[attrValueEndIndex]
                 }
             }
-            reduceSource(attr[0].length)
+            if (hasAttrValue) {
+                reduceSource(attrValueEndIndex - index + 1)
+            }
             ast.attributes.push(attrStruct)
-            if (isScript) {
-                const {
-                    key: { raw: key },
-                    value: { raw: value }
-                } = attrStruct
-                if (key === "lang" && value === "ts") {
-                    inputDescriptor.script.isTS = true
-                }
-            }
-            if (isUndefined(attr[4])) {
-                attrStruct.value.loc = newASTLocation()
-            }
         }
         reduceSource(closeMatched[0].length)
 
@@ -176,7 +224,7 @@ export function parseTemplate(source: string) {
 
         // 如果是注释节点，根据配置判断是否保留所有注释，若不保留所有则单独保留条件注释
         const reserveAllComment = compilerOptions.reserveTemplateComment
-        const isConditionalComment = conditionalCommentRE.test(ast.content)
+        const isConditionalComment = templateConditionalCommentRE.test(ast.content)
         const reserveThisComment = ast.tag === "!" && (reserveAllComment || isConditionalComment)
         if (!specialTags.has(ast.tag) || !reserveThisComment) {
             return ast
@@ -224,6 +272,21 @@ export function parseTemplate(source: string) {
 
     // 只保留条件注释
     return astList.filter(ast => {
-        return ast.tag !== "!" || conditionalCommentRE.test(ast.content)
+        return ast.tag !== "!" || templateConditionalCommentRE.test(ast.content)
     })
+}
+
+// 找到属性值表达式中关闭大括号的位置
+function findEndCurlyBracket(str: string, startIndex: number) {
+    while (true) {
+        const [startBracketIndex] = findOutOfSC(str, "{", startIndex)
+        const [endBracketIndex] = findOutOfSC(str, "}", startIndex)
+        if (endBracketIndex === -1) {
+            return -1
+        }
+        if (startBracketIndex === -1 || endBracketIndex < startBracketIndex) {
+            return endBracketIndex
+        }
+        startIndex = endBracketIndex + 1
+    }
 }

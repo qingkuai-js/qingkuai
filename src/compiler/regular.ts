@@ -2,9 +2,11 @@ export const templateTag = /^"?template"?$/
 export const templateCloseTagRE = /^(?:\s*)((\/)?>)/
 export const templateContentRE = /(?:[\s\S](?<!<))*/
 export const templateStartTagRE = /^<((?:\S(?<!>))+)/
+export const templateInvalidAttrNameRE = /^['"=/<\{\}]/
+export const templateAttributeRE = /^(\s*)((?:[^\s=>])+)/
 export const templateEndTagRE = /^<\/((?:\S(?<!>))+)[^>]*>/
-export const conditionalCommentRE = /^(?:\[if.*\[endif]|\[if.*<!|<!\[endif])$/
-export const templateAttributeRE = /^(\s*)((?:\S(?<!=|>))+)\s*(?:=\s*(['"])([\s\S]*?)\3)?/
+export const templateNormalAttributeValueRE = /(\s*(['"]))([\s\S]*)\2/
+export const templateConditionalCommentRE = /^(?:\[if.*\[endif]|\[if.*<!|<!\[endif])$/
 
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g

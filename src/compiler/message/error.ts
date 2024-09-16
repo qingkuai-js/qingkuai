@@ -1,3 +1,4 @@
+import { isUndefined } from "../../util/shared"
 import { bannedIdentifierFormat } from "../regular"
 
 export function InvalidTagInTemplate() {
@@ -12,12 +13,12 @@ export function UnclosedInterpolationExpression() {
     error("Unclosed interpolation expression.")
 }
 
-export function TemplateStartsWithEndTag(text: string) {
-    error(`Starts with an end tag: ${text}`)
-}
-
 export function InvalidIdentifierName(name: string) {
     error(`The identifier name(${name}) is invalid.`)
+}
+
+export function TemplateStartsWithEndTag(text: string) {
+    error(`Starts with an end tag: ${text}`)
 }
 
 export function SlotNameAttributeIsEmpty() {
@@ -55,8 +56,20 @@ export function NoValueForRequiredValueAttribute(key: string, type: number) {
     error(`The ${itemDescription}(${key}) must have a value.`)
 }
 
+export function NoBracketForAttributeExpression() {
+    error("The attribute value expression must be wrapped with curly bracket.")
+}
+
+export function AttributeValueIsNotQuoted() {
+    error("The normal attribute value must be quoted with single or double quote.")
+}
+
 export function DirectivesCantCoexist(directives: string[]) {
     error(`Directives(${directives.join(", ")}) can not be used simultaneously.`)
+}
+
+export function BadAttributeFormat(attr?: string) {
+    error(`The attribute ${isUndefined(attr) ? "format" : `name(${attr})`} is bad.`)
 }
 
 export function EmptyAttributeName(char: string) {
