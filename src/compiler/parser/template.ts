@@ -1,4 +1,10 @@
-import type { ASTLocation, RegExpExecRet, TemplateAttribute, TemplateNode } from "../types"
+import type {
+    ASTLocation,
+    ASTPosition,
+    RegExpExecRet,
+    TemplateAttribute,
+    TemplateNode
+} from "../types"
 
 import {
     TagIsNotClosing,
@@ -6,14 +12,15 @@ import {
     InvalidTagInTemplate,
     TemplateStartsWithEndTag,
     AttributeValueIsNotQuoted,
-    NoBracketForAttributeExpression
+    EmptyInterpolationExpression,
+    NoBracketForAttributeExpression,
+    TagCantBeSelfClosing
 } from "../message/error"
 import {
     templateEndTagRE,
-    templateContentRE,
-    templateCloseTagRE,
     templateStartTagRE,
     templateAttributeRE,
+    templateCloseCharsRE,
     templateInvalidAttrNameRE,
     templateConditionalCommentRE,
     templateNormalAttributeValueRE
@@ -33,7 +40,6 @@ import { specialTags, selfClosingTags } from "../constants"
 export function parseTemplate(source: string) {
     let index = 0
     let closeMatched: RegExpExecRet
-    let endTagMatched: RegExpExecRet
 
     const astList: TemplateNode[] = []
     const sourceLength = source.length
@@ -48,12 +54,13 @@ export function parseTemplate(source: string) {
 
     // 解析标签内容，所有的TextNode都会被解析为一个单独的节点，其tag为空字符串
     function parseContent(parent: TemplateNode | null) {
-        const content = templateContentRE.exec(source)![0]
+        const contentEndIndex = findOutOfTextContentInterpolation(source, /<\/?\S/)
+        const content = source.slice(0, contentEndIndex)
         const contentLen = content.length
         if (contentLen) {
             if (content.trim()) {
                 ;(parent?.children || astList).push(
-                    initTemplateNode({
+                    initTemplateNode(positions, {
                         content,
                         parent,
                         range: [index, index + contentLen]
@@ -66,8 +73,8 @@ export function parseTemplate(source: string) {
 
     function parse(parent: TemplateNode | null) {
         if (source.startsWith("</")) {
-            endTagMatched = templateEndTagRE.exec(source)
-            if (!endTagMatched) {
+            const endTagMatched = templateEndTagRE.exec(source)
+            if (isNull(endTagMatched)) {
                 InvalidTagInTemplate()
             } else {
                 TemplateStartsWithEndTag(endTagMatched[0])
@@ -84,11 +91,11 @@ export function parseTemplate(source: string) {
                 reduceSource(endCharsIndex + 3)
                 range[1] = index
             }
-            return initTemplateNode({
+            return initTemplateNode(positions, {
                 range,
                 tag: "!",
                 children: [
-                    initTemplateNode({
+                    initTemplateNode(positions, {
                         tag: "",
                         content: commentContent,
                         range: [range[0] + 4, index - 3]
@@ -100,11 +107,12 @@ export function parseTemplate(source: string) {
         // 未闭合或不合法的标签
         // not closing or unexpected tag
         const startTagMatched = templateStartTagRE.exec(source)!
-        if (!startTagMatched) {
+        if (isNull(startTagMatched)) {
+            console.log("???", source)
             InvalidTagInTemplate()
         }
 
-        const ast = initTemplateNode({
+        const ast = initTemplateNode(positions, {
             parent,
             range: [index, -1],
             tag: startTagMatched[1]
@@ -114,7 +122,7 @@ export function parseTemplate(source: string) {
 
         // 解析属性
         // parse attributes
-        while (!(closeMatched = templateCloseTagRE.exec(source))) {
+        while (!(closeMatched = templateCloseCharsRE.exec(source))) {
             let attrValue = ""
             let attrNameEndIndex = -1
             let attrValueEndIndex = -1
@@ -149,6 +157,8 @@ export function parseTemplate(source: string) {
                     const valueEndIndex = findEndCurlyBracket(source, valueStartIndex + 1)
                     if (valueStartIndex === -1 || valueEndIndex === -1) {
                         NoBracketForAttributeExpression()
+                    } else if (valueStartIndex + 1 === valueEndIndex) {
+                        EmptyInterpolationExpression()
                     } else {
                         attrValueEndIndex = index + valueEndIndex
                         attrValueStartIndex = index + valueStartIndex + 1
@@ -205,19 +215,27 @@ export function parseTemplate(source: string) {
 
         // 解析文本内容和子节点
         // process text content and child nodes
-        if (!selfClosingTags.has(ast.tag) && !closeMatched[2]) {
-            while (!(endTagMatched = new RegExp(`^</${ast.tag}[^>]*>`).exec(source))) {
-                if (!source) {
-                    TagIsNotClosing(ast.tag)
-                }
-                if (!source.startsWith("<")) {
-                    parseContent(ast)
-                } else {
-                    const child = parse(ast)
-                    child && ast.children.push(child)
+        if (!selfClosingTags.has(ast.tag)) {
+            if (closeMatched[2]) {
+                TagCantBeSelfClosing(ast.tag)
+            } else {
+                while (true) {
+                    const endTagMatched = new RegExp(`^</${ast.tag}\\s*>`).exec(source)
+                    if (!isNull(endTagMatched)) {
+                        reduceSource(endTagMatched[0].length)
+                        break
+                    }
+                    if (!source) {
+                        TagIsNotClosing(ast.tag)
+                    }
+                    if (!/<\s/.test(source)) {
+                        parseContent(ast)
+                    } else {
+                        const child = parse(ast)
+                        child && ast.children.push(child)
+                    }
                 }
             }
-            reduceSource(endTagMatched[0].length)
         }
         ast.range[1] = index
         ast.loc.end = positions[index]
@@ -228,29 +246,6 @@ export function parseTemplate(source: string) {
         const reserveThisComment = ast.tag === "!" && (reserveAllComment || isConditionalComment)
         if (!specialTags.has(ast.tag) || !reserveThisComment) {
             return ast
-        }
-    }
-
-    // 初始化一个template抽象语法树节点
-    // initialize a template AST node
-    function initTemplateNode(options: Partial<TemplateNode> = {}): TemplateNode {
-        if (!options.loc) {
-            const { range } = options
-            if (range) {
-                options.loc = {
-                    start: positions[range[0]],
-                    end: positions[range[1]]
-                }
-            }
-        }
-        return {
-            parent: options.parent || null,
-            tag: options.tag || "",
-            content: options.content || "",
-            range: options.range || [-1, -1],
-            loc: options.loc || newASTLocation(),
-            attributes: options.attributes || [],
-            children: options.children || []
         }
     }
 
@@ -274,6 +269,66 @@ export function parseTemplate(source: string) {
     return astList.filter(ast => {
         return ast.tag !== "!" || templateConditionalCommentRE.test(ast.content)
     })
+}
+
+// 初始化一个template抽象语法树节点
+// initialize a template AST node
+function initTemplateNode(
+    positions: ASTPosition[],
+    options: Partial<TemplateNode> = {}
+): TemplateNode {
+    if (!options.loc) {
+        const { range } = options
+        if (range) {
+            options.loc = {
+                start: positions[range[0]],
+                end: positions[range[1]]
+            }
+        }
+    }
+    return {
+        parent: options.parent || null,
+        tag: options.tag || "",
+        content: options.content || "",
+        range: options.range || [-1, -1],
+        loc: options.loc || newASTLocation(),
+        attributes: options.attributes || [],
+        children: options.children || []
+    }
+}
+
+// 在textContent范围内脱离插值表达式范围查找字符位置
+function findOutOfTextContentInterpolation(str: string, re: RegExp) {
+    let startIndex = 0
+    let searchStr = str
+
+    const findOfSearchStr = () => {
+        const matched = re.exec(searchStr)
+        if (isNull(matched)) {
+            return -1
+        }
+        return startIndex + matched.index
+    }
+
+    while (true) {
+        const startBracketIndex = str.indexOf("{", startIndex)
+        if (startBracketIndex === -1) {
+            searchStr = str.slice(startIndex)
+            return findOfSearchStr()
+        }
+        searchStr = str.slice(startIndex, startBracketIndex)
+
+        const matchedIndex = findOfSearchStr()
+        if (matchedIndex !== -1) {
+            return matchedIndex
+        }
+
+        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex + 1)
+        if (endBracketIndex === -1) {
+            return -1
+        }
+        startIndex = endBracketIndex + 1
+    }
 }
 
 // 找到属性值表达式中关闭大括号的位置

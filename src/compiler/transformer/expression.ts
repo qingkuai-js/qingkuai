@@ -1,4 +1,4 @@
-import { FixedArray } from "../../util/types"
+import type { FixedArray } from "../../util/types"
 import type { AnyNode } from "../estree/types"
 import type { GeneralFunc } from "../../runtime/types"
 import type { EliminateRanges, TemplateContext, TransformExpressionOptionalParam } from "../types"
@@ -6,15 +6,14 @@ import type { EliminateRanges, TemplateContext, TransformExpressionOptionalParam
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { compilerOptions } from "../configuration"
-import { bannedIdentifierFormat, expressionReplaceWithSpaceRE } from "../regular"
-import { stringify } from "../../util/compiler/state"
 import { is, isFunctionNode } from "../estree/assert"
 import { isUndefined, runAll } from "../../util/shared"
 import { identifierIsReference } from "../estree/assert"
 import { inputDescriptor, replacementInfo } from "../state"
+import { isIndexEliminated } from "../../util/compiler/sundry"
 import { IdentifierFormatIsNotAllowed } from "../message/error"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { getPositionOfEachChar, isIndexEliminated } from "../../util/compiler/sundry"
+import { bannedIdentifierFormat, expressionReplaceWithSpaceRE } from "../regular"
 
 export function transformExpression(
     expression: string,

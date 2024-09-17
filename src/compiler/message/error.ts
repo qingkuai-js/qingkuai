@@ -25,6 +25,10 @@ export function SlotNameAttributeIsEmpty() {
     error("The name attribute for slot tag can not be empty.")
 }
 
+export function TagCantBeSelfClosing(tag: string) {
+    error(`The tag(${tag}) can not be used as self closing tag.`)
+}
+
 export function EmptyInterpolationExpression() {
     error("Empty interpolation expression block is not allowed.")
 }
