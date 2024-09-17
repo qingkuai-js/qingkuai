@@ -9,18 +9,18 @@ import type {
 import {
     TagIsNotClosing,
     BadAttributeFormat,
-    InvalidTagInTemplate,
+    TagCantBeSelfClosing,
     TemplateStartsWithEndTag,
     AttributeValueIsNotQuoted,
     EmptyInterpolationExpression,
-    NoBracketForAttributeExpression,
-    TagCantBeSelfClosing
+    NoBracketForAttributeInterpolation
 } from "../message/error"
 import {
     templateEndTagRE,
     templateStartTagRE,
     templateAttributeRE,
     templateCloseCharsRE,
+    templateTagStructureRE,
     templateInvalidAttrNameRE,
     templateConditionalCommentRE,
     templateNormalAttributeValueRE
@@ -54,8 +54,8 @@ export function parseTemplate(source: string) {
 
     // 解析标签内容，所有的TextNode都会被解析为一个单独的节点，其tag为空字符串
     function parseContent(parent: TemplateNode | null) {
-        const contentEndIndex = findOutOfTextContentInterpolation(source, /<\/?\S/)
-        const content = source.slice(0, contentEndIndex)
+        const contentEndIndex = findOutOfTextContentInterpolation(source, templateTagStructureRE)
+        const content = source.slice(0, contentEndIndex === -1 ? Infinity : contentEndIndex)
         const contentLen = content.length
         if (contentLen) {
             if (content.trim()) {
@@ -72,13 +72,9 @@ export function parseTemplate(source: string) {
     }
 
     function parse(parent: TemplateNode | null) {
-        if (source.startsWith("</")) {
-            const endTagMatched = templateEndTagRE.exec(source)
-            if (isNull(endTagMatched)) {
-                InvalidTagInTemplate()
-            } else {
-                TemplateStartsWithEndTag(endTagMatched[0])
-            }
+        if (/^<\/\S/.test(source)) {
+            const endTagMatched = templateEndTagRE.exec(source)!
+            TemplateStartsWithEndTag(endTagMatched[0])
         }
 
         // 解析注释，此时tag为!
@@ -107,11 +103,6 @@ export function parseTemplate(source: string) {
         // 未闭合或不合法的标签
         // not closing or unexpected tag
         const startTagMatched = templateStartTagRE.exec(source)!
-        if (isNull(startTagMatched)) {
-            console.log("???", source)
-            InvalidTagInTemplate()
-        }
-
         const ast = initTemplateNode(positions, {
             parent,
             range: [index, -1],
@@ -156,7 +147,7 @@ export function parseTemplate(source: string) {
                     const valueStartIndex = source.indexOf("{")
                     const valueEndIndex = findEndCurlyBracket(source, valueStartIndex + 1)
                     if (valueStartIndex === -1 || valueEndIndex === -1) {
-                        NoBracketForAttributeExpression()
+                        NoBracketForAttributeInterpolation()
                     } else if (valueStartIndex + 1 === valueEndIndex) {
                         EmptyInterpolationExpression()
                     } else {
@@ -221,6 +212,7 @@ export function parseTemplate(source: string) {
             } else {
                 while (true) {
                     const endTagMatched = new RegExp(`^</${ast.tag}\\s*>`).exec(source)
+                    const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
                     if (!isNull(endTagMatched)) {
                         reduceSource(endTagMatched[0].length)
                         break
@@ -228,7 +220,7 @@ export function parseTemplate(source: string) {
                     if (!source) {
                         TagIsNotClosing(ast.tag)
                     }
-                    if (!/<\s/.test(source)) {
+                    if (!startWithTagStructureRE.test(source)) {
                         parseContent(ast)
                     } else {
                         const child = parse(ast)
@@ -331,7 +323,7 @@ function findOutOfTextContentInterpolation(str: string, re: RegExp) {
     }
 }
 
-// 找到属性值表达式中关闭大括号的位置
+// 找到插值表达式中关闭大括号的位置
 function findEndCurlyBracket(str: string, startIndex: number) {
     while (true) {
         const [startBracketIndex] = findOutOfSC(str, "{", startIndex)

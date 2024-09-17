@@ -1,10 +1,6 @@
 import { isUndefined } from "../../util/shared"
 import { bannedIdentifierFormat } from "../regular"
 
-export function InvalidTagInTemplate() {
-    error("Invalid tag.")
-}
-
 export function TagIsNotClosing(tag: string) {
     error(`The tag(${tag}) is not closing.`)
 }
@@ -60,8 +56,8 @@ export function NoValueForRequiredValueAttribute(key: string, type: number) {
     error(`The ${itemDescription}(${key}) must have a value.`)
 }
 
-export function NoBracketForAttributeExpression() {
-    error("The attribute value expression must be wrapped with curly bracket.")
+export function NoBracketForAttributeInterpolation() {
+    error("The interpolation attribute value must be wrapped with curly bracket.")
 }
 
 export function AttributeValueIsNotQuoted() {
