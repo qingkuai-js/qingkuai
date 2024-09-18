@@ -47,6 +47,12 @@ export function transformTemplate(
                 estu[i] = confirmStringConstants(estu[i])
             }
         }
+
+        // 将eventStu中的空字符串移除掉，在原生标签（input等）使用引用属性传递时，会向eventStu
+        // 中多添加一个空字符串以保持其长度为偶数，及奇数项为事件名称、偶数项为转换后的语句
+        if (item.aar) {
+            item.aar.eventStu = item.aar.eventStu.filter(s => s !== "")
+        }
     })
 
     const transformedArr: string[] = []

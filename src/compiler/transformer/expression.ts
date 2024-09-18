@@ -24,6 +24,7 @@ export function transformExpression(
 ) {
     let useGetter = false
     let useContext = false
+    let useReturnKeyword = false
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
@@ -38,6 +39,7 @@ export function transformExpression(
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
+    const shouldGenerateSourcemap = compilerOptions.generateSourcemap
     const ast = (parse("_=" + expression).body[0] as any).expression.right
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 
@@ -96,7 +98,7 @@ export function transformExpression(
                 if (dep.useDollar) {
                     useGetter = true
                     extendTransformInfo(end, ".$")
-                    if (compilerOptions.debugeMode) {
+                    if (isDebug) {
                         extendTransformInfo(start, "_w_")
                     }
                 }
@@ -138,7 +140,11 @@ export function transformExpression(
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
     // rsc meas ReplacedSpaceCount    pie means Pre(position)IsEliminated
-    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false; i <= expression.length; i++) {
+    for (
+        let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false;
+        shouldGenerateSourcemap && i <= expression.length;
+        i++
+    ) {
         transformInfos.get(i)?.forEach(str => {
             transformedArr.push(str)
             if (str === "_w_") {
@@ -179,17 +185,26 @@ export function transformExpression(
     const useInlineEventHandler = isEvent && isInlineEventHandler(ast)
 
     // 调试模式下会将内联ctx调用改为变量声明，这样在调试时将一段源码中不合理的断点位置，另外通过
-    // 使用变量声明，在当前getter作用于内，就会存在一个与源码同名的标识符，可以在调用堆栈查看
+    // 使用变量声明，在当前getter作用域内，就会存在一个与源码同名的标识符，调试时可以在调用堆栈查看
     if (contextVariables.length) {
         const cvds = `const ${contextVariables.join(", ")};`
         transformedExp = `{ ${cvds} return ${transformedExp} }`
         addedPrefixLen += cvds.length + 10
+        useReturnKeyword = true
     }
+
+    // 内联函数时，如果是调试模式，这里也需要使用return关键字，不然返回返回值处的断点属于外层函数
     if (useInlineEventHandler) {
         const paramStr = isComponentEvent ? "param" : "event"
-        transformedExp = `${paramStr} => ${transformedExp}`
-        addedPrefixLen += paramStr.length + 4
+        if (!isDebug) {
+            transformedExp = `${paramStr} => ${transformedExp}`
+        } else {
+            useReturnKeyword = true
+            addedPrefixLen += paramStr.length + 13
+            transformedExp = `${paramStr} => { return ${transformedExp} }`
+        }
     }
+
     if (optionalParams.eventWrapperFlag) {
         const flag = optionalParams.eventWrapperFlag
         const eventWrapperFuncName = getAlias("eventWradpper")
@@ -209,7 +224,7 @@ export function transformExpression(
     // 记录表达式的sourcemap片段，注意：这里的mpaaings与sourcemap中的表示有所不同，它的四个元素
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
     // 在调用transformTemplate时会根据这个mappings生成正确的sourcemap的mappings
-    if (compilerOptions.generateSourcemap && useGetter) {
+    if (shouldGenerateSourcemap && useGetter) {
         sourcemapIndexes.forEach(index => {
             const sourceIndex = noPositionMap
                 ? index + startIndex
@@ -225,12 +240,14 @@ export function transformExpression(
             }
         })
 
-        // 如果将声明了context变量，则需要将首个映射段修改为return关键字开始的位置
-        // 这样在调试时可以保持getter开始和返回值部分都可以设置断点的一致性
-        if (contextVariables.length && mappings[0]) {
+        // 如果useReturnKeyword为true，（主要为调试模式下使用了ctx或内联方法的情况），
+        // 则需要将首个映射段修改为return关键字开始的位置，这样在调试时可以保持在生成
+        // 函数的return语句开始和结束处都可以设置断点的一致性
+        if (useReturnKeyword && mappings[0]) {
             mappings[0][1] = addedPrefixLen - 7
         }
     }
+    console.log(mappings)
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp

@@ -100,8 +100,7 @@ export function analyzeAttribute(
                 option.positionMap = attr.positionMap
             }
 
-            const res = transformExpression(exp, valueStartIndex, context, "attribute", option)
-            return isString(res) ? res : res.transformedExp
+            return transformExpression(exp, valueStartIndex, context, "attribute", option)
         }
 
         // pureKey代表纯键值，即去掉!@#&前缀的属性名
@@ -126,13 +125,21 @@ export function analyzeAttribute(
             const teWithGetter = transAttrValue(rv)
             const teWithoutGetter = transAttrValue(rv, teOptionalParam)
             if (isComponent) {
-                // 调试模式下修改引用值时应该将原始标识符的值一起修改
-                let setterTarget = teWithoutGetter
+                // setter目标，调试模式下修改引用值时应该将原始标识符的值一起修改
+                let setterTarget = isString(teWithoutGetter)
+                    ? teWithoutGetter
+                    : teWithoutGetter.transformedExp
                 if (compilerOptions.debugeMode) {
                     setterTarget += ` = ${value.raw}`
                 }
-                eventStu.push(stringify(pureKey))
-                eventStu.push(`[${teWithGetter}, v => (${setterTarget} = v)]`)
+
+                // 如果转换后的表达式带有mapping，则需要将所有段下标为1的元素（生成列）+1（前缀固定长度）
+                if (!isString(teWithGetter)) {
+                    teWithGetter.mappings.forEach(item => item[1]++)
+                    teWithGetter.transformedExp += `, v => (${setterTarget} = v)]`
+                    teWithGetter.transformedExp = "[" + teWithGetter.transformedExp
+                }
+                eventStu.push(stringify(pureKey), teWithGetter)
             } else {
                 let listenEventName = "input"
                 let reactiveProperty = "value"
@@ -156,15 +163,24 @@ export function analyzeAttribute(
                     reactiveProperty = "checked"
                 }
 
-                const setterStr = `v => (${teWithoutGetter} = v)`
+                // setter方法的字符串表示，调试模式同样需要修改原始标识符
+                let setter = isString(teWithoutGetter)
+                    ? teWithoutGetter
+                    : teWithoutGetter.transformedExp
+                if (compilerOptions.debugeMode) {
+                    setter += ` = ${value.raw}`
+                }
+                setter = `v => (${setter} = v)`
+
+                // 添加attribute部分，这里用来在响应式值改变时修改元素属性值
                 const listenEventNameStr = stringify(listenEventName)
                 const withReferenceFuncName = getAlias("withReference")
                 attributeStu.push(stringify(reactiveProperty), teWithGetter)
 
-                // prettier-ignore
+                // 添加event部分，这里用来在监听输入并响应式修改标引用目标的值
                 // 这里在eventStu中多添加了一个空字符串，因为在transformTemplate中会将奇数项认为是事件名称，
                 // 所有的奇数项都需要确认其中的字符串字面量变量是否需要保留，所以这里通过这种方式来保持一致性
-                eventStu.push("", `...${withReferenceFuncName}(${listenEventNameStr}, ${setterStr})`)
+                eventStu.push("", `...${withReferenceFuncName}(${listenEventNameStr}, ${setter})`)
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -324,10 +340,13 @@ export function analyzeAttribute(
                     })
                     attributeStu.push(stringify(eventName), transformedExp)
                 } else {
-                    const transformedExp = transAttrValue(rv, {
+                    const transformRes = transAttrValue(rv, {
                         eventWrapperFlag
                     })
-                    eventStu.push(stringify(eventName), `${transformedExp}, ${eventFlag}`)
+                    if (!isString(transformRes)) {
+                        transformRes.transformedExp += `, ${eventFlag}`
+                    }
+                    eventStu.push(stringify(eventName), transformRes)
                 }
             }
         } else {

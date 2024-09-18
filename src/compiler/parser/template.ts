@@ -26,7 +26,8 @@ import {
     templateTagStructureRE,
     templateInvalidAttrNameRE,
     templateConditionalCommentRE,
-    templateNormalAttributeValueRE
+    templateNormalAttributeValueRE,
+    tagIsComponentRE
 } from "../regular"
 import {
     findOutOfSC,
@@ -105,16 +106,16 @@ export function parseTemplate(source: string) {
 
         // 未闭合或不合法的标签
         // not closing or unexpected tag
-        const startTagMatched = templateStartTagRE.exec(source)!
+        const [_, tag] = templateStartTagRE.exec(source)!
         const ast = initTemplateNode(positions, {
+            tag,
             parent,
-            range: [index, -1],
-            tag: startTagMatched[1]
+            range: [index, -1]
         })
-        reduceSource(ast.tag.length + 1)
+        reduceSource(tag.length + 1)
 
         // 嵌入语言直接找到闭合标签，如果是脚本语言则记录缩进空格数量，源码偏移量等信息
-        const langMatched = /^lang-(\w+)/.exec(ast.tag)
+        const langMatched = /^lang-(\w+)/.exec(tag)
         if (!isNull(langMatched)) {
             const startIndex = findOutOfSC(source, ">") + 1
             const endIndex = findOutOfSC(source, `</${langMatched[0]}`)
@@ -256,19 +257,19 @@ export function parseTemplate(source: string) {
 
         // 解析文本内容和子节点
         // process text content and child nodes
-        if (!selfClosingTags.has(ast.tag)) {
+        if (!selfClosingTags.has(tag) && !tagIsComponentRE.test(tag)) {
             if (closeMatched[2]) {
-                TagCantBeSelfClosing(ast.tag)
+                TagCantBeSelfClosing(tag)
             } else {
                 while (true) {
-                    const endTagMatched = new RegExp(`^</${ast.tag}\\s*>`).exec(source)
+                    const endTagMatched = new RegExp(`^</${tag}\\s*>`).exec(source)
                     const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
                     if (!isNull(endTagMatched)) {
                         reduceSource(endTagMatched[0].length)
                         break
                     }
                     if (!source) {
-                        TagIsNotClosing(ast.tag)
+                        TagIsNotClosing(tag)
                     }
                     if (!startWithTagStructureRE.test(source)) {
                         parseContent(ast)
@@ -285,8 +286,8 @@ export function parseTemplate(source: string) {
         // 如果是注释节点，根据配置判断是否保留所有注释，若不保留所有则单独保留条件注释
         const reserveAllComment = compilerOptions.reserveTemplateComment
         const isConditionalComment = templateConditionalCommentRE.test(ast.content)
-        const reserveThisComment = ast.tag === "!" && (reserveAllComment || isConditionalComment)
-        if (!specialTags.has(ast.tag) || !reserveThisComment) {
+        const reserveThisComment = tag === "!" && (reserveAllComment || isConditionalComment)
+        if (!specialTags.has(tag) || !reserveThisComment) {
             return ast
         }
     }
