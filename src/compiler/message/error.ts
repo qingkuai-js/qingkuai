@@ -55,8 +55,8 @@ export function CouldNotPassRefValue(key: string, tag: string) {
     error(`Can not pass any reference value(${key}) for general tag(${tag}).`)
 }
 
-export function NoValueForRequiredValueAttribute(key: string, type: number) {
-    const itemDescription = getCompileRelatedAttributeDescription(type)
+export function NoValueForRequiredValueAttribute(key: string) {
+    const itemDescription = getSpecialAttrDescription(key[0])
     error(`The ${itemDescription}(${key}) must have a value.`)
 }
 
@@ -76,9 +76,8 @@ export function BadAttributeFormat(attr?: string) {
     error(`The attribute ${isUndefined(attr) ? "format" : `name(${attr})`} is bad.`)
 }
 
-export function EmptyAttributeName(char: string) {
-    const charTypeMap = { "#": 1, "@": 2, "!": 3, "&": 4 } as any
-    const itemDescription = getCompileRelatedAttributeDescription(charTypeMap[char])
+export function EmptyInterpolationAttrName(char: string) {
+    const itemDescription = getSpecialAttrDescription(char)
     error(`The ${itemDescription!} must be specified a name.`)
 }
 
@@ -131,7 +130,8 @@ export function DestructureReactFuncWithNoArg(funcName: string) {
 }
 
 export class CompileError extends Error {
-    Description: string
+    declare Description: string
+
     constructor(msg: string) {
         super(msg)
         this.Description = "The QingKuai compiler encountered a fatal error during execution"
@@ -142,14 +142,17 @@ function error(msg: string) {
     throw new CompileError(msg)
 }
 
-function getCompileRelatedAttributeDescription(type: number) {
-    if (type === 1) {
-        return "directive"
-    } else if (type === 2) {
-        return "event listener"
-    } else if (type === 3) {
-        return "dynamic attribute"
-    } else if (type === 4) {
-        return "reference attribute"
+// 获取特殊属性的描述（指令、事件、动态即引用属性）
+export function getSpecialAttrDescription(fc: string) {
+    switch (fc) {
+        case "#":
+            return "directive"
+        case "@":
+            return "event listener"
+        case "!":
+            return "dynamic attribute"
+        case "&":
+            return "reference attribute"
     }
+    return "not special attribute"
 }

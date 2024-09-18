@@ -27,7 +27,6 @@ import {
     getIdentifiersFromPatternWithPath
 } from "../../util/compiler/estree"
 import {
-    EmptyAttributeName,
     InvalidSlotAttribute,
     CouldNotPassRefValue,
     SlotAttributeIsEmpty,
@@ -35,17 +34,16 @@ import {
     MissingStartDirective,
     InvalidSlotNameAttribute,
     SlotNameAttributeIsEmpty,
-    NoValueForRequiredValueAttribute,
     GeneralTagJustAcceptAutoAsReference,
     UsedKeyDirectiveWithoutForDirective,
     ReferenceValueCantBeUsedWithDynamicType
 } from "../message/error"
 import { getAlias } from "./alias"
+import { couldUseRefTags } from "../constants"
+import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
 import { transformExpression } from "../transformer/expression"
-import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag, isString, isUndefined } from "../../util/shared"
-import { compilerOptions } from "../configuration"
 
 export function analyzeAttribute(
     tag: string,
@@ -418,28 +416,14 @@ export function filterDuplicateAttr(
             value.raw = normalStringify(rv)
         }
 
-        // 检查没有名称的动态或引用属性、指令和事件
-        if (isEvent || isDynamic || isDirective) {
-            if (!pureKey) {
-                EmptyAttributeName(rk[0])
-            }
-        }
-
         if (isEvent) {
-            if (value) {
-                ret.push({ loc, key, value })
-            } else {
-                NoValueForRequiredValueAttribute(rk, 2)
-            }
+            ret.push({ loc, key, value })
             continue
         }
 
         // 1. 检查需要传递值的指令是否未传递
         // 2. 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
         if (isDirective) {
-            if (mustPassValueDirectives.has(pureKey) && !value) {
-                NoValueForRequiredValueAttribute(rk, 1)
-            }
             if (/^#(?:if|elif|else)$/.test(rk)) {
                 if (!ifRelatedDirectivesCoexistState) {
                     ifRelatedDirectivesCoexistState = rk
@@ -454,11 +438,6 @@ export function filterDuplicateAttr(
                     DirectivesCantCoexist([awiatRelatedDirectivesCoexistState, rk])
                 }
             }
-        }
-
-        // 检查动态或引用的属性值是否未传递
-        if (isDynamic && !value) {
-            NoValueForRequiredValueAttribute(rk, rk.startsWith("!") ? 3 : 4)
         }
 
         // 检查是否存在重复的属性，检查规则：普通标签上可以同时存在普通class和动态class，

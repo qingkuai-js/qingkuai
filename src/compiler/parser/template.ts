@@ -12,9 +12,11 @@ import {
     TagCantBeSelfClosing,
     TemplateStartsWithEndTag,
     AttributeValueIsNotQuoted,
+    EmptyInterpolationAttrName,
     EmptyInterpolationExpression,
-    NoBracketForAttributeInterpolation,
-    EmbeddedScriptBlockOutOfLimit
+    EmbeddedScriptBlockOutOfLimit,
+    NoValueForRequiredValueAttribute,
+    NoBracketForAttributeInterpolation
 } from "../message/error"
 import {
     templateEndTagRE,
@@ -35,7 +37,7 @@ import {
 import { isNull } from "../../util/shared"
 import { inputDescriptor, sourceMapInfo } from "../state"
 import { compilerOptions } from "../configuration"
-import { specialTags, selfClosingTags } from "../constants"
+import { specialTags, selfClosingTags, mustPassValueDirectives } from "../constants"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
 export function parseTemplate(source: string) {
@@ -158,12 +160,21 @@ export function parseTemplate(source: string) {
             let attrValueStartIndex = -1
 
             const attrNameMatched = templateAttributeRE.exec(source)!
-            if (templateInvalidAttrNameRE.test(attrNameMatched[2])) {
-                BadAttributeFormat(attrNameMatched[2])
+            const [attrFull, attrPreSpace, attrName] = attrNameMatched
+            const isInterpolationAttr = /^[!@#&]/.test(attrName)
+
+            // 插值属性长度为1时代表没有指定属性名称
+            if (isInterpolationAttr && attrName.length === 1) {
+                EmptyInterpolationAttrName(attrName[0])
+            }
+
+            // 检查属性名称是否以不允许的字符开头
+            if (templateInvalidAttrNameRE.test(attrName)) {
+                BadAttributeFormat(attrName)
             } else {
-                attrNameStartIndex = index + attrNameMatched[1].length
-                attrNameEndIndex = index + attrNameMatched[0].length
-                reduceSource(attrNameMatched[0].length)
+                attrNameStartIndex = index + attrPreSpace.length
+                attrNameEndIndex = index + attrFull.length
+                reduceSource(attrFull.length)
             }
 
             // check whether attribute value is existing
@@ -171,7 +182,7 @@ export function parseTemplate(source: string) {
             if (equalTokenIndex !== -1) {
                 reduceSource(equalTokenIndex + 1)
 
-                if (!/^[!@#&]/.test(attrNameMatched[2])) {
+                if (!isInterpolationAttr) {
                     const valueMatched = templateNormalAttributeValueRE.exec(source)
                     if (isNull(valueMatched)) {
                         AttributeValueIsNotQuoted()
@@ -181,21 +192,35 @@ export function parseTemplate(source: string) {
                         attrValueEndIndex = index + valueMatched[0].length - 1
                     }
                 } else {
-                    const valueStartIndex = source.indexOf("{")
-                    const valueEndIndex = findEndCurlyBracket(source, valueStartIndex + 1)
-                    if (valueStartIndex === -1 || valueEndIndex === -1) {
+                    // 插值属性值必须被大括号包裹
+                    const valueStartMatched = /^\s*\{/.exec(source)
+                    if (isNull(valueStartMatched)) {
                         NoBracketForAttributeInterpolation()
-                    } else if (valueStartIndex + 1 === valueEndIndex) {
+                    }
+
+                    const valueStartIndex = valueStartMatched!.index + 1
+                    const valueEndIndex = findEndCurlyBracket(source, valueStartIndex)
+                    if (valueEndIndex === -1) {
+                        NoBracketForAttributeInterpolation()
+                    } else if (valueStartIndex === valueEndIndex) {
                         EmptyInterpolationExpression()
                     } else {
                         attrValueEndIndex = index + valueEndIndex
-                        attrValueStartIndex = index + valueStartIndex + 1
-                        attrValue = source.slice(valueStartIndex + 1, valueEndIndex)
+                        attrValueStartIndex = index + valueStartIndex
+                        attrValue = source.slice(valueStartIndex, valueEndIndex)
                     }
                 }
             }
 
+            // 检查必须传递属性值的属性是否有值
             const hasAttrValue = attrValueStartIndex !== -1
+            if (isInterpolationAttr && !hasAttrValue) {
+                if (attrName[0] !== "#" || mustPassValueDirectives.has(attrName.slice(1))) {
+                    NoValueForRequiredValueAttribute(attrName)
+                }
+            }
+
+            // 记录attribute的AST结构
             const attrValueLoc: ASTLocation = hasAttrValue
                 ? {
                       start: positions[attrValueStartIndex],
