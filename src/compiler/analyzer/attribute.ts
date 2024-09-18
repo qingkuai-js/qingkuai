@@ -128,7 +128,7 @@ export function analyzeAttribute(
             const teWithGetter = transAttrValue(rv)
             const teWithoutGetter = transAttrValue(rv, teOptionalParam)
             if (isComponent) {
-                // 调试模式下修改引用值是应该将原始标识符的值一起修改
+                // 调试模式下修改引用值时应该将原始标识符的值一起修改
                 let setterTarget = teWithoutGetter
                 if (compilerOptions.debugeMode) {
                     setterTarget += ` = ${value.raw}`
@@ -358,7 +358,7 @@ export function analyzeAttribute(
                 if (isExpression) {
                     attributeStu.push(transAttrValue(rv))
                 } else {
-                    attributeStu.push(normalStringify(rv))
+                    attributeStu.push(rv)
                 }
             }
         }
