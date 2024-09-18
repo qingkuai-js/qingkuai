@@ -13,7 +13,8 @@ import {
     TemplateStartsWithEndTag,
     AttributeValueIsNotQuoted,
     EmptyInterpolationExpression,
-    NoBracketForAttributeInterpolation
+    NoBracketForAttributeInterpolation,
+    EmbeddedScriptBlockOutOfLimit
 } from "../message/error"
 import {
     templateEndTagRE,
@@ -32,7 +33,7 @@ import {
     getPositionOfEachChar
 } from "../../util/compiler/sundry"
 import { isNull } from "../../util/shared"
-import { inputDescriptor } from "../state"
+import { inputDescriptor, sourceMapInfo } from "../state"
 import { compilerOptions } from "../configuration"
 import { specialTags, selfClosingTags } from "../constants"
 
@@ -108,8 +109,44 @@ export function parseTemplate(source: string) {
             range: [index, -1],
             tag: startTagMatched[1]
         })
-        const isScript = ast.tag === "script"
         reduceSource(ast.tag.length + 1)
+
+        // 嵌入语言直接找到闭合标签，如果是脚本语言则记录缩进空格数量，源码偏移量等信息
+        const langMatched = /^lang-(\w+)/.exec(ast.tag)
+        if (!isNull(langMatched)) {
+            const startIndex = findOutOfSC(source, ">") + 1
+            const endIndex = findOutOfSC(source, `</${langMatched[0]}`)
+            const [blockEndIndex] = findOutOfSC(source, ">", endIndex)
+
+            // script block
+            if (/js|ts/.test(langMatched[1])) {
+                const scriptDescriptor = inputDescriptor.script
+                if (scriptDescriptor.existing) {
+                    EmbeddedScriptBlockOutOfLimit()
+                }
+                scriptDescriptor.loc = {
+                    start: positions[index + startIndex],
+                    end: positions[index + endIndex]
+                }
+                scriptDescriptor.code = source.slice(startIndex, endIndex)
+                scriptDescriptor.isTS = langMatched[1] === "ts"
+                scriptDescriptor.existing = true
+
+                // 记录生成代码中script部分的行数，4是两个换行符、一行注释、
+                // 以及结束行号和开始行号相减少时导致结构少一行的固定量
+                const startLine = scriptDescriptor.loc.start.line
+                const endLine = scriptDescriptor.loc.end.line
+                if (startLine !== endLine) {
+                    sourceMapInfo.generatedScriptLineCount = endLine - startLine + 4
+                }
+            }
+
+            // style block
+            if (/css|s[ca]|less|stylus|postcss/.test(langMatched[1])) {
+            }
+
+            return reduceSource(blockEndIndex + 1), void 0
+        }
 
         // 解析属性
         // parse attributes
@@ -191,18 +228,6 @@ export function parseTemplate(source: string) {
             ast.attributes.push(attrStruct)
         }
         reduceSource(closeMatched[0].length)
-
-        // script标签直接找到闭合标签，并记录缩进空格数量，源码偏移量等信息
-        if (isScript) {
-            const endIndex = findOutOfSC(source, "</script>")
-            inputDescriptor.script.loc = {
-                start: positions[index],
-                end: positions[endIndex + index]
-            }
-            inputDescriptor.script.code = source.slice(0, endIndex)
-            reduceSource(endIndex + 9)
-            return
-        }
 
         // 解析文本内容和子节点
         // process text content and child nodes

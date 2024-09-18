@@ -47,6 +47,10 @@ export function DuplicateSlotAttributeValue(value: string) {
     error(`Multiple tags have the same slot attribute value(${value}).`)
 }
 
+export function EmbeddedScriptBlockOutOfLimit() {
+    error(`The embedded script block is out of limit(only one is allowed).`)
+}
+
 export function CouldNotPassRefValue(key: string, tag: string) {
     error(`Can not pass any reference value(${key}) for general tag(${tag}).`)
 }

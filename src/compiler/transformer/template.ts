@@ -8,7 +8,7 @@ import { indent } from "../../util/compiler/state"
 import { recordMapping } from "../sourcemap/tools"
 import { findOutOfSC } from "../../util/compiler/sundry"
 import { isArray, isNull, isString, isUndefined } from "../../util/shared"
-import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
+import { inputDescriptor, sourceMapInfo, stringConstants, stringConstantsSourceMap } from "../state"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
@@ -75,9 +75,9 @@ export function transformTemplate(
             }
             if (!terIsString) {
                 ter.mappings.forEach(item => {
+                    const sourceLine = item[2] - 1
                     const generatedColumn = item[1] + currentColumn
-                    const generateLine = currentLine + inputDescriptor.script.loc.end.line + 3
-                    recordMapping(generateLine, generatedColumn, item[2], item[3], item[0], true)
+                    recordMapping(currentLine, generatedColumn, sourceLine, item[3], item[0], true)
                 })
             }
             transformedArr.push(str)
@@ -355,15 +355,6 @@ function attrOrEventJoin(ters: TransformExpressionRet[], n: number) {
         return item.transformedExp
     })
     return `[${strArr.join(", ")}]`
-}
-
-function recordTERMapping(ter: TransformExpressionRet) {
-    if (!isString(ter)) {
-        ter.mappings.forEach(item => {
-            console.log(item)
-            // recordMapping(item[1], item[2], item[3], item[4], item[0])
-        })
-    }
 }
 
 // 判断当前模版结构是否需要使用折行（这里只进行粗略判断，避免一行过多内容）

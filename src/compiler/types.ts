@@ -15,6 +15,7 @@ export interface SourceMapInfo {
     mappings: SourceMapMappings
     preaddedLineCount: number
     removedLine: Set<number>
+    generatedScriptLineCount: number
     existingSourceIndex: Set<number>
     tempStoredImportStartLine: number
     columnOffsetOfFirstTemplateLine: number
@@ -62,6 +63,7 @@ export interface InputDescriptor {
         code: string
         isTS: boolean
         loc: ASTLocation
+        existing: boolean
         runtime: {
             namespaceIdentifier: string
             watchIdentifiers: Set<string>
