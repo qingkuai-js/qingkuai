@@ -17,6 +17,11 @@ export function TemplateStartsWithEndTag(text: string) {
     error(`Starts with an end tag: ${text}`)
 }
 
+export function EmptyInterpolationAttrName(char: string) {
+    const itemDescription = getSpecialAttrDescription(char)
+    error(`The ${itemDescription!} must be specified a name.`)
+}
+
 export function SlotNameAttributeIsEmpty() {
     error("The name attribute for slot tag can not be empty.")
 }
@@ -35,6 +40,17 @@ export function UsedKeyDirectiveWithoutForDirective() {
 
 export function GeneralTagJustAcceptAutoAsReference(tag: string) {
     error(`General tag(${tag}) can only accept auto as reference.`)
+}
+
+export function DuplicateAttributeKey(tag: string, a: string, b: string) {
+    let description = ""
+    if (a === b) {
+        description = `${getSpecialAttrDescription(a[0])}(${a})`
+    } else {
+        description = `${getSpecialAttrDescription(a[0])}(${a})`
+        description += ` and ${getSpecialAttrDescription(b[0])}(${b})`
+    }
+    error(`The name for ${description} of ${tag} tag is duplicate.`)
 }
 
 export function InvalidSlotAttribute(type: number) {
@@ -74,11 +90,6 @@ export function DirectivesCantCoexist(directives: string[]) {
 
 export function BadAttributeFormat(attr?: string) {
     error(`The attribute ${isUndefined(attr) ? "format" : `name(${attr})`} is bad.`)
-}
-
-export function EmptyInterpolationAttrName(char: string) {
-    const itemDescription = getSpecialAttrDescription(char)
-    error(`The ${itemDescription!} must be specified a name.`)
 }
 
 export function InvalidSlotNameAttribute(type: number) {
@@ -154,5 +165,5 @@ export function getSpecialAttrDescription(fc: string) {
         case "&":
             return "reference attribute"
     }
-    return "not special attribute"
+    return "normal attribute"
 }

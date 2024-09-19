@@ -31,13 +31,6 @@ export function InvalidEventFlagForComponent(flagStr: string) {
     )
 }
 
-export function DuplicateAttributeKey(tag: string, key: string, isDirective: boolean) {
-    const kind = isDirective ? "directive" : "attribute"
-    warn(
-        `Duplicate ${kind} item(${key}) for ${tag} tag, the later one has been applied according to the priority.`
-    )
-}
-
 function warn(msg: string) {
     console.warn(msg)
 }

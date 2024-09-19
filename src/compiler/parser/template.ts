@@ -257,9 +257,13 @@ export function parseTemplate(source: string) {
 
         // 解析文本内容和子节点
         // process text content and child nodes
-        if (!selfClosingTags.has(tag) && !tagIsComponentRE.test(tag)) {
+        if (!selfClosingTags.has(tag)) {
             if (closeMatched[2]) {
-                TagCantBeSelfClosing(tag)
+                if (tagIsComponentRE.test(tag)) {
+                    return ast
+                } else {
+                    TagCantBeSelfClosing(tag)
+                }
             } else {
                 while (true) {
                     const endTagMatched = new RegExp(`^</${tag}\\s*>`).exec(source)

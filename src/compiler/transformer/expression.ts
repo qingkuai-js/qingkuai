@@ -247,7 +247,6 @@ export function transformExpression(
             mappings[0][1] = addedPrefixLen - 7
         }
     }
-    console.log(mappings)
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp

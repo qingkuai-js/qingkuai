@@ -12,7 +12,6 @@ import type { VariableDeclaration } from "@babel/types"
 import {
     InvalidEventFlag,
     InvalidEventForSlot,
-    DuplicateAttributeKey,
     InvalidEventFlagForComponent
 } from "../message/warn"
 import {
@@ -32,6 +31,7 @@ import {
     SlotAttributeIsEmpty,
     DirectivesCantCoexist,
     MissingStartDirective,
+    DuplicateAttributeKey,
     InvalidSlotNameAttribute,
     SlotNameAttributeIsEmpty,
     GeneralTagJustAcceptAutoAsReference,
@@ -79,11 +79,11 @@ export function analyzeAttribute(
         const trimedValue = rv.trim()
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
-        const isDynamic = rk.startsWith("!")
+        const isDynamicOrReference = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
         const teOptionalParam = { usedAsSetter: true }
         const valueStartIndex = attr.value.loc.start.index
-        const isExpression = isEvent || isDynamic || isDirective || isRef
+        const isExpression = isEvent || isDynamicOrReference || isDirective || isRef
 
         // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
         const transDirective = (exp: string, option?: TransformExpressionOptionalParam) => {
@@ -351,7 +351,7 @@ export function analyzeAttribute(
             }
         } else {
             if (parentIsComponent && pureKey === "slot") {
-                if (!isDynamic) {
+                if (!isDynamicOrReference) {
                     if (rv !== '""') {
                         slot = rv
                     } else {
@@ -361,7 +361,7 @@ export function analyzeAttribute(
                     InvalidSlotAttribute(1)
                 }
             } else if (isSlot && pureKey === "name") {
-                if (!isDynamic) {
+                if (!isDynamicOrReference) {
                     if (rv !== '""') {
                         slotName = rv
                     } else {
@@ -421,11 +421,12 @@ export function filterDuplicateAttr(
     const existingItem = new Map<string, TemplateAttribute[]>()
 
     for (let i = 0; i < attributes.length; i++) {
-        const { key, value, loc } = attributes[i]
+        const currentAttribute = attributes[i]
+        const { key, value, loc } = currentAttribute
         const [rk, rv] = [key.raw, value.raw]
 
         const isNative = /^[^@!#&]/.test(rk)
-        const isDynamic = /^[!&]/.test(rk)
+        const isDynamicOrReference = /^[!&]/.test(rk)
         const isEvent = rk.startsWith("@")
         const isDirective = rk.startsWith("#")
         const isClass = /^[!&]?class/.test(rk)
@@ -435,13 +436,7 @@ export function filterDuplicateAttr(
             value.raw = normalStringify(rv)
         }
 
-        if (isEvent) {
-            ret.push({ loc, key, value })
-            continue
-        }
-
-        // 1. 检查需要传递值的指令是否未传递
-        // 2. 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
+        // 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
         if (isDirective) {
             if (/^#(?:if|elif|else)$/.test(rk)) {
                 if (!ifRelatedDirectivesCoexistState) {
@@ -459,47 +454,49 @@ export function filterDuplicateAttr(
             }
         }
 
-        // 检查是否存在重复的属性，检查规则：普通标签上可以同时存在普通class和动态class，
-        // 但均只能同时存在一个，存在多个时后者覆盖前者，组件或slot上的class属性只能有一个
+        // 检查是否存在重复的属性，检查规则如下：
+        // 1. 任何编译器指令都不能在同一个标签上重复出现
+        // 2. class外的属性名不能重复：name、!name、&name、@name均视为相同名称（其中事件的名称只有在组件
+        // 标签上不能与其他属性的名称重复，如果是普通标签，则只要不存在相同的时间名称就不会报错
+        // 3. 普通标签上可以同时存在普通class和动态class，但均只能同时存在一个，但如果当前标签是组件或slot，
+        // 那么class属性不能重复，只能存在一种（普通值或动态值）（普通标签上不能使用引用的class属性）
         if (isDirective || !isClass || isComponentOrSlot) {
-            if (
-                existingItem.has(pureKey) ||
-                existingItem.has("!" + pureKey) ||
-                existingItem.has("&" + pureKey)
-            ) {
-                existingItem.delete(pureKey)
-                if (!isDirective) {
-                    existingItem.delete("!" + pureKey)
-                    existingItem.delete("&" + pureKey)
+            if (!isComponent && isEvent) {
+                if (existingItem.has(rk)) {
+                    DuplicateAttributeKey(tag, rk, rk)
                 }
-                DuplicateAttributeKey(tag, pureKey, isDirective)
+            } else {
+                ;["", "!", "@", "&"].forEach(char => {
+                    if (existingItem.has(char + pureKey)) {
+                        DuplicateAttributeKey(tag, char + pureKey, rk)
+                    }
+                })
             }
-            existingItem.set(rk, [attributes[i]])
+            existingItem.set(rk, [currentAttribute])
             continue
         }
 
+        // 上述检查的第三种情况：非组件标签上的class属性，动态和非动态class均可出现一次，重复出现将报错
         if (isClass && !isComponentOrSlot) {
             if (!existingItem.has("!class")) {
                 existingItem.set("!class", [])
             }
+
+            if (
+                (isDynamicOrReference && dynamicClassIndex !== -1) ||
+                (!isDynamicOrReference && normalClassIndex !== -1)
+            ) {
+                DuplicateAttributeKey(tag, rk, rk)
+            }
+
             const target = existingItem.get("!class")!
-            if (isDynamic) {
+            if (!isDynamicOrReference) {
+                normalClassIndex = target.push(currentAttribute) - 1
+            } else {
                 if (rk.startsWith("&")) {
                     CouldNotPassRefValue(pureKey, tag)
                 }
-                if (dynamicClassIndex !== -1) {
-                    target[dynamicClassIndex] = attributes[i]
-                    DuplicateAttributeKey(tag, rk, false)
-                } else {
-                    dynamicClassIndex = target.push(attributes[i]) - 1
-                }
-            } else {
-                if (normalClassIndex !== -1) {
-                    target[normalClassIndex] = attributes[i]
-                    DuplicateAttributeKey(tag, pureKey, isDirective)
-                } else {
-                    normalClassIndex = target.push(attributes[i]) - 1
-                }
+                dynamicClassIndex = target.push(currentAttribute) - 1
             }
         }
     }
