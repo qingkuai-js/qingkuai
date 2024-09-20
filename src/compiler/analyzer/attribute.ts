@@ -79,9 +79,9 @@ export function analyzeAttribute(
         const trimedValue = rv.trim()
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
-        const isDynamicOrReference = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
         const teOptionalParam = { usedAsSetter: true }
+        const isDynamicOrReference = rk.startsWith("!")
         const valueStartIndex = attr.value.loc.start.index
         const isExpression = isEvent || isDynamicOrReference || isDirective || isRef
 
@@ -461,7 +461,7 @@ export function filterDuplicateAttr(
         // 3. 普通标签上可以同时存在普通class和动态class，但均只能同时存在一个，但如果当前标签是组件或slot，
         // 那么class属性不能重复，只能存在一种（普通值或动态值）（普通标签上不能使用引用的class属性）
         if (isDirective || !isClass || isComponentOrSlot) {
-            if (!isComponent && isEvent) {
+            if (isDirective || (!isComponent && isEvent)) {
                 if (existingItem.has(rk)) {
                     DuplicateAttributeKey(tag, rk, rk)
                 }

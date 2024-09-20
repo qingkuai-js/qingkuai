@@ -39,11 +39,14 @@ export function UsedKeyDirectiveWithoutForDirective() {
 }
 
 export function GeneralTagJustAcceptAutoAsReference(tag: string) {
-    error(`General tag(${tag}) can only accept auto as reference.`)
+    error(`Normal tag(${tag}) can only accept auto as reference.`)
 }
 
 export function DuplicateAttributeKey(tag: string, a: string, b: string) {
     let description = ""
+    if (a[0] === "#") {
+        error(`The directive(${a}) of ${tag} tag is duplicate.`)
+    }
     if (a === b) {
         description = `${getSpecialAttrDescription(a[0])}(${a})`
     } else {
@@ -68,7 +71,7 @@ export function EmbeddedScriptBlockOutOfLimit() {
 }
 
 export function CouldNotPassRefValue(key: string, tag: string) {
-    error(`Can not pass any reference value(${key}) for general tag(${tag}).`)
+    error(`Can not pass any reference value(${key}) for normal tag(${tag}).`)
 }
 
 export function NoValueForRequiredValueAttribute(key: string) {
@@ -118,7 +121,7 @@ export function CompilerFuncNotInTopScope() {
 
 export function ReferenceValueCantBeUsedWithDynamicType(tag: string) {
     error(
-        `Can not pass reference value when general tag(${tag}) using dynamic type attribute(!type).`
+        `Can not pass reference value when normal tag(${tag}) using dynamic type attribute(!type).`
     )
 }
 
