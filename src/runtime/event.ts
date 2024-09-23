@@ -65,36 +65,39 @@ export function withReference(
 ): EventStructure {
     const handlerGen: RefEventHandlerGetterGen = (qkNode, invokeGetter, attachUpdate) => {
         const target = qkNode.n as HTMLElement
+        const isInput = target.tagName === "INPUT"
         const attrKey = attrName as keyof typeof target
 
         // 初始化属性值，并将修改属性值的方法添加到所依赖的响应性值的effect中
         const setAttribute = () => {
             const gotValue = raw(invokeGetter(value))
 
-            // 查看选项值是否已经被包含，这里针对容器为数组或集合的不同情况声明了
-            // 不同的判断方法，避免在检查多个option元素时的重复类型判断
+            // 如果容器类型不是数组或集合则抛出错误
+            // cct: Check Container Type, ran: Reference Attribute Name
+            const cct = () => {
+                if (isValueIncluded === noop) {
+                    const ran = isInput ? "group" : "value"
+                    ContainerTypeIsBad(target.tagName, ran)
+                }
+                return false
+            }
+
+            // 判断选项值是否被包含的方法，这里针对容器为数组或集合的不同情况提前
+            // 声明了不同的判断方法，避免在检查多个option元素时的重复类型判断
             const isValueIncluded: (rv: any) => void = isArray(gotValue)
                 ? rv => gotValue.includes(rv)
                 : optc(gotValue) === "Set"
                 ? rv => gotValue.has(rv)
                 : noop
 
-            if (target.tagName === "INPUT" && attrName === "group") {
-                if (isValueIncluded === noop) {
-                    ContainerTypeIsBad("input", "group")
-                }
-
+            if (isInput && attrName === "group") {
                 // gotValue中是否含有qkNode的value属性值即表示当前input元素是否被选中
-                const checked = isValueIncluded(qkNode.attrs.value)
+                const checked = cct() || isValueIncluded(qkNode.attrs.value)
                 return attribute(qkNode, "checked", checked, true)
             } else if (target.tagName === "SELECT") {
-                if (isValueIncluded === noop) {
-                    ContainerTypeIsBad("select", "value")
-                }
-
                 // gotValue中是否含有oqn的value属性值即表示option元素是否被选中
                 // 如果设置某个option元素的属性值（attribute调用）时返回true，则表示组件有更新
-                let hasUpdated = false
+                let hasUpdated = cct() || false
                 for (const option of (target as any).options) {
                     const oqn = option["_qkNode"] as QingKuaiNodeStruct
                     const selected = isValueIncluded(oqn.attrs.value)
@@ -114,25 +117,37 @@ export function withReference(
             if (setter) {
                 setter(target[attrKey])
             } else {
-                const valueRaw = qkNode.attrs.value
                 const gotValue = invokeGetter(value)
-                const inputTarget = target as HTMLInputElement
-                const containerMethods: {
-                    add: (rv: any) => void
-                    delete: (rv: any) => void
-                } = isArray(gotValue)
-                    ? {
-                          add: rv => gotValue.push(rv),
-                          delete: rv => spliceByElem(gotValue, rv)
-                      }
-                    : optc(gotValue) === "Set"
-                    ? gotValue
-                    : {}
 
-                if (inputTarget.checked) {
-                    gotValue.add(valueRaw)
+                // 作用于setAttribute方法中的isValueIncluded声明类似，根据容器类型的不同提前声明
+                // 同步容器值的方法，避免后续代码多次判断选择容器方法导致代码冗余和重复容器类型判断
+                let syncContainer!: (status: boolean, rv: any) => void
+                if (isArray(gotValue)) {
+                    syncContainer = (status, rv) => {
+                        if (!status) {
+                            spliceByElem(gotValue, rv)
+                        } else {
+                            !gotValue.includes(rv) && gotValue.push(rv)
+                        }
+                    }
+                } else if (optc(gotValue) === "Set") {
+                    syncContainer = (status, rv) => {
+                        if (status) {
+                            gotValue.add(rv)
+                        } else {
+                            gotValue.delete(rv)
+                        }
+                    }
+                }
+
+                // 经编译器处理后，只有非radio/checkbox控件的group属性或select元素的value属性才会传入setter，
+                // 并且在这里容器类型一定是数组或集合，不然在之前设置attribute的过程中会抛出错误
+                if (isInput) {
+                    syncContainer((target as any).checked, qkNode.attrs.value)
                 } else {
-                    gotValue.delete(gotValue, valueRaw)
+                    for (const option of target as any) {
+                        syncContainer(option.selected, option["_qkNode"].attrs.value)
+                    }
                 }
             }
         }
