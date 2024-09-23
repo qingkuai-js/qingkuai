@@ -1,8 +1,9 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { velf } from "../util/runtime"
+import { isReactive, velf } from "../util/runtime"
 import { isArray, isBoolean, isEqual, isObject, strNotEqual } from "../util/shared"
+import { RawValue } from "./constants"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -48,6 +49,12 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     const isBool = isBoolean(value)
     const isClass = key === "class"
     const oldValue = attrs[key]
+
+    // 如果value是一个响应式值，需要将其修改为其原始值，因为响应式值的每次获取
+    // 都是一个新的Proxy包装值，参考：src/runtime/reactivity/value.ts
+    if (isReactive(value)) {
+        value = value[RawValue]
+    }
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串
     if (isClass) {
