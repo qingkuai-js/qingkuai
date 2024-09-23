@@ -24,6 +24,7 @@ import {
     setCurrentInstance
 } from "./instance"
 import {
+    velf,
     combineContext,
     mockDirective,
     extendNks,
@@ -37,8 +38,8 @@ import {
     clearUsedEffectList,
     withCleanUsedEffectList
 } from "./reactivity/state"
-import { nil } from "./constants"
 import { InvalidMountNode } from "./message/error"
+import { IsWithReferenceRet, nil } from "./constants"
 import { internalPreEffect } from "./reactivity/effect"
 import { isArray, isFunction, isNull, lastElem, len, values } from "../util/shared"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
@@ -95,6 +96,7 @@ export const h = withCleanUsedEffectList(function (
     isKeyedTop: boolean = false
 ) {
     let dref: Text
+    let isInputOrTextarea = false
 
     const { directive, toms } = toRenderStructure(stu, context)
     const isKeyedForModule = directive && directive.t === 1
@@ -260,12 +262,20 @@ export const h = withCleanUsedEffectList(function (
             }
 
             // 创建节点及处理textContent
-            if (tag) {
+            if (!tag) {
+                text(qkNode, getValue(content), cif)
+            } else {
                 element(qkNode, tag)
                 setText(qkNode, getValue(content), cif)
-            } else {
-                text(qkNode, getValue(content), cif)
+                isInputOrTextarea = /^input|textarea$/.test(tag)
             }
+
+            // 如果是option元素，把qkNode添加到DOM属性中，在处理select的引用
+            // value属性值时，需要用到option元素的qkNode来调用attribute方法
+            if (tag === "option") {
+                ;(qkNode.n as any)["_qkNode"] = qkNode
+            }
+
             if (isKeyedTop) {
                 currentKeyedInfo.nks.push(qkNode.n!)
             }
@@ -284,13 +294,12 @@ export const h = withCleanUsedEffectList(function (
                 for (let i = 0; i < len(attrs); i += 2) {
                     let [key, value] = [attrs[i], attrs[i + 1]]
                     const attrValueIsFunction = isFunction(value)
-                    // prettier-ignore
-                    attribute(
-                        qkNode,
-                        key, 
-                        getValue(value),
-                        attrValueIsFunction
-                    )
+
+                    // 设置节点属性值，最后一个参数代表是否需要记录旧属性值，非getter时无需记录
+                    attribute(qkNode, key, getValue(value), attrValueIsFunction)
+
+                    // 如果属性值是一个getter，将修改属性的方法记录到响应性变量的effect列表中
+                    // 记录完成后，当前attribue所依赖的响应性变量改变时，attribute将会被重新调用
                     if (attrValueIsFunction) {
                         selfAttachUpdate(() => {
                             return attribute(qkNode, key, invokeGetter(value), true)
@@ -302,8 +311,36 @@ export const h = withCleanUsedEffectList(function (
             // 处理events
             if (events) {
                 for (let i = 0; i < len(events); i += 3) {
-                    const [key, value, flag] = events.slice(i, i + 3) as EventStructure
-                    selfAttachDestroy(listen(qkNode.n!, key, invokeGetter(value), flag))
+                    let [key, value, flag] = events.slice(i, i + 3) as EventStructure
+
+                    // 判断是否是withReference方法的返回值，如果是的话则需要先调用它，它会返回真正的
+                    // NormalEventHandlerGetter，调用时它会设置属性的初始值并将修改属性值的方法记录到
+                    // 依赖的响应性变量的effect中（这一操作同上attribute处理部分，但这样做可以有效压缩生成代码体积）
+                    if (value[IsWithReferenceRet]) {
+                        value = value(qkNode, invokeGetter, selfAttachUpdate)
+                    }
+
+                    // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器
+                    const eventHandler = invokeGetter(value)
+                    const selfListen = (eventName: string, eventHandler: EventListener) => {
+                        selfAttachDestroy(listen(qkNode.n!, eventName, eventHandler, flag))
+                    }
+
+                    // 默认情况下输入合成阶段（如汉语拼音输入法合成过程中，即未选定输入前）不会触发input事件
+                    // 如果为input事件传入了compose修饰符，则会在合成阶段触发input事件，下面的代码就针对这种
+                    // 情况进行了处理。需要注意的是：在compositionend事件中调用了一次原始的input事件处理器，
+                    // 因为在浏览器的默认行为中，选定输入的那一刻(通常为按下上方主键盘数字键或空格键选定)也被
+                    // 算在合成过程中，而这里的处理将选定输入的操作排除在合成过程之外
+                    if (!isInputOrTextarea || key !== "input" || velf(flag, "compose")) {
+                        selfListen(key, eventHandler)
+                    } else {
+                        selfListen("compositionend", eventHandler)
+                        selfListen(key, event => {
+                            if (!(event as InputEvent).isComposing) {
+                                eventHandler(event)
+                            }
+                        })
+                    }
                 }
             }
 

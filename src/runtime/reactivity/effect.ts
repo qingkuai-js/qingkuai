@@ -9,6 +9,7 @@ import type {
     WatchEffectStruct
 } from "../types"
 
+import { getRawValue } from "../../util/runtime"
 import { opportunities, nil } from "../constants"
 import { isNull, len, values } from "../../util/shared"
 import { asyncWatchEffectList, usedEffectList } from "./state"
@@ -37,21 +38,17 @@ export function flushWatchEffect(type: Opportunity) {
 
 // 执行单个watch相关的effect
 function runWatchEffect(stu: WatchEffectStruct) {
-    const isWatch = isWatchStruct(stu)
+    const isWatch = "cur" in stu
     if (!isWatch) {
         stu.fn()
     } else {
         const value = stu.getter()
-        if (stu.pre === value) {
+        const raw = getRawValue(value)
+        if (stu.cur === raw) {
             return
         }
-        stu.fn((stu.pre = stu.cur), (stu.cur = value))
+        stu.fn(stu.cur, (stu.cur = raw))
     }
-}
-
-// 判断是否watch结构
-function isWatchStruct(stu: WatchEffectStruct): stu is WatchStruct {
-    return "pre" in stu
 }
 
 // 创建watch相关的effect
@@ -76,13 +73,13 @@ function createWatchEffect(effectList: EffectListItem[], stu: WatchEffectStruct)
 // 初始化watch相关运行时函数
 function initWatch(getter: Getter, fn: WatchStruct["fn"], type: Opportunity) {
     const value = getter()
+    const raw = getRawValue(value)
     const effectList = values(usedEffectList)
     const watchStruct: WatchStruct = {
         fn,
         type,
         getter,
-        pre: value,
-        cur: value
+        cur: raw
     }
     if (len(effectList) === 0) {
         const funcName = type === "post" ? "watch" : type + "Watch"

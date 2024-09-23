@@ -8,25 +8,34 @@ import type {
     EffectListItem,
     DestructionStruct
 } from "../runtime/types"
-import type { EventWrapperFlagKeys, EventListenerFlagKeys } from "./types"
+import type { EventWrapperFlagKeys, EventListenerFlagKeys, AnyObject } from "./types"
 
 import { setUsedEffectList } from "../runtime/reactivity/state"
-import { IsModuleFunc, IsProxy, nil, noop } from "../runtime/constants"
+import { IsModuleFunc, IsProxy, nil, noop, RawValue } from "../runtime/constants"
 import { len, runAll, isNumber, isFunction, EventWrapperFlag, EventListenerFlag } from "./shared"
-
-// 判断值是否为响应式值
-export function isReactive(v: any) {
-    return v?.[IsProxy] === true
-}
 
 // 判断是否DOM节点
 export function isNode(v: any): v is Node {
     return isNumber(v.nodeType)
 }
 
+// 判断值是否为响应式值
+export function isReactive<T extends AnyObject>(
+    v: any
+): v is T & {
+    [RawValue]: T
+} {
+    return v?.[IsProxy] === true
+}
+
 // 判断是否是ModuleFunc类型
 export function isModuleFunc(v: any): v is ModuleFunc {
     return !!v?.[IsModuleFunc]
+}
+
+// 获取原始值
+export function getRawValue<T>(v: T) {
+    return isReactive(v) ? v[RawValue] : v
 }
 
 // velf means Verify Event Listener Flag

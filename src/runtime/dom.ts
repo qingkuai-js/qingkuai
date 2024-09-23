@@ -1,9 +1,8 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { nextTick } from "./schedule"
 import { velf } from "../util/runtime"
-import { isArray, isBoolean, isObject } from "../util/shared"
+import { isArray, isBoolean, isEqual, isObject, strNotEqual } from "../util/shared"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -45,33 +44,48 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 }
 
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
-    const { attrs } = qknode
+    const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
     const isBool = isBoolean(value)
-    const elem = qknode.n as HTMLElement
     const isClass = key === "class"
-    const toStr = !isBool && !isClass
-    if (toStr) {
-        value = "" + value
-    } else if (isClass) {
+    const oldValue = attrs[key]
+
+    // 如果属性名为class，则需要调用transformClassName将其转换为字符串
+    if (isClass) {
         value = transformClassName(value)
     }
 
-    if (attrs![key] === value) {
+    // 属性值与旧值相同，结束调用
+    // 返回false代表此方法没有导致组件更新
+    if (isEqual(oldValue, value)) {
         return false
     }
-    if (record) {
-        attrs![key] = value
+
+    // 1. 如果属性存在于DOM中，则修改DOM属性值，若修改后属性值无变化，表示该属性为getter
+    // 2. 如果属性值是否是布尔值，则要在值为true和false时分别设置属性为空字符串和移除属性
+    // 3. 判断新值与旧值的字符串表达是否相同，相同时不做处理，不同时调用setAttribute设置属性值
+    if (key in elem) {
+        try {
+            ;(elem as any)[key] = value
+        } catch (e) {
+            // TODO: 警告，该DOM属性仅为getter，修改失败
+            return false
+        }
+    } else if (isBool) {
+        if (value) {
+            elem.setAttribute(key, "")
+        } else {
+            elem.removeAttribute(key)
+        }
+    } else if ("" + oldValue === "" + value) {
+        elem.setAttribute(key, value)
     }
 
-    if (key === "style") {
-        elem.style.cssText = value
-    } else if (isBool && !value) {
-        elem.removeAttribute(key)
-    } else if (key in elem) {
-        nextTick(() => ((elem as any)[key] = value))
-    } else {
-        elem.setAttribute(key, isBool ? "" : value)
+    // 如果record为true（属性值是动态的）则将当前值记录在attrs中，下次调用attribute方法时
+    // 当前的记录值将被用作旧值与新的属性值进行对比以判断属性值是否发生了变化
+    if (record) {
+        attrs[key] = value
     }
+
     return true
 }
 

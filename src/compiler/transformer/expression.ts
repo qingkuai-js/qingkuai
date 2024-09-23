@@ -211,7 +211,12 @@ export function transformExpression(
         addedPrefixLen += eventWrapperFuncName.length + 1
         transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${flag})`
     }
-    if (!optionalParams.usedAsSetter && useGetter) {
+
+    // 当 usedAsSetter 被设置时，代表这个表达式在一个setter中，此时如果转换后的表达式添加了
+    // _w_前缀或.$后缀，都应该将原始的标识符一同修改（这种情况主要出现在引用属性值中）
+    if (optionalParams.usedAsSetter) {
+        transformedExp += ` = ${expression}`
+    } else if (useGetter) {
         const paramStr = useContext ? "ctx" : "_"
         if (useParenthesesWrap) {
             addedPrefixLen += 1

@@ -80,7 +80,6 @@ export function analyzeAttribute(
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
         const isDirective = rk.startsWith("#")
-        const teOptionalParam = { usedAsSetter: true }
         const isDynamicOrReference = rk.startsWith("!")
         const valueStartIndex = attr.value.loc.start.index
         const isExpression = isEvent || isDynamicOrReference || isDirective || isRef
@@ -122,24 +121,22 @@ export function analyzeAttribute(
                 CouldNotPassRefValue(pureKey, tag)
             }
 
-            const teWithGetter = transAttrValue(rv)
-            const teWithoutGetter = transAttrValue(rv, teOptionalParam)
+            const teGetter = transAttrValue(rv)
+            const teSetter = transAttrValue(rv, { usedAsSetter: true })
             if (isComponent) {
-                // setter目标，调试模式下修改引用值时应该将原始标识符的值一起修改
-                let setterTarget = isString(teWithoutGetter)
-                    ? teWithoutGetter
-                    : teWithoutGetter.transformedExp
-                if (compilerOptions.debugeMode) {
-                    setterTarget += ` = ${value.raw}`
+                if (isString(teSetter)) {
+                    eventStu.push(stringify(pureKey), `[${teGetter}, v => (${teSetter} = v)]`)
+                } else {
+                    // 如果teSetter带有mapping，则需要将所有段下标为1的元素（生成列）向右偏移
+                    // 9（前缀固定长度）+ getter.length，这样做是为了让引用值映射到setter部分
+                    const exp = teSetter.transformedExp
+                    const getter = (teGetter as any).transformedExp
+                    teSetter.mappings.forEach(item => {
+                        item[1] += 9 + getter.length
+                    })
+                    eventStu.push(stringify(pureKey), teSetter)
+                    teSetter.transformedExp = `[${getter}, v => (${exp} = v)]`
                 }
-
-                // 如果转换后的表达式带有mapping，则需要将所有段下标为1的元素（生成列）+1（前缀固定长度）
-                if (!isString(teWithGetter)) {
-                    teWithGetter.mappings.forEach(item => item[1]++)
-                    teWithGetter.transformedExp += `, v => (${setterTarget} = v)]`
-                    teWithGetter.transformedExp = "[" + teWithGetter.transformedExp
-                }
-                eventStu.push(stringify(pureKey), teWithGetter)
             } else {
                 let listenEventName = "input"
                 let reactiveProperty = "value"
@@ -163,24 +160,19 @@ export function analyzeAttribute(
                     reactiveProperty = "checked"
                 }
 
-                // setter方法的字符串表示，调试模式同样需要修改原始标识符
-                let setter = isString(teWithoutGetter)
-                    ? teWithoutGetter
-                    : teWithoutGetter.transformedExp
-                if (compilerOptions.debugeMode) {
-                    setter += ` = ${value.raw}`
-                }
-                setter = `v => (${setter} = v)`
-
-                // 添加attribute部分，这里用来在响应式值改变时修改元素属性值
-                const listenEventNameStr = stringify(listenEventName)
-                const withReferenceFuncName = getAlias("withReference")
-                attributeStu.push(stringify(reactiveProperty), teWithGetter)
-
-                // 添加event部分，这里用来在监听输入并响应式修改标引用目标的值
+                // 如果teSetter带有mapping，则需要将所有段下标为1的元素（生成列）向右偏移
+                // 9（前缀固定长度）+ getter.length，这样做是为了让引用值映射到setter部分
+                
                 // 这里在eventStu中多添加了一个空字符串，因为在transformTemplate中会将奇数项认为是事件名称，
                 // 所有的奇数项都需要确认其中的字符串字面量变量是否需要保留，所以这里通过这种方式来保持一致性
-                eventStu.push("", `...${withReferenceFuncName}(${listenEventNameStr}, ${setter})`)
+                const withReferenceFuncName = getAlias("withReference")
+                const listenEventNameStr = stringify(listenEventName)
+                if (isString(teSetter)) {
+                    eventStu.push(
+                        "",
+                        `...${withReferenceFuncName}(${listenEventNameStr}, ${teSetter})`
+                    )
+                }
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -232,8 +224,7 @@ export function analyzeAttribute(
                     if (forModuleFuncIndex === -1) {
                         UsedKeyDirectiveWithoutForDirective()
                     } else {
-                        const teOptionalParam = { isKeyDirective: true }
-                        const transformedExp = transDirective(rv, teOptionalParam)
+                        const transformedExp = transDirective(rv, { isKeyDirective: true })
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
                         directiveStu[forModuleFuncIndex].push(transformedExp)
                     }
