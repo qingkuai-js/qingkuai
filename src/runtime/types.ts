@@ -1,7 +1,7 @@
 import type { AnyObject } from "../util/types"
-import type { IsModuleFunc } from "./constants"
 import type { QingKuaiComponent } from "./instance"
 import type { ReactivityWrapper } from "./reactivity/value"
+import type { IsModuleFunc, IsWithReferenceRet } from "./constants"
 
 export type ZeroOrOne = 0 | 1
 export type AnySet = Set<any>
@@ -29,12 +29,19 @@ export interface QingKuaiProperties {
     slots: Record<string | number, TemplateStuOrModuleFunc[]>
     refs: Record<string, [(ctx: GetContextFunc) => any, (v: any, ctx: GetContextFunc) => any]>
 }
-export type QingKuaiComponentConstructonParam = {
+export interface QingKuaiComponentConstructonParam {
     refs: QingKuaiProperties["refs"]
     props: QingKuaiProperties["props"]
     slots: QingKuaiProperties["slots"]
 }
 
+export type NormalTemplateStructure = [
+    string,
+    string | Function,
+    AttributeStructure | null,
+    EventStructure | null,
+    ...TemplateStuOrModuleFunc[]
+]
 export type ComponentStructure = [
     typeof QingKuaiComponent,
     "",
@@ -42,17 +49,9 @@ export type ComponentStructure = [
     ReferenceStructure | null,
     ...SlotStructure[]
 ]
-export type TemplateStructure =
-    | [
-          string,
-          string | Function,
-          AttributeStructure | null,
-          EventStructure | null,
-          ...TemplateStuOrModuleFunc[]
-      ]
-    | ComponentStructure
+export type TemplateStructure = NormalTemplateStructure | ComponentStructure
 
-export type RenderStructure = {
+export interface RenderStructure {
     // means TemplateStructures Or ModuleFuncs
     toms: {
         module: ModuleFunc | null
@@ -61,16 +60,32 @@ export type RenderStructure = {
     directive: Directive
 }
 
-export type ModuleFunc = {
+export interface ModuleFunc {
     [IsModuleFunc]?: boolean
     (ctx: GetContextFunc, context: RenderContext[]): RenderStructure
 }
+
+// 这里必须为NormalEventHandlerGetter也添加一个IsWithReferenceRet属性，
+// 否则会导致ts类型推导失败，这样写使得此类型该属性恒为undefined，否则排除此类型
+export interface NormalEventHandlerGetter {
+    (): EventListener
+    [IsWithReferenceRet]?: undefined
+}
+export interface RefEventHandlerGetterGen {
+    (
+        qkNode: QingKuaiNodeStruct,
+        invokeGetter: (getter: Function) => any,
+        attachUpdate: (fn: UpdateFunc) => void
+    ): EventListener
+    [IsWithReferenceRet]: boolean
+}
+export type EventHandlerGetter = NormalEventHandlerGetter | RefEventHandlerGetterGen
 
 export type GetContextFunc = (ci: number) => any
 export type SlotStructure = [string, TemplateStuOrModuleFunc[]]
 export type TemplateStuOrModuleFunc = TemplateStructure | ModuleFunc
 export type AttributeStructure = [string, any, ...AttributeStructure[]]
-export type EventStructure = [string, () => Function, number, ...EventStructure[]]
+export type EventStructure = [string, EventHandlerGetter, number, ...EventStructure[]]
 export type ReferenceStructure = [string, any, (v: any) => any, ...ReferenceStructure[]]
 
 export type Directive = {
@@ -108,10 +123,8 @@ export type UpdateFuncGenParams = Parameters<DirectiveUpdateFuncGen>
 
 export type QingKuaiNodeStruct = {
     n: PartialNode
-    text?: string
-    attrs?: {
-        [K: string]: any
-    }
+    text: string
+    attrs: AnyObject
 }
 export type DestructionStruct = {
     v: GeneralFunc[]
@@ -122,7 +135,6 @@ export interface WatchCallback<T> {
     (pre: T, cur: T): void
 }
 export interface WatchStruct {
-    pre: any
     cur: any
     getter: Getter
     type: Opportunity
@@ -143,5 +155,3 @@ export interface RuntimeWatchFunc {
 export type PGetHandler = ProxyHandler<any>["get"]
 export type PSetHandler = ProxyHandler<any>["set"]
 export type PDeleteHandler = ProxyHandler<any>["deleteProperty"]
-
-export type WithBindNativeTarget = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement

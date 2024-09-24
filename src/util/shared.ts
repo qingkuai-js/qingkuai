@@ -9,7 +9,8 @@ export const EventListenerFlag = {
     self: 1 << 2,
     capture: 1 << 3,
     passive: 1 << 4,
-    prevent: 1 << 5
+    prevent: 1 << 5,
+    compose: 1 << 6
 }
 
 // 事件包装器flag
@@ -48,6 +49,11 @@ export function lastElem<T>(arr: T[]) {
 // 判断两值是否不等
 export function notEqual(v1: any, v2: any) {
     return v1 !== v1 ? v2 === v2 : v1 !== v2
+}
+
+// 判断两值转换为字符串后是否不等
+export function strNotEqual(v1: any, v2: any) {
+    return "" + v1 !== "" + v2
 }
 
 // 执行数组中的所有函数

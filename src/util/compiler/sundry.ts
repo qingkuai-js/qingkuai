@@ -137,7 +137,7 @@ export const findOutOfSC: FindOutOfSC = (
     }
 
     // ls代表剩余未查询部分的字符串
-    for (let i = startIndex!, ls = str; i < str.length; i++, ls = str.slice(i)) {
+    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
         if (/^['"`]/.test(str[i])) {
             const endChar = str[i]
             while (str[++i] !== endChar) {

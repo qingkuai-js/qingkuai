@@ -12,7 +12,6 @@ import type { VariableDeclaration } from "@babel/types"
 import {
     InvalidEventFlag,
     InvalidEventForSlot,
-    DuplicateAttributeKey,
     InvalidEventFlagForComponent
 } from "../message/warn"
 import {
@@ -27,25 +26,24 @@ import {
     getIdentifiersFromPatternWithPath
 } from "../../util/compiler/estree"
 import {
-    EmptyAttributeName,
     InvalidSlotAttribute,
     CouldNotPassRefValue,
     SlotAttributeIsEmpty,
     DirectivesCantCoexist,
     MissingStartDirective,
+    DuplicateAttributeKey,
     InvalidSlotNameAttribute,
     SlotNameAttributeIsEmpty,
-    NoValueForRequiredValueAttribute,
     GeneralTagJustAcceptAutoAsReference,
     UsedKeyDirectiveWithoutForDirective,
     ReferenceValueCantBeUsedWithDynamicType
 } from "../message/error"
 import { getAlias } from "./alias"
+import { couldUseRefTags } from "../constants"
+import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
 import { transformExpression } from "../transformer/expression"
-import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag, isString, isUndefined } from "../../util/shared"
-import { compilerOptions } from "../configuration"
 
 export function analyzeAttribute(
     tag: string,
@@ -81,11 +79,10 @@ export function analyzeAttribute(
         const trimedValue = rv.trim()
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
-        const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
-        const teOptionalParam = { usedAsSetter: true }
+        const isDynamicOrReference = rk.startsWith("!")
         const valueStartIndex = attr.value.loc.start.index
-        const isExpression = isEvent || isDynamic || isDirective || isRef
+        const isExpression = isEvent || isDynamicOrReference || isDirective || isRef
 
         // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
         const transDirective = (exp: string, option?: TransformExpressionOptionalParam) => {
@@ -102,8 +99,7 @@ export function analyzeAttribute(
                 option.positionMap = attr.positionMap
             }
 
-            const res = transformExpression(exp, valueStartIndex, context, "attribute", option)
-            return isString(res) ? res : res.transformedExp
+            return transformExpression(exp, valueStartIndex, context, "attribute", option)
         }
 
         // pureKey代表纯键值，即去掉!@#&前缀的属性名
@@ -125,16 +121,22 @@ export function analyzeAttribute(
                 CouldNotPassRefValue(pureKey, tag)
             }
 
-            const teWithGetter = transAttrValue(rv)
-            const teWithoutGetter = transAttrValue(rv, teOptionalParam)
+            const teGetter = transAttrValue(rv)
+            const teSetter = transAttrValue(rv, { usedAsSetter: true })
             if (isComponent) {
-                // 调试模式下修改引用值是应该将原始标识符的值一起修改
-                let setterTarget = teWithoutGetter
-                if (compilerOptions.debugeMode) {
-                    setterTarget += ` = ${value.raw}`
+                if (isString(teSetter)) {
+                    eventStu.push(stringify(pureKey), `[${teGetter}, v => (${teSetter} = v)]`)
+                } else {
+                    // 如果teSetter带有mapping，则需要将所有段下标为1的元素（生成列）向右偏移
+                    // 9（前缀固定长度）+ getter.length，这样做是为了让引用值映射到setter部分
+                    const exp = teSetter.transformedExp
+                    const getter = (teGetter as any).transformedExp
+                    teSetter.mappings.forEach(item => {
+                        item[1] += 9 + getter.length
+                    })
+                    eventStu.push(stringify(pureKey), teSetter)
+                    teSetter.transformedExp = `[${getter}, v => (${exp} = v)]`
                 }
-                eventStu.push(stringify(pureKey))
-                eventStu.push(`[${teWithGetter}, v => (${setterTarget} = v)]`)
             } else {
                 let listenEventName = "input"
                 let reactiveProperty = "value"
@@ -158,15 +160,19 @@ export function analyzeAttribute(
                     reactiveProperty = "checked"
                 }
 
-                const setterStr = `v => (${teWithoutGetter} = v)`
-                const listenEventNameStr = stringify(listenEventName)
-                const withReferenceFuncName = getAlias("withReference")
-                attributeStu.push(stringify(reactiveProperty), teWithGetter)
-
-                // prettier-ignore
+                // 如果teSetter带有mapping，则需要将所有段下标为1的元素（生成列）向右偏移
+                // 9（前缀固定长度）+ getter.length，这样做是为了让引用值映射到setter部分
+                
                 // 这里在eventStu中多添加了一个空字符串，因为在transformTemplate中会将奇数项认为是事件名称，
                 // 所有的奇数项都需要确认其中的字符串字面量变量是否需要保留，所以这里通过这种方式来保持一致性
-                eventStu.push("", `...${withReferenceFuncName}(${listenEventNameStr}, ${setterStr})`)
+                const withReferenceFuncName = getAlias("withReference")
+                const listenEventNameStr = stringify(listenEventName)
+                if (isString(teSetter)) {
+                    eventStu.push(
+                        "",
+                        `...${withReferenceFuncName}(${listenEventNameStr}, ${teSetter})`
+                    )
+                }
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -218,8 +224,7 @@ export function analyzeAttribute(
                     if (forModuleFuncIndex === -1) {
                         UsedKeyDirectiveWithoutForDirective()
                     } else {
-                        const teOptionalParam = { isKeyDirective: true }
-                        const transformedExp = transDirective(rv, teOptionalParam)
+                        const transformedExp = transDirective(rv, { isKeyDirective: true })
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
                         directiveStu[forModuleFuncIndex].push(transformedExp)
                     }
@@ -326,15 +331,18 @@ export function analyzeAttribute(
                     })
                     attributeStu.push(stringify(eventName), transformedExp)
                 } else {
-                    const transformedExp = transAttrValue(rv, {
+                    const transformRes = transAttrValue(rv, {
                         eventWrapperFlag
                     })
-                    eventStu.push(stringify(eventName), `${transformedExp}, ${eventFlag}`)
+                    if (!isString(transformRes)) {
+                        transformRes.transformedExp += `, ${eventFlag}`
+                    }
+                    eventStu.push(stringify(eventName), transformRes)
                 }
             }
         } else {
             if (parentIsComponent && pureKey === "slot") {
-                if (!isDynamic) {
+                if (!isDynamicOrReference) {
                     if (rv !== '""') {
                         slot = rv
                     } else {
@@ -344,7 +352,7 @@ export function analyzeAttribute(
                     InvalidSlotAttribute(1)
                 }
             } else if (isSlot && pureKey === "name") {
-                if (!isDynamic) {
+                if (!isDynamicOrReference) {
                     if (rv !== '""') {
                         slotName = rv
                     } else {
@@ -358,7 +366,7 @@ export function analyzeAttribute(
                 if (isExpression) {
                     attributeStu.push(transAttrValue(rv))
                 } else {
-                    attributeStu.push(normalStringify(rv))
+                    attributeStu.push(rv)
                 }
             }
         }
@@ -404,11 +412,12 @@ export function filterDuplicateAttr(
     const existingItem = new Map<string, TemplateAttribute[]>()
 
     for (let i = 0; i < attributes.length; i++) {
-        const { key, value, loc } = attributes[i]
+        const currentAttribute = attributes[i]
+        const { key, value, loc } = currentAttribute
         const [rk, rv] = [key.raw, value.raw]
 
         const isNative = /^[^@!#&]/.test(rk)
-        const isDynamic = /^[!&]/.test(rk)
+        const isDynamicOrReference = /^[!&]/.test(rk)
         const isEvent = rk.startsWith("@")
         const isDirective = rk.startsWith("#")
         const isClass = /^[!&]?class/.test(rk)
@@ -418,28 +427,8 @@ export function filterDuplicateAttr(
             value.raw = normalStringify(rv)
         }
 
-        // 检查没有名称的动态或引用属性、指令和事件
-        if (isEvent || isDynamic || isDirective) {
-            if (!pureKey) {
-                EmptyAttributeName(rk[0])
-            }
-        }
-
-        if (isEvent) {
-            if (value) {
-                ret.push({ loc, key, value })
-            } else {
-                NoValueForRequiredValueAttribute(rk, 2)
-            }
-            continue
-        }
-
-        // 1. 检查需要传递值的指令是否未传递
-        // 2. 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
+        // 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
         if (isDirective) {
-            if (mustPassValueDirectives.has(pureKey) && !value) {
-                NoValueForRequiredValueAttribute(rk, 1)
-            }
             if (/^#(?:if|elif|else)$/.test(rk)) {
                 if (!ifRelatedDirectivesCoexistState) {
                     ifRelatedDirectivesCoexistState = rk
@@ -456,52 +445,49 @@ export function filterDuplicateAttr(
             }
         }
 
-        // 检查动态或引用的属性值是否未传递
-        if (isDynamic && !value) {
-            NoValueForRequiredValueAttribute(rk, rk.startsWith("!") ? 3 : 4)
-        }
-
-        // 检查是否存在重复的属性，检查规则：普通标签上可以同时存在普通class和动态class，
-        // 但均只能同时存在一个，存在多个时后者覆盖前者，组件或slot上的class属性只能有一个
+        // 检查是否存在重复的属性，检查规则如下：
+        // 1. 任何编译器指令都不能在同一个标签上重复出现
+        // 2. class外的属性名不能重复：name、!name、&name、@name均视为相同名称（其中事件的名称只有在组件
+        // 标签上不能与其他属性的名称重复，如果是普通标签，则只要不存在相同的时间名称就不会报错
+        // 3. 普通标签上可以同时存在普通class和动态class，但均只能同时存在一个，但如果当前标签是组件或slot，
+        // 那么class属性不能重复，只能存在一种（普通值或动态值）（普通标签上不能使用引用的class属性）
         if (isDirective || !isClass || isComponentOrSlot) {
-            if (
-                existingItem.has(pureKey) ||
-                existingItem.has("!" + pureKey) ||
-                existingItem.has("&" + pureKey)
-            ) {
-                existingItem.delete(pureKey)
-                if (!isDirective) {
-                    existingItem.delete("!" + pureKey)
-                    existingItem.delete("&" + pureKey)
+            if (isDirective || (!isComponent && isEvent)) {
+                if (existingItem.has(rk)) {
+                    DuplicateAttributeKey(tag, rk, rk)
                 }
-                DuplicateAttributeKey(tag, pureKey, isDirective)
+            } else {
+                ;["", "!", "@", "&"].forEach(char => {
+                    if (existingItem.has(char + pureKey)) {
+                        DuplicateAttributeKey(tag, char + pureKey, rk)
+                    }
+                })
             }
-            existingItem.set(rk, [attributes[i]])
+            existingItem.set(rk, [currentAttribute])
             continue
         }
 
+        // 上述检查的第三种情况：非组件标签上的class属性，动态和非动态class均可出现一次，重复出现将报错
         if (isClass && !isComponentOrSlot) {
             if (!existingItem.has("!class")) {
                 existingItem.set("!class", [])
             }
+
+            if (
+                (isDynamicOrReference && dynamicClassIndex !== -1) ||
+                (!isDynamicOrReference && normalClassIndex !== -1)
+            ) {
+                DuplicateAttributeKey(tag, rk, rk)
+            }
+
             const target = existingItem.get("!class")!
-            if (isDynamic) {
+            if (!isDynamicOrReference) {
+                normalClassIndex = target.push(currentAttribute) - 1
+            } else {
                 if (rk.startsWith("&")) {
                     CouldNotPassRefValue(pureKey, tag)
                 }
-                if (dynamicClassIndex !== -1) {
-                    target[dynamicClassIndex] = attributes[i]
-                    DuplicateAttributeKey(tag, rk, false)
-                } else {
-                    dynamicClassIndex = target.push(attributes[i]) - 1
-                }
-            } else {
-                if (normalClassIndex !== -1) {
-                    target[normalClassIndex] = attributes[i]
-                    DuplicateAttributeKey(tag, pureKey, isDirective)
-                } else {
-                    normalClassIndex = target.push(attributes[i]) - 1
-                }
+                dynamicClassIndex = target.push(currentAttribute) - 1
             }
         }
     }

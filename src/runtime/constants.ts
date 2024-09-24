@@ -9,5 +9,6 @@ export const Wrapper = Symbol("Wrapper")
 export const IsProxy = Symbol("IsProxy")
 export const RawValue = Symbol("RawValue")
 export const IsModuleFunc = Symbol("IsModuleFunc")
+export const IsWithReferenceRet = Symbol("IsWithReferenceRet")
 
 export const opportunities: Opportunity[] = ["sync", "pre", "post"]

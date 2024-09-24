@@ -1,0 +1,14 @@
+node_modules
+playground
+src
+
+.prettierrc
+.gitignore
+.npmignore
+.DS_Store
+.history
+.vscode
+
+pnpm-lock.yaml
+tsconfig.json
+rollup.config.js

@@ -47,6 +47,7 @@ function newSourceMapInfo(): SourceMapInfo {
         mappings: [],
         preaddedLineCount: 0,
         removedLine: new Set(),
+        generatedScriptLineCount: 0,
         tempStoredImportStartLine: 0,
         positionShouldNotBeMapped: [],
         existingSourceIndex: new Set(),
@@ -79,6 +80,7 @@ function newInputDescriptor(): InputDescriptor {
         script: {
             code: "",
             isTS: false,
+            existing: false,
             loc: newASTLocation(),
             generatedOffset: [0, 0],
             runtime: {

@@ -1,3 +1,7 @@
+export function AssignmentToDOMGetterProp(err: any) {
+    warn(`Operation is invalid.`, err)
+}
+
 export function AssignmentToProps() {
     warn("An assignment to a unbound component prop is invalid, this operation has been ignored.")
 }
@@ -20,6 +24,6 @@ export function DerivedDependenNoReactiveValue() {
     )
 }
 
-function warn(msg: string) {
-    console.warn(msg)
+function warn(msg: string, err?: any) {
+    console.warn("[QingKuai Warnning]:", msg, err || "")
 }

@@ -8,7 +8,6 @@ import {
     stringConstantsSourceMap
 } from "../../compiler/state"
 import { compilerOptions } from "../../compiler/configuration"
-import { findOutOfSC } from "./sundry"
 
 // 通过inputDescriptor.script.code部分的索引换取位置信息
 export function getScriptLoc(index: number) {

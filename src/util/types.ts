@@ -1,7 +1,7 @@
 import type { EventListenerFlag, EventWrapperFlag } from "./shared"
 
-export type AnyObject = Record<ObjectKeys, any>
 export type ObjectKeys = string | number | symbol
+export type AnyObject<V = any> = Record<ObjectKeys, V>
 
 export type SetValue<S> = S extends Set<infer U> ? U : never
 export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
