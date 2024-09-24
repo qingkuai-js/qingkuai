@@ -68,7 +68,7 @@ export class ReactivityWrapper {
             }
 
             return (...args: any) => {
-                const getRet = () => {
+                const getResultOfMethodCall = () => {
                     return target[property](...args)
                 }
 
@@ -80,7 +80,7 @@ export class ReactivityWrapper {
                 }
 
                 if (property === "keys" || property === "values" || property === "entries") {
-                    const iterator = getRet()
+                    const iterator = getResultOfMethodCall()
                     const oriIteratorNext = iterator.next
                     iterator.next = () => {
                         const nextRet = oriIteratorNext.call(iterator)
@@ -95,6 +95,7 @@ export class ReactivityWrapper {
                 const [key, value] = args
                 const oriSize = target.size
                 const isSet = !(typeFlag & 4)
+                const result = getResultOfMethodCall()
                 const isMapSet = !isSet && property === "set"
                 const preValue = isMapSet ? target.get(key) : undef
                 const valueChanged = isMapSet && notEqual(preValue, value)
@@ -107,7 +108,7 @@ export class ReactivityWrapper {
                         processEffect(effect)
                     }
                 }
-                return getRet()
+                return result
             }
         }
         return reactAgain(propValue)

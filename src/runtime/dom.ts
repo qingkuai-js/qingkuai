@@ -1,9 +1,10 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { isReactive, velf } from "../util/runtime"
-import { isArray, isBoolean, isEqual, isObject, strNotEqual } from "../util/shared"
 import { RawValue } from "./constants"
+import { isReactive, velf } from "../util/runtime"
+import { isArray, isBoolean, isObject } from "../util/shared"
+import { AssignmentToDOMGetterProp } from "./message/warn"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -46,9 +47,6 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
-    const isBool = isBoolean(value)
-    const isClass = key === "class"
-    const oldValue = attrs[key]
 
     // 如果value是一个响应式值，需要将其修改为其原始值，因为响应式值的每次获取
     // 都是一个新的Proxy包装值，参考：src/runtime/reactivity/value.ts
@@ -57,14 +55,8 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     }
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串
-    if (isClass) {
+    if (key === "class") {
         value = transformClassName(value)
-    }
-
-    // 属性值与旧值相同，结束调用
-    // 返回false代表此方法没有导致组件更新
-    if (isEqual(oldValue, value)) {
-        return false
     }
 
     // 1. 如果属性存在于DOM中，则修改DOM属性值，若修改后属性值无变化，表示该属性为getter
@@ -72,26 +64,37 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     // 3. 判断新值与旧值的字符串表达是否相同，相同时不做处理，不同时调用setAttribute设置属性值
     if (key in elem) {
         try {
-            ;(elem as any)[key] = value
+            const elemAny = elem as any
+            const isBool = isBoolean(elemAny[key])
+            if (isBool && value === "") {
+                elemAny[key] = true
+            } else {
+                elemAny[key] = value
+            }
         } catch (e) {
-            // TODO: 警告，该DOM属性仅为getter，修改失败
+            return AssignmentToDOMGetterProp(e), false
+        }
+    } else {
+        // 新值与旧值字符串表达相同，结束调用，返回fasle表示此方法未导致组件更新
+        if ("" + attrs[key] === "" + value) {
             return false
         }
-    } else if (isBool) {
-        if (value) {
-            elem.setAttribute(key, "")
+        if (isBoolean(value)) {
+            if (value) {
+                elem.setAttribute(key, "")
+            } else {
+                elem.removeAttribute(key)
+            }
         } else {
-            elem.removeAttribute(key)
+            elem.setAttribute(key, value)
         }
-    } else if ("" + oldValue === "" + value) {
-        elem.setAttribute(key, value)
     }
 
-    // 如果record为true（属性值是动态的）则将当前值记录在attrs中，下次调用attribute方法时
-    // 当前的记录值将被用作旧值与新的属性值进行对比以判断属性值是否发生了变化
-    if (record) {
-        attrs[key] = value
-    }
+    // 根据record判断是否需要记录属性值，一般情况下当属性值依赖了响应式值时record为true，
+    // 此时需要将当前属性值记录在attrs中，这个记录的作用有两个：
+    // 1. radio/checkbox控件的group或select元素的value引用属性事件中获取选项的原始值
+    // 2. 在调用setAttribute方法之前与旧值的字符串表达做对比，去除无意义DOM操作的开销
+    record && (attrs[key] = value)
 
     return true
 }

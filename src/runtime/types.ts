@@ -76,7 +76,7 @@ export interface RefEventHandlerGetterGen {
         qkNode: QingKuaiNodeStruct,
         invokeGetter: (getter: Function) => any,
         attachUpdate: (fn: UpdateFunc) => void
-    ): NormalEventHandlerGetter
+    ): EventListener
     [IsWithReferenceRet]: boolean
 }
 export type EventHandlerGetter = NormalEventHandlerGetter | RefEventHandlerGetterGen

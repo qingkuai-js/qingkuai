@@ -14,7 +14,7 @@ export function InvalidMountNode(selector: string) {
     typeError(`The specified mount node could not be found, by selector: ${selector}`)
 }
 
-export function ContainerTypeIsBad(tag: string, attrName: string) {
+export function ContainerTypeIsBad(attrName: string, tag: string) {
     typeError(
         `The container for reference attribute(&${attrName}) of <${tag}> tag must be an Array or Set.`
     )

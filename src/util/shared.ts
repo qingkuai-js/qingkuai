@@ -51,11 +51,6 @@ export function notEqual(v1: any, v2: any) {
     return v1 !== v1 ? v2 === v2 : v1 !== v2
 }
 
-// 判断两值是否相等
-export function isEqual(v1: any, v2: any) {
-    return v1 !== v1 ? v2 !== v2 : v1 === v2
-}
-
 // 判断两值转换为字符串后是否不等
 export function strNotEqual(v1: any, v2: any) {
     return "" + v1 !== "" + v2
