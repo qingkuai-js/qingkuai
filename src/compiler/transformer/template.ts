@@ -1,6 +1,6 @@
 import type { FixedArray } from "../../util/types"
 import type { ValueOrValueArr } from "../../runtime/types"
-import type { TemplateAnalysisRet, TransformExpressionRet } from "../types"
+import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
 import { templateTag } from "../regular"
 import { getAlias } from "../analyzer/alias"
@@ -66,7 +66,7 @@ export function transformTemplate(
     currentPosition = [startLine, 0]
 
     // 添加字符串到转换结果，期间同步更新转换结果的位置信息
-    const pushTransformedArr = (...ters: TransformExpressionRet[]) => {
+    const pushTransformedArr = (...ters: TransformInterpolationRet[]) => {
         for (const ter of ters) {
             const terIsString = isString(ter)
             const [currentLine, currentColumn] = currentPosition
@@ -125,7 +125,7 @@ export function transformTemplate(
         }
 
         // 添加attribute或event结构（这里包括单独的换行判断，因为这两个结构都是数组形式）
-        const addAttributeOrEventStu = (ters: TransformExpressionRet[]) => {
+        const addAttributeOrEventStu = (ters: TransformInterpolationRet[]) => {
             const tersLen = ters.length
             if (tersLen === 0) {
                 return pushTransformedArr(getAlias("nil"))
@@ -311,8 +311,8 @@ export function transformTemplate(
     }`
 }
 
-// 获取表达式转换结果（TransformExpressionRet）的程度
-function getLengthOfTER(ter: TransformExpressionRet) {
+// 获取表达式转换结果（TransformInterpolationRet）的程度
+function getLengthOfTER(ter: TransformInterpolationRet) {
     if (isString(ter)) {
         return ter.length
     }
@@ -326,7 +326,7 @@ function vf(flag: number, key: keyof typeof transformTemplateFlag) {
 }
 
 // 将attributeStu或eventStu拼接为字符串（包含换行判断）
-function attrOrEventJoin(ters: TransformExpressionRet[], n: number) {
+function attrOrEventJoin(ters: TransformInterpolationRet[], n: number) {
     let charCount = 0
     const tersLen = ters.length
     if (tersLen === 0) {
@@ -431,7 +431,7 @@ function shouldUseLineBreak(
 
 // 确定是否使用生成的字符串字面量变量，当其使用次数大于1且其本身长度大于2时就会被保留变量访问，
 // 如果搜索到的字符串字面量变量不同时满足以上两个条件，它将被还原为原始的字符串字面量
-function confirmStringConstants<T extends TransformExpressionRet>(ter: T): T {
+function confirmStringConstants<T extends TransformInterpolationRet>(ter: T): T {
     const terIsString = isString(ter)
     const transformedArr: string[] = []
     const mappings = terIsString ? [] : ter.mappings

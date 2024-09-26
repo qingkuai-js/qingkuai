@@ -12,7 +12,7 @@ import { stringify } from "../../util/compiler/state"
 import { tagIsComponentRE, templateTag } from "../regular"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { DuplicateSlotAttributeValue } from "../message/error"
-import { transformExpression } from "../transformer/interpolation"
+import { transformInterpolation } from "../transformer/interpolation"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
 import { lastElem } from "../../util/shared/sundry"
 
@@ -168,7 +168,7 @@ export function analyzeTemplate(
         } else {
             const parseRet = content2script(content, trimedContentStartIndex)
             const teOptionalParam = { positionMap: parseRet.positionMap }
-            currentRet.content = transformExpression(
+            currentRet.content = transformInterpolation(
                 parseRet.script,
                 trimedContentStartIndex,
                 currentContext,

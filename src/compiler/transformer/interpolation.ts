@@ -1,7 +1,11 @@
+import type {
+    EliminateRanges,
+    TemplateContext,
+    TransformInterpolationOptionalParam
+} from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../runtime/types"
-import type { EliminateRanges, TemplateContext, TransformExpressionOptionalParam } from "../types"
 
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
@@ -17,12 +21,12 @@ import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { bannedIdentifierFormat, expressionReplaceWithSpaceRE } from "../regular"
 import { BadValueForRefAttr, IdentifierFormatIsNotAllowed } from "../message/error"
 
-export function transformExpression(
+export function transformInterpolation(
     expression: string,
     startIndex: number,
     context: TemplateContext,
     type: "directive" | "attribute" | "event" | "content",
-    optionalParams: TransformExpressionOptionalParam = {}
+    optionalParams: TransformInterpolationOptionalParam = {}
 ) {
     let useGetter = false
     let useContext = false

@@ -2,9 +2,9 @@ import type {
     TemplateContext,
     TemplateAttribute,
     AttributeAnalysisRet,
-    TransformExpressionRet,
+    TransformInterpolationRet,
     FilteredTemplateAttribute,
-    TransformExpressionOptionalParam
+    TransformInterpolationOptionalParam
 } from "../types"
 import type { EsPattern } from "../estree/types"
 import type { VariableDeclaration } from "@babel/types"
@@ -37,7 +37,7 @@ import { couldUseRefTags } from "../constants"
 import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
 import { isString, isUndefined } from "../../util/shared/assert"
-import { transformExpression } from "../transformer/interpolation"
+import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { kebab2Camel, findOutOfSC, checkIdentifierName } from "../../util/compiler/sundry"
 
@@ -64,8 +64,8 @@ export function analyzeAttribute(
     const isSlot = tag === "slot"
     const aliasArgs: string[] = []
     const directiveStu: string[][] = []
-    const eventStu: TransformExpressionRet[] = []
-    const attributeStu: TransformExpressionRet[] = []
+    const eventStu: TransformInterpolationRet[] = []
+    const attributeStu: TransformInterpolationRet[] = []
     const filteredAttrs = filterDuplicateAttr(attrs, tag, isComponent)
 
     filteredAttrs.forEach(attr => {
@@ -78,15 +78,15 @@ export function analyzeAttribute(
         const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
         const valueStartIndex = attr.value.loc.start.index
-        const isExpression = isEvent || isDynamic || isDirective || isRef
+        const isInterpolation = isEvent || isDynamic || isDirective || isRef
 
         // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
-        const transDirective = (exp: string, option?: TransformExpressionOptionalParam) => {
-            return transformExpression(exp, -1, context, "directive", option) as string
+        const transDirective = (exp: string, option?: TransformInterpolationOptionalParam) => {
+            return transformInterpolation(exp, -1, context, "directive", option) as string
         }
 
         // 转换标签属性值
-        const transAttrValue = (exp: string, option?: TransformExpressionOptionalParam) => {
+        const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
             if (!option) {
                 option = {
                     positionMap: attr.positionMap
@@ -95,11 +95,11 @@ export function analyzeAttribute(
                 option.positionMap = attr.positionMap
             }
 
-            return transformExpression(exp, valueStartIndex, context, "attribute", option)
+            return transformInterpolation(exp, valueStartIndex, context, "attribute", option)
         }
 
         // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
-        if ((pureKey = rk.slice(+isExpression)) && isComponent) {
+        if ((pureKey = rk.slice(+isInterpolation)) && isComponent) {
             pureKey = kebab2Camel(pureKey)
         }
 
@@ -126,13 +126,13 @@ export function analyzeAttribute(
         // 初始化时要异步设置初始值）所以这里将select元素的value属性使用withReference进行处理
         // 但这种情况下最后一个参数（setter)会被传入nil，以打断选项改变时修改响应式值的渠道
         if (isRef || (tag === "select" && pureKey === "value")) {
-            const teGetter = transAttrValue(rv)
-            const teSetter = transAttrValue(rv, { usedAsSetter: true })
-            let setter = isString(teSetter) ? teSetter : teSetter.transformedExp
+            const tiGetter = transAttrValue(rv)
+            const tiSetter = transAttrValue(rv, { usedAsSetter: true })
+            let setter = isString(tiSetter) ? tiSetter : tiSetter.transformedExp
             if (isComponent) {
                 const prefix = `${stringify(pureKey)}, [`
                 const postfix = `, v => (${setter} = v)]`
-                eventStu.push(concatStrAndTER(prefix, teGetter, postfix))
+                eventStu.push(concatStrAndTER(prefix, tiGetter, postfix))
             } else {
                 let tagForErr = tag
                 let needSetter = true
@@ -193,7 +193,7 @@ export function analyzeAttribute(
                 const sev = stringify(eventName)
                 const funcName = getAlias("withReference")
                 const prefix = `...${funcName}(${sev}, ${spk}, `
-                eventStu.push(concatStrAndTER(prefix, teGetter, `, ${setter})`))
+                eventStu.push(concatStrAndTER(prefix, tiGetter, `, ${setter})`))
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -367,7 +367,7 @@ export function analyzeAttribute(
                 }
             }
         } else if (!(isSlot && pureKey === "name") && !(parentIsComponent && pureKey === "slot")) {
-            const ter = isExpression ? transAttrValue(rv) : stringify(rv)
+            const ter = isInterpolation ? transAttrValue(rv) : stringify(rv)
             attributeStu.push(concatStrAndTER(`${stringify(pureKey)}, `, ter, ""))
         }
     })
@@ -490,7 +490,7 @@ export function filterDuplicateAttr(
 
     // 整理属性值的格式：这里的规则是将普通或动态class合并为一个动态的class属性值并放在一个数组中，
     // 此格式是runtime需要的唯一格式，这里无需关注转换后的属性（包括键值）位置信息（均与第一项保持一致），
-    // 因为如果它包含动态class就会在调用transformExpression时传入positionMap，并根据这个位置映射来
+    // 因为如果它包含动态class就会在调用transformInterpolation时传入positionMap，并根据这个位置映射来
     // 记录需要生成sourcemap的位置，而如果它不包含动态class，则整个表达式都不会被记录sourcemap位置信息
     existingItem.forEach((attrItems, attrKey) => {
         if (isComponentOrSlot || attrKey !== "!class") {
@@ -502,7 +502,7 @@ export function filterDuplicateAttr(
             const transformedValue = rawValues.join(", ")
 
             // positionMap用来存储位置映射信息，只有动态class值的部分会存在位置映射（动态值字符索引 -> 源码字符索引），
-            // 在transformExpression方法中如果传入了位置映射信息，只有在表达式索引存在源码位置映射时才生成sourcemap
+            // 在transformInterpolation方法中如果传入了位置映射信息，只有在表达式索引存在源码位置映射时才生成sourcemap
             // 例如，模板语法：class="aaa" !class="aaa"，转换后的class值为["aaa", aaa]，动态class在转换后的数组
             // 的第二个元素，所以positionMap只有下标为8，9，10的元素存在源码位置，访问其他下标都将得到undefined
             const positionMap: number[] = []
@@ -622,9 +622,9 @@ function recordAliasIdentifiers(
     })
 }
 
-// 为transformExpression的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
+// 为transformInterpolation的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
 // 还会将mappings中所有段的生成列（下标为1的元素）向右偏移前缀字符串长度的数量以保证正确的源码映射
-function concatStrAndTER<T extends TransformExpressionRet>(
+function concatStrAndTER<T extends TransformInterpolationRet>(
     prefix: string,
     ter: T,
     postfix: string

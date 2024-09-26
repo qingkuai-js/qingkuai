@@ -97,7 +97,7 @@ export type FilteredTemplateAttribute = TemplateAttribute & {
 
 export interface TemplateAnalysisRet {
     tag: string
-    content: TransformExpressionRet
+    content: TransformInterpolationRet
     children: {
         useBracket: boolean
         tar: TemplateAnalysisRet | null
@@ -120,8 +120,8 @@ export type TemplateContext = {
 
 export interface AttributeAnalysisRet {
     directiveStu: string[][]
-    eventStu: TransformExpressionRet[]
-    attributeStu: TransformExpressionRet[]
+    eventStu: TransformInterpolationRet[]
+    attributeStu: TransformInterpolationRet[]
     slot: string
     slotName?: string
     insertNullNum?: number
@@ -132,7 +132,7 @@ export interface AttributeAnalysisRet {
     continuedDirective?: string | undefined
 }
 
-export interface TransformExpressionOptionalParam {
+export interface TransformInterpolationOptionalParam {
     positionMap?: number[]
     usedAsSetter?: boolean
     isKeyDirective?: boolean
@@ -140,7 +140,7 @@ export interface TransformExpressionOptionalParam {
     isComponentEvent?: boolean
 }
 
-export type TransformExpressionRet =
+export type TransformInterpolationRet =
     | string
     | {
           transformedExp: string
