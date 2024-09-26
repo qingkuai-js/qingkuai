@@ -99,7 +99,7 @@ export function analyzeAttribute(
 
         // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
         if ((pureKey = rk.slice(+isExpression)) && isComponent) {
-            pureKey = kebab2Camel(rk.slice(1))
+            pureKey = kebab2Camel(pureKey)
         }
 
         // slot元素的name属性不能为空也不能是动态属性或引用属性
@@ -163,7 +163,7 @@ export function analyzeAttribute(
                     } else {
                         needSetter = pureKey !== "group"
                         attrsForErr = ["checked", "group"]
-                        tagForErr = `${tag}[type=${typeValueRaw}]`
+                        tagForErr = `${tag}[type="${typeValueRaw}"]`
                         attrIsNotAllowed = !/^(?:checked|group)$/.test(pureKey)
                     }
                 } else if (tag === "select") {

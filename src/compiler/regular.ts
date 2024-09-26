@@ -4,7 +4,7 @@ export const templateEndTagRE = /^<\/([^\s>]+)[^>]*>/
 export const templateCloseCharsRE = /^(?:\s*)((\/)?>)/
 export const templateInvalidAttrNameRE = /^['"=/<\{\}]/
 export const templateStartTagRE = /^<([a-zA-z][a-zA-Z\d\-_.:]*)/
-export const templateNormalAttributeValueRE = /(\s*(['"]))([\s\S]*?)\2/
+export const templateNormalAttributeValueRE = /^(\s*(['"]))([\s\S]*?)\2/
 export const templateTagStructureRE = /<(?:\/?[a-zA-z][a-zA-Z\d\-_.:]*|!--)/
 export const templateConditionalCommentRE = /^(?:\[if.*\[endif]|\[if.*<!|<!\[endif])$/
 

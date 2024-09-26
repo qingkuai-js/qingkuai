@@ -1,9 +1,9 @@
 import type {
     ASTLocation,
     ASTPosition,
+    TemplateNode,
     RegExpExecRet,
-    TemplateAttribute,
-    TemplateNode
+    TemplateAttribute
 } from "../types"
 
 import {
@@ -19,6 +19,7 @@ import {
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import {
+    tagIsComponentRE,
     templateEndTagRE,
     templateStartTagRE,
     templateAttributeRE,
@@ -26,8 +27,7 @@ import {
     templateTagStructureRE,
     templateInvalidAttrNameRE,
     templateConditionalCommentRE,
-    templateNormalAttributeValueRE,
-    tagIsComponentRE
+    templateNormalAttributeValueRE
 } from "../regular"
 import {
     findOutOfSC,
@@ -36,8 +36,8 @@ import {
     getPositionOfEachChar
 } from "../../util/compiler/sundry"
 import { isNull } from "../../util/shared"
-import { inputDescriptor, sourceMapInfo } from "../state"
 import { compilerOptions } from "../configuration"
+import { inputDescriptor, sourceMapInfo } from "../state"
 import { specialTags, selfClosingTags, mustPassValueDirectives } from "../constants"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
