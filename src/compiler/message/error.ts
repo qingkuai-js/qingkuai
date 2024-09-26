@@ -1,5 +1,5 @@
-import { isUndefined } from "../../util/shared"
 import { bannedIdentifierFormat } from "../regular"
+import { isUndefined } from "../../util/shared/assert"
 
 export function TagIsNotClosing(tag: string) {
     error(`The tag(${tag}) is not closing.`)

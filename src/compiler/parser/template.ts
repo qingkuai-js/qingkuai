@@ -35,7 +35,7 @@ import {
     newASTPosition,
     getPositionOfEachChar
 } from "../../util/compiler/sundry"
-import { isNull } from "../../util/shared"
+import { isNull } from "../../util/shared/assert"
 import { compilerOptions } from "../configuration"
 import { inputDescriptor, sourceMapInfo } from "../state"
 import { specialTags, selfClosingTags, mustPassValueDirectives } from "../constants"

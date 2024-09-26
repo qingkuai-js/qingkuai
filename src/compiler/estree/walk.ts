@@ -1,6 +1,6 @@
 import type { ASTVisitor, AnyNode, TraverseParent } from "./types"
 
-import { isArray } from "../../util/shared"
+import { isArray } from "../../util/shared/assert"
 
 // 递归遍历 Acorn AST 的方法
 // visitor遍历匹配器，如果visitor中含有以当前AST节点的类型为名称的属性则会电泳此方法并传入三个参数：node, parent, excludes

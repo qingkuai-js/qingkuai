@@ -1,13 +1,15 @@
 import type { Setter, EventStructure, RefEventHandlerGetterGen, QingKuaiNodeStruct } from "./types"
 
 import { attribute } from "./dom"
-import { vewf } from "../util/runtime"
 import { raw } from "./reactivity/value"
 import { resolvedPromise } from "./promise"
+import { vewf } from "../util/runtime/sundry"
 import { IsWithReferenceRet } from "./constants"
 import { ContainerTypeIsBad } from "./message/error"
 import { EventWrapperFlagKeys } from "../util/types"
-import { EventListenerFlag, isArray, isNull, notEqual, optc, setArrLength } from "../util/shared"
+import { isArray, isNull } from "../util/shared/assert"
+import { EventListenerFlag } from "../util/shared/flag"
+import { notEqual, optc, setArrLength } from "../util/shared/sundry"
 
 const Arrow = "Arrow"
 const keyTypes = ["keydown", "keyup", "keypress"]

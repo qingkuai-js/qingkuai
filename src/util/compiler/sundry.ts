@@ -6,7 +6,7 @@ import {
     validIdentifierNameRE,
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
-import { isString, isUndefined } from "../shared"
+import { isString, isUndefined } from "../shared/assert"
 import { InvalidIdentifierName } from "../../compiler/message/error"
 
 // JSON.stringify别名

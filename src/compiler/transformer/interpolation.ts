@@ -5,10 +5,11 @@ import type { EliminateRanges, TemplateContext, TransformExpressionOptionalParam
 
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
+import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
 import { is, isFunctionNode } from "../estree/assert"
-import { isUndefined, runAll } from "../../util/shared"
+import { isUndefined } from "../../util/shared/assert"
 import { identifierIsReference } from "../estree/assert"
 import { inputDescriptor, replacementInfo } from "../state"
 import { isIndexEliminated } from "../../util/compiler/sundry"

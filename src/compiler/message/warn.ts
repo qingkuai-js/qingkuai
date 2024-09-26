@@ -1,4 +1,4 @@
-import { isNumber } from "../../util/shared"
+import { isNumber } from "../../util/shared/assert"
 
 export function RedundantArgs(fn: string, need: number | string) {
     let needMsg = "requires only one parameter"

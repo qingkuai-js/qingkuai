@@ -10,10 +10,11 @@ import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { stringify } from "../../util/compiler/state"
 import { tagIsComponentRE, templateTag } from "../regular"
+import { isNull, isUndefined } from "../../util/shared/assert"
 import { DuplicateSlotAttributeValue } from "../message/error"
 import { transformExpression } from "../transformer/interpolation"
-import { isNull, isUndefined, lastElem } from "../../util/shared"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
+import { lastElem } from "../../util/shared/sundry"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
@@ -197,6 +198,14 @@ export function analyzeTemplate(
     return result
 }
 
+// 拷贝一份context，得到的新context对象的修改将会影响源对象
+function cloneContext(context: TemplateContext): TemplateContext {
+    return {
+        count: context.count,
+        map: new Map(context.map)
+    }
+}
+
 // 判断节点是否是指定指令的后续操作
 function shouldContinue(node: TemplateNode, re: RegExp | undefined | null) {
     if (isUndefined(node) || !re) {
@@ -214,12 +223,4 @@ function shouldUseBracketWrap(tag: string, aar: AttributeAnalysisRet) {
         getAlias("aliasModule", false)
     ])
     return templateTag.test(tag) && !removeBrackWrapFuncNames.has(lastElem(aar.directiveStu)?.[0])
-}
-
-// 拷贝一份context，得到的新context对象的修改将会影响源对象
-function cloneContext(context: TemplateContext): TemplateContext {
-    return {
-        count: context.count,
-        map: new Map(context.map)
-    }
 }

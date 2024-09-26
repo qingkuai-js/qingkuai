@@ -2,8 +2,9 @@ import type { ASTPosition } from "./types"
 import type { SourceMapMappings, SourceMapSegment } from "@jridgewell/sourcemap-codec"
 
 import { compilerOptions } from "./configuration"
+import { isUndefined } from "../util/shared/assert"
 import { getGeneratedLine } from "./../util/compiler/state"
-import { isUndefined, replaceEachItems } from "./../util/shared"
+import { replaceEachItems } from "./../util/shared/sundry"
 import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "./state"
 
 // 记录一条sourcemap mapping segment

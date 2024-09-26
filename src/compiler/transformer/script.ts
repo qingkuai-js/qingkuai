@@ -9,9 +9,10 @@ import {
 } from "../state"
 import { MinHeap } from "../data-struct/min-heap"
 import { compilerOptions } from "../configuration"
+import { lastElem } from "../../util/shared/sundry"
 import { SourceMapLine } from "@jridgewell/sourcemap-codec"
 import { indent, getScriptLoc } from "../../util/compiler/state"
-import { isString, isUndefined, lastElem } from "../../util/shared"
+import { isString, isUndefined } from "../../util/shared/assert"
 import { isIndexEliminated, getPositionOfEachChar } from "../../util/compiler/sundry"
 import { scriptSourceRedundantEmptyLine, scriptSourceNeedIndentPlace } from "../regular"
 

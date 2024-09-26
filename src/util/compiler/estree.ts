@@ -12,7 +12,7 @@ import type { Function } from "@babel/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { ReplacementItem, ReplacementStatus } from "../../compiler/types"
 
-import { isArray, isUndefined } from "../../util/shared"
+import { isArray, isUndefined } from "../../util/shared/assert"
 import { parse as babelParse, ParserOptions } from "@babel/parser"
 import { replacementInfo, inputDescriptor } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"

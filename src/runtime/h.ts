@@ -24,24 +24,25 @@ import {
     setCurrentInstance
 } from "./instance"
 import {
-    velf,
-    mockDirective,
     extendNks,
-    isModuleFunc,
+    mockDirective,
     combineContext,
     newDestruction,
     getContextFuncGen
-} from "../util/runtime"
+} from "../util/runtime/separate"
 import {
     usedEffectList,
     setUsedEffectList,
     clearUsedEffectList,
     withCleanUsedEffectList
 } from "./reactivity/state"
+import { velf } from "../util/runtime/sundry"
 import { InvalidMountNode } from "./message/error"
+import { isModuleFunc } from "../util/runtime/assert"
 import { IsWithReferenceRet, nil } from "./constants"
 import { internalPreEffect } from "./reactivity/effect"
-import { isArray, isFunction, isNull, lastElem, len, values } from "../util/shared"
+import { lastElem, len, values } from "../util/shared/sundry"
+import { isArray, isFunction, isNull } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
 export function render(

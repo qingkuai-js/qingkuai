@@ -1,7 +1,7 @@
 import type { QingKuaiComponent } from "./instance"
 import type { TemplateStuOrModuleFunc } from "./types"
 
-import { isFunction } from "../util/shared"
+import { isFunction } from "../util/shared/assert"
 import { AssignmentToProps } from "./message/warn"
 
 // 获取已绑定组件实例的相关方法

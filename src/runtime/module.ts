@@ -13,37 +13,33 @@ import type {
 } from "./types"
 
 import {
-    isNumber,
-    len,
-    optc,
-    isNull,
-    values,
-    entries,
-    isArray,
-    lastElem,
-    isString,
-    arrayFill,
-    isFunction,
-    setArrLength,
-    replaceEachItems
-} from "../util/shared"
-import {
-    isNode,
     extendNks,
     destroyBlock,
-    spliceByElem,
     mockDirective,
     combineContext,
     getContextFuncGen
-} from "../util/runtime"
+} from "../util/runtime/separate"
+import {
+    arrayFill,
+    len,
+    optc,
+    values,
+    entries,
+    lastElem,
+    setArrLength,
+    replaceEachItems
+} from "../util/shared/sundry"
 import { insert } from "./dom"
 import { CancelablePromise } from "./promise"
+import { isNode } from "../util/runtime/assert"
 import { IsModuleFunc, nil } from "./constants"
+import { spliceByElem } from "../util/runtime/sundry"
 import { DuplicateKey, NonTraverse } from "./message/error"
 import { invokeIndexedHooks, onAfterMount } from "./instance"
 import { h, toRenderStructure, extendDsts, attachDestroy } from "./h"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
+import { isArray, isFunction, isNull, isNumber, isString } from "../util/shared/assert"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {

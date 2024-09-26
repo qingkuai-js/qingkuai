@@ -2,9 +2,10 @@ import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
 import { RawValue } from "./constants"
-import { isReactive, velf } from "../util/runtime"
-import { isArray, isBoolean, isObject } from "../util/shared"
+import { velf } from "../util/runtime/sundry"
+import { isReactive } from "../util/runtime/assert"
 import { AssignmentToDOMGetterProp } from "./message/warn"
+import { isArray, isBoolean, isObject } from "../util/shared/assert"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)

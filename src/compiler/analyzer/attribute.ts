@@ -36,9 +36,10 @@ import { getAlias } from "./alias"
 import { couldUseRefTags } from "../constants"
 import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
+import { isString, isUndefined } from "../../util/shared/assert"
 import { transformExpression } from "../transformer/interpolation"
+import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { kebab2Camel, findOutOfSC, checkIdentifierName } from "../../util/compiler/sundry"
-import { EventListenerFlag, EventWrapperFlag, isString, isUndefined } from "../../util/shared"
 
 export function analyzeAttribute(
     tag: string,

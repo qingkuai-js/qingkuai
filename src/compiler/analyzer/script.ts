@@ -38,9 +38,9 @@ import {
     CompilerFuncWithoutVariableDeclaration
 } from "../message/error"
 import { walk } from "../estree/walk"
-import { lastElem } from "../../util/shared"
 import { confirmAliases, getAlias } from "./alias"
 import { compilerOptions } from "../configuration"
+import { lastElem } from "../../util/shared/sundry"
 import { findOutOfSC } from "../../util/compiler/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { compilerFuncs, watchRelatedFuncs } from "../constants"

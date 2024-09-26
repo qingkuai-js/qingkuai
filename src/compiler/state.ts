@@ -8,7 +8,7 @@ import type {
     TempStoredImportInfo
 } from "./types"
 
-import { setArrLength } from "../util/shared"
+import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/sundry"
 
 export const sourceMapInfo = newSourceMapInfo()

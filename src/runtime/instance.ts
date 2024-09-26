@@ -7,8 +7,8 @@ import type {
 } from "./types"
 
 import { nil, noop } from "./constants"
-import { arrayFill, len, runAll } from "../util/shared"
-import { destroyBlock, newDestruction } from "../util/runtime"
+import { arrayFill, len, runAll } from "../util/shared/sundry"
+import { destroyBlock, newDestruction } from "../util/runtime/separate"
 
 // 当前组件实例
 let currentInstance: QingKuaiComponent | null = nil

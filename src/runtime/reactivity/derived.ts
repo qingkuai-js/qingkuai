@@ -2,8 +2,9 @@ import type { EffectListItem, GeneralFunc, Setter } from "../types"
 
 import { internalSyncEffect } from "./effect"
 import { IsProxy, reflect, undef } from "../constants"
+import { len, values } from "../../util/shared/sundry"
+import { isUndefined } from "../../util/shared/assert"
 import { AssignmentToDerived, DerivedDependenNoReactiveValue } from "../message/warn"
-import { isUndefined, len, values } from "../../util/shared"
 import { setUsedEffectList, usedEffectList, withCleanUsedEffectList } from "./state"
 
 // 注册衍生响应性状态
