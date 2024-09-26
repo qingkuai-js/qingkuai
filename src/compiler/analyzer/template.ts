@@ -11,7 +11,7 @@ import { content2script } from "../parser/content"
 import { stringify } from "../../util/compiler/state"
 import { tagIsComponentRE, templateTag } from "../regular"
 import { DuplicateSlotAttributeValue } from "../message/error"
-import { transformExpression } from "../transformer/expression"
+import { transformExpression } from "../transformer/interpolation"
 import { isNull, isUndefined, lastElem } from "../../util/shared"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
 

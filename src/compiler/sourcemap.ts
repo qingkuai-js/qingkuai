@@ -1,10 +1,10 @@
+import type { ASTPosition } from "./types"
 import type { SourceMapMappings, SourceMapSegment } from "@jridgewell/sourcemap-codec"
 
-import { compilerOptions } from "../configuration"
-import { getGeneratedLine } from "../../util/compiler/state"
-import { isUndefined, replaceEachItems } from "../../util/shared"
-import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "../state"
-import { getAlias } from "../analyzer/alias"
+import { compilerOptions } from "./configuration"
+import { getGeneratedLine } from "./../util/compiler/state"
+import { isUndefined, replaceEachItems } from "./../util/shared"
+import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "./state"
 
 // 记录一条sourcemap mapping segment
 export function recordMapping(
@@ -100,6 +100,14 @@ export function offsetSourcemap() {
     }
 
     replaceEachItems(sourceMapInfo.mappings, temp)
+}
+
+// 记录一条源码位置与生成代码位置一致的映射信息（转换和生成代码的过程中处理偏移）
+export function recordMappingWithNoOffset(position: ASTPosition) {
+    const { line, column, index } = position
+    if (!sourceMapInfo.positionShouldNotBeMapped[index]) {
+        recordMapping(line, column, line, column, index)
+    }
 }
 
 // 根据指定生成行信息初始化一行mapping

@@ -36,7 +36,7 @@ import { getAlias } from "./alias"
 import { couldUseRefTags } from "../constants"
 import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
-import { transformExpression } from "../transformer/expression"
+import { transformExpression } from "../transformer/interpolation"
 import { kebab2Camel, findOutOfSC, checkIdentifierName } from "../../util/compiler/sundry"
 import { EventListenerFlag, EventWrapperFlag, isString, isUndefined } from "../../util/shared"
 
