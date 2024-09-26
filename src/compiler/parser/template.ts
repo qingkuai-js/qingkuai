@@ -179,7 +179,7 @@ export function parseTemplate(source: string) {
             }
 
             // check whether attribute value is existing
-            const equalTokenIndex = source.indexOf("=")
+            const equalTokenIndex = source.search(/^\s*=/)
             if (equalTokenIndex !== -1) {
                 reduceSource(equalTokenIndex + 1)
 

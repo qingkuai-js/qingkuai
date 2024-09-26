@@ -1,4 +1,4 @@
-import { FixedArray } from "../../util/types"
+import type { FixedArray } from "../../util/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { TemplateAnalysisRet, TransformExpressionRet } from "../types"
 
@@ -8,7 +8,7 @@ import { indent } from "../../util/compiler/state"
 import { recordMapping } from "../sourcemap/tools"
 import { findOutOfSC } from "../../util/compiler/sundry"
 import { isArray, isNull, isString, isUndefined } from "../../util/shared"
-import { inputDescriptor, sourceMapInfo, stringConstants, stringConstantsSourceMap } from "../state"
+import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
@@ -31,10 +31,13 @@ export function transformTemplate(
         if (item.tag) {
             item.tag = confirmStringConstants(item.tag)
         }
+        if (item.content) {
+            item.content = confirmStringConstants(item.content)
+        }
         if (item.aar?.slot) {
             item.aar.slot = confirmStringConstants(item.aar.slot)
         }
-        for (let i = 0; true; i += 2) {
+        for (let i = 0; true; i++) {
             const estu = item.aar?.eventStu
             const astu = item.aar?.attributeStu
             if (!astu?.[i] && !estu?.[i]) {
@@ -46,12 +49,6 @@ export function transformTemplate(
             if (!isUndefined(estu?.[i])) {
                 estu[i] = confirmStringConstants(estu[i])
             }
-        }
-
-        // 将eventStu中的空字符串移除掉，在原生标签（input等）使用引用属性传递时，会向eventStu
-        // 中多添加一个空字符串以保持其长度为偶数，及奇数项为事件名称、偶数项为转换后的语句
-        if (item.aar) {
-            item.aar.eventStu = item.aar.eventStu.filter(s => s !== "")
         }
     })
 
@@ -153,13 +150,15 @@ export function transformTemplate(
                 })
             } else {
                 ters.forEach((ter, index) => {
-                    const wrap = index === 0 ? "\n" : ""
-                    const isLast = index === tersLen - 1
-                    pushTransformedArr(wrap, indentStr, ter)
-                    if (!isLast) {
+                    if (index === 0) {
                         pushTransformedArr("\n")
+                    }
+                    pushTransformedArr(indentStr, ter)
+
+                    if (index !== tersLen - 1) {
+                        pushTransformedArr(",", "\n")
                     } else {
-                        pushTransformedArr(",", "\n", indent(n + 1))
+                        pushTransformedArr("\n", indent(n + 1))
                     }
                 })
             }
@@ -432,10 +431,14 @@ function shouldUseLineBreak(
 
 // 确定是否使用生成的字符串字面量变量，当其使用次数大于1且其本身长度大于2时就会被保留变量访问，
 // 如果搜索到的字符串字面量变量不同时满足以上两个条件，它将被还原为原始的字符串字面量
-function confirmStringConstants(ter: TransformExpressionRet) {
+function confirmStringConstants<T extends TransformExpressionRet>(ter: T): T {
+    const terIsString = isString(ter)
     const transformedArr: string[] = []
+    const mappings = terIsString ? [] : ter.mappings
     const code = isString(ter) ? ter : ter.transformedExp
-    for (let startIndex = 0; true; ) {
+    const mappingOffsets: number[] = Array(terIsString ? 0 : mappings.length).fill(0)
+
+    for (let startIndex = 0, saveAs = ""; true; ) {
         const [matchedIndex, matchedLen] = findOutOfSC(code, /_s\d+_/, startIndex)
         if (matchedIndex === -1) {
             transformedArr.push(code.slice(startIndex))
@@ -447,14 +450,45 @@ function confirmStringConstants(ter: TransformExpressionRet) {
         const restoredStrLiteral = stringConstantsSourceMap.get(matchedStr)!
         const currentStringConstant = stringConstants.get(restoredStrLiteral)!
         if (currentStringConstant.count > 1 && restoredStrLiteral.length > 2) {
-            transformedArr.push(matchedStr)
-            currentStringConstant.using = true
+            const restoreToComment = `/* ${restoredStrLiteral} */ `
+            if (!currentStringConstant.using) {
+                const resetNumStr = `_s${inputDescriptor.stringConstantCount++}_`
+                transformedArr.push((saveAs = restoreToComment + resetNumStr))
+                currentStringConstant.value = resetNumStr
+                currentStringConstant.using = true
+            } else {
+                transformedArr.push((saveAs = restoreToComment + currentStringConstant.value))
+            }
         } else {
-            transformedArr.push(restoredStrLiteral)
+            transformedArr.push((saveAs = restoredStrLiteral))
         }
+
+        // 当string constant被替换编号或还原时，将当前处理位置之后的段的列偏移量记录到
+        // mappingOffsets中，mapping中下标为n的项目的列偏移量记录在mappingOffset[n]中
+        if (!terIsString) {
+            const offset = saveAs.length - matchedStr.length
+            for (let i = 0; i < mappings.length; i++) {
+                if (mappings[i][1] > matchedIndex) {
+                    mappingOffsets[i] += offset
+                }
+            }
+        }
+
         startIndex = matchedIndex + matchedLen
     }
-    return transformedArr.join("")
+
+    // 根据mappingOffsets的记录将mappings中的段进行列偏移
+    if (!terIsString) {
+        mappings.forEach((item, index) => {
+            item[1] += mappingOffsets[index]
+        })
+    }
+
+    const transformedStr = transformedArr.join("")
+    if (terIsString) {
+        return transformedStr as any
+    }
+    return (ter.transformedExp = transformedStr), ter
 }
 
 // 判断函数参数是否需要中括号包裹

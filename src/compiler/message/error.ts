@@ -34,12 +34,8 @@ export function EmptyInterpolationExpression() {
     error("Empty interpolation expression block is not allowed.")
 }
 
-export function UsedKeyDirectiveWithoutForDirective() {
+export function UseKeyDirectiveWithoutForDirective() {
     error("Key directive could not be used without for directive.")
-}
-
-export function GeneralTagJustAcceptAutoAsReference(tag: string) {
-    error(`Normal tag(${tag}) can only accept auto as reference.`)
 }
 
 export function DuplicateAttributeKey(tag: string, a: string, b: string) {
@@ -56,9 +52,8 @@ export function DuplicateAttributeKey(tag: string, a: string, b: string) {
     error(`The name for ${description} of ${tag} tag is duplicate.`)
 }
 
-export function InvalidSlotAttribute(type: number) {
-    const typeChar = type === 1 ? "!" : "&"
-    const typeStr = type === 1 ? "Dynamic" : "Reference"
+export function InvalidSlotAttribute(typeChar: string) {
+    const typeStr = typeChar === "!" ? "Dynamic" : "Reference"
     error(`${typeStr} slot attribute(${typeChar}slot) is not allowed.`)
 }
 
@@ -95,9 +90,8 @@ export function BadAttributeFormat(attr?: string) {
     error(`The attribute ${isUndefined(attr) ? "format" : `name(${attr})`} is bad.`)
 }
 
-export function InvalidSlotNameAttribute(type: number) {
-    const typeChar = type === 1 ? "!" : "&"
-    const typeStr = type === 1 ? "Dynamic" : "Reference"
+export function InvalidSlotNameAttribute(typeChar: string) {
+    const typeStr = typeChar === "!" ? "Dynamic" : "Reference"
     error(`${typeStr} name attribute(${typeChar}name) for slot tag is not allowed.`)
 }
 
@@ -119,9 +113,9 @@ export function CompilerFuncNotInTopScope() {
     )
 }
 
-export function ReferenceValueCantBeUsedWithDynamicType(tag: string) {
+export function CantAcceptRefAttrWithSpecificDynamicAttr(tag: string, attr: string) {
     error(
-        `Can not pass reference value when normal tag(${tag}) using dynamic type attribute(!type).`
+        `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
     )
 }
 
@@ -143,6 +137,20 @@ export function DestructureReactFuncWithNoArg(funcName: string) {
     )
 }
 
+export function BadValueForRefAttr(exp: string) {
+    error(
+        `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
+    )
+}
+
+export function NotAllowedRefAttrForNormalTag(tag: string, attr: string[], given: string) {
+    const allowedAttrJoined = attr.join(" or ")
+    const allowedAttrDescription = attr.map(item => "&" + item).join(", ")
+    error(
+        `Normal tag(${tag}) can only accept ${allowedAttrJoined} as reference attribute(${allowedAttrDescription}), and the given item(&${given}) is not allowed.`
+    )
+}
+
 export class CompileError extends Error {
     declare Description: string
 
@@ -157,8 +165,8 @@ function error(msg: string) {
 }
 
 // 获取特殊属性的描述（指令、事件、动态即引用属性）
-export function getSpecialAttrDescription(fc: string) {
-    switch (fc) {
+export function getSpecialAttrDescription(tc: string) {
+    switch (tc) {
         case "#":
             return "directive"
         case "@":

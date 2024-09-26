@@ -1,19 +1,20 @@
-import type { FixedArray } from "../../util/types"
 import type { AnyNode } from "../estree/types"
+import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../runtime/types"
 import type { EliminateRanges, TemplateContext, TransformExpressionOptionalParam } from "../types"
 
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { compilerOptions } from "../configuration"
+import { stringify } from "../../util/compiler/state"
 import { is, isFunctionNode } from "../estree/assert"
 import { isUndefined, runAll } from "../../util/shared"
 import { identifierIsReference } from "../estree/assert"
 import { inputDescriptor, replacementInfo } from "../state"
 import { isIndexEliminated } from "../../util/compiler/sundry"
-import { IdentifierFormatIsNotAllowed } from "../message/error"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { bannedIdentifierFormat, expressionReplaceWithSpaceRE } from "../regular"
+import { BadValueForRefAttr, IdentifierFormatIsNotAllowed } from "../message/error"
 
 export function transformExpression(
     expression: string,
@@ -51,6 +52,13 @@ export function transformExpression(
         } else {
             transformInfos.set(index - 2, [str])
         }
+    }
+
+    // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
+    // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
+    // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
+    if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+        BadValueForRefAttr(expression)
     }
 
     walk(ast, {
@@ -115,6 +123,10 @@ export function transformExpression(
                 })
             }
         },
+        StringLiteral(node) {
+            extendTransformInfo(node.end, stringify(node.value))
+            expEliminateRanges.add([node.start, node.end])
+        },
 
         // 标记需要记录sourcemap信息的索引（这里值表达式转换前的索引，转换完成后，
         // 可以通过访问indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
@@ -139,7 +151,7 @@ export function transformExpression(
     // 根据标记的trasformInfos和expEliminateRanges转换表达式，并生成转换前后每个字符的索引映射，
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
-    // rsc meas ReplacedSpaceCount    pie means Pre(position)IsEliminated
+    // rsc: Replaced Space Count    pie: Pre(position) Is Eliminated
     for (
         let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false;
         shouldGenerateSourcemap && i <= expression.length;

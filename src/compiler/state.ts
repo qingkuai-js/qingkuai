@@ -10,7 +10,6 @@ import type {
 
 import { setArrLength } from "../util/shared"
 import { newASTLocation } from "../util/compiler/sundry"
-import { SourceMapSegment } from "@jridgewell/sourcemap-codec"
 
 export const sourceMapInfo = newSourceMapInfo()
 export const debuggingInfo = newDebuggingInfo()
@@ -77,6 +76,7 @@ function newInputDescriptor(): InputDescriptor {
         type: "sfc",
         positions: [],
         indentSpaceCount: 0,
+        stringConstantCount: 0,
         script: {
             code: "",
             isTS: false,

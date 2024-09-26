@@ -59,6 +59,7 @@ export interface InputDescriptor {
     type: "sfc" | "script"
     indentSpaceCount: number
     positions: ASTPosition[]
+    stringConstantCount: number
     script: {
         code: string
         isTS: boolean

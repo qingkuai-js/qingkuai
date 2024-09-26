@@ -129,7 +129,7 @@ export function transformScript(source: string, indentN = 0) {
     const joinedTransformedPositions = getPositionOfEachChar(joinedTransformedArr)
     const transformedStr = joinedTransformedArr.replace(scriptSourceRedundantEmptyLine, (s, i) => {
         if (shouldGenerateSourcemap) {
-            let emptyLineCount = s.match(/\n/g)!.length
+            let emptyLineCount = s.match(/\n/g)?.length || 0
             const startLine = joinedTransformedPositions[i].line
             for (let j = +(i !== 0); emptyLineCount > 0; emptyLineCount--, j++) {
                 sourceMapInfo.removedLine.add(startLine + j)

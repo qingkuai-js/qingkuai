@@ -15,12 +15,6 @@ import {
     InvalidEventFlagForComponent
 } from "../message/warn"
 import {
-    kebab2Camel,
-    findOutOfSC,
-    normalStringify,
-    checkIdentifierName
-} from "../../util/compiler/sundry"
-import {
     parse,
     getIdentifiersFromPattern,
     getIdentifiersFromPatternWithPath
@@ -34,15 +28,16 @@ import {
     DuplicateAttributeKey,
     InvalidSlotNameAttribute,
     SlotNameAttributeIsEmpty,
-    GeneralTagJustAcceptAutoAsReference,
-    UsedKeyDirectiveWithoutForDirective,
-    ReferenceValueCantBeUsedWithDynamicType
+    NotAllowedRefAttrForNormalTag,
+    UseKeyDirectiveWithoutForDirective,
+    CantAcceptRefAttrWithSpecificDynamicAttr
 } from "../message/error"
 import { getAlias } from "./alias"
 import { couldUseRefTags } from "../constants"
 import { compilerOptions } from "../configuration"
 import { stringify } from "../../util/compiler/state"
 import { transformExpression } from "../transformer/expression"
+import { kebab2Camel, findOutOfSC, checkIdentifierName } from "../../util/compiler/sundry"
 import { EventListenerFlag, EventWrapperFlag, isString, isUndefined } from "../../util/shared"
 
 export function analyzeAttribute(
@@ -79,10 +74,10 @@ export function analyzeAttribute(
         const trimedValue = rv.trim()
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
+        const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
-        const isDynamicOrReference = rk.startsWith("!")
         const valueStartIndex = attr.value.loc.start.index
-        const isExpression = isEvent || isDynamicOrReference || isDirective || isRef
+        const isExpression = isEvent || isDynamic || isDirective || isRef
 
         // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
         const transDirective = (exp: string, option?: TransformExpressionOptionalParam) => {
@@ -102,77 +97,102 @@ export function analyzeAttribute(
             return transformExpression(exp, valueStartIndex, context, "attribute", option)
         }
 
-        // pureKey代表纯键值，即去掉!@#&前缀的属性名
-        // 如果当前标签是组件，还需要驼峰属性名转换为串型
-        pureKey = isExpression ? rk.slice(1) : rk
-        if (isComponent) {
-            pureKey = kebab2Camel(pureKey)
+        // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
+        if ((pureKey = rk.slice(+isExpression)) && isComponent) {
+            pureKey = kebab2Camel(rk.slice(1))
+        }
+
+        // slot元素的name属性不能为空也不能是动态属性或引用属性
+        if (isSlot && pureKey === "name") {
+            if ((slotName = value.raw) === '""') {
+                SlotNameAttributeIsEmpty()
+            } else if (isDynamic || isRef) {
+                InvalidSlotNameAttribute(isDynamic ? "!" : "&")
+            }
+        }
+
+        // 如果父元素是组件，那么当前元素的slot属性不能为空也不能是动态属性或引用属性
+        if (parentIsComponent && pureKey === "slot") {
+            if ((slot = value.raw) === '""') {
+                SlotAttributeIsEmpty()
+            } else if (isDynamic || isRef) {
+                InvalidSlotAttribute(isDynamic ? "!" : "&")
+            }
         }
 
         // 处理引用值，如果是组件，就把引用传递放在eventStu的位置
-        if (isRef) {
-            if (pureKey === "slot") {
-                InvalidSlotAttribute(2)
-            }
-            if (isSlot && pureKey === "name") {
-                InvalidSlotNameAttribute(2)
-            }
-            if (!couldUseRefTags.has(tag) && !isComponent) {
-                CouldNotPassRefValue(pureKey, tag)
-            }
-
+        // 由于select的value属性与普通属性的处理逻辑并不相同（需要判断子option元素的选择情况，
+        // 初始化时要异步设置初始值）所以这里将select元素的value属性使用withReference进行处理
+        // 但这种情况下最后一个参数（setter)会被传入nil，以打断选项改变时修改响应式值的渠道
+        if (isRef || (tag === "select" && pureKey === "value")) {
             const teGetter = transAttrValue(rv)
             const teSetter = transAttrValue(rv, { usedAsSetter: true })
+            let setter = isString(teSetter) ? teSetter : teSetter.transformedExp
             if (isComponent) {
-                if (isString(teSetter)) {
-                    eventStu.push(stringify(pureKey), `[${teGetter}, v => (${teSetter} = v)]`)
-                } else {
-                    // 如果teSetter带有mapping，则需要将所有段下标为1的元素（生成列）向右偏移
-                    // 9（前缀固定长度）+ getter.length，这样做是为了让引用值映射到setter部分
-                    const exp = teSetter.transformedExp
-                    const getter = (teGetter as any).transformedExp
-                    teSetter.mappings.forEach(item => {
-                        item[1] += 9 + getter.length
-                    })
-                    eventStu.push(stringify(pureKey), teSetter)
-                    teSetter.transformedExp = `[${getter}, v => (${exp} = v)]`
-                }
+                const prefix = `${stringify(pureKey)}, [`
+                const postfix = `, v => (${setter} = v)]`
+                eventStu.push(concatStrAndTER(prefix, teGetter, postfix))
             } else {
-                let listenEventName = "input"
-                let reactiveProperty = "value"
-                const [typeAttr] = filteredAttrs.filter(attr => {
-                    return attr.key.raw.endsWith("type")
-                })
-                if (pureKey !== "auto") {
-                    GeneralTagJustAcceptAutoAsReference(tag)
-                }
-                if (typeAttr?.key.raw.startsWith("!")) {
-                    ReferenceValueCantBeUsedWithDynamicType(tag)
+                let tagForErr = tag
+                let needSetter = true
+                let attrIsNotAllowed = false
+                let attrsForErr: string[] = []
+                let eventName = tag === "textarea" ? "input" : "change"
+
+                // 只有couldUseRefTags中的普通标签才能使用引用属性
+                if (!couldUseRefTags.has(tag)) {
+                    CouldNotPassRefValue(pureKey, tag)
                 }
 
-                const isSelectTag = tag === "select"
-                const isSpecialTypeForInput = /^"(?:checkbox|radio)"$/.test(typeAttr?.value.raw)
-                if (isSelectTag) {
-                    listenEventName = "change"
+                // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
+                // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
+                // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
+                if (tag === "input") {
+                    const [typeAttr] = filteredAttrs.filter(attr => {
+                        return attr.key.raw.endsWith("type")
+                    })
+                    if (typeAttr?.key.raw.startsWith("!")) {
+                        CantAcceptRefAttrWithSpecificDynamicAttr("input", "type")
+                    }
+
+                    const typeValueRaw = typeAttr?.value.raw
+                    if (!/^(?:radio|checkbox)$/.test(typeValueRaw)) {
+                        eventName = "input"
+                        attrsForErr = ["value"]
+                        attrIsNotAllowed = pureKey !== "value"
+                    } else {
+                        needSetter = pureKey !== "group"
+                        attrsForErr = ["checked", "group"]
+                        tagForErr = `${tag}[type=${typeValueRaw}]`
+                        attrIsNotAllowed = !/^(?:checked|group)$/.test(pureKey)
+                    }
+                } else if (tag === "select") {
+                    const [multipleAttr] = filteredAttrs.filter(attr => {
+                        return attr.key.raw.endsWith("multiple")
+                    })
+                    if (multipleAttr?.key.raw.startsWith("!")) {
+                        CantAcceptRefAttrWithSpecificDynamicAttr("select", "multiple")
+                    }
+                    attrsForErr = ["value"]
+                    needSetter = !multipleAttr
+                    attrIsNotAllowed = pureKey !== "value"
                 }
-                if (tag === "input" && isSpecialTypeForInput) {
-                    listenEventName = "change"
-                    reactiveProperty = "checked"
+                if (attrIsNotAllowed) {
+                    NotAllowedRefAttrForNormalTag(tagForErr, attrsForErr, pureKey)
                 }
 
-                // 如果teSetter带有mapping，则需要将所有段下标为1的元素（生成列）向右偏移
-                // 9（前缀固定长度）+ getter.length，这样做是为了让引用值映射到setter部分
-                
-                // 这里在eventStu中多添加了一个空字符串，因为在transformTemplate中会将奇数项认为是事件名称，
-                // 所有的奇数项都需要确认其中的字符串字面量变量是否需要保留，所以这里通过这种方式来保持一致性
-                const withReferenceFuncName = getAlias("withReference")
-                const listenEventNameStr = stringify(listenEventName)
-                if (isString(teSetter)) {
-                    eventStu.push(
-                        "",
-                        `...${withReferenceFuncName}(${listenEventNameStr}, ${teSetter})`
-                    )
+                // select的value属性（非引用）时setter为null
+                if (!isRef) {
+                    setter = getAlias("nil")
+                } else if (needSetter) {
+                    setter = `v => (${setter} = v)`
                 }
+
+                const spk = stringify(pureKey)
+                const sev = stringify(eventName)
+                const funcName = getAlias("withReference")
+                const prefix = `...${funcName}(${sev}, ${spk}, `
+                eventStu.push(concatStrAndTER(prefix, teGetter, `, ${setter})`))
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -222,7 +242,7 @@ export function analyzeAttribute(
 
                 case "key":
                     if (forModuleFuncIndex === -1) {
-                        UsedKeyDirectiveWithoutForDirective()
+                        UseKeyDirectiveWithoutForDirective()
                     } else {
                         const transformedExp = transDirective(rv, { isKeyDirective: true })
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
@@ -299,16 +319,18 @@ export function analyzeAttribute(
                 InvalidEventForSlot(rk)
             } else {
                 let eventFlag = 0
+                let flagComment = ""
                 let eventName = pureKey
                 let eventWrapperFlag = 0
+
                 const flagIndex = pureKey.indexOf("|")
+                const flagStr = pureKey.slice(flagIndex + 1)
+                const flagArr = flagStr.split("|")
+
                 if (flagIndex !== -1) {
                     if (isComponent) {
-                        const flagStr = pureKey.slice(flagIndex + 1)
                         InvalidEventFlagForComponent(flagStr)
                     } else {
-                        const flagStr = pureKey.slice(flagIndex)
-                        const flagArr = flagStr.split("|").slice(1)
                         flagArr.forEach(key => {
                             const currentFlagNum = (EventListenerFlag as any)[key]
                             const currentWrapperFlagNum = (EventWrapperFlag as any)[key]
@@ -326,49 +348,26 @@ export function analyzeAttribute(
                 }
 
                 if (isComponent) {
-                    const transformedExp = transAttrValue(rv, {
+                    const ter = transAttrValue(rv, {
                         isComponentEvent: true
                     })
-                    attributeStu.push(stringify(eventName), transformedExp)
+                    attributeStu.push(concatStrAndTER(`${stringify(eventName)}, `, ter, ""))
                 } else {
-                    const transformRes = transAttrValue(rv, {
-                        eventWrapperFlag
-                    })
-                    if (!isString(transformRes)) {
-                        transformRes.transformedExp += `, ${eventFlag}`
+                    const ter = transAttrValue(rv, { eventWrapperFlag })
+                    if (eventFlag === 0) {
+                        flagComment = "no flag"
+                    } else {
+                        flagComment = flagArr.join(", ")
                     }
-                    eventStu.push(stringify(eventName), transformRes)
+
+                    const prefix = `${stringify(eventName)}, `
+                    const postfix = `, /* ${flagComment} */ ${eventFlag}`
+                    eventStu.push(concatStrAndTER(prefix, ter, postfix))
                 }
             }
-        } else {
-            if (parentIsComponent && pureKey === "slot") {
-                if (!isDynamicOrReference) {
-                    if (rv !== '""') {
-                        slot = rv
-                    } else {
-                        SlotAttributeIsEmpty()
-                    }
-                } else {
-                    InvalidSlotAttribute(1)
-                }
-            } else if (isSlot && pureKey === "name") {
-                if (!isDynamicOrReference) {
-                    if (rv !== '""') {
-                        slotName = rv
-                    } else {
-                        SlotNameAttributeIsEmpty()
-                    }
-                } else {
-                    InvalidSlotNameAttribute(1)
-                }
-            } else {
-                attributeStu.push(stringify(pureKey))
-                if (isExpression) {
-                    attributeStu.push(transAttrValue(rv))
-                } else {
-                    attributeStu.push(rv)
-                }
-            }
+        } else if (!(isSlot && pureKey === "name") && !(parentIsComponent && pureKey === "slot")) {
+            const ter = isExpression ? transAttrValue(rv) : stringify(rv)
+            attributeStu.push(concatStrAndTER(`${stringify(pureKey)}, `, ter, ""))
         }
     })
 
@@ -422,10 +421,6 @@ export function filterDuplicateAttr(
         const isDirective = rk.startsWith("#")
         const isClass = /^[!&]?class/.test(rk)
         const pureKey = isNative ? rk : rk.slice(1)
-
-        if (isNative) {
-            value.raw = normalStringify(rv)
-        }
 
         // 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
         if (isDirective) {
@@ -624,6 +619,22 @@ function recordAliasIdentifiers(
         }
         aliasArgs.push(`ctx => ${baseValue}`, `(${patternSource}) => [${identifiers.join(", ")}]`)
     })
+}
+
+// 为transformExpression的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
+// 还会将mappings中所有段的生成列（下标为1的元素）向右偏移前缀字符串长度的数量以保证正确的源码映射
+function concatStrAndTER<T extends TransformExpressionRet>(
+    prefix: string,
+    ter: T,
+    postfix: string
+): T {
+    if (isString(ter)) {
+        return (prefix + ter + postfix) as any
+    }
+    ter.mappings.forEach(item => {
+        item[1] += prefix.length
+    })
+    return (ter.transformedExp = prefix + ter.transformedExp + postfix), ter
 }
 
 // 扩展context
