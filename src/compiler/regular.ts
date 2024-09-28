@@ -8,8 +8,7 @@ export const templateConditionalCommentRE = /^(?:\[if.*\[endif]|\[if.*<!|<!\[end
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
-export const reservedIndentifierName = /^(?:prop|ref)s$/
-export const bannedIdentifierFormat = /^_(?:[sd]\d+|dn)_$/
+export const bannedIdentifierFormatRE = /^_(?:[sd]\d+|dn)_$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
 

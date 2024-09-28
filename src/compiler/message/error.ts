@@ -1,8 +1,8 @@
 import type { ASTLocation } from "../types"
 import type { GeneralFunc } from "../../util/types"
 
-import { bannedIdentifierFormat } from "../regular"
 import { lastElem } from "../../util/shared/sundry"
+import { bannedIdentifierFormatRE } from "../regular"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -58,8 +58,8 @@ export const InvalidSlotAttribute = withLocation(1013, (typeChar: string) => {
     return `${typeStr} slot attribute(${typeChar}slot) is not allowed.`
 })
 
-export const DuplicateSlotAttributeValue = withLocation(1014, (value: string) => {
-    return `Multiple tags have the same slot attribute value(${value})`
+export const DuplicateSlotAttributeValue = withLocation(1014, (name: string) => {
+    return `Multiple tags have the same slot attribute value(${name})`
 })
 
 export const CouldNotPassRefValue = withLocation(1015, (key: string, tag: string) => {
@@ -131,7 +131,7 @@ export const CompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
 })
 
 export const IdentifierFormatIsNotAllowed = withLocation(1029, (identifier: string) => {
-    return `The identifier(${identifier}) format is not allowed, banned identifier format: /${bannedIdentifierFormat.source}/`
+    return `The identifier(${identifier}) format is not allowed, banned identifier format: /${bannedIdentifierFormatRE.source}/`
 })
 
 export const DestructureReactFuncWithNoArg = withLocation(1030, (funcName: string) => {

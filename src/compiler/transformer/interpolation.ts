@@ -11,19 +11,19 @@ import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
-import { stringify } from "../../util/compiler/state"
+import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { is, isFunctionNode } from "../estree/assert"
 import { isUndefined } from "../../util/shared/assert"
 import { identifierIsReference } from "../estree/assert"
 import { inputDescriptor, replacementInfo } from "../state"
-import { isIndexEliminated } from "../../util/compiler/sundry"
+import { checkIdentifierName, isIndexEliminated } from "../../util/compiler/sundry"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { bannedIdentifierFormat, expressionReplaceWithSpaceRE } from "../regular"
 import { BadValueForRefAttr, IdentifierFormatIsNotAllowed } from "../message/error"
+import { bannedIdentifierFormatRE, expressionReplaceWithSpaceRE } from "../regular"
 
 export function transformInterpolation(
     expression: string,
-    startIndex: number,
+    startSourceIndex: number,
     context: TemplateContext,
     type: "directive" | "attribute" | "event" | "content",
     optionalParams: TransformInterpolationOptionalParam = {}
@@ -63,16 +63,20 @@ export function transformInterpolation(
     // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
     if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
-        BadValueForRefAttr(expression)
+        const expressionEndSourceIndex = startSourceIndex + expression.length
+        BadValueForRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
     }
 
     walk(ast, {
         Identifier(node, parent) {
             const { name, start, end } = node
+            const nodeEndSourceIndex = startSourceIndex + end - 2
+            const nodeStartSourceIndex = startSourceIndex + start - 2
+            const nodeLoc = getLocByIndex(nodeStartSourceIndex, nodeEndSourceIndex)
 
-            if (bannedIdentifierFormat.test(name)) {
-                IdentifierFormatIsNotAllowed(name)
-            }
+            // 检查插值表达式中是否使用了禁止使用的标识符
+            checkIdentifierName(node.name, nodeLoc, false)
+
             if (!identifierIsReference(node, parent)) {
                 return
             }
@@ -90,7 +94,7 @@ export function transformInterpolation(
             // 处理ObjectProperty中的shrothand声明
             // 将其格式转换为 propertyName: (_w_)propertyName(.$)
             if (is(esParent?.v, "ObjectProperty") && esParent.v.shorthand) {
-                extendTransformInfo(node.start, `${name}: `)
+                extendTransformInfo(start, `${name}: `)
             }
 
             if (ctx) {
@@ -136,7 +140,7 @@ export function transformInterpolation(
         // 标记需要记录sourcemap信息的索引（这里值表达式转换前的索引，转换完成后，
         // 可以通过访问indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
         AnyNode(node) {
-            if (startIndex !== -1) {
+            if (startSourceIndex !== -1) {
                 sourcemapIndexes.push(node.start - 2, node.end - 2)
             }
         }
@@ -249,7 +253,7 @@ export function transformInterpolation(
     if (shouldGenerateSourcemap && useGetter) {
         sourcemapIndexes.forEach(index => {
             const sourceIndex = noPositionMap
-                ? index + startIndex
+                ? index + startSourceIndex
                 : optionalParams.positionMap![index]
             const generateIndex = indexMap[index] + addedPrefixLen
             if (!isUndefined(sourceIndex)) {

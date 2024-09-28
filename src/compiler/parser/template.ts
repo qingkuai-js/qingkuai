@@ -227,13 +227,20 @@ export function parseTemplate(source: string) {
             }
 
             // 记录attribute的AST结构
+            let attrEndIndex: number
+            let attrValueLoc: ASTLocation
             const hasAttrValue = attrValueStartIndex !== -1
-            const attrValueLoc: ASTLocation = hasAttrValue
-                ? {
-                      start: positions[attrValueStartIndex],
-                      end: positions[attrValueEndIndex]
-                  }
-                : newASTLocation()
+            if (!hasAttrValue) {
+                attrValueLoc = newASTLocation()
+                attrEndIndex = attrNameEndIndex
+            } else {
+                attrValueLoc = {
+                    start: positions[attrValueStartIndex],
+                    end: positions[attrValueEndIndex]
+                }
+                attrEndIndex = attrValueEndIndex + 1
+            }
+
             const attrStruct: TemplateAttribute = {
                 key: {
                     raw: attrName,
@@ -248,7 +255,7 @@ export function parseTemplate(source: string) {
                 },
                 loc: {
                     start: positions[attrNameStartIndex],
-                    end: positions[attrValueEndIndex + 1]
+                    end: positions[attrEndIndex]
                 }
             }
             if (hasAttrValue) {

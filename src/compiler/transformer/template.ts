@@ -35,7 +35,7 @@ export function transformTemplate(
             item.content = confirmStringConstants(item.content)
         }
         if (item.aar?.slot) {
-            item.aar.slot = confirmStringConstants(item.aar.slot)
+            item.aar.slot.name = confirmStringConstants(item.aar.slot.name)
         }
         for (let i = 0; true; i++) {
             const estu = item.aar?.eventStu
@@ -299,13 +299,13 @@ export function transformTemplate(
         return transformedStr
     }
 
-    const slot = analysisRet[0]?.aar?.slot
     const retWrap = useLineBreak ? "\n" : ""
+    const slotName = analysisRet[0]?.aar?.slot.name
     const retWrapByParent = parentUseLineBreak ? "\n" : ""
     const retIndentStr = useLineBreak ? indent(indentN) : ""
     const retNextIndentStr = useLineBreak ? indent(indentN + 1) : ""
-    const slotStr = slot ? `${retWrap}${retNextIndentStr}${slot}, ` : ""
     const retIndentStrByParent = parentUseLineBreak ? indent(indentN) : ""
+    const slotStr = slotName ? `${retWrap}${retNextIndentStr}${slotName}, ` : ""
     return `[${slotStr}${retWrap}${transformedStr}${retWrap}${retIndentStr}]${
         notOverAfterEndBracket ? `, ${retWrapByParent}${retIndentStrByParent}` : ""
     }`
@@ -392,7 +392,7 @@ function shouldUseLineBreak(
                 return true
             }
             if (aar.slot) {
-                state.count += aar.slot.length + 3
+                state.count += aar.slot.name.length + 3
             }
             for (const key of keys) {
                 for (let stu of aar[key]) {

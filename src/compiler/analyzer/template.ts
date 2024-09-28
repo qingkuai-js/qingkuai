@@ -6,15 +6,16 @@ import type {
 } from "../types"
 
 import { getAlias } from "./alias"
-import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
+import { stringConstantsSourceMap } from "../state"
+import { lastElem } from "../../util/shared/sundry"
 import { stringify } from "../../util/compiler/state"
+import { analyzeAttribute, newSlotStu } from "./attribute"
 import { tagIsComponentRE, templateTag } from "../regular"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { DuplicateSlotAttributeValue } from "../message/error"
 import { transformInterpolation } from "../transformer/interpolation"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
-import { lastElem } from "../../util/shared/sundry"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
@@ -65,7 +66,7 @@ export function analyzeTemplate(
                     eventStu: [],
                     directiveStu: [],
                     attributeStu: [],
-                    slot: stringify("default")
+                    slot: newSlotStu()
                 }
             }
         } else {
@@ -86,7 +87,7 @@ export function analyzeTemplate(
             curContinuedDirective = aar.continuedDirective
 
             if (parentIsComponent && !aar.slot) {
-                aar.slot = stringify("default")
+                aar.slot = newSlotStu()
             }
 
             if ((!isNull(aar.continueRE) || aar.insertNullNum) && aar.createTemplate) {
@@ -108,8 +109,8 @@ export function analyzeTemplate(
                         }
                     ]
                 }
-                aar.slot = ""
                 result.pop()
+                aar.slot = newSlotStu("")
                 result.push(mockTemplateRet)
                 aar.directiveStu = aar.directiveStu.slice(1)
 
@@ -183,10 +184,13 @@ export function analyzeTemplate(
             analyzeTemplate(children, isComponent, currentContext).forEach(childRet => {
                 const slot = childRet.aar?.slot
                 if (slot) {
-                    if (existingSlotValues.has(slot)) {
-                        DuplicateSlotAttributeValue(slot)
+                    if (existingSlotValues.has(slot.name)) {
+                        DuplicateSlotAttributeValue(
+                            stringConstantsSourceMap.get(slot.name)!,
+                            slot.loc
+                        )
                     }
-                    existingSlotValues.add(slot)
+                    existingSlotValues.add(slot.name)
                 }
                 currentRet.children.push({
                     tar: childRet,

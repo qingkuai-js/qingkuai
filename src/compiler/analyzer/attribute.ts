@@ -1,4 +1,5 @@
 import type {
+    SlotAttributeStu,
     TemplateContext,
     TemplateAttribute,
     AttributeAnalysisRet,
@@ -43,8 +44,8 @@ import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { kebab2Camel, checkIdentifierName } from "../../util/compiler/sundry"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
+import { kebab2Camel, checkIdentifierName, newASTLocation } from "../../util/compiler/sundry"
 
 export function analyzeAttribute(
     tag: string,
@@ -55,11 +56,11 @@ export function analyzeAttribute(
     continueByDirective: string | undefined,
     awaitContextStartIndex: number | undefined
 ): AttributeAnalysisRet {
-    let slot = ""
     let slotName = ""
     let pureKey: string
     let insertNullNum = 0
     let withAwait = false
+    let slot = newSlotStu("")
     let createTemplate = false
     let forModuleFuncIndex = -1
     let continueArg: string | undefined
@@ -77,18 +78,14 @@ export function analyzeAttribute(
         const { key, value } = attr
         const [rk, rv] = [key.raw, value.raw]
 
-        const keyEndIndex = key.loc.end.index
-        const keyStartIndex = key.loc.start.index
-        const valueEndIndex = value.loc.end.index
-        const valueStartIndex = value.loc.start.index
-
         const trimedValue = rv.trim()
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
         const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
-        const valuePreSpaceLen = /\s*/.exec(rv)![0].length
+        const valueStartSourceIndex = value.loc.start.index
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
+        const trimedValueStartSourceIndex = valueStartSourceIndex + /\s*/.exec(rv)![0].length
 
         // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
         const transDirective = (exp: string, option?: TransformInterpolationOptionalParam) => {
@@ -105,7 +102,7 @@ export function analyzeAttribute(
                 option.positionMap = attr.positionMap
             }
 
-            return transformInterpolation(exp, valueStartIndex, context, "attribute", option)
+            return transformInterpolation(exp, valueStartSourceIndex, context, "attribute", option)
         }
 
         // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
@@ -124,10 +121,14 @@ export function analyzeAttribute(
 
         // 如果父元素是组件，那么当前元素的slot属性不能为空也不能是动态属性或引用属性
         if (parentIsComponent && pureKey === "slot") {
-            if ((slot = value.raw) === '""') {
+            if (!value.raw) {
                 SlotAttributeIsEmpty(key.loc)
             } else if (isDynamic || isRef) {
                 InvalidSlotAttribute(isDynamic ? "!" : "&", key.loc)
+            }
+            slot = {
+                loc: attr.loc,
+                name: stringify(value.raw)
             }
         }
 
@@ -189,7 +190,7 @@ export function analyzeAttribute(
                     attrIsNotAllowed = pureKey !== "value"
                 }
                 if (attrIsNotAllowed) {
-                    InvalidRefAttr(tagForErr, attrsForErr, pureKey)
+                    InvalidRefAttr(tagForErr, attrsForErr, pureKey, attr.loc)
                 }
 
                 // select的value属性（非引用）时setter为null
@@ -226,7 +227,6 @@ export function analyzeAttribute(
                         let indexPart = ""
                         let itemPart: string
                         let commaFind: FixedArray<number, 2>
-                        let errSourceIndex = valueStartIndex
 
                         // 截取item部分的pattern，并找到commaFind（它是findOutOfSC的返回值，它是一个包含两个
                         // 数字的数组，这两个数字分别代表：逗号所在的索引，匹配字符的长度（逗号及前后空白字符的））
@@ -242,36 +242,47 @@ export function analyzeAttribute(
                         }
 
                         // 如果存在逗号时，检查item或index部分的名称是否未指定
-                        const [commaIndex, matchedLen] = commaFind
-                        if (commaIndex !== -1) {
-                            indexPart = contextStr.slice(commaIndex + matchedLen)
+                        const [commaStartIndex, commaMatchedLen] = commaFind
+                        const commaEndIndex = commaStartIndex + commaMatchedLen
+                        const commastartSourceIndex = trimedValueStartSourceIndex + commaStartIndex
+                        if (commaStartIndex !== -1) {
+                            indexPart = contextStr.slice(commaEndIndex)
                             if (!itemPart || !indexPart) {
-                                if (!indexPart) {
-                                    errSourceIndex += valuePreSpaceLen + commaIndex + 1
-                                }
                                 NoForDirectiveCtxNameSpeciffied(
-                                    getLocByIndex(errSourceIndex),
-                                    itemPart ? "index" : "item"
+                                    itemPart ? "index" : "item",
+                                    getLocByIndex(commastartSourceIndex + (itemPart ? 0 : 1))
                                 )
                             }
                         }
 
                         // 将item及index产生的上下文标识符设置到context中（通过extendContext）
-                        if (!DestructuringContextRE.test(indexPart)) {
+                        if (DestructuringContextRE.test(indexPart)) {
+                            recordAliasIdentifiers(indexPart, context, aliasArgs, 0)
+                        } else {
                             if (indexPart) {
-                                checkIdentifierName(indexPart)
+                                checkIdentifierName(
+                                    indexPart,
+                                    getLocByIndex(
+                                        commastartSourceIndex + commaMatchedLen,
+                                        trimedValueStartSourceIndex + contextStr.length
+                                    )
+                                )
                                 extendContext(context, indexPart, preContextCount)
                             }
-                        } else {
-                            recordAliasIdentifiers(indexPart, context, aliasArgs, 0)
                         }
-                        if (!DestructuringContextRE.test(itemPart)) {
+                        if (DestructuringContextRE.test(itemPart)) {
+                            recordAliasIdentifiers(itemPart, context, aliasArgs, 1)
+                        } else {
                             if (itemPart) {
-                                checkIdentifierName(itemPart)
+                                checkIdentifierName(
+                                    itemPart,
+                                    getLocByIndex(
+                                        trimedValueStartSourceIndex,
+                                        trimedValueStartSourceIndex + itemPart.length
+                                    )
+                                )
                                 extendContext(context, itemPart, preContextCount + 1)
                             }
-                        } else {
-                            recordAliasIdentifiers(itemPart, context, aliasArgs, 1)
                         }
                     }
 
@@ -281,7 +292,7 @@ export function analyzeAttribute(
 
                 case "key":
                     if (forModuleFuncIndex === -1) {
-                        UseKeyDirectiveWithoutForDirective()
+                        UseKeyDirectiveWithoutForDirective(attr.loc)
                     } else {
                         const transformedExp = transDirective(rv, { isKeyDirective: true })
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
@@ -305,7 +316,7 @@ export function analyzeAttribute(
                         continueRE = /^#(?:elif|else)$/
                     }
                     if (pureKey !== "if" && isUndefined(continueByDirective)) {
-                        MissingStartDirective(rk, "#if")
+                        MissingStartDirective(rk, "#if", attr.loc)
                     }
                     continuedDirective = pureKey
                     break
@@ -322,7 +333,7 @@ export function analyzeAttribute(
                     } else {
                         const withDestructuring = /^[{\[]/.test(rv)
                         if (isUndefined(continueByDirective) && !withAwait) {
-                            MissingStartDirective(rk, "#await")
+                            MissingStartDirective(rk, "#await", attr.loc)
                         }
                         context.count++
 
@@ -330,7 +341,13 @@ export function analyzeAttribute(
                             awaitContextStartIndex = context.count
                         }
                         if (!withDestructuring) {
-                            checkIdentifierName(rv)
+                            checkIdentifierName(
+                                trimedValue,
+                                getLocByIndex(
+                                    trimedValueStartSourceIndex,
+                                    trimedValueStartSourceIndex + trimedValue.length
+                                )
+                            )
                             extendContext(context, rv, awaitContextStartIndex)
                         } else {
                             recordAliasIdentifiers(rv, context, aliasArgs, awaitContextStartIndex)
@@ -467,19 +484,19 @@ export function filterDuplicateAttr(
                 if (!ifRelatedDirectivesCoexistState) {
                     ifRelatedDirectivesCoexistState = rk
                 } else {
-                    DirectivesCantCoexist([ifRelatedDirectivesCoexistState, rk])
+                    DirectivesCantCoexist([ifRelatedDirectivesCoexistState, rk], loc)
                 }
             }
             if (/^#(?:then|catch)$/.test(rk)) {
                 if (!awiatRelatedDirectivesCoexistState) {
                     awiatRelatedDirectivesCoexistState = rk
                 } else {
-                    DirectivesCantCoexist([awiatRelatedDirectivesCoexistState, rk])
+                    DirectivesCantCoexist([awiatRelatedDirectivesCoexistState, rk], loc)
                 }
             }
             // 检查必须传递属性值的属性是否有值
             if (mustPassValueDirectives.has(pureKey) && !value.raw) {
-                NoValueForRequiredValueAttribute(key.loc, rk)
+                NoValueForRequiredValueAttribute(rk, loc)
             }
         }
 
@@ -492,12 +509,12 @@ export function filterDuplicateAttr(
         if (isDirective || !isClass || isComponentOrSlot) {
             if (isDirective || (!isComponent && isEvent)) {
                 if (existingItem.has(rk)) {
-                    DuplicateAttributeKey(tag, rk, rk)
+                    DuplicateAttributeKey(tag, rk, rk, loc)
                 }
             } else {
                 ;["", "!", "@", "&"].forEach(char => {
                     if (existingItem.has(char + pureKey)) {
-                        DuplicateAttributeKey(tag, char + pureKey, rk)
+                        DuplicateAttributeKey(tag, char + pureKey, rk, loc)
                     }
                 })
             }
@@ -506,6 +523,8 @@ export function filterDuplicateAttr(
         }
 
         // 上述检查的第三种情况：非组件标签上的class属性，动态和非动态class均可出现一次，重复出现将报错
+        // 注意：这里需要单独检测是否是引用传递的class属性，若是则报错，因为多个class会被合并成一个动态
+        // class属性（!class)，合并之后的属性名并不会导致属性处理中检测到普通标签上使用引用属性的错误
         if (isClass && !isComponentOrSlot) {
             if (!existingItem.has("!class")) {
                 existingItem.set("!class", [])
@@ -515,7 +534,7 @@ export function filterDuplicateAttr(
                 (isDynamicOrReference && dynamicClassIndex !== -1) ||
                 (!isDynamicOrReference && normalClassIndex !== -1)
             ) {
-                DuplicateAttributeKey(tag, rk, rk)
+                DuplicateAttributeKey(tag, rk, rk, loc)
             }
 
             const target = existingItem.get("!class")!
@@ -523,7 +542,7 @@ export function filterDuplicateAttr(
                 normalClassIndex = target.push(currentAttribute) - 1
             } else {
                 if (rk.startsWith("&")) {
-                    CouldNotPassRefValue(pureKey, tag)
+                    CouldNotPassRefValue(pureKey, tag, loc)
                 }
                 dynamicClassIndex = target.push(currentAttribute) - 1
             }
@@ -632,6 +651,15 @@ export function findForItemDestructuringStr(s: string) {
         s = s.slice(index + 1)
     } while (sc)
     return res
+}
+
+// 生成一个默认的AttributeAnalysisRet["slot"]结构
+// 这里使用一个方法而不是变量是因为每次调用stringify会记录常量字符串的使用次数
+export function newSlotStu(name = stringify("default")): SlotAttributeStu {
+    return {
+        name,
+        loc: newASTLocation()
+    }
 }
 
 // 设置解构产生的上下文

@@ -118,13 +118,17 @@ export type TemplateContext = {
     count: number
 }
 
+export interface SlotAttributeStu {
+    name: string
+    loc: ASTLocation
+}
 export interface AttributeAnalysisRet {
     directiveStu: string[][]
     eventStu: TransformInterpolationRet[]
     attributeStu: TransformInterpolationRet[]
-    slot: string
     slotName?: string
     insertNullNum?: number
+    slot: SlotAttributeStu
     createTemplate?: boolean
     continueRE?: RegExp | null
     awaitContextStartIndex?: number

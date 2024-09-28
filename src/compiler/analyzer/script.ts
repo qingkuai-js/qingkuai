@@ -21,11 +21,6 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    bannedIdentifierFormat,
-    reservedIndentifierName,
-    scriptSourceIndentSpaceCount
-} from "../regular"
-import {
     getGeneratedLine,
     getSetterIdentifier,
     markSegmentShouldNotBeMapped
@@ -45,6 +40,7 @@ import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
 import { compilerFuncs, watchRelatedFuncs } from "../constants"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
+import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
 import { RedundantArgs, DerLoseReactivity, MixTwoSyntaxOfDerived } from "../message/warn"
 
 const visitor: ASTVisitor = {
@@ -94,11 +90,11 @@ const visitor: ASTVisitor = {
             const isExclude = parent.excludes.has(funcName)
             if (compilerFuncs.has(funcName) && !isExclude) {
                 if (!is(esParent!.v, "VariableDeclarator")) {
-                    CompilerFuncWithoutVariableDeclaration()
+                    CompilerFuncWithoutVariableDeclaration(node.loc)
                 }
                 if (!is(esGreatGrand?.v, "Program")) {
                     if (!parent.excludes.has(funcName)) {
-                        CompilerFuncNotInTopScope()
+                        CompilerFuncNotInTopScope(node.loc)
                     }
                 }
             }
@@ -115,8 +111,8 @@ const visitor: ASTVisitor = {
         const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
 
         // 检查是否是被禁止的标识符格式
-        if (bannedIdentifierFormat.test(name)) {
-            IdentifierFormatIsNotAllowed(name)
+        if (bannedIdentifierFormatRE.test(name)) {
+            IdentifierFormatIsNotAllowed(name, node.loc)
         }
 
         // 记录所有的标识符，用于确定导入项和init解构标识符别名
@@ -163,9 +159,9 @@ const visitor: ASTVisitor = {
         const scriptSource = inputDescriptor.script.code
         const isQingKuaiRuntime = node.source.value === "qingkuai"
         eliminateRanges.add([start, end])
-        node.specifiers.forEach(({ local: { name } }) => {
-            if (reservedIndentifierName.test(name)) {
-                RegisterExsitingIdentifierName(name)
+        node.specifiers.forEach(({ local: { name }, loc }) => {
+            if (compilerFuncs.has(name)) {
+                RegisterExsitingIdentifierName(name, loc!)
             }
         })
         tempStoredImportInfos.push({
@@ -517,7 +513,9 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
     node.declarations.forEach(({ id, init, end }, index) => {
         let initEnd = init?.end ?? end!
         let initStart = init?.start ?? end!
+
         const esInit = init ? getEsNode(init) : init
+        const declarationLoc = node.declarations[index].loc!
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
         const esInitIsIdentifierCallee = (hasFnCall = is(esInit, "CallExpression"))
@@ -612,7 +610,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 eliminateRanges.add(initRange)
                 isDerived = reactFunc === "der"
                 if (isDestructuring) {
-                    DestructureReactFuncWithNoArg(reactFunc)
+                    DestructureReactFuncWithNoArg(reactFunc, declarationLoc)
                 }
             }
         }
@@ -638,8 +636,8 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         extend(names)
         names.forEach(name => {
-            if (compilerFuncs.has(name) || reservedIndentifierName.test(name)) {
-                RegisterExsitingIdentifierName(name)
+            if (compilerFuncs.has(name)) {
+                RegisterExsitingIdentifierName(name, id.loc!)
             }
         })
     })
