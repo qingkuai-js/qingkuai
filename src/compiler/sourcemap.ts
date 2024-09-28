@@ -64,8 +64,8 @@ export function offsetSourcemap() {
 
     // 生成代码行列偏移，根据映射段下标为1的元素（代表是否模板映射段）有以下两种处理情况：
     // 1. 脚本映射段：则将所有生成列偏移一个缩进量，当段处于第一行时还应该额外向右偏移 <lang- ...> 开始标签的长度
-    // 2. 模板映射段：只需要让第一行的段偏移sorucemapInfo.columnOffsetOfFirstTemplateLine的值即可（这个值为
-    // 固定两个缩进量 + setTemplateStructure（确认别名后）+ 2（函数调用字符 ([ 的固定长度），最后将segment[1]置为0
+    // 2. 模板映射段：只需要让第一行的段偏移sorucemapInfo.columnOffsetOfFirstTemplateLine的值（这个值为固定
+    // 两个缩进量 + sts（确认别名后）方法名长度 + 2（函数调用字符 ([ 的固定长度），最后将segment[1]置为0即可
     sourceMapInfo.mappings.forEach((line, index) => {
         if (!sourceMapInfo.removedLine.has(index)) {
             temp.push(line)

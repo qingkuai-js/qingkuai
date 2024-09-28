@@ -22,6 +22,7 @@ export function isNumber(v: any): v is number {
 export function isString(v: any): v is string {
     return typeof v === "string"
 }
+
 export function isEmptyString(v: any): v is "" {
     return v === ""
 }

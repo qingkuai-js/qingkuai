@@ -636,7 +636,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         extend(names)
         names.forEach(name => {
-            if (compilerFuncs.has(name)) {
+            if (compilerFuncs.has(name) || name === "props") {
                 RegisterExsitingIdentifierName(name, id.loc!)
             }
         })
@@ -706,7 +706,7 @@ export function analyzeScript(source: string) {
 
     walk(parse(source), visitor)
     confirmAliases()
+    getAlias("sts")
     getAlias("init")
     getAlias("QingKuaiComponent")
-    getAlias("setTemplateStructure")
 }

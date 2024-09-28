@@ -7,7 +7,6 @@ import {
     debuggingInfo,
     stringConstants,
     inputDescriptor,
-    resetCompilerState,
     tempStoredImportInfos
 } from "./state"
 import { getAlias } from "./analyzer/alias"
@@ -59,7 +58,7 @@ export function generateInitCallStatement() {
     initItems.forEach(item => {
         itemArr.push(item)
     })
-    itemArr.push("props", "refs")
+    itemArr.push("props")
     return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this)`
 }
 
@@ -74,7 +73,7 @@ export function generateCompileResult(
     let mappings = ""
     let debuggingStatementArr: string[] = []
     const isTS = inputDescriptor.script.isTS
-    const setTemplateStructureFuncName = getAlias("setTemplateStructure")
+    const setTemplateStructureFuncName = getAlias("sts")
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
     sourceMapInfo.columnOffsetOfFirstTemplateLine += setTemplateStructureFuncName.length + 2
 
@@ -130,5 +129,5 @@ export function generateCompileResult(
         `(${templateTransformedRet})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 
-    return resetCompilerState(), { code, mappings, isTS }
+    return { code, mappings, isTS }
 }

@@ -32,6 +32,8 @@ export const fullRuntimeItems = new Set([
     "constDestructuringReact"
 ])
 
+export const fullInitItems = new Set(["sts", "props"])
+
 export const compilerFuncs = new Set(["rea", "stc", "der"])
 
 export const specialTags = new Set(["!", "script", "style"])
@@ -39,7 +41,5 @@ export const specialTags = new Set(["!", "script", "style"])
 export const couldUseRefTags = new Set(["input", "select", "textarea"])
 
 export const watchRelatedFuncs = new Set(["watch", "preWatch", "syncWatch"])
-
-export const fullInitItems = new Set(["setTemplateStructure", "props", "refs"])
 
 export const mustPassValueDirectives = new Set(["if", "elif", "for", "await", "for", "key"])
