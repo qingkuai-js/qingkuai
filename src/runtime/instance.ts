@@ -1,10 +1,10 @@
 import type {
-    GeneralFunc,
     ComponentStructure,
     QingKuaiProperties,
     TemplateStuOrModuleFunc,
     QingKuaiComponentConstructonParam
 } from "./types"
+import { GeneralFunc } from "../util/types"
 
 import { nil, noop } from "./constants"
 import { arrayFill, len, runAll } from "../util/shared/sundry"

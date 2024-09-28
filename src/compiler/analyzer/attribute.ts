@@ -8,6 +8,7 @@ import type {
 } from "../types"
 import type { EsPattern } from "../estree/types"
 import type { VariableDeclaration } from "@babel/types"
+import type { FixedArray, StartBracket } from "../../util/types"
 
 import {
     InvalidEventFlag,
@@ -20,26 +21,30 @@ import {
     getIdentifiersFromPatternWithPath
 } from "../../util/compiler/estree"
 import {
+    InvalidRefAttr,
+    InvalidSlotNameAttribute,
     InvalidSlotAttribute,
     CouldNotPassRefValue,
     SlotAttributeIsEmpty,
+    SlotNameAttributeIsEmpty,
     DirectivesCantCoexist,
     MissingStartDirective,
     DuplicateAttributeKey,
-    InvalidSlotNameAttribute,
-    SlotNameAttributeIsEmpty,
-    NotAllowedRefAttrForNormalTag,
-    UseKeyDirectiveWithoutForDirective,
-    CantAcceptRefAttrWithSpecificDynamicAttr
+    RefuseReferenceAttribute,
+    NoForDirectiveCtxNameSpeciffied,
+    NoValueForRequiredValueAttribute,
+    UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
-import { couldUseRefTags } from "../constants"
 import { compilerOptions } from "../configuration"
-import { stringify } from "../../util/compiler/state"
+import { DestructuringContextRE } from "../regular"
 import { isString, isUndefined } from "../../util/shared/assert"
+import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
+import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { kebab2Camel, findOutOfSC, checkIdentifierName } from "../../util/compiler/sundry"
+import { kebab2Camel, checkIdentifierName } from "../../util/compiler/sundry"
+import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 
 export function analyzeAttribute(
     tag: string,
@@ -72,12 +77,17 @@ export function analyzeAttribute(
         const { key, value } = attr
         const [rk, rv] = [key.raw, value.raw]
 
+        const keyEndIndex = key.loc.end.index
+        const keyStartIndex = key.loc.start.index
+        const valueEndIndex = value.loc.end.index
+        const valueStartIndex = value.loc.start.index
+
         const trimedValue = rv.trim()
         const isRef = rk.startsWith("&")
         const isEvent = rk.startsWith("@")
         const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
-        const valueStartIndex = attr.value.loc.start.index
+        const valuePreSpaceLen = /\s*/.exec(rv)![0].length
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
 
         // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
@@ -105,19 +115,19 @@ export function analyzeAttribute(
 
         // slot元素的name属性不能为空也不能是动态属性或引用属性
         if (isSlot && pureKey === "name") {
-            if ((slotName = value.raw) === '""') {
-                SlotNameAttributeIsEmpty()
+            if (!(slotName = value.raw)) {
+                SlotNameAttributeIsEmpty(key.loc)
             } else if (isDynamic || isRef) {
-                InvalidSlotNameAttribute(isDynamic ? "!" : "&")
+                InvalidSlotNameAttribute(isDynamic ? "!" : "&", key.loc)
             }
         }
 
         // 如果父元素是组件，那么当前元素的slot属性不能为空也不能是动态属性或引用属性
         if (parentIsComponent && pureKey === "slot") {
             if ((slot = value.raw) === '""') {
-                SlotAttributeIsEmpty()
+                SlotAttributeIsEmpty(key.loc)
             } else if (isDynamic || isRef) {
-                InvalidSlotAttribute(isDynamic ? "!" : "&")
+                InvalidSlotAttribute(isDynamic ? "!" : "&", key.loc)
             }
         }
 
@@ -142,7 +152,7 @@ export function analyzeAttribute(
 
                 // 只有couldUseRefTags中的普通标签才能使用引用属性
                 if (!couldUseRefTags.has(tag)) {
-                    CouldNotPassRefValue(pureKey, tag)
+                    CouldNotPassRefValue(pureKey, tag, attr.loc)
                 }
 
                 // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
@@ -153,7 +163,7 @@ export function analyzeAttribute(
                         return attr.key.raw.endsWith("type")
                     })
                     if (typeAttr?.key.raw.startsWith("!")) {
-                        CantAcceptRefAttrWithSpecificDynamicAttr("input", "type")
+                        RefuseReferenceAttribute("input", "type", attr.loc)
                     }
 
                     const typeValueRaw = typeAttr?.value.raw
@@ -172,14 +182,14 @@ export function analyzeAttribute(
                         return attr.key.raw.endsWith("multiple")
                     })
                     if (multipleAttr?.key.raw.startsWith("!")) {
-                        CantAcceptRefAttrWithSpecificDynamicAttr("select", "multiple")
+                        RefuseReferenceAttribute("select", "multiple", attr.loc)
                     }
                     attrsForErr = ["value"]
                     needSetter = !multipleAttr
                     attrIsNotAllowed = pureKey !== "value"
                 }
                 if (attrIsNotAllowed) {
-                    NotAllowedRefAttrForNormalTag(tagForErr, attrsForErr, pureKey)
+                    InvalidRefAttr(tagForErr, attrsForErr, pureKey)
                 }
 
                 // select的value属性（非引用）时setter为null
@@ -211,33 +221,61 @@ export function analyzeAttribute(
                     context.count = preContextCount + 2
                     forModuleFuncIndex = directiveStu.length
 
-                    // 处理上下文
+                    // 处理for指令上下文绑定
                     if (hasContextIdentifier) {
-                        let item: string, index: string
-                        const itemWithDestructuring = /^[{\[]/.test(contextStr)
-                        const indexWithDestructuring = /[}\]]$/.test(contextStr)
+                        let indexPart = ""
+                        let itemPart: string
+                        let commaFind: FixedArray<number, 2>
+                        let errSourceIndex = valueStartIndex
 
-                        if (!itemWithDestructuring && !indexWithDestructuring) {
-                            ;[item, index] = contextStr.split(",").map(s => s.trim())
+                        // 截取item部分的pattern，并找到commaFind（它是findOutOfSC的返回值，它是一个包含两个
+                        // 数字的数组，这两个数字分别代表：逗号所在的索引，匹配字符的长度（逗号及前后空白字符的））
+                        if (!DestructuringContextRE.test(contextStr)) {
+                            const itemPartEndIndex = findOutOfSC(contextStr, /$|[,\s]/)
+                            commaFind = findOutOfSC(contextStr, /\s*,\s*/, itemPartEndIndex)
+                            itemPart = contextStr.slice(0, itemPartEndIndex)
                         } else {
-                            item = findForItemDestructuringStr(contextStr)
-                            index = contextStr.slice(item.length).replace(/ *, */, "")
+                            const startBracket = contextStr[0] as StartBracket
+                            const endBracketIndex = findEndCurlyBracket(contextStr, 1, startBracket)
+                            commaFind = findOutOfSC(contextStr, /\s*,\s*/, endBracketIndex + 1)
+                            itemPart = contextStr.slice(0, endBracketIndex + 1)
                         }
 
-                        if (!indexWithDestructuring) {
-                            checkIdentifierName(index)
-                            extendContext(context, index, preContextCount)
-                        } else {
-                            recordAliasIdentifiers(index, context, aliasArgs, 0)
+                        // 如果存在逗号时，检查item或index部分的名称是否未指定
+                        const [commaIndex, matchedLen] = commaFind
+                        if (commaIndex !== -1) {
+                            indexPart = contextStr.slice(commaIndex + matchedLen)
+                            if (!itemPart || !indexPart) {
+                                if (!indexPart) {
+                                    errSourceIndex += valuePreSpaceLen + commaIndex + 1
+                                }
+                                NoForDirectiveCtxNameSpeciffied(
+                                    getLocByIndex(errSourceIndex),
+                                    itemPart ? "index" : "item"
+                                )
+                            }
                         }
-                        if (!itemWithDestructuring) {
-                            checkIdentifierName(item)
-                            extendContext(context, item, preContextCount + 1)
+
+                        // 将item及index产生的上下文标识符设置到context中（通过extendContext）
+                        if (!DestructuringContextRE.test(indexPart)) {
+                            if (indexPart) {
+                                checkIdentifierName(indexPart)
+                                extendContext(context, indexPart, preContextCount)
+                            }
                         } else {
-                            recordAliasIdentifiers(item, context, aliasArgs, 1)
+                            recordAliasIdentifiers(indexPart, context, aliasArgs, 0)
+                        }
+                        if (!DestructuringContextRE.test(itemPart)) {
+                            if (itemPart) {
+                                checkIdentifierName(itemPart)
+                                extendContext(context, itemPart, preContextCount + 1)
+                            }
+                        } else {
+                            recordAliasIdentifiers(itemPart, context, aliasArgs, 1)
                         }
                     }
 
+                    // 记录for指令结构（forModule方法调用结构，transformTemplate中使用）
                     directiveStu.push([getAlias("forModule"), transformedForBaseValue])
                     break
 
@@ -438,6 +476,10 @@ export function filterDuplicateAttr(
                 } else {
                     DirectivesCantCoexist([awiatRelatedDirectivesCoexistState, rk])
                 }
+            }
+            // 检查必须传递属性值的属性是否有值
+            if (mustPassValueDirectives.has(pureKey) && !value.raw) {
+                NoValueForRequiredValueAttribute(key.loc, rk)
             }
         }
 

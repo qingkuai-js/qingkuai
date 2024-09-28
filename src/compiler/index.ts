@@ -3,15 +3,15 @@ import {
     generateImportStatements,
     generateInitCallStatement
 } from "./codegen"
-import { inputDescriptor } from "./state"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
 import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
+import { inputDescriptor, resetCompilerState } from "./state"
 
 export function compile(source: string, componentName: string) {
-    const templateNodes = parseTemplate(source)
+    const templateNodes = (resetCompilerState(), parseTemplate(source))
     const scriptSource = inputDescriptor.script.code
     analyzeScript(scriptSource)
 
@@ -30,3 +30,5 @@ export function compile(source: string, componentName: string) {
         templateTransformedRet
     )
 }
+
+export { isQimgKuaiCompileError } from "./message/error"

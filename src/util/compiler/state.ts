@@ -1,4 +1,4 @@
-import type { ASTPosition } from "../../compiler/types"
+import type { ASTLocation, ASTPosition } from "../../compiler/types"
 
 import {
     debuggingInfo,
@@ -63,6 +63,15 @@ export function stringify(v: any) {
         })
         stringConstantsSourceMap.set(value, s)
         return value
+    }
+}
+
+// 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
+export function getLocByIndex(start: number, end?: number): ASTLocation {
+    const { positions } = inputDescriptor
+    return {
+        start: positions[start],
+        end: positions[end || start]
     }
 }
 

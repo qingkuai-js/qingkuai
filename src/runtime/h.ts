@@ -1,20 +1,19 @@
-import type { AnyObject } from "../util/types"
 import type {
+    Directive,
     KeyedInfo,
     UpdateFunc,
-    Directive,
-    GeneralFunc,
     PartialNode,
-    RenderStructure,
     RenderContext,
+    EventStructure,
+    RenderStructure,
     ValueOrValueArr,
     DestructionStruct,
     QingKuaiNodeStruct,
-    EventStructure,
     ComponentStructure,
     TemplateStuOrModuleFunc,
     QingKuaiComponentConstructonParam
 } from "./types"
+import type { AnyObject, GeneralFunc } from "../util/types"
 
 import {
     createComponent,
@@ -225,7 +224,7 @@ export const h = withCleanUsedEffectList(function (
                 // 获取slot从子组件传递的参数
                 const updateSlotContext = () => {
                     for (let i = 0; i < attrsLen; i += 2) {
-                        slotArgs[attrs![i]] = invokeGetter(attrs![i + 1])
+                        slotArgs[attrs![i]] = getValue(attrs![i + 1])
                     }
                 }
 
@@ -237,7 +236,7 @@ export const h = withCleanUsedEffectList(function (
                 }
                 updateSlotContext()
 
-                // 添加更slot参数上下文的副作用
+                // 添加修改slot参数的副作用
                 const effectList = values(usedEffectList)
                 const md = mockDirective([[slotArgs]], effectList)
                 const slotContext = combineContext(md, context, 0)

@@ -1,4 +1,5 @@
-import type { EffectListItem, GeneralFunc, Setter } from "../types"
+import { GeneralFunc } from "../../util/types"
+import type { EffectListItem, Setter } from "../types"
 
 import { internalSyncEffect } from "./effect"
 import { IsProxy, reflect, undef } from "../constants"

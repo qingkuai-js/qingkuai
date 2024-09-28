@@ -1,5 +1,8 @@
 import type { EventListenerFlag, EventWrapperFlag } from "./shared/flag"
 
+export type StartBracket = "{" | "[" | "("
+
+export type GeneralFunc = (...args: any) => any
 export type ObjectKeys = string | number | symbol
 export type AnyObject<V = any> = Record<ObjectKeys, V>
 

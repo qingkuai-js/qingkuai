@@ -6,7 +6,7 @@ import { templateTag } from "../regular"
 import { getAlias } from "../analyzer/alias"
 import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/state"
-import { findOutOfSC } from "../../util/compiler/sundry"
+import { findOutOfSC } from "../../util/compiler/strings"
 import { isArray, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
 

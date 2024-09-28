@@ -1,10 +1,7 @@
 export const templateTag = /^"?template"?$/
-export const templateAttributeRE = /^(\s*)([^\s=>]+)/
-export const templateEndTagRE = /^<\/([^\s>]+)[^>]*>/
 export const templateCloseCharsRE = /^(?:\s*)((\/)?>)/
-export const templateInvalidAttrNameRE = /^['"=/<\{\}]/
-export const templateStartTagRE = /^<([a-zA-z][a-zA-Z\d\-_.:]*)/
-export const templateNormalAttributeValueRE = /^(\s*(['"]))([\s\S]*?)\2/
+export const templateAttributeValueRE = /^(['"])([\s\S]*?)\1/
+export const templateAttributeNameRE = /^\s*([^\s='"\{\}>/]+)([^\s=>]+)?/
 export const templateTagStructureRE = /<(?:\/?[a-zA-z][a-zA-Z\d\-_.:]*|!--)/
 export const templateConditionalCommentRE = /^(?:\[if.*\[endif]|\[if.*<!|<!\[endif])$/
 
@@ -15,6 +12,8 @@ export const reservedIndentifierName = /^(?:prop|ref)s$/
 export const bannedIdentifierFormat = /^_(?:[sd]\d+|dn)_$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
+
+export const DestructuringContextRE = /^[\{\[]/
 
 export const expressionReplaceWithSpaceRE = /(?:\s|\r?\n)+/y
 

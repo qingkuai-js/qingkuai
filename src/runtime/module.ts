@@ -43,7 +43,7 @@ import { isArray, isFunction, isNull, isNumber, isString } from "../util/shared/
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
-        const contextValues: any[] = []
+        const contextValues: any[][] = [[]]
 
         const updateContext = () => {
             for (let i = 0; i < len(rules); i += 2) {
@@ -53,7 +53,7 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
                 if (i !== 0) {
                     contextValues[0].push(...fn(argv))
                 } else {
-                    replaceEachItems(contextValues, [fn(argv)])
+                    replaceEachItems(contextValues[0], fn(argv))
                 }
             }
         }

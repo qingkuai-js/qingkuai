@@ -1,13 +1,13 @@
 import type {
     Getter,
     Opportunity,
-    GeneralFunc,
     WatchStruct,
     EffectStruct,
     EffectListItem,
     RuntimeWatchFunc,
     WatchEffectStruct
 } from "../types"
+import { GeneralFunc } from "../../util/types"
 
 import { isNull } from "../../util/shared/assert"
 import { opportunities, nil } from "../constants"

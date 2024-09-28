@@ -5,7 +5,7 @@ import type {
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
-import type { GeneralFunc } from "../../runtime/types"
+import type { GeneralFunc } from "../../util/types"
 
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"

@@ -1,7 +1,8 @@
 import { inputDescriptor } from "../state"
 import { compilerOptions } from "../configuration"
-import { findOutOfSC, normalStringify } from "../../util/compiler/sundry"
+import { normalStringify } from "../../util/compiler/sundry"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
+import { findOutOfSC } from "../../util/compiler/strings"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
