@@ -66,6 +66,11 @@ export function stringify(v: any) {
     }
 }
 
+// 通过源码索引生成一个ASTPosition结构
+export function getPosByIndex(index: number): ASTPosition {
+    return inputDescriptor.positions[index]
+}
+
 // 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
 export function getLocByIndex(start: number, end?: number): ASTLocation {
     const { positions } = inputDescriptor

@@ -107,7 +107,6 @@ export function content2script(content: string, startSourceIndex: number) {
     } else {
         transformedStr = `${emptyStrSource} + ${transformedArr.join(" + ")}`
     }
-    console.log(transformedStr)
 
     return {
         positionMap,

@@ -118,22 +118,22 @@ export type TemplateContext = {
     count: number
 }
 
-export interface SlotAttributeStu {
-    name: string
+export interface ValueWithLocation {
+    value: string
     loc: ASTLocation
 }
 export interface AttributeAnalysisRet {
     directiveStu: string[][]
     eventStu: TransformInterpolationRet[]
     attributeStu: TransformInterpolationRet[]
-    slotName?: string
     insertNullNum?: number
-    slot: SlotAttributeStu
     createTemplate?: boolean
     continueRE?: RegExp | null
     awaitContextStartIndex?: number
     continueArg?: string | undefined
-    continuedDirective?: string | undefined
+    slotOfAnyTag: ValueWithLocation | null
+    nameOfSlotTag?: ValueWithLocation | null
+    shouldContinueDirective?: string | undefined
 }
 
 export interface TransformInterpolationOptionalParam {

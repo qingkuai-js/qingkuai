@@ -9,11 +9,11 @@ import { getAlias } from "./alias"
 import { content2script } from "../parser/content"
 import { stringConstantsSourceMap } from "../state"
 import { lastElem } from "../../util/shared/sundry"
+import { DuplicateSlotAttr } from "../message/error"
 import { stringify } from "../../util/compiler/state"
-import { analyzeAttribute, newSlotStu } from "./attribute"
 import { tagIsComponentRE, templateTag } from "../regular"
 import { isNull, isUndefined } from "../../util/shared/assert"
-import { DuplicateSlotAttributeValue } from "../message/error"
+import { analyzeAttribute, newValueWithLocation } from "./attribute"
 import { transformInterpolation } from "../transformer/interpolation"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
 
@@ -32,16 +32,18 @@ export function analyzeTemplate(
         let { tag, content, attributes, children } = nodes[i]
         let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
-        const isSlot = tag === "slot"
-        const isComponent = tagIsComponentRE.test(tag)
         const currentRet: TemplateAnalysisRet = {
             aar: null,
             tag: "",
             content: "",
             children: []
         }
-        result.push(currentRet)
+        const isSlot = tag === "slot"
+        const isComponent = tagIsComponentRE.test(tag)
+
+        // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
         shouldHoistContent &&= !isComponent && !isSlot
+        result.push(currentRet)
 
         // kebab组件名转为驼峰命名
         if (!isComponent) {
@@ -66,7 +68,7 @@ export function analyzeTemplate(
                     eventStu: [],
                     directiveStu: [],
                     attributeStu: [],
-                    slot: newSlotStu()
+                    slotOfAnyTag: newValueWithLocation()
                 }
             }
         } else {
@@ -74,7 +76,7 @@ export function analyzeTemplate(
             let curContinuedDirective: string | undefined
             const contextBeforeAnalyzeAttribute = cloneContext(currentContext)
             const aar = analyzeAttribute(
-                tag,
+                nodes[i],
                 isComponent,
                 parentIsComponent,
                 attributes,
@@ -84,10 +86,10 @@ export function analyzeTemplate(
             )
             currentRet.aar = aar
             continueRE = aar.continueRE
-            curContinuedDirective = aar.continuedDirective
+            curContinuedDirective = aar.shouldContinueDirective
 
-            if (parentIsComponent && !aar.slot) {
-                aar.slot = newSlotStu()
+            if (parentIsComponent && !aar.slotOfAnyTag) {
+                aar.slotOfAnyTag = newValueWithLocation()
             }
 
             if ((!isNull(aar.continueRE) || aar.insertNullNum) && aar.createTemplate) {
@@ -97,9 +99,9 @@ export function analyzeTemplate(
                     tag: "template",
                     content: "",
                     aar: {
-                        slot: aar.slot,
                         eventStu: [],
                         attributeStu: [],
+                        slotOfAnyTag: aar.slotOfAnyTag,
                         directiveStu: aar.directiveStu.slice(0, 1)
                     },
                     children: [
@@ -110,8 +112,8 @@ export function analyzeTemplate(
                     ]
                 }
                 result.pop()
-                aar.slot = newSlotStu("")
                 result.push(mockTemplateRet)
+                aar.slotOfAnyTag = newValueWithLocation()
                 aar.directiveStu = aar.directiveStu.slice(1)
 
                 if (aar.insertNullNum) {
@@ -119,6 +121,10 @@ export function analyzeTemplate(
                         mockTemplateRet.children.unshift(awaitNullChildTempl)
                     }
                 }
+
+                // 如果后一个兄弟节点节点是当前节点的后续指令（elif/else - if、then/catch - await)，
+                // 优先处理后一个兄弟节点，如果按照正常顺序会先递归处理当前节点的所有子节点，但如果是连接
+                // 指令就需要先将当前指令的所有后续指令都处理完，再递归处理当前节点的子节点
                 while (shouldContinue(nodes[i + 1], continueRE)) {
                     const cotinueContext = cloneContext(contextBeforeAnalyzeAttribute)
                     const [childTemplateAnalysisRet] = analyzeTemplate(
@@ -144,12 +150,13 @@ export function analyzeTemplate(
                         tar: childTemplateAnalysisRet
                     })
                     continueRE = childTemplateAnalysisRet.aar?.continueRE
-                    curContinuedDirective = childTemplateAnalysisRet.aar?.continuedDirective
+                    curContinuedDirective = childTemplateAnalysisRet.aar?.shouldContinueDirective
                 }
             }
         }
 
-        // 分析文本内容
+        // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有一个文本
+        // 子节点，那这个文本子节点会被提升作为当前节点的textContent部分
         if (tag !== "pre") {
             if (!shouldHoistContent) {
                 trimedContentStartIndex = nodes[i].range[0]
@@ -162,10 +169,10 @@ export function analyzeTemplate(
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount
         }
-        if (currentRet.aar?.slotName) {
-            currentRet.content = currentRet.aar.slotName
-        } else if (tag === "!") {
+        if (tag === "!") {
             currentRet.content = normalStringify(content)
+        } else if (currentRet.aar?.nameOfSlotTag) {
+            currentRet.content = currentRet.aar.nameOfSlotTag.value
         } else {
             const parseRet = content2script(content, trimedContentStartIndex)
             const teOptionalParam = { positionMap: parseRet.positionMap }
@@ -178,19 +185,17 @@ export function analyzeTemplate(
             )
         }
 
-        // 分析子节点
+        // 递归处理当前节点的所有子节点
         if (!shouldHoistContent) {
             const existingSlotValues = new Set<string>()
             analyzeTemplate(children, isComponent, currentContext).forEach(childRet => {
-                const slot = childRet.aar?.slot
+                const slot = childRet.aar?.slotOfAnyTag
                 if (slot) {
-                    if (existingSlotValues.has(slot.name)) {
-                        DuplicateSlotAttributeValue(
-                            stringConstantsSourceMap.get(slot.name)!,
-                            slot.loc
-                        )
+                    if (existingSlotValues.has(slot.value)) {
+                        const restoredSlotName = stringConstantsSourceMap.get(slot.value)!
+                        DuplicateSlotAttr(JSON.parse(restoredSlotName), tag, slot.loc)
                     }
-                    existingSlotValues.add(slot.name)
+                    existingSlotValues.add(slot.value)
                 }
                 currentRet.children.push({
                     tar: childRet,
@@ -202,7 +207,9 @@ export function analyzeTemplate(
     return result
 }
 
-// 拷贝一份context，得到的新context对象的修改将会影响源对象
+// 拷贝一份context，得到的新context中的map属性的每一个标识符转换项与原context中
+// 为同一个对象，修改to/pto会影响原context，但这个新context会拥有自己独立的计数器，
+// 也就是说拷贝后的context和原context添加新标识符或删除旧标识符不会影响到另一个
 function cloneContext(context: TemplateContext): TemplateContext {
     return {
         count: context.count,

@@ -34,8 +34,9 @@ export function transformTemplate(
         if (item.content) {
             item.content = confirmStringConstants(item.content)
         }
-        if (item.aar?.slot) {
-            item.aar.slot.name = confirmStringConstants(item.aar.slot.name)
+        if (item.aar?.slotOfAnyTag) {
+            const sav = item.aar.slotOfAnyTag.value
+            item.aar.slotOfAnyTag.value = confirmStringConstants(sav)
         }
         for (let i = 0; true; i++) {
             const estu = item.aar?.eventStu
@@ -300,13 +301,13 @@ export function transformTemplate(
     }
 
     const retWrap = useLineBreak ? "\n" : ""
-    const slotName = analysisRet[0]?.aar?.slot.name
+    const sav = analysisRet[0]?.aar?.slotOfAnyTag?.value
     const retWrapByParent = parentUseLineBreak ? "\n" : ""
     const retIndentStr = useLineBreak ? indent(indentN) : ""
     const retNextIndentStr = useLineBreak ? indent(indentN + 1) : ""
     const retIndentStrByParent = parentUseLineBreak ? indent(indentN) : ""
-    const slotStr = slotName ? `${retWrap}${retNextIndentStr}${slotName}, ` : ""
-    return `[${slotStr}${retWrap}${transformedStr}${retWrap}${retIndentStr}]${
+    const slotAttrValueStr = sav ? `${retWrap}${retNextIndentStr}${sav}, ` : ""
+    return `[${slotAttrValueStr}${retWrap}${transformedStr}${retWrap}${retIndentStr}]${
         notOverAfterEndBracket ? `, ${retWrapByParent}${retIndentStrByParent}` : ""
     }`
 }
@@ -381,18 +382,19 @@ function shouldUseLineBreak(
             continue
         }
 
-        const { tag, content, aar, children } = item
-        const tagLen = tag.length
-        const hasChild = children.length > 0
-        const contentLen = getLengthOfTER(content)
+        const { aar } = item
+        const tagLen = item.tag.length
+        const hasChild = item.children.length > 0
+        const contentLen = getLengthOfTER(item.content)
         const withFunc = aar && aar.directiveStu.length > 0
+        const slotAttrValueLen = aar?.slotOfAnyTag?.value.length || 0
+        const keys = ["attributeStu", "eventStu", "directiveStu"] as const
         if (aar) {
-            const keys = ["attributeStu", "eventStu", "directiveStu"] as const
             if (checkFuncStu && withFunc) {
                 return true
             }
-            if (aar.slot) {
-                state.count += aar.slot.name.length + 3
+            if (aar.slotOfAnyTag) {
+                state.count += slotAttrValueLen + 3
             }
             for (const key of keys) {
                 for (let stu of aar[key]) {
@@ -417,7 +419,7 @@ function shouldUseLineBreak(
             if (!aar) {
                 state.count += 6
             }
-            for (const child of children) {
+            for (const child of item.children) {
                 if (shouldUseLineBreak(child.tar, checkFuncStu, state)) {
                     return true
                 }

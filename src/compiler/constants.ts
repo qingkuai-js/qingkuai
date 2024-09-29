@@ -42,4 +42,4 @@ export const couldUseRefTags = new Set(["input", "select", "textarea"])
 
 export const watchRelatedFuncs = new Set(["watch", "preWatch", "syncWatch"])
 
-export const mustPassValueDirectives = new Set(["if", "elif", "for", "await", "for", "key"])
+export const mustPassValueDirectives = new Set(["if", "elif", "for", "await", "for", "key", "slot"])

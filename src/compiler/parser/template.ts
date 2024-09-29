@@ -29,7 +29,7 @@ import {
 } from "../message/error"
 import { isNull } from "../../util/shared/assert"
 import { compilerOptions } from "../configuration"
-import { getLocByIndex } from "../../util/compiler/state"
+import { getLocByIndex, getPosByIndex } from "../../util/compiler/state"
 import { inputDescriptor, sourceMapInfo } from "../state"
 import { specialTags, selfClosingTags } from "../constants"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
@@ -42,7 +42,7 @@ export function parseTemplate(source: string) {
 
     const astList: TemplateNode[] = []
     const sourceLength = source.length
-    const positions = getPositionOfEachChar(source)
+    const positions = (inputDescriptor.positions = getPositionOfEachChar(source))
 
     // 收缩source并修改index，并返回下次开始的位置
     // reduce souce and change index
@@ -179,7 +179,7 @@ export function parseTemplate(source: string) {
             attrNameStartIndex = index + attrFull.length - attrName.length
             reduceSource(attrFull.length), (attrNameEndIndex = index)
 
-            // 插值属性长度为1时代表没有指定属性名称
+            // 插值属性长度为1时表示没有指定属性名称
             const isInterpolationAttr = /^[!@#&]/.test(attrName)
             if (isInterpolationAttr && attrName.length === 1) {
                 const errLoc = getLocByIndex(attrNameStartIndex)
@@ -187,19 +187,21 @@ export function parseTemplate(source: string) {
             }
 
             // check whether attribute value exists
-            const equalTokenIndex = source.search(/^\s*=/)
-            if (equalTokenIndex !== -1) {
-                reduceSource(equalTokenIndex + 1)
+            const equalTokenMatched = /^\s*=/.exec(source)
+            if (!isNull(equalTokenMatched)) {
+                const equalTokenMatchedIndex = equalTokenMatched.index
+                const equalTokenMatchedLen = equalTokenMatched[0].length
+                reduceSource(equalTokenMatchedIndex + equalTokenMatchedLen)
 
                 if (!isInterpolationAttr) {
                     // 普通属性值必须被引号包裹
-                    const loc = getLocByIndex(reduceSpaces().index)
+                    const attrValueStartLoc = getLocByIndex(reduceSpaces().index)
                     if (!/^['"]/.test(source)) {
-                        AttributeValueIsNotQuoted(loc)
+                        AttributeValueIsNotQuoted(attrValueStartLoc)
                     } else {
                         const valueMatched = templateAttributeValueRE.exec(source)
                         if (isNull(valueMatched)) {
-                            UnclosedNormalAttributeValue(loc)
+                            UnclosedNormalAttributeValue(attrValueStartLoc)
                         } else {
                             attrValue = valueMatched[2]
                             attrValueStartIndex = index + 1
@@ -208,16 +210,19 @@ export function parseTemplate(source: string) {
                     }
                 } else {
                     // 插值属性值必须被大括号包裹
-                    const loc = getLocByIndex(reduceSpaces().index)
+                    const attrValueStartLoc = getLocByIndex(reduceSpaces().index)
                     if (!source.startsWith("{")) {
-                        NoBracketForAttributeInterpolation(loc)
+                        NoBracketForAttributeInterpolation(attrValueStartLoc)
                     }
 
                     const valueEndIndex = findEndCurlyBracket(source, 1)
                     if (valueEndIndex === -1) {
-                        UnclosedInterpolationExpression(loc)
+                        UnclosedInterpolationExpression(attrValueStartLoc)
                     } else if (1 === valueEndIndex) {
-                        EmptyInterpolationExpression(loc)
+                        EmptyInterpolationExpression({
+                            start: attrValueStartLoc.start,
+                            end: getPosByIndex(index + valueEndIndex)
+                        })
                     } else {
                         attrValueStartIndex = index + 1
                         attrValueEndIndex = index + valueEndIndex
