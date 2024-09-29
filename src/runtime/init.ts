@@ -8,8 +8,8 @@ import { AssignmentToProps } from "./message/warn"
 export function init(instance: QingKuaiComponent) {
     const properties = instance.__
     return {
-        // sts means Set Template Structure
-        sts(ts: TemplateStuOrModuleFunc[]) {
+        // sts: Set Component Template Structure
+        scts(ts: TemplateStuOrModuleFunc[]) {
             properties.ts = ts
         },
         slots: properties.slots,

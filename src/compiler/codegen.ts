@@ -73,7 +73,7 @@ export function generateCompileResult(
     let mappings = ""
     let debuggingStatementArr: string[] = []
     const isTS = inputDescriptor.script.isTS
-    const setTemplateStructureFuncName = getAlias("sts")
+    const setTemplateStructureFuncName = getAlias("scts")
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
     sourceMapInfo.columnOffsetOfFirstTemplateLine += setTemplateStructureFuncName.length + 2
 

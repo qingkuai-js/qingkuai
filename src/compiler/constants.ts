@@ -32,7 +32,7 @@ export const fullRuntimeItems = new Set([
     "constDestructuringReact"
 ])
 
-export const fullInitItems = new Set(["sts", "props"])
+export const fullInitItems = new Set(["scts", "props"])
 
 export const compilerFuncs = new Set(["rea", "stc", "der"])
 

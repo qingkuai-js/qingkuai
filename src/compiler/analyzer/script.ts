@@ -706,7 +706,7 @@ export function analyzeScript(source: string) {
 
     walk(parse(source), visitor)
     confirmAliases()
-    getAlias("sts")
+    getAlias("scts")
     getAlias("init")
     getAlias("QingKuaiComponent")
 }

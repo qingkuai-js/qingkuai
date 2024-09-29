@@ -251,6 +251,9 @@ export function transformInterpolation(
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
     // 在调用transformTemplate时会根据这个mappings生成正确的sourcemap的mappings
     if (shouldGenerateSourcemap && useGetter) {
+        sourcemapIndexes.sort((a, b) => {
+            return a - b
+        })
         sourcemapIndexes.forEach(index => {
             const sourceIndex = noPositionMap
                 ? index + startSourceIndex
