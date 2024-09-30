@@ -17,7 +17,10 @@ export function compile(source: string, componentName: string) {
 
     const templateAnalysisRet = analyzeTemplate(templateNodes)
     const scriptTranformedRet = transformScript(scriptSource, 1)
-    const templateTransformedRet = transformTemplate(templateAnalysisRet, 0, 2)
+    const templateTransformedRet = transformTemplate(
+        templateAnalysisRet,
+        inputDescriptor.script.lineCount
+    )
 
     const importStatements = generateImportStatements()
     const initCallStatement = generateInitCallStatement()

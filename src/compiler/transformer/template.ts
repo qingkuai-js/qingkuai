@@ -20,7 +20,7 @@ const transformTemplateFlag = {
 export function transformTemplate(
     analysisRet: (TemplateAnalysisRet | null)[],
     startLine: number,
-    indentN = 0,
+    indentN = 2,
     flag = 1
 ) {
     // 确定字符串字面量变量是保留还是还原
