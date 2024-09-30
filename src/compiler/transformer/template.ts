@@ -170,15 +170,15 @@ export function transformTemplate(
         if (withDirectiveStu) {
             const funcCount = item.aar!.directiveStu.length
             const funcArr = item.aar!.directiveStu.reduce((pre, cur, funcIndex) => {
-                const argArr: string[] = []
-                const isAliasModuleFunc = shouldArgUseBracket(cur[0])
+                const argArr: TransformInterpolationRet[] = []
+                const isAliasModuleFunc = shouldArgUseBracket(cur[0] as string)
                 if (isAliasModuleFunc) {
                     argArr.push(`${indent(n++ + 1)}[`, "\n")
                 }
                 cur.slice(1).forEach((arg, argIndex) => {
                     const isLastArg = argIndex === cur.length - 2
                     const useEndComma = isAliasModuleFunc && isLastArg
-                    argArr.push(`${indent(n + 1)}${arg}${useEndComma ? "" : ","}`, "\n")
+                    argArr.push(`${indent(n + 1)}`, arg, `${useEndComma ? "" : ","}`, "\n")
                 })
                 if (isAliasModuleFunc) {
                     argArr.push(`${indent(n--)}],`, "\n")
@@ -187,7 +187,7 @@ export function transformTemplate(
                     argArr.push(indent(n + 1))
                 }
                 return n++, pre.concat([cur[0], "(", "\n"], argArr)
-            }, [] as string[])
+            }, [])
             if (isFirst && useBracketWrap) {
                 pushTransformedArr(indent(n - funcCount))
             }
@@ -364,7 +364,7 @@ function shouldUseLineBreak(
                     if (!isArray(stu) || stu.length) {
                         if (isArray(stu)) {
                             for (const item of stu) {
-                                state.count += item.length
+                                state.count += getLengthOfTER(item)
                             }
                         } else {
                             state.count += getLengthOfTER(stu)

@@ -124,7 +124,7 @@ export interface ValueWithLocation {
     loc: ASTLocation
 }
 export interface AttributeAnalysisRet {
-    directiveStu: string[][]
+    directiveStu: TransformInterpolationRet[][]
     eventStu: TransformInterpolationRet[]
     attributeStu: TransformInterpolationRet[]
     insertNullNum?: number

@@ -6,7 +6,8 @@ import type {
     AttributeAnalysisRet,
     TransformInterpolationRet,
     FilteredTemplateAttribute,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptionalParam,
+    ASTLocation
 } from "../types"
 import type { EsPattern } from "../estree/types"
 import type { VariableDeclaration } from "@babel/types"
@@ -84,9 +85,9 @@ export function analyzeAttribute(
     const { tag } = node
     const isSlot = tag === "slot"
     const aliasArgs: string[] = []
-    const directiveStu: string[][] = []
     const eventStu: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
+    const directiveStu: TransformInterpolationRet[][] = []
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
 
     // 获取默认的nameOfSlotTag或slotOfAnyTag，value为default，loc为当前节点
@@ -111,9 +112,17 @@ export function analyzeAttribute(
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
         const trimedValueStartSourceIndex = valueStartSourceIndex + /\s*/.exec(rv)![0].length
 
-        // 转换标签指令，此时返回值一定是string，因为传入的startIndex为-1
+        // 转换标签指令，此时transformInterpolation返回值一定是string，因为传入的startIndex为-1
         const transDirective = (exp: string, option?: TransformInterpolationOptionalParam) => {
-            return transformInterpolation(exp, -1, context, "directive", option) as string
+            const te = transformInterpolation(exp, -1, context, "directive", option) as string
+            const { start: startLoc, end: endLoc } = value.loc
+            return {
+                transformedExp: te,
+                mappings: [
+                    [startLoc.index, 0, startLoc.line, startLoc.column],
+                    [endLoc.index, te.length, endLoc.line, endLoc.column]
+                ]
+            } as TransformInterpolationRet
         }
 
         // 转换标签属性值
@@ -336,9 +345,9 @@ export function analyzeAttribute(
                     if (forModuleFuncIndex === -1) {
                         UseKeyDirectiveWithoutForDirective(attr.loc)
                     } else {
-                        const transformedExp = transDirective(rv, { isKeyDirective: true })
+                        const transRet = transDirective(rv, { isKeyDirective: true })
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
-                        directiveStu[forModuleFuncIndex].push(transformedExp)
+                        directiveStu[forModuleFuncIndex].push(transRet)
                     }
                     break
 
@@ -361,12 +370,12 @@ export function analyzeAttribute(
                     if (pureKey === "else") {
                         continueArg = "1"
                     } else {
-                        const transformedExp = transDirective(rv)
+                        const transRet = transDirective(rv)
                         if (pureKey === "elif") {
-                            continueArg = transformedExp
+                            continueArg = (transRet as any).transformedExp
                         } else {
                             createTemplate = true
-                            directiveStu.push([getAlias("ifModule"), transformedExp])
+                            directiveStu.push([getAlias("ifModule"), transRet])
                         }
                         continueRE = /^#(?:elif|else)$/
                     }
@@ -376,8 +385,8 @@ export function analyzeAttribute(
                 case "catch":
                 case "await":
                     if (pureKey === "await") {
-                        const transformedExp = transDirective(rv)
-                        directiveStu.push([getAlias("awaitModule"), transformedExp])
+                        const transRet = transDirective(rv)
+                        directiveStu.push([getAlias("awaitModule"), transRet])
                         continueRE = /^#(?:then|catch)$/
                         createTemplate = true
                         withAwait = true

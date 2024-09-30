@@ -233,5 +233,8 @@ function shouldUseBracketWrap(tag: string, aar: AttributeAnalysisRet) {
         getAlias("forModule", false),
         getAlias("aliasModule", false)
     ])
-    return templateTag.test(tag) && !removeBrackWrapFuncNames.has(lastElem(aar.directiveStu)?.[0])
+    return (
+        templateTag.test(tag) &&
+        !removeBrackWrapFuncNames.has(lastElem(aar.directiveStu)?.[0] as string)
+    )
 }
