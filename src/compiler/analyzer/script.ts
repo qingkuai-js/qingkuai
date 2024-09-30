@@ -649,7 +649,7 @@ function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseP
     const firstArg = node.arguments[0]
     const scriptSource = inputDescriptor.script.code
     const emptyStringReplacement = replacementInfo.map.get("")!
-    const retUseParentheses = scriptSource[firstArg.start || 0] === "{"
+    const retUseParentheses = scriptSource[firstArg?.start || 0] === "{"
     const { namespaceIdentifier, watchIdentifiers } = inputDescriptor.script.runtime
 
     if (node.arguments.length === 0) {

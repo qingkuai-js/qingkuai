@@ -140,7 +140,9 @@ export function analyzeAttribute(
 
         // then/catch和slot指令记录标识符的逻辑一致，提取到这里分别调用即可
         const recordAliasIdentifiers = () => {
-            if (DestructuringContextRE.test(trimedValue)) {
+            if (isEmptyString(trimedValue)) {
+                context.count++
+            } else if (DestructuringContextRE.test(trimedValue)) {
                 recordDestructuringIdentifiers(
                     trimedValue,
                     context,
