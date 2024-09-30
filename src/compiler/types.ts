@@ -13,9 +13,9 @@ export interface ASTLocation {
 
 export interface SourceMapInfo {
     mappings: SourceMapMappings
+    hasScript: boolean
     preaddedLineCount: number
     removedLine: Set<number>
-    generatedScriptLineCount: number
     existingSourceIndex: Set<number>
     tempStoredImportStartLine: number
     columnOffsetOfFirstTemplateLine: number
@@ -63,6 +63,7 @@ export interface InputDescriptor {
     script: {
         code: string
         isTS: boolean
+        lineCount: number
         loc: ASTLocation
         existing: boolean
         runtime: {

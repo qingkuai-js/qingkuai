@@ -44,9 +44,9 @@ export function resetCompilerState() {
 function newSourceMapInfo(): SourceMapInfo {
     return {
         mappings: [],
+        hasScript:false,
         preaddedLineCount: 0,
         removedLine: new Set(),
-        generatedScriptLineCount: 0,
         tempStoredImportStartLine: 0,
         positionShouldNotBeMapped: [],
         existingSourceIndex: new Set(),
@@ -80,6 +80,7 @@ function newInputDescriptor(): InputDescriptor {
         script: {
             code: "",
             isTS: false,
+            lineCount: 0,
             existing: false,
             loc: newASTLocation(),
             generatedOffset: [0, 0],

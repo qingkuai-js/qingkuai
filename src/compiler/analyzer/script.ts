@@ -21,7 +21,7 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    getGeneratedLine,
+    getGeneratedScriptLine,
     getSetterIdentifier,
     markSegmentShouldNotBeMapped
 } from "../../util/compiler/state"
@@ -213,9 +213,9 @@ const visitor: ASTVisitor = {
                 const curInfo = lastElem(tempStoredImportInfos)
                 const { startColumn, mappingLine } = curInfo
                 const { line, column } = node.loc.start
-                const sourceLine = getGeneratedLine(line)
                 const generatedColumn = column - startColumn
-                mappingLine.push([generatedColumn, 0, sourceLine, column])
+                const sourceLine = getGeneratedScriptLine(line)
+                mappingLine.push([generatedColumn, 0, sourceLine - 1, column])
             } else {
                 if (!is(node, "Program")) {
                     recordMappingWithNoOffset(node.loc.start)

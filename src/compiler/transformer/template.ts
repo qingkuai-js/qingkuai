@@ -326,43 +326,6 @@ function vf(flag: number, key: keyof typeof transformTemplateFlag) {
     return (flag & item) === item
 }
 
-// 将attributeStu或eventStu拼接为字符串（包含换行判断）
-function attrOrEventJoin(ters: TransformInterpolationRet[], n: number) {
-    let charCount = 0
-    const tersLen = ters.length
-    if (tersLen === 0) {
-        return getAlias("nil")
-    }
-
-    for (const item of ters) {
-        if (isString(item)) {
-            charCount += item.length
-        } else {
-            charCount += item.transformedExp.length
-        }
-
-        // attribute或event间需要插入换行符
-        if (charCount > 80) {
-            const ns = ters.reduce((pre, cur, index) => {
-                const indentStr = indent(n + 1)
-                const wrap = index === 0 ? "\n" : ""
-                const endComma = index === tersLen - 1 ? "" : ","
-                return pre + wrap + indentStr + cur + endComma + "\n"
-            }, "[")
-            return ns + `${indent(n)}]`
-        }
-    }
-
-    // attribute或event间无需插入换行符
-    const strArr = ters.map(item => {
-        if (isString(item)) {
-            return item
-        }
-        return item.transformedExp
-    })
-    return `[${strArr.join(", ")}]`
-}
-
 // 判断当前模版结构是否需要使用折行（这里只进行粗略判断，避免一行过多内容）
 function shouldUseLineBreak(
     analysisRet: ValueOrValueArr<TemplateAnalysisRet | null>,

@@ -14,6 +14,7 @@ import { offsetSourcemap } from "./sourcemap"
 import { indent } from "../util/compiler/state"
 import { compilerOptions } from "./configuration"
 import { encode } from "@jridgewell/sourcemap-codec"
+import { isEmptyString } from "../util/shared/assert"
 
 // 生成runtime包导入项的import语句
 export function generateImportStatements() {
@@ -74,8 +75,15 @@ export function generateCompileResult(
     let debuggingStatementArr: string[] = []
     const isTS = inputDescriptor.script.isTS
     const setTemplateStructureFuncName = getAlias("scts")
+    const withScriptSourceCode = !isEmptyString(scriptTranformedRet)
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
     sourceMapInfo.columnOffsetOfFirstTemplateLine += setTemplateStructureFuncName.length + 2
+
+    // 如果生成代码中没有script部分，要将最后一行标记为删除
+    if (!(sourceMapInfo.hasScript = withScriptSourceCode)) {
+        const { start: startLoc, end: endLoc } = inputDescriptor.script.loc
+        sourceMapInfo.removedLine.add(endLoc.line - startLoc.line)
+    }
 
     // 将保留的静态字符串字面量组合为变量声明语句
     const stringConstantArr: FixedArray<string, 2>[] = []
@@ -96,7 +104,6 @@ export function generateCompileResult(
 
     const postfix = `\n\n${indent(2)}`
     const withStringConstant = stringConstantArr.length > 0
-    const withScriptSourceCode = scriptTranformedRet !== ""
     const hasDebuggingSetter = debuggingInfo.setters.size > 0
     const stringConstantsPostfix = withStringConstant ? postfix : ""
     const hasNonBeCalledSetter = debuggingInfo.constIdentifiers.size > 0

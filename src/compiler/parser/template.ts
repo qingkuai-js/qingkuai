@@ -27,11 +27,11 @@ import {
     UnclosedInterpolationExpression,
     NoBracketForAttributeInterpolation
 } from "../message/error"
+import { inputDescriptor } from "../state"
 import { isNull } from "../../util/shared/assert"
 import { compilerOptions } from "../configuration"
-import { getLocByIndex, getPosByIndex } from "../../util/compiler/state"
-import { inputDescriptor, sourceMapInfo } from "../state"
 import { specialTags, selfClosingTags } from "../constants"
+import { getLocByIndex, getPosByIndex } from "../../util/compiler/state"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { newASTLocation, getPositionOfEachChar } from "../../util/compiler/sundry"
 
@@ -145,9 +145,7 @@ export function parseTemplate(source: string) {
                 // 以及结束行号和开始行号相减少时导致结构少一行的固定量
                 const startLine = scriptDescriptor.loc.start.line
                 const endLine = scriptDescriptor.loc.end.line
-                if (startLine !== endLine) {
-                    sourceMapInfo.generatedScriptLineCount = endLine - startLine + 4
-                }
+                scriptDescriptor.lineCount = endLine - startLine + 1
             }
 
             // style block

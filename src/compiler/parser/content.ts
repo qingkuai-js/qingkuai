@@ -8,11 +8,12 @@ import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from ".
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
     const isDebug = compilerOptions.debugeMode
+    const transformedStrInitLen = isDebug ? 5 : 1
 
     let index = 0
     let transformedStr: string
     let contentSourceIndex = 0
-    let transformedStrLen = isDebug ? 5 : 1
+    let transformedStrLen = transformedStrInitLen
 
     const positionMap: number[] = []
     const transformedArr: string[] = []
@@ -72,7 +73,7 @@ export function content2script(content: string, startSourceIndex: number) {
                 EmptyInterpolationExpression(
                     getLocByIndex(startBracketSourceIndex, endBracketIndex + 1 + startSourceIndex)
                 )
-            } else {
+            } else if (isDebug) {
                 // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，
                 // 若它在结尾处，需要将positionMap的最后一个元素 + 1（最后一个插值表达式的结束位置）
                 // 若它在开头处，需要将positionMap下标为1的元素 - 1（第一个插值表达式的起始位置，下标为0处是开始大括号）
@@ -80,14 +81,14 @@ export function content2script(content: string, startSourceIndex: number) {
                 // 此处理是为了在调试代码时，将断点设置位放置在以插值表达式开始的开始大括号前和以插值表达式结尾的结束大括号后
                 // 这样做是为了保持与其他情况断点位置的一致性（均为textContent部分开头首个非空白字符和最后一个非空白字符处）
                 const isEnd = endBracketIndex === content.length - 1
-                const isStart = transformedStrLen === 0
+                const isStart = transformedStrLen === transformedStrInitLen
                 pushTransformedArr(interpolationExp, false)
                 index = endBracketIndex + 1
                 if (isEnd) {
                     positionMap[transformedStrLen - 4]++
                 }
                 if (isStart) {
-                    positionMap[1]--
+                    positionMap[transformedStrInitLen + 1]--
                 }
             }
         }
