@@ -1,5 +1,9 @@
 import { isNumber } from "../../util/shared/assert"
 
+export function AttributeForEndTag() {
+    warn("The end tag will ignore any attribute.")
+}
+
 export function RedundantArgs(fn: string, need: number | string) {
     let needMsg = "requires only one parameter"
     if (!isNumber(need) || need > 1) {

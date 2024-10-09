@@ -1,7 +1,8 @@
 import type {
     EliminateRanges,
     TemplateContext,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptionalParam,
+    TransformInterpolationRet
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
@@ -13,7 +14,7 @@ import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
 import { BadValueForRefAttr } from "../message/error"
-import { isUndefined } from "../../util/shared/assert"
+import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { identifierIsReference } from "../estree/assert"
 import { expressionReplaceWithSpaceRE } from "../regular"
 import { inputDescriptor, replacementInfo } from "../state"
@@ -27,7 +28,13 @@ export function transformInterpolation(
     context: TemplateContext,
     type: "directive" | "attribute" | "event" | "content",
     optionalParams: TransformInterpolationOptionalParam = {}
-) {
+): TransformInterpolationRet {
+    // 在检查模式下，遇到编译错误时会重新恢复执行
+    // 这种情况下会存在空的插值表达式块，此时可以直接返回
+    if (isEmptyString(expression)) {
+        return ""
+    }
+
     let useGetter = false
     let useContext = false
     let useReturnKeyword = false

@@ -1,0 +1,118 @@
+<!-- <div #if="show">
+    <p #for="item in arr">true --- {item}</p>
+</div>
+<div #else>
+    <p #for="item in arr">false --- {item}</p>
+</div>
+<test-com /> -->
+
+<!-- <div id="a" class="a" !class="a" !class="a1" #for="item, index in 10">
+    <p class="b"></p>
+</div> -->
+
+<!-- <Input class="a" &class="b" type="text" &auto="ref" /> -->
+
+<!-- <div
+    class="test-class"
+    !class="a"
+    #for="{ a: { a }, b } , index in arr"
+    #key="a"
+    @click|once|enter="test(index)"
+    #if="a"
+>
+    {{index}} {a}
+</div>
+<div #else>{arr}</div> -->
+
+<!-- <div #if="a">...</div>
+<div #elif="a">???</div>
+<div #else>
+    <span>!!!</span>
+</div>
+<div>normal</div> -->
+
+<!-- <div>
+    <span>...</span>
+    <span>???</span>
+    <span>!!!</span>
+    <span>!!!</span>
+    <span>!!!</span>
+    <span>!!!</span>
+    <span>!!!</span>
+    <span>!!!</span>
+</div> -->
+
+<!-- <div #await="a">...</div>
+<div #catch="res">!!!</div> -->
+
+<!-- <div #await="a" #then="res"></div>
+<div #catch="err"></div> -->
+
+<!-- <div #await="a">...</div>
+<div #then="res">{res}</div>
+<div #catch="err">{err}</div> -->
+
+<!-- <div #await="a"></div>
+<div #then="{a,b}">{a} {b}</div> -->
+
+<!-- <div #await="a" #then="{a,b}">{a} {b}</div>
+<div #catch="err">{err}</div> -->
+
+<!-- <template #if="a">
+    <div>{item} {index}</div>
+    <div>{item} {index}</div>
+</template>
+<template #else>
+    <div></div>
+    <div></div>
+</template> -->
+
+<!-- <div #for="item, {a,b} in arr">
+    {b}
+</div> -->
+
+<!-- <div #if="a" #for="10"></div> -->
+
+<!-- <div #for="item in 10">
+    <template #await="a" #then="res">
+        <div>{res}</div>
+        <div></div>
+    </template>
+    <template #catch="err">
+        <div>{err}</div>
+    </template>
+</div> -->
+
+<!-- <template #if="a" #for="arr">
+    <div></div>
+    <div></div>
+</template> -->
+
+<!-- <template #await="a" #then="res">
+    <div>{res}</div>
+    <div>{b}</div>
+</template>
+<template #catch="err">
+    <div>{err}</div>
+    <div>{a}</div>
+</template> -->
+
+<!-- <template #await="a" #then="{a,b:[b]}">
+    <div>{a}</div>
+    <div>{b}</div>
+</template>
+<template #catch="{a}">
+    <div>{a}</div>
+    <div>{a}</div>
+</template> -->
+
+<!-- <input &auto="a" type="checkbox" /> -->
+
+<custom-div class="aaa">
+    <div #if="a">
+        <p>{"..."} {"..."}</p>
+    </div>
+    <div slot="ok"></div>
+</custom-div>
+
+<!-- <slot name="" !class="a">lll</slot> -->

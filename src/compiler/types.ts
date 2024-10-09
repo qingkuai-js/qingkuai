@@ -98,6 +98,7 @@ export type FilteredTemplateAttribute = TemplateAttribute & {
 
 export interface TemplateAnalysisRet {
     tag: string
+    isTemplate: boolean
     content: TransformInterpolationRet
     children: {
         useBracket: boolean
@@ -119,8 +120,8 @@ export type TemplateContext = {
     count: number
 }
 
-export interface ValueWithLocation {
-    value: string
+export interface ValueWithLocation<T> {
+    value: T
     loc: ASTLocation
 }
 export interface AttributeAnalysisRet {
@@ -132,9 +133,9 @@ export interface AttributeAnalysisRet {
     continueRE?: RegExp | null
     awaitContextStartIndex?: number
     continueArg?: string | undefined
-    slotOfAnyTag: ValueWithLocation | null
-    nameOfSlotTag?: ValueWithLocation | null
     shouldContinueDirective?: string | undefined
+    slotOfAnyTag: ValueWithLocation<string> | null
+    nameOfSlotTag?: ValueWithLocation<string> | null
 }
 
 export interface TransformInterpolationOptionalParam {

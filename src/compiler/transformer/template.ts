@@ -2,18 +2,15 @@ import type { FixedArray } from "../../util/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
-import { templateTag } from "../regular"
 import { getAlias } from "../analyzer/alias"
 import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/state"
-import { findOutOfSC } from "../../util/compiler/strings"
-import { isArray, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
+import { isArray, isNull, isString } from "../../util/shared/assert"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
     parentUseLineBreak: 1 << 1,
-    notOverAfterEndBracket: 1 << 2
+    hasNextChild: 1 << 2
 }
 
 // 从templateAnalysisRet生成模版结构js代码
@@ -23,40 +20,10 @@ export function transformTemplate(
     indentN = 2,
     flag = 1
 ) {
-    // 确定字符串字面量变量是保留还是还原
-    analysisRet?.forEach(item => {
-        if (isNull(item)) {
-            return
-        }
-        if (item.tag) {
-            item.tag = confirmStringConstants(item.tag)
-        }
-        if (item.content) {
-            item.content = confirmStringConstants(item.content)
-        }
-        if (item.aar?.slotOfAnyTag) {
-            const sav = item.aar.slotOfAnyTag.value
-            item.aar.slotOfAnyTag.value = confirmStringConstants(sav)
-        }
-        for (let i = 0; true; i++) {
-            const estu = item.aar?.eventStu
-            const astu = item.aar?.attributeStu
-            if (!astu?.[i] && !estu?.[i]) {
-                break
-            }
-            if (!isUndefined(astu?.[i])) {
-                astu[i] = confirmStringConstants(astu[i])
-            }
-            if (!isUndefined(estu?.[i])) {
-                estu[i] = confirmStringConstants(estu[i])
-            }
-        }
-    })
-
     const transformedArr: string[] = []
+    const hasNextChild = vf(flag, "hasNextChild")
     const useBracketWrap = vf(flag, "useBracketWrap")
     const useLineBreak = shouldUseLineBreak(analysisRet, true)
-    const notOverAfterEndBracket = vf(flag, "notOverAfterEndBracket")
     const parentUseLineBreak = vf(flag, "parentUseLineBreak") || useLineBreak
 
     // 转换结果的位置信息，访问它得到的就是下一个字符在转换结果中的行、列
@@ -102,9 +69,9 @@ export function transformTemplate(
             return
         }
 
+        const { isTemplate } = item
         const hasAar = !isNull(item.aar)
         const hasChild = childrenLen! > 0
-        const isTemplate = templateTag.test(item.tag)
         const isContinued = hasAar && !isNull(item.aar!.continueRE)
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
         const elementUseLineBreak = shouldUseLineBreak(item, hasChild)
@@ -205,7 +172,7 @@ export function transformTemplate(
             }
         }
 
-        // 添加tag、content、attribute、event和children结构
+        // 添加tag、content、attribute和event结构
         if (!isTemplate) {
             pushTransformedArr(item.tag)
             addTemplateStuJoinStr(true)
@@ -249,24 +216,35 @@ export function transformTemplate(
                     const partOfChildren = item.children.slice(start, end)
                     chunkChildren = partOfChildren.map(child => child.tar)
                 }
-                if (child.useBracket) {
+
+                // 当children中只存在一个结构时，无需使用中括号包裹（压缩编译体积）
+                if (child.useBracket && child.tar?.children.length !== 1) {
                     flag |= transformTemplateFlag.useBracketWrap
                 } else {
                     flag &= ~transformTemplateFlag.useBracketWrap
                 }
+
+                // 记录是否是最后一个child和父级是否使用中括号包裹信息到flag
                 if (i !== item.children.length - 1) {
-                    flag |= transformTemplateFlag.notOverAfterEndBracket
+                    flag |= transformTemplateFlag.hasNextChild
                 } else {
-                    flag &= ~transformTemplateFlag.notOverAfterEndBracket
+                    flag &= ~transformTemplateFlag.hasNextChild
                 }
                 if (elementUseLineBreak) {
                     flag |= transformTemplateFlag.parentUseLineBreak
                 } else {
                     flag &= ~transformTemplateFlag.parentUseLineBreak
                 }
+
                 pushTransformedArr(
                     transformTemplate(chunkChildren, currentPosition[0], childIndentN, flag)
                 )
+                if (i !== childrenLen - 1) {
+                    pushTransformedArr(", ")
+                    if (useLineBreak) {
+                        pushTransformedArr("\n", indent(n))
+                    }
+                }
             }
         }
 
@@ -308,7 +286,7 @@ export function transformTemplate(
     const retIndentStrByParent = parentUseLineBreak ? indent(indentN) : ""
     const slotAttrValueStr = sav ? `${retWrap}${retNextIndentStr}${sav}, ` : ""
     return `[${slotAttrValueStr}${retWrap}${transformedStr}${retWrap}${retIndentStr}]${
-        notOverAfterEndBracket ? `, ${retWrapByParent}${retIndentStrByParent}` : ""
+        hasNextChild ? `, ${retWrapByParent}${retIndentStrByParent}` : ""
     }`
 }
 
@@ -379,7 +357,7 @@ function shouldUseLineBreak(
             }
         }
         if (hasChild) {
-            if (!aar) {
+            if (isNull(aar)) {
                 state.count += 6
             }
             for (const child of item.children) {
@@ -392,68 +370,6 @@ function shouldUseLineBreak(
     }
 
     return state.count > 60
-}
-
-// 确定是否使用生成的字符串字面量变量，当其使用次数大于1且其本身长度大于2时就会被保留变量访问，
-// 如果搜索到的字符串字面量变量不同时满足以上两个条件，它将被还原为原始的字符串字面量
-function confirmStringConstants<T extends TransformInterpolationRet>(ter: T): T {
-    const terIsString = isString(ter)
-    const transformedArr: string[] = []
-    const mappings = terIsString ? [] : ter.mappings
-    const code = isString(ter) ? ter : ter.transformedExp
-    const mappingOffsets: number[] = Array(terIsString ? 0 : mappings.length).fill(0)
-
-    for (let startIndex = 0, saveAs = ""; true; ) {
-        const [matchedIndex, matchedLen] = findOutOfSC(code, /_s\d+_/, startIndex)
-        if (matchedIndex === -1) {
-            transformedArr.push(code.slice(startIndex))
-            break
-        }
-        transformedArr.push(code.slice(startIndex, matchedIndex))
-
-        const matchedStr = code.slice(matchedIndex, matchedIndex + matchedLen)
-        const restoredStrLiteral = stringConstantsSourceMap.get(matchedStr)!
-        const currentStringConstant = stringConstants.get(restoredStrLiteral)!
-        if (currentStringConstant.count > 1 && restoredStrLiteral.length > 2) {
-            const restoreToComment = `/* ${restoredStrLiteral} */ `
-            if (!currentStringConstant.using) {
-                const resetNumStr = `_s${inputDescriptor.stringConstantCount++}_`
-                transformedArr.push((saveAs = restoreToComment + resetNumStr))
-                currentStringConstant.value = resetNumStr
-                currentStringConstant.using = true
-            } else {
-                transformedArr.push((saveAs = restoreToComment + currentStringConstant.value))
-            }
-        } else {
-            transformedArr.push((saveAs = restoredStrLiteral))
-        }
-
-        // 当string constant被替换编号或还原时，将当前处理位置之后的段的列偏移量记录到
-        // mappingOffsets中，mapping中下标为n的项目的列偏移量记录在mappingOffset[n]中
-        if (!terIsString) {
-            const offset = saveAs.length - matchedStr.length
-            for (let i = 0; i < mappings.length; i++) {
-                if (mappings[i][1] > matchedIndex) {
-                    mappingOffsets[i] += offset
-                }
-            }
-        }
-
-        startIndex = matchedIndex + matchedLen
-    }
-
-    // 根据mappingOffsets的记录将mappings中的段进行列偏移
-    if (!terIsString) {
-        mappings.forEach((item, index) => {
-            item[1] += mappingOffsets[index]
-        })
-    }
-
-    const transformedStr = transformedArr.join("")
-    if (terIsString) {
-        return transformedStr as any
-    }
-    return (ter.transformedExp = transformedStr), ter
 }
 
 // 判断函数参数是否需要中括号包裹

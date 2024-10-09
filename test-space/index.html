@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+    </head>
+    <body>
+        <script type="module">
+            import {
+                noop,
+                nil,
+                init,
+                QingKuaiComponent,
+                aliasModule,
+                ifModule,
+                forModule,
+                awaitModule,
+                keyedForModule,
+                eventWrapper,
+                derived,
+                withReference,
+                react,
+                constReact,
+                destructuringReact,
+                constDestructuringReact
+            } from "/static/dist/runtime/internal.js"
+            import {
+                raw,
+                createApp,
+                watch,
+                preWatch,
+                syncWatch,
+                effect,
+                preEffect,
+                syncEffect
+            } from "/static/dist/runtime/index.js"
+
+            // class Child extends QingKuaiComponent {
+            //     constructor(args = {}) {
+            //         super(args)
+
+            //         const { scts, props, slots } = init(this)
+
+            //         const name = react("World")
+            //         setTimeout(() => {
+            //             name.$ += "!!"
+            //         }, 1000)
+
+            //         scts([
+            //             [
+            //                 "div",
+            //                 "",
+            //                 null,
+            //                 null,
+            //                 ["", _ => `Hello ${name.$}!`],
+            //                 [
+            //                     "slot",
+            //                     "default",
+            //                     ["name", _ => name.$, "stc", 1],
+            //                     null,
+            //                     ["p", "no content"]
+            //                 ]
+            //             ]
+            //         ])
+            //     }
+            // }
+
+            // [标签， 内容， 属性，事件，]
+            class Test extends QingKuaiComponent {
+                constructor(args = {}) {
+                    super(args)
+
+                    const { scts, props } = init(this)
+
+                    // javascript source code area
+                    const [_w_arr, arr] = constReact([undefined], noop)
+
+                    debugger
+                    // template structure area
+                    scts([
+                        forModule(
+                            _ => _w_arr.$,
+                            aliasModule(
+                                [ctx => { debugger; return ctx(1)}, ({ a }) => [a]],
+                                [
+                                    "p",
+                                    ctx => {
+                                        const a = ctx(1)
+                                        return "" + a
+                                    }
+                                ]
+                            )
+                        )
+                    ])
+
+                    // debugging setters area
+                    function _dn_() {
+                        arr
+                    }
+                }
+            }
+
+            const updates = []
+            console.time("create")
+            window.test = createApp(Test, {
+                slots: {
+                    1: [
+                        ["div", "..."],
+                        ["div", "!!!"]
+                    ]
+                }
+            }).mount("body")
+            console.log(test.__)
+            console.timeEnd("create")
+
+            // // 测试代码
+            // window.getInfo = () => {
+            //     for (const { e } of test.__.deps) {
+            //         updates.push(Array.from(e.values()))
+            //     }
+            //     console.log(updates)
+            //     const destructions = (function trans(cur) {
+            //         return {
+            //             v: cur.v,
+            //             c: Array.from(cur.c.values()).map(arr => {
+            //                 return arr.map(item => trans(item))
+            //             })
+            //         }
+            //     })(test.__.dst)
+            //     console.log(destructions)
+            //     console.log(test.__)
+            // }
+        </script>
+    </body>
+</html>

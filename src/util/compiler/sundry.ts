@@ -4,9 +4,10 @@ import type { ASTLocation, ASTPosition, EliminateRanges } from "../../compiler/t
 import {
     kebabWholeRE,
     validIdentifierNameRE,
-    kebabWithoutFirstLetterRE,
-    bannedIdentifierFormatRE
+    bannedIdentifierFormatRE,
+    kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
+import { isUndefined } from "../shared/assert"
 import { IdentifierFormatIsNotAllowed, InvalidIdentifierName } from "../../compiler/message/error"
 
 // JSON.stringify别名
@@ -30,6 +31,14 @@ export function newASTLocation(): ASTLocation {
         start: pos,
         end: pos
     }
+}
+
+// 生成一个带有位置信息的值结构
+export function newValueWithLoc<T>(value: T, loc?: ASTLocation) {
+    if (isUndefined(loc)) {
+        loc = newASTLocation()
+    }
+    return { value, loc }
 }
 
 // kebab命名转Camel

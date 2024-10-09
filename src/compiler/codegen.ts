@@ -133,7 +133,7 @@ export function generateCompileResult(
         `${stringLiteralComment}${stringConstantStr}${stringConstantsPostfix}` +
         `${scriptSourceComment}${scriptTranformedRet}${scriptTransformedRetPostfix}` +
         `// template structure area\n${indent(2)}${setTemplateStructureFuncName}` +
-        `(${templateTransformedRet})${debuggingStatementArr.join("")}` +
+        `(${templateTransformedRet || "[]"})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 
     return { code, mappings, isTS }

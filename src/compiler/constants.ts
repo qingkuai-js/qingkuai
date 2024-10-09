@@ -8,24 +8,28 @@ export const selfClosingTags = new Set([
     "base",
     "area",
     "col",
-    "embed"
+    "embed",
+    "param",
+    "source",
+    "track",
+    "wbr"
 ])
 
 export const fullRuntimeItems = new Set([
     "QingKuaiComponent",
+    "noop",
     "nil",
     "raw",
     "init",
-    "noop",
+    "nextTick",
     "react",
     "derived",
-    "nextTick",
     "ifModule",
     "forModule",
     "constReact",
+    "keyedForModule",
     "aliasModule",
     "awaitModule",
-    "keyedForModule",
     "eventWrapper",
     "withReference",
     "destructuringReact",

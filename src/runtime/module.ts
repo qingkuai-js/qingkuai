@@ -39,7 +39,7 @@ import { invokeIndexedHooks, onAfterMount } from "./instance"
 import { h, toRenderStructure, extendDsts, attachDestroy } from "./h"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
-import { isArray, isFunction, isNull, isNumber, isString } from "../util/shared/assert"
+import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
@@ -489,13 +489,13 @@ function attachMarkForModuleFunc(fn: ModuleFunc) {
 }
 
 // toms means TemplateStructures Or ModuleFuncs
-// ValueOrValueArr<TemplateStuOrModuleFunc[]>类型转换为固定的TemplateStuOrModuleFunc[][]类型
+// 将一维或二维的TemplateStuOrModuleFunc|null转换为固定二维结构
 function toTwoDemensionalToms(toms: ValueOrValueArr<TemplateStuOrModuleFunc | null>[]) {
     return toms.map(tom => {
         if (isNull(tom)) {
             return []
         }
-        if (!isArray(tom) || isFunction(tom) || isString(tom[0])) {
+        if (!isArray(tom)) {
             return [tom]
         }
         return tom

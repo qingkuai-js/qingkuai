@@ -188,6 +188,7 @@ class CompileError extends Error {
 
 function withLocation<T extends GeneralFunc>(code: number, fn: T) {
     return (...args: [...Parameters<T>, loc: ASTLocation]) => {
+        // console.log(new CompileError(lastElem(args), code, fn(...args.slice(0, -1))))
         throw new CompileError(lastElem(args), code, fn(...args.slice(0, -1)))
     }
 }

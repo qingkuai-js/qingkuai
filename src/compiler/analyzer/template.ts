@@ -1,19 +1,20 @@
 import type {
     TemplateNode,
     TemplateContext,
+    ValueWithLocation,
     TemplateAnalysisRet,
     AttributeAnalysisRet
 } from "../types"
 
 import { getAlias } from "./alias"
+import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { stringConstantsSourceMap } from "../state"
 import { lastElem } from "../../util/shared/sundry"
 import { DuplicateSlotAttr } from "../message/error"
-import { stringify } from "../../util/compiler/state"
 import { tagIsComponentRE, templateTag } from "../regular"
 import { isNull, isUndefined } from "../../util/shared/assert"
-import { analyzeAttribute, newValueWithLocation } from "./attribute"
+import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
 
@@ -36,10 +37,21 @@ export function analyzeTemplate(
             aar: null,
             tag: "",
             content: "",
-            children: []
+            children: [],
+            isTemplate: tag === "template"
         }
         const isSlot = tag === "slot"
         const isComponent = tagIsComponentRE.test(tag)
+
+        // 获取默认的slot属性值(default)，返回ValueWithLocationM<string>类型，其中loc
+        // 为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
+        const getDefaultSlotOfAnyTag = (): ValueWithLocation<string> => {
+            const nodeRange = nodes[i].range
+            return {
+                value: stringify("default"),
+                loc: getLocByIndex(nodeRange[0], nodeRange[0] + tag.length + 1)
+            }
+        }
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
         shouldHoistContent &&= !isComponent && !isSlot
@@ -68,12 +80,12 @@ export function analyzeTemplate(
                     eventStu: [],
                     directiveStu: [],
                     attributeStu: [],
-                    slotOfAnyTag: newValueWithLocation()
+                    slotOfAnyTag: null
                 }
             }
         } else {
             let continueRE: RegExp | undefined | null
-            let curContinuedDirective: string | undefined
+            let shouldContinueDirective: string | undefined
             const contextBeforeAnalyzeAttribute = cloneContext(currentContext)
             const aar = analyzeAttribute(
                 nodes[i],
@@ -86,23 +98,26 @@ export function analyzeTemplate(
             )
             currentRet.aar = aar
             continueRE = aar.continueRE
-            curContinuedDirective = aar.shouldContinueDirective
+            shouldContinueDirective = aar.shouldContinueDirective
 
-            if (parentIsComponent && !aar.slotOfAnyTag) {
-                aar.slotOfAnyTag = newValueWithLocation()
+            if (parentIsComponent && isNull(aar.slotOfAnyTag)) {
+                aar.slotOfAnyTag = getDefaultSlotOfAnyTag()
             }
 
-            if ((!isNull(aar.continueRE) || aar.insertNullNum) && aar.createTemplate) {
+            // 对于使用了if指令或await指令的节点可能需要创建一个template挂载点，因为此时
+            // 需要将多个节点结构作为参数传入ifMNodule/awaitModule
+            if (aar.createTemplate) {
                 const useBracketWrap = shouldUseBracketWrap(tag, aar)
-                const awaitNullChildTempl = { tar: null, useBracket: false }
+                const awaitNullChild = { tar: null, useBracket: false }
                 const mockTemplateRet: TemplateAnalysisRet = {
+                    isTemplate: true,
                     tag: "template",
                     content: "",
                     aar: {
                         eventStu: [],
                         attributeStu: [],
                         slotOfAnyTag: aar.slotOfAnyTag,
-                        directiveStu: aar.directiveStu.slice(0, 1)
+                        directiveStu: [aar.directiveStu[0]]
                     },
                     children: [
                         {
@@ -112,13 +127,13 @@ export function analyzeTemplate(
                     ]
                 }
                 result.pop()
+                aar.slotOfAnyTag = null
                 result.push(mockTemplateRet)
-                aar.slotOfAnyTag = newValueWithLocation()
                 aar.directiveStu = aar.directiveStu.slice(1)
 
                 if (aar.insertNullNum) {
                     for (let i = 0; i < aar.insertNullNum; i++) {
-                        mockTemplateRet.children.unshift(awaitNullChildTempl)
+                        mockTemplateRet.children.unshift(awaitNullChild)
                     }
                 }
 
@@ -131,7 +146,7 @@ export function analyzeTemplate(
                         [nodes[++i]],
                         isComponent,
                         cotinueContext,
-                        curContinuedDirective,
+                        shouldContinueDirective,
                         aar.awaitContextStartIndex
                     )
                     const useBracketWrap = shouldUseBracketWrap(
@@ -140,7 +155,7 @@ export function analyzeTemplate(
                     )
                     const childAarContinueArg = childTemplateAnalysisRet.aar!.continueArg
                     if (childTemplateAnalysisRet.aar?.insertNullNum) {
-                        mockTemplateRet.children.push(awaitNullChildTempl)
+                        mockTemplateRet.children.push(awaitNullChild)
                     }
                     if (childAarContinueArg) {
                         mockTemplateRet.aar!.directiveStu[0].push(childAarContinueArg)
@@ -150,7 +165,7 @@ export function analyzeTemplate(
                         tar: childTemplateAnalysisRet
                     })
                     continueRE = childTemplateAnalysisRet.aar?.continueRE
-                    curContinuedDirective = childTemplateAnalysisRet.aar?.shouldContinueDirective
+                    shouldContinueDirective = childTemplateAnalysisRet.aar?.shouldContinueDirective
                 }
             }
         }
@@ -227,11 +242,12 @@ function shouldContinue(node: TemplateNode, re: RegExp | undefined | null) {
     })
 }
 
-// 判断展开的节点是否需要使用中括号包裹
+// 判断展开的多个节点是否需要使用中括号包裹(template标签中的节点)
 function shouldUseBracketWrap(tag: string, aar: AttributeAnalysisRet) {
     const removeBrackWrapFuncNames = new Set([
         getAlias("forModule", false),
-        getAlias("aliasModule", false)
+        getAlias("aliasModule", false),
+        getAlias("keyedForModule", false)
     ])
     return (
         templateTag.test(tag) &&

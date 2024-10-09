@@ -6,8 +6,7 @@ import type {
     AttributeAnalysisRet,
     TransformInterpolationRet,
     FilteredTemplateAttribute,
-    TransformInterpolationOptionalParam,
-    ASTLocation
+    TransformInterpolationOptionalParam
 } from "../types"
 import type { EsPattern } from "../estree/types"
 import type { VariableDeclaration } from "@babel/types"
@@ -79,8 +78,8 @@ export function analyzeAttribute(
     let continueArg: string | undefined
     let continueRE: RegExp | null = null
     let shouldContinueDirective: string | undefined
-    let slotOfAnyTag: ValueWithLocation | null = null
-    let nameOfSlotTag: ValueWithLocation | null = null
+    let slotOfAnyTag: ValueWithLocation<string> | null = null
+    let nameOfSlotTag: ValueWithLocation<string> | null = null
 
     const { tag } = node
     const isSlot = tag === "slot"
@@ -90,11 +89,20 @@ export function analyzeAttribute(
     const directiveStu: TransformInterpolationRet[][] = []
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
 
-    // 获取默认的nameOfSlotTag或slotOfAnyTag，value为default，loc为当前节点
-    // 开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
-    const getDefaultSlotOrNameStu = (value: string): ValueWithLocation => {
+    // 修改continueRE变量，这里需要检测此变量是否已经被赋值，若已被赋值则不能覆盖原来的值，避免
+    // 低优先级的指令高优先级指令，例如await指令的后续指令正则表达式可能会被if/elif指令覆盖
+    const setContinueRE = (v: RegExp | null) => {
+        if (isNull(continueRE)) {
+            continueRE = v
+            shouldContinueDirective = pureKey
+        }
+    }
+
+    // 获取slot标签默认的name属性值(default)，返回ValueWithLocationM<string>类型，其中
+    // loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
+    const getDefaultSlotOrNameStu = (): ValueWithLocation<string> => {
         return {
-            value: stringify(value),
+            value: stringify("default"),
             loc: getLocByIndex(node.range[0], node.range[0] + tag.length + 1)
         }
     }
@@ -247,7 +255,7 @@ export function analyzeAttribute(
                 eventStu.push(concatStrAndTER(prefix, tiGetter, `, ${setter})`))
             }
         } else if (isDirective) {
-            switch ((shouldContinueDirective = pureKey)) {
+            switch (pureKey) {
                 case "for":
                     const preContextCount = context.count
                     const inKeywordIndex = findOutOfSC(trimedValue, / in /)
@@ -300,7 +308,7 @@ export function analyzeAttribute(
                                 context,
                                 aliasArgs,
                                 true,
-                                preContextCount + 2
+                                preContextCount
                             )
                         } else {
                             checkIdentifierName(
@@ -322,7 +330,7 @@ export function analyzeAttribute(
                                 context,
                                 aliasArgs,
                                 true,
-                                preContextCount + 3
+                                preContextCount + 1
                             )
                         } else {
                             checkIdentifierName(
@@ -379,7 +387,7 @@ export function analyzeAttribute(
                             createTemplate = true
                             directiveStu.push([getAlias("ifModule"), transRet])
                         }
-                        continueRE = /^#(?:elif|else)$/
+                        setContinueRE(/^#(?:elif|else)$/)
                     }
                     break
 
@@ -388,10 +396,9 @@ export function analyzeAttribute(
                 case "await":
                     if (pureKey === "await") {
                         const transRet = transDirective(rv)
+                        withAwait = createTemplate = true
+                        setContinueRE(/^#(?:then|catch)$/)
                         directiveStu.push([getAlias("awaitModule"), transRet])
-                        continueRE = /^#(?:then|catch)$/
-                        createTemplate = true
-                        withAwait = true
                     } else {
                         // 使用了then指令的节点必须同时使用了await指令或前一个兄弟节点使用了await指令
                         if (pureKey === "then" && !withAwait && continueByDirective !== "await") {
@@ -413,13 +420,13 @@ export function analyzeAttribute(
                         if (withAwait) {
                             if (pureKey === "catch") {
                                 insertNullNum = 2
-                                continueRE = null
+                                setContinueRE(null)
                             } else {
                                 insertNullNum = 1
                             }
                         }
                         if (pureKey === "then") {
-                            continueRE = /^#catch$/
+                            setContinueRE(/^#catch$/)
                         }
                         recordAliasIdentifiers()
                     }
@@ -529,12 +536,12 @@ export function analyzeAttribute(
 
     // 如果父元素是组件，且为指定slot名称，默认使用default作为slot名称
     if (parentIsComponent && isNull(slotOfAnyTag)) {
-        slotOfAnyTag = getDefaultSlotOrNameStu("default")
+        slotOfAnyTag = getDefaultSlotOrNameStu()
     }
 
     // 如果是slot标签，且未指定name属性，将name属性值修改为默认值default
     if (isSlot && isNull(nameOfSlotTag)) {
-        slotOfAnyTag = getDefaultSlotOrNameStu("default")
+        slotOfAnyTag = getDefaultSlotOrNameStu()
     }
 
     // 设置aliasModule调用结构
@@ -746,18 +753,6 @@ export function findForItemDestructuringStr(s: string) {
         s = s.slice(index + 1)
     } while (sc)
     return res
-}
-
-// 生成一个默认的AttributeAnalysisRet["slot"]结构
-// 这里使用一个方法而不是变量是因为每次调用stringify会记录常量字符串的使用次数
-export function newValueWithLocation(value?: string): ValueWithLocation {
-    if (isUndefined(value)) {
-        value = "default"
-    }
-    return {
-        value: stringify(value),
-        loc: newASTLocation()
-    }
 }
 
 /**
