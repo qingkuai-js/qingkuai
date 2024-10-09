@@ -1,4 +1,3 @@
-export const templateTag = /^"?template"?$/
 export const templateCloseCharsRE = /^(?:\s*)((\/)?>)/
 export const templateAttributeNameRE = /^[^\s='"\{\}></]+/
 export const templateAttributeValueRE = /^(['"])([\s\S]*?)\1/
