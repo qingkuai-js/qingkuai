@@ -12,18 +12,19 @@ import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { stringConstantsSourceMap } from "../state"
 import { lastElem } from "../../util/shared/sundry"
-import { DuplicateSlotAttr } from "../message/error"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
+import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
     parentIsComponent = false,
     context?: TemplateContext,
     continueByDirective?: string,
-    awaitContextStartIndex?: number
+    awaitContextStartIndex?: number,
+    existingNameOfSlot = new Set<string>()
 ) {
     const result: TemplateAnalysisRet[] = []
 
@@ -43,9 +44,9 @@ export function analyzeTemplate(
         const isSlot = tag === "slot"
         const isComponent = tagIsComponentRE.test(tag)
 
-        // 获取默认的slot属性值(default)，返回ValueWithLocationM<string>类型，其中loc
-        // 为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
-        const getDefaultSlotOfAnyTag = (): ValueWithLocation<string> => {
+        // 获取默认的slot属性(或slot标签的name属性)值，返回ValueWithLocationM<string>类型，
+        // 其中loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
+        const getDefaultNameOfSlotOrSlotOfAny = (): ValueWithLocation<string> => {
             const nodeRange = nodes[i].range
             return {
                 value: stringify("default"),
@@ -76,12 +77,7 @@ export function analyzeTemplate(
         // 分析属性列表
         if (!attributes.length) {
             if (parentIsComponent) {
-                currentRet.aar = {
-                    eventStu: [],
-                    directiveStu: [],
-                    attributeStu: [],
-                    slotOfAnyTag: null
-                }
+                currentRet.aar = getDefaultAar()
             }
         } else {
             let continueRE: RegExp | undefined | null
@@ -99,10 +95,6 @@ export function analyzeTemplate(
             currentRet.aar = aar
             continueRE = aar.continueRE
             shouldContinueDirective = aar.shouldContinueDirective
-
-            if (parentIsComponent && isNull(aar.slotOfAnyTag)) {
-                aar.slotOfAnyTag = getDefaultSlotOfAnyTag()
-            }
 
             // 对于使用了if指令或await指令的节点可能需要创建一个template挂载点，因为此时
             // 需要将多个节点结构作为参数传入ifMNodule/awaitModule
@@ -170,6 +162,32 @@ export function analyzeTemplate(
             }
         }
 
+        // 组件的子元素默认使用default作为slot属性值
+        if (parentIsComponent && isNull(currentRet.aar!.slotOfAnyTag)) {
+            currentRet.aar!.slotOfAnyTag = getDefaultNameOfSlotOrSlotOfAny()
+        }
+
+        // slot标签的name属性默认值为default
+        if (tag === "slot") {
+            if (isNull(currentRet.aar)) {
+                currentRet.aar = getDefaultAar()
+            }
+            if (
+                isNull(currentRet.aar?.nameOfSlotTag) ||
+                isUndefined(currentRet.aar?.nameOfSlotTag)
+            ) {
+                currentRet.aar.nameOfSlotTag = getDefaultNameOfSlotOrSlotOfAny()
+            }
+
+            // 检查slot标签的name属性是否重复
+            const { value, loc } = currentRet.aar.nameOfSlotTag
+            if (existingNameOfSlot.has(value)) {
+                const restoredValue = stringConstantsSourceMap.get(value)!
+                DuplicateNameAttrForSlot(JSON.parse(restoredValue), loc)
+            }
+            existingNameOfSlot.add(value)
+        }
+
         // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有一个文本
         // 子节点，那这个文本子节点会被提升作为当前节点的textContent部分
         if (tag !== "pre") {
@@ -200,17 +218,17 @@ export function analyzeTemplate(
             )
         }
 
-        // 递归处理当前节点的所有子节点
+        // 递归处理当前节点的所有子节点，在这里判断组件中多个子标签上的slot属性是否重复
         if (!shouldHoistContent) {
-            const existingSlotValues = new Set<string>()
+            const existingSlotOfAny = new Set<string>()
             analyzeTemplate(children, isComponent, currentContext).forEach(childRet => {
                 const slot = childRet.aar?.slotOfAnyTag
                 if (slot) {
-                    if (existingSlotValues.has(slot.value)) {
+                    if (existingSlotOfAny.has(slot.value)) {
                         const restoredSlotName = stringConstantsSourceMap.get(slot.value)!
                         DuplicateSlotAttr(JSON.parse(restoredSlotName), tag, slot.loc)
                     }
-                    existingSlotValues.add(slot.value)
+                    existingSlotOfAny.add(slot.value)
                 }
                 currentRet.children.push({
                     tar: childRet,
@@ -220,6 +238,16 @@ export function analyzeTemplate(
         }
     }
     return result
+}
+
+// 获取默认的AttributeAnalysisRet结构
+function getDefaultAar(): AttributeAnalysisRet {
+    return {
+        eventStu: [],
+        directiveStu: [],
+        attributeStu: [],
+        slotOfAnyTag: null
+    }
 }
 
 // 拷贝一份context，得到的新context中的map属性的每一个标识符转换项与原context中

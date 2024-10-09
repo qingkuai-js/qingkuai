@@ -5,7 +5,8 @@ import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 import { getAlias } from "../analyzer/alias"
 import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/state"
-import { isArray, isNull, isString } from "../../util/shared/assert"
+import { isArray, isNull, isString, isUndefined } from "../../util/shared/assert"
+import { lastElem } from "../../util/shared/sundry"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
@@ -198,37 +199,17 @@ export function transformTemplate(
 
         // 添加children调用结构
         if (childrenLen) {
-            let waitForChunkEndIndex = 0
-            let chunkChildren: (TemplateAnalysisRet | null)[] = []
-            for (let i = 0; i < childrenLen; i++) {
-                const child = item.children[i]
-                const childIndentN = +(useLineBreak && !isTemplate) + n
-                if (child.useBracket) {
-                    chunkChildren = [child.tar]
-                } else {
-                    const nextChild = item.children[i + 1]
-                    if (nextChild && !nextChild.useBracket) {
-                        continue
-                    }
-
-                    const start = waitForChunkEndIndex
-                    const end = (waitForChunkEndIndex = i + 1)
-                    const partOfChildren = item.children.slice(start, end)
-                    chunkChildren = partOfChildren.map(child => child.tar)
-                }
-
-                // 当children中只存在一个结构时，无需使用中括号包裹（压缩编译体积）
-                if (child.useBracket && child.tar?.children.length !== 1) {
+            const test = chunkChildren(item.children)
+            test.forEach(chunk => {
+                if (chunk.useBracket) {
                     flag |= transformTemplateFlag.useBracketWrap
                 } else {
                     flag &= ~transformTemplateFlag.useBracketWrap
                 }
-
-                // 记录是否是最后一个child和父级是否使用中括号包裹信息到flag
-                if (i !== item.children.length - 1) {
-                    flag |= transformTemplateFlag.hasNextChild
-                } else {
+                if (chunk.isLast) {
                     flag &= ~transformTemplateFlag.hasNextChild
+                } else {
+                    flag |= transformTemplateFlag.hasNextChild
                 }
                 if (elementUseLineBreak) {
                     flag |= transformTemplateFlag.parentUseLineBreak
@@ -236,16 +217,21 @@ export function transformTemplate(
                     flag &= ~transformTemplateFlag.parentUseLineBreak
                 }
 
-                pushTransformedArr(
-                    transformTemplate(chunkChildren, currentPosition[0], childIndentN, flag)
+                const childIndentN = +(useLineBreak && !isTemplate) + n
+                const transformedChild = transformTemplate(
+                    chunk.tars,
+                    currentPosition[0],
+                    childIndentN,
+                    flag
                 )
-                if (i !== childrenLen - 1) {
+                if (!chunk.useBracket && !chunk.isLast) {
                     pushTransformedArr(", ")
                     if (useLineBreak) {
                         pushTransformedArr("\n", indent(n))
                     }
                 }
-            }
+                pushTransformedArr(transformedChild)
+            })
         }
 
         // 添加当前TemplateStructure的结束字符
@@ -370,6 +356,45 @@ function shouldUseLineBreak(
     }
 
     return state.count > 60
+}
+
+function chunkChildren(children: TemplateAnalysisRet["children"]) {
+    const len = children.length
+    const chunks: {
+        isLast: boolean
+        useBracket: boolean
+        tars: (TemplateAnalysisRet | null)[]
+    }[] = []
+
+    if (children.length === 0) {
+        return chunks
+    }
+
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i]
+        const isLast = i === len - 1
+        if (child.useBracket) {
+            chunks.push({
+                isLast,
+                useBracket: true,
+                tars: [child.tar]
+            })
+        } else {
+            const preChunkItem = lastElem(chunks)
+            if (chunks.length === 0 || preChunkItem.useBracket) {
+                chunks.push({
+                    isLast,
+                    useBracket: false,
+                    tars: [child.tar]
+                })
+            } else {
+                preChunkItem.isLast = isLast
+                preChunkItem.tars.push(child.tar)
+            }
+        }
+    }
+
+    return chunks
 }
 
 // 判断函数参数是否需要中括号包裹

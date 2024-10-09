@@ -46,9 +46,9 @@ import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
+import { kebab2Camel, checkIdentifierName } from "../../util/compiler/sundry"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { kebab2Camel, checkIdentifierName, newASTLocation } from "../../util/compiler/sundry"
 
 // dpm means Directives Priority Map
 // dpm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -95,15 +95,6 @@ export function analyzeAttribute(
         if (isNull(continueRE)) {
             continueRE = v
             shouldContinueDirective = pureKey
-        }
-    }
-
-    // 获取slot标签默认的name属性值(default)，返回ValueWithLocationM<string>类型，其中
-    // loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
-    const getDefaultSlotOrNameStu = (): ValueWithLocation<string> => {
-        return {
-            value: stringify("default"),
-            loc: getLocByIndex(node.range[0], node.range[0] + tag.length + 1)
         }
     }
 
@@ -504,7 +495,7 @@ export function analyzeAttribute(
             }
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
             // slot标签的name属性（或组件的直接子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
-            // 这里只需要检测name或slot属性是不是动态类型就好了，因为引用类型属性的处理不会经过这里的代码块
+            // 这里只需检测name或slot属性是不是动态类型即可，因为引用类型属性的处理不会经过这里的代码块
             const attrWithLocationStu = (nameOfSlotTag = {
                 loc: attr.loc,
                 value: stringify(rv)
@@ -533,16 +524,6 @@ export function analyzeAttribute(
             attributeStu.push(concatStrAndTER(`${stringify(pureKey)}, `, ter, ""))
         }
     })
-
-    // 如果父元素是组件，且为指定slot名称，默认使用default作为slot名称
-    if (parentIsComponent && isNull(slotOfAnyTag)) {
-        slotOfAnyTag = getDefaultSlotOrNameStu()
-    }
-
-    // 如果是slot标签，且未指定name属性，将name属性值修改为默认值default
-    if (isSlot && isNull(nameOfSlotTag)) {
-        slotOfAnyTag = getDefaultSlotOrNameStu()
-    }
 
     // 设置aliasModule调用结构
     if (aliasArgs.length) {

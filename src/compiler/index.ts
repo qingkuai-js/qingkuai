@@ -9,7 +9,7 @@ import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { inputDescriptor, resetCompilerState } from "./state"
-import { confirmStringConstants } from "./analyzer/string-constants"
+import { optimizeCompileSize } from "./optimizer/compile-size"
 
 export function compile(source: string, componentName: string) {
     const templateNodes = (resetCompilerState(), parseTemplate(source))
@@ -18,7 +18,7 @@ export function compile(source: string, componentName: string) {
 
     const templateAnalysisRet = analyzeTemplate(templateNodes)
     const scriptTranformedRet = transformScript(scriptSource, 1)
-    confirmStringConstants(templateAnalysisRet)
+    optimizeCompileSize(templateAnalysisRet)
 
     const templateTransformedRet = transformTemplate(
         templateAnalysisRet,

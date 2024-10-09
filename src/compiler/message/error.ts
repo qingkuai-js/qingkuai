@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1034
+ * current-error-code: 1035
  */
 
 import type { ASTLocation } from "../types"
@@ -136,6 +136,10 @@ export const MissingStartDirective = withLocation(1025, (d: string, pd: string) 
 
 export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
     return `Multiple elements used as slot in component(${component}) have the same name(${name})`
+})
+
+export const DuplicateNameAttrForSlot = withLocation(1035, (value: string) => {
+    return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
 })
 
 export const CompilerFuncNotInTopScope = withLocation(1026, () => {

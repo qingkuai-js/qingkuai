@@ -4,25 +4,30 @@ import { findOutOfSC } from "../../util/compiler/strings"
 import { isNull, isString, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
 
-// 确定字符串字面量变量是保留还是还原
-export function confirmStringConstants(analysisRet: (TemplateAnalysisRet | null)[]) {
-    analysisRet?.forEach(item => {
-        if (isNull(item)) {
+export function optimizeCompileSize(tars: (TemplateAnalysisRet | null)[]) {
+    confirmBracket(tars)
+    confirmStringConstants(tars)
+}
+
+// 确定字符串字面量变量是保留还是还原(压缩编译体积)
+function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
+    tars.forEach(tar => {
+        if (isNull(tar)) {
             return
         }
-        if (item.tag) {
-            item.tag = singleTerConfirm(item.tag)
+        if (tar.tag) {
+            tar.tag = singleTerConfirm(tar.tag)
         }
-        if (item.content) {
-            item.content = singleTerConfirm(item.content)
+        if (tar.content) {
+            tar.content = singleTerConfirm(tar.content)
         }
-        if (item.aar?.slotOfAnyTag) {
-            const sav = item.aar.slotOfAnyTag.value
-            item.aar.slotOfAnyTag.value = singleTerConfirm(sav)
+        if (tar.aar?.slotOfAnyTag) {
+            const sav = tar.aar.slotOfAnyTag.value
+            tar.aar.slotOfAnyTag.value = singleTerConfirm(sav)
         }
         for (let i = 0; true; i++) {
-            const estu = item.aar?.eventStu
-            const astu = item.aar?.attributeStu
+            const estu = tar.aar?.eventStu
+            const astu = tar.aar?.attributeStu
             if (!astu?.[i] && !estu?.[i]) {
                 break
             }
@@ -33,7 +38,21 @@ export function confirmStringConstants(analysisRet: (TemplateAnalysisRet | null)
                 estu[i] = singleTerConfirm(estu[i])
             }
         }
-        confirmStringConstants(item.children.map(child => child.tar))
+        confirmStringConstants(tar.children.map(child => child.tar))
+    })
+}
+
+// 确定指令模块中的模板结构是否需要保留中括号包裹 (压缩编译体积)
+function confirmBracket(tars: (TemplateAnalysisRet | null)[]) {
+    tars.forEach(tar => {
+        tar?.children.forEach(child => {
+            if (child.useBracket) {
+                child.useBracket = child.tar?.children.length !== 1
+            }
+        })
+        if (!isNull(tar?.children)) {
+            confirmBracket(tar?.children.map(child => child.tar))
+        }
     })
 }
 
