@@ -21,8 +21,8 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    getGeneratedScriptLine,
     getSetterIdentifier,
+    getGeneratedScriptLine,
     markSegmentShouldNotBeMapped
 } from "../../util/compiler/state"
 import {

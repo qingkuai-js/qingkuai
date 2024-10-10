@@ -103,6 +103,7 @@ export function generateCompileResult(
     }
 
     const postfix = `\n\n${indent(2)}`
+    const argsIdentifier = getAlias("args")
     const withStringConstant = stringConstantArr.length > 0
     const hasDebuggingSetter = debuggingInfo.setters.size > 0
     const stringConstantsPostfix = withStringConstant ? postfix : ""
@@ -128,8 +129,8 @@ export function generateCompileResult(
 
     const code =
         `${importStatements}\n\nexport default class ${componentName} extends ` +
-        `${getAlias("QingKuaiComponent")}{\n${indent(1)}constructor(args = {})` +
-        `{\n${indent(2)}super(args)${postfix}${initCallStatement}${postfix}` +
+        `${getAlias("QingKuaiComponent")}{\n${indent(1)}constructor(${argsIdentifier})` +
+        `{\n${indent(2)}super(${argsIdentifier})${postfix}${initCallStatement}${postfix}` +
         `${stringLiteralComment}${stringConstantStr}${stringConstantsPostfix}` +
         `${scriptSourceComment}${scriptTranformedRet}${scriptTransformedRetPostfix}` +
         `// template structure area\n${indent(2)}${setTemplateStructureFuncName}` +

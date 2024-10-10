@@ -229,6 +229,9 @@ export const h = withCleanUsedEffectList(function (
                 }
 
                 if (!slot) {
+                    if (!children.length) {
+                        return
+                    }
                     slot = children as TemplateStuOrModuleFunc[]
                 }
                 if (!isArray(slot[0])) {
@@ -382,25 +385,22 @@ export const h = withCleanUsedEffectList(function (
 
 // 创建应用
 export function createApp(
+    selector: string,
     Component: typeof QingKuaiComponent,
     options: Partial<QingKuaiComponentConstructonParam> = {}
 ) {
+    const target = document.querySelector(selector)
     ;(["props", "refs", "slots"] as const).forEach(key => {
         if (!options[key]) {
             options[key] = {}
         }
     })
-    return {
-        mount: (selector: string) => {
-            const target = document.querySelector(selector)
-            if (!target) {
-                InvalidMountNode(selector)
-            } else {
-                const app = new Component(options as any)
-                render(app, target)
-                return app
-            }
-        }
+    if (!target) {
+        InvalidMountNode(selector)
+    } else {
+        const app = new Component(options as any)
+        render(app, target)
+        return app
     }
 }
 
