@@ -9,7 +9,7 @@ import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { inputDescriptor, resetCompilerState } from "./state"
-import { optimizeCompileSize } from "./optimizer/compile-size"
+import { compressCompileSize } from "./optimizer/compile-size"
 
 export function compile(source: string, componentName: string) {
     const templateNodes = (resetCompilerState(), parseTemplate(source))
@@ -18,11 +18,12 @@ export function compile(source: string, componentName: string) {
 
     const templateAnalysisRet = analyzeTemplate(templateNodes)
     const scriptTranformedRet = transformScript(scriptSource, 1)
-    optimizeCompileSize(templateAnalysisRet)
+    compressCompileSize(templateAnalysisRet)
 
+    // prettier-ignore
     const templateTransformedRet = transformTemplate(
         templateAnalysisRet,
-        inputDescriptor.script.lineCount
+        [inputDescriptor.script.lineCount, 0]
     )
 
     const importStatements = generateImportStatements()

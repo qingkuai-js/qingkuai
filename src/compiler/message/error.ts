@@ -112,8 +112,8 @@ export const BasSlotDirectiveCarrier = withLocation(1013, () => {
     return `Slot directive(#slot) can only be used on the direct child element(first-level)`
 })
 
-export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (secionName: string) => {
-    return `Must specify a name for the ${secionName} secion context of the for directive.`
+export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: string) => {
+    return `Must specify a name for the ${sectionName} section context of the #for directive.`
 })
 
 export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string, b: string) => {

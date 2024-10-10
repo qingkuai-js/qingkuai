@@ -1,8 +1,8 @@
 import type {
     EliminateRanges,
     TemplateContext,
-    TransformInterpolationOptionalParam,
-    TransformInterpolationRet
+    TransformInterpolationRet,
+    TransformInterpolationOptionalParam
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
@@ -14,11 +14,11 @@ import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
 import { BadValueForRefAttr } from "../message/error"
-import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { identifierIsReference } from "../estree/assert"
 import { expressionReplaceWithSpaceRE } from "../regular"
 import { inputDescriptor, replacementInfo } from "../state"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
+import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { checkIdentifierName, isIndexEliminated } from "../../util/compiler/sundry"
 
@@ -144,8 +144,8 @@ export function transformInterpolation(
             expEliminateRanges.add([node.start, node.end])
         },
 
-        // 标记需要记录sourcemap信息的索引（这里值表达式转换前的索引，转换完成后，
-        // 可以通过访问indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
+        // 标记需要记录sourcemap信息的索引（表达式转换前的索引）转换完成后，可以通过访问
+        // indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
         AnyNode(node) {
             if (startSourceIndex !== -1) {
                 sourcemapIndexes.push(node.start - 2, node.end - 2)

@@ -56,11 +56,10 @@ export function offsetSourcemap() {
     const { indentSpaceCount } = inputDescriptor
     const preaddedLineCount = sourceMapInfo.preaddedLineCount + 9
 
-    // 生成代码行偏移，preaddLineCount代表了在生成script代码块之前有多少行内容
+    // 生成代码行偏移，preaddLineCount代表了在生成script代码块之前有多少行内容；如果当前行是template部分的第一行
+    // 映射信息，并且生成代码中含有script部分，在template映射前固定添加两行空映射信息(换行及注释的固定行数)
     const temp: SourceMapMappings = Array(preaddedLineCount).fill([])
     for (let i = 0; i < sourceMapInfo.mappings.length; i++) {
-        // 如果当前行是template部分的第一行映射信息，并且生成代码中含有script部分，
-        // 在template映射前固定添加两行空映射信息(换行及注释的固定行数)
         if (scriptLineCount === i && sourceMapInfo.hasScript) {
             temp.push([], [])
         }

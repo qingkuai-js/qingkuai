@@ -79,8 +79,8 @@ export function generateCompileResult(
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
     sourceMapInfo.columnOffsetOfFirstTemplateLine += setTemplateStructureFuncName.length + 2
 
-    // 如果生成代码中没有script部分，要将最后一行标记为删除
-    if (!(sourceMapInfo.hasScript = withScriptSourceCode)) {
+    // 如果有<lang-js/ts>标签但生成代码中没有script部分，要将最后一行标记为删除
+    if (!(sourceMapInfo.hasScript = withScriptSourceCode) && inputDescriptor.script.existing) {
         const { start: startLoc, end: endLoc } = inputDescriptor.script.loc
         sourceMapInfo.removedLine.add(endLoc.line - startLoc.line)
     }

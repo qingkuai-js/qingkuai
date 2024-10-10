@@ -9,7 +9,6 @@ import type {
     TransformInterpolationOptionalParam
 } from "../types"
 import type { EsPattern } from "../estree/types"
-import type { VariableDeclaration } from "@babel/types"
 import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
 
 import {
@@ -40,8 +39,8 @@ import {
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
+import { inputDescriptor } from "../state"
 import { compilerOptions } from "../configuration"
-import { DestructuringContextRE, SlotDirectiveRE } from "../regular"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
@@ -49,6 +48,7 @@ import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { kebab2Camel, checkIdentifierName } from "../../util/compiler/sundry"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
+import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
 // dpm means Directives Priority Map
 // dpm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -75,16 +75,16 @@ export function analyzeAttribute(
     let withAwait = false
     let createTemplate = false
     let forModuleFuncIndex = -1
-    let continueArg: string | undefined
     let continueRE: RegExp | null = null
     let shouldContinueDirective: string | undefined
+    let continueArg: TransformInterpolationRet | undefined
     let slotOfAnyTag: ValueWithLocation<string> | null = null
     let nameOfSlotTag: ValueWithLocation<string> | null = null
 
     const { tag } = node
     const isSlot = tag === "slot"
-    const aliasArgs: string[] = []
     const eventStu: TransformInterpolationRet[] = []
+    const aliasArgs: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
     const directiveStu: TransformInterpolationRet[][] = []
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
@@ -111,17 +111,13 @@ export function analyzeAttribute(
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
         const trimedValueStartSourceIndex = valueStartSourceIndex + /\s*/.exec(rv)![0].length
 
-        // 转换标签指令，此时transformInterpolation返回值一定是string，因为传入的startIndex为-1
-        const transDirective = (exp: string, option?: TransformInterpolationOptionalParam) => {
-            const te = transformInterpolation(exp, -1, context, "directive", option) as string
-            const { start: startLoc, end: endLoc } = value.loc
-            return {
-                transformedExp: te,
-                mappings: [
-                    [startLoc.index, 0, startLoc.line, startLoc.column],
-                    [endLoc.index, te.length, endLoc.line, endLoc.column]
-                ]
-            } as TransformInterpolationRet
+        // 转换标签指令
+        const transDirective = (
+            exp: string,
+            startSourceIndex: number,
+            option?: TransformInterpolationOptionalParam
+        ) => {
+            return transformInterpolation(exp, startSourceIndex, context, "directive", option)
         }
 
         // 转换标签属性值
@@ -141,15 +137,7 @@ export function analyzeAttribute(
         const recordAliasIdentifiers = () => {
             if (isEmptyString(trimedValue)) {
                 context.count++
-            } else if (DestructuringContextRE.test(trimedValue)) {
-                recordDestructuringIdentifiers(
-                    trimedValue,
-                    context,
-                    aliasArgs,
-                    false,
-                    context.count++
-                )
-            } else {
+            } else if (!DestructuringContextRE.test(trimedValue)) {
                 checkIdentifierName(
                     trimedValue,
                     getLocByIndex(
@@ -158,6 +146,12 @@ export function analyzeAttribute(
                     )
                 )
                 extendContext(context, trimedValue)
+            } else {
+                const tip = makeDestructuringPatternSignleLine(
+                    trimedValue,
+                    trimedValueStartSourceIndex
+                )
+                recordDestructuringIdentifiers(tip, aliasArgs, context, false, context.count++)
             }
         }
 
@@ -181,7 +175,7 @@ export function analyzeAttribute(
                 } else {
                     const prefix = `${stringify(pureKey)}, [`
                     const postfix = `, v => (${setter} = v)]`
-                    eventStu.push(concatStrAndTER(prefix, tiGetter, postfix))
+                    eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
                 }
             } else {
                 let tagForErr = tag
@@ -243,7 +237,7 @@ export function analyzeAttribute(
                 const sev = stringify(eventName)
                 const funcName = getAlias("withReference")
                 const prefix = `...${funcName}(${sev}, ${spk}, `
-                eventStu.push(concatStrAndTER(prefix, tiGetter, `, ${setter})`))
+                eventStu.push(concatStrAndTIR(prefix, tiGetter, `, ${setter})`))
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -252,10 +246,20 @@ export function analyzeAttribute(
                     const inKeywordIndex = findOutOfSC(trimedValue, / in /)
                     const hasContextIdentifier = inKeywordIndex !== -1
                     const contextStr = trimedValue.slice(0, inKeywordIndex).trim()
-                    const forBasedValue = hasContextIdentifier
-                        ? trimedValue.slice(inKeywordIndex + 4).trim()
-                        : trimedValue
-                    const transformedForBaseValue = transDirective(forBasedValue)
+                    const baseStartIndex = hasContextIdentifier ? inKeywordIndex + 4 : 0
+                    const forBaseValue = trimedValue.slice(baseStartIndex)
+                    const basePreSpaceCount = /\s*/.exec(forBaseValue)![0].length
+
+                    // 转换for指令依赖的表达式部分（不含item及index标识符部分）
+                    const transformedForBaseValue = transDirective(
+                        trimedValue.slice(baseStartIndex).trim(),
+                        trimedValueStartSourceIndex + baseStartIndex + basePreSpaceCount
+                    )
+
+                    // 将循环基于的表达式部分映射向右偏移（in关键字及前面的部分占用的位置）
+                    if (!isString(transformedForBaseValue) && hasContextIdentifier) {
+                        transformedForBaseValue.mappings.forEach(item => {})
+                    }
 
                     // 处理for指令上下文绑定
                     if (hasContextIdentifier) {
@@ -294,10 +298,14 @@ export function analyzeAttribute(
                         if (!indexPart) {
                             context.count++
                         } else if (DestructuringContextRE.test(indexPart)) {
-                            recordDestructuringIdentifiers(
+                            const tip = makeDestructuringPatternSignleLine(
                                 indexPart,
-                                context,
+                                trimedValueStartSourceIndex + commaEndIndex
+                            )
+                            recordDestructuringIdentifiers(
+                                tip,
                                 aliasArgs,
+                                context,
                                 true,
                                 preContextCount
                             )
@@ -316,10 +324,14 @@ export function analyzeAttribute(
                         if (!itemPart) {
                             context.count++
                         } else if (DestructuringContextRE.test(itemPart)) {
-                            recordDestructuringIdentifiers(
+                            const tip = makeDestructuringPatternSignleLine(
                                 itemPart,
-                                context,
+                                trimedValueStartSourceIndex
+                            )
+                            recordDestructuringIdentifiers(
+                                tip,
                                 aliasArgs,
+                                context,
                                 true,
                                 preContextCount + 1
                             )
@@ -346,7 +358,7 @@ export function analyzeAttribute(
                     if (forModuleFuncIndex === -1) {
                         UseKeyDirectiveWithoutForDirective(attr.loc)
                     } else {
-                        const transRet = transDirective(rv, { isKeyDirective: true })
+                        const transRet = transDirective(rv, -1, { isKeyDirective: true })
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
                         directiveStu[forModuleFuncIndex].push(transRet)
                     }
@@ -371,9 +383,9 @@ export function analyzeAttribute(
                     if (pureKey === "else") {
                         continueArg = "1"
                     } else {
-                        const transRet = transDirective(rv)
+                        const transRet = transDirective(rv, trimedValueStartSourceIndex)
                         if (pureKey === "elif") {
-                            continueArg = (transRet as any).transformedExp
+                            continueArg = transRet
                         } else {
                             createTemplate = true
                             directiveStu.push([getAlias("ifModule"), transRet])
@@ -386,10 +398,10 @@ export function analyzeAttribute(
                 case "catch":
                 case "await":
                     if (pureKey === "await") {
-                        const transRet = transDirective(rv)
+                        const transRet = transDirective(rv, trimedValueStartSourceIndex)
+                        directiveStu.push([getAlias("awaitModule"), transRet])
                         withAwait = createTemplate = true
                         setContinueRE(/^#(?:then|catch)$/)
-                        directiveStu.push([getAlias("awaitModule"), transRet])
                     } else {
                         // 使用了then指令的节点必须同时使用了await指令或前一个兄弟节点使用了await指令
                         if (pureKey === "then" && !withAwait && continueByDirective !== "await") {
@@ -476,12 +488,12 @@ export function analyzeAttribute(
                 }
 
                 if (isComponent) {
-                    const ter = transAttrValue(rv, {
+                    const tir = transAttrValue(rv, {
                         isComponentEvent: true
                     })
-                    attributeStu.push(concatStrAndTER(`${stringify(eventName)}, `, ter, ""))
+                    attributeStu.push(concatStrAndTIR(`${stringify(eventName)}, `, tir, ""))
                 } else {
-                    const ter = transAttrValue(rv, { eventWrapperFlag })
+                    const tir = transAttrValue(rv, { eventWrapperFlag })
                     if (eventFlag === 0) {
                         flagComment = "no flag"
                     } else {
@@ -490,7 +502,7 @@ export function analyzeAttribute(
 
                     const prefix = `${stringify(eventName)}, `
                     const postfix = `, /* ${flagComment} */ ${eventFlag}`
-                    eventStu.push(concatStrAndTER(prefix, ter, postfix))
+                    eventStu.push(concatStrAndTIR(prefix, tir, postfix))
                 }
             }
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
@@ -520,8 +532,8 @@ export function analyzeAttribute(
                 nameOfSlotTag = attrWithLocationStu
             }
         } else {
-            const ter = isInterpolation ? transAttrValue(rv) : stringify(rv)
-            attributeStu.push(concatStrAndTER(`${stringify(pureKey)}, `, ter, ""))
+            const tir = isInterpolation ? transAttrValue(rv) : stringify(rv)
+            attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
         }
     })
 
@@ -534,14 +546,16 @@ export function analyzeAttribute(
         eventStu,
         directiveStu,
         attributeStu,
-        continueRE,
-        continueArg,
         insertNullNum,
         slotOfAnyTag,
         nameOfSlotTag,
         createTemplate,
         awaitContextStartIndex,
-        shouldContinueDirective
+        continueInfo: {
+            re: continueRE,
+            arg: continueArg,
+            by: shouldContinueDirective
+        }
     }
 }
 
@@ -705,35 +719,24 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     })
 }
 
-// 从for指令产生上下文的字符中分离出item的部分
-export function findForItemDestructuringStr(s: string) {
-    let sc = 0
-    let res = ""
-
-    if (!/^[{[]/.test(s)) {
-        const commaIndex = s.indexOf(",")
-        return s.slice(0, commaIndex)
+// 将解构模式转换为单行模式，并记录开始和结束位置的映射(同TransformInterpolationRet中的mapping)
+// 这里的映射的四个元素分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
+// 此方法主要用来将for/then/catch/slot指令中的结构模式转换成单行模式并记录位置映射，方便之后生成sourcemap信息
+function makeDestructuringPatternSignleLine(
+    pattern: string,
+    startSourceIndex: number
+): TransformInterpolationRet {
+    const { positions } = inputDescriptor
+    const endSourceIndex = startSourceIndex + pattern.length
+    const [startLoc, endLoc] = [positions[startSourceIndex], positions[endSourceIndex]]
+    const transformedPattern = pattern.replace(new RegExp(expressionReplaceWithSpaceRE, "g"), " ")
+    return {
+        transformedExp: transformedPattern,
+        mappings: [
+            [startSourceIndex, 0, startLoc.line, startLoc.column],
+            [endSourceIndex, transformedPattern.length, endLoc.line, endLoc.column]
+        ]
     }
-
-    const charMap = {
-        "{": "}",
-        "[": "]"
-    }
-    const startChar = s[0]
-    const slash = startChar === "[" ? "\\" : ""
-    const endChar = charMap[startChar as "{" | "["]
-    const restr = `[${slash}${startChar}${slash}${endChar}]`
-    do {
-        const index = findOutOfSC(s, new RegExp(restr))
-        const isStartChar = s[index] === startChar
-        if (index === -1) {
-            break
-        }
-        res += s.slice(0, index + 1)
-        sc += isStartChar ? 1 : -1
-        s = s.slice(index + 1)
-    } while (sc)
-    return res
 }
 
 /**
@@ -753,48 +756,59 @@ export function findForItemDestructuringStr(s: string) {
  * 其中：ctx(1)为整个item，ctx(2)为整个index，ctx(3)为标识符a，但key指令只能通过 ctx(1).a.b 来访问标识符b
  */
 function recordDestructuringIdentifiers(
-    source: string,
+    tir: TransformInterpolationRet,
+    aliasArgs: TransformInterpolationRet[],
     context: TemplateContext,
-    aliasArgs: string[],
     isForDirective: boolean,
     baseCtxIndex: number
 ) {
-    const ast = parse((source = `const ${source}={}`)).body[0]
-    const declarators = (ast as VariableDeclaration).declarations
-    declarators.forEach(declarator => {
-        const identifiers: string[] = []
-        const baseValue = `ctx(${baseCtxIndex})`
-        const pattern = declarator.id as EsPattern
-        const patternSource = source.slice(pattern.start!, pattern.end!)
-        if (!isForDirective) {
-            getIdentifiersFromPattern(pattern).forEach(from => {
-                identifiers.push(from)
-                extendContext(context, from)
-            })
-        } else {
-            getIdentifiersFromPatternWithPath(source, pattern).forEach((path, from) => {
+    const identifiers: string[] = []
+    const baseValue = `ctx(${baseCtxIndex})`
+    const patternStr = isString(tir) ? tir : tir.transformedExp
+    const declarationSourceCode = `const ${patternStr}={}`
+
+    const ast = parse(declarationSourceCode).body[0]
+    const patternNode = (ast as any).declarations[0].id as EsPattern
+
+    if (!isForDirective) {
+        getIdentifiersFromPattern(patternNode).forEach(from => {
+            identifiers.push(from)
+            extendContext(context, from)
+        })
+    } else {
+        getIdentifiersFromPatternWithPath(declarationSourceCode, patternNode).forEach(
+            (path, from) => {
                 identifiers.push(from)
                 extendContext(context, from, `${baseValue}${path}`)
-            })
-        }
-        aliasArgs.push(`ctx => ${baseValue}`, `(${patternSource}) => [${identifiers.join(", ")}]`)
-    })
+            }
+        )
+    }
+
+    // 更新tir中的tranformedExp为解构函数，并更新mappings中的表达式结束位置（下标为1）
+    const destructuringFunc = `(${patternStr}) => [${identifiers.join(", ")}]`
+    if (isString(tir)) {
+        tir = destructuringFunc
+    } else {
+        tir.transformedExp = destructuringFunc
+        tir.mappings[1][1] = destructuringFunc.length
+    }
+    aliasArgs.push(`ctx => ${baseValue}`, tir)
 }
 
 // 为transformInterpolation的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
 // 还会将mappings中所有段的生成列（下标为1的元素）向右偏移前缀字符串长度的数量以保证正确的源码映射
-function concatStrAndTER<T extends TransformInterpolationRet>(
+function concatStrAndTIR<T extends TransformInterpolationRet>(
     prefix: string,
-    ter: T,
+    tir: T,
     postfix: string
 ): T {
-    if (isString(ter)) {
-        return (prefix + ter + postfix) as any
+    if (isString(tir)) {
+        return (prefix + tir + postfix) as any
     }
-    ter.mappings.forEach(item => {
+    tir.mappings.forEach(item => {
         item[1] += prefix.length
     })
-    return (ter.transformedExp = prefix + ter.transformedExp + postfix), ter
+    return (tir.transformedExp = prefix + tir.transformedExp + postfix), tir
 }
 
 // 此方法用来扩展context，将指令（for、then、catch、slot）产生的上下文标识符记录到context中

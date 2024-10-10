@@ -128,12 +128,14 @@ export interface AttributeAnalysisRet {
     directiveStu: TransformInterpolationRet[][]
     eventStu: TransformInterpolationRet[]
     attributeStu: TransformInterpolationRet[]
+    continueInfo?: {
+        re?: RegExp | null
+        by?: string | undefined
+        arg?: TransformInterpolationRet
+    }
     insertNullNum?: number
     createTemplate?: boolean
-    continueRE?: RegExp | null
     awaitContextStartIndex?: number
-    continueArg?: string | undefined
-    shouldContinueDirective?: string | undefined
     slotOfAnyTag: ValueWithLocation<string> | null
     nameOfSlotTag?: ValueWithLocation<string> | null
 }

@@ -93,8 +93,8 @@ export function analyzeTemplate(
                 awaitContextStartIndex
             )
             currentRet.aar = aar
-            continueRE = aar.continueRE
-            shouldContinueDirective = aar.shouldContinueDirective
+            continueRE = aar.continueInfo?.re
+            shouldContinueDirective = aar.continueInfo?.by
 
             // 对于使用了if指令或await指令的节点可能需要创建一个template挂载点，因为此时
             // 需要将多个节点结构作为参数传入ifMNodule/awaitModule
@@ -145,7 +145,7 @@ export function analyzeTemplate(
                         nodes[i].tag,
                         childTemplateAnalysisRet.aar!
                     )
-                    const childAarContinueArg = childTemplateAnalysisRet.aar!.continueArg
+                    const childAarContinueArg = childTemplateAnalysisRet.aar!.continueInfo?.arg
                     if (childTemplateAnalysisRet.aar?.insertNullNum) {
                         mockTemplateRet.children.push(awaitNullChild)
                     }
@@ -156,8 +156,8 @@ export function analyzeTemplate(
                         useBracket: useBracketWrap,
                         tar: childTemplateAnalysisRet
                     })
-                    continueRE = childTemplateAnalysisRet.aar?.continueRE
-                    shouldContinueDirective = childTemplateAnalysisRet.aar?.shouldContinueDirective
+                    continueRE = childTemplateAnalysisRet.aar?.continueInfo?.re
+                    shouldContinueDirective = childTemplateAnalysisRet.aar?.continueInfo?.by
                 }
             }
         }

@@ -5,8 +5,8 @@ import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 import { getAlias } from "../analyzer/alias"
 import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/state"
-import { isArray, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { lastElem } from "../../util/shared/sundry"
+import { isArray, isNull, isString } from "../../util/shared/assert"
+import { lastElem, replaceEachItems } from "../../util/shared/sundry"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
@@ -17,7 +17,7 @@ const transformTemplateFlag = {
 // 从templateAnalysisRet生成模版结构js代码
 export function transformTemplate(
     analysisRet: (TemplateAnalysisRet | null)[],
-    startLine: number,
+    generatingPosition: FixedArray<number, 2>,
     indentN = 2,
     flag = 1
 ) {
@@ -27,26 +27,25 @@ export function transformTemplate(
     const useLineBreak = shouldUseLineBreak(analysisRet, true)
     const parentUseLineBreak = vf(flag, "parentUseLineBreak") || useLineBreak
 
-    // 转换结果的位置信息，访问它得到的就是下一个字符在转换结果中的行、列
-    let currentPosition!: FixedArray<number, 2>
+    // generatingPosition表示当前生成代码的位置，访问它得到的就是下一个字符在转换结果中的行、列
+    // 当生成结果需要使用中括号包裹且需要换行时，将生成代码位置的行（下标为0的元素）+1
     if (useBracketWrap && useLineBreak) {
-        startLine++
+        generatingPosition[0]++
     }
-    currentPosition = [startLine, 0]
 
     // 添加字符串到转换结果，期间同步更新转换结果的位置信息
-    const pushTransformedArr = (...ters: TransformInterpolationRet[]) => {
-        for (const ter of ters) {
-            const terIsString = isString(ter)
-            const [currentLine, currentColumn] = currentPosition
-            const str = terIsString ? ter : ter.transformedExp
+    const pushTransformedArr = (...tirs: TransformInterpolationRet[]) => {
+        for (const tir of tirs) {
+            const tirIsString = isString(tir)
+            const [currentLine, currentColumn] = generatingPosition
+            const str = tirIsString ? tir : tir.transformedExp
             if (str !== "\n") {
-                currentPosition[1] += str.length
+                generatingPosition[1] += str.length
             } else {
-                currentPosition = [currentLine + 1, 0]
+                replaceEachItems(generatingPosition, [currentLine + 1, 0])
             }
-            if (!terIsString) {
-                ter.mappings.forEach(item => {
+            if (!tirIsString) {
+                tir.mappings.forEach(item => {
                     const sourceLine = item[2] - 1
                     const generatedColumn = item[1] + currentColumn
                     recordMapping(currentLine, generatedColumn, sourceLine, item[3], item[0], true)
@@ -73,9 +72,9 @@ export function transformTemplate(
         const { isTemplate } = item
         const hasAar = !isNull(item.aar)
         const hasChild = childrenLen! > 0
-        const isContinued = hasAar && !isNull(item.aar!.continueRE)
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
         const elementUseLineBreak = shouldUseLineBreak(item, hasChild)
+        const isContinued = hasAar && Boolean(item.aar!.continueInfo?.re)
         const withDirectiveStu = hasAar && item.aar!.directiveStu.length > 0
         const withAttributeStu = hasAar && item.aar!.attributeStu.length > 0
         const withAttributeOrEventStu = withAttributeStu || withEventStu || hasChild
@@ -94,16 +93,16 @@ export function transformTemplate(
         }
 
         // 添加attribute或event结构（这里包括单独的换行判断，因为这两个结构都是数组形式）
-        const addAttributeOrEventStu = (ters: TransformInterpolationRet[]) => {
-            const tersLen = ters.length
-            if (tersLen === 0) {
+        const addAttributeOrEventStu = (tirs: TransformInterpolationRet[]) => {
+            const tirsLen = tirs.length
+            if (tirsLen === 0) {
                 return pushTransformedArr(getAlias("nil"))
             }
 
             let charCount = 0
             const indentStr = indent(n + 2)
-            for (const ter of ters) {
-                charCount += getLengthOfTER(ter)
+            for (const tir of tirs) {
+                charCount += getLengthOfTER(tir)
                 if (charCount > 80) {
                     break
                 }
@@ -111,20 +110,20 @@ export function transformTemplate(
             pushTransformedArr("[")
 
             if (charCount <= 80) {
-                ters.forEach((ter, index) => {
-                    pushTransformedArr(ter)
-                    if (index !== tersLen - 1) {
+                tirs.forEach((tir, index) => {
+                    pushTransformedArr(tir)
+                    if (index !== tirsLen - 1) {
                         pushTransformedArr(", ")
                     }
                 })
             } else {
-                ters.forEach((ter, index) => {
+                tirs.forEach((tir, index) => {
                     if (index === 0) {
                         pushTransformedArr("\n")
                     }
-                    pushTransformedArr(indentStr, ter)
+                    pushTransformedArr(indentStr, tir)
 
-                    if (index !== tersLen - 1) {
+                    if (index !== tirsLen - 1) {
                         pushTransformedArr(",", "\n")
                     } else {
                         pushTransformedArr("\n", indent(n + 1))
@@ -220,7 +219,7 @@ export function transformTemplate(
                 const childIndentN = +(useLineBreak && !isTemplate) + n
                 const transformedChild = transformTemplate(
                     chunk.tars,
-                    currentPosition[0],
+                    generatingPosition,
                     childIndentN,
                     flag
                 )
@@ -277,11 +276,11 @@ export function transformTemplate(
 }
 
 // 获取表达式转换结果（TransformInterpolationRet）的程度
-function getLengthOfTER(ter: TransformInterpolationRet) {
-    if (isString(ter)) {
-        return ter.length
+function getLengthOfTER(tir: TransformInterpolationRet) {
+    if (isString(tir)) {
+        return tir.length
     }
-    return ter.transformedExp.length
+    return tir.transformedExp.length
 }
 
 // 验证falg中是否设置了transformTemplateFlag的指定项
@@ -358,6 +357,8 @@ function shouldUseLineBreak(
     return state.count > 60
 }
 
+// 将TemplateAnalysisRet["children"]中的元素按照是否使用中括号包裹进行拆分：若需要使用
+// 中括号包裹（useBracket为true）则单独作为一个块，连续的无需使用中括号包裹的元素作为一个块
 function chunkChildren(children: TemplateAnalysisRet["children"]) {
     const len = children.length
     const chunks: {
