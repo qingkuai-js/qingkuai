@@ -41,13 +41,13 @@ import {
 import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
 import { compilerOptions } from "../configuration"
+import { kebab2Camel } from "../../util/compiler/sundry"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
-import { transformInterpolation } from "../transformer/interpolation"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { kebab2Camel, checkIdentifierName } from "../../util/compiler/sundry"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
+import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
 // dpm means Directives Priority Map
@@ -107,9 +107,8 @@ export function analyzeAttribute(
         const isEvent = rk.startsWith("@")
         const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
-        const valueStartSourceIndex = value.loc.start.index
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
-        const trimedValueStartSourceIndex = valueStartSourceIndex + /\s*/.exec(rv)![0].length
+        const trimedValueStartSourceIndex = value.loc.start.index + /\s*/.exec(rv)![0].length
 
         // 转换标签指令
         const transDirective = (
@@ -129,8 +128,8 @@ export function analyzeAttribute(
             } else {
                 option.positionMap = attr.positionMap
             }
-
-            return transformInterpolation(exp, valueStartSourceIndex, context, "attribute", option)
+            // prettier-ignore
+            return transformInterpolation(exp, trimedValueStartSourceIndex, context, "attribute", option)
         }
 
         // then/catch和slot指令记录标识符的逻辑一致，提取到这里分别调用即可
@@ -165,16 +164,16 @@ export function analyzeAttribute(
         // 初始化时要异步设置初始值）所以这里将select元素的value属性使用withReference进行处理
         // 但这种情况下最后一个参数（setter)会被传入nil，以打断选项改变时修改响应式值的渠道
         if (isRef || (tag === "select" && pureKey === "value")) {
-            const tiGetter = transAttrValue(rv)
-            const tiSetter = transAttrValue(rv, { usedAsSetter: true })
+            const tiGetter = transAttrValue(trimedValue)
+            const tiSetter = transAttrValue(trimedValue, { usedAsSetter: true })
             let setter = isString(tiSetter) ? tiSetter : tiSetter.transformedExp
             if (isComponent) {
                 // slot是特殊属性，不会被当做组件props，引用传递时要报错
                 if (pureKey === "slot") {
                     InvalidSlotAttr("&", key.loc)
                 } else {
+                    const postfix = `, ${setter}]`
                     const prefix = `${stringify(pureKey)}, [`
-                    const postfix = `, v => (${setter} = v)]`
                     eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
                 }
             } else {
@@ -201,15 +200,16 @@ export function analyzeAttribute(
                     }
 
                     const typeValueRaw = typeAttr?.value.raw
-                    if (!/^(?:radio|checkbox)$/.test(typeValueRaw)) {
-                        eventName = "input"
-                        attrsForErr = ["value"]
-                        attrIsNotAllowed = pureKey !== "value"
-                    } else {
+                    if (/^(?:radio|checkbox)$/.test(typeValueRaw)) {
                         needSetter = pureKey !== "group"
                         attrsForErr = ["checked", "group"]
                         tagForErr = `${tag}[type="${typeValueRaw}"]`
                         attrIsNotAllowed = !/^(?:checked|group)$/.test(pureKey)
+                    } else {
+                        eventName = "input"
+                        attrsForErr = ["value"]
+                        attrIsNotAllowed = pureKey !== "value"
+                        tagForErr = `${tag}[type="${typeAttr?.value.raw || "text"}"]`
                     }
                 } else if (tag === "select") {
                     const [multipleAttr] = preProcessedAttr.filter(attr => {
@@ -222,22 +222,31 @@ export function analyzeAttribute(
                     needSetter = !multipleAttr
                     attrIsNotAllowed = pureKey !== "value"
                 }
+
+                // 检查引用传递的属性是否合法，允许的属性：input/textarea -> value；
+                // radio/checkbox -> checked/group；select -> value
+                //
                 if (attrIsNotAllowed) {
                     InvalidRefAttr(tagForErr, attrsForErr, pureKey, attr.loc)
                 }
 
                 // select的value属性（非引用）时setter为null
-                if (!isRef) {
+                // radio/checkbox(&group)或select[multiple](&value)时无setter
+                if (!needSetter) {
+                    setter = ""
+                } else if (!isRef) {
                     setter = getAlias("nil")
-                } else if (needSetter) {
-                    setter = `v => (${setter} = v)`
+                }
+
+                if (setter) {
+                    setter = ", " + setter
                 }
 
                 const spk = stringify(pureKey)
                 const sev = stringify(eventName)
                 const funcName = getAlias("withReference")
                 const prefix = `...${funcName}(${sev}, ${spk}, `
-                eventStu.push(concatStrAndTIR(prefix, tiGetter, `, ${setter})`))
+                eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
             }
         } else if (isDirective) {
             switch (pureKey) {
@@ -289,7 +298,8 @@ export function analyzeAttribute(
                             if (!itemPart || !indexPart) {
                                 NoForDirectiveCtxNameSpeciffied(
                                     itemPart ? "index" : "item",
-                                    getLocByIndex(commastartSourceIndex + (itemPart ? 0 : 1))
+                                    // +!itemPart 与 item? 0: 1 等效，其他地方也有相似处理
+                                    getLocByIndex(commastartSourceIndex + +!itemPart)
                                 )
                             }
                         }
@@ -488,12 +498,12 @@ export function analyzeAttribute(
                 }
 
                 if (isComponent) {
-                    const tir = transAttrValue(rv, {
+                    const tir = transAttrValue(trimedValue, {
                         isComponentEvent: true
                     })
                     attributeStu.push(concatStrAndTIR(`${stringify(eventName)}, `, tir, ""))
                 } else {
-                    const tir = transAttrValue(rv, { eventWrapperFlag })
+                    const tir = transAttrValue(trimedValue, { eventWrapperFlag })
                     if (eventFlag === 0) {
                         flagComment = "no flag"
                     } else {
@@ -532,7 +542,7 @@ export function analyzeAttribute(
                 nameOfSlotTag = attrWithLocationStu
             }
         } else {
-            const tir = isInterpolation ? transAttrValue(rv) : stringify(rv)
+            const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)
             attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
         }
     })
@@ -577,7 +587,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     for (let i = 0; i < attributes.length; i++) {
         const currentAttribute = attributes[i]
         const { key, value, loc } = currentAttribute
-        const [rk, rv] = [key.raw, value.raw]
+        const [rk] = [key.raw, value.raw]
 
         const isNative = /^[^@!#&]/.test(rk)
         const isDynamicOrReference = /^[!&]/.test(rk)

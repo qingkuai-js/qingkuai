@@ -12,6 +12,10 @@ export function RedundantArgs(fn: string, need: number | string) {
     warn(`${fn} ${needMsg}, and the excess parameters has been ignored.`)
 }
 
+export function IdentifierMaybeOverwritten(name: string) {
+    warn(`The top scope identifier(${name}) may be overwrittern in inline event.`)
+}
+
 export function DerLoseReactivity() {
     warn("Destructure the return value of der will result in a loss of reacativity.")
 }

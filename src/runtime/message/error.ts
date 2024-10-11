@@ -1,3 +1,5 @@
+import { isSymbol } from "../../util/shared/assert"
+
 export function NonTraverse(): never {
     typeError("The given value for for-directive is non-traversable.")
 }
@@ -8,6 +10,13 @@ export function NotPromise(): never {
 
 export function DuplicateKey(key: string): never {
     typeError("Duplicate key for keyed-for-module, duplicate key: " + key)
+}
+
+export function AssignToUndefined(property: any): never {
+    if (isSymbol(property)) {
+        property = `Symbol(${property.description})`
+    }
+    typeError(`Can not assign value to undeifined(property [${property}] of props)`)
 }
 
 export function InvalidMountNode(selector: string): never {

@@ -15,6 +15,10 @@ export function isArray(v: any): v is any[] {
     return Array.isArray(v)
 }
 
+export function isSymbol(v: any): v is symbol {
+    return typeof v === "symbol"
+}
+
 export function isNumber(v: any): v is number {
     return typeof v === "number"
 }

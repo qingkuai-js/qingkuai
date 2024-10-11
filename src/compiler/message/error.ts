@@ -12,14 +12,16 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1035
+ * current-error-code: 1036
  */
 
 import type { ASTLocation } from "../types"
-import type { GeneralFunc } from "../../util/types"
+import type { FixedArray, GeneralFunc } from "../../util/types"
 
 import { lastElem } from "../../util/shared/sundry"
+import { isNumber } from "../../util/shared/assert"
 import { bannedIdentifierFormatRE } from "../regular"
+import { getLocByIndex } from "../../util/compiler/state"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -150,6 +152,10 @@ export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: s
     return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
 })
 
+export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
+    return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
+})
+
 export const CompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
     return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
 })
@@ -190,11 +196,26 @@ class CompileError extends Error {
     }
 }
 
+// 为返回错误描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的错误描述抛出，
+// 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
 function withLocation<T extends GeneralFunc>(code: number, fn: T) {
-    return (...args: [...Parameters<T>, loc: ASTLocation]) => {
-        // console.log(new CompileError(lastElem(args), code, fn(...args.slice(0, -1))))
-        throw new CompileError(lastElem(args), code, fn(...args.slice(0, -1)))
+    function error(...args: [...Parameters<T>, loc: ASTLocation]): never
+    function error(...args: [...Parameters<T>, startIndex: number, endIndex: number]): never
+    function error(
+        ...args: [...Parameters<T>, locOrStartIndex: ASTLocation | number, endIndex?: number]
+    ): never {
+        let errorLoc: ASTLocation
+        let errorMethodArgs: [...Parameters<T>]
+        if (isNumber(lastElem(args))) {
+            errorMethodArgs = args.slice(0, -2) as any
+            errorLoc = getLocByIndex(...(args.slice(-2) as FixedArray<number, 2>))
+        } else {
+            errorLoc = lastElem(args) as ASTLocation
+            errorMethodArgs = args.slice(0, -1) as any
+        }
+        throw new CompileError(errorLoc, code, fn(...errorMethodArgs))
     }
+    return error
 }
 
 // 获取特殊属性的描述（指令、事件、动态即引用属性）

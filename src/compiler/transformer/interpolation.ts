@@ -1,26 +1,36 @@
 import type {
+    ASTLocation,
     EliminateRanges,
     TemplateContext,
     TransformInterpolationRet,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptionalParam,
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
+import {
+    validIdentifierNameRE,
+    bannedIdentifierFormatRE,
+    expressionReplaceWithSpaceRE,
+} from "../regular"
+import {
+    BadValueForRefAttr,
+    InvalidIdentifierName,
+    IdentifierFormatIsNotAllowed,
+    ContextIdentifierUsedAsReferenceTarget,
+} from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
-import { BadValueForRefAttr } from "../message/error"
 import { identifierIsReference } from "../estree/assert"
-import { expressionReplaceWithSpaceRE } from "../regular"
-import { inputDescriptor, replacementInfo } from "../state"
+import { isIndexEliminated } from "../../util/compiler/sundry"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { checkIdentifierName, isIndexEliminated } from "../../util/compiler/sundry"
+import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
 
 export function transformInterpolation(
     expression: string,
@@ -49,6 +59,7 @@ export function transformInterpolation(
     const transformInfos: Map<number, string[]> = new Map()
 
     const isDebug = compilerOptions.debugeMode
+    const usedAsSetter = optionalParams.usedAsSetter || false
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
@@ -81,6 +92,9 @@ export function transformInterpolation(
             const nodeStartSourceIndex = startSourceIndex + start - 2
             const nodeLoc = getLocByIndex(nodeStartSourceIndex, nodeEndSourceIndex)
 
+            // 记录标识符到文件使用的标识符列表（用于确定别名）
+            allExistingIdentifiers.add(name)
+
             // 检查插值表达式中是否使用了禁止使用的标识符
             checkIdentifierName(node.name, nodeLoc, false)
 
@@ -107,7 +121,7 @@ export function transformInterpolation(
             if (ctx) {
                 useGetter = true
                 useContext = true
-                if (!isDebug || type === "directive") {
+                if (!isDebug || usedAsSetter || type === "directive") {
                     if (!isKeyDirective) {
                         extendTransformInfo(end, ctx.to)
                     } else {
@@ -164,6 +178,15 @@ export function transformInterpolation(
         useGetter = isEvent || expressionMaybeFunction(ast)
     }
 
+    // 如果当前用作setter（引用传递），如果目标是上下文标识符则报错（它是常量）
+    if (usedAsSetter && useContext && is(ast, "Identifier")) {
+        ContextIdentifierUsedAsReferenceTarget(
+            expression,
+            startSourceIndex,
+            startSourceIndex + expression.length
+        )
+    }
+
     // 根据标记的trasformInfos和expEliminateRanges转换表达式，并生成转换前后每个字符的索引映射，
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
@@ -214,23 +237,20 @@ export function transformInterpolation(
 
     // 调试模式下会将内联ctx调用改为变量声明，这样在调试时将一段源码中不合理的断点位置，另外通过
     // 使用变量声明，在当前getter作用域内，就会存在一个与源码同名的标识符，调试时可以在调用堆栈查看
-    if (contextVariables.length) {
+    if (contextVariables.length && !usedAsSetter) {
         const cvds = `const ${contextVariables.join(", ")};`
-        transformedExp = `{ ${cvds} return ${transformedExp} }`
-        addedPrefixLen += cvds.length + 10
         useReturnKeyword = true
+        addedPrefixLen += cvds.length + 10
+        transformedExp = `{ ${cvds} return ${transformedExp} }`
     }
 
     // 内联函数时，如果是调试模式，这里也需要使用return关键字，不然返回返回值处的断点属于外层函数
     if (useInlineEventHandler) {
-        const paramStr = isComponentEvent ? "param" : "event"
-        if (!isDebug) {
-            transformedExp = `${paramStr} => ${transformedExp}`
-        } else {
-            useReturnKeyword = true
-            addedPrefixLen += paramStr.length + 13
-            transformedExp = `${paramStr} => { return ${transformedExp} }`
+        const paramStr = `$${isComponentEvent ? "param" : "event"}`
+        if (isDebug) {
+            addedPrefixLen += paramStr.length + 4
         }
+        transformedExp = `${paramStr} => ${transformedExp}`
     }
 
     if (optionalParams.eventWrapperFlag) {
@@ -240,10 +260,8 @@ export function transformInterpolation(
         transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${flag})`
     }
 
-    // 当 usedAsSetter 被设置时，代表这个表达式在一个setter中，此时如果转换后的表达式添加了
-    // _w_前缀或.$后缀，都应该将原始的标识符一同修改（这种情况主要出现在引用属性值中）
-    if (optionalParams.usedAsSetter) {
-        transformedExp += ` = ${expression}`
+    if (usedAsSetter) {
+        transformedExp = `v => (${transformedExp} = v)`
     } else if (useGetter) {
         const paramStr = useContext ? "ctx" : "_"
         if (useParenthesesWrap) {
@@ -286,6 +304,17 @@ export function transformInterpolation(
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp
+}
+
+// 检查标识符名称是否合法, checkInvalid用来控制是否需要检测标识符名称是否合法，如果
+// 是从AST的Identifier捕获组中调用此方法的话，可以将其设置为false，省去一部分检测开销
+export function checkIdentifierName(name: string, errLoc: ASTLocation, checkInvalid = true) {
+    if (checkInvalid && !validIdentifierNameRE.test(name)) {
+        InvalidIdentifierName(name, errLoc)
+    }
+    if (bannedIdentifierFormatRE.test(name)) {
+        IdentifierFormatIsNotAllowed(name, errLoc)
+    }
 }
 
 // 判断表达式是否是内联事件处理器

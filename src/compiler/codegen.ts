@@ -1,12 +1,12 @@
 import type { FixedArray } from "../util/types"
 
 import {
-    initItems,
-    runtimeItems,
+    usedInitItems,
     sourceMapInfo,
     debuggingInfo,
     stringConstants,
     inputDescriptor,
+    usedRuntimeItems,
     tempStoredImportInfos
 } from "./state"
 import { getAlias } from "./analyzer/alias"
@@ -23,7 +23,7 @@ export function generateImportStatements() {
     let runtimeStr = ""
     let itemArr: string[] = []
     let tempStoredImportStr = ""
-    runtimeItems.forEach(item => {
+    usedRuntimeItems.forEach(item => {
         itemArr.push(item)
         charCount += item.length
     })
@@ -56,7 +56,7 @@ export function generateImportStatements() {
 // 生成init方法的调用及解构语句
 export function generateInitCallStatement() {
     const itemArr: string[] = []
-    initItems.forEach(item => {
+    usedInitItems.forEach(item => {
         itemArr.push(item)
     })
     itemArr.push("props")

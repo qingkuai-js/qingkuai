@@ -10,6 +10,7 @@ import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { inputDescriptor, resetCompilerState } from "./state"
 import { compressCompileSize } from "./optimizer/compile-size"
+import { confirmQingKuaiIdentifierAliases } from "./analyzer/alias"
 
 export function compile(source: string, componentName: string) {
     const templateNodes = (resetCompilerState(), parseTemplate(source))
@@ -17,6 +18,8 @@ export function compile(source: string, componentName: string) {
     analyzeScript(scriptSource)
 
     const templateAnalysisRet = analyzeTemplate(templateNodes)
+    confirmQingKuaiIdentifierAliases()
+
     const scriptTranformedRet = transformScript(scriptSource, 1)
     compressCompileSize(templateAnalysisRet)
 

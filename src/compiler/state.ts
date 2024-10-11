@@ -17,8 +17,8 @@ export const replacementInfo = newReplacementInfo()
 export const inputDescriptor = newInputDescriptor()
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
-export const initItems = new Set<string>()
-export const runtimeItems = new Set<string>()
+export const usedInitItems = new Set<string>()
+export const usedRuntimeItems = new Set<string>()
 export const allExistingIdentifiers = new Set<string>()
 export const eliminateRanges: EliminateRanges = new Set()
 
@@ -27,10 +27,10 @@ export const stringConstantsSourceMap = new Map<string, string>()
 
 // 重置编译器状态
 export function resetCompilerState() {
-    initItems.clear()
-    runtimeItems.clear()
+    usedInitItems.clear()
     eliminateRanges.clear()
     stringConstants.clear()
+    usedRuntimeItems.clear()
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
     setArrLength(tempStoredImportInfos, 0)
@@ -44,7 +44,7 @@ export function resetCompilerState() {
 function newSourceMapInfo(): SourceMapInfo {
     return {
         mappings: [],
-        hasScript:false,
+        hasScript: false,
         preaddedLineCount: 0,
         removedLine: new Set(),
         tempStoredImportStartLine: 0,

@@ -36,7 +36,6 @@ export const fullRuntimeItems = new Set([
     "constDestructuringReact"
 ])
 
-
 export const compilerFuncs = new Set(["rea", "stc", "der"])
 
 export const specialTags = new Set(["!", "script", "style"])

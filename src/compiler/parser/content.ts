@@ -71,7 +71,8 @@ export function content2script(content: string, startSourceIndex: number) {
             const interpolationExp = content.slice(startBracketNextIndex, endBracketIndex)
             if (!interpolationExp.trim()) {
                 EmptyInterpolationExpression(
-                    getLocByIndex(startBracketSourceIndex, endBracketIndex + 1 + startSourceIndex)
+                    startBracketSourceIndex,
+                    endBracketIndex + 1 + startSourceIndex
                 )
             } else if (isDebug) {
                 // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，

@@ -121,10 +121,7 @@ export function parseTemplate(source: string) {
 
         // 检查是否以结束标签开始
         const tagStructure = templateTagStructureRE.exec(source)![0]
-        const tagStructureLoc = {
-            start: positions[index],
-            end: positions[index + tagStructure.length]
-        }
+        const tagStructureLoc = getLocByIndex(index, index + tagStructure.length)
         if (tagStructure.startsWith("</")) {
             TemplateStartsWithEndTag(`${tagStructure} ... >`, tagStructureLoc)
 
@@ -158,10 +155,7 @@ export function parseTemplate(source: string) {
                     EmbeddedScriptBlockOutOfLimit(tagStructureLoc)
                     return reduceSource(blockEndIndex + 1), void 0
                 }
-                scriptDescriptor.loc = {
-                    start: positions[index + startIndex],
-                    end: positions[index + endIndex]
-                }
+                scriptDescriptor.loc = getLocByIndex(index + startIndex, index + endIndex)
                 scriptDescriptor.code = source.slice(startIndex, endIndex)
                 scriptDescriptor.isTS = langMatched[1] === "ts"
                 scriptDescriptor.existing = true
@@ -197,11 +191,7 @@ export function parseTemplate(source: string) {
             } else {
                 const [unexpect] = templateInvalidAttributeNameRE.exec(source)!
                 const unexpectEndIndex = reduceSource(unexpect.length).index
-                const errLoc = {
-                    start: positions[unexpectEndIndex - unexpect.length],
-                    end: positions[unexpectEndIndex]
-                }
-                UnexpectedToken(unexpect[0], errLoc)
+                UnexpectedToken(unexpect[0], unexpectEndIndex - unexpect.length, unexpectEndIndex)
 
                 // 检查模式下继续执行解析...
                 if (source) continue
@@ -211,8 +201,7 @@ export function parseTemplate(source: string) {
             // 插值属性长度为1时表示没有指定属性名称
             const isInterpolationAttr = /^[!@#&]/.test(attrName)
             if (isInterpolationAttr && attrName.length === 1) {
-                const errLoc = getLocByIndex(attrNameStartIndex)
-                EmptyInterpolationAttrName(attrName[0], errLoc)
+                EmptyInterpolationAttrName(attrName[0], getLocByIndex(attrNameStartIndex))
             }
 
             // check whether attribute value exists
@@ -385,8 +374,10 @@ export function parseTemplate(source: string) {
     // 过滤无需渲染的节点，规则如下：
     // 1. template标签且无子节点时无需保留
     // 2.不保留所有注释（通过编译选项设置）时只保留条件注释；
-    return (function filter(list: TemplateNode[], shouldReserve = true) {
+    return (function filter(list: TemplateNode[]) {
         return list.filter(({ tag, content, children }) => {
+            let shouldReserve = true
+
             if (tag === "template") {
                 shouldReserve = children.length > 0
             } else if (tag === "!") {
@@ -396,9 +387,11 @@ export function parseTemplate(source: string) {
                     shouldReserve = templateConditionalCommentRE.test(content)
                 }
             }
+
             if (shouldReserve) {
                 replaceEachItems(children, filter(children))
             }
+
             return shouldReserve
         })
     })(astList)
