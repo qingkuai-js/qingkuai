@@ -27,10 +27,18 @@ export function transformTemplate(
     const useLineBreak = shouldUseLineBreak(analysisRet, true)
     const parentUseLineBreak = vf(flag, "parentUseLineBreak") || useLineBreak
 
+    // 判断当前处理目标是否用作组件的slot，只需判断analysisRet[0]即可，因为用作slot的analysisRet的
+    // useBracket属性会被设置为true，而在调用chunkChildren之后他就会被划分为一个单独的块
+    const slotAttrValue = analysisRet[0]?.aar?.slotOfAnyTag?.value
+
     // generatingPosition表示当前生成代码的位置，访问它得到的就是下一个字符在转换结果中的行、列
     // 当生成结果需要使用中括号包裹且需要换行时，将生成代码位置的行（下标为0的元素）+1
+    // 如果上述条件成立，且slotAttrValue有值的话，应该在将生成代码位置的行+1
     if (useBracketWrap && useLineBreak) {
         generatingPosition[0]++
+        if (slotAttrValue) {
+            generatingPosition[0]++
+        }
     }
 
     // 添加字符串到转换结果，期间同步更新转换结果的位置信息
@@ -263,16 +271,26 @@ export function transformTemplate(
         return transformedStr
     }
 
-    const retWrap = useLineBreak ? "\n" : ""
-    const sav = analysisRet[0]?.aar?.slotOfAnyTag?.value
-    const retWrapByParent = parentUseLineBreak ? "\n" : ""
+    const retLineBreak = useLineBreak ? "\n" : ""
     const retIndentStr = useLineBreak ? indent(indentN) : ""
-    const retNextIndentStr = useLineBreak ? indent(indentN + 1) : ""
+    const retLineBreakByParent = parentUseLineBreak ? "\n" : ""
     const retIndentStrByParent = parentUseLineBreak ? indent(indentN) : ""
-    const slotAttrValueStr = sav ? `${retWrap}${retNextIndentStr}${sav}, ` : ""
-    return `[${slotAttrValueStr}${retWrap}${transformedStr}${retWrap}${retIndentStr}]${
-        hasNextChild ? `, ${retWrapByParent}${retIndentStrByParent}` : ""
-    }`
+    const retPostfix = hasNextChild ? `, ${retLineBreakByParent}${retIndentStrByParent}` : ""
+
+    // 更新生成代码位置
+    if (useLineBreak) {
+        generatingPosition[0]++
+    }
+    if (hasNextChild && parentUseLineBreak) {
+        generatingPosition[0]++
+        generatingPosition[1] = retIndentStrByParent.length
+    }
+
+    const retNextIndentStr = useLineBreak ? indent(indentN + 1) : ""
+    const slotAttrValueStr = slotAttrValue
+        ? `${retLineBreak}${retNextIndentStr}${slotAttrValue}, `
+        : ""
+    return `[${slotAttrValueStr}${retLineBreak}${transformedStr}${retLineBreak}${retIndentStr}]${retPostfix}`
 }
 
 // 获取表达式转换结果（TransformInterpolationRet）的程度

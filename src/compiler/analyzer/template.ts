@@ -237,6 +237,7 @@ export function analyzeTemplate(
             })
         }
     }
+
     return result
 }
 

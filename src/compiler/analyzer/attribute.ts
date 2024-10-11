@@ -518,10 +518,10 @@ export function analyzeAttribute(
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
             // slot标签的name属性（或组件的直接子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
             // 这里只需检测name或slot属性是不是动态类型即可，因为引用类型属性的处理不会经过这里的代码块
-            const attrWithLocationStu = (nameOfSlotTag = {
+            const attrWithLocationStu = {
                 loc: attr.loc,
                 value: stringify(rv)
-            })
+            }
             const isSlotAttribute = pureKey === "slot"
             if (isDynamic) {
                 if (isSlotAttribute) {
