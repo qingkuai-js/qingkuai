@@ -16,10 +16,6 @@ export function recordMapping(
     sourceIndex: number,
     isTemplate = false
 ) {
-    if (!isTemplate) {
-        sourceLine = getGeneratedScriptLine(sourceLine)
-    }
-
     // 源码行添加源码文件头部注释占用的行数
     if (compilerOptions.debugeMode) {
         sourceLine += 10
@@ -108,11 +104,14 @@ export function offsetSourcemap() {
     replaceEachItems(sourceMapInfo.mappings, temp)
 }
 
-// 记录一条源码位置与生成代码位置一致的映射信息（转换和生成代码的过程中处理偏移）
+// 记录一条源码位置与生成代码位置一致的映射信息（转换和生成代码的过程中处理偏移），此方法目前只在
+// 分析script部分代码时使用，此方法关于源码位置有针对处理，如果其他地方使用到此方法需要考虑重构
 export function recordMappingWithNoOffset(position: ASTPosition) {
     const { line, column, index } = position
+    const sourceLine = getGeneratedScriptLine(line - 1)
+    const sourceIndex = inputDescriptor.script.loc.start.index + index
     if (!sourceMapInfo.positionShouldNotBeMapped[index]) {
-        recordMapping(line - 1, column, line - 1, column, index)
+        recordMapping(line - 1, column, sourceLine, column, sourceIndex)
     }
 }
 

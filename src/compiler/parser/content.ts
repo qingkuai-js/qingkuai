@@ -4,6 +4,7 @@ import { getLocByIndex } from "../../util/compiler/state"
 import { normalStringify } from "../../util/compiler/sundry"
 import { findEndCurlyBracket } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
+import { isNumber } from "../../util/shared/assert"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
@@ -93,6 +94,12 @@ export function content2script(content: string, startSourceIndex: number) {
                 }
             }
         }
+    }
+
+    // 调试模式下，将positionMap[5]放到首位，保持首个断点设置位在content开始位置
+    if (isDebug && isNumber(positionMap[5])) {
+        positionMap[0] = positionMap[5]
+        delete positionMap[5]
     }
 
     // 调试模式和飞调试模式的转换结果不同，对于相同的输入字符串：a {b} c，它们的转换结果格式如下：

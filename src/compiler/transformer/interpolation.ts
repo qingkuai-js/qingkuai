@@ -3,7 +3,7 @@ import type {
     EliminateRanges,
     TemplateContext,
     TransformInterpolationRet,
-    TransformInterpolationOptionalParam,
+    TransformInterpolationOptionalParam
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
@@ -12,13 +12,13 @@ import type { GeneralFunc } from "../../util/types"
 import {
     validIdentifierNameRE,
     bannedIdentifierFormatRE,
-    expressionReplaceWithSpaceRE,
+    expressionReplaceWithSpaceRE
 } from "../regular"
 import {
     BadValueForRefAttr,
     InvalidIdentifierName,
     IdentifierFormatIsNotAllowed,
-    ContextIdentifierUsedAsReferenceTarget,
+    ContextIdentifierUsedAsReferenceTarget
 } from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
@@ -233,33 +233,43 @@ export function transformInterpolation(
     let addedPrefixLen = 0
     let transformedExp = transformedArr.join("")
     const useParenthesesWrap = /^ *{/.test(transformedExp)
+    const hasContextVariable = contextVariables.length > 0
     const useInlineEventHandler = isEvent && isInlineEventHandler(ast)
 
     // 调试模式下会将内联ctx调用改为变量声明，这样在调试时将一段源码中不合理的断点位置，另外通过
     // 使用变量声明，在当前getter作用域内，就会存在一个与源码同名的标识符，调试时可以在调用堆栈查看
-    if (contextVariables.length && !usedAsSetter) {
+    if (hasContextVariable && !usedAsSetter) {
         const cvds = `const ${contextVariables.join(", ")};`
         useReturnKeyword = true
         addedPrefixLen += cvds.length + 10
         transformedExp = `{ ${cvds} return ${transformedExp} }`
     }
 
-    // 内联函数时，如果是调试模式，这里也需要使用return关键字，不然返回返回值处的断点属于外层函数
+    // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
         const paramStr = `$${isComponentEvent ? "param" : "event"}`
-        if (isDebug) {
-            addedPrefixLen += paramStr.length + 4
+        if (!isDebug || useReturnKeyword) {
+            transformedExp = `${paramStr} => ${transformedExp}`
+        } else {
+            useReturnKeyword = true
+            addedPrefixLen += paramStr.length + 13
+            transformedExp = `${paramStr} => { return ${transformedExp} }`
         }
-        transformedExp = `${paramStr} => ${transformedExp}`
     }
 
+    // 如果使用了事件修饰符，则调用eventWrapper方法将包裹事件，并传入flag参数
     if (optionalParams.eventWrapperFlag) {
         const flag = optionalParams.eventWrapperFlag
-        const eventWrapperFuncName = getAlias("eventWradpper")
+        const eventWrapperFuncName = getAlias("eventWrapper")
         addedPrefixLen += eventWrapperFuncName.length + 1
         transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${flag})`
     }
 
+    // 调试模式下默认都使用return关键字，以下是为什么要这样处理的原因：
+    // 经过大量测试发现大多浏览器对于以纯字符串计算的表达式开头的返回值，开头断点位置都有或多或少不准确的情况，
+    // 使用return关键字后可以让断点位置稳定设置在return关键字之前，这样可以保持断点位置的一致性，提高调试体验
+    //
+    // 注意：此处理程序是为了绕过浏览器Devtools的相关BUG，如果之后此问题得到修复并稳定运行一段时间，可移除此部分代码及注释
     if (usedAsSetter) {
         transformedExp = `v => (${transformedExp} = v)`
     } else if (useGetter) {
@@ -268,8 +278,14 @@ export function transformInterpolation(
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
         }
-        addedPrefixLen += (useContext ? 3 : 1) + 4
-        transformedExp = `${paramStr} => ${transformedExp}`
+        if (!isDebug || useReturnKeyword) {
+            addedPrefixLen += paramStr.length + 4
+            transformedExp = `${paramStr} => ${transformedExp}`
+        } else {
+            useReturnKeyword = true
+            addedPrefixLen += paramStr.length + 13
+            transformedExp = `${paramStr} => { return ${transformedExp} }`
+        }
     }
 
     // 记录表达式的sourcemap片段，注意：这里的mpaaings与sourcemap中的表示有所不同，它的四个元素
