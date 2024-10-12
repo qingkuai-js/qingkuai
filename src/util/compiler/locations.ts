@@ -1,0 +1,63 @@
+import type { ASTLocation, ASTPosition } from "../../compiler/types"
+
+import { inputDescriptor } from "../../compiler/state"
+
+// 通过Script AST的索引换取script AST位置信息
+export function getScriptPos(index: number) {
+    const {
+        positions,
+        script: {
+            loc: { start: startLoc }
+        }
+    } = inputDescriptor
+    const sourceLoc = positions[index + startLoc.index]
+
+    const ret: ASTPosition = {
+        index,
+        line: 0,
+        column: sourceLoc.column
+    }
+
+    ret.line = sourceLoc.line - startLoc.line + 1
+    if (sourceLoc.line === startLoc.line) {
+        ret.column -= startLoc.column
+    }
+    return ret
+}
+
+// 通过script AST中的行号换取生成代码中的行号
+export function getGeneratedScriptLine(line: number) {
+    return line + inputDescriptor.script.loc.start.line - 1
+}
+
+// 通过script AST中的索引换取源码中的索引
+export function getSourceIndexByScriptIndex(index: number) {
+    return index + inputDescriptor.script.loc.start.index
+}
+
+// 通过script AST中的ASTPosition换取源码中的ASTPosition
+export function getSourcePosByScriptPos(pos: ASTPosition): ASTPosition {
+    return getPosByIndex(getSourceIndexByScriptIndex(pos.index))
+}
+
+// 通过 script AST中的ASTLocation换取源码中的ASTLocation
+export function getSourceLocByScriptLoc(loc: ASTLocation): ASTLocation {
+    return {
+        start: getPosByIndex(getSourceIndexByScriptIndex(loc.start.index)),
+        end: getPosByIndex(getSourceIndexByScriptIndex(loc.end.index))
+    }
+}
+
+// 通过源码索引生成一个ASTPosition结构
+export function getPosByIndex(index: number): ASTPosition {
+    return inputDescriptor.positions[index]
+}
+
+// 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
+export function getLocByIndex(start: number, end?: number): ASTLocation {
+    const { positions } = inputDescriptor
+    return {
+        start: positions[start],
+        end: positions[end || start]
+    }
+}

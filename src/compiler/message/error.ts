@@ -13,6 +13,9 @@
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
  * current-error-code: 1036
+ *
+ * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
+ * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
  */
 
 import type { ASTLocation } from "../types"
@@ -21,7 +24,9 @@ import type { FixedArray, GeneralFunc } from "../../util/types"
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { bannedIdentifierFormatRE } from "../regular"
-import { getLocByIndex } from "../../util/compiler/state"
+import { getLocByIndex } from "../../util/compiler/locations"
+import { compilerOptions } from "../configuration"
+import { messages } from "../state"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -183,27 +188,37 @@ export const InvalidRefAttr = withLocation(1033, (tag: string, attr: string[], g
 })
 
 // 判断错误类型是会否是QingKuai编译错误
-export function isQimgKuaiCompileError(err: Error) {
+export function isCompileError(err: Error) {
     return err instanceof CompileError
 }
 
-class CompileError extends Error {
+export class CompileError extends Error {
     declare Description: string
 
     constructor(public loc: ASTLocation, public code: number, msg: string) {
         super(msg)
         this.Description = "The QingKuai compiler encountered a fatal error during execution"
+
+        // 非检查模式下直接抛出错误，检查模式下将错误对象存放在messages中
+        if (!compilerOptions.checkMode) {
+            throw this
+        } else {
+            messages.push({
+                value: this,
+                type: "error"
+            })
+        }
     }
 }
 
 // 为返回错误描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的错误描述抛出，
 // 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
 function withLocation<T extends GeneralFunc>(code: number, fn: T) {
-    function error(...args: [...Parameters<T>, loc: ASTLocation]): never
-    function error(...args: [...Parameters<T>, startIndex: number, endIndex: number]): never
+    function error(...args: [...Parameters<T>, loc: ASTLocation]): void
+    function error(...args: [...Parameters<T>, startIndex: number, endIndex: number]): void
     function error(
         ...args: [...Parameters<T>, locOrStartIndex: ASTLocation | number, endIndex?: number]
-    ): never {
+    ) {
         let errorLoc: ASTLocation
         let errorMethodArgs: [...Parameters<T>]
         if (isNumber(lastElem(args))) {
@@ -213,7 +228,7 @@ function withLocation<T extends GeneralFunc>(code: number, fn: T) {
             errorLoc = lastElem(args) as ASTLocation
             errorMethodArgs = args.slice(0, -1) as any
         }
-        throw new CompileError(errorLoc, code, fn(...errorMethodArgs))
+        new CompileError(errorLoc, code, fn(...errorMethodArgs))
     }
     return error
 }

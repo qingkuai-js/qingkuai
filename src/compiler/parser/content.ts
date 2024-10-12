@@ -1,10 +1,9 @@
 import { inputDescriptor } from "../state"
 import { compilerOptions } from "../configuration"
-import { getLocByIndex } from "../../util/compiler/state"
-import { normalStringify } from "../../util/compiler/sundry"
-import { findEndCurlyBracket } from "../../util/compiler/strings"
-import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 import { isNumber } from "../../util/shared/assert"
+import { getLocByIndex } from "../../util/compiler/locations"
+import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
+import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {

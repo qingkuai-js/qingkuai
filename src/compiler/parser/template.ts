@@ -32,12 +32,13 @@ import {
 import { inputDescriptor } from "../state"
 import { isNull } from "../../util/shared/assert"
 import { compilerOptions } from "../configuration"
-import { specialTags, selfClosingTags } from "../constants"
-import { getLocByIndex, getPosByIndex } from "../../util/compiler/state"
-import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
-import { newASTLocation, getPositionOfEachChar } from "../../util/compiler/sundry"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
+import { specialTags, selfClosingTags } from "../constants"
+import { newASTLocation } from "../../util/compiler/structure"
+import { getPositionOfEachChar } from "../../util/compiler/sundry"
+import { getLocByIndex, getPosByIndex } from "../../util/compiler/locations"
+import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
 export function parseTemplate(source: string) {
@@ -64,11 +65,12 @@ export function parseTemplate(source: string) {
 
     // 找到结束标签的关闭字符>，如果遇到无意义字符则发出警告（结束标签会忽略任何属性）
     function findCloseCharOfEndTag() {
-        const uselessMatched = (reduceSpaces(), /[^>]*/.exec(source))
+        const uselessMatched = (reduceSpaces(), /[^>\s]*/.exec(source))
         const uselessLen = uselessMatched?.[0].length || 0
         if (uselessLen) {
-            AttributeForEndTag()
+            AttributeForEndTag(index, index + uselessLen)
         }
+        reduceSpaces()
         reduceSource(uselessLen)
 
         if (source.startsWith(">")) {

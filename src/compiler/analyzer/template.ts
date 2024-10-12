@@ -12,10 +12,11 @@ import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { stringConstantsSourceMap } from "../state"
 import { lastElem } from "../../util/shared/sundry"
+import { kebab2Camel } from "../../util/compiler/sundry"
+import { getLocByIndex } from "../../util/compiler/locations"
 import { isNull, isUndefined } from "../../util/shared/assert"
-import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
-import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
+import { normalStringify, stringify } from "../../util/compiler/strings"
 import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
 
 export function analyzeTemplate(

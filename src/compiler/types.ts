@@ -1,4 +1,6 @@
 import type { FixedArray } from "../util/types"
+import type { CompileError } from "./message/error"
+import type { CompileWarning } from "./message/warn"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 
 export interface ASTPosition {
@@ -73,6 +75,16 @@ export interface InputDescriptor {
         generatedOffset: FixedArray<number, 2>
     }
 }
+
+export type MessageItem =
+    | {
+          type: "error"
+          value: CompileError
+      }
+    | {
+          type: "warning"
+          value: CompileWarning
+      }
 
 export interface AttributeKeyValue {
     raw: string

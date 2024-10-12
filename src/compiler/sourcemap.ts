@@ -4,7 +4,7 @@ import type { SourceMapMappings, SourceMapSegment } from "@jridgewell/sourcemap-
 import { compilerOptions } from "./configuration"
 import { isUndefined } from "../util/shared/assert"
 import { replaceEachItems } from "./../util/shared/sundry"
-import { getGeneratedScriptLine } from "./../util/compiler/state"
+import { getGeneratedScriptLine } from "../util/compiler/locations"
 import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "./state"
 
 // 记录一条sourcemap mapping segment

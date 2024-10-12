@@ -16,16 +16,26 @@ import { isArray, isUndefined } from "../../util/shared/assert"
 import { parse as babelParse, ParserOptions } from "@babel/parser"
 import { replacementInfo, inputDescriptor } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
+import { getSourceIndexByScriptIndex, getSourcePosByScriptPos } from "./locations"
 
 // js或ts解析为抽象语法树
 export function parse(source: string) {
-    const parseOption = {
-        sourceType: "module"
-    } as ParserOptions
-    if (inputDescriptor.script.isTS) {
-        parseOption.plugins = ["typescript"]
+    try {
+        const parseOption = {
+            sourceType: "module"
+        } as ParserOptions
+        if (inputDescriptor.script.isTS) {
+            parseOption.plugins = ["typescript"]
+        }
+        return babelParse(source, parseOption).program
+    } catch (e: any) {
+        // @babel/parser解析遇到错误时，将位置修改为正确的源码位置
+        if (!isUndefined(e.loc) && !isUndefined(e.pos)) {
+            e.loc = getSourcePosByScriptPos(e.loc)
+            e.pos = getSourceIndexByScriptIndex(e.pos)
+        }
+        throw e
     }
-    return babelParse(source, parseOption).program
 }
 
 // 提取任意节点对应的EsTree节点，忽略ts断言相关语法往下查找

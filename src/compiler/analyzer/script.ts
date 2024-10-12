@@ -4,6 +4,7 @@ import type { Pattern, CallExpression, VariableDeclaration } from "@babel/types"
 import type { ASTVisitor, EsPattern, RequiredPosition, TraverseParent } from "../estree/types"
 
 import {
+    sourceMapInfo,
     replacementInfo,
     eliminateRanges,
     inputDescriptor,
@@ -27,11 +28,6 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    getSetterIdentifier,
-    getGeneratedScriptLine,
-    markSegmentShouldNotBeMapped
-} from "../../util/compiler/state"
-import {
     CompilerFuncNotInTopScope,
     IdentifierFormatIsNotAllowed,
     DestructureReactFuncWithNoArg,
@@ -45,6 +41,8 @@ import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
 import { compilerFuncs, watchRelatedFuncs } from "../constants"
+import { getSetterIdentifier } from "../../util/compiler/sundry"
+import { getGeneratedScriptLine } from "../../util/compiler/locations"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
 import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
 
@@ -579,7 +577,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             isDerived = id.name.startsWith("$")
             if (isDerived) {
                 if (esInitIsIdentifierCallee && calleeName === "der") {
-                    MixTwoSyntaxOfDerived()
+                    MixTwoSyntaxOfDerived(declarationLoc)
                 }
             }
         }
@@ -591,6 +589,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             const [cs, ce] = [cinit.callee.start!, cinit.end!]
             if (hasFnArg) {
                 const argLen = cinit.arguments.length
+                const le = cinit.arguments[argLen - 1].end!
                 const [_, se] = [secondArg?.start, secondArg?.end]
                 const [__, fe] = (firstArgRange = [firstArg.start!, firstArg.end!])
 
@@ -603,14 +602,14 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         eliminateRanges.add([cs, ps])
                         eliminateRanges.add([fe, ce])
                         if (argLen > 1) {
-                            RedundantArgs("stc", 1)
+                            RedundantArgs("stc", 1, fe, le)
                         }
                         break
                     case "rea":
                         eliminateRanges.add([cs, ps])
                         if (argLen > 2) {
-                            RedundantArgs("rea", 2)
                             eliminateRanges.add([se!, ce])
+                            RedundantArgs("rea", 2, se!, le)
                         } else {
                             eliminateRanges.add([ce - 1, ce])
                         }
@@ -619,8 +618,8 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         isDerived = true
                         eliminateRanges.add([cs, ps])
                         if (argLen > 1) {
-                            RedundantArgs("der", 1)
                             eliminateRanges.add([fe, ce])
+                            RedundantArgs("der", 1, fe, le)
                         } else {
                             eliminateRanges.add([ce - 1, ce])
                         }
@@ -640,7 +639,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         // 调试模式下的const衍生响应性状态声明要改用let关键字，因为setter中要修改调试标识符的值
         if (isDerived) {
             if (isDestructuring) {
-                DerLoseReactivity()
+                DerLoseReactivity(declarationLoc)
             } else if (isDebug && isConst && index === 0) {
                 useLetKeyword = true
                 eliminateRanges.add([node.start, idRange[0]])
@@ -706,15 +705,24 @@ function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseP
     }
 }
 
+// 标记某个片段不需要被映射
+function markSegmentShouldNotBeMapped(start: number, end: number) {
+    if (compilerOptions.debugeMode) {
+        for (let i = start; i < end; i++) {
+            sourceMapInfo.positionShouldNotBeMapped[i] = true
+        }
+    }
+}
+
 // 检查script部分顶部作用域中的标识符是否合法：
 // 1. rea、stc、der及props是保留标识符名称，在顶部作用域中不能重复声明（报错）
 // 2. 在内联事件中$event（非组件）和$param(组件)会覆盖顶部作用域中的同名标识符（警告）
 function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
     if (compilerFuncs.has(name) || name === "props") {
-        RegisterExsitingIdentifierName(name, loc!)
+        RegisterExsitingIdentifierName(name, loc)
     }
 
     if (name === "$event" || name === "$param") {
-        IdentifierMaybeOverwritten(name)
+        IdentifierMaybeOverwritten(name, loc)
     }
 }

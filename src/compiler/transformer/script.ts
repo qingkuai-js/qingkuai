@@ -11,9 +11,9 @@ import { MinHeap } from "../data-struct/min-heap"
 import { compilerOptions } from "../configuration"
 import { isString } from "../../util/shared/assert"
 import { lastElem } from "../../util/shared/sundry"
-import { indent, getScriptPos } from "../../util/compiler/state"
-import { isIndexEliminated, getPositionOfEachChar } from "../../util/compiler/sundry"
+import { getScriptPos } from "../../util/compiler/locations"
 import { scriptSourceRedundantEmptyLine, scriptSourceNeedIndentPlace } from "../regular"
+import { isIndexEliminated, getPositionOfEachChar, indent } from "../../util/compiler/sundry"
 
 export function transformScript(source: string, indentN = 0) {
     const transformedArr: string[] = []

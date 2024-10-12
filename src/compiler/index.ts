@@ -5,6 +5,7 @@ import {
 } from "./codegen"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
+import { compilerOptions } from "./configuration"
 import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
@@ -19,6 +20,15 @@ export function compile(source: string, componentName: string) {
 
     const templateAnalysisRet = analyzeTemplate(templateNodes)
     confirmQingKuaiIdentifierAliases()
+
+    // 检查模式下无需执行转换操作
+    if (compilerOptions.checkMode) {
+        return {
+            code: "",
+            mappings: "",
+            isTs: inputDescriptor.script.isTS
+        }
+    }
 
     const scriptTranformedRet = transformScript(scriptSource, 1)
     compressCompileSize(templateAnalysisRet)
@@ -41,4 +51,4 @@ export function compile(source: string, componentName: string) {
     )
 }
 
-export { isQimgKuaiCompileError } from "./message/error"
+export { isCompileError } from "./message/error"

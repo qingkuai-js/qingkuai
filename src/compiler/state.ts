@@ -1,4 +1,5 @@
 import type {
+    MessageItem,
     DebuggingInfo,
     SourceMapInfo,
     StringConstant,
@@ -9,12 +10,14 @@ import type {
 } from "./types"
 
 import { setArrLength } from "../util/shared/sundry"
-import { newASTLocation } from "../util/compiler/sundry"
+import { newASTLocation } from "../util/compiler/structure"
 
 export const sourceMapInfo = newSourceMapInfo()
 export const debuggingInfo = newDebuggingInfo()
 export const replacementInfo = newReplacementInfo()
 export const inputDescriptor = newInputDescriptor()
+
+export const messages: MessageItem[] = []
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
 export const usedInitItems = new Set<string>()
@@ -31,6 +34,7 @@ export function resetCompilerState() {
     eliminateRanges.clear()
     stringConstants.clear()
     usedRuntimeItems.clear()
+    setArrLength(messages, 0)
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
     setArrLength(tempStoredImportInfos, 0)

@@ -11,7 +11,7 @@ import {
 } from "./state"
 import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
-import { indent } from "../util/compiler/state"
+import { indent } from "../util/compiler/sundry"
 import { compilerOptions } from "./configuration"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"

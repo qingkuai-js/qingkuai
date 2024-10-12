@@ -1,6 +1,7 @@
 import { typedKeys } from "../util/shared/sundry"
 
 export const compilerOptions = {
+    checkMode: true,
     debugeMode: true,
     generateSourcemap: true,
     reserveTemplateComment: false

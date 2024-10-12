@@ -1,38 +1,17 @@
 import type { FixedArray } from "../types"
-import type { ASTLocation, ASTPosition, EliminateRanges } from "../../compiler/types"
+import type { ASTPosition, EliminateRanges } from "../../compiler/types"
 
-import { isUndefined } from "../shared/assert"
+import { debuggingInfo, inputDescriptor } from "../../compiler/state"
 import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
 
-// JSON.stringify别名
-export function normalStringify(v: any) {
-    return JSON.stringify(v)
+// 获取调试setter标识符
+export function getSetterIdentifier(identifier: string) {
+    return `_d${debuggingInfo.setters.get(identifier)}_`
 }
 
-// 生成一个默认的ASTPosition结构
-export function newASTPosition(): ASTPosition {
-    return {
-        line: 0,
-        column: 0,
-        index: 0
-    }
-}
-
-// 生成一个默认的ASTLocation结构
-export function newASTLocation(): ASTLocation {
-    const pos = newASTPosition()
-    return {
-        start: pos,
-        end: pos
-    }
-}
-
-// 生成一个带有位置信息的值结构
-export function newValueWithLoc<T>(value: T, loc?: ASTLocation) {
-    if (isUndefined(loc)) {
-        loc = newASTLocation()
-    }
-    return { value, loc }
+// 生成指定数量的缩进字符
+export function indent(n = 1) {
+    return " ".repeat(inputDescriptor.indentSpaceCount * n)
 }
 
 // 确定标识符别名
