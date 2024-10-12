@@ -1,6 +1,7 @@
 import type { FixedArray } from "../util/types"
 
 import {
+    messages,
     usedInitItems,
     sourceMapInfo,
     debuggingInfo,
@@ -137,5 +138,5 @@ export function generateCompileResult(
         `(${templateTransformedRet || "[]"})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 
-    return { code, mappings, isTS }
+    return { code, mappings, isTS, messages }
 }

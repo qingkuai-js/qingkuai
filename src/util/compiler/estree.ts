@@ -33,6 +33,11 @@ export function parse(source: string) {
         if (!isUndefined(e.loc) && !isUndefined(e.pos)) {
             e.loc = getSourcePosByScriptPos(e.loc)
             e.pos = getSourceIndexByScriptIndex(e.pos)
+
+            // 修改报错信息中的位置描述
+            const { line: newLine, column: newColumn } = e.loc
+            const positionDescription = `(${newLine}:${newColumn})`
+            e.message = e.message.replace(/\(\d+:\d+\)$/, positionDescription)
         }
         throw e
     }

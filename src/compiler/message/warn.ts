@@ -85,7 +85,7 @@ function withLocation<T extends GeneralFunc>(code: number, fn: T) {
 }
 
 export class CompileWarning {
-    constructor(public loc: ASTLocation, public code: number, public msg: string) {
+    constructor(public loc: ASTLocation, public code: number, public messagge: string) {
         messages.push({
             value: this,
             type: "warning"
