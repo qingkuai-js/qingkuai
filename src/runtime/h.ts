@@ -1,20 +1,19 @@
-import type { AnyObject } from "../util/types"
 import type {
+    Directive,
     KeyedInfo,
     UpdateFunc,
-    Directive,
-    GeneralFunc,
     PartialNode,
-    RenderStructure,
     RenderContext,
+    EventStructure,
+    RenderStructure,
     ValueOrValueArr,
     DestructionStruct,
     QingKuaiNodeStruct,
-    EventStructure,
     ComponentStructure,
     TemplateStuOrModuleFunc,
     QingKuaiComponentConstructonParam
 } from "./types"
+import type { AnyObject, GeneralFunc } from "../util/types"
 
 import {
     createComponent,
@@ -24,24 +23,25 @@ import {
     setCurrentInstance
 } from "./instance"
 import {
-    velf,
-    mockDirective,
     extendNks,
-    isModuleFunc,
+    mockDirective,
     combineContext,
     newDestruction,
     getContextFuncGen
-} from "../util/runtime"
+} from "../util/runtime/separate"
 import {
     usedEffectList,
     setUsedEffectList,
     clearUsedEffectList,
     withCleanUsedEffectList
 } from "./reactivity/state"
+import { velf } from "../util/runtime/sundry"
 import { InvalidMountNode } from "./message/error"
+import { isModuleFunc } from "../util/runtime/assert"
 import { IsWithReferenceRet, nil } from "./constants"
 import { internalPreEffect } from "./reactivity/effect"
-import { isArray, isFunction, isNull, lastElem, len, values } from "../util/shared"
+import { lastElem, len, values } from "../util/shared/sundry"
+import { isArray, isFunction, isNull } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
 export function render(
@@ -224,11 +224,14 @@ export const h = withCleanUsedEffectList(function (
                 // 获取slot从子组件传递的参数
                 const updateSlotContext = () => {
                     for (let i = 0; i < attrsLen; i += 2) {
-                        slotArgs[attrs![i]] = invokeGetter(attrs![i + 1])
+                        slotArgs[attrs![i]] = getValue(attrs![i + 1])
                     }
                 }
 
                 if (!slot) {
+                    if (!children.length) {
+                        return
+                    }
                     slot = children as TemplateStuOrModuleFunc[]
                 }
                 if (!isArray(slot[0])) {
@@ -236,7 +239,7 @@ export const h = withCleanUsedEffectList(function (
                 }
                 updateSlotContext()
 
-                // 添加更slot参数上下文的副作用
+                // 添加修改slot参数的副作用
                 const effectList = values(usedEffectList)
                 const md = mockDirective([[slotArgs]], effectList)
                 const slotContext = combineContext(md, context, 0)
@@ -382,25 +385,22 @@ export const h = withCleanUsedEffectList(function (
 
 // 创建应用
 export function createApp(
+    selector: string,
     Component: typeof QingKuaiComponent,
     options: Partial<QingKuaiComponentConstructonParam> = {}
 ) {
+    const target = document.querySelector(selector)
     ;(["props", "refs", "slots"] as const).forEach(key => {
         if (!options[key]) {
             options[key] = {}
         }
     })
-    return {
-        mount: (selector: string) => {
-            const target = document.querySelector(selector)
-            if (!target) {
-                InvalidMountNode(selector)
-            } else {
-                const app = new Component(options as any)
-                render(app, target)
-                return app
-            }
-        }
+    if (!target) {
+        InvalidMountNode(selector)
+    } else {
+        const app = new Component(options as any)
+        render(app, target)
+        return app
     }
 }
 

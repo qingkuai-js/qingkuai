@@ -13,41 +13,37 @@ import type {
 } from "./types"
 
 import {
-    isNumber,
-    len,
-    optc,
-    isNull,
-    values,
-    entries,
-    isArray,
-    lastElem,
-    isString,
-    arrayFill,
-    isFunction,
-    setArrLength,
-    replaceEachItems
-} from "../util/shared"
-import {
-    isNode,
     extendNks,
     destroyBlock,
-    spliceByElem,
     mockDirective,
     combineContext,
     getContextFuncGen
-} from "../util/runtime"
+} from "../util/runtime/separate"
+import {
+    arrayFill,
+    len,
+    optc,
+    values,
+    entries,
+    lastElem,
+    setArrLength,
+    replaceEachItems
+} from "../util/shared/sundry"
 import { insert } from "./dom"
 import { CancelablePromise } from "./promise"
+import { isNode } from "../util/runtime/assert"
 import { IsModuleFunc, nil } from "./constants"
+import { spliceByElem } from "../util/runtime/sundry"
 import { DuplicateKey, NonTraverse } from "./message/error"
 import { invokeIndexedHooks, onAfterMount } from "./instance"
 import { h, toRenderStructure, extendDsts, attachDestroy } from "./h"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
+import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
-        const contextValues: any[] = []
+        const contextValues: any[][] = [[]]
 
         const updateContext = () => {
             for (let i = 0; i < len(rules); i += 2) {
@@ -57,7 +53,7 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
                 if (i !== 0) {
                     contextValues[0].push(...fn(argv))
                 } else {
-                    replaceEachItems(contextValues, [fn(argv)])
+                    replaceEachItems(contextValues[0], fn(argv))
                 }
             }
         }
@@ -493,13 +489,13 @@ function attachMarkForModuleFunc(fn: ModuleFunc) {
 }
 
 // toms means TemplateStructures Or ModuleFuncs
-// ValueOrValueArr<TemplateStuOrModuleFunc[]>类型转换为固定的TemplateStuOrModuleFunc[][]类型
+// 将一维或二维的TemplateStuOrModuleFunc|null转换为固定二维结构
 function toTwoDemensionalToms(toms: ValueOrValueArr<TemplateStuOrModuleFunc | null>[]) {
     return toms.map(tom => {
         if (isNull(tom)) {
             return []
         }
-        if (!isArray(tom) || isFunction(tom) || isString(tom[0])) {
+        if (!isArray(tom)) {
             return [tom]
         }
         return tom

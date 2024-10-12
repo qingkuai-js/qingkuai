@@ -1,4 +1,8 @@
-import { isNumber } from "../../util/shared"
+import { isNumber } from "../../util/shared/assert"
+
+export function AttributeForEndTag() {
+    warn("The end tag will ignore any attribute.")
+}
 
 export function RedundantArgs(fn: string, need: number | string) {
     let needMsg = "requires only one parameter"
@@ -6,6 +10,10 @@ export function RedundantArgs(fn: string, need: number | string) {
         needMsg = `accepts a maximum of ${need} parameters`
     }
     warn(`${fn} ${needMsg}, and the excess parameters has been ignored.`)
+}
+
+export function IdentifierMaybeOverwritten(name: string) {
+    warn(`The top scope identifier(${name}) may be overwrittern in inline event.`)
 }
 
 export function DerLoseReactivity() {

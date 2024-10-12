@@ -1,86 +1,59 @@
-import { FixedArray } from "../../util/types"
+import type { FixedArray } from "../../util/types"
 import type { ValueOrValueArr } from "../../runtime/types"
-import type { TemplateAnalysisRet, TransformExpressionRet } from "../types"
+import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
-import { templateTag } from "../regular"
 import { getAlias } from "../analyzer/alias"
+import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/state"
-import { recordMapping } from "../sourcemap/tools"
-import { findOutOfSC } from "../../util/compiler/sundry"
-import { isArray, isNull, isString, isUndefined } from "../../util/shared"
-import { inputDescriptor, sourceMapInfo, stringConstants, stringConstantsSourceMap } from "../state"
+import { isArray, isNull, isString } from "../../util/shared/assert"
+import { lastElem, replaceEachItems } from "../../util/shared/sundry"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
     parentUseLineBreak: 1 << 1,
-    notOverAfterEndBracket: 1 << 2
+    hasNextChild: 1 << 2
 }
 
 // 从templateAnalysisRet生成模版结构js代码
 export function transformTemplate(
     analysisRet: (TemplateAnalysisRet | null)[],
-    startLine: number,
-    indentN = 0,
+    generatingPosition: FixedArray<number, 2>,
+    indentN = 2,
     flag = 1
 ) {
-    // 确定字符串字面量变量是保留还是还原
-    analysisRet?.forEach(item => {
-        if (isNull(item)) {
-            return
-        }
-        if (item.tag) {
-            item.tag = confirmStringConstants(item.tag)
-        }
-        if (item.aar?.slot) {
-            item.aar.slot = confirmStringConstants(item.aar.slot)
-        }
-        for (let i = 0; true; i += 2) {
-            const estu = item.aar?.eventStu
-            const astu = item.aar?.attributeStu
-            if (!astu?.[i] && !estu?.[i]) {
-                break
-            }
-            if (!isUndefined(astu?.[i])) {
-                astu[i] = confirmStringConstants(astu[i])
-            }
-            if (!isUndefined(estu?.[i])) {
-                estu[i] = confirmStringConstants(estu[i])
-            }
-        }
-
-        // 将eventStu中的空字符串移除掉，在原生标签（input等）使用引用属性传递时，会向eventStu
-        // 中多添加一个空字符串以保持其长度为偶数，及奇数项为事件名称、偶数项为转换后的语句
-        if (item.aar) {
-            item.aar.eventStu = item.aar.eventStu.filter(s => s !== "")
-        }
-    })
-
     const transformedArr: string[] = []
+    const hasNextChild = vf(flag, "hasNextChild")
     const useBracketWrap = vf(flag, "useBracketWrap")
     const useLineBreak = shouldUseLineBreak(analysisRet, true)
-    const notOverAfterEndBracket = vf(flag, "notOverAfterEndBracket")
     const parentUseLineBreak = vf(flag, "parentUseLineBreak") || useLineBreak
 
-    // 转换结果的位置信息，访问它得到的就是下一个字符在转换结果中的行、列
-    let currentPosition!: FixedArray<number, 2>
+    // 判断当前处理目标是否用作组件的slot，只需判断analysisRet[0]即可，因为用作slot的analysisRet的
+    // useBracket属性会被设置为true，而在调用chunkChildren之后他就会被划分为一个单独的块
+    const slotAttrValue = analysisRet[0]?.aar?.slotOfAnyTag?.value
+
+    // generatingPosition表示当前生成代码的位置，访问它得到的就是下一个字符在转换结果中的行、列
+    // 当生成结果需要使用中括号包裹且需要换行时，将生成代码位置的行（下标为0的元素）+1
+    // 如果上述条件成立，且slotAttrValue有值的话，应该在将生成代码位置的行+1
     if (useBracketWrap && useLineBreak) {
-        startLine++
+        generatingPosition[0]++
+        if (slotAttrValue) {
+            generatingPosition[0]++
+        }
     }
-    currentPosition = [startLine, 0]
 
     // 添加字符串到转换结果，期间同步更新转换结果的位置信息
-    const pushTransformedArr = (...ters: TransformExpressionRet[]) => {
-        for (const ter of ters) {
-            const terIsString = isString(ter)
-            const [currentLine, currentColumn] = currentPosition
-            const str = terIsString ? ter : ter.transformedExp
+    const pushTransformedArr = (...tirs: TransformInterpolationRet[]) => {
+        for (const tir of tirs) {
+            const tirIsString = isString(tir)
+            const [currentLine, currentColumn] = generatingPosition
+            const str = tirIsString ? tir : tir.transformedExp
             if (str !== "\n") {
-                currentPosition[1] += str.length
+                generatingPosition[1] += str.length
             } else {
-                currentPosition = [currentLine + 1, 0]
+                replaceEachItems(generatingPosition, [currentLine + 1, 0])
             }
-            if (!terIsString) {
-                ter.mappings.forEach(item => {
+            if (!tirIsString) {
+                tir.mappings.forEach(item => {
                     const sourceLine = item[2] - 1
                     const generatedColumn = item[1] + currentColumn
                     recordMapping(currentLine, generatedColumn, sourceLine, item[3], item[0], true)
@@ -104,12 +77,12 @@ export function transformTemplate(
             return
         }
 
+        const { isTemplate } = item
         const hasAar = !isNull(item.aar)
         const hasChild = childrenLen! > 0
-        const isTemplate = templateTag.test(item.tag)
-        const isContinued = hasAar && !isNull(item.aar!.continueRE)
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
         const elementUseLineBreak = shouldUseLineBreak(item, hasChild)
+        const isContinued = hasAar && Boolean(item.aar!.continueInfo?.re)
         const withDirectiveStu = hasAar && item.aar!.directiveStu.length > 0
         const withAttributeStu = hasAar && item.aar!.attributeStu.length > 0
         const withAttributeOrEventStu = withAttributeStu || withEventStu || hasChild
@@ -128,16 +101,16 @@ export function transformTemplate(
         }
 
         // 添加attribute或event结构（这里包括单独的换行判断，因为这两个结构都是数组形式）
-        const addAttributeOrEventStu = (ters: TransformExpressionRet[]) => {
-            const tersLen = ters.length
-            if (tersLen === 0) {
+        const addAttributeOrEventStu = (tirs: TransformInterpolationRet[]) => {
+            const tirsLen = tirs.length
+            if (tirsLen === 0) {
                 return pushTransformedArr(getAlias("nil"))
             }
 
             let charCount = 0
             const indentStr = indent(n + 2)
-            for (const ter of ters) {
-                charCount += getLengthOfTER(ter)
+            for (const tir of tirs) {
+                charCount += getLengthOfTER(tir)
                 if (charCount > 80) {
                     break
                 }
@@ -145,21 +118,23 @@ export function transformTemplate(
             pushTransformedArr("[")
 
             if (charCount <= 80) {
-                ters.forEach((ter, index) => {
-                    pushTransformedArr(ter)
-                    if (index !== tersLen - 1) {
+                tirs.forEach((tir, index) => {
+                    pushTransformedArr(tir)
+                    if (index !== tirsLen - 1) {
                         pushTransformedArr(", ")
                     }
                 })
             } else {
-                ters.forEach((ter, index) => {
-                    const wrap = index === 0 ? "\n" : ""
-                    const isLast = index === tersLen - 1
-                    pushTransformedArr(wrap, indentStr, ter)
-                    if (!isLast) {
+                tirs.forEach((tir, index) => {
+                    if (index === 0) {
                         pushTransformedArr("\n")
+                    }
+                    pushTransformedArr(indentStr, tir)
+
+                    if (index !== tirsLen - 1) {
+                        pushTransformedArr(",", "\n")
                     } else {
-                        pushTransformedArr(",", "\n", indent(n + 1))
+                        pushTransformedArr("\n", indent(n + 1))
                     }
                 })
             }
@@ -170,15 +145,15 @@ export function transformTemplate(
         if (withDirectiveStu) {
             const funcCount = item.aar!.directiveStu.length
             const funcArr = item.aar!.directiveStu.reduce((pre, cur, funcIndex) => {
-                const argArr: string[] = []
-                const isAliasModuleFunc = shouldArgUseBracket(cur[0])
+                const argArr: TransformInterpolationRet[] = []
+                const isAliasModuleFunc = shouldArgUseBracket(cur[0] as string)
                 if (isAliasModuleFunc) {
                     argArr.push(`${indent(n++ + 1)}[`, "\n")
                 }
                 cur.slice(1).forEach((arg, argIndex) => {
                     const isLastArg = argIndex === cur.length - 2
                     const useEndComma = isAliasModuleFunc && isLastArg
-                    argArr.push(`${indent(n + 1)}${arg}${useEndComma ? "" : ","}`, "\n")
+                    argArr.push(`${indent(n + 1)}`, arg, `${useEndComma ? "" : ","}`, "\n")
                 })
                 if (isAliasModuleFunc) {
                     argArr.push(`${indent(n--)}],`, "\n")
@@ -187,7 +162,7 @@ export function transformTemplate(
                     argArr.push(indent(n + 1))
                 }
                 return n++, pre.concat([cur[0], "(", "\n"], argArr)
-            }, [] as string[])
+            }, [])
             if (isFirst && useBracketWrap) {
                 pushTransformedArr(indent(n - funcCount))
             }
@@ -205,7 +180,7 @@ export function transformTemplate(
             }
         }
 
-        // 添加tag、content、attribute、event和children结构
+        // 添加tag、content、attribute和event结构
         if (!isTemplate) {
             pushTransformedArr(item.tag)
             addTemplateStuJoinStr(true)
@@ -231,43 +206,39 @@ export function transformTemplate(
 
         // 添加children调用结构
         if (childrenLen) {
-            let waitForChunkEndIndex = 0
-            let chunkChildren: (TemplateAnalysisRet | null)[] = []
-            for (let i = 0; i < childrenLen; i++) {
-                const child = item.children[i]
-                const childIndentN = +(useLineBreak && !isTemplate) + n
-                if (child.useBracket) {
-                    chunkChildren = [child.tar]
-                } else {
-                    const nextChild = item.children[i + 1]
-                    if (nextChild && !nextChild.useBracket) {
-                        continue
-                    }
-
-                    const start = waitForChunkEndIndex
-                    const end = (waitForChunkEndIndex = i + 1)
-                    const partOfChildren = item.children.slice(start, end)
-                    chunkChildren = partOfChildren.map(child => child.tar)
-                }
-                if (child.useBracket) {
+            const test = chunkChildren(item.children)
+            test.forEach(chunk => {
+                if (chunk.useBracket) {
                     flag |= transformTemplateFlag.useBracketWrap
                 } else {
                     flag &= ~transformTemplateFlag.useBracketWrap
                 }
-                if (i !== item.children.length - 1) {
-                    flag |= transformTemplateFlag.notOverAfterEndBracket
+                if (chunk.isLast) {
+                    flag &= ~transformTemplateFlag.hasNextChild
                 } else {
-                    flag &= ~transformTemplateFlag.notOverAfterEndBracket
+                    flag |= transformTemplateFlag.hasNextChild
                 }
                 if (elementUseLineBreak) {
                     flag |= transformTemplateFlag.parentUseLineBreak
                 } else {
                     flag &= ~transformTemplateFlag.parentUseLineBreak
                 }
-                pushTransformedArr(
-                    transformTemplate(chunkChildren, currentPosition[0], childIndentN, flag)
+
+                const childIndentN = +(useLineBreak && !isTemplate) + n
+                const transformedChild = transformTemplate(
+                    chunk.tars,
+                    generatingPosition,
+                    childIndentN,
+                    flag
                 )
-            }
+                if (!chunk.useBracket && !chunk.isLast) {
+                    pushTransformedArr(", ")
+                    if (useLineBreak) {
+                        pushTransformedArr("\n", indent(n))
+                    }
+                }
+                pushTransformedArr(transformedChild)
+            })
         }
 
         // 添加当前TemplateStructure的结束字符
@@ -300,67 +271,40 @@ export function transformTemplate(
         return transformedStr
     }
 
-    const slot = analysisRet[0]?.aar?.slot
-    const retWrap = useLineBreak ? "\n" : ""
-    const retWrapByParent = parentUseLineBreak ? "\n" : ""
+    const retLineBreak = useLineBreak ? "\n" : ""
     const retIndentStr = useLineBreak ? indent(indentN) : ""
-    const retNextIndentStr = useLineBreak ? indent(indentN + 1) : ""
-    const slotStr = slot ? `${retWrap}${retNextIndentStr}${slot}, ` : ""
+    const retLineBreakByParent = parentUseLineBreak ? "\n" : ""
     const retIndentStrByParent = parentUseLineBreak ? indent(indentN) : ""
-    return `[${slotStr}${retWrap}${transformedStr}${retWrap}${retIndentStr}]${
-        notOverAfterEndBracket ? `, ${retWrapByParent}${retIndentStrByParent}` : ""
-    }`
+    const retPostfix = hasNextChild ? `, ${retLineBreakByParent}${retIndentStrByParent}` : ""
+
+    // 更新生成代码位置
+    if (useLineBreak) {
+        generatingPosition[0]++
+    }
+    if (hasNextChild && parentUseLineBreak) {
+        generatingPosition[0]++
+        generatingPosition[1] = retIndentStrByParent.length
+    }
+
+    const retNextIndentStr = useLineBreak ? indent(indentN + 1) : ""
+    const slotAttrValueStr = slotAttrValue
+        ? `${retLineBreak}${retNextIndentStr}${slotAttrValue}, `
+        : ""
+    return `[${slotAttrValueStr}${retLineBreak}${transformedStr}${retLineBreak}${retIndentStr}]${retPostfix}`
 }
 
-// 获取表达式转换结果（TransformExpressionRet）的程度
-function getLengthOfTER(ter: TransformExpressionRet) {
-    if (isString(ter)) {
-        return ter.length
+// 获取表达式转换结果（TransformInterpolationRet）的程度
+function getLengthOfTER(tir: TransformInterpolationRet) {
+    if (isString(tir)) {
+        return tir.length
     }
-    return ter.transformedExp.length
+    return tir.transformedExp.length
 }
 
 // 验证falg中是否设置了transformTemplateFlag的指定项
 function vf(flag: number, key: keyof typeof transformTemplateFlag) {
     const item = transformTemplateFlag[key]
     return (flag & item) === item
-}
-
-// 将attributeStu或eventStu拼接为字符串（包含换行判断）
-function attrOrEventJoin(ters: TransformExpressionRet[], n: number) {
-    let charCount = 0
-    const tersLen = ters.length
-    if (tersLen === 0) {
-        return getAlias("nil")
-    }
-
-    for (const item of ters) {
-        if (isString(item)) {
-            charCount += item.length
-        } else {
-            charCount += item.transformedExp.length
-        }
-
-        // attribute或event间需要插入换行符
-        if (charCount > 80) {
-            const ns = ters.reduce((pre, cur, index) => {
-                const indentStr = indent(n + 1)
-                const wrap = index === 0 ? "\n" : ""
-                const endComma = index === tersLen - 1 ? "" : ","
-                return pre + wrap + indentStr + cur + endComma + "\n"
-            }, "[")
-            return ns + `${indent(n)}]`
-        }
-    }
-
-    // attribute或event间无需插入换行符
-    const strArr = ters.map(item => {
-        if (isString(item)) {
-            return item
-        }
-        return item.transformedExp
-    })
-    return `[${strArr.join(", ")}]`
 }
 
 // 判断当前模版结构是否需要使用折行（这里只进行粗略判断，避免一行过多内容）
@@ -382,25 +326,26 @@ function shouldUseLineBreak(
             continue
         }
 
-        const { tag, content, aar, children } = item
-        const tagLen = tag.length
-        const hasChild = children.length > 0
-        const contentLen = getLengthOfTER(content)
+        const { aar } = item
+        const tagLen = item.tag.length
+        const hasChild = item.children.length > 0
+        const contentLen = getLengthOfTER(item.content)
         const withFunc = aar && aar.directiveStu.length > 0
+        const slotAttrValueLen = aar?.slotOfAnyTag?.value.length || 0
+        const keys = ["attributeStu", "eventStu", "directiveStu"] as const
         if (aar) {
-            const keys = ["attributeStu", "eventStu", "directiveStu"] as const
             if (checkFuncStu && withFunc) {
                 return true
             }
-            if (aar.slot) {
-                state.count += aar.slot.length + 3
+            if (aar.slotOfAnyTag) {
+                state.count += slotAttrValueLen + 3
             }
             for (const key of keys) {
                 for (let stu of aar[key]) {
                     if (!isArray(stu) || stu.length) {
                         if (isArray(stu)) {
                             for (const item of stu) {
-                                state.count += item.length
+                                state.count += getLengthOfTER(item)
                             }
                         } else {
                             state.count += getLengthOfTER(stu)
@@ -415,10 +360,10 @@ function shouldUseLineBreak(
             }
         }
         if (hasChild) {
-            if (!aar) {
+            if (isNull(aar)) {
                 state.count += 6
             }
-            for (const child of children) {
+            for (const child of item.children) {
                 if (shouldUseLineBreak(child.tar, checkFuncStu, state)) {
                     return true
                 }
@@ -430,31 +375,45 @@ function shouldUseLineBreak(
     return state.count > 60
 }
 
-// 确定是否使用生成的字符串字面量变量，当其使用次数大于1且其本身长度大于2时就会被保留变量访问，
-// 如果搜索到的字符串字面量变量不同时满足以上两个条件，它将被还原为原始的字符串字面量
-function confirmStringConstants(ter: TransformExpressionRet) {
-    const transformedArr: string[] = []
-    const code = isString(ter) ? ter : ter.transformedExp
-    for (let startIndex = 0; true; ) {
-        const [matchedIndex, matchedLen] = findOutOfSC(code, /_s\d+_/, startIndex)
-        if (matchedIndex === -1) {
-            transformedArr.push(code.slice(startIndex))
-            break
-        }
-        transformedArr.push(code.slice(startIndex, matchedIndex))
+// 将TemplateAnalysisRet["children"]中的元素按照是否使用中括号包裹进行拆分：若需要使用
+// 中括号包裹（useBracket为true）则单独作为一个块，连续的无需使用中括号包裹的元素作为一个块
+function chunkChildren(children: TemplateAnalysisRet["children"]) {
+    const len = children.length
+    const chunks: {
+        isLast: boolean
+        useBracket: boolean
+        tars: (TemplateAnalysisRet | null)[]
+    }[] = []
 
-        const matchedStr = code.slice(matchedIndex, matchedIndex + matchedLen)
-        const restoredStrLiteral = stringConstantsSourceMap.get(matchedStr)!
-        const currentStringConstant = stringConstants.get(restoredStrLiteral)!
-        if (currentStringConstant.count > 1 && restoredStrLiteral.length > 2) {
-            transformedArr.push(matchedStr)
-            currentStringConstant.using = true
-        } else {
-            transformedArr.push(restoredStrLiteral)
-        }
-        startIndex = matchedIndex + matchedLen
+    if (children.length === 0) {
+        return chunks
     }
-    return transformedArr.join("")
+
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i]
+        const isLast = i === len - 1
+        if (child.useBracket) {
+            chunks.push({
+                isLast,
+                useBracket: true,
+                tars: [child.tar]
+            })
+        } else {
+            const preChunkItem = lastElem(chunks)
+            if (chunks.length === 0 || preChunkItem.useBracket) {
+                chunks.push({
+                    isLast,
+                    useBracket: false,
+                    tars: [child.tar]
+                })
+            } else {
+                preChunkItem.isLast = isLast
+                preChunkItem.tars.push(child.tar)
+            }
+        }
+    }
+
+    return chunks
 }
 
 // 判断函数参数是否需要中括号包裹

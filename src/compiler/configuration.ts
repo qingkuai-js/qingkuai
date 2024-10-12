@@ -1,4 +1,4 @@
-import { typedKeys } from "../util/shared"
+import { typedKeys } from "../util/shared/sundry"
 
 export const compilerOptions = {
     debugeMode: true,

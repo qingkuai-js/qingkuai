@@ -20,3 +20,4 @@ export {
 export { createApp } from "./h"
 export { nextTick } from "./schedule"
 export { raw } from "./reactivity/value"
+export { inspect, isRef } from "./tools"

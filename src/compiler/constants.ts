@@ -8,24 +8,28 @@ export const selfClosingTags = new Set([
     "base",
     "area",
     "col",
-    "embed"
+    "embed",
+    "param",
+    "source",
+    "track",
+    "wbr"
 ])
 
 export const fullRuntimeItems = new Set([
     "QingKuaiComponent",
+    "noop",
     "nil",
     "raw",
     "init",
-    "noop",
+    "nextTick",
     "react",
     "derived",
-    "nextTick",
     "ifModule",
     "forModule",
     "constReact",
+    "keyedForModule",
     "aliasModule",
     "awaitModule",
-    "keyedForModule",
     "eventWrapper",
     "withReference",
     "destructuringReact",
@@ -36,10 +40,10 @@ export const compilerFuncs = new Set(["rea", "stc", "der"])
 
 export const specialTags = new Set(["!", "script", "style"])
 
+export const fullInitItems = new Set(["args", "scts", "props"])
+
 export const couldUseRefTags = new Set(["input", "select", "textarea"])
 
 export const watchRelatedFuncs = new Set(["watch", "preWatch", "syncWatch"])
 
-export const fullInitItems = new Set(["setTemplateStructure", "props", "refs"])
-
-export const mustPassValueDirectives = new Set(["if", "elif", "for", "await", "for", "key"])
+export const mustPassValueDirectives = new Set(["if", "elif", "for", "await", "for", "key", "slot"])

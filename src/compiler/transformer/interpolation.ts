@@ -1,41 +1,69 @@
-import type { FixedArray } from "../../util/types"
+import type {
+    ASTLocation,
+    EliminateRanges,
+    TemplateContext,
+    StringOrStringGetter,
+    TransformInterpolationRet,
+    TransformInterpolationOptionalParam
+} from "../types"
 import type { AnyNode } from "../estree/types"
-import type { GeneralFunc } from "../../runtime/types"
-import type { EliminateRanges, TemplateContext, TransformExpressionOptionalParam } from "../types"
+import type { FixedArray } from "../../util/types"
+import type { GeneralFunc } from "../../util/types"
 
+import {
+    validIdentifierNameRE,
+    bannedIdentifierFormatRE,
+    expressionReplaceWithSpaceRE
+} from "../regular"
+import {
+    BadValueForRefAttr,
+    InvalidIdentifierName,
+    IdentifierFormatIsNotAllowed,
+    ContextIdentifierUsedAsReferenceTarget
+} from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
+import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
-import { isUndefined, runAll } from "../../util/shared"
 import { identifierIsReference } from "../estree/assert"
-import { inputDescriptor, replacementInfo } from "../state"
-import { isIndexEliminated } from "../../util/compiler/sundry"
-import { IdentifierFormatIsNotAllowed } from "../message/error"
+import { getLocByIndex, stringify } from "../../util/compiler/state"
+import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { bannedIdentifierFormat, expressionReplaceWithSpaceRE } from "../regular"
+import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
 
-export function transformExpression(
+export function transformInterpolation(
     expression: string,
-    startIndex: number,
+    startSourceIndex: number,
     context: TemplateContext,
     type: "directive" | "attribute" | "event" | "content",
-    optionalParams: TransformExpressionOptionalParam = {}
-) {
+    optionalParams: TransformInterpolationOptionalParam = {}
+): TransformInterpolationRet {
+    // 在检查模式下，遇到编译错误时会重新恢复执行
+    // 这种情况下会存在空的插值表达式块，此时可以直接返回
+    if (isEmptyString(expression)) {
+        return ""
+    }
+
+    let vParam = "v"
+    let ctxParam = "ctx"
     let useGetter = false
     let useContext = false
     let useReturnKeyword = false
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
-    const contextVariables: string[] = []
     const sourcemapIndexes: number[] = []
     const afterWalkFuncs: GeneralFunc[] = []
     const mappings: FixedArray<number, 4>[] = []
+    const contextVariables: [string, number][] = []
     const expEliminateRanges: EliminateRanges = new Set()
-    const transformInfos: Map<number, string[]> = new Map()
+    const allIndentifiersInExpression = new Set<string>()
+    const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
     const isDebug = compilerOptions.debugeMode
+    const usedAsSetter = optionalParams.usedAsSetter || false
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
@@ -44,7 +72,7 @@ export function transformExpression(
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 
     // 扩展转换信息数组
-    const extendTransformInfo = (index: number, str: string) => {
+    const extendTransformInfo = (index: number, str: StringOrStringGetter) => {
         const item = transformInfos.get(index - 2)
         if (item) {
             item.push(str)
@@ -53,13 +81,27 @@ export function transformExpression(
         }
     }
 
+    // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
+    // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
+    // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
+    if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+        const expressionEndSourceIndex = startSourceIndex + expression.length
+        BadValueForRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
+    }
+
     walk(ast, {
         Identifier(node, parent) {
             const { name, start, end } = node
+            const nodeEndSourceIndex = startSourceIndex + end - 2
+            const nodeStartSourceIndex = startSourceIndex + start - 2
+            const nodeLoc = getLocByIndex(nodeStartSourceIndex, nodeEndSourceIndex)
 
-            if (bannedIdentifierFormat.test(name)) {
-                IdentifierFormatIsNotAllowed(name)
-            }
+            allExistingIdentifiers.add(name)
+            allIndentifiersInExpression.add(name)
+
+            // 检查插值表达式中是否使用了禁止使用的标识符
+            checkIdentifierName(node.name, nodeLoc, false)
+
             if (!identifierIsReference(node, parent)) {
                 return
             }
@@ -77,22 +119,25 @@ export function transformExpression(
             // 处理ObjectProperty中的shrothand声明
             // 将其格式转换为 propertyName: (_w_)propertyName(.$)
             if (is(esParent?.v, "ObjectProperty") && esParent.v.shorthand) {
-                extendTransformInfo(node.start, `${name}: `)
+                extendTransformInfo(start, `${name}: `)
             }
 
             if (ctx) {
-                useGetter = true
-                useContext = true
-                if (!isDebug || type === "directive") {
+                if (isDebug && !usedAsSetter && type !== "directive") {
+                    contextVariables.push([name, ctx.num])
+                } else {
                     if (!isKeyDirective) {
-                        extendTransformInfo(end, ctx.to)
+                        extendTransformInfo(end, () => {
+                            return `${ctxParam}(${ctx.num})`
+                        })
                     } else {
-                        extendTransformInfo(end, ctx.pto!)
+                        extendTransformInfo(end, () => {
+                            return `${ctxParam}(${ctx.num})${ctx.path}`
+                        })
                     }
                     expEliminateRanges.add([start, end])
-                } else {
-                    contextVariables.push(`${name} = ${ctx.to}`)
                 }
+                useGetter = useContext = true
             } else if (dep) {
                 dep.status = "rea"
                 if (dep.useDollar) {
@@ -109,21 +154,29 @@ export function transformExpression(
             if (isEvent) {
                 const callee = node.callee
                 useContext = true
-                extendTransformInfo(callee.start!, "ctx(")
+                extendTransformInfo(callee.start!, () => `${ctxParam}(`)
                 afterWalkFuncs.push(() => {
                     extendTransformInfo(callee.end!, ")")
                 })
             }
         },
+        StringLiteral(node) {
+            extendTransformInfo(node.end, stringify(node.value))
+            expEliminateRanges.add([node.start, node.end])
+        },
 
-        // 标记需要记录sourcemap信息的索引（这里值表达式转换前的索引，转换完成后，
-        // 可以通过访问indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
+        // 标记需要记录sourcemap信息的索引（表达式转换前的索引）转换完成后，可以通过访问
+        // indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
         AnyNode(node) {
-            if (startIndex !== -1) {
+            if (startSourceIndex !== -1) {
                 sourcemapIndexes.push(node.start - 2, node.end - 2)
             }
         }
     })
+
+    // 确定表达式转换为函数后参数标识符的别名
+    vParam = confirmAlias(vParam, allExistingIdentifiers)
+    ctxParam = confirmAlias(ctxParam, allExistingIdentifiers)
 
     // walk结束后执行的方法：有些转换的顺序不一定与walk遍历时相同，例如需要调用ctx
     // 以绑定当前节点的CallExpression转换信息就需要在Identifier捕获组之后被添加，
@@ -136,16 +189,26 @@ export function transformExpression(
         useGetter = isEvent || expressionMaybeFunction(ast)
     }
 
+    // 如果当前用作setter（引用传递），如果目标是上下文标识符则报错（它是常量）
+    if (usedAsSetter && useContext && is(ast, "Identifier")) {
+        ContextIdentifierUsedAsReferenceTarget(
+            expression,
+            startSourceIndex,
+            startSourceIndex + expression.length
+        )
+    }
+
     // 根据标记的trasformInfos和expEliminateRanges转换表达式，并生成转换前后每个字符的索引映射，
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
-    // rsc meas ReplacedSpaceCount    pie means Pre(position)IsEliminated
+    // rsc: Replaced Space Count    pie: Pre(position) Is Eliminated
     for (
         let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false;
         shouldGenerateSourcemap && i <= expression.length;
         i++
     ) {
-        transformInfos.get(i)?.forEach(str => {
+        transformInfos.get(i)?.forEach(item => {
+            const str = isFunction(item) ? item() : item
             transformedArr.push(str)
             if (str === "_w_") {
                 nextOffset += 3
@@ -182,21 +245,25 @@ export function transformExpression(
     let addedPrefixLen = 0
     let transformedExp = transformedArr.join("")
     const useParenthesesWrap = /^ *{/.test(transformedExp)
+    const hasContextVariable = contextVariables.length > 0
     const useInlineEventHandler = isEvent && isInlineEventHandler(ast)
 
     // 调试模式下会将内联ctx调用改为变量声明，这样在调试时将一段源码中不合理的断点位置，另外通过
     // 使用变量声明，在当前getter作用域内，就会存在一个与源码同名的标识符，调试时可以在调用堆栈查看
-    if (contextVariables.length) {
-        const cvds = `const ${contextVariables.join(", ")};`
-        transformedExp = `{ ${cvds} return ${transformedExp} }`
-        addedPrefixLen += cvds.length + 10
+    if (hasContextVariable && !usedAsSetter) {
+        const contextVariableValues = contextVariables.map(item => {
+            return `${item[0]} = ${ctxParam}(${item[1]})`
+        })
+        const contextVariableDeclaration = `const ${contextVariableValues.join(", ")};`
+        transformedExp = `{ ${contextVariableDeclaration} return ${transformedExp} }`
+        addedPrefixLen += contextVariableDeclaration.length + 10
         useReturnKeyword = true
     }
 
-    // 内联函数时，如果是调试模式，这里也需要使用return关键字，不然返回返回值处的断点属于外层函数
+    // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
-        const paramStr = isComponentEvent ? "param" : "event"
-        if (!isDebug) {
+        const paramStr = `$${isComponentEvent ? "param" : "event"}`
+        if (!isDebug || useReturnKeyword) {
             transformedExp = `${paramStr} => ${transformedExp}`
         } else {
             useReturnKeyword = true
@@ -205,34 +272,47 @@ export function transformExpression(
         }
     }
 
+    // 如果使用了事件修饰符，则调用eventWrapper方法将包裹事件，并传入flag参数
     if (optionalParams.eventWrapperFlag) {
         const flag = optionalParams.eventWrapperFlag
-        const eventWrapperFuncName = getAlias("eventWradpper")
+        const eventWrapperFuncName = getAlias("eventWrapper")
         addedPrefixLen += eventWrapperFuncName.length + 1
         transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${flag})`
     }
 
-    // 当 usedAsSetter 被设置时，代表这个表达式在一个setter中，此时如果转换后的表达式添加了
-    // _w_前缀或.$后缀，都应该将原始的标识符一同修改（这种情况主要出现在引用属性值中）
-    if (optionalParams.usedAsSetter) {
-        transformedExp += ` = ${expression}`
+    // 调试模式下默认都使用return关键字，以下是为什么要这样处理的原因：
+    // 经过大量测试发现大多浏览器对于以纯字符串计算的表达式开头的返回值，开头断点位置都有或多或少不准确的情况，
+    // 使用return关键字后可以让断点位置稳定设置在return关键字之前，这样可以保持断点位置的一致性，提高调试体验
+    //
+    // 注意：此处理程序是为了绕过浏览器Devtools的相关BUG，如果之后此问题得到修复并稳定运行一段时间，可移除此部分代码及注释
+    if (usedAsSetter) {
+        transformedExp = `${vParam} => (${transformedExp} = ${vParam})`
     } else if (useGetter) {
-        const paramStr = useContext ? "ctx" : "_"
+        const paramStr = useContext ? ctxParam : "_"
         if (useParenthesesWrap) {
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
         }
-        addedPrefixLen += (useContext ? 3 : 1) + 4
-        transformedExp = `${paramStr} => ${transformedExp}`
+        if (!isDebug || useReturnKeyword) {
+            addedPrefixLen += paramStr.length + 4
+            transformedExp = `${paramStr} => ${transformedExp}`
+        } else {
+            useReturnKeyword = true
+            addedPrefixLen += paramStr.length + 13
+            transformedExp = `${paramStr} => { return ${transformedExp} }`
+        }
     }
 
     // 记录表达式的sourcemap片段，注意：这里的mpaaings与sourcemap中的表示有所不同，它的四个元素
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
     // 在调用transformTemplate时会根据这个mappings生成正确的sourcemap的mappings
     if (shouldGenerateSourcemap && useGetter) {
+        sourcemapIndexes.sort((a, b) => {
+            return a - b
+        })
         sourcemapIndexes.forEach(index => {
             const sourceIndex = noPositionMap
-                ? index + startIndex
+                ? index + startSourceIndex
                 : optionalParams.positionMap![index]
             const generateIndex = indexMap[index] + addedPrefixLen
             if (!isUndefined(sourceIndex)) {
@@ -255,6 +335,17 @@ export function transformExpression(
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp
+}
+
+// 检查标识符名称是否合法, checkInvalid用来控制是否需要检测标识符名称是否合法，如果
+// 是从AST的Identifier捕获组中调用此方法的话，可以将其设置为false，省去一部分检测开销
+export function checkIdentifierName(name: string, errLoc: ASTLocation, checkInvalid = true) {
+    if (checkInvalid && !validIdentifierNameRE.test(name)) {
+        InvalidIdentifierName(name, errLoc)
+    }
+    if (bannedIdentifierFormatRE.test(name)) {
+        IdentifierFormatIsNotAllowed(name, errLoc)
+    }
 }
 
 // 判断表达式是否是内联事件处理器

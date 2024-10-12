@@ -1,4 +1,4 @@
-import type { ASTPosition } from "../../compiler/types"
+import type { ASTLocation, ASTPosition } from "../../compiler/types"
 
 import {
     debuggingInfo,
@@ -9,8 +9,8 @@ import {
 } from "../../compiler/state"
 import { compilerOptions } from "../../compiler/configuration"
 
-// 通过inputDescriptor.script.code部分的索引换取位置信息
-export function getScriptLoc(index: number) {
+// 通过inputDescriptor.script.code部分的索引换取script AST位置信息
+export function getScriptPos(index: number) {
     const {
         positions,
         script: {
@@ -42,9 +42,9 @@ export function indent(n = 1) {
     return " ".repeat(inputDescriptor.indentSpaceCount * n)
 }
 
-// 通过源码中的行号获取生成代码行号
-export function getGeneratedLine(line: number) {
-    return line + inputDescriptor.script.loc.start.line - 2
+// 通过script AST中的行号换取生成代码中的行号
+export function getGeneratedScriptLine(line: number) {
+    return line + inputDescriptor.script.loc.start.line - 1
 }
 
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
@@ -63,6 +63,20 @@ export function stringify(v: any) {
         })
         stringConstantsSourceMap.set(value, s)
         return value
+    }
+}
+
+// 通过源码索引生成一个ASTPosition结构
+export function getPosByIndex(index: number): ASTPosition {
+    return inputDescriptor.positions[index]
+}
+
+// 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
+export function getLocByIndex(start: number, end?: number): ASTLocation {
+    const { positions } = inputDescriptor
+    return {
+        start: positions[start],
+        end: positions[end || start]
     }
 }
 

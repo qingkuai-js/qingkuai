@@ -9,9 +9,9 @@ import {
 } from "../state"
 import { MinHeap } from "../data-struct/min-heap"
 import { compilerOptions } from "../configuration"
-import { SourceMapLine } from "@jridgewell/sourcemap-codec"
-import { indent, getScriptLoc } from "../../util/compiler/state"
-import { isString, isUndefined, lastElem } from "../../util/shared"
+import { isString } from "../../util/shared/assert"
+import { lastElem } from "../../util/shared/sundry"
+import { indent, getScriptPos } from "../../util/compiler/state"
 import { isIndexEliminated, getPositionOfEachChar } from "../../util/compiler/sundry"
 import { scriptSourceRedundantEmptyLine, scriptSourceNeedIndentPlace } from "../regular"
 
@@ -45,10 +45,10 @@ export function transformScript(source: string, indentN = 0) {
 
     // 这里会将sourcemap信息中的生成列偏移
     // lastColumn表示当前处理的索引(i)对应的生成列，currentLoc为索引i对应的生成代码中的位置信息
-    // eachColumnOffset记录了当前生成行中每一列需要偏移的量，转换过程中遇到添加replacementItem会增加
-    // 对应生成列的偏移量，如果当前索引被忽略(处于eliminateRanges中)时，会减少对应生成列的偏移量
-    // 如果遇到了在标识符前添加_w_前缀且当前索引存在sourcemap信息的情况时，会将对应生成列的偏移量-3
-    let mappingIndex = 0
+    // eachColumnOffset记录了当前生成行中每一列需要偏移的量，转换过程中遇到添加replacementItem
+    // 会增加对应生成列的偏移量，如果当前索引被忽略(处于eliminateRanges中)时，会减少对应生成列的
+    // 偏移量如果遇到了在标识符前添加_w_前缀且当前索引存在sourcemap信息的情况时，会将对应生成列的偏移量-3
+    let mappingLine = 1
     let nextColumnOffset = 0
     let replacementItem = heap.fetch()
     let eachColumnOffset: number[] = []
@@ -56,7 +56,7 @@ export function transformScript(source: string, indentN = 0) {
     // 添加一条生成列偏移信息，不是首个元素时默认就是上一列的偏移信息，
     // 比如假设第1列需要向右偏移3，那么第2列就在在向右偏移3的基础上进行增加或减少，并依此类推，
     // 基础偏移量确定之后还要增加上上次记录的下一行应该添加的额外偏移量，额外偏移量和替换字符串是否为标识符前缀有关：
-    // 当替换字符是_w_或[_w_标识符前缀时，当前列会记录偏移量-3/-4（前缀固定长度），下一列的额外偏偏移量则为+6/+8
+    // 当替换字符是_w_或[_w_标识符前缀时，当前列会记录偏移量-3（前缀固定长度），下一列的额外偏偏移量则为+6/+7
     const recordColumnOffset = () => {
         const preColumnOffset = lastElem(eachColumnOffset) || 0
         eachColumnOffset.push(preColumnOffset + nextColumnOffset)
@@ -64,30 +64,22 @@ export function transformScript(source: string, indentN = 0) {
     }
 
     for (let i = 0; i < source.length; i++) {
-        const currentLoc = getScriptLoc(i)
-        const currentColumn = eachColumnOffset.length
+        const isLastIndex = i === source.length - 1
+        const { line: currentLine, column: currentColumn } = getScriptPos(i)
 
+        // 开始新行前完成上一行的生成列偏移
         if (shouldGenerateSourcemap) {
-            if (mappingIndex !== currentLoc.line || i === source.length - 1) {
-                const newLine: SourceMapLine = []
-                const oldLine = sourceMapInfo.mappings[mappingIndex]
-                oldLine?.forEach(segment => {
-                    const sourceColumn = segment[3]!
-                    if (isUndefined(eachColumnOffset[sourceColumn])) {
-                        recordColumnOffset()
-                    }
-                    segment[0] += eachColumnOffset[sourceColumn]
-                    if (segment[0] !== lastElem(newLine)?.[0]) {
-                        newLine.push(segment)
-                    } else {
-                        newLine[newLine.length - 1] = segment
-                    }
+            if (isLastIndex) {
+                recordColumnOffset()
+            }
+            if (mappingLine !== currentLine || isLastIndex) {
+                sourceMapInfo.mappings[mappingLine - 1]?.forEach(segment => {
+                    segment[0] += eachColumnOffset[segment[3]!]
                 })
-                sourceMapInfo.mappings[mappingIndex] = newLine
-                if (i !== source.length - 1) {
+                if (!isLastIndex) {
                     nextColumnOffset = 0
                     eachColumnOffset = []
-                    mappingIndex = currentLoc.line
+                    mappingLine = currentLine
                 }
             }
             recordColumnOffset()
@@ -99,8 +91,8 @@ export function transformScript(source: string, indentN = 0) {
             const { text } = replacementItem
             if (isString(text)) {
                 if (shouldGenerateSourcemap && /^\[?_w_$/.test(text)) {
-                    nextColumnOffset += text.length
-                    eachColumnOffset[currentColumn] -= text.length
+                    nextColumnOffset += 3
+                    eachColumnOffset[currentColumn] -= 3
                 }
                 transformedArr.push(text)
                 eachColumnOffset[currentColumn] += text.length
@@ -127,10 +119,12 @@ export function transformScript(source: string, indentN = 0) {
     const joinedTransformedArr = transformedArr.join("")
     const indentSpaceCount = inputDescriptor.indentSpaceCount
     const joinedTransformedPositions = getPositionOfEachChar(joinedTransformedArr)
+
+    // 移除多余的空行，将被移除的行号记录在sourcemap.removedLine中，在最终的sourcemap偏移时移除这些行的映射信息
     const transformedStr = joinedTransformedArr.replace(scriptSourceRedundantEmptyLine, (s, i) => {
         if (shouldGenerateSourcemap) {
-            let emptyLineCount = s.match(/\n/g)!.length
-            const startLine = joinedTransformedPositions[i].line
+            let emptyLineCount = s.match(/\n/g)?.length || 0
+            const startLine = joinedTransformedPositions[i].line - 1
             for (let j = +(i !== 0); emptyLineCount > 0; emptyLineCount--, j++) {
                 sourceMapInfo.removedLine.add(startLine + j)
             }

@@ -1,20 +1,15 @@
-import type { FindOutOfSC, FixedArray } from "../types"
+import type { FixedArray } from "../types"
 import type { ASTLocation, ASTPosition, EliminateRanges } from "../../compiler/types"
 
-import {
-    kebabWholeRE,
-    validIdentifierNameRE,
-    kebabWithoutFirstLetterRE
-} from "../../compiler/regular"
-import { isString, isUndefined } from "../shared"
-import { InvalidIdentifierName } from "../../compiler/message/error"
+import { isUndefined } from "../shared/assert"
+import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
 
 // JSON.stringify别名
 export function normalStringify(v: any) {
     return JSON.stringify(v)
 }
 
-// 生成一个新的ASTPosition结构
+// 生成一个默认的ASTPosition结构
 export function newASTPosition(): ASTPosition {
     return {
         line: 0,
@@ -23,12 +18,29 @@ export function newASTPosition(): ASTPosition {
     }
 }
 
-// 生成一个新的ASTLocation结构
+// 生成一个默认的ASTLocation结构
 export function newASTLocation(): ASTLocation {
+    const pos = newASTPosition()
     return {
-        start: newASTPosition(),
-        end: newASTPosition()
+        start: pos,
+        end: pos
     }
+}
+
+// 生成一个带有位置信息的值结构
+export function newValueWithLoc<T>(value: T, loc?: ASTLocation) {
+    if (isUndefined(loc)) {
+        loc = newASTLocation()
+    }
+    return { value, loc }
+}
+
+// 确定标识符别名
+export function confirmAlias(name: string, existing: Set<string>) {
+    while (existing.has(name)) {
+        name = "_" + name
+    }
+    return name
 }
 
 // kebab命名转Camel
@@ -79,15 +91,6 @@ export function getPositionOfEachChar(str: string) {
     return ret
 }
 
-// 检查标识符名称是否合法
-export function checkIdentifierName(...names: string[]) {
-    for (const name of names) {
-        if (!validIdentifierNameRE.test(name)) {
-            InvalidIdentifierName(name)
-        }
-    }
-}
-
 // 判断某个索引是否被er包围，er的情况同getPieceOfStrOutOfER相同
 export function isIndexEliminated(index: number, ranges: EliminateRanges) {
     for (const range of ranges) {
@@ -112,76 +115,4 @@ export function arrayChunk<T, S extends number>(arr: T[], size: S): FixedArray<T
         ret[j++] = arr.slice(i, i + size)
     }
     return ret
-}
-
-// 从js代码中脱离字符串和注释范围查找指定子串
-// 这是一个重载函数，当未传入startIndex时它只返回匹配子串的开始索引
-// 当传入了startIndex时，它将返回一个由两个number组成的数组，格式：[匹配子串开始索引，匹配子串长度]
-export const findOutOfSC: FindOutOfSC = (
-    str: string,
-    pattern: string | RegExp,
-    startIndex?: number
-): any => {
-    const withoutStartIndex = isUndefined(startIndex)
-    if (withoutStartIndex) {
-        startIndex = 0
-    }
-
-    // 根据是否传入了startIndex返回正确的重载返回值
-    const cr = (index: number, len: number) => {
-        if (withoutStartIndex) {
-            return index
-        } else {
-            return [index, len] as FixedArray<number, 2>
-        }
-    }
-
-    // ls代表剩余未查询部分的字符串
-    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
-        if (/^['"`]/.test(str[i])) {
-            const endChar = str[i]
-            while (str[++i] !== endChar) {
-                if ("\\" === str[i]) {
-                    i++
-                    continue
-                }
-                if (i >= str.length) {
-                    return cr(-1, 0)
-                }
-            }
-            ls = str.slice(++i)
-        }
-
-        if (ls.startsWith("//")) {
-            const endIndex = ls.indexOf("\n")
-            if (endIndex === -1) {
-                return cr(-1, 0)
-            }
-            i += endIndex
-            continue
-        }
-
-        if (ls.startsWith("/*")) {
-            const endIndex = ls.indexOf("*/")
-            if (endIndex === -1) {
-                return cr(-1, 0)
-            }
-            i += endIndex
-            continue
-        }
-
-        if (isString(pattern)) {
-            if (ls.startsWith(pattern)) {
-                return cr(i, pattern.length)
-            }
-        } else {
-            const re = new RegExp("^" + pattern.source)
-            const matched = re.exec(ls)
-            if (matched) {
-                return cr(i, matched[0].length)
-            }
-        }
-    }
-
-    return cr(-1, 0)
 }

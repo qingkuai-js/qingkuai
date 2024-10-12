@@ -2,9 +2,10 @@ import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
 import { RawValue } from "./constants"
-import { isReactive, velf } from "../util/runtime"
-import { isArray, isBoolean, isObject } from "../util/shared"
+import { velf } from "../util/runtime/sundry"
+import { isReactive } from "../util/runtime/assert"
 import { AssignmentToDOMGetterProp } from "./message/warn"
+import { isArray, isBoolean, isObject, isString } from "../util/shared/assert"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -27,7 +28,7 @@ export function insert(target: Node, node: Node, reference: PartialNode) {
 }
 
 export function text(qknode: QingKuaiNodeStruct, content: any, record: boolean) {
-    content = "" + content
+    content = textContenValuet2Str(content)
     if (record) {
         qknode.text = content
     }
@@ -35,7 +36,7 @@ export function text(qknode: QingKuaiNodeStruct, content: any, record: boolean) 
 }
 
 export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolean) {
-    content = "" + content
+    content = textContenValuet2Str(content)
     if (qknode.text === content) {
         return false
     }
@@ -150,4 +151,14 @@ export function transformClassName(value: any) {
         transformObject(value)
     }
     return valueArr.join(" ").replace(/\s+/g, " ")
+}
+
+// 获取节点内容，QingKuai只会将textContent位置编译为字符串（调试模式）或数组（非调试模式）
+// 两种类型，如果是字符串类型直接返回，如果是数组类型则使用join方法拼接为字符串后返回
+function textContenValuet2Str(content: string | any[]) {
+    if (isArray(content)) {
+        return content.join("")
+    } else {
+        return "" + content
+    }
 }

@@ -1,17 +1,18 @@
 import type {
     Getter,
     Opportunity,
-    GeneralFunc,
     WatchStruct,
     EffectStruct,
     EffectListItem,
     RuntimeWatchFunc,
     WatchEffectStruct
 } from "../types"
+import { GeneralFunc } from "../../util/types"
 
-import { getRawValue } from "../../util/runtime"
+import { isNull } from "../../util/shared/assert"
 import { opportunities, nil } from "../constants"
-import { isNull, len, values } from "../../util/shared"
+import { len, values } from "../../util/shared/sundry"
+import { getRawValue } from "../../util/runtime/sundry"
 import { asyncWatchEffectList, usedEffectList } from "./state"
 import { WatchEffectDependenNoReactiveValue } from "../message/warn"
 

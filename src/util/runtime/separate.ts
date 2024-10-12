@@ -1,62 +1,24 @@
+/**
+ * 此文件是为了避免循环依赖而提取的一些方法
+ * This file is a collection of methods extracted to avoid circular dependencies
+ * Reference: https://en.wikipedia.org/wiki/Circular_dependency
+ */
+
 import type {
-    KeyedInfo,
     Directive,
-    ModuleFunc,
+    KeyedInfo,
     PartialNode,
-    RenderContext,
     KeyedInfoItem,
+    RenderContext,
     EffectListItem,
     DestructionStruct
-} from "../runtime/types"
-import type { EventWrapperFlagKeys, EventListenerFlagKeys, AnyObject } from "./types"
+} from "../../runtime/types"
 
-import { setUsedEffectList } from "../runtime/reactivity/state"
-import { IsModuleFunc, IsProxy, nil, noop, RawValue } from "../runtime/constants"
-import { len, runAll, isNumber, isFunction, EventWrapperFlag, EventListenerFlag } from "./shared"
+import { len, runAll } from "../shared/sundry"
+import { nil, noop } from "../../runtime/constants"
+import { isFunction, isNumber } from "../shared/assert"
+import { setUsedEffectList } from "../../runtime/reactivity/state"
 
-// 判断是否DOM节点
-export function isNode(v: any): v is Node {
-    return isNumber(v.nodeType)
-}
-
-// 判断值是否为响应式值
-export function isReactive<T extends AnyObject>(
-    v: any
-): v is T & {
-    [RawValue]: T
-} {
-    return v?.[IsProxy] === true
-}
-
-// 判断是否是ModuleFunc类型
-export function isModuleFunc(v: any): v is ModuleFunc {
-    return !!v?.[IsModuleFunc]
-}
-
-// 获取原始值
-export function getRawValue<T>(v: T) {
-    return isReactive(v) ? v[RawValue] : v
-}
-
-// velf means Verify Event Listener Flag
-export function velf(flag: number, key: EventListenerFlagKeys) {
-    return !!(EventListenerFlag[key] & flag)
-}
-
-// vewf meas Verify Event Wrapper Flag
-export function vewf(flag: number, key: EventWrapperFlagKeys) {
-    return !!(EventWrapperFlag[key] & flag)
-}
-
-// 通过指定元素删除数组中对应的元素（只会删除第一个匹配项）
-export function spliceByElem<T>(arr: T[], elem: T) {
-    const index = arr.indexOf(elem)
-    if (index !== -1) {
-        arr.splice(index, 1)
-    }
-}
-
-// 注意：从这里往下的方法提取到util是为了避免循环引用
 // 返回新创建的DestructStruct
 export function newDestruction(): DestructionStruct {
     return {

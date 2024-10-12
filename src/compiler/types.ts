@@ -13,9 +13,9 @@ export interface ASTLocation {
 
 export interface SourceMapInfo {
     mappings: SourceMapMappings
+    hasScript: boolean
     preaddedLineCount: number
     removedLine: Set<number>
-    generatedScriptLineCount: number
     existingSourceIndex: Set<number>
     tempStoredImportStartLine: number
     columnOffsetOfFirstTemplateLine: number
@@ -31,7 +31,7 @@ export interface ReplacementItem {
     order: number
     processed: boolean
     index: number
-    text: string | (() => string)
+    text: StringOrStringGetter
 }
 export type ReplacementMap = Map<
     string,
@@ -59,9 +59,11 @@ export interface InputDescriptor {
     type: "sfc" | "script"
     indentSpaceCount: number
     positions: ASTPosition[]
+    stringConstantCount: number
     script: {
         code: string
         isTS: boolean
+        lineCount: number
         loc: ASTLocation
         existing: boolean
         runtime: {
@@ -96,7 +98,8 @@ export type FilteredTemplateAttribute = TemplateAttribute & {
 
 export interface TemplateAnalysisRet {
     tag: string
-    content: TransformExpressionRet
+    isTemplate: boolean
+    content: TransformInterpolationRet
     children: {
         useBracket: boolean
         tar: TemplateAnalysisRet | null
@@ -110,28 +113,34 @@ export type TemplateContext = {
     map: Map<
         string,
         {
-            to: string
-            pto?: string
+            num: number
+            path: string
         }
     >
     count: number
 }
 
+export interface ValueWithLocation<T> {
+    value: T
+    loc: ASTLocation
+}
 export interface AttributeAnalysisRet {
-    directiveStu: string[][]
-    eventStu: TransformExpressionRet[]
-    attributeStu: TransformExpressionRet[]
-    slot: string
-    slotName?: string
+    directiveStu: TransformInterpolationRet[][]
+    eventStu: TransformInterpolationRet[]
+    attributeStu: TransformInterpolationRet[]
+    continueInfo?: {
+        re?: RegExp | null
+        by?: string | undefined
+        arg?: TransformInterpolationRet
+    }
     insertNullNum?: number
     createTemplate?: boolean
-    continueRE?: RegExp | null
     awaitContextStartIndex?: number
-    continueArg?: string | undefined
-    continuedDirective?: string | undefined
+    slotOfAnyTag: ValueWithLocation<string> | null
+    nameOfSlotTag?: ValueWithLocation<string> | null
 }
 
-export interface TransformExpressionOptionalParam {
+export interface TransformInterpolationOptionalParam {
     positionMap?: number[]
     usedAsSetter?: boolean
     isKeyDirective?: boolean
@@ -139,7 +148,7 @@ export interface TransformExpressionOptionalParam {
     isComponentEvent?: boolean
 }
 
-export type TransformExpressionRet =
+export type TransformInterpolationRet =
     | string
     | {
           transformedExp: string
@@ -149,3 +158,4 @@ export type TransformExpressionRet =
 export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type EliminateRanges = Set<FixedArray<number, 2>>
 export type ReplacementStatus = "stc" | "pending" | "rea"
+export type StringOrStringGetter = string | (() => string)

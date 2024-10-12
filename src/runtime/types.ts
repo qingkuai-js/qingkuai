@@ -1,13 +1,12 @@
-import type { AnyObject } from "../util/types"
 import type { QingKuaiComponent } from "./instance"
 import type { ReactivityWrapper } from "./reactivity/value"
+import type { AnyObject, GeneralFunc } from "../util/types"
 import type { IsModuleFunc, IsWithReferenceRet } from "./constants"
 
 export type ZeroOrOne = 0 | 1
 export type AnySet = Set<any>
 export type Getter = () => any
 export type AnyMap = Map<any, any>
-export type GeneralFunc = () => void
 export type PartialNode = Node | null
 export type Setter = (v: any) => void
 export type ValueOrValueArr<T> = T | T[]

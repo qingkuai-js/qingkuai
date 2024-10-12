@@ -1,5 +1,5 @@
 import type { FixedArray } from "../../util/types"
-import type { ReplacementItem, ReplacementStatus } from "../types"
+import type { ASTLocation, ReplacementItem, ReplacementStatus } from "../types"
 import type { Pattern, CallExpression, VariableDeclaration } from "@babel/types"
 import type { ASTVisitor, EsPattern, RequiredPosition, TraverseParent } from "../estree/types"
 
@@ -11,6 +11,12 @@ import {
     allExistingIdentifiers
 } from "../state"
 import {
+    RedundantArgs,
+    DerLoseReactivity,
+    MixTwoSyntaxOfDerived,
+    IdentifierMaybeOverwritten
+} from "../message/warn"
+import {
     parse,
     getEsNode,
     markExcludes,
@@ -21,13 +27,8 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    bannedIdentifierFormat,
-    reservedIndentifierName,
-    scriptSourceIndentSpaceCount
-} from "../regular"
-import {
-    getGeneratedLine,
     getSetterIdentifier,
+    getGeneratedScriptLine,
     markSegmentShouldNotBeMapped
 } from "../../util/compiler/state"
 import {
@@ -37,15 +38,15 @@ import {
     RegisterExsitingIdentifierName,
     CompilerFuncWithoutVariableDeclaration
 } from "../message/error"
+import { getAlias } from "./alias"
 import { walk } from "../estree/walk"
-import { lastElem } from "../../util/shared"
-import { confirmAliases, getAlias } from "./alias"
 import { compilerOptions } from "../configuration"
-import { findOutOfSC } from "../../util/compiler/sundry"
-import { recordMappingWithNoOffset } from "../sourcemap/script"
+import { lastElem } from "../../util/shared/sundry"
+import { recordMappingWithNoOffset } from "../sourcemap"
+import { findOutOfSC } from "../../util/compiler/strings"
 import { compilerFuncs, watchRelatedFuncs } from "../constants"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
-import { RedundantArgs, DerLoseReactivity, MixTwoSyntaxOfDerived } from "../message/warn"
+import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
 
 const visitor: ASTVisitor = {
     VariableDeclaration(node, parent) {
@@ -94,11 +95,11 @@ const visitor: ASTVisitor = {
             const isExclude = parent.excludes.has(funcName)
             if (compilerFuncs.has(funcName) && !isExclude) {
                 if (!is(esParent!.v, "VariableDeclarator")) {
-                    CompilerFuncWithoutVariableDeclaration()
+                    CompilerFuncWithoutVariableDeclaration(node.loc)
                 }
                 if (!is(esGreatGrand?.v, "Program")) {
                     if (!parent.excludes.has(funcName)) {
-                        CompilerFuncNotInTopScope()
+                        CompilerFuncNotInTopScope(node.loc)
                     }
                 }
             }
@@ -115,8 +116,8 @@ const visitor: ASTVisitor = {
         const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
 
         // 检查是否是被禁止的标识符格式
-        if (bannedIdentifierFormat.test(name)) {
-            IdentifierFormatIsNotAllowed(name)
+        if (bannedIdentifierFormatRE.test(name)) {
+            IdentifierFormatIsNotAllowed(name, node.loc)
         }
 
         // 记录所有的标识符，用于确定导入项和init解构标识符别名
@@ -163,10 +164,8 @@ const visitor: ASTVisitor = {
         const scriptSource = inputDescriptor.script.code
         const isQingKuaiRuntime = node.source.value === "qingkuai"
         eliminateRanges.add([start, end])
-        node.specifiers.forEach(({ local: { name } }) => {
-            if (reservedIndentifierName.test(name)) {
-                RegisterExsitingIdentifierName(name)
-            }
+        node.specifiers.forEach(({ local: { name }, loc }) => {
+            checkTopScopeIdentifier(name, loc!)
         })
         tempStoredImportInfos.push({
             mappingLine: [],
@@ -217,9 +216,9 @@ const visitor: ASTVisitor = {
                 const curInfo = lastElem(tempStoredImportInfos)
                 const { startColumn, mappingLine } = curInfo
                 const { line, column } = node.loc.start
-                const sourceLine = getGeneratedLine(line)
                 const generatedColumn = column - startColumn
-                mappingLine.push([generatedColumn, 0, sourceLine, column])
+                const sourceLine = getGeneratedScriptLine(line)
+                mappingLine.push([generatedColumn, 0, sourceLine - 1, column])
             } else {
                 if (!is(node, "Program")) {
                     recordMappingWithNoOffset(node.loc.start)
@@ -228,6 +227,24 @@ const visitor: ASTVisitor = {
             }
         }
     }
+}
+
+export function analyzeScript(source: string) {
+    // 确认源文件采用的缩进对应的空格数量
+    const indentSpaceCount = scriptSourceIndentSpaceCount.exec(source)?.[1].length || 2
+    inputDescriptor.indentSpaceCount = indentSpaceCount
+
+    // 初始化replacement
+    // 用来存储那些不需要依赖所属标识符项状态的替换项
+    // 这里的items是一定要执行替换的，在replacement中它的键是空字符串
+    replacementInfo.map.set("", {
+        createSetter: false,
+        useDollar: false,
+        status: "rea",
+        items: []
+    })
+
+    walk(parse(source), visitor)
 }
 
 // 分析reactivity相关编译助手函数调用
@@ -517,7 +534,9 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
     node.declarations.forEach(({ id, init, end }, index) => {
         let initEnd = init?.end ?? end!
         let initStart = init?.start ?? end!
+
         const esInit = init ? getEsNode(init) : init
+        const declarationLoc = node.declarations[index].loc!
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
         const esInitIsIdentifierCallee = (hasFnCall = is(esInit, "CallExpression"))
@@ -612,7 +631,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 eliminateRanges.add(initRange)
                 isDerived = reactFunc === "der"
                 if (isDestructuring) {
-                    DestructureReactFuncWithNoArg(reactFunc)
+                    DestructureReactFuncWithNoArg(reactFunc, declarationLoc)
                 }
             }
         }
@@ -637,11 +656,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         }
 
         extend(names)
-        names.forEach(name => {
-            if (compilerFuncs.has(name) || reservedIndentifierName.test(name)) {
-                RegisterExsitingIdentifierName(name)
-            }
-        })
+        names.forEach(name => checkTopScopeIdentifier(name, id.loc!))
     })
 }
 
@@ -651,7 +666,7 @@ function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseP
     const firstArg = node.arguments[0]
     const scriptSource = inputDescriptor.script.code
     const emptyStringReplacement = replacementInfo.map.get("")!
-    const retUseParentheses = scriptSource[firstArg.start || 0] === "{"
+    const retUseParentheses = scriptSource[firstArg?.start || 0] === "{"
     const { namespaceIdentifier, watchIdentifiers } = inputDescriptor.script.runtime
 
     if (node.arguments.length === 0) {
@@ -691,24 +706,15 @@ function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseP
     }
 }
 
-export function analyzeScript(source: string) {
-    // 确认源文件采用的缩进对应的空格数量
-    const indentSpaceCount = scriptSourceIndentSpaceCount.exec(source)?.[1].length || 2
-    inputDescriptor.indentSpaceCount = indentSpaceCount
+// 检查script部分顶部作用域中的标识符是否合法：
+// 1. rea、stc、der及props是保留标识符名称，在顶部作用域中不能重复声明（报错）
+// 2. 在内联事件中$event（非组件）和$param(组件)会覆盖顶部作用域中的同名标识符（警告）
+function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
+    if (compilerFuncs.has(name) || name === "props") {
+        RegisterExsitingIdentifierName(name, loc!)
+    }
 
-    // 初始化replacement
-    // 用来存储那些不需要依赖所属标识符项状态的替换项
-    // 这里的items是一定要执行替换的，在replacement中它的键是空字符串
-    replacementInfo.map.set("", {
-        createSetter: false,
-        useDollar: false,
-        status: "rea",
-        items: []
-    })
-
-    walk(parse(source), visitor)
-    confirmAliases()
-    getAlias("init")
-    getAlias("QingKuaiComponent")
-    getAlias("setTemplateStructure")
+    if (name === "$event" || name === "$param") {
+        IdentifierMaybeOverwritten(name)
+    }
 }

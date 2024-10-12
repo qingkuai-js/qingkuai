@@ -12,7 +12,7 @@ import type { Function } from "@babel/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { ReplacementItem, ReplacementStatus } from "../../compiler/types"
 
-import { isArray, isUndefined } from "../../util/shared"
+import { isArray, isUndefined } from "../../util/shared/assert"
 import { parse as babelParse, ParserOptions } from "@babel/parser"
 import { replacementInfo, inputDescriptor } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
@@ -36,7 +36,7 @@ export function getEsNode(node: AnyNode) {
     return node as AnyNodeWithStartEnd
 }
 
-// 提取parent对应的EsTree节点，遇到ts断言相关语法时继续向上查找
+// 提取parent对应的EsTree节点，遇到ts类型操作相关语法时继续向上查找
 export function getEsNodeOfParent(cur: TraverseParent | PartialBase) {
     while (isTypeOperationExpression(cur?.v)) {
         cur = cur.parent

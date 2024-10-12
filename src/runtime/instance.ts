@@ -1,16 +1,17 @@
 import type {
-    GeneralFunc,
     ComponentStructure,
     QingKuaiProperties,
     TemplateStuOrModuleFunc,
     QingKuaiComponentConstructonParam
 } from "./types"
+import { GeneralFunc } from "../util/types"
 
 import { nil, noop } from "./constants"
-import { arrayFill, len, runAll } from "../util/shared"
-import { destroyBlock, newDestruction } from "../util/runtime"
+import { isUndefined } from "../util/shared/assert"
+import { arrayFill, len, runAll } from "../util/shared/sundry"
+import { destroyBlock, newDestruction } from "../util/runtime/separate"
 
-// 当前组件实例
+// 用于存储当前操作的组件实例
 let currentInstance: QingKuaiComponent | null = nil
 
 export class QingKuaiComponent {
@@ -34,22 +35,21 @@ export class QingKuaiComponent {
         dst: newDestruction()
     }
 
-    constructor(args: QingKuaiComponentConstructonParam) {
-        const { __: properties } = this
-        const { slots, refs, props } = args
-        properties.refs = refs
-        properties.slots = slots
-        properties.props = props
+    constructor(args?: QingKuaiComponentConstructonParam) {
+        if (isUndefined(args)) {
+            return
+        }
+        Object.assign(this.__, args)
         setCurrentInstance(this)
     }
 }
 
-// 获取当前组件实例
+// 获取当前组件实例（currentInstance）
 export function getCurrentInstance() {
     return currentInstance
 }
 
-// 设置当前组件实例
+// 设置当前组件实例（到currentInstance）
 export function setCurrentInstance(ins: QingKuaiComponent) {
     currentInstance = ins
 }

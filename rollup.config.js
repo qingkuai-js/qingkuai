@@ -1,8 +1,8 @@
-import { defineConfig } from "rollup"
+import * as rollup from "rollup"
 import dts from "rollup-plugin-dts"
 import esbuild from "rollup-plugin-esbuild"
 
-export default defineConfig(commentLineArgs => {
+export default rollup.defineConfig(commentLineArgs => {
     const isWatchMode = commentLineArgs.watch
 
     const ret = [

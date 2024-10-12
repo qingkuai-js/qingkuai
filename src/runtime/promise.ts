@@ -1,4 +1,4 @@
-import { optc } from "../util/shared"
+import { optc } from "../util/shared/sundry"
 import { NotPromise } from "./message/error"
 
 const resolvedPromise = Promise.resolve()

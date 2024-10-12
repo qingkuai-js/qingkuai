@@ -8,9 +8,8 @@ import type {
     TempStoredImportInfo
 } from "./types"
 
-import { setArrLength } from "../util/shared"
+import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/sundry"
-import { SourceMapSegment } from "@jridgewell/sourcemap-codec"
 
 export const sourceMapInfo = newSourceMapInfo()
 export const debuggingInfo = newDebuggingInfo()
@@ -18,8 +17,8 @@ export const replacementInfo = newReplacementInfo()
 export const inputDescriptor = newInputDescriptor()
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
-export const initItems = new Set<string>()
-export const runtimeItems = new Set<string>()
+export const usedInitItems = new Set<string>()
+export const usedRuntimeItems = new Set<string>()
 export const allExistingIdentifiers = new Set<string>()
 export const eliminateRanges: EliminateRanges = new Set()
 
@@ -28,10 +27,10 @@ export const stringConstantsSourceMap = new Map<string, string>()
 
 // 重置编译器状态
 export function resetCompilerState() {
-    initItems.clear()
-    runtimeItems.clear()
+    usedInitItems.clear()
     eliminateRanges.clear()
     stringConstants.clear()
+    usedRuntimeItems.clear()
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
     setArrLength(tempStoredImportInfos, 0)
@@ -45,9 +44,9 @@ export function resetCompilerState() {
 function newSourceMapInfo(): SourceMapInfo {
     return {
         mappings: [],
+        hasScript: false,
         preaddedLineCount: 0,
         removedLine: new Set(),
-        generatedScriptLineCount: 0,
         tempStoredImportStartLine: 0,
         positionShouldNotBeMapped: [],
         existingSourceIndex: new Set(),
@@ -77,9 +76,11 @@ function newInputDescriptor(): InputDescriptor {
         type: "sfc",
         positions: [],
         indentSpaceCount: 0,
+        stringConstantCount: 0,
         script: {
             code: "",
             isTS: false,
+            lineCount: 0,
             existing: false,
             loc: newASTLocation(),
             generatedOffset: [0, 0],

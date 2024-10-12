@@ -1,13 +1,15 @@
 import type { Setter, EventStructure, RefEventHandlerGetterGen, QingKuaiNodeStruct } from "./types"
 
 import { attribute } from "./dom"
-import { vewf } from "../util/runtime"
 import { raw } from "./reactivity/value"
 import { resolvedPromise } from "./promise"
+import { vewf } from "../util/runtime/sundry"
 import { IsWithReferenceRet } from "./constants"
 import { ContainerTypeIsBad } from "./message/error"
 import { EventWrapperFlagKeys } from "../util/types"
-import { EventListenerFlag, isArray, notEqual, optc, setArrLength } from "../util/shared"
+import { isArray, isNull } from "../util/shared/assert"
+import { EventListenerFlag } from "../util/shared/flag"
+import { notEqual, optc, setArrLength } from "../util/shared/sundry"
 
 const Arrow = "Arrow"
 const keyTypes = ["keydown", "keyup", "keypress"]
@@ -62,7 +64,7 @@ export function withReference(
     eventName: string,
     attrName: string,
     value: any,
-    setter: Setter,
+    setter: Setter | null,
     isInitCall = true
 ): EventStructure {
     const handlerGen: RefEventHandlerGetterGen = (qkNode, invokeGetter, attachUpdate) => {
@@ -131,9 +133,7 @@ export function withReference(
                 }
                 return hasUpdated
             } else {
-                // 非radio/checkbox控件的group属性或select元素的value属性，正常处理，
-                // 可能的情况：radio/checkbox控件的checked属性，option的selected属性
-                // 若后续版本为其他普通标签添加了可接受的引用属性，请更新《可能情况》以使逻辑清晰
+                // 如果是radio/checkbox控件的checked属性就正常处理属性变更
                 return attribute(qkNode, attrKey, gotValue, true)
             }
         }
@@ -142,6 +142,14 @@ export function withReference(
         setAttribute(), attachUpdate(setAttribute)
 
         return () => {
+            // select元素的value（非引用）属性，此时仅需绑定attribute部分的处理，在选项
+            // 修改时不应该影响到相关的响应式值，所以应该直接接受eventHandler的执行
+            if (isNull(setter)) {
+                return
+            }
+
+            // 当setter不为null时，setter存在时表示当前的引用属性为：textarea[value]、
+            // input[value/checked]、select[value]（单选），其他情况setter都为undefined
             if (setter) {
                 if (!isSelect) {
                     setter(target[attrKey])

@@ -2,8 +2,8 @@ import type { QingKuaiComponent } from "./instance"
 import type { EffectListItem, UpdateFunc } from "./types"
 
 import { noop } from "./constants"
-import { isNull } from "../util/shared"
 import { resolvedPromise } from "./promise"
+import { isNull } from "../util/shared/assert"
 import { invokeIndexedHooks } from "./instance"
 import { flushWatchEffect } from "./reactivity/effect"
 

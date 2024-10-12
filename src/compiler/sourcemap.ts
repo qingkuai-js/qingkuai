@@ -1,10 +1,11 @@
+import type { ASTPosition } from "./types"
 import type { SourceMapMappings, SourceMapSegment } from "@jridgewell/sourcemap-codec"
 
-import { compilerOptions } from "../configuration"
-import { getGeneratedLine } from "../../util/compiler/state"
-import { isUndefined, replaceEachItems } from "../../util/shared"
-import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "../state"
-import { getAlias } from "../analyzer/alias"
+import { compilerOptions } from "./configuration"
+import { isUndefined } from "../util/shared/assert"
+import { replaceEachItems } from "./../util/shared/sundry"
+import { getGeneratedScriptLine } from "./../util/compiler/state"
+import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "./state"
 
 // 记录一条sourcemap mapping segment
 export function recordMapping(
@@ -15,12 +16,6 @@ export function recordMapping(
     sourceIndex: number,
     isTemplate = false
 ) {
-    if (!isTemplate) {
-        sourceLine = getGeneratedLine(sourceLine)
-    } else {
-        generatedLine += sourceMapInfo.generatedScriptLineCount
-    }
-
     // 源码行添加源码文件头部注释占用的行数
     if (compilerOptions.debugeMode) {
         sourceLine += 10
@@ -50,33 +45,40 @@ export function recordMapping(
 
 // 按照指定偏移量转换sourcemapMappings
 export function offsetSourcemap() {
-    let temp: SourceMapMappings = []
+    const {
+        lineCount: scriptLineCount,
+        loc: { start: scriptStartPosition }
+    } = inputDescriptor.script
     const { indentSpaceCount } = inputDescriptor
-    const scriptLoc = inputDescriptor.script.loc
-    const scriptStartPosition = scriptLoc.start
-    const firstTemplateLine = sourceMapInfo.generatedScriptLineCount
+    const preaddedLineCount = sourceMapInfo.preaddedLineCount + 9
 
-    // 生成代码行偏移（生成代码固定前8行无sourcemap信息）
-    for (let i = 0; i < sourceMapInfo.preaddedLineCount + 8; i++) {
-        temp.push([])
+    // 生成代码行偏移，preaddLineCount代表了在生成script代码块之前有多少行内容；如果当前行是template部分的第一行
+    // 映射信息，并且生成代码中含有script部分，在template映射前固定添加两行空映射信息(换行及注释的固定行数)
+    const temp: SourceMapMappings = Array(preaddedLineCount).fill([])
+    for (let i = 0; i < sourceMapInfo.mappings.length; i++) {
+        if (scriptLineCount === i && sourceMapInfo.hasScript) {
+            temp.push([], [])
+        }
+
+        // 将未被删除的行映射信息添加到temp
+        if (!sourceMapInfo.removedLine.has(i)) {
+            temp.push(sourceMapInfo.mappings[i])
+        }
     }
 
     // 生成代码行列偏移，根据映射段下标为1的元素（代表是否模板映射段）有以下两种处理情况：
-    // 1. 脚本映射段：则将所有生成列偏移一个缩进量，当段处于第一行时还应该额外向右偏移 <lang- ...> 开始标签的长度
-    // 2. 模板映射段：只需要让第一行的段偏移sorucemapInfo.columnOffsetOfFirstTemplateLine的值即可（这个值为
-    // 固定两个缩进量 + setTemplateStructure（确认别名后）+ 2（函数调用字符 ([ 的固定长度），最后将segment[1]置为0
+    // 1. 脚本映射段：将所有生成列偏移一个缩进量，当段处于第一行时还应该额外向右偏移 <lang- ...> 开始标签的长度
+    // 2. 模板映射段：只需要让第一行的段偏移sorucemapInfo.columnOffsetOfFirstTemplateLine的值（这个值为固定
+    // 两个缩进量 + scts（确认别名后）方法名长度 + 2（函数调用字符 ([ 的固定长度），最后将segment[1]置为0即可
     sourceMapInfo.mappings.forEach((line, index) => {
-        if (!sourceMapInfo.removedLine.has(index)) {
-            temp.push(line)
-        }
         line.forEach(segment => {
-            if (index === 1) {
-                segment[3]! += scriptStartPosition.column
-            }
-            if (segment[1] !== 1) {
+            if (!segment[1]) {
+                if (index === 0) {
+                    segment[3]! += scriptStartPosition.column
+                }
                 segment[0] += indentSpaceCount
             } else {
-                if (index === firstTemplateLine) {
+                if (index === scriptLineCount) {
                     segment[0] += sourceMapInfo.columnOffsetOfFirstTemplateLine
                 }
                 segment[1] = 0
@@ -85,7 +87,7 @@ export function offsetSourcemap() {
     })
 
     // 将原有的import语句映射信息添加到正确的位置
-    // 当语句和 lang- 标签处在同一行时，需要将源码列信息发生偏移(增加标签长度)
+    // 当语句和 lang- 标签处在同一行时，需要将源码列信息向右偏移(标签长度)
     for (let i = 0; i < tempStoredImportInfos.length; i++) {
         const { mappingLine } = tempStoredImportInfos[i]
         mappingLine.forEach(segment => {
@@ -100,6 +102,17 @@ export function offsetSourcemap() {
     }
 
     replaceEachItems(sourceMapInfo.mappings, temp)
+}
+
+// 记录一条源码位置与生成代码位置一致的映射信息（转换和生成代码的过程中处理偏移），此方法目前只在
+// 分析script部分代码时使用，此方法关于源码位置有针对处理，如果其他地方使用到此方法需要考虑重构
+export function recordMappingWithNoOffset(position: ASTPosition) {
+    const { line, column, index } = position
+    const sourceLine = getGeneratedScriptLine(line - 1)
+    const sourceIndex = inputDescriptor.script.loc.start.index + index
+    if (!sourceMapInfo.positionShouldNotBeMapped[index]) {
+        recordMapping(line - 1, column, sourceLine, column, sourceIndex)
+    }
 }
 
 // 根据指定生成行信息初始化一行mapping

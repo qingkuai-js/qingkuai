@@ -1,22 +1,15 @@
 import type { AnyObject } from "../../util/types"
 import type { Setter, PGetHandler, PSetHandler, EffectListItem, PDeleteHandler } from "../types"
 
-import {
-    optc,
-    isNull,
-    isArray,
-    isNumber,
-    notEqual,
-    isFunction,
-    isUndefined
-} from "../../util/shared"
 import { usedEffectList } from "./state"
 import { runSyncEffect } from "./effect"
 import { scheduleUpdate } from "../schedule"
-import { isReactive } from "../../util/runtime"
 import { getCurrentInstance } from "../instance"
 import { BadReactivityLevel } from "../message/error"
+import { isReactive } from "../../util/runtime/assert"
+import { notEqual, optc } from "../../util/shared/sundry"
 import { reflect, undef, RawValue, nil, IsProxy, Wrapper, noop } from "../constants"
+import { isNull, isArray, isNumber, isFunction, isUndefined } from "../../util/shared/assert"
 
 const react = reactGen()
 const constReact = reactGen(1)

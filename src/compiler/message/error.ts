@@ -1,51 +1,127 @@
-import { isUndefined } from "../../util/shared"
-import { bannedIdentifierFormat } from "../regular"
+/**
+ * 为了整个文件可读性，应尽量将较少代码的错误方法放在靠前的位置，但这样会导致错误代码
+ * 不能与方法的顺序保持一致，所以这里在文件头记录了最后一个使用的错误代码（在下方的
+ * last-error-code处）每次添加错误方法并使用新的错误代码时，需要将本次使用的错误
+ * 代码更新到文件的头部注释中（约定：新错误代码为 last-error-code + 1）
+ *
+ * For the sake of the overall readability of this file, we should try
+ * put the error method with less code in the front, however this results
+ * in error codes can not conform to the order of the methods.
+ * So, the last error code used is recorded in the file header comment
+ * (at last-error code below), each time you add a new error method and use a
+ * new error code, you need update the error code you used this time to the header
+ * comment of this file. (Convention: the new error code is: last-error-code + 1)
+ *
+ * current-error-code: 1036
+ */
 
-export function TagIsNotClosing(tag: string) {
-    error(`The tag(${tag}) is not closing.`)
-}
+import type { ASTLocation } from "../types"
+import type { FixedArray, GeneralFunc } from "../../util/types"
 
-export function UnclosedInterpolationExpression() {
-    error("Unclosed interpolation expression.")
-}
+import { lastElem } from "../../util/shared/sundry"
+import { isNumber } from "../../util/shared/assert"
+import { bannedIdentifierFormatRE } from "../regular"
+import { getLocByIndex } from "../../util/compiler/state"
 
-export function InvalidIdentifierName(name: string) {
-    error(`The identifier name(${name}) is invalid.`)
-}
+export const UnexpectedToken = withLocation(1001, (char: string) => {
+    return `Unexpected token: ${char}`
+})
 
-export function TemplateStartsWithEndTag(text: string) {
-    error(`Starts with an end tag: ${text}`)
-}
+export const SlotAttrIsEmpty = withLocation(1022, () => {
+    return "The slot attribute can not be empty."
+})
 
-export function EmptyInterpolationAttrName(char: string) {
+export const TagIsNotClosing = withLocation(1002, (tag: string) => {
+    return `The tag(${tag}) is not closing.`
+})
+
+export const UnclosedNormalAttributeValue = withLocation(1003, () => {
+    return "Unclosed attribute value."
+})
+
+export const DynamicNameAttrForSlot = withLocation(1020, () => {
+    return `Dynamic name attribute(!name) for slot tag is not allowed.`
+})
+
+export const UnclosedInterpolationExpression = withLocation(1004, () => {
+    return "Unclosed interpolation expression."
+})
+
+export const InvalidSlotAttr = withLocation(1034, (typeChar: string) => {
+    const description = typeChar === "!" ? "Dynamic" : "Reference"
+    return `${description} slot attribute(${typeChar}slot) is not allowed.`
+})
+
+export const InvalidIdentifierName = withLocation(1005, (name: string) => {
+    return `The identifier name(${name}) is invalid.`
+})
+
+export const TemplateStartsWithEndTag = withLocation(1006, (text: string) => {
+    return `Starts with an end tag: ${text}`
+})
+
+export const EmptyInterpolationAttrName = withLocation(1007, (char: string) => {
     const itemDescription = getSpecialAttrDescription(char)
-    error(`The ${itemDescription!} must be specified a name.`)
-}
+    return `The ${itemDescription!} must be specified a name.`
+})
 
-export function SlotNameAttributeIsEmpty() {
-    error("The name attribute for slot tag can not be empty.")
-}
+export const NameAttrForSlotIsEmpty = withLocation(1008, () => {
+    return "The name attribute for slot tag can not be empty."
+})
 
-export function TagCantBeSelfClosing(tag: string) {
-    error(`The tag(${tag}) can not be used as self closing tag.`)
-}
+export const EmptyInterpolationExpression = withLocation(1009, () => {
+    return "Empty interpolation expression block is not allowed."
+})
 
-export function EmptyInterpolationExpression() {
-    error("Empty interpolation expression block is not allowed.")
-}
+export const EmbeddedScriptBlockOutOfLimit = withLocation(1010, () => {
+    return `The embedded script block is out of limit(only one is allowed)`
+})
 
-export function UsedKeyDirectiveWithoutForDirective() {
-    error("Key directive could not be used without for directive.")
-}
+export const TagCantBeSelfClosing = withLocation(1011, (tag: string) => {
+    return `The tag(${tag}) can not be used as self closing tag.`
+})
 
-export function GeneralTagJustAcceptAutoAsReference(tag: string) {
-    error(`Normal tag(${tag}) can only accept auto as reference.`)
-}
+export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
+    return "Key directive could not be used without for directive."
+})
 
-export function DuplicateAttributeKey(tag: string, a: string, b: string) {
+export const CouldNotPassRefValue = withLocation(1015, (key: string, tag: string) => {
+    return `Can not pass any reference value(${key}) for normal tag(${tag})`
+})
+
+export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
+    const itemDescription = getSpecialAttrDescription(key[0])
+    return `The ${itemDescription}(${key}) must have a value.`
+})
+
+export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
+    return "The interpolation attribute value must be wrapped with curly bracket."
+})
+
+export const AttributeValueIsNotQuoted = withLocation(1018, () => {
+    return "The normal attribute value must be quoted with single or double quote."
+})
+
+export const DirectivesCantCoexist = withLocation(1019, (directives: string[]) => {
+    return `Directives(${directives.join(", ")}) can not be used simultaneously.`
+})
+
+export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) => {
+    return `The identifier name(${name}) to register already exists in the top scope.`
+})
+
+export const BasSlotDirectiveCarrier = withLocation(1013, () => {
+    return `Slot directive(#slot) can only be used on the direct child element(first-level)`
+})
+
+export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: string) => {
+    return `Must specify a name for the ${sectionName} section context of the #for directive.`
+})
+
+export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string, b: string) => {
     let description = ""
     if (a[0] === "#") {
-        error(`The directive(${a}) of ${tag} tag is duplicate.`)
+        return `The directive(${a}) of <${tag}> tag is duplicate.`
     }
     if (a === b) {
         description = `${getSpecialAttrDescription(a[0])}(${a})`
@@ -53,112 +129,98 @@ export function DuplicateAttributeKey(tag: string, a: string, b: string) {
         description = `${getSpecialAttrDescription(a[0])}(${a})`
         description += ` and ${getSpecialAttrDescription(b[0])}(${b})`
     }
-    error(`The name for ${description} of ${tag} tag is duplicate.`)
+    return `The name for ${description} of <${tag}> tag is duplicate.`
+})
+
+export const MissingStartDirective = withLocation(1025, (d: string, pd: string) => {
+    return `The ${d} directive must be used after ${pd} directive.`
+})
+
+export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
+    return `Multiple elements used as slot in component(${component}) have the same name(${name})`
+})
+
+export const DuplicateNameAttrForSlot = withLocation(1035, (value: string) => {
+    return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
+})
+
+export const CompilerFuncNotInTopScope = withLocation(1026, () => {
+    return "Reactivity related ompiler helper functions(rea, stc, der) must be used in the top scope."
+})
+
+export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: string) => {
+    return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
+})
+
+export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
+    return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
+})
+
+export const CompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
+    return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
+})
+
+export const UnkonwDirective = withLocation(1029, (name: string) => {
+    return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
+})
+
+export const IdentifierFormatIsNotAllowed = withLocation(1030, (identifier: string) => {
+    return `The identifier(${identifier}) format is not allowed, banned identifier format: /${bannedIdentifierFormatRE.source}/`
+})
+
+export const DestructureReactFuncWithNoArg = withLocation(10301, (funcName: string) => {
+    return `Compiler helper function(${funcName}) will return undefined when no argument is passed, so it cannot be destructured.`
+})
+
+export const BadValueForRefAttr = withLocation(1032, (exp: string) => {
+    return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
+})
+
+export const InvalidRefAttr = withLocation(1033, (tag: string, attr: string[], given: string) => {
+    const allowedAttrJoined = attr.join(" or ")
+    const allowedAttrDescription = attr.map(item => "&" + item).join(", ")
+    return `Normal tag(${tag}) can only accept ${allowedAttrJoined} as reference attribute(${allowedAttrDescription}), and the given item(&${given}) is not allowed.`
+})
+
+// 判断错误类型是会否是QingKuai编译错误
+export function isQimgKuaiCompileError(err: Error) {
+    return err instanceof CompileError
 }
 
-export function InvalidSlotAttribute(type: number) {
-    const typeChar = type === 1 ? "!" : "&"
-    const typeStr = type === 1 ? "Dynamic" : "Reference"
-    error(`${typeStr} slot attribute(${typeChar}slot) is not allowed.`)
-}
-
-export function DuplicateSlotAttributeValue(value: string) {
-    error(`Multiple tags have the same slot attribute value(${value}).`)
-}
-
-export function EmbeddedScriptBlockOutOfLimit() {
-    error(`The embedded script block is out of limit(only one is allowed).`)
-}
-
-export function CouldNotPassRefValue(key: string, tag: string) {
-    error(`Can not pass any reference value(${key}) for normal tag(${tag}).`)
-}
-
-export function NoValueForRequiredValueAttribute(key: string) {
-    const itemDescription = getSpecialAttrDescription(key[0])
-    error(`The ${itemDescription}(${key}) must have a value.`)
-}
-
-export function NoBracketForAttributeInterpolation() {
-    error("The interpolation attribute value must be wrapped with curly bracket.")
-}
-
-export function AttributeValueIsNotQuoted() {
-    error("The normal attribute value must be quoted with single or double quote.")
-}
-
-export function DirectivesCantCoexist(directives: string[]) {
-    error(`Directives(${directives.join(", ")}) can not be used simultaneously.`)
-}
-
-export function BadAttributeFormat(attr?: string) {
-    error(`The attribute ${isUndefined(attr) ? "format" : `name(${attr})`} is bad.`)
-}
-
-export function InvalidSlotNameAttribute(type: number) {
-    const typeChar = type === 1 ? "!" : "&"
-    const typeStr = type === 1 ? "Dynamic" : "Reference"
-    error(`${typeStr} name attribute(${typeChar}name) for slot tag is not allowed.`)
-}
-
-export function RegisterExsitingIdentifierName(name: string) {
-    error(`The identifier name(${name}) to register already exists in the top scope.`)
-}
-
-export function SlotAttributeIsEmpty() {
-    error("The Slot attribute can not be empty for the direct child of a component.")
-}
-
-export function MissingStartDirective(directive: string, startDirective: string) {
-    error(`The ${directive} directive must be used after ${startDirective} directive.`)
-}
-
-export function CompilerFuncNotInTopScope() {
-    error(
-        "Reactivity related ompiler helper functions(rea, stc, der) must be used in the top scope."
-    )
-}
-
-export function ReferenceValueCantBeUsedWithDynamicType(tag: string) {
-    error(
-        `Can not pass reference value when normal tag(${tag}) using dynamic type attribute(!type).`
-    )
-}
-
-export function CompilerFuncWithoutVariableDeclaration() {
-    error(
-        "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
-    )
-}
-
-export function IdentifierFormatIsNotAllowed(identifier: string) {
-    error(
-        `The identifier(${identifier}) format is not allowed, banned identifier format: /${bannedIdentifierFormat.source}/.`
-    )
-}
-
-export function DestructureReactFuncWithNoArg(funcName: string) {
-    error(
-        `Compiler helper function(${funcName}) will return undefined when no argument is passed, so it cannot be destructured.`
-    )
-}
-
-export class CompileError extends Error {
+class CompileError extends Error {
     declare Description: string
 
-    constructor(msg: string) {
+    constructor(public loc: ASTLocation, public code: number, msg: string) {
         super(msg)
         this.Description = "The QingKuai compiler encountered a fatal error during execution"
     }
 }
 
-function error(msg: string) {
-    throw new CompileError(msg)
+// 为返回错误描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的错误描述抛出，
+// 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
+function withLocation<T extends GeneralFunc>(code: number, fn: T) {
+    function error(...args: [...Parameters<T>, loc: ASTLocation]): never
+    function error(...args: [...Parameters<T>, startIndex: number, endIndex: number]): never
+    function error(
+        ...args: [...Parameters<T>, locOrStartIndex: ASTLocation | number, endIndex?: number]
+    ): never {
+        let errorLoc: ASTLocation
+        let errorMethodArgs: [...Parameters<T>]
+        if (isNumber(lastElem(args))) {
+            errorMethodArgs = args.slice(0, -2) as any
+            errorLoc = getLocByIndex(...(args.slice(-2) as FixedArray<number, 2>))
+        } else {
+            errorLoc = lastElem(args) as ASTLocation
+            errorMethodArgs = args.slice(0, -1) as any
+        }
+        throw new CompileError(errorLoc, code, fn(...errorMethodArgs))
+    }
+    return error
 }
 
 // 获取特殊属性的描述（指令、事件、动态即引用属性）
-export function getSpecialAttrDescription(fc: string) {
-    switch (fc) {
+function getSpecialAttrDescription(tc: string) {
+    switch (tc) {
         case "#":
             return "directive"
         case "@":

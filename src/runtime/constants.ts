@@ -5,6 +5,7 @@ export const undef = void 0
 export const reflect = Reflect
 export const noop: Noop = () => {}
 
+export const Props = Symbol("Props")
 export const Wrapper = Symbol("Wrapper")
 export const IsProxy = Symbol("IsProxy")
 export const RawValue = Symbol("RawValue")

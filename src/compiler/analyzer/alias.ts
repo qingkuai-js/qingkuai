@@ -1,42 +1,40 @@
+import { confirmAlias } from "../../util/compiler/sundry"
 import { fullInitItems, fullRuntimeItems } from "../constants"
-import { allExistingIdentifiers, initItems, runtimeItems } from "../state"
+import { allExistingIdentifiers, usedInitItems, usedRuntimeItems } from "../state"
 
 const aliases = new Map<string, string>()
 
-export function confirmAliases() {
-    // 确定运行时导入项目别名
-    fullRuntimeItems.forEach(item => {
-        let alias: string = item
-        while (allExistingIdentifiers.has(alias)) {
-            alias = "_" + alias
-        }
-        if (alias !== item) {
-            aliases.set(item, alias)
-        }
+// 确定标识符别名，分为以下两部分：
+// 1. runtime/internal 导入标识符
+// 3. init方法返回对象解构的属性名（scts)及组件constructor参数名(args)
+// 注意：此方法的运行时机应该在分析（analyze）完成后且转换（transform）开始前，另外，此方法建立在
+// 以上两类标识符列表中不存在相同元素的基础上运行，若之后存在相同名称元素，需重新考虑标识符别名的确定逻辑
+export function confirmQingKuaiIdentifierAliases() {
+    ;[fullRuntimeItems, fullInitItems].forEach(items => {
+        items.forEach(item => {
+            const alias = confirmAlias(item, allExistingIdentifiers)
+            if (alias !== item) {
+                aliases.set(item, alias)
+            }
+        })
     })
 
-    // 确定init方法返回对象的属性别名
-    fullInitItems.forEach(item => {
-        let alias: string = item
-        while (allExistingIdentifiers.has(alias)) {
-            alias = "_" + alias
-        }
-        if (alias !== item) {
-            aliases.set(item, alias)
-        }
-    })
+    // 记录固定标识符
+    getAlias("scts")
+    getAlias("init")
+    getAlias("QingKuaiComponent")
 }
 
-// 获取导入项或init变量别名
+// 获取确定别名后的标识符
 export function getAlias(key: string, shouldRecord = true) {
     const aliasKey = aliases.get(key)
 
-    const isInitItem = (k: typeof key) => {
-        return fullInitItems.has(k as any)
+    const isInitItem = (k: any) => {
+        return fullInitItems.has(k)
     }
 
-    const isRuntimeItem = (k: typeof key) => {
-        return fullRuntimeItems.has(k as any)
+    const isRuntimeItem = (k: any) => {
+        return fullRuntimeItems.has(k)
     }
 
     if (shouldRecord) {
@@ -50,9 +48,9 @@ export function getAlias(key: string, shouldRecord = true) {
             }
         }
         if (isInit) {
-            initItems.add(key)
+            usedInitItems.add(key)
         } else if (isRuntime) {
-            runtimeItems.add(key)
+            usedRuntimeItems.add(key)
         }
     }
     return aliasKey || key
