@@ -13,7 +13,6 @@ import {
 import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
 import { indent } from "../util/compiler/sundry"
-import { compilerOptions } from "./configuration"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"
 
@@ -98,7 +97,7 @@ export function generateCompileResult(
         sourceMapInfo.preaddedLineCount += i === 0 ? 3 : 1
         return `${pre}\n${indent(2)}const ${k} = ${v}`
     }, "")
-    if (compilerOptions.generateSourcemap) {
+    if (inputDescriptor.options.sourcemap) {
         offsetSourcemap()
         mappings = encode(sourceMapInfo.mappings)
     }

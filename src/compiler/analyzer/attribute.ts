@@ -40,7 +40,6 @@ import {
 } from "../message/error"
 import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
-import { compilerOptions } from "../configuration"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
@@ -709,7 +708,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             // 的第二个元素，所以positionMap只有下标为8，9，10的元素存在源码位置，访问其他下标都将得到undefined
             const positionMap: number[] = []
 
-            if (compilerOptions.generateSourcemap) {
+            if (inputDescriptor.options.sourcemap) {
                 // 存在动态class时，记录转换后class值的位置映射（class值字符索引 -> 源码字符索引）
                 // dynamicStartIndex表示动态class值在组合转换后的值中开始字符的索引，将从这一索引开始记录位置映射
                 let dynamicStartIndex = 1

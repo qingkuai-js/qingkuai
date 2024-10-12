@@ -1,3 +1,5 @@
+import type { CompileOptions } from "./types"
+
 import {
     generateCompileResult,
     generateImportStatements,
@@ -5,7 +7,6 @@ import {
 } from "./codegen"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
-import { compilerOptions } from "./configuration"
 import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
@@ -13,16 +14,16 @@ import { compressCompileSize } from "./optimizer/compile-size"
 import { confirmQingKuaiIdentifierAliases } from "./analyzer/alias"
 import { inputDescriptor, messages, resetCompilerState } from "./state"
 
-export function compile(source: string, componentName: string) {
-    const templateNodes = (resetCompilerState(), parseTemplate(source))
-    const scriptSource = inputDescriptor.script.code
-    analyzeScript(scriptSource)
+export function compile(source: string, options: CompileOptions) {
+    resetCompilerState(options)
 
+    const templateNodes = parseTemplate(source)
+    const scriptSourceCode = inputDescriptor.script.code
     const templateAnalysisRet = analyzeTemplate(templateNodes)
-    confirmQingKuaiIdentifierAliases()
+    analyzeScript(scriptSourceCode), confirmQingKuaiIdentifierAliases()
 
     // 检查模式下无需执行转换操作
-    if (compilerOptions.checkMode) {
+    if (options.check) {
         return {
             messages,
             code: "",
@@ -31,7 +32,7 @@ export function compile(source: string, componentName: string) {
         }
     }
 
-    const scriptTranformedRet = transformScript(scriptSource, 1)
+    const scriptTranformedRet = transformScript(scriptSourceCode, 1)
     compressCompileSize(templateAnalysisRet)
 
     // prettier-ignore
@@ -44,7 +45,7 @@ export function compile(source: string, componentName: string) {
     const initCallStatement = generateInitCallStatement()
 
     return generateCompileResult(
-        componentName,
+        options.componentName,
         importStatements,
         initCallStatement,
         scriptTranformedRet,

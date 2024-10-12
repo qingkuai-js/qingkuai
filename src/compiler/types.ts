@@ -13,6 +13,14 @@ export interface ASTLocation {
     end: ASTPosition
 }
 
+export interface CompileOptions {
+    componentName: string
+    check?: boolean
+    debug?: boolean
+    sourcemap?: boolean
+    reserveTemplateComment?: boolean
+}
+
 export interface SourceMapInfo {
     mappings: SourceMapMappings
     hasScript: boolean
@@ -58,7 +66,7 @@ export interface TempStoredImportInfo {
     mappingLine: SourceMapLine
 }
 export interface InputDescriptor {
-    type: "sfc" | "script"
+    options: Required<CompileOptions>
     indentSpaceCount: number
     positions: ASTPosition[]
     stringConstantCount: number

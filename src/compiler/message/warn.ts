@@ -21,13 +21,13 @@
 import type { ASTLocation } from "../types"
 import type { FixedArray, GeneralFunc } from "../../util/types"
 
+import { messages } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { messages } from "../state"
 
 export const AttributeForEndTag = withLocation(9001, () => {
-    return "The end tag will ignore any attribute."
+    return "Attributes in the end tag will be ignored."
 })
 
 export const RedundantArgs = withLocation(9002, (fn: string, need: number | string) => {
@@ -85,7 +85,7 @@ function withLocation<T extends GeneralFunc>(code: number, fn: T) {
 }
 
 export class CompileWarning {
-    constructor(public loc: ASTLocation, public code: number, public messagge: string) {
+    constructor(public loc: ASTLocation, public code: number, public message: string) {
         messages.push({
             value: this,
             type: "warning"

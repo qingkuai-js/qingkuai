@@ -24,7 +24,6 @@ import {
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
-import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
@@ -63,12 +62,12 @@ export function transformInterpolation(
     const allIndentifiersInExpression = new Set<string>()
     const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
-    const isDebug = compilerOptions.debugeMode
+    const isDebug = inputDescriptor.options.debug
     const usedAsSetter = optionalParams.usedAsSetter || false
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
-    const shouldGenerateSourcemap = compilerOptions.generateSourcemap
+    const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
     const ast = (parse("_=" + expression).body[0] as any).expression.right
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 

@@ -41,7 +41,6 @@ import {
 } from "../../util/compiler/locations"
 import { getAlias } from "./alias"
 import { walk } from "../estree/walk"
-import { compilerOptions } from "../configuration"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
@@ -61,7 +60,7 @@ const visitor: ASTVisitor = {
 
     ClassDeclaration(node, parent) {
         const name = node.id!.name
-        const isDebug = compilerOptions.debugeMode
+        const isDebug = inputDescriptor.options.debug
         const id = isDebug ? `[_w_${name}, ${name}]` : name
 
         const getReactFunc = () => {
@@ -113,8 +112,8 @@ const visitor: ASTVisitor = {
     Identifier(node, parent) {
         const { name } = node
         const grand = parent.parent
-        const isDebug = compilerOptions.debugeMode
         const esParent = getEsNodeOfParent(parent)
+        const isDebug = inputDescriptor.options.debug
         const replacementItem = replacementInfo.map.get(name)
         const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
 
@@ -209,7 +208,7 @@ const visitor: ASTVisitor = {
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
     // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加_w_前缀
     AnyNode(node, parent) {
-        if (compilerOptions.generateSourcemap) {
+        if (inputDescriptor.options.sourcemap) {
             if (
                 is(node, "ImportDeclaration") ||
                 is(parent.v, "ImportSpecifier") ||
@@ -268,7 +267,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
     const isConst = node.kind === "const"
     const esParent = getEsNodeOfParent(parent)
-    const isDebug = compilerOptions.debugeMode
+    const isDebug = inputDescriptor.options.debug
     const isInTopScope = is(esParent!.v, "Program")
     const scriptSource = inputDescriptor.script.code
 
@@ -716,7 +715,7 @@ function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseP
 
 // 标记某个片段不需要被映射
 function markSegmentShouldNotBeMapped(start: number, end: number) {
-    if (compilerOptions.debugeMode) {
+    if (inputDescriptor.options.debug) {
         for (let i = start; i < end; i++) {
             sourceMapInfo.positionShouldNotBeMapped[i] = true
         }

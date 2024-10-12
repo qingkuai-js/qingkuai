@@ -31,7 +31,6 @@ import {
 } from "../message/error"
 import { inputDescriptor } from "../state"
 import { isNull } from "../../util/shared/assert"
-import { compilerOptions } from "../configuration"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
 import { specialTags, selfClosingTags } from "../constants"
@@ -47,6 +46,7 @@ export function parseTemplate(source: string) {
 
     const astList: TemplateNode[] = []
     const sourceLength = source.length
+    const reserveAllComment = inputDescriptor.options.reserveTemplateComment
     const positions = (inputDescriptor.positions = getPositionOfEachChar(source))
 
     // 收缩source并修改index，并返回下次开始的位置
@@ -356,7 +356,6 @@ export function parseTemplate(source: string) {
         ast.loc.end = positions[index]
 
         // 如果是注释节点，根据配置判断是否保留所有注释，若不保留所有则单独保留条件注释
-        const reserveAllComment = compilerOptions.reserveTemplateComment
         const isConditionalComment = templateConditionalCommentRE.test(ast.content)
         const reserveThisComment = tag === "!" && (reserveAllComment || isConditionalComment)
         if (!specialTags.has(tag) || !reserveThisComment) {
@@ -383,7 +382,7 @@ export function parseTemplate(source: string) {
             if (tag === "template") {
                 shouldReserve = children.length > 0
             } else if (tag === "!") {
-                if (compilerOptions.reserveTemplateComment) {
+                if (reserveAllComment) {
                     shouldReserve = true
                 } else {
                     shouldReserve = templateConditionalCommentRE.test(content)

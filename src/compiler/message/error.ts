@@ -23,10 +23,9 @@ import type { FixedArray, GeneralFunc } from "../../util/types"
 
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
+import { inputDescriptor, messages } from "../state"
 import { bannedIdentifierFormatRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { compilerOptions } from "../configuration"
-import { messages } from "../state"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -200,7 +199,7 @@ export class CompileError extends Error {
         this.Description = "The QingKuai compiler encountered a fatal error during execution"
 
         // 非检查模式下直接抛出错误，检查模式下将错误对象存放在messages中
-        if (!compilerOptions.checkMode) {
+        if (!inputDescriptor.options.check) {
             throw this
         } else {
             messages.push({
