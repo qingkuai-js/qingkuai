@@ -5,9 +5,9 @@ import { isFunction, isUndefined } from "../util/shared/assert"
 // isRef方法和setPropsAccessType方法均基于此变量工作
 let lastPropsAccessType = 1
 
-// 调试打印，目前只处理props变量的打印，后续其他特殊值可扩展此方法
+// 检查特殊值，目前只处理props变量的检查，后续其他特殊值可扩展此方法
 // 默认情况下顶部作用域中的props变量不能直接打印出来，因为他是一个代理，并根据访问的属性
-// 名称选择从组件实例属性的props或refs中操作指定的属性，使用此方法可打印完整的props对象表达
+// 名称选择从组件实例属性的props或refs中操作指定的属性，使用此方法可打印检查完整的props对象表达
 export function inspect(value: any) {
     const instanceProperties = value?.[Props]
 

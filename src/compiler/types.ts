@@ -31,7 +31,7 @@ export interface ReplacementItem {
     order: number
     processed: boolean
     index: number
-    text: string | (() => string)
+    text: StringOrStringGetter
 }
 export type ReplacementMap = Map<
     string,
@@ -113,8 +113,8 @@ export type TemplateContext = {
     map: Map<
         string,
         {
-            to: string
-            pto?: string
+            num: number
+            path: string
         }
     >
     count: number
@@ -158,3 +158,4 @@ export type TransformInterpolationRet =
 export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type EliminateRanges = Set<FixedArray<number, 2>>
 export type ReplacementStatus = "stc" | "pending" | "rea"
+export type StringOrStringGetter = string | (() => string)

@@ -2,6 +2,7 @@ import type {
     ASTLocation,
     EliminateRanges,
     TemplateContext,
+    StringOrStringGetter,
     TransformInterpolationRet,
     TransformInterpolationOptionalParam
 } from "../types"
@@ -26,10 +27,10 @@ import { runAll } from "../../util/shared/sundry"
 import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
 import { identifierIsReference } from "../estree/assert"
-import { isIndexEliminated } from "../../util/compiler/sundry"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
-import { isEmptyString, isUndefined } from "../../util/shared/assert"
+import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
+import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
 
 export function transformInterpolation(
@@ -45,18 +46,21 @@ export function transformInterpolation(
         return ""
     }
 
+    let vParam = "v"
+    let ctxParam = "ctx"
     let useGetter = false
     let useContext = false
     let useReturnKeyword = false
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
-    const contextVariables: string[] = []
     const sourcemapIndexes: number[] = []
     const afterWalkFuncs: GeneralFunc[] = []
     const mappings: FixedArray<number, 4>[] = []
+    const contextVariables: [string, number][] = []
     const expEliminateRanges: EliminateRanges = new Set()
-    const transformInfos: Map<number, string[]> = new Map()
+    const allIndentifiersInExpression = new Set<string>()
+    const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
     const isDebug = compilerOptions.debugeMode
     const usedAsSetter = optionalParams.usedAsSetter || false
@@ -68,7 +72,7 @@ export function transformInterpolation(
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 
     // 扩展转换信息数组
-    const extendTransformInfo = (index: number, str: string) => {
+    const extendTransformInfo = (index: number, str: StringOrStringGetter) => {
         const item = transformInfos.get(index - 2)
         if (item) {
             item.push(str)
@@ -92,8 +96,8 @@ export function transformInterpolation(
             const nodeStartSourceIndex = startSourceIndex + start - 2
             const nodeLoc = getLocByIndex(nodeStartSourceIndex, nodeEndSourceIndex)
 
-            // 记录标识符到文件使用的标识符列表（用于确定别名）
             allExistingIdentifiers.add(name)
+            allIndentifiersInExpression.add(name)
 
             // 检查插值表达式中是否使用了禁止使用的标识符
             checkIdentifierName(node.name, nodeLoc, false)
@@ -119,18 +123,21 @@ export function transformInterpolation(
             }
 
             if (ctx) {
-                useGetter = true
-                useContext = true
-                if (!isDebug || usedAsSetter || type === "directive") {
+                if (isDebug && !usedAsSetter && type !== "directive") {
+                    contextVariables.push([name, ctx.num])
+                } else {
                     if (!isKeyDirective) {
-                        extendTransformInfo(end, ctx.to)
+                        extendTransformInfo(end, () => {
+                            return `${ctxParam}(${ctx.num})`
+                        })
                     } else {
-                        extendTransformInfo(end, ctx.pto!)
+                        extendTransformInfo(end, () => {
+                            return `${ctxParam}(${ctx.num})${ctx.path}`
+                        })
                     }
                     expEliminateRanges.add([start, end])
-                } else {
-                    contextVariables.push(`${name} = ${ctx.to}`)
                 }
+                useGetter = useContext = true
             } else if (dep) {
                 dep.status = "rea"
                 if (dep.useDollar) {
@@ -147,7 +154,7 @@ export function transformInterpolation(
             if (isEvent) {
                 const callee = node.callee
                 useContext = true
-                extendTransformInfo(callee.start!, "ctx(")
+                extendTransformInfo(callee.start!, () => `${ctxParam}(`)
                 afterWalkFuncs.push(() => {
                     extendTransformInfo(callee.end!, ")")
                 })
@@ -166,6 +173,10 @@ export function transformInterpolation(
             }
         }
     })
+
+    // 确定表达式转换为函数后参数标识符的别名
+    vParam = confirmAlias(vParam, allExistingIdentifiers)
+    ctxParam = confirmAlias(ctxParam, allExistingIdentifiers)
 
     // walk结束后执行的方法：有些转换的顺序不一定与walk遍历时相同，例如需要调用ctx
     // 以绑定当前节点的CallExpression转换信息就需要在Identifier捕获组之后被添加，
@@ -196,7 +207,8 @@ export function transformInterpolation(
         shouldGenerateSourcemap && i <= expression.length;
         i++
     ) {
-        transformInfos.get(i)?.forEach(str => {
+        transformInfos.get(i)?.forEach(item => {
+            const str = isFunction(item) ? item() : item
             transformedArr.push(str)
             if (str === "_w_") {
                 nextOffset += 3
@@ -239,10 +251,13 @@ export function transformInterpolation(
     // 调试模式下会将内联ctx调用改为变量声明，这样在调试时将一段源码中不合理的断点位置，另外通过
     // 使用变量声明，在当前getter作用域内，就会存在一个与源码同名的标识符，调试时可以在调用堆栈查看
     if (hasContextVariable && !usedAsSetter) {
-        const cvds = `const ${contextVariables.join(", ")};`
+        const contextVariableValues = contextVariables.map(item => {
+            return `${item[0]} = ${ctxParam}(${item[1]})`
+        })
+        const contextVariableDeclaration = `const ${contextVariableValues.join(", ")};`
+        transformedExp = `{ ${contextVariableDeclaration} return ${transformedExp} }`
+        addedPrefixLen += contextVariableDeclaration.length + 10
         useReturnKeyword = true
-        addedPrefixLen += cvds.length + 10
-        transformedExp = `{ ${cvds} return ${transformedExp} }`
     }
 
     // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
@@ -271,9 +286,9 @@ export function transformInterpolation(
     //
     // 注意：此处理程序是为了绕过浏览器Devtools的相关BUG，如果之后此问题得到修复并稳定运行一段时间，可移除此部分代码及注释
     if (usedAsSetter) {
-        transformedExp = `v => (${transformedExp} = v)`
+        transformedExp = `${vParam} => (${transformedExp} = ${vParam})`
     } else if (useGetter) {
-        const paramStr = useContext ? "ctx" : "_"
+        const paramStr = useContext ? ctxParam : "_"
         if (useParenthesesWrap) {
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`

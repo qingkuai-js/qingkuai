@@ -35,6 +35,14 @@ export function newValueWithLoc<T>(value: T, loc?: ASTLocation) {
     return { value, loc }
 }
 
+// 确定标识符别名
+export function confirmAlias(name: string, existing: Set<string>) {
+    while (existing.has(name)) {
+        name = "_" + name
+    }
+    return name
+}
+
 // kebab命名转Camel
 export function kebab2Camel(str: string, startWithUppercase = false) {
     const re = startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE

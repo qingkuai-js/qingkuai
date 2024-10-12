@@ -41,8 +41,8 @@ import {
 import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
 import { compilerOptions } from "../configuration"
-import { kebab2Camel } from "../../util/compiler/sundry"
 import { getLocByIndex, stringify } from "../../util/compiler/state"
+import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
@@ -760,7 +760,7 @@ function makeDestructuringPatternSignleLine(
  * 的哪个ctx调用，例如传入1时，解构就是基于ctx(1)进行的
  *
  * @param isForDirective 表示当前结构语法是否是在For指令中，是的话要记录路径访问到TemplateContext项
- * 中的pto属性，这样做的原因是因为使用解构语法的for指令在编译后aliasModule调用在forModule的内层，所以
+ * 中的path属性，这样做的原因是因为使用解构语法的for指令在编译后aliasModule调用在forModule的内层，所以
  * key指令中访问不到aliasModule添加的上下文目标，只能通过原路径访问，可以结合下面的示例进行理解这一过程：
  * 假设传入参数：source = "{ a: { b } }"，baseCtxIndex = 0，在非key指令区域均可以通过ctx(4)访问标识符b
  * 其中：ctx(1)为整个item，ctx(2)为整个index，ctx(3)为标识符a，但key指令只能通过 ctx(1).a.b 来访问标识符b
@@ -772,8 +772,7 @@ function recordDestructuringIdentifiers(
     isForDirective: boolean,
     baseCtxIndex: number
 ) {
-    const identifiers: string[] = []
-    const baseValue = `ctx(${baseCtxIndex})`
+    const identifiers = new Set<string>()
     const patternStr = isString(tir) ? tir : tir.transformedExp
     const declarationSourceCode = `const ${patternStr}={}`
 
@@ -782,27 +781,29 @@ function recordDestructuringIdentifiers(
 
     if (!isForDirective) {
         getIdentifiersFromPattern(patternNode).forEach(from => {
-            identifiers.push(from)
+            identifiers.add(from)
             extendContext(context, from)
         })
     } else {
         getIdentifiersFromPatternWithPath(declarationSourceCode, patternNode).forEach(
             (path, from) => {
-                identifiers.push(from)
-                extendContext(context, from, `${baseValue}${path}`)
+                identifiers.add(from)
+                extendContext(context, from, path)
             }
         )
     }
 
     // 更新tir中的tranformedExp为解构函数，并更新mappings中的表达式结束位置（下标为1）
-    const destructuringFunc = `(${patternStr}) => [${identifiers.join(", ")}]`
+    const ctxParam = confirmAlias("ctx", identifiers)
+    const identifierStr = Array.from(identifiers).join(", ")
+    const destructuringFunc = `(${patternStr}) => [${identifierStr}]`
     if (isString(tir)) {
         tir = destructuringFunc
     } else {
         tir.transformedExp = destructuringFunc
         tir.mappings[1][1] = destructuringFunc.length
     }
-    aliasArgs.push(`ctx => ${baseValue}`, tir)
+    aliasArgs.push(`${ctxParam} => ${ctxParam}(${baseCtxIndex})`, tir)
 }
 
 // 为transformInterpolation的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
@@ -821,20 +822,19 @@ function concatStrAndTIR<T extends TransformInterpolationRet>(
     return (tir.transformedExp = prefix + tir.transformedExp + postfix), tir
 }
 
-// 此方法用来扩展context，将指令（for、then、catch、slot）产生的上下文标识符记录到context中
-// from参数表示源码标识符名称（transformInterpolation方法中会将此标识符替换为上下文访问表达式）
-// pathTo参数是一个可选的字符串，未传入（为undefined）时扩展的context元素中不存在pto属性（原路径访问），
-// 关于pto属性的具体作用，可以参考 recordDestructuringIdentifiers 方法定义处对 isForDirective 参数的注释
+/**
+ * @description: 此方法用来扩展context，将指令（for、then、catch、slot）产生的上下文标识符记录到context中
+ *
+ * @param from 表示源码标识符名称（transformInterpolation方法中会将此标识符替换为上下文访问表达式）
+ *
+ * @param pathTo 是一个可选的字符串，未传入（为undefined）时扩展的context.map元素中path属性为空字符串，
+ * path属性为访问当前上下文标识符时需要使用的路径，它应该和num属性配合使用，拼接为类似于ctx(num).path的格式，
+ * 关于为什么要这样处理：可跳转到 recordDestructuringIdentifiers 方法定义处对 isForDirective 参数的注释
+ */
 function extendContext(context: TemplateContext, from: string, pathTo?: string) {
-    const to = `ctx(${context.count++})`
-    if (isUndefined(pathTo)) {
-        context.map.set(from, {
-            to
-        })
-    } else {
-        context.map.set(from, {
-            to,
-            pto: pathTo || to
-        })
-    }
+    const num = context.count++
+    context.map.set(from, {
+        num,
+        path: pathTo || ""
+    })
 }
