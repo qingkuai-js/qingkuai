@@ -68,7 +68,7 @@ export function transformInterpolation(
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
-    const ast = (parse("_=" + expression).body[0] as any).expression.right
+    const ast = (parse("_=" + expression)?.body[0] as any).expression.right
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 
     // 扩展转换信息数组
@@ -79,6 +79,11 @@ export function transformInterpolation(
         } else {
             transformInfos.set(index - 2, [str])
         }
+    }
+
+    // 检查模式下的遇到babel内部错误时，直接返回
+    if (isUndefined(ast)) {
+        return ""
     }
 
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）

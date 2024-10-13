@@ -190,7 +190,7 @@ export function parseTemplate(source: string) {
             if (!isNull(attrNameMatched)) {
                 attrName = attrNameMatched[0]
                 attrNameEndIndex = reduceSource(attrName.length).index
-            } else {
+            } else if (source) {
                 const [unexpect] = templateInvalidAttributeNameRE.exec(source)!
                 const unexpectEndIndex = reduceSource(unexpect.length).index
                 UnexpectedToken(unexpect[0], unexpectEndIndex - unexpect.length, unexpectEndIndex)
@@ -198,7 +198,7 @@ export function parseTemplate(source: string) {
                 // 检查模式下继续执行解析...
                 if (source) continue
                 else break
-            }
+            } else break
 
             // 插值属性长度为1时表示没有指定属性名称
             const isInterpolationAttr = /^[!@#&]/.test(attrName)

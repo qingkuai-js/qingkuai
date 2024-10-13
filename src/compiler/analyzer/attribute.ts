@@ -43,7 +43,7 @@ import { inputDescriptor } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
-import { isEmptyString, isNull, isString } from "../../util/shared/assert"
+import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { findEndCurlyBracket, findOutOfSC, stringify } from "../../util/compiler/strings"
 import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
@@ -798,8 +798,11 @@ function recordDestructuringIdentifiers(
     const patternStr = isString(tir) ? tir : tir.transformedExp
     const declarationSourceCode = `const ${patternStr}={}`
 
-    const ast = parse(declarationSourceCode).body[0]
+    const ast = parse(declarationSourceCode)?.body[0]
     const patternNode = (ast as any).declarations[0].id as EsPattern
+
+    // 检查模式下的遇到babel内部错误时，直接返回
+    if (isUndefined(ast)) return
 
     if (!isForDirective) {
         getIdentifiersFromPattern(patternNode).forEach(from => {

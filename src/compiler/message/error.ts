@@ -90,7 +90,7 @@ export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
 })
 
 export const CouldNotPassRefValue = withLocation(1015, (key: string, tag: string) => {
-    return `Can not pass any reference value(${key}) for normal tag(${tag})`
+    return `Can not pass any reference value(&${key}) for normal tag(${tag})`
 })
 
 export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
@@ -187,7 +187,7 @@ export const InvalidRefAttr = withLocation(1033, (tag: string, attr: string[], g
 })
 
 // 判断错误类型是会否是QingKuai编译错误
-export function isCompileError(err: Error) {
+export function isCompileError(err: Error): err is CompileError {
     return err instanceof CompileError
 }
 
