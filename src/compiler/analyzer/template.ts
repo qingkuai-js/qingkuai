@@ -191,18 +191,20 @@ export function analyzeTemplate(
 
         // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有一个文本
         // 子节点，那这个文本子节点会被提升作为当前节点的textContent部分
-        if (tag !== "pre") {
-            if (!shouldHoistContent) {
-                trimedContentStartIndex = nodes[i].range[0]
-            } else {
-                content = children[0].content
-                trimedContentStartIndex = children[0].range[0]
-            }
+        if (!shouldHoistContent) {
+            trimedContentStartIndex = nodes[i].range[0]
+        } else {
+            content = children[0].content
+            trimedContentStartIndex = children[0].range[0]
+        }
 
+        // 注释和pre节点的内容不去除开头和结尾的空白字符
+        if (tag !== "!" && tag !== "pre") {
             const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount
         }
+
         if (tag === "!") {
             currentRet.content = normalStringify(content)
         } else if (currentRet.aar?.nameOfSlotTag) {

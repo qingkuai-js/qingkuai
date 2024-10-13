@@ -20,7 +20,11 @@ export function comment(qknode: QingKuaiNodeStruct, content: string) {
 }
 
 export function element(qknode: QingKuaiNodeStruct, tag: string) {
-    qknode.n = document.createElement(tag)
+    if (tag === "!") {
+        qknode.n = document.createComment(tag)
+    } else {
+        qknode.n = document.createElement(tag)
+    }
 }
 
 export function insert(target: Node, node: Node, reference: PartialNode) {
