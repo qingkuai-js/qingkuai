@@ -10,6 +10,7 @@ import {
     tagIsComponentRE,
     templateCloseCharsRE,
     templateTagStructureRE,
+    TemplateEmbeddedLangTag,
     templateAttributeNameRE,
     startWithTagStructureRE,
     templateAttributeValueRE,
@@ -17,9 +18,10 @@ import {
     templateInvalidAttributeNameRE
 } from "../regular"
 import {
+    NoEndTagMatched,
     UnexpectedToken,
     TagIsNotClosing,
-    TagCantBeSelfClosing,
+    TagCanNotBeSelfClosing,
     EmptyInterpolationAttrName,
     TemplateStartsWithEndTag,
     UnclosedNormalAttributeValue,
@@ -27,15 +29,14 @@ import {
     EmptyInterpolationExpression,
     EmbeddedScriptBlockOutOfLimit,
     UnclosedInterpolationExpression,
-    NoBracketForAttributeInterpolation,
-    NoEndTagMatched
+    NoBracketForAttributeInterpolation
 } from "../message/error"
 import { inputDescriptor } from "../state"
+import { selfClosingTags, specialTags } from "../constants"
 import { isNull } from "../../util/shared/assert"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
-import { specialTags, selfClosingTags } from "../constants"
-import { newASTLocation } from "../../util/compiler/structure"
+import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { getPositionOfEachChar } from "../../util/compiler/sundry"
 import { getLocByIndex, getPosByIndex } from "../../util/compiler/locations"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
@@ -140,41 +141,8 @@ export function parseTemplate(source: string) {
             parent,
             range: [index, -1]
         })
+        const isComponent = tagIsComponentRE.test(tag)
         reduceSource(tag.length + 1)
-
-        // 嵌入语言直接找到闭合标签，如果是脚本语言则记录缩进空格数量，源码偏移量等信息
-        const langMatched = /^lang-(\w+)/.exec(tag)
-        if (!isNull(langMatched)) {
-            const startIndex = findOutOfSC(source, ">") + 1
-            const endIndex = findOutOfSC(source, `</${langMatched[0]}`)
-            const [blockEndIndex] = findOutOfSC(source, ">", endIndex)
-
-            // script block
-            if (/js|ts/.test(langMatched[1])) {
-                const scriptDescriptor = inputDescriptor.script
-                if (scriptDescriptor.existing) {
-                    // 检查模式下，快进到脚本块结束位置，继续执行解析...
-                    EmbeddedScriptBlockOutOfLimit(tagStructureLoc)
-                    return reduceSource(blockEndIndex + 1), void 0
-                }
-                scriptDescriptor.loc = getLocByIndex(index + startIndex, index + endIndex)
-                scriptDescriptor.code = source.slice(startIndex, endIndex)
-                scriptDescriptor.isTS = langMatched[1] === "ts"
-                scriptDescriptor.existing = true
-
-                // 记录生成代码中script部分的行数，4是两个换行符、一行注释、
-                // 以及结束行号和开始行号相减少时导致结构少一行的固定量
-                const startLine = scriptDescriptor.loc.start.line
-                const endLine = scriptDescriptor.loc.end.line
-                scriptDescriptor.lineCount = endLine - startLine + 1
-            }
-
-            // style block
-            if (/css|s[ca]|less|stylus|postcss/.test(langMatched[1])) {
-            }
-
-            return reduceSource(blockEndIndex + 1), void 0
-        }
 
         // 解析属性
         // parse attributes
@@ -263,7 +231,8 @@ export function parseTemplate(source: string) {
                 // 2. 普通属性未被引号包裹或插值属性未被大括号包裹（快进到恢复执行字符：空白字符/标签关闭字符>/文件结尾，并继续执行解析）
                 if (recoverdCodeInCheckMode === 1) {
                     reduceSource(source.length)
-                    return TagIsNotClosing(tag, false, tagStructureLoc)
+                    TagIsNotClosing(tag, false, tagStructureLoc)
+                    return
                 } else if (recoverdCodeInCheckMode === 2) {
                     reduceSource(/\s|>|$/.exec(source)!.index)
                     continue
@@ -308,64 +277,109 @@ export function parseTemplate(source: string) {
             ast.attributes.push(attrStruct)
         }
 
-        if (!isNull(closeMatched)) {
-            reduceSource(closeMatched[0].length)
-        } else {
+        // 找不到开始标签的关闭字符时，表示整个文件中此标签都未被关闭
+        if (isNull(closeMatched)) {
             return TagIsNotClosing(tag, false, tagStructureLoc)
+        } else {
+            ast.startTagEndPos = reduceSource(closeMatched[0].length)
         }
 
-        // 解析文本内容和子节点
-        // process text content and child nodes
-        if (!selfClosingTags.has(tag)) {
-            if (closeMatched[2]) {
-                if (tagIsComponentRE.test(tag)) {
-                    return ast
-                } else {
-                    const selfClosingLoc = {
-                        start: positions[index - 2],
-                        end: positions[index]
-                    }
-                    TagCantBeSelfClosing(tag, selfClosingLoc)
-                }
-            } else {
-                while (true) {
-                    const endTagMatched = new RegExp(`^</${tag}`).exec(source)
-                    const [etsi, etei] = [index, index + (endTagMatched?.[0].length || 0)]
-                    if (!isNull(endTagMatched)) {
-                        reduceSource(endTagMatched[0].length)
-
-                        // 未找到结束标签的关闭字符时报错
-                        if (!findCloseCharOfEndTag()) {
-                            TagIsNotClosing(tag, true, etsi, etei)
-                        }
-
-                        break
-                    }
-
-                    if (!source) {
-                        NoEndTagMatched(tag, tagStructureLoc)
-                        break
-                    }
-
-                    // 继续递归解析textContext或子标签
-                    if (startWithTagStructureRE.test(source)) {
-                        const child = parse(ast)
-                        child && ast.children.push(child)
-                    } else {
-                        parseContent(ast)
-                    }
-                }
+        // script或style标签直接快进到闭合标签处
+        if (specialTags.has(tag)) {
+            const endTagIndex = findOutOfSC(source, "</" + tag)
+            ast.content = source.slice(0, endTagIndex)
+            ast.endTagStartPos = getPosByIndex(endTagIndex)
+            reduceSource(endTagIndex + tag.length + 2)
+            if (!findCloseCharOfEndTag()) {
+                TagIsNotClosing(tag, true, endTagIndex, index)
             }
-        }
-        ast.range[1] = index
-        ast.loc.end = positions[index]
-
-        // 如果是注释节点，根据配置判断是否保留所有注释，若不保留所有则单独保留条件注释
-        const isConditionalComment = templateConditionalCommentRE.test(ast.content)
-        const reserveThisComment = tag === "!" && (reserveAllComment || isConditionalComment)
-        if (!specialTags.has(tag) || !reserveThisComment) {
+            ast.loc.end = getPosByIndex(index)
+            ast.range[1] = index
             return ast
         }
+
+        // 嵌入语言直接找到闭合标签，如果是脚本语言则记录缩进空格数量，源码偏移量等信息
+        const langMatched = TemplateEmbeddedLangTag.exec(tag)
+        if (!isNull(langMatched)) {
+            const startIndex = findOutOfSC(source, ">") + 1
+            const endIndex = findOutOfSC(source, `</${langMatched[0]}`)
+            const [blockEndIndex] = findOutOfSC(source, ">", endIndex)
+
+            // 记录startTagEndPos以及endTagStartPos
+            ast.endTagStartPos = getPosByIndex(endIndex)
+            ast.startTagEndPos = getPosByIndex(startIndex)
+
+            // embedded script block
+            if (/js|ts/.test(langMatched[1])) {
+                const scriptDescriptor = inputDescriptor.script
+                if (scriptDescriptor.existing) {
+                    // 检查模式下，快进到脚本块结束位置，继续执行解析...
+                    EmbeddedScriptBlockOutOfLimit(tagStructureLoc)
+                    return reduceSource(blockEndIndex + 1), void 0
+                }
+                scriptDescriptor.loc = getLocByIndex(index + startIndex, index + endIndex)
+                scriptDescriptor.code = source.slice(startIndex, endIndex)
+                scriptDescriptor.isTS = langMatched[1] === "ts"
+                scriptDescriptor.existing = true
+
+                // 记录生成代码中script部分的行数，4是两个换行符、一行注释、
+                // 以及结束行号和开始行号相减少时导致结构少一行的固定量
+                const startLine = scriptDescriptor.loc.start.line
+                const endLine = scriptDescriptor.loc.end.line
+                scriptDescriptor.lineCount = endLine - startLine + 1
+            }
+
+            // embedded style block
+            if (/css|s[ca]|less|stylus|postcss/.test(langMatched[1])) {
+            }
+
+            return reduceSource(blockEndIndex + 1), void 0
+        }
+
+        // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点
+        // when tag is self-closing tag or a component start tag end in />, there is no need
+        // to parse child nodes, otherwise, the content and child nodes should be parsed
+        const isSelfClosingTag = selfClosingTags.has(tag)
+        if (!isSelfClosingTag && !closeMatched[2]) {
+            while (true) {
+                const endtagStartIndex = index
+                const endTagMatched = new RegExp(`^</${tag}`).exec(source)
+                if (!isNull(endTagMatched)) {
+                    reduceSource(endTagMatched[0].length)
+                    ast.endTagStartPos = getPosByIndex(endtagStartIndex)
+
+                    // 未找到结束标签的关闭字符时报错
+                    if (!findCloseCharOfEndTag()) {
+                        TagIsNotClosing(tag, true, endtagStartIndex, index)
+                    }
+
+                    break
+                }
+
+                if (!source) {
+                    NoEndTagMatched(tag, tagStructureLoc)
+                    break
+                }
+
+                // 继续递归解析textContext或子标签
+                if (startWithTagStructureRE.test(source)) {
+                    const child = parse(ast)
+                    child && ast.children.push(child)
+                } else {
+                    parseContent(ast)
+                }
+            }
+        } else if (isSelfClosingTag || isComponent) {
+            ast.startTagEndPos = getPosByIndex(index)
+        } else {
+            TagCanNotBeSelfClosing(tag, index - 2, index)
+        }
+
+        // 记录节点的结束位置并返回节点对象
+        // record the end range and end position, return then AST node
+        ast.range[1] = index
+        ast.loc.end = positions[index]
+        return ast
     }
 
     while (index < sourceLength) {
@@ -423,6 +437,8 @@ function initTemplateNode(
         tag: options.tag || "",
         content: options.content || "",
         range: options.range || [-1, -1],
+        startTagEndPos: newASTPosition(),
+        endTagStartPos: newASTPosition(),
         loc: options.loc || newASTLocation(),
         attributes: options.attributes || [],
         children: options.children || []
@@ -433,33 +449,24 @@ function initTemplateNode(
 // 脱离插值表达式的范围找到下一个开始标签的位置，这个方法可以过滤多个插值表达式返回进行查找
 function findOutOfTextContentInterpolation(str: string, re: RegExp) {
     let startIndex = 0
-    let searchStr = str
 
-    const findOfSearchStr = () => {
-        const matched = re.exec(searchStr)
+    while (true) {
+        const matched = str.match(re)
         if (isNull(matched)) {
             return -1
         }
-        return startIndex + matched.index
-    }
 
-    while (true) {
-        const startBracketIndex = str.indexOf("{", startIndex)
+        const searchStr = str.slice(0, matched.index)
+        const startBracketIndex = searchStr.indexOf("{")
         if (startBracketIndex === -1) {
-            searchStr = str.slice(startIndex)
-            return findOfSearchStr()
-        }
-        searchStr = str.slice(startIndex, startBracketIndex)
-
-        const matchedIndex = findOfSearchStr()
-        if (matchedIndex !== -1) {
-            return matchedIndex
+            return startIndex + matched.index!
         }
 
-        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex + 1)
+        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex)
         if (endBracketIndex === -1) {
             return -1
         }
-        startIndex = endBracketIndex + 1
+        startIndex += endBracketIndex + 1
+        str = str.slice(endBracketIndex + 1)
     }
 }

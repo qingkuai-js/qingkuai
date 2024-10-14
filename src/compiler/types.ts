@@ -21,6 +21,14 @@ export interface CompileOptions {
     reserveTemplateComment?: boolean
 }
 
+export interface CompileResult {
+    code: string
+    mappings: string
+    messages: MessageItem[]
+    templateNodes: TemplateNode[]
+    inputDescriptor: InputDescriptor
+}
+
 export interface SourceMapInfo {
     mappings: SourceMapMappings
     hasScript: boolean
@@ -108,6 +116,8 @@ export interface TemplateNode {
     content: string
     loc: ASTLocation
     children: TemplateNode[]
+    startTagEndPos: ASTPosition
+    endTagStartPos: ASTPosition
     parent: TemplateNode | null
     range: FixedArray<number, 2>
     attributes: TemplateAttribute[]

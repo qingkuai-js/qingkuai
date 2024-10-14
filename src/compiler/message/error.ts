@@ -81,7 +81,7 @@ export const EmbeddedScriptBlockOutOfLimit = withLocation(1010, () => {
     return `The embedded script block is out of limit(only one is allowed)`
 })
 
-export const TagCantBeSelfClosing = withLocation(1011, (tag: string) => {
+export const TagCanNotBeSelfClosing = withLocation(1011, (tag: string) => {
     return `The tag(${tag}) can not be used as self closing tag.`
 })
 

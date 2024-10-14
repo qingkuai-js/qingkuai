@@ -7,6 +7,7 @@ import type {
 } from "../types"
 
 import { getAlias } from "./alias"
+import { specialTags } from "../constants"
 import { tagIsComponentRE } from "../regular"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
@@ -205,7 +206,7 @@ export function analyzeTemplate(
             trimedContentStartIndex += preSpaceCount
         }
 
-        if (tag === "!") {
+        if (specialTags.has(tag)) {
             currentRet.content = normalStringify(content)
         } else if (currentRet.aar?.nameOfSlotTag) {
             currentRet.content = currentRet.aar.nameOfSlotTag.value

@@ -1,3 +1,4 @@
+export const TemplateEmbeddedLangTag = /^lang-[a-z]*/
 export const templateCloseCharsRE = /^(?:\s*)((\/)?>)/
 export const templateAttributeNameRE = /^[^\s='"\{\}></]+/
 export const templateAttributeValueRE = /^(['"])([\s\S]*?)\1/

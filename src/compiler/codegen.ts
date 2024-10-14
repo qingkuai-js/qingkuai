@@ -1,7 +1,6 @@
 import type { FixedArray } from "../util/types"
 
 import {
-    messages,
     usedInitItems,
     sourceMapInfo,
     debuggingInfo,
@@ -73,7 +72,6 @@ export function generateCompileResult(
 ) {
     let mappings = ""
     let debuggingStatementArr: string[] = []
-    const isTS = inputDescriptor.script.isTS
     const setTemplateStructureFuncName = getAlias("scts")
     const withScriptSourceCode = !isEmptyString(scriptTranformedRet)
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
@@ -137,5 +135,5 @@ export function generateCompileResult(
         `(${templateTransformedRet || "[]"})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 
-    return { code, mappings, isTS, messages }
+    return { code, mappings }
 }
