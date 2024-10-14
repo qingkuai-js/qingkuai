@@ -68,7 +68,7 @@ export function transformInterpolation(
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
-    const ast = (parse("_=" + expression)?.body[0] as any).expression.right
+    const ast = (parse("_=" + expression)?.body[0] as any)?.expression.right
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 
     // 扩展转换信息数组

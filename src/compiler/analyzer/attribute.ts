@@ -698,7 +698,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             ret.push(attrItems[0])
         } else {
             const rawValues = attrItems.map(item => {
-                return item.value.raw
+                return stringify(item.value.raw)
             })
             const transformedValue = rawValues.join(", ")
 

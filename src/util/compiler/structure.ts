@@ -5,9 +5,9 @@ import { isUndefined } from "../shared/assert"
 // 生成一个默认的ASTPosition结构
 export function newASTPosition(): ASTPosition {
     return {
-        line: 0,
-        column: 0,
-        index: 0
+        line: -1,
+        column: -1,
+        index: -1
     }
 }
 

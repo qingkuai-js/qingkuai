@@ -115,7 +115,7 @@ export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) 
 })
 
 export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
-    return `The ${isEndTag ? "end" : ""} tag(${tag}) is not closing.`
+    return `The ${isEndTag ? "end" : "start"} tag(${tag}) is not closing.`
 })
 
 export const BasSlotDirectiveCarrier = withLocation(1013, () => {

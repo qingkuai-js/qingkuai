@@ -32,13 +32,13 @@ import {
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import { inputDescriptor } from "../state"
-import { selfClosingTags, specialTags } from "../constants"
 import { isNull } from "../../util/shared/assert"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
-import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
+import { selfClosingTags, specialTags } from "../constants"
 import { getPositionOfEachChar } from "../../util/compiler/sundry"
 import { getLocByIndex, getPosByIndex } from "../../util/compiler/locations"
+import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
@@ -279,7 +279,8 @@ export function parseTemplate(source: string) {
 
         // 找不到开始标签的关闭字符时，表示整个文件中此标签都未被关闭
         if (isNull(closeMatched)) {
-            return TagIsNotClosing(tag, false, tagStructureLoc)
+            TagIsNotClosing(tag, false, tagStructureLoc)
+            return ast
         } else {
             ast.startTagEndPos = reduceSource(closeMatched[0].length)
         }
@@ -290,11 +291,12 @@ export function parseTemplate(source: string) {
             ast.content = source.slice(0, endTagIndex)
             ast.endTagStartPos = getPosByIndex(endTagIndex)
             reduceSource(endTagIndex + tag.length + 2)
-            if (!findCloseCharOfEndTag()) {
+            if (findCloseCharOfEndTag()) {
+                ast.range[1] = index
+                ast.loc.end = getPosByIndex(index)
+            } else {
                 TagIsNotClosing(tag, true, endTagIndex, index)
             }
-            ast.loc.end = getPosByIndex(index)
-            ast.range[1] = index
             return ast
         }
 
@@ -349,10 +351,12 @@ export function parseTemplate(source: string) {
                     ast.endTagStartPos = getPosByIndex(endtagStartIndex)
 
                     // 未找到结束标签的关闭字符时报错
-                    if (!findCloseCharOfEndTag()) {
+                    if (findCloseCharOfEndTag()) {
+                        ast.range[1] = index
+                        ast.loc.end = positions[index]
+                    } else {
                         TagIsNotClosing(tag, true, endtagStartIndex, index)
                     }
-
                     break
                 }
 
@@ -374,11 +378,6 @@ export function parseTemplate(source: string) {
         } else {
             TagCanNotBeSelfClosing(tag, index - 2, index)
         }
-
-        // 记录节点的结束位置并返回节点对象
-        // record the end range and end position, return then AST node
-        ast.range[1] = index
-        ast.loc.end = positions[index]
         return ast
     }
 
@@ -429,6 +428,9 @@ function initTemplateNode(
             options.loc = {
                 start: positions[range[0]],
                 end: positions[range[1]]
+            }
+            if (range[1] === -1) {
+                options.loc.end = newASTPosition()
             }
         }
     }
