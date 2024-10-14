@@ -27,7 +27,8 @@ import {
     EmptyInterpolationExpression,
     EmbeddedScriptBlockOutOfLimit,
     UnclosedInterpolationExpression,
-    NoBracketForAttributeInterpolation
+    NoBracketForAttributeInterpolation,
+    NoEndTagMatched
 } from "../message/error"
 import { inputDescriptor } from "../state"
 import { isNull } from "../../util/shared/assert"
@@ -73,9 +74,8 @@ export function parseTemplate(source: string) {
         reduceSpaces()
         reduceSource(uselessLen)
 
-        if (source.startsWith(">")) {
-            reduceSource(1)
-        }
+        const found = source.startsWith(">")
+        return found && reduceSource(1), found
     }
 
     // 解析标签内容，所有的TextNode都会被解析为一个单独的节点，其tag为空字符串
@@ -263,7 +263,7 @@ export function parseTemplate(source: string) {
                 // 2. 普通属性未被引号包裹或插值属性未被大括号包裹（快进到恢复执行字符：空白字符/标签关闭字符>/文件结尾，并继续执行解析）
                 if (recoverdCodeInCheckMode === 1) {
                     reduceSource(source.length)
-                    return TagIsNotClosing(tag, tagStructureLoc)
+                    return TagIsNotClosing(tag, false, tagStructureLoc)
                 } else if (recoverdCodeInCheckMode === 2) {
                     reduceSource(/\s|>|$/.exec(source)!.index)
                     continue
@@ -311,7 +311,7 @@ export function parseTemplate(source: string) {
         if (!isNull(closeMatched)) {
             reduceSource(closeMatched[0].length)
         } else {
-            return TagIsNotClosing(tag, tagStructureLoc)
+            return TagIsNotClosing(tag, false, tagStructureLoc)
         }
 
         // 解析文本内容和子节点
@@ -330,15 +330,20 @@ export function parseTemplate(source: string) {
             } else {
                 while (true) {
                     const endTagMatched = new RegExp(`^</${tag}`).exec(source)
+                    const [etsi, etei] = [index, index + (endTagMatched?.[0].length || 0)]
                     if (!isNull(endTagMatched)) {
                         reduceSource(endTagMatched[0].length)
-                        findCloseCharOfEndTag()
+
+                        // 未找到结束标签的关闭字符时报错
+                        if (!findCloseCharOfEndTag()) {
+                            TagIsNotClosing(tag, true, etsi, etei)
+                        }
+
                         break
                     }
 
-                    // 文件结束，代表此标签未被关闭
                     if (!source) {
-                        TagIsNotClosing(tag, tagStructureLoc)
+                        NoEndTagMatched(tag, tagStructureLoc)
                         break
                     }
 

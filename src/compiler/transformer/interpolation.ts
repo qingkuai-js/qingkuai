@@ -207,11 +207,7 @@ export function transformInterpolation(
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
     // rsc: Replaced Space Count    pie: Pre(position) Is Eliminated
-    for (
-        let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false;
-        shouldGenerateSourcemap && i <= expression.length;
-        i++
-    ) {
+    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false; i <= expression.length; i++) {
         transformInfos.get(i)?.forEach(item => {
             const str = isFunction(item) ? item() : item
             transformedArr.push(str)
@@ -240,8 +236,8 @@ export function transformInterpolation(
                 pie = false
             }
         }
+        shouldGenerateSourcemap && indexMap.push(i + offset)
         expressionReplaceWithSpaceRE.lastIndex = i + 1
-        indexMap.push(i + offset)
         offset += nextOffset
         nextOffset = 0
     }

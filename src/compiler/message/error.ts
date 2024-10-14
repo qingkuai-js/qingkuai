@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1036
+ * current-error-code: 1037
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -35,10 +35,6 @@ export const SlotAttrIsEmpty = withLocation(1022, () => {
     return "The slot attribute can not be empty."
 })
 
-export const TagIsNotClosing = withLocation(1002, (tag: string) => {
-    return `The tag(${tag}) is not closing.`
-})
-
 export const UnclosedNormalAttributeValue = withLocation(1003, () => {
     return "Unclosed attribute value."
 })
@@ -58,6 +54,10 @@ export const InvalidSlotAttr = withLocation(1034, (typeChar: string) => {
 
 export const InvalidIdentifierName = withLocation(1005, (name: string) => {
     return `The identifier name(${name}) is invalid.`
+})
+
+export const NoEndTagMatched = withLocation(1037, (tag: string) => {
+    return `The <${tag}> tag does not have a matched end tag(</${tag}>)`
 })
 
 export const TemplateStartsWithEndTag = withLocation(1006, (text: string) => {
@@ -112,6 +112,10 @@ export const DirectivesCantCoexist = withLocation(1019, (directives: string[]) =
 
 export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) => {
     return `The identifier name(${name}) to register already exists in the top scope.`
+})
+
+export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
+    return `The ${isEndTag ? "end" : ""} tag(${tag}) is not closing.`
 })
 
 export const BasSlotDirectiveCarrier = withLocation(1013, () => {

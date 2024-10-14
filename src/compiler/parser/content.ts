@@ -75,10 +75,10 @@ export function content2script(content: string, startSourceIndex: number) {
                     endBracketIndex + 1 + startSourceIndex
                 )
             } else {
+                index = endBracketIndex + 1
                 pushTransformedArr(interpolationExp, false)
-                if (!isDebug) {
-                    break
-                }
+
+                if (!isDebug) continue
 
                 // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，
                 // 若它在结尾处，需要将positionMap的最后一个元素 + 1（最后一个插值表达式的结束位置）
@@ -94,7 +94,6 @@ export function content2script(content: string, startSourceIndex: number) {
                 if (isStart) {
                     positionMap[transformedStrInitLen + 1]--
                 }
-                index = endBracketIndex + 1
             }
         }
     }

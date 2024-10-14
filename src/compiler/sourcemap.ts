@@ -15,11 +15,6 @@ export function recordMapping(
     sourceIndex: number,
     isTemplate = false
 ) {
-    // 源码行添加源码文件头部注释占用的行数
-    if (inputDescriptor.options.debug) {
-        sourceLine += 10
-    }
-
     // 初始化新的SoruceMapLine
     initGeneratedLineMapping(generatedLine)
 
@@ -92,9 +87,6 @@ export function offsetSourcemap() {
         mappingLine.forEach(segment => {
             if (segment[2] === scriptStartPosition.line - 1) {
                 segment[3]! += scriptStartPosition.column
-            }
-            if (inputDescriptor.options.debug) {
-                segment[2]! += 10
             }
         })
         temp[i + sourceMapInfo.tempStoredImportStartLine] = mappingLine
