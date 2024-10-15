@@ -1,5 +1,6 @@
 import type { ASTLocation, ASTPosition } from "../../compiler/types"
 
+import { newASTPosition } from "./structure"
 import { inputDescriptor } from "../../compiler/state"
 
 // 通过Script AST的索引换取script AST位置信息
@@ -53,11 +54,18 @@ export function getPosByIndex(index: number): ASTPosition {
     return inputDescriptor.positions[index]
 }
 
+// 通过源码索引生成一个带有默认结束位置的ASTLocation结构
+export function getLocWithDefaultEnd(index: number): ASTLocation {
+    return {
+        start: getPosByIndex(index),
+        end: newASTPosition()
+    }
+}
+
 // 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
 export function getLocByIndex(start: number, end?: number): ASTLocation {
-    const { positions } = inputDescriptor
     return {
-        start: positions[start],
-        end: positions[end || start]
+        start: getPosByIndex(start),
+        end: getPosByIndex(end || start)
     }
 }

@@ -48,6 +48,10 @@ export function resetCompilerState(options: CompileOptions) {
     if (options.debug === true) {
         options.sourcemap = true
     }
+    // 检查模式下需要保留所有注释节点
+    if (options.check === true) {
+        options.reserveTemplateComment = true
+    }
     Object.assign(inputDescriptor.options, options)
 }
 

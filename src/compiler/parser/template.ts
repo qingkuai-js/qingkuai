@@ -13,7 +13,6 @@ import {
     TemplateEmbeddedLangTag,
     templateAttributeNameRE,
     startWithTagStructureRE,
-    templateAttributeValueRE,
     templateConditionalCommentRE,
     templateInvalidAttributeNameRE
 } from "../regular"
@@ -21,6 +20,7 @@ import {
     NoEndTagMatched,
     UnexpectedToken,
     TagIsNotClosing,
+    EmbeddedLangNotInTopScope,
     TagCanNotBeSelfClosing,
     EmptyInterpolationAttrName,
     TemplateStartsWithEndTag,
@@ -32,19 +32,19 @@ import {
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import { inputDescriptor } from "../state"
-import { isNull } from "../../util/shared/assert"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
 import { selfClosingTags, specialTags } from "../constants"
+import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getPositionOfEachChar } from "../../util/compiler/sundry"
-import { getLocByIndex, getPosByIndex } from "../../util/compiler/locations"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
+import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/compiler/locations"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
 export function parseTemplate(source: string) {
     let index = 0
-    let closeMatched: RegExpExecRet
+    let closeMatched: RegExpExecRet = null
 
     const astList: TemplateNode[] = []
     const sourceLength = source.length
@@ -102,24 +102,22 @@ export function parseTemplate(source: string) {
         // 解析注释，此时tag为!
         // parse the comment with a tag !
         while (source.startsWith("<!--")) {
-            const endCharsIndex = source.indexOf("-->")
-            const range: TemplateNode["range"] = [index, -1]
-            const commentContent = source.slice(4, endCharsIndex)
-            if (endCharsIndex !== -1) {
-                reduceSource(endCharsIndex + 3)
-                range[1] = index
-            }
-            return initTemplateNode(positions, {
-                range,
+            const closedIndex = source.indexOf("-->")
+            const contentEndIndex = closedIndex === -1 ? Infinity : closedIndex
+            const commentNode = initTemplateNode(positions, {
                 tag: "!",
-                children: [
-                    initTemplateNode(positions, {
-                        tag: "",
-                        content: commentContent,
-                        range: [range[0] + 4, index - 3]
-                    })
-                ]
+                range: [index, -1],
+                content: source.slice(4, contentEndIndex)
             })
+            if (closedIndex === -1) {
+                reduceSource(source.length)
+            } else {
+                const endIndex = reduceSource(closedIndex + 3).index
+                commentNode.startTagEndPos = commentNode.loc.end = getPosByIndex(
+                    (commentNode.range[1] = endIndex)
+                )
+            }
+            return commentNode
         }
 
         // 检查是否以结束标签开始
@@ -146,139 +144,114 @@ export function parseTemplate(source: string) {
 
         // 解析属性
         // parse attributes
-        while (!(closeMatched = templateCloseCharsRE.exec(source))) {
+        while (source && !(closeMatched = templateCloseCharsRE.exec(source))) {
             let attrName = ""
             let attrValue = ""
-            let attrNameEndIndex = -1
-            let attrValueEndIndex = -1
-            let attrValueStartIndex = -1
+            let endCharIndex = -1
+            let nameEndIndex = -1
+            let valueEndIndex = -1
+            let valueStartIndex = -1
+            let wrapValueEndIndex = -1
+            let wrapValueStartIndex = -1
 
-            const attrNameStartIndex = reduceSpaces().index
+            const nameStartIndex = reduceSpaces().index
             const attrNameMatched = templateAttributeNameRE.exec(source)
             if (!isNull(attrNameMatched)) {
                 attrName = attrNameMatched[0]
-                attrNameEndIndex = reduceSource(attrName.length).index
-            } else if (source) {
+                nameEndIndex = reduceSource(attrName.length).index
+            } else {
                 const [unexpect] = templateInvalidAttributeNameRE.exec(source)!
                 const unexpectEndIndex = reduceSource(unexpect.length).index
                 UnexpectedToken(unexpect[0], unexpectEndIndex - unexpect.length, unexpectEndIndex)
 
                 // 检查模式下继续执行解析...
-                if (source) continue
-                else break
-            } else break
+                continue
+            }
 
             // 插值属性长度为1时表示没有指定属性名称
             const isInterpolationAttr = /^[!@#&]/.test(attrName)
             if (isInterpolationAttr && attrName.length === 1) {
-                EmptyInterpolationAttrName(attrName[0], getLocByIndex(attrNameStartIndex))
+                EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
             }
 
             // check whether attribute value exists
             const equalTokenMatched = /^\s*=/.exec(source)
             if (!isNull(equalTokenMatched)) {
-                let recoverdCodeInCheckMode = 0
-                const equalTokenMatchedIndex = equalTokenMatched.index
-                const equalTokenMatchedLen = equalTokenMatched[0].length
-                reduceSource(equalTokenMatchedIndex + equalTokenMatchedLen)
+                const mi = equalTokenMatched.index
+                const ml = equalTokenMatched[0].length
+                const equalTokenEndIndex = reduceSource(mi + ml).index
+                const equalTokenEndLoc = getLocByIndex(equalTokenEndIndex)
 
-                if (!isInterpolationAttr) {
-                    // 普通属性值必须被引号包裹
-                    const attrValueStartLoc = getLocByIndex(reduceSpaces().index)
-                    if (!/^['"]/.test(source)) {
-                        recoverdCodeInCheckMode = 2
-                        AttributeValueIsNotQuoted(attrValueStartLoc)
+                // 普通属性值未被引号包裹或插值属性值未被大括号包裹时，如果等号后为空白字符，
+                // 则属性值为空字符串，否则属性值则为等号之后的连续的非空白字符串
+                if (
+                    (isInterpolationAttr && !/^\s*\{/.test(source)) ||
+                    (!isInterpolationAttr && !/^\s*['"]/.test(source))
+                ) {
+                    const endIndex = /\s|>|$/.exec(source)!.index
+                    if (!isInterpolationAttr) {
+                        AttributeValueIsNotQuoted(equalTokenEndLoc)
                     } else {
-                        const valueMatched = templateAttributeValueRE.exec(source)
-                        if (!isNull(valueMatched)) {
-                            attrValue = valueMatched[2]
-                            attrValueStartIndex = index + 1
-                            attrValueEndIndex = index + valueMatched[0].length - 1
-                        } else {
-                            recoverdCodeInCheckMode = 1
-                            UnclosedNormalAttributeValue(attrValueStartLoc)
-                        }
+                        NoBracketForAttributeInterpolation(equalTokenEndLoc)
                     }
+                    attrValue = source.slice(0, endIndex)
+                    valueStartIndex = wrapValueStartIndex = equalTokenEndIndex
+                    valueEndIndex = wrapValueEndIndex = reduceSource(endIndex).index
                 } else {
-                    // 插值属性值必须被大括号包裹
-                    const attrValueStartLoc = getLocByIndex(reduceSpaces().index)
-                    if (!source.startsWith("{")) {
-                        recoverdCodeInCheckMode = 2
-                        NoBracketForAttributeInterpolation(attrValueStartLoc)
-                    } else {
-                        const valueEndIndex = findEndCurlyBracket(source, 1)
-                        if (valueEndIndex === -1) {
-                            recoverdCodeInCheckMode = 1
-                            UnclosedInterpolationExpression(attrValueStartLoc)
-                        } else if (1 === valueEndIndex) {
-                            // 检查模式下，快进到属性值结束处，继续执行解析...
-                            reduceSource(valueEndIndex + 1)
-                            EmptyInterpolationExpression({
-                                start: attrValueStartLoc.start,
-                                end: getPosByIndex(index)
-                            })
-                            continue
-                        } else {
-                            attrValueStartIndex = index + 1
-                            attrValueEndIndex = index + valueEndIndex
-                            attrValue = source.slice(1, valueEndIndex)
+                    // 属性值格式正确，记录属性值的开始位置，忽略等号与包裹字符间的空白字符
+                    const wrapValueStartLoc = getLocByIndex(
+                        (wrapValueStartIndex = reduceSpaces().index)
+                    )
+                    if (isInterpolationAttr) {
+                        if ((endCharIndex = findEndCurlyBracket(source, 1)) === -1) {
+                            UnclosedInterpolationExpression(wrapValueStartLoc)
+                        } else if (isEmptyString(source.slice(0, endCharIndex).trim())) {
+                            EmptyInterpolationExpression(wrapValueStartIndex, endCharIndex + 1)
                         }
+                    } else if ((endCharIndex = source.indexOf(source[0], 1)) === -1) {
+                        UnclosedNormalAttributeValue(wrapValueStartLoc)
                     }
-                }
-
-                // 检查模式下，针对以下两种错误类型进行恢复解析：
-                // 1. 普通属性引号未关闭或插值属性大括号未关闭（快进到文件结尾，并终止解析执行）
-                // 2. 普通属性未被引号包裹或插值属性未被大括号包裹（快进到恢复执行字符：空白字符/标签关闭字符>/文件结尾，并继续执行解析）
-                if (recoverdCodeInCheckMode === 1) {
-                    reduceSource(source.length)
-                    TagIsNotClosing(tag, false, tagStructureLoc)
-                    return
-                } else if (recoverdCodeInCheckMode === 2) {
-                    reduceSource(/\s|>|$/.exec(source)!.index)
-                    continue
+                    if (endCharIndex === -1) {
+                        attrValue = source.slice(1)
+                        valueStartIndex = wrapValueStartIndex
+                    } else {
+                        valueStartIndex = index + 1
+                        valueEndIndex = index + endCharIndex
+                        attrValue = source.slice(1, endCharIndex)
+                        wrapValueEndIndex = reduceSource(endCharIndex + 1).index
+                    }
                 }
             }
 
             // 记录attribute的AST结构
-            let attrEndIndex: number
-            let attrValueLoc: ASTLocation
-            const hasAttrValue = attrValueStartIndex !== -1
-            if (!hasAttrValue) {
-                attrValueLoc = newASTLocation()
-                attrEndIndex = attrNameEndIndex
-            } else {
-                attrValueLoc = {
-                    start: positions[attrValueStartIndex],
-                    end: positions[attrValueEndIndex]
-                }
-                attrEndIndex = attrValueEndIndex + 1
+            const isEnd = valueEndIndex !== -1
+            const attrLoc = getLocWithDefaultEnd(nameStartIndex)
+            const valueLoc = getLocWithDefaultEnd(valueStartIndex)
+            const nameLoc = getLocByIndex(nameStartIndex, nameEndIndex)
+            const wrapValueLoc = getLocWithDefaultEnd(wrapValueEndIndex)
+            if (valueStartIndex === -1) {
+                valueLoc.start = newASTPosition()
             }
-
+            if (isEnd) {
+                valueLoc.end = getPosByIndex(valueEndIndex)
+                attrLoc.end = wrapValueLoc.end = getPosByIndex(wrapValueEndIndex)
+            }
             const attrStruct: TemplateAttribute = {
                 key: {
                     raw: attrName,
-                    loc: {
-                        start: positions[attrNameStartIndex],
-                        end: positions[attrNameEndIndex]
-                    }
+                    loc: nameLoc
                 },
                 value: {
                     raw: attrValue,
-                    loc: attrValueLoc
+                    loc: valueLoc
                 },
-                loc: {
-                    start: positions[attrNameStartIndex],
-                    end: positions[attrEndIndex]
-                }
-            }
-            if (hasAttrValue) {
-                reduceSource(attrValueEndIndex - index + 1)
+                loc: attrLoc
             }
             ast.attributes.push(attrStruct)
         }
 
         // 找不到开始标签的关闭字符时，表示整个文件中此标签都未被关闭
-        if (isNull(closeMatched)) {
+        if (isNull(closeMatched) || isEmptyString(closeMatched[0].trim())) {
             TagIsNotClosing(tag, false, tagStructureLoc)
             return ast
         } else {
@@ -286,43 +259,55 @@ export function parseTemplate(source: string) {
         }
 
         // script或style标签直接快进到闭合标签处
-        if (specialTags.has(tag)) {
-            const endTagIndex = findOutOfSC(source, "</" + tag)
-            ast.content = source.slice(0, endTagIndex)
-            ast.endTagStartPos = getPosByIndex(endTagIndex)
-            reduceSource(endTagIndex + tag.length + 2)
-            if (findCloseCharOfEndTag()) {
-                ast.range[1] = index
-                ast.loc.end = getPosByIndex(index)
-            } else {
-                TagIsNotClosing(tag, true, endTagIndex, index)
-            }
-            return ast
-        }
-
-        // 嵌入语言直接找到闭合标签，如果是脚本语言则记录缩进空格数量，源码偏移量等信息
         const langMatched = TemplateEmbeddedLangTag.exec(tag)
-        if (!isNull(langMatched)) {
-            const startIndex = findOutOfSC(source, ">") + 1
-            const endIndex = findOutOfSC(source, `</${langMatched[0]}`)
-            const [blockEndIndex] = findOutOfSC(source, ">", endIndex)
+        const embeddedLang = langMatched?.[1] || ""
+        if (specialTags.has(tag) || embeddedLang) {
+            const endTagIndex = findOutOfSC(source, "</" + tag)
+            const neverOver = endTagIndex === -1
+            const contentStartIndex = index
+            if (neverOver) {
+                TagIsNotClosing(tag, false, tagStructureLoc)
+            }
 
-            // 记录startTagEndPos以及endTagStartPos
-            ast.endTagStartPos = getPosByIndex(endIndex)
-            ast.startTagEndPos = getPosByIndex(startIndex)
+            // 如果没有匹配到结束标签，整个source都被认为是当前标签的内容
+            const content = source.slice(0, neverOver ? Infinity : endTagIndex)
+            reduceSource(neverOver ? source.length : endTagIndex + tag.length + 2)
+
+            // 检查结束标签是否闭合，并记录当前ast节点的相关位置信息
+            if (!neverOver) {
+                ast.endTagStartPos = getPosByIndex(endTagIndex)
+                if (findCloseCharOfEndTag()) {
+                    ast.range[1] = index
+                    ast.loc.end = getPosByIndex(index)
+                } else {
+                    TagIsNotClosing(tag, true, endTagIndex, index)
+                }
+            }
+
+            // 如果是特殊标签（这里只能是script或style），则直接返回节点对象
+            if (!embeddedLang) {
+                return (ast.content = content), ast
+            }
+
+            // 嵌入语言标签出现在非顶层作用域，忽略对此标签的处理
+            if (!isNull(ast.parent)) {
+                EmbeddedLangNotInTopScope(tag, tagStructureLoc)
+                return
+            }
 
             // embedded script block
-            if (/js|ts/.test(langMatched[1])) {
+            if (/js|ts/.test(embeddedLang)) {
                 const scriptDescriptor = inputDescriptor.script
                 if (scriptDescriptor.existing) {
                     // 检查模式下，快进到脚本块结束位置，继续执行解析...
                     EmbeddedScriptBlockOutOfLimit(tagStructureLoc)
-                    return reduceSource(blockEndIndex + 1), void 0
+                    return
                 }
-                scriptDescriptor.loc = getLocByIndex(index + startIndex, index + endIndex)
-                scriptDescriptor.code = source.slice(startIndex, endIndex)
-                scriptDescriptor.isTS = langMatched[1] === "ts"
+
+                scriptDescriptor.loc = getLocByIndex(contentStartIndex, index)
+                scriptDescriptor.isTS = embeddedLang === "ts"
                 scriptDescriptor.existing = true
+                scriptDescriptor.code = content
 
                 // 记录生成代码中script部分的行数，4是两个换行符、一行注释、
                 // 以及结束行号和开始行号相减少时导致结构少一行的固定量
@@ -332,10 +317,10 @@ export function parseTemplate(source: string) {
             }
 
             // embedded style block
-            if (/css|s[ca]|less|stylus|postcss/.test(langMatched[1])) {
+            if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
-            return reduceSource(blockEndIndex + 1), void 0
+            return
         }
 
         // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点

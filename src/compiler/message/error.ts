@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1037
+ * current-error-code: 1038
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -120,6 +120,10 @@ export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolea
 
 export const BasSlotDirectiveCarrier = withLocation(1013, () => {
     return `Slot directive(#slot) can only be used on the direct child element(first-level)`
+})
+
+export const EmbeddedLangNotInTopScope = withLocation(1038, (tag: string) => {
+    return `The embedded language block(${tag}) can only be used in the top scope.`
 })
 
 export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: string) => {
