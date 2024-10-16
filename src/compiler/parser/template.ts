@@ -44,7 +44,6 @@ import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/c
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
 export function parseTemplate(source: string) {
     let index = 0
-    let closeMatched: RegExpExecRet = null
 
     const astList: TemplateNode[] = []
     const sourceLength = source.length
@@ -144,6 +143,7 @@ export function parseTemplate(source: string) {
 
         // 解析属性
         // parse attributes
+        let closeMatched: RegExpExecRet = null
         while (source && !(closeMatched = templateCloseCharsRE.exec(source))) {
             let attrName = ""
             let attrValue = ""
@@ -285,7 +285,9 @@ export function parseTemplate(source: string) {
             }
 
             // 如果是特殊标签（这里只能是script或style），则直接返回节点对象
-            if (!embeddedLang) {
+            if (embeddedLang) {
+                ast.isEmbedded = true
+            } else {
                 return (ast.content = content), ast
             }
 
@@ -320,7 +322,7 @@ export function parseTemplate(source: string) {
             if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
-            return
+            return inputDescriptor.options.check ? ast : undefined
         }
 
         // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点
@@ -422,6 +424,7 @@ function initTemplateNode(
     return {
         parent: options.parent || null,
         tag: options.tag || "",
+        isEmbedded: false,
         content: options.content || "",
         range: options.range || [-1, -1],
         startTagEndPos: newASTPosition(),
