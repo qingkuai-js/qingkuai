@@ -1,10 +1,4 @@
-import type {
-    ASTLocation,
-    ASTPosition,
-    TemplateNode,
-    RegExpExecRet,
-    TemplateAttribute
-} from "../types"
+import type { ASTPosition, TemplateNode, RegExpExecRet, TemplateAttribute } from "../types"
 
 import {
     tagIsComponentRE,
@@ -136,9 +130,9 @@ export function parseTemplate(source: string) {
         const ast = initTemplateNode(positions, {
             tag,
             parent,
-            range: [index, -1]
+            range: [index, -1],
+            isComponent: tagIsComponentRE.test(tag)
         })
-        const isComponent = tagIsComponentRE.test(tag)
         reduceSource(tag.length + 1)
 
         // 解析属性
@@ -232,6 +226,9 @@ export function parseTemplate(source: string) {
             if (valueStartIndex === -1) {
                 valueLoc.start = newASTPosition()
             }
+            if (isNull(equalTokenMatched)) {
+                attrLoc.end = getPosByIndex(nameEndIndex)
+            }
             if (isEnd) {
                 valueLoc.end = getPosByIndex(valueEndIndex)
                 attrLoc.end = wrapValueLoc.end = getPosByIndex(wrapValueEndIndex)
@@ -291,10 +288,9 @@ export function parseTemplate(source: string) {
                 return (ast.content = content), ast
             }
 
-            // 嵌入语言标签出现在非顶层作用域，忽略对此标签的处理
+            // 嵌入语言标签只能出现在顶层作用域
             if (!isNull(ast.parent)) {
                 EmbeddedLangNotInTopScope(tag, tagStructureLoc)
-                return
             }
 
             // embedded script block
@@ -322,7 +318,7 @@ export function parseTemplate(source: string) {
             if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
-            return inputDescriptor.options.check ? ast : undefined
+            return ast
         }
 
         // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点
@@ -360,7 +356,9 @@ export function parseTemplate(source: string) {
                     parseContent(ast)
                 }
             }
-        } else if (isSelfClosingTag || isComponent) {
+        } else if (isSelfClosingTag || (ast.isComponent && closeMatched[2])) {
+            ast.range[1] = index
+            ast.loc.end = getPosByIndex(index)
             ast.startTagEndPos = getPosByIndex(index)
         } else {
             TagCanNotBeSelfClosing(tag, index - 2, index)
@@ -421,17 +419,19 @@ function initTemplateNode(
             }
         }
     }
+    const isComponent = Boolean(options.isComponent)
     return {
         parent: options.parent || null,
         tag: options.tag || "",
+        isComponent,
         isEmbedded: false,
         content: options.content || "",
         range: options.range || [-1, -1],
         startTagEndPos: newASTPosition(),
         endTagStartPos: newASTPosition(),
-        loc: options.loc || newASTLocation(),
         attributes: options.attributes || [],
-        children: options.children || []
+        loc: options.loc || newASTLocation(),
+        children: options.children || [],
     }
 }
 

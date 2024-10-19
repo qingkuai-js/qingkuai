@@ -116,6 +116,7 @@ export interface TemplateNode {
     content: string
     loc: ASTLocation
     isEmbedded: boolean
+    isComponent: boolean
     children: TemplateNode[]
     startTagEndPos: ASTPosition
     endTagStartPos: ASTPosition

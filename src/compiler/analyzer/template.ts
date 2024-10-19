@@ -8,7 +8,6 @@ import type {
 
 import { getAlias } from "./alias"
 import { specialTags } from "../constants"
-import { tagIsComponentRE } from "../regular"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { stringConstantsSourceMap } from "../state"
@@ -30,10 +29,10 @@ export function analyzeTemplate(
 ) {
     const result: TemplateAnalysisRet[] = []
 
-    for (let i = 0; i < nodes.length; i++) {
+    for (let i = 0; i < nodes.length && !nodes[i].isEmbedded; i++) {
         let trimedContentStartIndex = 0
         let currentContext: TemplateContext
-        let { tag, content, attributes, children } = nodes[i]
+        let { tag, content, attributes, children, isComponent } = nodes[i]
         let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
         const currentRet: TemplateAnalysisRet = {
@@ -44,7 +43,6 @@ export function analyzeTemplate(
             isTemplate: tag === "template"
         }
         const isSlot = tag === "slot"
-        const isComponent = tagIsComponentRE.test(tag)
 
         // 获取默认的slot属性(或slot标签的name属性)值，返回ValueWithLocationM<string>类型，
         // 其中loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
