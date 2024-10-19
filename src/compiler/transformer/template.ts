@@ -4,7 +4,7 @@ import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
 import { getAlias } from "../analyzer/alias"
 import { recordMapping } from "../sourcemap"
-import { indent } from "../../util/compiler/state"
+import { indent } from "../../util/compiler/sundry"
 import { isArray, isNull, isString } from "../../util/shared/assert"
 import { lastElem, replaceEachItems } from "../../util/shared/sundry"
 

@@ -7,15 +7,16 @@ import type {
 } from "../types"
 
 import { getAlias } from "./alias"
-import { tagIsComponentRE } from "../regular"
+import { specialTags } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { stringConstantsSourceMap } from "../state"
 import { lastElem } from "../../util/shared/sundry"
+import { kebab2Camel } from "../../util/compiler/sundry"
+import { getLocByIndex } from "../../util/compiler/locations"
 import { isNull, isUndefined } from "../../util/shared/assert"
-import { getLocByIndex, stringify } from "../../util/compiler/state"
 import { transformInterpolation } from "../transformer/interpolation"
-import { kebab2Camel, normalStringify } from "../../util/compiler/sundry"
+import { normalStringify, stringify } from "../../util/compiler/strings"
 import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
 
 export function analyzeTemplate(
@@ -28,10 +29,10 @@ export function analyzeTemplate(
 ) {
     const result: TemplateAnalysisRet[] = []
 
-    for (let i = 0; i < nodes.length; i++) {
+    for (let i = 0; i < nodes.length && !nodes[i].isEmbedded; i++) {
         let trimedContentStartIndex = 0
         let currentContext: TemplateContext
-        let { tag, content, attributes, children } = nodes[i]
+        let { tag, content, attributes, children, isComponent } = nodes[i]
         let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
         const currentRet: TemplateAnalysisRet = {
@@ -42,7 +43,6 @@ export function analyzeTemplate(
             isTemplate: tag === "template"
         }
         const isSlot = tag === "slot"
-        const isComponent = tagIsComponentRE.test(tag)
 
         // 获取默认的slot属性(或slot标签的name属性)值，返回ValueWithLocationM<string>类型，
         // 其中loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
@@ -190,19 +190,21 @@ export function analyzeTemplate(
 
         // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有一个文本
         // 子节点，那这个文本子节点会被提升作为当前节点的textContent部分
-        if (tag !== "pre") {
-            if (!shouldHoistContent) {
-                trimedContentStartIndex = nodes[i].range[0]
-            } else {
-                content = children[0].content
-                trimedContentStartIndex = children[0].range[0]
-            }
+        if (!shouldHoistContent) {
+            trimedContentStartIndex = nodes[i].range[0]
+        } else {
+            content = children[0].content
+            trimedContentStartIndex = children[0].range[0]
+        }
 
+        // 注释和pre节点的内容不去除开头和结尾的空白字符
+        if (tag !== "!" && tag !== "pre") {
             const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount
         }
-        if (tag === "!") {
+
+        if (specialTags.has(tag)) {
             currentRet.content = normalStringify(content)
         } else if (currentRet.aar?.nameOfSlotTag) {
             currentRet.content = currentRet.aar.nameOfSlotTag.value

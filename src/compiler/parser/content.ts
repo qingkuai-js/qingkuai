@@ -1,15 +1,14 @@
 import { inputDescriptor } from "../state"
-import { compilerOptions } from "../configuration"
-import { getLocByIndex } from "../../util/compiler/state"
-import { normalStringify } from "../../util/compiler/sundry"
-import { findEndCurlyBracket } from "../../util/compiler/strings"
-import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 import { isNumber } from "../../util/shared/assert"
+import { getLocByIndex } from "../../util/compiler/locations"
+import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
+import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
-    const isDebug = compilerOptions.debugeMode
+    const isDebug = inputDescriptor.options.debug
     const transformedStrInitLen = isDebug ? 5 : 1
+    const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
 
     let index = 0
     let transformedStr: string
@@ -28,7 +27,7 @@ export function content2script(content: string, startSourceIndex: number) {
         // 否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
         if (useStringify) {
             const stringified = normalStringify(str)
-            if (compilerOptions.generateSourcemap) {
+            if (shouldGenerateSourcemap) {
                 const stringifiedLen = stringified.length
                 const endIndex = transformedStrLen + stringifiedLen
                 positionMap[transformedStrLen] = positions[sourceIndex].index
@@ -37,7 +36,7 @@ export function content2script(content: string, startSourceIndex: number) {
             }
             transformedArr.push(stringified)
         } else {
-            if (compilerOptions.generateSourcemap) {
+            if (shouldGenerateSourcemap) {
                 for (let i = 0; i <= str.length; i++) {
                     const charSourceIndex = positions[sourceIndex + i + 1].index
                     positionMap[+isDebug + transformedStrLen + i] = charSourceIndex
@@ -76,10 +75,10 @@ export function content2script(content: string, startSourceIndex: number) {
                     endBracketIndex + 1 + startSourceIndex
                 )
             } else {
+                index = endBracketIndex + 1
                 pushTransformedArr(interpolationExp, false)
-                if (!isDebug) {
-                    break
-                }
+
+                if (!isDebug) continue
 
                 // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，
                 // 若它在结尾处，需要将positionMap的最后一个元素 + 1（最后一个插值表达式的结束位置）
@@ -95,7 +94,6 @@ export function content2script(content: string, startSourceIndex: number) {
                 if (isStart) {
                     positionMap[transformedStrInitLen + 1]--
                 }
-                index = endBracketIndex + 1
             }
         }
     }

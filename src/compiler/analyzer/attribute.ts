@@ -40,13 +40,12 @@ import {
 } from "../message/error"
 import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
-import { compilerOptions } from "../configuration"
-import { getLocByIndex, stringify } from "../../util/compiler/state"
+import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
-import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
+import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
+import { findEndCurlyBracket, findOutOfSC, stringify } from "../../util/compiler/strings"
 import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
@@ -108,6 +107,7 @@ export function analyzeAttribute(
         const isDynamic = rk.startsWith("!")
         const isDirective = rk.startsWith("#")
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
+        const pureKeyStartSourceIndex = key.loc.start.index + /\s*/.exec(rk)![0].length
         const trimedValueStartSourceIndex = value.loc.start.index + /\s*/.exec(rv)![0].length
 
         // 转换标签指令
@@ -466,7 +466,7 @@ export function analyzeAttribute(
             }
         } else if (isEvent) {
             if (isSlot) {
-                InvalidEventForSlot(rk)
+                InvalidEventForSlot(rk, attr.loc)
             } else {
                 let eventFlag = 0
                 let flagComment = ""
@@ -474,18 +474,40 @@ export function analyzeAttribute(
                 let eventWrapperFlag = 0
 
                 const flagIndex = pureKey.indexOf("|")
-                const flagStr = pureKey.slice(flagIndex + 1)
-                const flagArr = flagStr.split("|")
+                const flagArr = pureKey.slice(flagIndex + 1).split("|")
+                const flagArrWithIndex: [string, number, number][] = []
+                const flagStartSourceIndex = pureKeyStartSourceIndex + flagIndex
+
+                // flagArrWithIndex记录了每个flag的名称及开始结束索引
+                for (let i = 0; i < flagArr.length; i++) {
+                    const preLen = flagArr[i - 1]?.length || 0
+                    const preIndex = flagArrWithIndex[i - 1]?.[1] || 0
+                    flagArrWithIndex.push([
+                        flagArr[i].trim(),
+                        preIndex + preLen,
+                        preIndex + preLen + flagArr[i].length
+                    ])
+                }
 
                 if (flagIndex !== -1) {
                     if (isComponent) {
-                        InvalidEventFlagForComponent(flagStr)
+                        InvalidEventFlagForComponent(
+                            flagArr.map(item => item.trim()).join(", "),
+                            flagStartSourceIndex,
+                            key.loc.end.index
+                        )
                     } else {
-                        flagArr.forEach(key => {
-                            const currentFlagNum = (EventListenerFlag as any)[key]
-                            const currentWrapperFlagNum = (EventWrapperFlag as any)[key]
+                        flagArrWithIndex.forEach(item => {
+                            const [flagName, startIndex, endIndex] = item
+                            const currentFlagNum = (EventListenerFlag as any)[flagName]
+                            const currentWrapperFlagNum = (EventWrapperFlag as any)[flagName]
                             if (!currentFlagNum && !currentWrapperFlagNum) {
-                                InvalidEventFlag(key, eventName)
+                                InvalidEventFlag(
+                                    flagName,
+                                    eventName,
+                                    flagStartSourceIndex + startIndex,
+                                    flagStartSourceIndex + endIndex
+                                )
                             }
                             if (currentFlagNum) {
                                 eventFlag |= currentFlagNum || 0
@@ -676,7 +698,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             ret.push(attrItems[0])
         } else {
             const rawValues = attrItems.map(item => {
-                return item.value.raw
+                return stringify(item.value.raw)
             })
             const transformedValue = rawValues.join(", ")
 
@@ -686,7 +708,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             // 的第二个元素，所以positionMap只有下标为8，9，10的元素存在源码位置，访问其他下标都将得到undefined
             const positionMap: number[] = []
 
-            if (compilerOptions.generateSourcemap) {
+            if (inputDescriptor.options.sourcemap) {
                 // 存在动态class时，记录转换后class值的位置映射（class值字符索引 -> 源码字符索引）
                 // dynamicStartIndex表示动态class值在组合转换后的值中开始字符的索引，将从这一索引开始记录位置映射
                 let dynamicStartIndex = 1
@@ -776,8 +798,11 @@ function recordDestructuringIdentifiers(
     const patternStr = isString(tir) ? tir : tir.transformedExp
     const declarationSourceCode = `const ${patternStr}={}`
 
-    const ast = parse(declarationSourceCode).body[0]
+    const ast = parse(declarationSourceCode)?.body[0]
     const patternNode = (ast as any).declarations[0].id as EsPattern
+
+    // 检查模式下的遇到babel内部错误时，直接返回
+    if (isUndefined(ast)) return
 
     if (!isForDirective) {
         getIdentifiersFromPattern(patternNode).forEach(from => {

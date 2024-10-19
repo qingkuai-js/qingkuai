@@ -1,9 +1,9 @@
-export const templateCloseCharsRE = /^(?:\s*)((\/)?>)/
+export const templateCloseCharsRE = /^(?:\s*)((\/)?>|$)/
 export const templateAttributeNameRE = /^[^\s='"\{\}></]+/
-export const templateAttributeValueRE = /^(['"])([\s\S]*?)\1/
-export const templateInvalidAttributeNameRE = /^[='"\{\}></][^\s>]+/
+export const templateInvalidAttributeNameRE = /^[='"\{\}></][^\s>]*/
 export const templateTagStructureRE = /<(?:\/?[a-zA-z][a-zA-Z\d\-_.:]*|!--)/
 export const templateConditionalCommentRE = /^(?:\[if.*\[endif]|\[if.*<!|<!\[endif])$/
+export const TemplateEmbeddedLangTag = /^lang-([jt]s|css|s[ca]ss|less|stylus|postcss)/
 
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
 

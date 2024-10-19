@@ -1,6 +1,31 @@
 import type { FindOutOfSC, FixedArray, StartBracket } from "../types"
 
 import { isString, isUndefined } from "../shared/assert"
+import { stringConstants, stringConstantsSourceMap } from "../../compiler/state"
+
+// JSON.stringify别名
+export function normalStringify(v: any) {
+    return JSON.stringify(v)
+}
+
+// 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
+export function stringify(v: any) {
+    const s = normalStringify(v)
+    if (stringConstants.has(s)) {
+        const existingItem = stringConstants.get(s)!
+        existingItem.count++
+        return existingItem.value
+    } else {
+        const value = `_s${stringConstants.size}_`
+        stringConstants.set(s, {
+            value,
+            count: 1,
+            using: false
+        })
+        stringConstantsSourceMap.set(value, s)
+        return value
+    }
+}
 
 // 脱离字符串和注释范围从js代码中查找指定子串
 // 这是一个重载函数，当未传入startIndex时它只返回匹配子串的开始索引

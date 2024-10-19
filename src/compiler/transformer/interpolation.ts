@@ -24,10 +24,10 @@ import {
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
-import { compilerOptions } from "../configuration"
 import { is, isFunctionNode } from "../estree/assert"
+import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
-import { getLocByIndex, stringify } from "../../util/compiler/state"
+import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
@@ -62,13 +62,13 @@ export function transformInterpolation(
     const allIndentifiersInExpression = new Set<string>()
     const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
-    const isDebug = compilerOptions.debugeMode
+    const isDebug = inputDescriptor.options.debug
     const usedAsSetter = optionalParams.usedAsSetter || false
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const isComponentEvent = optionalParams.isComponentEvent === true
-    const shouldGenerateSourcemap = compilerOptions.generateSourcemap
-    const ast = (parse("_=" + expression).body[0] as any).expression.right
+    const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
+    const ast = (parse("_=" + expression)?.body[0] as any)?.expression.right
     const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
 
     // 扩展转换信息数组
@@ -79,6 +79,11 @@ export function transformInterpolation(
         } else {
             transformInfos.set(index - 2, [str])
         }
+    }
+
+    // 检查模式下的遇到babel内部错误时，直接返回
+    if (isUndefined(ast)) {
+        return ""
     }
 
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
@@ -202,11 +207,7 @@ export function transformInterpolation(
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
     // rsc: Replaced Space Count    pie: Pre(position) Is Eliminated
-    for (
-        let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false;
-        shouldGenerateSourcemap && i <= expression.length;
-        i++
-    ) {
+    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false; i <= expression.length; i++) {
         transformInfos.get(i)?.forEach(item => {
             const str = isFunction(item) ? item() : item
             transformedArr.push(str)
@@ -235,8 +236,8 @@ export function transformInterpolation(
                 pie = false
             }
         }
+        shouldGenerateSourcemap && indexMap.push(i + offset)
         expressionReplaceWithSpaceRE.lastIndex = i + 1
-        indexMap.push(i + offset)
         offset += nextOffset
         nextOffset = 0
     }

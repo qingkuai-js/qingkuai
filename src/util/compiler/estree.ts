@@ -12,20 +12,58 @@ import type { Function } from "@babel/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { ReplacementItem, ReplacementStatus } from "../../compiler/types"
 
+import * as babel from "@babel/parser"
 import { isArray, isUndefined } from "../../util/shared/assert"
-import { parse as babelParse, ParserOptions } from "@babel/parser"
-import { replacementInfo, inputDescriptor } from "../../compiler/state"
+import { replacementInfo, inputDescriptor, messages } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
+import { getSourceIndexByScriptIndex, getSourcePosByScriptPos } from "./locations"
 
 // js或ts解析为抽象语法树
 export function parse(source: string) {
-    const parseOption = {
-        sourceType: "module"
-    } as ParserOptions
-    if (inputDescriptor.script.isTS) {
-        parseOption.plugins = ["typescript"]
+    const isCheck = inputDescriptor.options.check
+
+    // @babel/parser解析遇到错误时，将位置修改为正确的源码位置
+    const changeErrorLoc = (e: any) => {
+        if (!isUndefined(e.loc) && !isUndefined(e.pos)) {
+            e.loc = getSourcePosByScriptPos(e.loc)
+            e.pos = getSourceIndexByScriptIndex(e.pos)
+        }
+        // 修改报错信息中的位置描述
+        const { line: newLine, column: newColumn } = e.loc
+        const positionDescription = `(${newLine}:${newColumn})`
+        e.message = e.message.replace(/\(\d+:\d+\)$/, positionDescription)
+        return e
     }
-    return babelParse(source, parseOption).program
+
+    try {
+        const parseOption = {
+            sourceType: "module",
+            errorRecovery: isCheck
+        } as babel.ParserOptions
+        if (inputDescriptor.script.isTS) {
+            parseOption.plugins = ["typescript"]
+        }
+        const res = babel.parse(source, parseOption)
+        if (isCheck) {
+            res.errors.forEach(err => {
+                messages.push({
+                    type: "error",
+                    value: changeErrorLoc(err)
+                })
+            })
+        }
+        return res.program
+    } catch (err: any) {
+        err = changeErrorLoc(err)
+        if (!isCheck) {
+            throw err
+        } else {
+            messages.push({
+                type: "error",
+                value: err
+            })
+        }
+    }
 }
 
 // 提取任意节点对应的EsTree节点，忽略ts断言相关语法往下查找

@@ -8,17 +8,16 @@ import {
     inputDescriptor
 } from "../state"
 import { MinHeap } from "../data-struct/min-heap"
-import { compilerOptions } from "../configuration"
 import { isString } from "../../util/shared/assert"
 import { lastElem } from "../../util/shared/sundry"
-import { indent, getScriptPos } from "../../util/compiler/state"
-import { isIndexEliminated, getPositionOfEachChar } from "../../util/compiler/sundry"
+import { getScriptPos } from "../../util/compiler/locations"
 import { scriptSourceRedundantEmptyLine, scriptSourceNeedIndentPlace } from "../regular"
+import { isIndexEliminated, getPositionOfEachChar, indent } from "../../util/compiler/sundry"
 
 export function transformScript(source: string, indentN = 0) {
     const transformedArr: string[] = []
     const existingReplacementItem = new Set<ReplacementItem>()
-    const shouldGenerateSourcemap = compilerOptions.generateSourcemap
+    const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
     const heap = new MinHeap<ReplacementItem>([], "index", "order", "id")
     replacementInfo.map.forEach((repl, identifier) => {
         if (repl.status === "rea") {
@@ -33,7 +32,7 @@ export function transformScript(source: string, indentN = 0) {
             // 这些标识符将被用来在生成代码的底部创建setter，如果createSetter为false（对应const声明的响应性常量），
             // 则将标识符添加到debuggingInfo.constIdentifiers中，它们会在一个名为_dn_的setter中被访问，虽然它们
             // 不需要被赋值，但要保持被引用的状态，不然首次同步代码执行结束时，初始标识符占用的内存空间会被释放
-            if (repl.useDollar && compilerOptions.debugeMode) {
+            if (repl.useDollar && inputDescriptor.options.debug) {
                 if (!repl.createSetter) {
                     debuggingInfo.constIdentifiers.add(identifier)
                 } else {

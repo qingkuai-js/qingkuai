@@ -11,8 +11,7 @@ import {
 } from "./state"
 import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
-import { indent } from "../util/compiler/state"
-import { compilerOptions } from "./configuration"
+import { indent } from "../util/compiler/sundry"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"
 
@@ -73,7 +72,6 @@ export function generateCompileResult(
 ) {
     let mappings = ""
     let debuggingStatementArr: string[] = []
-    const isTS = inputDescriptor.script.isTS
     const setTemplateStructureFuncName = getAlias("scts")
     const withScriptSourceCode = !isEmptyString(scriptTranformedRet)
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
@@ -97,7 +95,7 @@ export function generateCompileResult(
         sourceMapInfo.preaddedLineCount += i === 0 ? 3 : 1
         return `${pre}\n${indent(2)}const ${k} = ${v}`
     }, "")
-    if (compilerOptions.generateSourcemap) {
+    if (inputDescriptor.options.sourcemap) {
         offsetSourcemap()
         mappings = encode(sourceMapInfo.mappings)
     }
@@ -137,5 +135,5 @@ export function generateCompileResult(
         `(${templateTransformedRet || "[]"})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 
-    return { code, mappings, isTS }
+    return { code, mappings }
 }

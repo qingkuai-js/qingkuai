@@ -1,6 +1,8 @@
 import type {
+    MessageItem,
     DebuggingInfo,
     SourceMapInfo,
+    CompileOptions,
     StringConstant,
     EliminateRanges,
     ReplacementInfo,
@@ -9,12 +11,14 @@ import type {
 } from "./types"
 
 import { setArrLength } from "../util/shared/sundry"
-import { newASTLocation } from "../util/compiler/sundry"
+import { newASTLocation } from "../util/compiler/structure"
 
 export const sourceMapInfo = newSourceMapInfo()
 export const debuggingInfo = newDebuggingInfo()
 export const replacementInfo = newReplacementInfo()
 export const inputDescriptor = newInputDescriptor()
+
+export const messages: MessageItem[] = []
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
 export const usedInitItems = new Set<string>()
@@ -26,11 +30,12 @@ export const stringConstants = new Map<string, StringConstant>()
 export const stringConstantsSourceMap = new Map<string, string>()
 
 // 重置编译器状态
-export function resetCompilerState() {
+export function resetCompilerState(options: CompileOptions) {
     usedInitItems.clear()
     eliminateRanges.clear()
     stringConstants.clear()
     usedRuntimeItems.clear()
+    setArrLength(messages, 0)
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
     setArrLength(tempStoredImportInfos, 0)
@@ -38,6 +43,16 @@ export function resetCompilerState() {
     Object.assign(debuggingInfo, newDebuggingInfo())
     Object.assign(replacementInfo, newReplacementInfo())
     Object.assign(inputDescriptor, newInputDescriptor())
+
+    // 调试模式下一定会生成sourcemap
+    if (options.debug === true) {
+        options.sourcemap = true
+    }
+    // 检查模式下需要保留所有注释节点
+    if (options.check === true) {
+        options.reserveTemplateComment = true
+    }
+    Object.assign(inputDescriptor.options, options)
 }
 
 // 生成新的sourcemap信息结构
@@ -73,10 +88,16 @@ function newReplacementInfo(): ReplacementInfo {
 // 生成一个新的输入源状态描述符
 function newInputDescriptor(): InputDescriptor {
     return {
-        type: "sfc",
         positions: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
+        options: {
+            componentName: "",
+            debug: false,
+            check: false,
+            sourcemap: false,
+            reserveTemplateComment: false
+        },
         script: {
             code: "",
             isTS: false,

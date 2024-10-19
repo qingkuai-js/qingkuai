@@ -4,6 +4,7 @@ import type { Pattern, CallExpression, VariableDeclaration } from "@babel/types"
 import type { ASTVisitor, EsPattern, RequiredPosition, TraverseParent } from "../estree/types"
 
 import {
+    sourceMapInfo,
     replacementInfo,
     eliminateRanges,
     inputDescriptor,
@@ -27,24 +28,24 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    getSetterIdentifier,
-    getGeneratedScriptLine,
-    markSegmentShouldNotBeMapped
-} from "../../util/compiler/state"
-import {
     CompilerFuncNotInTopScope,
     IdentifierFormatIsNotAllowed,
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
     CompilerFuncWithoutVariableDeclaration
 } from "../message/error"
+import {
+    getGeneratedScriptLine,
+    getSourceLocByScriptLoc,
+    getSourceIndexByScriptIndex
+} from "../../util/compiler/locations"
 import { getAlias } from "./alias"
 import { walk } from "../estree/walk"
-import { compilerOptions } from "../configuration"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
 import { compilerFuncs, watchRelatedFuncs } from "../constants"
+import { getSetterIdentifier } from "../../util/compiler/sundry"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
 import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
 
@@ -59,7 +60,7 @@ const visitor: ASTVisitor = {
 
     ClassDeclaration(node, parent) {
         const name = node.id!.name
-        const isDebug = compilerOptions.debugeMode
+        const isDebug = inputDescriptor.options.debug
         const id = isDebug ? `[_w_${name}, ${name}]` : name
 
         const getReactFunc = () => {
@@ -90,16 +91,17 @@ const visitor: ASTVisitor = {
         const esParent = getEsNodeOfParent(parent)
         const esGrand = getEsNodeOfParent(esParent?.parent)
         const esGreatGrand = getEsNodeOfParent(esGrand?.parent)
+        const nodeSourceLoc = getSourceLocByScriptLoc(node.loc)
         if (is(callee, "Identifier")) {
             const funcName = callee.name
             const isExclude = parent.excludes.has(funcName)
             if (compilerFuncs.has(funcName) && !isExclude) {
                 if (!is(esParent!.v, "VariableDeclarator")) {
-                    CompilerFuncWithoutVariableDeclaration(node.loc)
+                    CompilerFuncWithoutVariableDeclaration(nodeSourceLoc)
                 }
                 if (!is(esGreatGrand?.v, "Program")) {
                     if (!parent.excludes.has(funcName)) {
-                        CompilerFuncNotInTopScope(node.loc)
+                        CompilerFuncNotInTopScope(nodeSourceLoc)
                     }
                 }
             }
@@ -110,14 +112,14 @@ const visitor: ASTVisitor = {
     Identifier(node, parent) {
         const { name } = node
         const grand = parent.parent
-        const isDebug = compilerOptions.debugeMode
         const esParent = getEsNodeOfParent(parent)
+        const isDebug = inputDescriptor.options.debug
         const replacementItem = replacementInfo.map.get(name)
         const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
 
         // 检查是否是被禁止的标识符格式
         if (bannedIdentifierFormatRE.test(name)) {
-            IdentifierFormatIsNotAllowed(name, node.loc)
+            IdentifierFormatIsNotAllowed(name, getSourceLocByScriptLoc(node.loc))
         }
 
         // 记录所有的标识符，用于确定导入项和init解构标识符别名
@@ -206,7 +208,7 @@ const visitor: ASTVisitor = {
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
     // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加_w_前缀
     AnyNode(node, parent) {
-        if (compilerOptions.generateSourcemap) {
+        if (inputDescriptor.options.sourcemap) {
             if (
                 is(node, "ImportDeclaration") ||
                 is(parent.v, "ImportSpecifier") ||
@@ -265,7 +267,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
     const isConst = node.kind === "const"
     const esParent = getEsNodeOfParent(parent)
-    const isDebug = compilerOptions.debugeMode
+    const isDebug = inputDescriptor.options.debug
     const isInTopScope = is(esParent!.v, "Program")
     const scriptSource = inputDescriptor.script.code
 
@@ -536,12 +538,12 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         let initStart = init?.start ?? end!
 
         const esInit = init ? getEsNode(init) : init
-        const declarationLoc = node.declarations[index].loc!
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
         const esInitIsIdentifierCallee = (hasFnCall = is(esInit, "CallExpression"))
         const esCallee = esInitIsIdentifierCallee ? getEsNode(esInit.callee) : null
         const calleeName = is(esCallee, "Identifier") ? esCallee.name : ""
+        const declarationSourceLoc = getSourceLocByScriptLoc(node.declarations[index].loc!)
 
         // 非顶部作用域声明
         if (!isInTopScope) {
@@ -579,7 +581,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             isDerived = id.name.startsWith("$")
             if (isDerived) {
                 if (esInitIsIdentifierCallee && calleeName === "der") {
-                    MixTwoSyntaxOfDerived()
+                    MixTwoSyntaxOfDerived(declarationSourceLoc)
                 }
             }
         }
@@ -594,6 +596,11 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 const [_, se] = [secondArg?.start, secondArg?.end]
                 const [__, fe] = (firstArgRange = [firstArg.start!, firstArg.end!])
 
+                // 以下是用于报错/警告的一些源码位置
+                const sfe = getSourceIndexByScriptIndex(fe)
+                const sse = getSourceIndexByScriptIndex(se!)
+                const sle = getSourceIndexByScriptIndex(cinit.arguments[argLen - 1].end!)
+
                 // 函数调用开始括号的索引
                 // end index of callee start parentheses
                 const ps = findOutOfSC(scriptSource, "(", init!.start!)[0] + 1
@@ -603,14 +610,14 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         eliminateRanges.add([cs, ps])
                         eliminateRanges.add([fe, ce])
                         if (argLen > 1) {
-                            RedundantArgs("stc", 1)
+                            RedundantArgs("stc", 1, sfe, sle)
                         }
                         break
                     case "rea":
                         eliminateRanges.add([cs, ps])
                         if (argLen > 2) {
-                            RedundantArgs("rea", 2)
                             eliminateRanges.add([se!, ce])
+                            RedundantArgs("rea", 2, sse, sle)
                         } else {
                             eliminateRanges.add([ce - 1, ce])
                         }
@@ -619,8 +626,8 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         isDerived = true
                         eliminateRanges.add([cs, ps])
                         if (argLen > 1) {
-                            RedundantArgs("der", 1)
                             eliminateRanges.add([fe, ce])
+                            RedundantArgs("der", 1, sfe, sle)
                         } else {
                             eliminateRanges.add([ce - 1, ce])
                         }
@@ -631,7 +638,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 eliminateRanges.add(initRange)
                 isDerived = reactFunc === "der"
                 if (isDestructuring) {
-                    DestructureReactFuncWithNoArg(reactFunc, declarationLoc)
+                    DestructureReactFuncWithNoArg(reactFunc, declarationSourceLoc)
                 }
             }
         }
@@ -640,7 +647,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         // 调试模式下的const衍生响应性状态声明要改用let关键字，因为setter中要修改调试标识符的值
         if (isDerived) {
             if (isDestructuring) {
-                DerLoseReactivity()
+                DerLoseReactivity(declarationSourceLoc)
             } else if (isDebug && isConst && index === 0) {
                 useLetKeyword = true
                 eliminateRanges.add([node.start, idRange[0]])
@@ -706,15 +713,26 @@ function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseP
     }
 }
 
+// 标记某个片段不需要被映射
+function markSegmentShouldNotBeMapped(start: number, end: number) {
+    if (inputDescriptor.options.debug) {
+        for (let i = start; i < end; i++) {
+            sourceMapInfo.positionShouldNotBeMapped[i] = true
+        }
+    }
+}
+
 // 检查script部分顶部作用域中的标识符是否合法：
 // 1. rea、stc、der及props是保留标识符名称，在顶部作用域中不能重复声明（报错）
 // 2. 在内联事件中$event（非组件）和$param(组件)会覆盖顶部作用域中的同名标识符（警告）
 function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
+    const sourceLoc = getSourceLocByScriptLoc(loc)
+
     if (compilerFuncs.has(name) || name === "props") {
-        RegisterExsitingIdentifierName(name, loc!)
+        RegisterExsitingIdentifierName(name, sourceLoc)
     }
 
     if (name === "$event" || name === "$param") {
-        IdentifierMaybeOverwritten(name)
+        IdentifierMaybeOverwritten(name, sourceLoc)
     }
 }

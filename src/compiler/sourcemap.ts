@@ -1,10 +1,9 @@
 import type { ASTPosition } from "./types"
 import type { SourceMapMappings, SourceMapSegment } from "@jridgewell/sourcemap-codec"
 
-import { compilerOptions } from "./configuration"
 import { isUndefined } from "../util/shared/assert"
 import { replaceEachItems } from "./../util/shared/sundry"
-import { getGeneratedScriptLine } from "./../util/compiler/state"
+import { getGeneratedScriptLine } from "../util/compiler/locations"
 import { inputDescriptor, sourceMapInfo, tempStoredImportInfos } from "./state"
 
 // 记录一条sourcemap mapping segment
@@ -16,11 +15,6 @@ export function recordMapping(
     sourceIndex: number,
     isTemplate = false
 ) {
-    // 源码行添加源码文件头部注释占用的行数
-    if (compilerOptions.debugeMode) {
-        sourceLine += 10
-    }
-
     // 初始化新的SoruceMapLine
     initGeneratedLineMapping(generatedLine)
 
@@ -93,9 +87,6 @@ export function offsetSourcemap() {
         mappingLine.forEach(segment => {
             if (segment[2] === scriptStartPosition.line - 1) {
                 segment[3]! += scriptStartPosition.column
-            }
-            if (compilerOptions.debugeMode) {
-                segment[2]! += 10
             }
         })
         temp[i + sourceMapInfo.tempStoredImportStartLine] = mappingLine

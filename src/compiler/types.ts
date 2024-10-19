@@ -1,4 +1,6 @@
 import type { FixedArray } from "../util/types"
+import type { CompileError } from "./message/error"
+import type { CompileWarning } from "./message/warn"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 
 export interface ASTPosition {
@@ -9,6 +11,22 @@ export interface ASTPosition {
 export interface ASTLocation {
     start: ASTPosition
     end: ASTPosition
+}
+
+export interface CompileOptions {
+    componentName: string
+    check?: boolean
+    debug?: boolean
+    sourcemap?: boolean
+    reserveTemplateComment?: boolean
+}
+
+export interface CompileResult {
+    code: string
+    mappings: string
+    messages: MessageItem[]
+    templateNodes: TemplateNode[]
+    inputDescriptor: InputDescriptor
 }
 
 export interface SourceMapInfo {
@@ -56,7 +74,7 @@ export interface TempStoredImportInfo {
     mappingLine: SourceMapLine
 }
 export interface InputDescriptor {
-    type: "sfc" | "script"
+    options: Required<CompileOptions>
     indentSpaceCount: number
     positions: ASTPosition[]
     stringConstantCount: number
@@ -74,6 +92,16 @@ export interface InputDescriptor {
     }
 }
 
+export type MessageItem =
+    | {
+          type: "error"
+          value: CompileError
+      }
+    | {
+          type: "warning"
+          value: CompileWarning
+      }
+
 export interface AttributeKeyValue {
     raw: string
     loc: ASTLocation
@@ -87,7 +115,11 @@ export interface TemplateNode {
     tag: string
     content: string
     loc: ASTLocation
+    isEmbedded: boolean
+    isComponent: boolean
     children: TemplateNode[]
+    startTagEndPos: ASTPosition
+    endTagStartPos: ASTPosition
     parent: TemplateNode | null
     range: FixedArray<number, 2>
     attributes: TemplateAttribute[]
