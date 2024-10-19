@@ -12,6 +12,12 @@ import type { EsPattern } from "../estree/types"
 import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
 
 import {
+    stringify,
+    findOutOfSC,
+    normalStringify,
+    findEndCurlyBracket
+} from "../../util/compiler/strings"
+import {
     InvalidEventFlag,
     InvalidEventForSlot,
     InvalidEventFlagForComponent
@@ -43,9 +49,8 @@ import { inputDescriptor } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, mustPassValueDirectives } from "../constants"
-import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { findEndCurlyBracket, findOutOfSC, stringify } from "../../util/compiler/strings"
+import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
@@ -697,8 +702,11 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
         if (isComponentOrSlot || attrKey !== "!class") {
             ret.push(attrItems[0])
         } else {
-            const rawValues = attrItems.map(item => {
-                return stringify(item.value.raw)
+            const rawValues = attrItems.map((item, index) => {
+                if (index !== normalClassIndex) {
+                    return item.value.raw
+                }
+                return normalStringify(item.value.raw)
             })
             const transformedValue = rawValues.join(", ")
 
@@ -714,7 +722,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 let dynamicStartIndex = 1
                 if (dynamicClassIndex === 1) {
                     // 这里的+2为拼接是添加的 逗号空格 的固定长度
-                    dynamicStartIndex += attrItems[0].value.raw.length + 2
+                    dynamicStartIndex += rawValues[0].length + 2
                 }
 
                 if (dynamicClassIndex !== -1) {
@@ -724,7 +732,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                     }
                 }
             }
-
+            
             ret.push({
                 loc: attrItems[0].loc,
                 key: {

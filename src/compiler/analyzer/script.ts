@@ -39,13 +39,13 @@ import {
     getSourceLocByScriptLoc,
     getSourceIndexByScriptIndex
 } from "../../util/compiler/locations"
-import { getAlias } from "./alias"
 import { walk } from "../estree/walk"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
 import { compilerFuncs, watchRelatedFuncs } from "../constants"
 import { getSetterIdentifier } from "../../util/compiler/sundry"
+import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
 import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
 
@@ -247,6 +247,7 @@ export function analyzeScript(source: string) {
     })
 
     walk(parse(source), visitor)
+    confirmQingKuaiIdentifierAliases()
 }
 
 // 分析reactivity相关编译助手函数调用

@@ -29,7 +29,7 @@ export function analyzeTemplate(
 ) {
     const result: TemplateAnalysisRet[] = []
 
-    for (let i = 0; i < nodes.length && !nodes[i].isEmbedded; i++) {
+    for (let i = 0; i < nodes.length; i++) {
         let trimedContentStartIndex = 0
         let currentContext: TemplateContext
         let { tag, content, attributes, children, isComponent } = nodes[i]

@@ -318,7 +318,7 @@ export function parseTemplate(source: string) {
             if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
-            return ast
+            return inputDescriptor.options.check ? ast : null
         }
 
         // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点
@@ -431,7 +431,7 @@ function initTemplateNode(
         endTagStartPos: newASTPosition(),
         attributes: options.attributes || [],
         loc: options.loc || newASTLocation(),
-        children: options.children || [],
+        children: options.children || []
     }
 }
 
