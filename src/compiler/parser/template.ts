@@ -267,12 +267,13 @@ export function parseTemplate(source: string) {
             }
 
             // 如果没有匹配到结束标签，整个source都被认为是当前标签的内容
+            const endtagStartIndex = endTagIndex + index
             const content = source.slice(0, neverOver ? Infinity : endTagIndex)
             reduceSource(neverOver ? source.length : endTagIndex + tag.length + 2)
 
             // 检查结束标签是否闭合，并记录当前ast节点的相关位置信息
             if (!neverOver) {
-                ast.endTagStartPos = getPosByIndex(endTagIndex)
+                ast.endTagStartPos = getPosByIndex(endtagStartIndex)
                 if (findCloseCharOfEndTag()) {
                     ast.range[1] = index
                     ast.loc.end = getPosByIndex(index)
@@ -318,7 +319,7 @@ export function parseTemplate(source: string) {
             if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
-            return inputDescriptor.options.check ? ast : null
+            return ast
         }
 
         // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点
