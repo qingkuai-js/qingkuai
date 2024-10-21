@@ -105,9 +105,8 @@ export function parseTemplate(source: string) {
             if (closedIndex === -1) {
                 reduceSource(source.length)
             } else {
-                const endIndex = reduceSource(closedIndex + 3).index
                 commentNode.startTagEndPos = commentNode.loc.end = getPosByIndex(
-                    (commentNode.range[1] = endIndex)
+                    (commentNode.range[1] = reduceSource(closedIndex + 3).index)
                 )
             }
             return commentNode
