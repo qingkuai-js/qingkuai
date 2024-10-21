@@ -452,7 +452,7 @@ function findOutOfTextContentInterpolation(str: string, re: RegExp) {
             return startIndex + matched.index!
         }
 
-        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex)
+        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex + 1)
         if (endBracketIndex === -1) {
             return -1
         }

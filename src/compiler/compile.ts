@@ -28,9 +28,9 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     }
     if (options.check) {
         return {
-            ...basicRes,
             code: "",
-            mappings: ""
+            mappings: "",
+            ...basicRes
         }
     }
 
