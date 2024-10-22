@@ -67,15 +67,16 @@ export function content2script(content: string, startSourceIndex: number) {
         const endBracketIndex = findEndCurlyBracket(content, startBracketNextIndex)
         if (endBracketIndex === -1) {
             UnclosedInterpolationExpression(getLocByIndex(startBracketSourceIndex))
+            pushTransformedArr(content.slice(startBracketIndex))
+            break
         } else {
             const interpolationExp = content.slice(startBracketNextIndex, endBracketIndex)
-            if (!interpolationExp.trim()) {
+            if (((index = endBracketIndex + 1), !interpolationExp.trim())) {
                 EmptyInterpolationExpression(
                     startBracketSourceIndex,
                     endBracketIndex + 1 + startSourceIndex
                 )
             } else {
-                index = endBracketIndex + 1
                 pushTransformedArr(interpolationExp, false)
 
                 if (!isDebug) continue

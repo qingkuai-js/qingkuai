@@ -36,7 +36,8 @@ import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/compiler/locations"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
-export function parseTemplate(source: string) {
+// 第二个参数表示是否需要检查属性值的包裹方式，处理emmet语法展开时无需检查此项，可传入false
+export function parseTemplate(source: string, checkWrapChar = true) {
     let index = 0
 
     const astList: TemplateNode[] = []
@@ -162,7 +163,7 @@ export function parseTemplate(source: string) {
             }
 
             // 插值属性长度为1时表示没有指定属性名称
-            const isInterpolationAttr = /^[!@#&]/.test(attrName)
+            const isInterpolationAttr = /^[!@#&]/.test(attrName) && checkWrapChar
             if (isInterpolationAttr && attrName.length === 1) {
                 EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
             }

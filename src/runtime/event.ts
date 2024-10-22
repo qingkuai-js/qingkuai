@@ -27,7 +27,9 @@ export function eventWrapper(
         const keyRelated = keyTypes.includes(event.type)
 
         const verify = (fk: EventWrapperFlagKeys, ...pks: string[]) => {
-            if (!shouldInvokeHandler) return
+            if (!shouldInvokeHandler) {
+                return
+            }
             if (vewf(flag, fk)) {
                 // @ts-ignore
                 shouldInvokeHandler = pks.includes(code) || event[fk + "Key"]
