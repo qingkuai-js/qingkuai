@@ -20,9 +20,11 @@ import {
 import {
     InvalidEventFlag,
     InvalidEventForSlot,
+    DuplicateEventModifiers,
     InvalidComposeModifier,
     InvalidKeyRelatedModifier,
-    InvalidEventFlagForComponent
+    InvalidEventFlagForComponent,
+    ConflictNormalKeyEventModifier
 } from "../message/warn"
 import {
     parse,
@@ -48,12 +50,13 @@ import {
 } from "../message/error"
 import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
+import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
-import { couldUseRefTags, keyRelatedEventModifier, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
+import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
 // dpm means Directives Priority Map
@@ -480,10 +483,15 @@ export function analyzeAttribute(
                 let eventName = pureKey
                 let eventWrapperFlag = 0
 
+                const existringModifiers = new Set<string>()
+                const duplicateModifiers = new Set<string>()
+
                 const eventModifierArr: string[] = []
                 const eventWrapperModifierArr: string[] = []
-                const modifierStartIndex = pureKey.indexOf("|")
+                const existingKeyRelatedModifiers: string[] = []
                 const modifierArrWithIndex: [string, number, number][] = []
+
+                const modifierStartIndex = pureKey.indexOf("|")
                 const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
                 const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
                 modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
@@ -509,45 +517,93 @@ export function analyzeAttribute(
                         )
                     } else {
                         modifierArrWithIndex.forEach(item => {
-                            const [flagName, startIndex, endIndex] = item
+                            const [modifier, startIndex, endIndex] = item
                             const endSourceIndex = modifierStartSourceIndex + endIndex
                             const startSourceIndex = modifierStartSourceIndex + startIndex
-                            const currentFlagNum = (EventListenerFlag as any)[flagName]
-                            const currentWrapperFlagNum = (EventWrapperFlag as any)[flagName]
+                            const currentFlagNum = (EventListenerFlag as any)[modifier]
+                            const currentWrapperFlagNum = (EventWrapperFlag as any)[modifier]
                             if (!currentFlagNum && !currentWrapperFlagNum) {
                                 InvalidEventFlag(
-                                    flagName,
+                                    modifier,
                                     eventName,
                                     startSourceIndex,
                                     endSourceIndex
                                 )
                             }
                             if (currentFlagNum) {
-                                if (flagName === "compose" && eventName !== "@input") {
+                                // 只有input事件可以使用compose修饰符
+                                if (modifier === "compose" && eventName !== "@input") {
                                     InvalidComposeModifier(
                                         eventName.slice(1),
                                         startSourceIndex,
                                         endSourceIndex
                                     )
                                 }
-                                eventModifierArr.push(flagName)
-                                eventFlag |= currentFlagNum || 0
+
+                                // 重复出现的修饰符记录到duplicateModifiers
+                                if (existringModifiers.has(modifier)) {
+                                    duplicateModifiers.add(modifier)
+                                } else {
+                                    eventModifierArr.push(modifier)
+                                    existringModifiers.add(modifier)
+                                    eventFlag |= currentFlagNum || 0
+                                }
                             } else if (currentWrapperFlagNum) {
+                                // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
                                 if (
-                                    keyRelatedEventModifier.has(flagName) &&
+                                    keyRelatedEventModifiers.has(modifier) &&
                                     !/^key(?:up|down|press)$/.test(eventName)
                                 ) {
                                     InvalidKeyRelatedModifier(
-                                        flagName,
+                                        modifier,
                                         eventName,
                                         startSourceIndex,
                                         endSourceIndex
                                     )
+                                } else if (keyRelatedEventModifiers.has(modifier)) {
+                                    // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
+                                    // 预期：多个普通按键修饰符时，最后一个优先级最高并应用它
+                                    if (existingKeyRelatedModifiers.length > 0) {
+                                        eventWrapperFlag &= ~((1 << 9) - 1)
+                                    }
+                                    if (!existringModifiers.has(modifier)) {
+                                        existingKeyRelatedModifiers.push(modifier)
+                                    }
                                 }
-                                eventWrapperModifierArr.push(flagName)
-                                eventWrapperFlag |= currentWrapperFlagNum || 0
+
+                                // 重复出现的修饰符记录到duplicateModifiers
+                                if (existringModifiers.has(modifier)) {
+                                    duplicateModifiers.add(modifier)
+                                } else {
+                                    existringModifiers.add(modifier)
+                                    eventWrapperFlag |= currentWrapperFlagNum || 0
+                                }
                             }
                         })
+
+                        // 普通按键修饰符存在多个时发出警告
+                        if (existingKeyRelatedModifiers.length > 1) {
+                            ConflictNormalKeyEventModifier(
+                                existingKeyRelatedModifiers,
+                                modifierStartSourceIndex,
+                                key.loc.end.index
+                            )
+                        }
+
+                        // 存在重复的修饰符时发出警告
+                        if (duplicateModifiers.size > 0) {
+                            DuplicateEventModifiers(
+                                Array.from(duplicateModifiers),
+                                eventName,
+                                modifierStartSourceIndex,
+                                key.loc.end.index
+                            )
+                        }
+
+                        // 将最后一个普通按键修饰符记录到eventWrapperModifierArr
+                        if (existingKeyRelatedModifiers.length > 0) {
+                            eventWrapperModifierArr.push(lastElem(existingKeyRelatedModifiers))
+                        }
                     }
                 }
 

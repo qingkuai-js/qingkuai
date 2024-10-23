@@ -15,7 +15,7 @@ export const selfClosingTags = new Set([
     "wbr"
 ])
 
-export const keyRelatedEventModifier = new Set([
+export const keyRelatedEventModifiers = new Set([
     "enter",
     "tab",
     "del",
