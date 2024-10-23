@@ -12,7 +12,7 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * current-warn-code: 9001
+ * current-warn-code: 9010
  *
  * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
  * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning
@@ -58,9 +58,20 @@ export const InvalidEventForSlot = withLocation(9007, (eventName: string) => {
     return `Event listener(${eventName}) is invalid for slot tag, and it has been ignored.`
 })
 
+export const InvalidComposeModifier = withLocation(9009, (eventName: string) => {
+    return `The event modifier(compose) is not valid for ${eventName} even, it can only be used for input event.`
+})
+
 export const InvalidEventFlagForComponent = withLocation(9008, (flagDescription: string) => {
     return `The event parameter for component can not accept any flag(${flagDescription}), and they has been ignored.`
 })
+
+export const InvalidKeyRelatedModifier = withLocation(
+    9010,
+    (modifier: string, eventName: string) => {
+        return `The event modifier(${modifier}) is not valid for ${eventName} even, it can only be used for these events: keyup, keydown, keypress.`
+    }
+)
 
 // 为返回警告描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的警告信息发出，
 // 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置

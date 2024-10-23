@@ -20,6 +20,8 @@ import {
 import {
     InvalidEventFlag,
     InvalidEventForSlot,
+    InvalidComposeModifier,
+    InvalidKeyRelatedModifier,
     InvalidEventFlagForComponent
 } from "../message/warn"
 import {
@@ -48,7 +50,7 @@ import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
-import { couldUseRefTags, mustPassValueDirectives } from "../constants"
+import { couldUseRefTags, keyRelatedEventModifier, mustPassValueDirectives } from "../constants"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
@@ -478,63 +480,98 @@ export function analyzeAttribute(
                 let eventName = pureKey
                 let eventWrapperFlag = 0
 
-                const flagIndex = pureKey.indexOf("|")
-                const flagArr = pureKey.slice(flagIndex + 1).split("|")
-                const flagArrWithIndex: [string, number, number][] = []
-                const flagStartSourceIndex = pureKeyStartSourceIndex + flagIndex
+                const eventModifierArr: string[] = []
+                const eventWrapperModifierArr: string[] = []
+                const modifierStartIndex = pureKey.indexOf("|")
+                const modifierArrWithIndex: [string, number, number][] = []
+                const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
+                const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
+                modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
 
                 // flagArrWithIndex记录了每个flag的名称及开始结束索引
-                for (let i = 0; i < flagArr.length; i++) {
-                    const preLen = flagArr[i - 1]?.length || 0
-                    const preIndex = flagArrWithIndex[i - 1]?.[1] || 0
-                    flagArrWithIndex.push([
-                        flagArr[i].trim(),
-                        preIndex + preLen,
-                        preIndex + preLen + flagArr[i].length
+                for (let i = 0; i < modifierArr.length; i++) {
+                    const preLen = modifierArr[i - 1]?.length || 0
+                    const preIndex = modifierArrWithIndex[i - 1]?.[1] || 0
+                    modifierArrWithIndex.push([
+                        modifierArr[i],
+                        preIndex + preLen + 1,
+                        preIndex + preLen + modifierArr[i].length + 1
                     ])
                 }
 
-                if (flagIndex !== -1) {
+                if (modifierStartIndex !== -1) {
+                    eventName = eventName.slice(0, modifierStartIndex)
                     if (isComponent) {
                         InvalidEventFlagForComponent(
-                            flagArr.map(item => item.trim()).join(", "),
-                            flagStartSourceIndex,
+                            modifierArr.map(item => item.trim()).join(", "),
+                            modifierStartSourceIndex,
                             key.loc.end.index
                         )
                     } else {
-                        flagArrWithIndex.forEach(item => {
+                        modifierArrWithIndex.forEach(item => {
                             const [flagName, startIndex, endIndex] = item
+                            const endSourceIndex = modifierStartSourceIndex + endIndex
+                            const startSourceIndex = modifierStartSourceIndex + startIndex
                             const currentFlagNum = (EventListenerFlag as any)[flagName]
                             const currentWrapperFlagNum = (EventWrapperFlag as any)[flagName]
                             if (!currentFlagNum && !currentWrapperFlagNum) {
                                 InvalidEventFlag(
                                     flagName,
                                     eventName,
-                                    flagStartSourceIndex + startIndex,
-                                    flagStartSourceIndex + endIndex
+                                    startSourceIndex,
+                                    endSourceIndex
                                 )
                             }
                             if (currentFlagNum) {
+                                if (flagName === "compose" && eventName !== "@input") {
+                                    InvalidComposeModifier(
+                                        eventName.slice(1),
+                                        startSourceIndex,
+                                        endSourceIndex
+                                    )
+                                }
+                                eventModifierArr.push(flagName)
                                 eventFlag |= currentFlagNum || 0
                             } else if (currentWrapperFlagNum) {
+                                if (
+                                    keyRelatedEventModifier.has(flagName) &&
+                                    !/^key(?:up|down|press)$/.test(eventName)
+                                ) {
+                                    InvalidKeyRelatedModifier(
+                                        flagName,
+                                        eventName,
+                                        startSourceIndex,
+                                        endSourceIndex
+                                    )
+                                }
+                                eventWrapperModifierArr.push(flagName)
                                 eventWrapperFlag |= currentWrapperFlagNum || 0
                             }
                         })
                     }
-                    eventName = pureKey.slice(0, flagIndex)
                 }
 
                 if (isComponent) {
-                    const tir = transAttrValue(trimedValue, {
-                        isComponentEvent: true
-                    })
-                    attributeStu.push(concatStrAndTIR(`${stringify(eventName)}, `, tir, ""))
+                    attributeStu.push(
+                        concatStrAndTIR(
+                            stringify(eventName) + ", ",
+                            transAttrValue(trimedValue, {
+                                isComponentEvent: true
+                            }),
+                            ""
+                        )
+                    )
                 } else {
-                    const tir = transAttrValue(trimedValue, { eventWrapperFlag })
+                    const tir = transAttrValue(trimedValue, {
+                        eventWrapper: {
+                            flag: eventWrapperFlag,
+                            modifiers: eventWrapperModifierArr
+                        }
+                    })
                     if (eventFlag === 0) {
                         flagComment = "no flag"
                     } else {
-                        flagComment = flagArr.join(", ")
+                        flagComment = eventModifierArr.join(", ")
                     }
 
                     const prefix = `${stringify(eventName)}, `
@@ -732,7 +769,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                     }
                 }
             }
-            
+
             ret.push({
                 loc: attrItems[0].loc,
                 key: {

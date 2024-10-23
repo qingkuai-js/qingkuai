@@ -50,7 +50,7 @@ export function transformInterpolation(
     let ctxParam = "ctx"
     let useGetter = false
     let useContext = false
-    let useReturnKeyword = false
+    let firstMappingOffsetLeft = 0
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
@@ -63,13 +63,13 @@ export function transformInterpolation(
     const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
     const isDebug = inputDescriptor.options.debug
+    const eventWrapper = optionalParams.eventWrapper
     const usedAsSetter = optionalParams.usedAsSetter || false
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
-    const isComponentEvent = optionalParams.isComponentEvent === true
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
     const ast = (parse("_=" + expression)?.body[0] as any)?.expression.right
-    const isEvent = !isUndefined(optionalParams.eventWrapperFlag) || isComponentEvent
+    const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
 
     // 扩展转换信息数组
     const extendTransformInfo = (index: number, str: StringOrStringGetter) => {
@@ -258,34 +258,35 @@ export function transformInterpolation(
         const contextVariableDeclaration = `const ${contextVariableValues.join(", ")};`
         transformedExp = `{ ${contextVariableDeclaration} return ${transformedExp} }`
         addedPrefixLen += contextVariableDeclaration.length + 10
-        useReturnKeyword = true
+        firstMappingOffsetLeft += 7
     }
 
     // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
-        const paramStr = `$${isComponentEvent ? "param" : "event"}`
-        if (!isDebug || useReturnKeyword) {
-            transformedExp = `${paramStr} => ${transformedExp}`
+        if (!isDebug || firstMappingOffsetLeft) {
+            transformedExp = `$arg => ${transformedExp}`
         } else {
-            useReturnKeyword = true
-            addedPrefixLen += paramStr.length + 13
-            transformedExp = `${paramStr} => { return ${transformedExp} }`
+            addedPrefixLen += 17
+            firstMappingOffsetLeft += 7
+            transformedExp = `$arg => { return ${transformedExp} }`
         }
     }
 
-    // 如果使用了事件修饰符，则调用eventWrapper方法将包裹事件，并传入flag参数
-    if (optionalParams.eventWrapperFlag) {
-        const flag = optionalParams.eventWrapperFlag
+    // 如果使用了EventWrapperFlag，则调用eventWrapper方法将包裹事件，并传入flag参数
+    if (!isUndefined(eventWrapper)) {
         const eventWrapperFuncName = getAlias("eventWrapper")
+        const comment = `/* ${eventWrapper.modifiers.join(", ")} */`
+        if (!useInlineEventHandler) {
+            firstMappingOffsetLeft += eventWrapperFuncName.length + 1
+        }
         addedPrefixLen += eventWrapperFuncName.length + 1
-        transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${flag})`
+        transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${comment} ${eventWrapper.flag})`
     }
 
-    // 调试模式下默认都使用return关键字，以下是为什么要这样处理的原因：
-    // 经过大量测试发现大多浏览器对于以纯字符串计算的表达式开头的返回值，开头断点位置都有或多或少不准确的情况，
-    // 使用return关键字后可以让断点位置稳定设置在return关键字之前，这样可以保持断点位置的一致性，提高调试体验
-    //
-    // 注意：此处理程序是为了绕过浏览器Devtools的相关BUG，如果之后此问题得到修复并稳定运行一段时间，可移除此部分代码及注释
+    // 调试模式下未声明ctx变量、非内联函数且未使用eventWrapper方法时默认为转换结果添加return关键字
+    // 为什么要这样处理：经过大量测试发现大多浏览器对于以纯字符串计算的表达式开头的返回值，开头断点位置都有或多或少不准确
+    // 的情况，使用return关键字后可以让断点位置稳定设置在return关键字之前，这样可以保持断点位置的一致性，提高调试体验，
+    // 此处理程序是为了绕过浏览器Devtools的相关BUG，如果之后Devtools修复了此BUG，可考虑移除相关处理的逻辑代码及注释
     if (usedAsSetter) {
         transformedExp = `${vParam} => (${transformedExp} = ${vParam})`
     } else if (useGetter) {
@@ -294,11 +295,11 @@ export function transformInterpolation(
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
         }
-        if (!isDebug || useReturnKeyword) {
+        if (!isDebug || firstMappingOffsetLeft) {
             addedPrefixLen += paramStr.length + 4
             transformedExp = `${paramStr} => ${transformedExp}`
         } else {
-            useReturnKeyword = true
+            firstMappingOffsetLeft += 7
             addedPrefixLen += paramStr.length + 13
             transformedExp = `${paramStr} => { return ${transformedExp} }`
         }
@@ -326,11 +327,11 @@ export function transformInterpolation(
             }
         })
 
-        // 如果useReturnKeyword为true，（主要为调试模式下使用了ctx或内联方法的情况），
-        // 则需要将首个映射段修改为return关键字开始的位置，这样在调试时可以保持在生成
-        // 函数的return语句开始和结束处都可以设置断点的一致性
-        if (useReturnKeyword && mappings[0]) {
-            mappings[0][1] = addedPrefixLen - 7
+        // firstMappingOffsetLeft记录了首个映射位置需要向左偏移的量，当为转换结果
+        // 添加了return关键字时，需要将首个映射位置修改为return关键字开始的位置，
+        // 这样处理调试时可以保持在插值表达式的开始和结尾处设置断点的一致性
+        if (firstMappingOffsetLeft && mappings[0]) {
+            mappings[0][1] -= firstMappingOffsetLeft
         }
     }
 
