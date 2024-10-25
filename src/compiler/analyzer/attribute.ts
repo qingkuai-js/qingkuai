@@ -562,7 +562,10 @@ export function analyzeAttribute(
                                     )
                                 } else if (keyRelatedEventModifiers.has(modifier)) {
                                     // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
-                                    // 预期：多个普通按键修饰符时，最后一个优先级最高并应用它
+                                    // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
+                                    //
+                                    // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
+                                    // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
                                     if (existingKeyRelatedModifiers.length > 0) {
                                         eventWrapperFlag &= ~((1 << 9) - 1)
                                     }

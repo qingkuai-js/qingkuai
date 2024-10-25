@@ -166,8 +166,12 @@ export function transformInterpolation(
             }
         },
         StringLiteral(node) {
-            extendTransformInfo(node.end, stringify(node.value))
             expEliminateRanges.add([node.start, node.end])
+            extendTransformInfo(node.end, stringify(node.value))
+        },
+        TemplateElement(node) {
+            expEliminateRanges.add([node.start, node.end])
+            extendTransformInfo(node.end, `$\{${stringify(node.value.raw)}}`)
         },
 
         // 标记需要记录sourcemap信息的索引（表达式转换前的索引）转换完成后，可以通过访问
