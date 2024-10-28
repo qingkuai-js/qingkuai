@@ -9,22 +9,25 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/runtime/index.js",
-      "types": "./dist/runtime/index.d.ts"
+      "import": "./dist/esm/runtime/index.js",
+      "require": "./dist/cjs/runtime/index.cjs",
+      "types": "./dist/types/runtime/index.d.ts"
     },
     "./internal": {
-      "import": "./dist/runtime/internal.js",
-      "types": "./dist/runtime/internal.d.ts"
+      "import": "./dist/esm/runtime/internal.js",
+      "require": "./dist/cjs/runtime/internal.cjs",
+      "types": "./dist/types/runtime/internal.d.ts"
     },
     "./compiler": {
-      "import": "./dist/compiler/index.js",
-      "types": "./dist/compiler/index.d.ts"
+      "import": "./dist/esm/compiler/index.js",
+      "require": "./dist/cjs/compiler/index.cjs",
+      "types": "./dist/types/compiler/index.d.ts"
     }
   },
   "scripts": {
     "test": "vitest",
     "dev": "rollup -c -w",
-    "build": "rimraf dist && tsc && rollup -c && rimraf dist/types"
+    "build": "rimraf dist && tsc && rollup -c && rimraf dist/temp-types"
   },
   "dependencies": {
     "@babel/parser": "^7.25.3",

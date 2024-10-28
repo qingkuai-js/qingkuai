@@ -20,7 +20,7 @@ export function walk(
     const visit = visitor[node.type as keyof ASTVisitor]
     const keys = Object.keys(node) as any[]
     const r = (n: AnyNode) => {
-        if (n.loc) {
+        if (n?.loc) {
             const curParent = {
                 parent,
                 v: node,

@@ -4,37 +4,46 @@ import esbuild from "rollup-plugin-esbuild"
 
 export default rollup.defineConfig(commentLineArgs => {
     const isWatchMode = commentLineArgs.watch
+    const inputOptions = {
+        external: ["@babel/parser", "@jridgewell/sourcemap-codec"],
+        input: {
+            "runtime/index": "./src/runtime/index.ts",
+            "compiler/index": "./src/compiler/index.ts",
+            "runtime/internal": "./src/runtime/internal.ts"
+        },
+        output: {
+            dir: "dist/esm",
+            format: "es",
+            chunkFileNames: "chunks/[name].js"
+        },
+        plugins: [
+            esbuild({
+                target: "esNext"
+            })
+        ]
+    }
 
     const ret = [
-        {
-            external: ["@babel/parser", "@jridgewell/sourcemap-codec"],
-            input: {
-                "runtime/index": "./src/runtime/index.ts",
-                "compiler/index": "./src/compiler/index.ts",
-                "runtime/internal": "./src/runtime/internal.ts"
-            },
+        inputOptions,
+        Object.assign({}, inputOptions, {
             output: {
-                dir: "dist",
-                format: "es",
-                chunkFileNames: "chunks/[name].js"
-            },
-            plugins: [
-                esbuild({
-                    target: "esNext"
-                })
-            ]
-        }
+                dir: "dist/cjs",
+                format: "cjs",
+                entryFileNames: "[name].cjs",
+                chunkFileNames: "chunks/[name].cjs"
+            }
+        })
     ]
 
     if (!isWatchMode) {
         ret.push({
             input: {
-                "runtime/index": "./dist/types/runtime/index.d.ts",
-                "compiler/index": "./dist/types/compiler/index.d.ts",
-                "runtime/internal": "./dist/types/runtime/internal.d.ts"
+                "runtime/index": "./dist/temp-types/runtime/index.d.ts",
+                "compiler/index": "./dist/temp-types/compiler/index.d.ts",
+                "runtime/internal": "./dist/temp-types/runtime/internal.d.ts"
             },
             output: {
-                dir: "dist",
+                dir: "dist/types",
                 format: "es",
                 chunkFileNames: "chunks/type.d.ts"
             },

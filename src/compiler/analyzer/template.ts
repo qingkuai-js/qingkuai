@@ -29,7 +29,10 @@ export function analyzeTemplate(
 ) {
     const result: TemplateAnalysisRet[] = []
 
-    for (let i = 0; i < nodes.length && !nodes[i].isEmbedded; i++) {
+    // 嵌入语言标签节点无需分析处理
+    nodes = nodes.filter(node => !node.isEmbedded)
+
+    for (let i = 0; i < nodes.length; i++) {
         let trimedContentStartIndex = 0
         let currentContext: TemplateContext
         let { tag, content, attributes, children, isComponent } = nodes[i]

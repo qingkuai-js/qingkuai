@@ -12,9 +12,19 @@ import type { EsPattern } from "../estree/types"
 import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
 
 import {
+    stringify,
+    findOutOfSC,
+    normalStringify,
+    findEndCurlyBracket
+} from "../../util/compiler/strings"
+import {
     InvalidEventFlag,
     InvalidEventForSlot,
-    InvalidEventFlagForComponent
+    DuplicateEventModifiers,
+    InvalidComposeModifier,
+    InvalidKeyRelatedModifier,
+    InvalidEventFlagForComponent,
+    ConflictNormalKeyEventModifier
 } from "../message/warn"
 import {
     parse,
@@ -40,13 +50,13 @@ import {
 } from "../message/error"
 import { getAlias } from "./alias"
 import { inputDescriptor } from "../state"
+import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
-import { couldUseRefTags, mustPassValueDirectives } from "../constants"
-import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { findEndCurlyBracket, findOutOfSC, stringify } from "../../util/compiler/strings"
+import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
+import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
 // dpm means Directives Priority Map
@@ -473,63 +483,154 @@ export function analyzeAttribute(
                 let eventName = pureKey
                 let eventWrapperFlag = 0
 
-                const flagIndex = pureKey.indexOf("|")
-                const flagArr = pureKey.slice(flagIndex + 1).split("|")
-                const flagArrWithIndex: [string, number, number][] = []
-                const flagStartSourceIndex = pureKeyStartSourceIndex + flagIndex
+                const existringModifiers = new Set<string>()
+                const duplicateModifiers = new Set<string>()
+
+                const eventModifierArr: string[] = []
+                const eventWrapperModifierArr: string[] = []
+                const existingKeyRelatedModifiers: string[] = []
+                const modifierArrWithIndex: [string, number, number][] = []
+
+                const modifierStartIndex = pureKey.indexOf("|")
+                const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
+                const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
+                modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
 
                 // flagArrWithIndex记录了每个flag的名称及开始结束索引
-                for (let i = 0; i < flagArr.length; i++) {
-                    const preLen = flagArr[i - 1]?.length || 0
-                    const preIndex = flagArrWithIndex[i - 1]?.[1] || 0
-                    flagArrWithIndex.push([
-                        flagArr[i].trim(),
-                        preIndex + preLen,
-                        preIndex + preLen + flagArr[i].length
+                for (let i = 0; i < modifierArr.length; i++) {
+                    const preLen = modifierArr[i - 1]?.length || 0
+                    const preIndex = modifierArrWithIndex[i - 1]?.[1] || 0
+                    modifierArrWithIndex.push([
+                        modifierArr[i],
+                        preIndex + preLen + 1,
+                        preIndex + preLen + modifierArr[i].length + 1
                     ])
                 }
 
-                if (flagIndex !== -1) {
+                if (modifierStartIndex !== -1) {
+                    eventName = eventName.slice(0, modifierStartIndex)
                     if (isComponent) {
                         InvalidEventFlagForComponent(
-                            flagArr.map(item => item.trim()).join(", "),
-                            flagStartSourceIndex,
+                            modifierArr.map(item => item.trim()).join(", "),
+                            modifierStartSourceIndex,
                             key.loc.end.index
                         )
                     } else {
-                        flagArrWithIndex.forEach(item => {
-                            const [flagName, startIndex, endIndex] = item
-                            const currentFlagNum = (EventListenerFlag as any)[flagName]
-                            const currentWrapperFlagNum = (EventWrapperFlag as any)[flagName]
+                        modifierArrWithIndex.forEach(item => {
+                            const [modifier, startIndex, endIndex] = item
+                            const endSourceIndex = modifierStartSourceIndex + endIndex
+                            const startSourceIndex = modifierStartSourceIndex + startIndex
+                            const currentFlagNum = (EventListenerFlag as any)[modifier]
+                            const currentWrapperFlagNum = (EventWrapperFlag as any)[modifier]
                             if (!currentFlagNum && !currentWrapperFlagNum) {
                                 InvalidEventFlag(
-                                    flagName,
+                                    modifier,
                                     eventName,
-                                    flagStartSourceIndex + startIndex,
-                                    flagStartSourceIndex + endIndex
+                                    startSourceIndex,
+                                    endSourceIndex
                                 )
                             }
                             if (currentFlagNum) {
-                                eventFlag |= currentFlagNum || 0
+                                // 只有input事件可以使用compose修饰符
+                                if (modifier === "compose" && eventName !== "@input") {
+                                    InvalidComposeModifier(
+                                        eventName.slice(1),
+                                        startSourceIndex,
+                                        endSourceIndex
+                                    )
+                                }
+
+                                // 重复出现的修饰符记录到duplicateModifiers
+                                if (existringModifiers.has(modifier)) {
+                                    duplicateModifiers.add(modifier)
+                                } else {
+                                    eventModifierArr.push(modifier)
+                                    existringModifiers.add(modifier)
+                                    eventFlag |= currentFlagNum || 0
+                                }
                             } else if (currentWrapperFlagNum) {
-                                eventWrapperFlag |= currentWrapperFlagNum || 0
+                                // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
+                                if (
+                                    keyRelatedEventModifiers.has(modifier) &&
+                                    !/^key(?:up|down|press)$/.test(eventName)
+                                ) {
+                                    InvalidKeyRelatedModifier(
+                                        modifier,
+                                        eventName,
+                                        startSourceIndex,
+                                        endSourceIndex
+                                    )
+                                } else if (keyRelatedEventModifiers.has(modifier)) {
+                                    // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
+                                    // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
+                                    //
+                                    // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
+                                    // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
+                                    if (existingKeyRelatedModifiers.length > 0) {
+                                        eventWrapperFlag &= ~((1 << 9) - 1)
+                                    }
+                                    if (!existringModifiers.has(modifier)) {
+                                        existingKeyRelatedModifiers.push(modifier)
+                                    }
+                                }
+
+                                // 重复出现的修饰符记录到duplicateModifiers
+                                if (existringModifiers.has(modifier)) {
+                                    duplicateModifiers.add(modifier)
+                                } else {
+                                    existringModifiers.add(modifier)
+                                    eventWrapperFlag |= currentWrapperFlagNum || 0
+                                }
                             }
                         })
+
+                        // 普通按键修饰符存在多个时发出警告
+                        if (existingKeyRelatedModifiers.length > 1) {
+                            ConflictNormalKeyEventModifier(
+                                existingKeyRelatedModifiers,
+                                modifierStartSourceIndex,
+                                key.loc.end.index
+                            )
+                        }
+
+                        // 存在重复的修饰符时发出警告
+                        if (duplicateModifiers.size > 0) {
+                            DuplicateEventModifiers(
+                                Array.from(duplicateModifiers),
+                                eventName,
+                                modifierStartSourceIndex,
+                                key.loc.end.index
+                            )
+                        }
+
+                        // 将最后一个普通按键修饰符记录到eventWrapperModifierArr
+                        if (existingKeyRelatedModifiers.length > 0) {
+                            eventWrapperModifierArr.push(lastElem(existingKeyRelatedModifiers))
+                        }
                     }
-                    eventName = pureKey.slice(0, flagIndex)
                 }
 
                 if (isComponent) {
-                    const tir = transAttrValue(trimedValue, {
-                        isComponentEvent: true
-                    })
-                    attributeStu.push(concatStrAndTIR(`${stringify(eventName)}, `, tir, ""))
+                    attributeStu.push(
+                        concatStrAndTIR(
+                            stringify(eventName) + ", ",
+                            transAttrValue(trimedValue, {
+                                isComponentEvent: true
+                            }),
+                            ""
+                        )
+                    )
                 } else {
-                    const tir = transAttrValue(trimedValue, { eventWrapperFlag })
+                    const tir = transAttrValue(trimedValue, {
+                        eventWrapper: {
+                            flag: eventWrapperFlag,
+                            modifiers: eventWrapperModifierArr
+                        }
+                    })
                     if (eventFlag === 0) {
                         flagComment = "no flag"
                     } else {
-                        flagComment = flagArr.join(", ")
+                        flagComment = eventModifierArr.join(", ")
                     }
 
                     const prefix = `${stringify(eventName)}, `
@@ -697,8 +798,11 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
         if (isComponentOrSlot || attrKey !== "!class") {
             ret.push(attrItems[0])
         } else {
-            const rawValues = attrItems.map(item => {
-                return stringify(item.value.raw)
+            const rawValues = attrItems.map((item, index) => {
+                if (index !== normalClassIndex) {
+                    return item.value.raw
+                }
+                return normalStringify(item.value.raw)
             })
             const transformedValue = rawValues.join(", ")
 
@@ -714,7 +818,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 let dynamicStartIndex = 1
                 if (dynamicClassIndex === 1) {
                     // 这里的+2为拼接是添加的 逗号空格 的固定长度
-                    dynamicStartIndex += attrItems[0].value.raw.length + 2
+                    dynamicStartIndex += rawValues[0].length + 2
                 }
 
                 if (dynamicClassIndex !== -1) {

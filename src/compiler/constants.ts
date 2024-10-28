@@ -15,6 +15,19 @@ export const selfClosingTags = new Set([
     "wbr"
 ])
 
+export const keyRelatedEventModifiers = new Set([
+    "enter",
+    "tab",
+    "del",
+    "esc",
+    "up",
+    "down",
+    "left",
+    "right",
+    "space",
+    "shift"
+])
+
 export const fullRuntimeItems = new Set([
     "QingKuaiComponent",
     "noop",

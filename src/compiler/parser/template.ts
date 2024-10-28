@@ -36,7 +36,8 @@ import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
 import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/compiler/locations"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
-export function parseTemplate(source: string) {
+// 第二个参数表示是否需要检查属性值的包裹方式，处理emmet语法展开时无需检查此项，可传入false
+export function parseTemplate(source: string, checkWrapChar = true) {
     let index = 0
 
     const astList: TemplateNode[] = []
@@ -105,9 +106,8 @@ export function parseTemplate(source: string) {
             if (closedIndex === -1) {
                 reduceSource(source.length)
             } else {
-                const endIndex = reduceSource(closedIndex + 3).index
                 commentNode.startTagEndPos = commentNode.loc.end = getPosByIndex(
-                    (commentNode.range[1] = endIndex)
+                    (commentNode.range[1] = reduceSource(closedIndex + 3).index)
                 )
             }
             return commentNode
@@ -163,7 +163,7 @@ export function parseTemplate(source: string) {
             }
 
             // 插值属性长度为1时表示没有指定属性名称
-            const isInterpolationAttr = /^[!@#&]/.test(attrName)
+            const isInterpolationAttr = /^[!@#&]/.test(attrName) && checkWrapChar
             if (isInterpolationAttr && attrName.length === 1) {
                 EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
             }
@@ -267,12 +267,13 @@ export function parseTemplate(source: string) {
             }
 
             // 如果没有匹配到结束标签，整个source都被认为是当前标签的内容
+            const endtagStartIndex = endTagIndex + index
             const content = source.slice(0, neverOver ? Infinity : endTagIndex)
             reduceSource(neverOver ? source.length : endTagIndex + tag.length + 2)
 
             // 检查结束标签是否闭合，并记录当前ast节点的相关位置信息
             if (!neverOver) {
-                ast.endTagStartPos = getPosByIndex(endTagIndex)
+                ast.endTagStartPos = getPosByIndex(endtagStartIndex)
                 if (findCloseCharOfEndTag()) {
                     ast.range[1] = index
                     ast.loc.end = getPosByIndex(index)
@@ -431,7 +432,7 @@ function initTemplateNode(
         endTagStartPos: newASTPosition(),
         attributes: options.attributes || [],
         loc: options.loc || newASTLocation(),
-        children: options.children || [],
+        children: options.children || []
     }
 }
 
@@ -452,7 +453,7 @@ function findOutOfTextContentInterpolation(str: string, re: RegExp) {
             return startIndex + matched.index!
         }
 
-        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex)
+        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex + 1)
         if (endBracketIndex === -1) {
             return -1
         }

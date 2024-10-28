@@ -173,10 +173,13 @@ export interface AttributeAnalysisRet {
 }
 
 export interface TransformInterpolationOptionalParam {
+    eventWrapper?: {
+        flag: number
+        modifiers: string[]
+    }
     positionMap?: number[]
     usedAsSetter?: boolean
     isKeyDirective?: boolean
-    eventWrapperFlag?: number
     isComponentEvent?: boolean
 }
 

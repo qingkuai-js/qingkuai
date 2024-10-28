@@ -38,8 +38,9 @@ export function content2script(content: string, startSourceIndex: number) {
         } else {
             if (shouldGenerateSourcemap) {
                 for (let i = 0; i <= str.length; i++) {
+                    const delta = Number(isDebug && positionMap.length !== 0)
                     const charSourceIndex = positions[sourceIndex + i + 1].index
-                    positionMap[+isDebug + transformedStrLen + i] = charSourceIndex
+                    positionMap[delta + transformedStrLen + i] = charSourceIndex
                 }
                 transformedStrLen += str.length + (isDebug ? 5 : 2)
                 contentSourceIndex += 2
@@ -67,15 +68,16 @@ export function content2script(content: string, startSourceIndex: number) {
         const endBracketIndex = findEndCurlyBracket(content, startBracketNextIndex)
         if (endBracketIndex === -1) {
             UnclosedInterpolationExpression(getLocByIndex(startBracketSourceIndex))
+            pushTransformedArr(content.slice(startBracketIndex))
+            break
         } else {
             const interpolationExp = content.slice(startBracketNextIndex, endBracketIndex)
-            if (!interpolationExp.trim()) {
+            if (((index = endBracketIndex + 1), !interpolationExp.trim())) {
                 EmptyInterpolationExpression(
                     startBracketSourceIndex,
                     endBracketIndex + 1 + startSourceIndex
                 )
             } else {
-                index = endBracketIndex + 1
                 pushTransformedArr(interpolationExp, false)
 
                 if (!isDebug) continue
@@ -98,7 +100,7 @@ export function content2script(content: string, startSourceIndex: number) {
         }
     }
 
-    // 调试模式下，将positionMap[5]放到首位，保持首个断点设置位在content开始位置
+    // 调试模式下，将第一个存在的映射位置元素放在positionMap首位，保持首个断点设置位在content开始位置的一致性
     if (isDebug && isNumber(positionMap[5])) {
         positionMap[0] = positionMap[5]
         delete positionMap[5]

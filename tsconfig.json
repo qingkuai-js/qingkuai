@@ -3,7 +3,7 @@
     "strict": true,
     "target": "ESNext",
     "module": "ESNext",
-    "outDir": "dist/types",
+    "outDir": "dist/temp-types",
     "declaration": true,
     "skipLibCheck": true,
     "esModuleInterop": true,

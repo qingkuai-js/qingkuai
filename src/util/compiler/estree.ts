@@ -14,8 +14,8 @@ import type { ReplacementItem, ReplacementStatus } from "../../compiler/types"
 
 import * as babel from "@babel/parser"
 import { isArray, isUndefined } from "../../util/shared/assert"
-import { replacementInfo, inputDescriptor, messages } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
+import { replacementInfo, inputDescriptor, messages } from "../../compiler/state"
 import { getSourceIndexByScriptIndex, getSourcePosByScriptPos } from "./locations"
 
 // js或ts解析为抽象语法树
@@ -29,9 +29,11 @@ export function parse(source: string) {
             e.pos = getSourceIndexByScriptIndex(e.pos)
         }
         // 修改报错信息中的位置描述
-        const { line: newLine, column: newColumn } = e.loc
-        const positionDescription = `(${newLine}:${newColumn})`
-        e.message = e.message.replace(/\(\d+:\d+\)$/, positionDescription)
+        if (!isUndefined(e.loc)) {
+            const { line: newLine, column: newColumn } = e.loc
+            const positionDescription = `(${newLine}:${newColumn})`
+            e.message = e.message.replace(/\(\d+:\d+\)$/, positionDescription)
+        }
         return e
     }
 
