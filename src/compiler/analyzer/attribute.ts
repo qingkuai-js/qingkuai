@@ -36,6 +36,7 @@ import {
     InvalidRefAttr,
     SlotAttrIsEmpty,
     UnkonwDirective,
+    BadValueForRefAttr,
     CouldNotPassRefValue,
     DirectivesCantCoexist,
     MissingStartDirective,
@@ -44,18 +45,20 @@ import {
     NameAttrForSlotIsEmpty,
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
+    NoBaseValueForForDirective,
     NoForDirectiveCtxNameSpeciffied,
     NoValueForRequiredValueAttribute,
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
-import { inputDescriptor } from "../state"
+import { is } from "../estree/assert"
 import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
+import { inputDescriptor, interCodeSnippets } from "../state"
+import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { checkIdentifierName, transformInterpolation } from "../transformer/interpolation"
+import { checkIdentifierName, confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
@@ -76,13 +79,14 @@ export function analyzeAttribute(
     parentIsComponent: boolean,
     attrs: TemplateAttribute[],
     context: TemplateContext,
-    continueByDirective: string | undefined,
-    awaitContextStartIndex: number | undefined
+    continueByDirective?: string,
+    awaitExpression?: [number, string]
 ): AttributeAnalysisRet {
     let pureKey: string
     let insertNullNum = 0
     let withAwait = false
     let createTemplate = false
+    let createdContextCount = 0
     let forModuleFuncIndex = -1
     let continueRE: RegExp | null = null
     let shouldContinueDirective: string | undefined
@@ -100,11 +104,8 @@ export function analyzeAttribute(
 
     // 修改continueRE变量，这里需要检测此变量是否已经被赋值，若已被赋值则不能覆盖原来的值，避免
     // 低优先级的指令高优先级指令，例如await指令的后续指令正则表达式可能会被if/elif指令覆盖
-    const setContinueRE = (v: RegExp | null) => {
-        if (isNull(continueRE)) {
-            continueRE = v
-            shouldContinueDirective = pureKey
-        }
+    const setContinueInfo = (v: RegExp | null) => {
+        shouldContinueDirective = isNull((continueRE = v)) ? undefined : pureKey
     }
 
     preProcessedAttr.forEach(attr => {
@@ -126,11 +127,18 @@ export function analyzeAttribute(
             startSourceIndex: number,
             option?: TransformInterpolationOptionalParam
         ) => {
+            if (inputDescriptor.options.check) {
+                return recordInterExp(startSourceIndex, exp), ""
+            }
             return transformInterpolation(exp, startSourceIndex, context, "directive", option)
         }
 
         // 转换标签属性值
         const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
+            if (inputDescriptor.options.check) {
+                return recordInterExp(trimedValueStartSourceIndex, exp), ""
+            }
+
             if (!option) {
                 option = {
                     positionMap: attr.positionMap
@@ -138,6 +146,7 @@ export function analyzeAttribute(
             } else {
                 option.positionMap = attr.positionMap
             }
+
             // prettier-ignore
             return transformInterpolation(exp, trimedValueStartSourceIndex, context, "attribute", option)
         }
@@ -146,21 +155,39 @@ export function analyzeAttribute(
         const recordAliasIdentifiers = () => {
             if (isEmptyString(trimedValue)) {
                 context.count++
-            } else if (!DestructuringContextRE.test(trimedValue)) {
-                checkIdentifierName(
-                    trimedValue,
-                    getLocByIndex(
-                        trimedValueStartSourceIndex,
-                        trimedValueStartSourceIndex + trimedValue.length
-                    )
-                )
-                extendContext(context, trimedValue)
             } else {
-                const tip = makeDestructuringPatternSignleLine(
-                    trimedValue,
-                    trimedValueStartSourceIndex
-                )
-                recordDestructuringIdentifiers(tip, aliasArgs, context, false, context.count++)
+                if (inputDescriptor.options.check) {
+                    interCodeSnippets.push([-1, "{"]), createdContextCount++
+                }
+                if (!DestructuringContextRE.test(trimedValue)) {
+                    if (inputDescriptor.options.check) {
+                        interCodeSnippets.push(
+                            [-1, "const "],
+                            [trimedValueStartSourceIndex, trimedValue]
+                        )
+                    } else {
+                        checkIdentifierName(
+                            trimedValue,
+                            getLocByIndex(
+                                trimedValueStartSourceIndex,
+                                trimedValueStartSourceIndex + trimedValue.length
+                            )
+                        )
+                        extendContext(context, trimedValue)
+                    }
+                } else {
+                    const tip = makeDestructuringPatternSignleLine(
+                        trimedValue,
+                        trimedValueStartSourceIndex
+                    )
+                    recordDestructuringIdentifiers(tip, aliasArgs, context, false, context.count++)
+                }
+                if (inputDescriptor.options.check) {
+                    if (pureKey === "slot") {
+                    } else {
+                        interCodeSnippets.push([-2, `=QingKuai.SatisfyResolve();`])
+                    }
+                }
             }
         }
 
@@ -174,26 +201,25 @@ export function analyzeAttribute(
         // 初始化时要异步设置初始值）所以这里将select元素的value属性使用withReference进行处理
         // 但这种情况下最后一个参数（setter)会被传入nil，以打断选项改变时修改响应式值的渠道
         if (isRef || (tag === "select" && pureKey === "value")) {
-            const tiGetter = transAttrValue(trimedValue)
-            const tiSetter = transAttrValue(trimedValue, { usedAsSetter: true })
-            let setter = isString(tiSetter) ? tiSetter : tiSetter.transformedExp
-            if (isComponent) {
-                // slot是特殊属性，不会被当做组件props，引用传递时要报错
-                if (pureKey === "slot") {
-                    InvalidSlotAttr("&", key.loc)
-                } else {
-                    const postfix = `, ${setter}]`
-                    const prefix = `${stringify(pureKey)}, [`
-                    eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
+            let needSetter = true
+            let eventName = tag === "textarea" ? "input" : "change"
+
+            // 检查模式下不会调用transformInterpolation方法，这里需要检查一下引用传递的值是否合法
+            if (inputDescriptor.options.check) {
+                const ast = (parse(trimedValue)?.body[0] as any)?.expression
+                if (ast && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+                    BadValueForRefAttr(value.raw, value.loc)
                 }
-            } else {
+            }
+
+            // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
+            // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
+            // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
+            if (!isComponent) {
                 let tagForErr = tag
-                let needSetter = true
                 let attrIsNotAllowed = false
                 let attrsForErr: string[] = []
-                let eventName = tag === "textarea" ? "input" : "change"
 
-                // 只有couldUseRefTags中的普通标签才能使用引用属性
                 if (!couldUseRefTags.has(tag)) {
                     CouldNotPassRefValue(pureKey, tag, attr.loc)
                 }
@@ -203,7 +229,7 @@ export function analyzeAttribute(
                 // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
                 if (tag === "input") {
                     const [typeAttr] = preProcessedAttr.filter(attr => {
-                        return attr.key.raw.endsWith("type")
+                        return /^[!@#&]?type$/.test(attr.key.raw)
                     })
                     if (typeAttr?.key.raw.startsWith("!")) {
                         RefuseReferenceAttribute("input", "type", attr.loc)
@@ -235,143 +261,231 @@ export function analyzeAttribute(
 
                 // 检查引用传递的属性是否合法，允许的属性：input/textarea -> value；
                 // radio/checkbox -> checked/group；select -> value
-                //
                 if (attrIsNotAllowed) {
                     InvalidRefAttr(tagForErr, attrsForErr, pureKey, attr.loc)
                 }
+            }
 
-                // select的value属性（非引用）时setter为null
-                // radio/checkbox(&group)或select[multiple](&value)时无setter
-                if (!needSetter) {
-                    setter = ""
-                } else if (!isRef) {
-                    setter = getAlias("nil")
+            // 非检查模式时正常编译，检查模式下记录中间代码片段
+            if (!inputDescriptor.options.check) {
+                const tiGetter = transAttrValue(trimedValue)
+                const tiSetter = transAttrValue(trimedValue, { usedAsSetter: true })
+                let setter = isString(tiSetter) ? tiSetter : tiSetter.transformedExp
+                if (isComponent) {
+                    // slot是特殊属性，不会被当做组件props，引用传递时要报错
+                    if (pureKey === "slot") {
+                        InvalidSlotAttr("&", key.loc)
+                    } else {
+                        const postfix = `, ${setter}]`
+                        const prefix = `${stringify(pureKey)}, [`
+                        eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
+                    }
+                } else {
+                    // select的value属性（非引用）时setter为null
+                    // radio/checkbox(&group)或select[multiple](&value)时无setter
+                    if (!needSetter) {
+                        setter = ""
+                    } else if (!isRef) {
+                        setter = getAlias("nil")
+                    }
+
+                    if (setter) {
+                        setter = ", " + setter
+                    }
+
+                    const spk = stringify(pureKey)
+                    const sev = stringify(eventName)
+                    const funcName = getAlias("withReference")
+                    const prefix = `...${funcName}(${sev}, ${spk}, `
+                    eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
+                }
+            } else {
+                if (!isComponent) {
+                    if (pureKey === "checked") {
+                        interCodeSnippets.push(
+                            [-1, `QingKuai.SatisfyBoolean(`],
+                            [trimedValueStartSourceIndex, trimedValue],
+                            [-1, ");"]
+                        )
+                    } else if (pureKey === "group") {
+                        const valueAttr = preProcessedAttr.filter(attr => {
+                            return /^[!@#&]?value/.test(attr.key.raw)
+                        })?.[0]
+                        interCodeSnippets.push(
+                            [-1, `QingKuai.SatisfyRefGroup(`],
+                            [trimedValueStartSourceIndex, trimedValue],
+                            [-2, ","]
+                        )
+
+                        if (/[!@#&]/.test(valueAttr.key.raw[0])) {
+                            interCodeSnippets.push([
+                                valueAttr.value.loc.start.index,
+                                valueAttr.value.raw
+                            ])
+                            interCodeSnippets.push([-2, ");"])
+                        } else {
+                            interCodeSnippets.push([-1, "`"])
+                            interCodeSnippets.push([
+                                valueAttr.value.loc.start.index,
+                                valueAttr.value.raw
+                            ])
+                            interCodeSnippets.push([-2, "`);"])
+                        }
+                    }
                 }
 
-                if (setter) {
-                    setter = ", " + setter
+                // 非普通标签上的group引用属性时，检查给定值是否是左值（可赋值的目标）
+                if (isComponent || pureKey !== "group") {
+                    interCodeSnippets.push(
+                        [trimedValueStartSourceIndex, trimedValue],
+                        [-2, `=0${inputDescriptor.script.isTS ? " as any" : ""};`]
+                    )
                 }
-
-                const spk = stringify(pureKey)
-                const sev = stringify(eventName)
-                const funcName = getAlias("withReference")
-                const prefix = `...${funcName}(${sev}, ${spk}, `
-                eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
             }
         } else if (isDirective) {
             switch (pureKey) {
                 case "for":
-                    const preContextCount = context.count
-                    const inKeywordIndex = findOutOfSC(trimedValue, / in /)
+                    const inKeywordIndex = findOutOfSC(trimedValue, / in(?: |$)/)
                     const hasContextIdentifier = inKeywordIndex !== -1
                     const contextStr = trimedValue.slice(0, inKeywordIndex).trim()
                     const baseStartIndex = hasContextIdentifier ? inKeywordIndex + 4 : 0
                     const forBaseValue = trimedValue.slice(baseStartIndex)
                     const basePreSpaceCount = /\s*/.exec(forBaseValue)![0].length
 
-                    // 转换for指令依赖的表达式部分（不含item及index标识符部分）
-                    const transformedForBaseValue = transDirective(
-                        trimedValue.slice(baseStartIndex).trim(),
-                        trimedValueStartSourceIndex + baseStartIndex + basePreSpaceCount
-                    )
-
-                    // 将循环基于的表达式部分映射向右偏移（in关键字及前面的部分占用的位置）
-                    if (!isString(transformedForBaseValue) && hasContextIdentifier) {
-                        transformedForBaseValue.mappings.forEach(item => {})
+                    if (!forBaseValue) {
+                        NoBaseValueForForDirective(
+                            trimedValueStartSourceIndex,
+                            trimedValueStartSourceIndex + trimedValue.length
+                        )
+                        break
                     }
+                    createdContextCount += Number(hasContextIdentifier)
 
-                    // 处理for指令上下文绑定
-                    if (hasContextIdentifier) {
-                        let indexPart = ""
-                        let itemPart: string
-                        let commaFind: FixedArray<number, 2>
+                    if (!inputDescriptor.options.check) {
+                        const preContextCount = context.count
 
-                        // 截取item部分的pattern，并找到commaFind（它是findOutOfSC的返回值，它是一个包含两个
-                        // 数字的数组，这两个数字分别代表：逗号所在的索引，匹配字符的长度（逗号及前后空白字符的））
-                        if (!DestructuringContextRE.test(contextStr)) {
-                            const itemPartEndIndex = findOutOfSC(contextStr, /$|[,\s]/)
-                            commaFind = findOutOfSC(contextStr, /\s*,\s*/, itemPartEndIndex)
-                            itemPart = contextStr.slice(0, itemPartEndIndex)
-                        } else {
-                            const startBracket = contextStr[0] as StartBracket
-                            const endBracketIndex = findEndCurlyBracket(contextStr, 1, startBracket)
-                            commaFind = findOutOfSC(contextStr, /\s*,\s*/, endBracketIndex + 1)
-                            itemPart = contextStr.slice(0, endBracketIndex + 1)
-                        }
+                        // 转换for指令依赖的表达式部分（不含item及index标识符部分）
+                        const transformedForBaseValue = transDirective(
+                            trimedValue.slice(baseStartIndex).trim(),
+                            trimedValueStartSourceIndex + baseStartIndex + basePreSpaceCount
+                        )
 
-                        // 如果存在逗号时，检查item或index部分的名称是否未指定
-                        const [commaStartIndex, commaMatchedLen] = commaFind
-                        const commaEndIndex = commaStartIndex + commaMatchedLen
-                        const commastartSourceIndex = trimedValueStartSourceIndex + commaStartIndex
-                        if (commaStartIndex !== -1) {
-                            indexPart = contextStr.slice(commaEndIndex)
-                            if (!itemPart || !indexPart) {
-                                NoForDirectiveCtxNameSpeciffied(
-                                    itemPart ? "index" : "item",
-                                    // +!itemPart 与 item? 0: 1 等效，其他地方也有相似处理
-                                    getLocByIndex(commastartSourceIndex + +!itemPart)
+                        // 处理for指令上下文绑定
+                        if (hasContextIdentifier) {
+                            let indexPart = ""
+                            let itemPart: string
+                            let commaFind: FixedArray<number, 2>
+
+                            // 截取item部分的pattern，并找到commaFind（它是findOutOfSC的返回值，它是一个包含两个
+                            // 数字的数组，这两个数字分别代表：逗号所在的索引，匹配字符的长度（逗号及前后空白字符的））
+                            if (!DestructuringContextRE.test(contextStr)) {
+                                const itemPartEndIndex = findOutOfSC(contextStr, /$|[,\s]/)
+                                commaFind = findOutOfSC(contextStr, /\s*,\s*/, itemPartEndIndex)
+                                itemPart = contextStr.slice(0, itemPartEndIndex)
+                            } else {
+                                const startBracket = contextStr[0] as StartBracket
+                                const endBracketIndex = findEndCurlyBracket(
+                                    contextStr,
+                                    1,
+                                    startBracket
                                 )
+                                commaFind = findOutOfSC(contextStr, /\s*,\s*/, endBracketIndex + 1)
+                                itemPart = contextStr.slice(0, endBracketIndex + 1)
+                            }
+
+                            // 如果存在逗号时，检查item或index部分的名称是否未指定
+                            const [commaStartIndex, commaMatchedLen] = commaFind
+                            const commaEndIndex = commaStartIndex + commaMatchedLen
+                            const commastartSourceIndex =
+                                trimedValueStartSourceIndex + commaStartIndex
+                            if (commaStartIndex !== -1) {
+                                indexPart = contextStr.slice(commaEndIndex)
+                                if (!itemPart || !indexPart) {
+                                    NoForDirectiveCtxNameSpeciffied(
+                                        itemPart ? "index" : "item",
+                                        // +!itemPart 与 item? 0: 1 等效，其他地方也有相似处理
+                                        getLocByIndex(commastartSourceIndex + +!itemPart)
+                                    )
+                                }
+                            }
+
+                            // 即使index部分不存在也占用context中一个标识符空间
+                            if (!indexPart) {
+                                context.count++
+                            } else if (DestructuringContextRE.test(indexPart)) {
+                                const tip = makeDestructuringPatternSignleLine(
+                                    indexPart,
+                                    trimedValueStartSourceIndex + commaEndIndex
+                                )
+                                recordDestructuringIdentifiers(
+                                    tip,
+                                    aliasArgs,
+                                    context,
+                                    true,
+                                    preContextCount
+                                )
+                            } else {
+                                checkIdentifierName(
+                                    indexPart,
+                                    getLocByIndex(
+                                        commastartSourceIndex + commaMatchedLen,
+                                        trimedValueStartSourceIndex + contextStr.length
+                                    )
+                                )
+                                extendContext(context, indexPart, "")
+                            }
+
+                            // 即使item部分不存在也占用context中一个标识符空间
+                            if (!itemPart) {
+                                context.count++
+                            } else if (DestructuringContextRE.test(itemPart)) {
+                                const tip = makeDestructuringPatternSignleLine(
+                                    itemPart,
+                                    trimedValueStartSourceIndex
+                                )
+                                recordDestructuringIdentifiers(
+                                    tip,
+                                    aliasArgs,
+                                    context,
+                                    true,
+                                    preContextCount + 1
+                                )
+                            } else {
+                                checkIdentifierName(
+                                    itemPart,
+                                    getLocByIndex(
+                                        trimedValueStartSourceIndex,
+                                        trimedValueStartSourceIndex + itemPart.length
+                                    )
+                                )
+                                extendContext(context, itemPart, "")
                             }
                         }
 
-                        // 即使index部分不存在也占用context中一个标识符空间
-                        if (!indexPart) {
-                            context.count++
-                        } else if (DestructuringContextRE.test(indexPart)) {
-                            const tip = makeDestructuringPatternSignleLine(
-                                indexPart,
-                                trimedValueStartSourceIndex + commaEndIndex
-                            )
-                            recordDestructuringIdentifiers(
-                                tip,
-                                aliasArgs,
-                                context,
-                                true,
-                                preContextCount
-                            )
-                        } else {
-                            checkIdentifierName(
-                                indexPart,
-                                getLocByIndex(
-                                    commastartSourceIndex + commaMatchedLen,
-                                    trimedValueStartSourceIndex + contextStr.length
-                                )
-                            )
-                            extendContext(context, indexPart, "")
-                        }
+                        // 记录forModule调用结构在directiveStu中的索引
+                        forModuleFuncIndex = directiveStu.length
 
-                        // 即使item部分不存在也占用context中一个标识符空间
-                        if (!itemPart) {
-                            context.count++
-                        } else if (DestructuringContextRE.test(itemPart)) {
-                            const tip = makeDestructuringPatternSignleLine(
-                                itemPart,
-                                trimedValueStartSourceIndex
-                            )
-                            recordDestructuringIdentifiers(
-                                tip,
-                                aliasArgs,
-                                context,
-                                true,
-                                preContextCount + 1
+                        // 记录for指令结构（forModule方法调用结构，transformTemplate中使用）
+                        directiveStu.push([getAlias("forModule"), transformedForBaseValue])
+                        //
+                    } else {
+                        if (!hasContextIdentifier) {
+                            interCodeSnippets.push(
+                                [-1, "QingKuai.GetKVPair("],
+                                [trimedValueStartSourceIndex, trimedValue],
+                                [-2, ");"]
                             )
                         } else {
-                            checkIdentifierName(
-                                itemPart,
-                                getLocByIndex(
-                                    trimedValueStartSourceIndex,
-                                    trimedValueStartSourceIndex + itemPart.length
-                                )
+                            interCodeSnippets.push(
+                                [-1, "{const ["],
+                                [trimedValueStartSourceIndex, contextStr],
+                                [-2, "]=QingKuai.GetKVPair("],
+                                [trimedValueStartSourceIndex + baseStartIndex, forBaseValue],
+                                [-2, ");"]
                             )
-                            extendContext(context, itemPart, "")
                         }
                     }
 
-                    // 记录forModule调用结构在directiveStu中的索引
-                    forModuleFuncIndex = directiveStu.length
-
-                    // 记录for指令结构（forModule方法调用结构，transformTemplate中使用）
-                    directiveStu.push([getAlias("forModule"), transformedForBaseValue])
                     break
 
                 case "key":
@@ -382,6 +496,7 @@ export function analyzeAttribute(
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
                         directiveStu[forModuleFuncIndex].push(transRet)
                     }
+
                     break
 
                 case "if":
@@ -402,6 +517,7 @@ export function analyzeAttribute(
                     // 所以这里通过将传递给analyzeTemplate方法，并analyzeTemplate方法中组合ifModule调用结构
                     if (pureKey === "else") {
                         continueArg = "1"
+                        setContinueInfo(null)
                     } else {
                         const transRet = transDirective(rv, trimedValueStartSourceIndex)
                         if (pureKey === "elif") {
@@ -410,18 +526,28 @@ export function analyzeAttribute(
                             createTemplate = true
                             directiveStu.push([getAlias("ifModule"), transRet])
                         }
-                        setContinueRE(/^#(?:elif|else)$/)
+                        setContinueInfo(/^#(?:elif|else)$/)
                     }
+
                     break
 
                 case "then":
                 case "catch":
                 case "await":
                     if (pureKey === "await") {
-                        const transRet = transDirective(rv, trimedValueStartSourceIndex)
-                        directiveStu.push([getAlias("awaitModule"), transRet])
+                        if (inputDescriptor.options.check) {
+                            interCodeSnippets.push(
+                                [-1, "QingKuai.SatisfyPromise("],
+                                [trimedValueStartSourceIndex, trimedValue],
+                                [-2, ");"]
+                            )
+                            awaitExpression = [trimedValueStartSourceIndex, trimedValue]
+                        } else {
+                            const transRet = transDirective(rv, trimedValueStartSourceIndex)
+                            directiveStu.push([getAlias("awaitModule"), transRet])
+                        }
                         withAwait = createTemplate = true
-                        setContinueRE(/^#(?:then|catch)$/)
+                        setContinueInfo(/^#(?:then|catch)$/)
                     } else {
                         // 使用了then指令的节点必须同时使用了await指令或前一个兄弟节点使用了await指令
                         if (pureKey === "then" && !withAwait && continueByDirective !== "await") {
@@ -437,25 +563,25 @@ export function analyzeAttribute(
                             MissingStartDirective(rk, "#await or #then", attr.loc)
                         }
 
+                        recordAliasIdentifiers()
+
                         // insertNullNum表示需要插入的nil的数量，当await指令和then指令在同一个元素上使用时，
                         // 相当于await指令元素不存在，需要插入一个nil，而当await指令和catch指令在同一个元素上
                         // 使用时，相当于await指令元素和then指令元素都不存在，需要插入两个null
+                        if (pureKey !== "catch") {
+                            setContinueInfo(/^#catch$/)
+                        } else {
+                            setContinueInfo(null)
+                            awaitExpression = undefined
+                        }
                         if (withAwait) {
-                            if (pureKey === "catch") {
-                                insertNullNum = 2
-                                setContinueRE(null)
-                            } else {
-                                insertNullNum = 1
-                            }
+                            insertNullNum = pureKey === "then" ? 1 : 2
                         }
-                        if (pureKey === "then") {
-                            setContinueRE(/^#catch$/)
-                        }
-                        recordAliasIdentifiers()
                     }
                     if (continueByDirective === "await" && pureKey === "catch") {
                         insertNullNum = 1
                     }
+
                     break
 
                 default:
@@ -683,7 +809,8 @@ export function analyzeAttribute(
         slotOfAnyTag,
         nameOfSlotTag,
         createTemplate,
-        awaitContextStartIndex,
+        awaitExpression,
+        createdContextCount,
         continueInfo: {
             re: continueRE,
             arg: continueArg,
@@ -794,9 +921,12 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     // 此格式是runtime需要的唯一格式，这里无需关注转换后的属性（包括键值）位置信息（均与第一项保持一致），
     // 因为如果它包含动态class就会在调用transformInterpolation时传入positionMap，并根据这个位置映射来
     // 记录需要生成sourcemap的位置，而如果它不包含动态class，则整个表达式都不会被记录sourcemap位置信息
+    // 注意：检查模式下无需上述处理，且会忽略普通class属性（纯字符串部分无需再检查模式下生成中间代码表示）
     existingItem.forEach((attrItems, attrKey) => {
-        if (isComponentOrSlot || attrKey !== "!class") {
-            ret.push(attrItems[0])
+        if (isComponentOrSlot || inputDescriptor.options.check || attrKey !== "!class") {
+            attrItems.forEach(item => {
+                item.key.raw !== "class" && ret.push(item)
+            })
         } else {
             const rawValues = attrItems.map((item, index) => {
                 if (index !== normalClassIndex) {
@@ -935,6 +1065,19 @@ function recordDestructuringIdentifiers(
     aliasArgs.push(`${ctxParam} => ${ctxParam}(${baseCtxIndex})`, tir)
 }
 
+// 生成验证使用group引用属性时，value的值是否满足数组或集合值类型的中间代码
+function refGroupValueSatisfiedCodeGen(rv: string) {
+    return `
+        (
+            ${rv} instanceof Array
+            ? ${rv}.push
+            : ${rv} instanceof Set
+            ? ${rv}.add
+            : null
+        )?.(
+    `.replace(/\s+/g, " ")
+}
+
 // 为transformInterpolation的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
 // 还会将mappings中所有段的生成列（下标为1的元素）向右偏移前缀字符串长度的数量以保证正确的源码映射
 function concatStrAndTIR<T extends TransformInterpolationRet>(
@@ -949,6 +1092,11 @@ function concatStrAndTIR<T extends TransformInterpolationRet>(
         item[1] += prefix.length
     })
     return (tir.transformedExp = prefix + tir.transformedExp + postfix), tir
+}
+
+// 记录表达式中间代码片段，它们在中间代码中会被放在一个数组中
+function recordInterExp(startSourceIndex: number, exp: string) {
+    interCodeSnippets.push([-1, "["], [startSourceIndex, exp], [-2, "];"])
 }
 
 /**

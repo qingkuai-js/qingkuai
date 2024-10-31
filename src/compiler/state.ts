@@ -19,6 +19,7 @@ export const replacementInfo = newReplacementInfo()
 export const inputDescriptor = newInputDescriptor()
 
 export const messages: MessageItem[] = []
+export const interCodeSnippets: [number, string][] = []
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
 export const usedInitItems = new Set<string>()
@@ -38,6 +39,7 @@ export function resetCompilerState(options: CompileOptions) {
     setArrLength(messages, 0)
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
+    setArrLength(interCodeSnippets, 0)
     setArrLength(tempStoredImportInfos, 0)
     Object.assign(sourceMapInfo, newSourceMapInfo())
     Object.assign(debuggingInfo, newDebuggingInfo())
@@ -89,6 +91,7 @@ function newReplacementInfo(): ReplacementInfo {
 function newInputDescriptor(): InputDescriptor {
     return {
         positions: [],
+        indexIsInScript: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
         options: {

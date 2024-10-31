@@ -49,7 +49,7 @@ function confirmBracket(tars: (TemplateAnalysisRet | null)[]) {
                 child.useBracket = child.tar?.children.length !== 1
             }
         })
-        if (!isNull(tar?.children)) {
+        if (tar?.children?.length) {
             confirmBracket(tar?.children.map(child => child.tar))
         }
     })

@@ -24,7 +24,9 @@ export interface CompileOptions {
 export interface CompileResult {
     code: string
     mappings: string
+    indexMap: number[]
     messages: MessageItem[]
+    indexIsInScript: boolean[]
     templateNodes: TemplateNode[]
     inputDescriptor: InputDescriptor
 }
@@ -77,6 +79,7 @@ export interface InputDescriptor {
     options: Required<CompileOptions>
     indentSpaceCount: number
     positions: ASTPosition[]
+    indexIsInScript: boolean[]
     stringConstantCount: number
     script: {
         code: string
@@ -167,7 +170,8 @@ export interface AttributeAnalysisRet {
     }
     insertNullNum?: number
     createTemplate?: boolean
-    awaitContextStartIndex?: number
+    createdContextCount?: number
+    awaitExpression?:[number, string]    
     slotOfAnyTag: ValueWithLocation<string> | null
     nameOfSlotTag?: ValueWithLocation<string> | null
 }

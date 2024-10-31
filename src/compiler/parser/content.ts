@@ -1,4 +1,4 @@
-import { inputDescriptor } from "../state"
+import { inputDescriptor, interCodeSnippets } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
@@ -19,6 +19,7 @@ export function content2script(content: string, startSourceIndex: number) {
     const transformedArr: string[] = []
     const { positions } = inputDescriptor
     const emptyStrSource = normalStringify("")
+    const interpolations: [number, string][] = []
 
     const pushTransformedArr = (str: string, useStringify = true) => {
         const sourceIndex = startSourceIndex + contentSourceIndex
@@ -39,14 +40,26 @@ export function content2script(content: string, startSourceIndex: number) {
             if (shouldGenerateSourcemap) {
                 for (let i = 0; i <= str.length; i++) {
                     const delta = Number(isDebug && positionMap.length !== 0)
-                    const charSourceIndex = positions[sourceIndex + i + 1].index
-                    positionMap[delta + transformedStrLen + i] = charSourceIndex
+                    positionMap[delta + transformedStrLen + i] = sourceIndex + i + 1
                 }
                 transformedStrLen += str.length + (isDebug ? 5 : 2)
                 contentSourceIndex += 2
             }
+
+            // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
+            for (let i = 0; i < str.length; i++) {
+                inputDescriptor.indexIsInScript[sourceIndex + i + 1] = true
+            }
+
             transformedArr.push(isDebug ? `(${str})` : str)
         }
+
+        // 检查模式下，将插值表达式部分记录到interpolations数组，
+        // 最后会根据interpolation数组将插值表达式记录到中间代码片段
+        if (inputDescriptor.options.check && !useStringify) {
+            interpolations.push([startSourceIndex, str])
+        }
+
         contentSourceIndex += str.length
     }
 
@@ -80,7 +93,9 @@ export function content2script(content: string, startSourceIndex: number) {
             } else {
                 pushTransformedArr(interpolationExp, false)
 
-                if (!isDebug) continue
+                if (!isDebug) {
+                    continue
+                }
 
                 // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，
                 // 若它在结尾处，需要将positionMap的最后一个元素 + 1（最后一个插值表达式的结束位置）
@@ -98,6 +113,27 @@ export function content2script(content: string, startSourceIndex: number) {
                 }
             }
         }
+    }
+
+    // 检查模式记录插值表达式部分到中间代码片段，其中所有的插值部分在中间代码表示
+    // 中都会被放到一个数组中，因为插值块只能接受表达式（这一点与数组元素是一致的）
+    if (inputDescriptor.options.check) {
+        const interpolationCount = interpolations.length
+        if (interpolationCount > 0) {
+            interCodeSnippets.push([-1, "["])
+        }
+        for (let i = 0; i < interpolationCount; i++) {
+            interCodeSnippets.push(interpolations[i])
+            if (i === interpolationCount - 1) {
+                interCodeSnippets.push([-2, "]"])
+            } else {
+                interCodeSnippets.push([-1, ","])
+            }
+        }
+        if (interpolationCount > 0) {
+            interCodeSnippets.push([-2, ";"])
+        }
+        return { positionMap: [], script: "" }
     }
 
     // 调试模式下，将第一个存在的映射位置元素放在positionMap首位，保持首个断点设置位在content开始位置的一致性

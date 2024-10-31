@@ -10,11 +10,11 @@ import { getAlias } from "./alias"
 import { specialTags } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
-import { stringConstantsSourceMap } from "../state"
 import { lastElem } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { isNull, isUndefined } from "../../util/shared/assert"
+import { inputDescriptor, interCodeSnippets, stringConstantsSourceMap } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { normalStringify, stringify } from "../../util/compiler/strings"
 import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
@@ -24,7 +24,7 @@ export function analyzeTemplate(
     parentIsComponent = false,
     context?: TemplateContext,
     continueByDirective?: string,
-    awaitContextStartIndex?: number,
+    awaitExpression?: [number, string],
     existingNameOfSlot = new Set<string>()
 ) {
     const result: TemplateAnalysisRet[] = []
@@ -92,8 +92,7 @@ export function analyzeTemplate(
                 parentIsComponent,
                 attributes,
                 currentContext,
-                continueByDirective,
-                awaitContextStartIndex
+                continueByDirective
             )
             currentRet.aar = aar
             continueRE = aar.continueInfo?.re
@@ -142,7 +141,7 @@ export function analyzeTemplate(
                         isComponent,
                         cotinueContext,
                         shouldContinueDirective,
-                        aar.awaitContextStartIndex
+                        aar.awaitExpression
                     )
                     const useBracketWrap = shouldUseBracketWrap(
                         nodes[i].tag,
@@ -214,13 +213,15 @@ export function analyzeTemplate(
         } else {
             const parseRet = content2script(content, trimedContentStartIndex)
             const teOptionalParam = { positionMap: parseRet.positionMap }
-            currentRet.content = transformInterpolation(
-                parseRet.script,
-                trimedContentStartIndex,
-                currentContext,
-                "content",
-                teOptionalParam
-            )
+            if (!inputDescriptor.options.check) {
+                currentRet.content = transformInterpolation(
+                    parseRet.script,
+                    trimedContentStartIndex,
+                    currentContext,
+                    "content",
+                    teOptionalParam
+                )
+            }
         }
 
         // 递归处理当前节点的所有子节点，在这里判断组件中多个子标签上的slot属性是否重复
@@ -240,6 +241,12 @@ export function analyzeTemplate(
                     useBracket: Boolean(slot)
                 })
             })
+        }
+
+        // 检查模式下，如果属性（目前单指指令）产生了上下文标识符，会在中间代码中插入块级作用域，属性分析结果
+        // 中的contextCount记录了当前节点的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
+        if (inputDescriptor.options.check) {
+            interCodeSnippets.push([-2, "}".repeat(currentRet.aar?.createdContextCount || 0)])
         }
     }
 

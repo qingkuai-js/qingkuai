@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1038
+ * current-error-code: 1041
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -35,12 +35,20 @@ export const SlotAttrIsEmpty = withLocation(1022, () => {
     return "The slot attribute can not be empty."
 })
 
+export const NoBaseValueForForDirective = withLocation(1039, () => {
+    return `Must pass a base value for #for directive.`
+})
+
 export const UnclosedNormalAttributeValue = withLocation(1003, () => {
     return "Unclosed attribute value."
 })
 
 export const DynamicNameAttrForSlot = withLocation(1020, () => {
     return `Dynamic name attribute(!name) for slot tag is not allowed.`
+})
+
+export const InterpolationExpOutOfLimit = withLocation(1040, () => {
+    return "At most one expression can appear in the interpolation block."
 })
 
 export const UnclosedInterpolationExpression = withLocation(1004, () => {
@@ -62,6 +70,10 @@ export const NoEndTagMatched = withLocation(1037, (tag: string) => {
 
 export const TemplateStartsWithEndTag = withLocation(1006, (text: string) => {
     return `Starts with an end tag: ${text}`
+})
+
+export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
+    return "Sequence expressions can not be used in the interpolation block."
 })
 
 export const EmptyInterpolationAttrName = withLocation(1007, (char: string) => {

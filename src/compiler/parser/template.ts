@@ -44,6 +44,7 @@ export function parseTemplate(source: string, checkWrapChar = true) {
     const sourceLength = source.length
     const reserveAllComment = inputDescriptor.options.reserveTemplateComment
     const positions = (inputDescriptor.positions = getPositionOfEachChar(source))
+    inputDescriptor.indexIsInScript = Array(sourceLength).fill(false)
 
     // 收缩source并修改index，并返回下次开始的位置
     // reduce souce and change index
@@ -196,6 +197,8 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     const wrapValueStartLoc = getLocByIndex(
                         (wrapValueStartIndex = reduceSpaces().index)
                     )
+
+                    // 如果找不到属性值结束字符（关闭大括号或单双引号）则报错，空插值表达式也需要报错
                     if (isInterpolationAttr) {
                         if ((endCharIndex = findEndCurlyBracket(source, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
@@ -205,6 +208,8 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     } else if ((endCharIndex = source.indexOf(source[0], 1)) === -1) {
                         UnclosedNormalAttributeValue(wrapValueStartLoc)
                     }
+
+                    // 记录属性值以及属性值的位置信息（不包含前后包裹字符）
                     if (endCharIndex === -1) {
                         attrValue = source.slice(1)
                         valueStartIndex = wrapValueStartIndex
@@ -213,6 +218,13 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                         valueEndIndex = index + endCharIndex
                         attrValue = source.slice(1, endCharIndex)
                         wrapValueEndIndex = reduceSource(endCharIndex + 1).index
+                    }
+
+                    // 如果是插值属性，则将属性值范围内的索引标记为处于script块
+                    if (isInterpolationAttr) {
+                        for (let i = valueStartIndex; i < valueEndIndex; i++) {
+                            inputDescriptor.indexIsInScript[i] = true
+                        }
                     }
                 }
             }
@@ -303,6 +315,12 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     return
                 }
 
+                // 将嵌入script代码部分都标记为处的索引标记为处于脚本
+                for (let i = 0; i < content.length; i++) {
+                    inputDescriptor.indexIsInScript[contentStartIndex + i] = true
+                }
+
+                // 记录嵌入script块的内容、是否ts、是否已存在以及源码位置信息
                 scriptDescriptor.loc = getLocByIndex(contentStartIndex, index)
                 scriptDescriptor.isTS = embeddedLang === "ts"
                 scriptDescriptor.existing = true
