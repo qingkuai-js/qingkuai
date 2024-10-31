@@ -128,7 +128,7 @@ export function analyzeAttribute(
             option?: TransformInterpolationOptionalParam
         ) => {
             if (inputDescriptor.options.check) {
-                return recordInterExp(startSourceIndex, exp), ""
+                recordInterExp(startSourceIndex, exp), ""
             }
             return transformInterpolation(exp, startSourceIndex, context, "directive", option)
         }
@@ -136,7 +136,7 @@ export function analyzeAttribute(
         // 转换标签属性值
         const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
             if (inputDescriptor.options.check) {
-                return recordInterExp(trimedValueStartSourceIndex, exp), ""
+                recordInterExp(trimedValueStartSourceIndex, exp), ""
             }
 
             if (!option) {
@@ -185,7 +185,11 @@ export function analyzeAttribute(
                 if (inputDescriptor.options.check) {
                     if (pureKey === "slot") {
                     } else {
-                        interCodeSnippets.push([-2, `=QingKuai.SatisfyResolve();`])
+                        interCodeSnippets.push(
+                            [-2, `=QingKuai.SatisfyResolve(`],
+                            awaitExpression!,
+                            [-2, ");"]
+                        )
                     }
                 }
             }
@@ -572,7 +576,6 @@ export function analyzeAttribute(
                             setContinueInfo(/^#catch$/)
                         } else {
                             setContinueInfo(null)
-                            awaitExpression = undefined
                         }
                         if (withAwait) {
                             insertNullNum = pureKey === "then" ? 1 : 2

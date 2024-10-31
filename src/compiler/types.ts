@@ -24,7 +24,10 @@ export interface CompileOptions {
 export interface CompileResult {
     code: string
     mappings: string
-    indexMap: number[]
+    interIndexMap: {
+        itos: number[]
+        stoi: number[]
+    }
     messages: MessageItem[]
     indexIsInScript: boolean[]
     templateNodes: TemplateNode[]
@@ -171,7 +174,7 @@ export interface AttributeAnalysisRet {
     insertNullNum?: number
     createTemplate?: boolean
     createdContextCount?: number
-    awaitExpression?:[number, string]    
+    awaitExpression?: [number, string]
     slotOfAnyTag: ValueWithLocation<string> | null
     nameOfSlotTag?: ValueWithLocation<string> | null
 }

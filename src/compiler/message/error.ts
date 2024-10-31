@@ -72,10 +72,6 @@ export const TemplateStartsWithEndTag = withLocation(1006, (text: string) => {
     return `Starts with an end tag: ${text}`
 })
 
-export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
-    return "Sequence expressions can not be used in the interpolation block."
-})
-
 export const EmptyInterpolationAttrName = withLocation(1007, (char: string) => {
     const itemDescription = getSpecialAttrDescription(char)
     return `The ${itemDescription!} must be specified a name.`
@@ -178,6 +174,10 @@ export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: s
 
 export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
     return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
+})
+
+export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
+    return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
 })
 
 export const CompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {

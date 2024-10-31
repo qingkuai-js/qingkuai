@@ -3,7 +3,8 @@ import type { CompileOptions, CompileResult } from "./types"
 import {
     generateCompileResult,
     generateImportStatements,
-    generateInitCallStatement
+    generateInitCallStatement,
+    generateIntermidiateResult
 } from "./codegen"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
@@ -11,7 +12,7 @@ import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { compressCompileSize } from "./optimizer/compile-size"
-import { inputDescriptor, interCodeSnippets, messages, resetCompilerState } from "./state"
+import { inputDescriptor, messages, resetCompilerState } from "./state"
 
 export function compile(source: string, options: CompileOptions): CompileResult {
     resetCompilerState(options)
@@ -30,25 +31,20 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         analyzeScript(scriptSourceCode)
     }
 
-    // 检查模式下无需执行转换操作
-    const compileResult: CompileResult = {
+    // 检查模式下无需执行转换操作，生成用于typescript语言服务的中间代码
+    const basicResult = {
         messages,
         templateNodes,
         inputDescriptor,
-        code: "",
-        indexMap: [],
-        mappings: "",
-        indexIsInScript: []
+        indexIsInScript: inputDescriptor.indexIsInScript
     }
     const templateAnalysisRet = analyzeTemplate(templateNodes)
-
-    messages.forEach(item => {
-        console.log(item.value.message)
-    })
-    console.log(interCodeSnippets.map(item => item[1]).join(""))
-
     if (options.check) {
-        return compileResult
+        return {
+            mappings: "",
+            ...basicResult,
+            ...generateIntermidiateResult(source)
+        }
     }
 
     const scriptTranformedRet = transformScript(scriptSourceCode, 1)
@@ -69,5 +65,12 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         scriptTranformedRet,
         templateTransformedRet
     )
-    return { ...compileResult, ...generateRes }
+    return {
+        interIndexMap: {
+            stoi: [],
+            itos: []
+        },
+        ...basicResult,
+        ...generateRes
+    }
 }

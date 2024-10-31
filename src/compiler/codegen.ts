@@ -7,6 +7,7 @@ import {
     stringConstants,
     inputDescriptor,
     usedRuntimeItems,
+    interCodeSnippets,
     tempStoredImportInfos
 } from "./state"
 import { getAlias } from "./analyzer/alias"
@@ -136,4 +137,57 @@ export function generateCompileResult(
         `\n${indent(1)}}\n}`
 
     return { code, mappings }
+}
+
+// 生成typescript语言服务可用的中间代码（包含双向索引映射）
+export function generateIntermidiateResult(source: string) {
+    const itos: number[] = []
+    const snippetLen = interCodeSnippets.length
+    const stoi: number[] = Array(source.length).fill(-1)
+    const scriptSourceCode = inputDescriptor.script.code
+    const scriptEndSourceIndex = inputDescriptor.script.loc.end.index
+    const scriptSourceStartIndex = inputDescriptor.script.loc.start.index
+    for (let i = 0; i <= scriptSourceCode.length; i++) {
+        itos.push(scriptSourceStartIndex + i)
+        stoi[scriptSourceStartIndex + i] = i
+    }
+
+    let sourceIndex = 0
+    let interIndex = scriptEndSourceIndex + 1
+    interCodeSnippets.forEach(([i, s], index) => {
+        if (i >= 0) {
+            for (let j = 0; j < s.length; j++) {
+                itos.push(i + j)
+                stoi[i + j] = interIndex + j
+            }
+        } else {
+            // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到
+            // 首个有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引
+            if (i === -1) {
+                for (let j = index + 1; j < snippetLen; j++) {
+                    const si = interCodeSnippets[j]?.[0]
+                    if (si >= 0 || j === snippetLen - 1) {
+                        sourceIndex = si ?? -1
+                        break
+                    }
+                }
+            } else if (i === -2) {
+                for (let j = index - 1; j >= 0; j--) {
+                    const si = interCodeSnippets[j]?.[0]
+                    if (si >= 0 || j === 0) {
+                        sourceIndex = si ?? -1
+                        break
+                    }
+                }
+            }
+            for (let j = 0; j < s.length; j++) {
+                itos.push(sourceIndex)
+            }
+        }
+    })
+
+    return {
+        interIndexMap: { stoi, itos },
+        code: scriptSourceCode + ";" + interCodeSnippets.map(item => item[1]).join("")
+    }
 }

@@ -1,6 +1,8 @@
-import { inputDescriptor, interCodeSnippets } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { inputDescriptor, interCodeSnippets } from "../state"
+import { newTemplateContext } from "../../util/compiler/structure"
+import { transformInterpolation } from "../transformer/interpolation"
 import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
@@ -17,12 +19,20 @@ export function content2script(content: string, startSourceIndex: number) {
 
     const positionMap: number[] = []
     const transformedArr: string[] = []
+    const context = newTemplateContext()
     const { positions } = inputDescriptor
     const emptyStrSource = normalStringify("")
     const interpolations: [number, string][] = []
 
     const pushTransformedArr = (str: string, useStringify = true) => {
         const sourceIndex = startSourceIndex + contentSourceIndex
+
+        // 检查模式下，将插值表达式部分记录到interpolations数组，最后会根据此数组将插值表达式记录到中间代码片段
+        // 注意：检查模式下后续步骤不会调用transformInterpolation方法，所以这里需要主动调用对插值块进行语法检查
+        if (inputDescriptor.options.check && !useStringify) {
+            const te = transformInterpolation(str, startSourceIndex, context, "content")
+            return te && interpolations.push([startSourceIndex, str]), void 0
+        }
 
         // useStringify为true时表示当前处于普通字符串范围，此时只需记录字符串开头和结尾处对应的源码索引，
         // 否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
@@ -52,12 +62,6 @@ export function content2script(content: string, startSourceIndex: number) {
             }
 
             transformedArr.push(isDebug ? `(${str})` : str)
-        }
-
-        // 检查模式下，将插值表达式部分记录到interpolations数组，
-        // 最后会根据interpolation数组将插值表达式记录到中间代码片段
-        if (inputDescriptor.options.check && !useStringify) {
-            interpolations.push([startSourceIndex, str])
         }
 
         contentSourceIndex += str.length

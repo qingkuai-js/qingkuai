@@ -39,12 +39,12 @@ export function transformInterpolation(
     const endSourceIndex = startSourceIndex + expression.length
 
     if (bodyAst!.length > 1) {
-        InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex)
+        return InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex), ""
     }
 
     const expressionAst = (bodyAst as any)[0].expression
     if (is(expressionAst, "SequenceExpression")) {
-        SequenceExpreesionInInterpolationBlock(startSourceIndex, endSourceIndex)
+        return SequenceExpreesionInInterpolationBlock(startSourceIndex, endSourceIndex), ""
     }
 
     // 检查模式下语法检查完成后无需执行后续的转换操作

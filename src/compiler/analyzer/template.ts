@@ -14,10 +14,10 @@ import { lastElem } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { isNull, isUndefined } from "../../util/shared/assert"
-import { inputDescriptor, interCodeSnippets, stringConstantsSourceMap } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { normalStringify, stringify } from "../../util/compiler/strings"
 import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
+import { inputDescriptor, interCodeSnippets, stringConstantsSourceMap } from "../state"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
@@ -92,7 +92,8 @@ export function analyzeTemplate(
                 parentIsComponent,
                 attributes,
                 currentContext,
-                continueByDirective
+                continueByDirective,
+                awaitExpression
             )
             currentRet.aar = aar
             continueRE = aar.continueInfo?.re
@@ -246,7 +247,8 @@ export function analyzeTemplate(
         // 检查模式下，如果属性（目前单指指令）产生了上下文标识符，会在中间代码中插入块级作用域，属性分析结果
         // 中的contextCount记录了当前节点的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
         if (inputDescriptor.options.check) {
-            interCodeSnippets.push([-2, "}".repeat(currentRet.aar?.createdContextCount || 0)])
+            const bc = currentRet.aar?.createdContextCount || 0
+            bc && interCodeSnippets.push([-2, "}".repeat(bc)])
         }
     }
 
