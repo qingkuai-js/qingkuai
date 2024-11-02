@@ -114,11 +114,11 @@ export function generateCompileResult(
     if (hasDebuggingSetter || hasNonBeCalledSetter) {
         debuggingStatementArr.push(postfix, "// debugging setters area")
         debuggingInfo.setters.forEach((id, identifier) => {
-            const setterFuncDeclaration = `function _d${id}_(v){ ${identifier} = v }`
+            const setterFuncDeclaration = `function __d${id}__(v){ ${identifier} = v }`
             debuggingStatementArr.push(`\n${indent(2)}${setterFuncDeclaration}`)
         })
         if (hasNonBeCalledSetter) {
-            debuggingStatementArr.push(`\n${indent(2)}function _dn_(){`)
+            debuggingStatementArr.push(`\n${indent(2)}function __dn__(){`)
             debuggingInfo.constIdentifiers.forEach(identifier => {
                 debuggingStatementArr.push(` ${identifier};`)
             })

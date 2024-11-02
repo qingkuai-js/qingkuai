@@ -30,8 +30,8 @@ export function transformScript(source: string, indentN = 0) {
 
             // 调试模式下，如果repl.createSetter为true时，将响应性变量的初始标识符记录到debuggingInfo.setters中
             // 这些标识符将被用来在生成代码的底部创建setter，如果createSetter为false（对应const声明的响应性常量），
-            // 则将标识符添加到debuggingInfo.constIdentifiers中，它们会在一个名为_dn_的setter中被访问，虽然它们
-            // 不需要被赋值，但要保持被引用的状态，不然首次同步代码执行结束时，初始标识符占用的内存空间会被释放
+            // 则将标识符添加到debuggingInfo.constIdentifiers中，它们会在一个名为__dn__的setter中被访问，虽然
+            // 它们不需要被赋值，但要保持被引用的状态，不然首次同步代码执行结束时，初始标识符占用的内存空间会被释放
             if (repl.useDollar && inputDescriptor.options.debug) {
                 if (!repl.createSetter) {
                     debuggingInfo.constIdentifiers.add(identifier)

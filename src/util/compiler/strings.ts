@@ -16,7 +16,7 @@ export function stringify(v: any) {
         existingItem.count++
         return existingItem.value
     } else {
-        const value = `_s${stringConstants.size}_`
+        const value = `__s${stringConstants.size}__`
         stringConstants.set(s, {
             value,
             count: 1,

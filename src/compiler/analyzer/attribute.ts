@@ -184,12 +184,15 @@ export function analyzeAttribute(
                 }
                 if (inputDescriptor.options.check) {
                     if (pureKey === "slot") {
-                    } else {
+                    } else if (pureKey === "then") {
+                        // prettier-ignore
                         interCodeSnippets.push(
-                            [-2, `=QingKuai.SatisfyResolve(`],
+                            [-2, "=__c__.SatisfyResolve("],
                             awaitExpression!,
                             [-2, ");"]
                         )
+                    } else {
+                        interCodeSnippets.push([-2, "= 0 as any;"])
                     }
                 }
             }
@@ -307,7 +310,7 @@ export function analyzeAttribute(
                 if (!isComponent) {
                     if (pureKey === "checked") {
                         interCodeSnippets.push(
-                            [-1, `QingKuai.SatisfyBoolean(`],
+                            [-1, `__c__.SatisfyBoolean(`],
                             [trimedValueStartSourceIndex, trimedValue],
                             [-1, ");"]
                         )
@@ -316,7 +319,7 @@ export function analyzeAttribute(
                             return /^[!@#&]?value/.test(attr.key.raw)
                         })?.[0]
                         interCodeSnippets.push(
-                            [-1, `QingKuai.SatisfyRefGroup(`],
+                            [-1, `__c__.SatisfyRefGroup(`],
                             [trimedValueStartSourceIndex, trimedValue],
                             [-2, ","]
                         )
@@ -475,7 +478,7 @@ export function analyzeAttribute(
                     } else {
                         if (!hasContextIdentifier) {
                             interCodeSnippets.push(
-                                [-1, "QingKuai.GetKVPair("],
+                                [-1, "__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex, trimedValue],
                                 [-2, ");"]
                             )
@@ -483,7 +486,7 @@ export function analyzeAttribute(
                             interCodeSnippets.push(
                                 [-1, "{const ["],
                                 [trimedValueStartSourceIndex, contextStr],
-                                [-2, "]=QingKuai.GetKVPair("],
+                                [-2, "]=__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex + baseStartIndex, forBaseValue],
                                 [-2, ");"]
                             )
@@ -541,7 +544,7 @@ export function analyzeAttribute(
                     if (pureKey === "await") {
                         if (inputDescriptor.options.check) {
                             interCodeSnippets.push(
-                                [-1, "QingKuai.SatisfyPromise("],
+                                [-1, "__c__.SatisfyPromise("],
                                 [trimedValueStartSourceIndex, trimedValue],
                                 [-2, ");"]
                             )

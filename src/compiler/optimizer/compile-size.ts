@@ -65,7 +65,7 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
     const mappingOffsets: number[] = Array(tirIsString ? 0 : mappings.length).fill(0)
 
     for (let startIndex = 0, saveAs = ""; true; ) {
-        const [matchedIndex, matchedLen] = findOutOfSC(code, /_s\d+_/, startIndex)
+        const [matchedIndex, matchedLen] = findOutOfSC(code, /__s\d+__/, startIndex)
         if (matchedIndex === -1) {
             transformedArr.push(code.slice(startIndex))
             break
@@ -78,7 +78,7 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
         if (currentStringConstant.count > 1 && restoredStrLiteral.length > 2) {
             const restoreToComment = `/* ${JSON.parse(restoredStrLiteral)} */ `
             if (!currentStringConstant.using) {
-                const resetNumStr = `_s${inputDescriptor.stringConstantCount++}_`
+                const resetNumStr = `__s${inputDescriptor.stringConstantCount++}__`
                 transformedArr.push((saveAs = restoreToComment + resetNumStr))
                 currentStringConstant.value = resetNumStr
                 currentStringConstant.using = true
