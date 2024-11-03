@@ -212,11 +212,10 @@ export function isCompileError(err: Error): err is CompileError {
 }
 
 export class CompileError extends Error {
-    declare Description: string
+    public description = "The QingKuai compiler encountered a fatal error during execution"
 
     constructor(public loc: ASTLocation, public code: number, msg: string) {
         super(msg)
-        this.Description = "The QingKuai compiler encountered a fatal error during execution"
 
         // 非检查模式下直接抛出错误，检查模式下将错误对象存放在messages中
         if (!inputDescriptor.options.check) {

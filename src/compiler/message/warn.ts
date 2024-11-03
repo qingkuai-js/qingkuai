@@ -85,6 +85,11 @@ export const InvalidKeyRelatedModifier = withLocation(
     }
 )
 
+// 检查参数是否是QingKuai编译器警告
+export function isCompileWarning(v: any): v is CompileWarning {
+    return v instanceof CompileWarning
+}
+
 // 为返回警告描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的警告信息发出，
 // 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
 function withLocation<T extends GeneralFunc>(code: number, fn: T) {

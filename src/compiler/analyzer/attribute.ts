@@ -1102,7 +1102,9 @@ function concatStrAndTIR<T extends TransformInterpolationRet>(
 
 // 记录表达式中间代码片段，它们在中间代码中会被放在一个数组中
 function recordInterExp(startSourceIndex: number, exp: string) {
-    interCodeSnippets.push([-1, "["], [startSourceIndex, exp], [-2, "];"])
+    if (!isEmptyString(exp)) {
+        interCodeSnippets.push([-1, "["], [startSourceIndex, exp], [-2, "];"])
+    }
 }
 
 /**

@@ -23,7 +23,7 @@ import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
 import { expressionReplaceWithSpaceRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { isFunction, isUndefined } from "../../util/shared/assert"
+import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
 import { checkIdentifierName, confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
@@ -35,6 +35,10 @@ export function transformInterpolation(
     type: "directive" | "attribute" | "event" | "content",
     optionalParams: TransformInterpolationOptionalParam = {}
 ): TransformInterpolationRet {
+    if (isEmptyString(expression)) {
+        return ""
+    }
+
     const bodyAst = parse("_=" + expression)?.body
     const endSourceIndex = startSourceIndex + expression.length
 

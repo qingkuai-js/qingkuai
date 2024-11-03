@@ -45,25 +45,11 @@ export function parse(source: string) {
         if (inputDescriptor.script.isTS) {
             parseOption.plugins = ["typescript"]
         }
-        const res = babel.parse(source, parseOption)
-        if (isCheck) {
-            res.errors.forEach(err => {
-                messages.push({
-                    type: "error",
-                    value: changeErrorLoc(err)
-                })
-            })
-        }
-        return res.program
+        return babel.parse(source, parseOption).program
     } catch (err: any) {
         err = changeErrorLoc(err)
         if (!isCheck) {
             throw err
-        } else {
-            messages.push({
-                type: "error",
-                value: err
-            })
         }
     }
 }
