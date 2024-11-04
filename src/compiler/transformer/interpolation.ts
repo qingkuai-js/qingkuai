@@ -41,7 +41,9 @@ export function transformInterpolation(
 
     const bodyAst = parse("_=" + expression)?.body
     const endSourceIndex = startSourceIndex + expression.length
-
+    if (isUndefined(bodyAst)) {
+        return expression
+    }
     if (bodyAst!.length > 1) {
         return InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex), ""
     }

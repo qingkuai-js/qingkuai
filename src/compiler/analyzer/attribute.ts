@@ -57,10 +57,10 @@ import { getLocByIndex } from "../../util/compiler/locations"
 import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
+import { DestructuringContextRE, expressionReplaceWithSpaceRE } from "../regular"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { checkIdentifierName, confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
-import { DestructuringContextRE, expressionReplaceWithSpaceRE, SlotDirectiveRE } from "../regular"
 
 // dpm means Directives Priority Map
 // dpm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -359,7 +359,7 @@ export function analyzeAttribute(
                     const forBaseValue = trimedValue.slice(baseStartIndex)
                     const basePreSpaceCount = /\s*/.exec(forBaseValue)![0].length
 
-                    if (!forBaseValue) {
+                    if (!forBaseValue && !isEmptyString(trimedValue)) {
                         NoBaseValueForForDirective(
                             trimedValueStartSourceIndex,
                             trimedValueStartSourceIndex + trimedValue.length
@@ -492,7 +492,6 @@ export function analyzeAttribute(
                             )
                         }
                     }
-
                     break
 
                 case "key":
@@ -503,7 +502,6 @@ export function analyzeAttribute(
                         directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
                         directiveStu[forModuleFuncIndex].push(transRet)
                     }
-
                     break
 
                 case "if":
@@ -535,7 +533,6 @@ export function analyzeAttribute(
                         }
                         setContinueInfo(/^#(?:elif|else)$/)
                     }
-
                     break
 
                 case "then":
@@ -587,21 +584,20 @@ export function analyzeAttribute(
                     if (continueByDirective === "await" && pureKey === "catch") {
                         insertNullNum = 1
                     }
-
                     break
 
-                default:
-                    // 不是slot指令时报错（未知指令）
-                    if (!SlotDirectiveRE.test(pureKey)) {
-                        UnkonwDirective(rk, key.loc)
-                    }
-
+                case "slot":
                     // 父元素非组件，不能使用slot指令
                     if (!parentIsComponent) {
                         BasSlotDirectiveCarrier(key.loc)
                     }
-
                     recordAliasIdentifiers()
+                    break
+
+                default:
+                    if (!isEmptyString(pureKey)) {
+                        UnkonwDirective(rk, key.loc)
+                    }
                 //
                 // switch code block end here
                 //

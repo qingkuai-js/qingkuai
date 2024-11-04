@@ -14,7 +14,6 @@ export const bannedIdentifierFormatRE = /^__(?:[sd]\d+|dn|c)__$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
 
-export const SlotDirectiveRE = /^slot(?::|$)/
 export const DestructuringContextRE = /^[\{\[]/
 
 export const expressionReplaceWithSpaceRE = /(?:\s|\r?\n)+/y

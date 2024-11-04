@@ -189,7 +189,9 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     } else {
                         NoBracketForAttributeInterpolation(equalTokenEndLoc)
                     }
-                    attrValue = source.slice(0, endIndex)
+                    if (!isInterpolationAttr) {
+                        attrValue = source.slice(0, endIndex)
+                    }
                     valueStartIndex = wrapValueStartIndex = equalTokenEndIndex
                     valueEndIndex = wrapValueEndIndex = reduceSource(endIndex).index
                 } else {
@@ -202,8 +204,11 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     if (isInterpolationAttr) {
                         if ((endCharIndex = findEndCurlyBracket(source, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
-                        } else if (isEmptyString(source.slice(0, endCharIndex).trim())) {
-                            EmptyInterpolationExpression(wrapValueStartIndex, endCharIndex + 1)
+                        } else if (isEmptyString(source.slice(1, endCharIndex).trim())) {
+                            EmptyInterpolationExpression(
+                                wrapValueStartIndex,
+                                index + endCharIndex + 1
+                            )
                         }
                     } else if ((endCharIndex = source.indexOf(source[0], 1)) === -1) {
                         UnclosedNormalAttributeValue(wrapValueStartLoc)
