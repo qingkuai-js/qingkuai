@@ -5,6 +5,7 @@ import { newTemplateContext } from "../../util/compiler/structure"
 import { transformInterpolation } from "../transformer/interpolation"
 import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
+import { recordInterExpression } from "../../util/compiler/sundry"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
@@ -22,20 +23,24 @@ export function content2script(content: string, startSourceIndex: number) {
     const context = newTemplateContext()
     const { positions } = inputDescriptor
     const emptyStrSource = normalStringify("")
-    const interpolations: [number, string][] = []
 
     const pushTransformedArr = (str: string, useStringify = true) => {
         const sourceIndex = startSourceIndex + contentSourceIndex
 
-        // 检查模式下，将插值表达式部分记录到interpolations数组，最后会根据此数组将插值表达式记录到中间代码片段
-        // 注意：检查模式下后续步骤不会调用transformInterpolation方法，所以这里需要主动调用对插值块进行语法检查
-        if (inputDescriptor.options.check && !useStringify) {
-            const te = transformInterpolation(str, startSourceIndex, context, "content")
-            return te && interpolations.push([startSourceIndex, str]), void 0
+        // 检查模式下，将插值表达式部分记录到中间代码片段，由于检查模式下后续步骤不会
+        // 调用transformInterpolation方法，所以这里需要主动调用对插值块进行语法检查
+        if (inputDescriptor.options.check) {
+            if (
+                !useStringify &&
+                transformInterpolation(str, startSourceIndex, context, "content")
+            ) {
+                recordInterExpression(sourceIndex + 1, str)
+            }
+            return (contentSourceIndex += str.length + (useStringify ? 0 : 2)), void 0
         }
 
-        // useStringify为true时表示当前处于普通字符串范围，此时只需记录字符串开头和结尾处对应的源码索引，
-        // 否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
+        // useStringify为true时表示当前处于普通字符串范围，此时只需记录字符串开头和结尾处
+        // 对应的源码索引，否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
         if (useStringify) {
             const stringified = normalStringify(str)
             if (shouldGenerateSourcemap) {
@@ -119,24 +124,8 @@ export function content2script(content: string, startSourceIndex: number) {
         }
     }
 
-    // 检查模式记录插值表达式部分到中间代码片段，其中所有的插值部分在中间代码表示
-    // 中都会被放到一个数组中，因为插值块只能接受表达式（这一点与数组元素是一致的）
+    // 检查模式下无需后续处理，直接返回
     if (inputDescriptor.options.check) {
-        const interpolationCount = interpolations.length
-        if (interpolationCount > 0) {
-            interCodeSnippets.push([-1, "["])
-        }
-        for (let i = 0; i < interpolationCount; i++) {
-            interCodeSnippets.push(interpolations[i])
-            if (i === interpolationCount - 1) {
-                interCodeSnippets.push([-2, "]"])
-            } else {
-                interCodeSnippets.push([-1, ","])
-            }
-        }
-        if (interpolationCount > 0) {
-            interCodeSnippets.push([-2, ";"])
-        }
         return { positionMap: [], script: "" }
     }
 

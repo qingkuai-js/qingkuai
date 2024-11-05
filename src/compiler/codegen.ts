@@ -13,6 +13,7 @@ import {
 import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
 import { indent } from "../util/compiler/sundry"
+import { lastElem } from "../util/shared/sundry"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"
 
@@ -142,52 +143,58 @@ export function generateCompileResult(
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
 export function generateIntermidiateResult(source: string) {
     const itos: number[] = []
-    const snippetLen = interCodeSnippets.length
     const stoi: number[] = Array(source.length).fill(-1)
+
+    const snippetLen = interCodeSnippets.length
     const scriptSourceCode = inputDescriptor.script.code
-    const scriptEndSourceIndex = inputDescriptor.script.loc.end.index
+    const scriptSourceCodeLen = scriptSourceCode.length
     const scriptSourceStartIndex = inputDescriptor.script.loc.start.index
-    for (let i = 0; i <= scriptSourceCode.length; i++) {
+
+    // 记录<lang-js>或<lang-ts>部分与中间代码的双向索引映射
+    for (let i = 0; i < scriptSourceCodeLen; i++) {
         itos.push(scriptSourceStartIndex + i)
         stoi[scriptSourceStartIndex + i] = i
     }
+    if (scriptSourceCodeLen > 0) {
+        itos.push(scriptSourceStartIndex + scriptSourceCodeLen)
+        stoi[scriptSourceStartIndex + scriptSourceCodeLen] = scriptSourceCodeLen
+    }
 
-    let sourceIndex = 0
-    let interIndex = scriptEndSourceIndex + 1
-    interCodeSnippets.forEach(([i, s], index) => {
-        if (i >= 0) {
-            for (let j = 0; j < s.length; j++) {
-                itos.push(i + j)
-                stoi[i + j] = interIndex + j
+    interCodeSnippets.forEach(([toi, tos], index) => {
+        if (toi >= 0) {
+            for (let i = 0; i < tos.length; i++) {
+                itos.push(toi + i)
+                stoi[toi + i] = itos.length - 1
             }
-        } else {
-            // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到
-            // 首个有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引
-            if (i === -1) {
-                for (let j = index + 1; j < snippetLen; j++) {
-                    const si = interCodeSnippets[j]?.[0]
-                    if (si >= 0 || j === snippetLen - 1) {
-                        sourceIndex = si ?? -1
-                        break
-                    }
-                }
-            } else if (i === -2) {
-                for (let j = index - 1; j >= 0; j--) {
-                    const si = interCodeSnippets[j]?.[0]
-                    if (si >= 0 || j === 0) {
-                        sourceIndex = si ?? -1
-                        break
-                    }
+            return
+        }
+
+        let asasi = -1 // Added Snippet Applied Source Index
+
+        // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到
+        // 首个有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引
+        if (toi === -1) {
+            for (let i = index + 1; i < snippetLen; i++) {
+                const si = interCodeSnippets[i]?.[0]
+                if (si >= 0) {
+                    asasi = si
+                    break
                 }
             }
-            for (let j = 0; j < s.length; j++) {
-                itos.push(sourceIndex)
-            }
+        } else if (toi === -2) {
+            asasi = itos.findLast(n => n >= 0) ?? -1
+        }
+        for (let i = 0; i < tos.length; i++) {
+            itos.push(asasi)
         }
     })
 
+    // 文件结束位置也需要记录双向索引映射
     return {
-        interIndexMap: { stoi, itos },
+        interIndexMap: {
+            stoi: [...stoi, lastElem(stoi)],
+            itos: [...itos, lastElem(itos)]
+        },
         code: scriptSourceCode + ";" + interCodeSnippets.map(item => item[1]).join("")
     }
 }

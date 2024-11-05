@@ -13,12 +13,14 @@ import type {
 import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
-export const sourceMapInfo = newSourceMapInfo()
+// 在编译结果中返回的编译器内布值要打断其引用状态
+export let messages: MessageItem[] = []
+export let sourceMapInfo = newSourceMapInfo()
+export let inputDescriptor = newInputDescriptor()
+
 export const debuggingInfo = newDebuggingInfo()
 export const replacementInfo = newReplacementInfo()
-export const inputDescriptor = newInputDescriptor()
 
-export const messages: MessageItem[] = []
 export const interCodeSnippets: [number, string][] = []
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
@@ -36,15 +38,16 @@ export function resetCompilerState(options: CompileOptions) {
     eliminateRanges.clear()
     stringConstants.clear()
     usedRuntimeItems.clear()
-    setArrLength(messages, 0)
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
     setArrLength(interCodeSnippets, 0)
     setArrLength(tempStoredImportInfos, 0)
-    Object.assign(sourceMapInfo, newSourceMapInfo())
     Object.assign(debuggingInfo, newDebuggingInfo())
     Object.assign(replacementInfo, newReplacementInfo())
-    Object.assign(inputDescriptor, newInputDescriptor())
+
+    messages = []
+    sourceMapInfo = newSourceMapInfo()
+    inputDescriptor = newInputDescriptor()
 
     // 调试模式下一定会生成sourcemap
     if (options.debug === true) {

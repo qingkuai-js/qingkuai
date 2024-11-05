@@ -12,7 +12,7 @@ import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { compressCompileSize } from "./optimizer/compile-size"
-import { inputDescriptor, messages, resetCompilerState } from "./state"
+import { inputDescriptor, interCodeSnippets, messages, resetCompilerState } from "./state"
 
 export function compile(source: string, options: CompileOptions): CompileResult {
     resetCompilerState(options)

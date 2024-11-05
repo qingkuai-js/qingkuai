@@ -7,8 +7,9 @@ import {
     bannedIdentifierFormatRE,
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
-import { debuggingInfo, inputDescriptor } from "../../compiler/state"
+import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
 import { IdentifierFormatIsNotAllowed, InvalidIdentifierName } from "../../compiler/message/error"
+import { isEmptyString } from "../shared/assert"
 
 // 获取调试setter标识符
 export function getSetterIdentifier(identifier: string) {
@@ -89,6 +90,14 @@ export function isIndexEliminated(index: number, ranges: EliminateRanges) {
         }
     }
     return false
+}
+
+// 记录表达式中间代码片段，它们在中间代码中会被放在一个数组中
+// 为什么要这样处理：插值块中只能接受表达式，这一点与数组元素是一致的
+export function recordInterExpression(startSourceIndex: number, exp: string) {
+    if (!isEmptyString(exp)) {
+        interCodeSnippets.push([-1, "["], [startSourceIndex, exp], [-2, "];"])
+    }
 }
 
 // 将数组按size划分为二维数组

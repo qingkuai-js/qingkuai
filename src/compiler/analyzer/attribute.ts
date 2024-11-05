@@ -12,6 +12,12 @@ import type { EsPattern } from "../estree/types"
 import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
 
 import {
+    kebab2Camel,
+    confirmAlias,
+    checkIdentifierName,
+    recordInterExpression
+} from "../../util/compiler/sundry"
+import {
     stringify,
     findOutOfSC,
     normalStringify,
@@ -59,7 +65,6 @@ import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { DestructuringContextRE, expressionReplaceWithSpaceRE } from "../regular"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { checkIdentifierName, confirmAlias, kebab2Camel } from "../../util/compiler/sundry"
 import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
 
 // dpm means Directives Priority Map
@@ -128,7 +133,7 @@ export function analyzeAttribute(
             option?: TransformInterpolationOptionalParam
         ) => {
             if (inputDescriptor.options.check) {
-                recordInterExp(startSourceIndex, exp), ""
+                recordInterExpression(startSourceIndex, exp), ""
             }
             return transformInterpolation(exp, startSourceIndex, context, "directive", option)
         }
@@ -136,7 +141,7 @@ export function analyzeAttribute(
         // 转换标签属性值
         const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
             if (inputDescriptor.options.check) {
-                recordInterExp(trimedValueStartSourceIndex, exp), ""
+                recordInterExpression(trimedValueStartSourceIndex, exp), ""
             }
 
             if (!option) {
@@ -1067,19 +1072,6 @@ function recordDestructuringIdentifiers(
     aliasArgs.push(`${ctxParam} => ${ctxParam}(${baseCtxIndex})`, tir)
 }
 
-// 生成验证使用group引用属性时，value的值是否满足数组或集合值类型的中间代码
-function refGroupValueSatisfiedCodeGen(rv: string) {
-    return `
-        (
-            ${rv} instanceof Array
-            ? ${rv}.push
-            : ${rv} instanceof Set
-            ? ${rv}.add
-            : null
-        )?.(
-    `.replace(/\s+/g, " ")
-}
-
 // 为transformInterpolation的返回值（转换后的表达式）拼接字符串前缀和后缀，如果返回值中存在mappings
 // 还会将mappings中所有段的生成列（下标为1的元素）向右偏移前缀字符串长度的数量以保证正确的源码映射
 function concatStrAndTIR<T extends TransformInterpolationRet>(
@@ -1094,13 +1086,6 @@ function concatStrAndTIR<T extends TransformInterpolationRet>(
         item[1] += prefix.length
     })
     return (tir.transformedExp = prefix + tir.transformedExp + postfix), tir
-}
-
-// 记录表达式中间代码片段，它们在中间代码中会被放在一个数组中
-function recordInterExp(startSourceIndex: number, exp: string) {
-    if (!isEmptyString(exp)) {
-        interCodeSnippets.push([-1, "["], [startSourceIndex, exp], [-2, "];"])
-    }
 }
 
 /**
