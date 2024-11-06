@@ -12,13 +12,15 @@ import { analyzeTemplate } from "./analyzer/template"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { compressCompileSize } from "./optimizer/compile-size"
-import { inputDescriptor, interCodeSnippets, messages, resetCompilerState } from "./state"
+import { inputDescriptor, messages, resetCompilerState } from "./state"
 
 export function compile(source: string, options: CompileOptions): CompileResult {
     resetCompilerState(options)
 
     const templateNodes = parseTemplate(source)
+    const componentName = options.componentName ?? "_"
     const scriptSourceCode = inputDescriptor.script.code
+    const typeCheckerStatement = options.typeCheckerStatement ?? ""
 
     // 关于检查模式：检查模式表示仅用来检查编译错误的情况，这种情况下遇到编译错误时不会
     // 中断编译器的解析和执行，此时不会生成可运行的js代码，只会生成一种用来检查ts错误的
@@ -43,7 +45,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         return {
             mappings: "",
             ...basicResult,
-            ...generateIntermidiateResult(source)
+            ...generateIntermidiateResult(source, typeCheckerStatement)
         }
     }
 
@@ -57,20 +59,18 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     )
     const importStatements = generateImportStatements()
     const initCallStatement = generateInitCallStatement()
-
-    const generateRes = generateCompileResult(
-        options.componentName,
-        importStatements,
-        initCallStatement,
-        scriptTranformedRet,
-        templateTransformedRet
-    )
     return {
         interIndexMap: {
             stoi: [],
             itos: []
         },
         ...basicResult,
-        ...generateRes
+        ...generateCompileResult(
+            componentName,
+            importStatements,
+            initCallStatement,
+            scriptTranformedRet,
+            templateTransformedRet
+        )
     }
 }

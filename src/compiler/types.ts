@@ -14,10 +14,11 @@ export interface ASTLocation {
 }
 
 export interface CompileOptions {
-    componentName: string
+    componentName?: string
     check?: boolean
     debug?: boolean
     sourcemap?: boolean
+    typeCheckerStatement?: string
     reserveTemplateComment?: boolean
 }
 

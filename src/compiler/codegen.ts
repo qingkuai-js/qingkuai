@@ -141,9 +141,9 @@ export function generateCompileResult(
 }
 
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
-export function generateIntermidiateResult(source: string) {
-    const itos: number[] = []
+export function generateIntermidiateResult(source: string, typeCheckerStatement: string) {
     const stoi: number[] = Array(source.length).fill(-1)
+    const itos: number[] = Array(typeCheckerStatement.length).fill(-1)
 
     const snippetLen = interCodeSnippets.length
     const scriptSourceCode = inputDescriptor.script.code
@@ -152,27 +152,24 @@ export function generateIntermidiateResult(source: string) {
 
     // 记录<lang-js>或<lang-ts>部分与中间代码的双向索引映射
     for (let i = 0; i < scriptSourceCodeLen; i++) {
-        itos.push(scriptSourceStartIndex + i)
-        stoi[scriptSourceStartIndex + i] = i
+        stoi[scriptSourceStartIndex + i] = itos.push(scriptSourceStartIndex + i) - 1
     }
-    if (scriptSourceCodeLen > 0) {
-        itos.push(scriptSourceStartIndex + scriptSourceCodeLen)
-        stoi[scriptSourceStartIndex + scriptSourceCodeLen] = scriptSourceCodeLen
-    }
+
+    // 在script与template部分之间补一个分号避免语法错误
+    itos.push(scriptSourceStartIndex + scriptSourceCodeLen)
 
     interCodeSnippets.forEach(([toi, tos], index) => {
         if (toi >= 0) {
             for (let i = 0; i < tos.length; i++) {
-                itos.push(toi + i)
-                stoi[toi + i] = itos.length - 1
+                stoi[toi + i] = itos.push(toi + i) - 2
             }
             return
         }
 
         let asasi = -1 // Added Snippet Applied Source Index
 
-        // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到
-        // 首个有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引
+        // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到首个
+        // 有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引（结束位置需+1）
         if (toi === -1) {
             for (let i = index + 1; i < snippetLen; i++) {
                 const si = interCodeSnippets[i]?.[0]
@@ -183,18 +180,22 @@ export function generateIntermidiateResult(source: string) {
             }
         } else if (toi === -2) {
             asasi = itos.findLast(n => n >= 0) ?? -1
+            asasi !== -1 && asasi++
         }
         for (let i = 0; i < tos.length; i++) {
             itos.push(asasi)
         }
     })
 
-    // 文件结束位置也需要记录双向索引映射
+    const joinedSnippets = interCodeSnippets.map(item => item[1]).join("")
+    const intermidiateCode = `${typeCheckerStatement}${scriptSourceCode};${joinedSnippets}`
     return {
+        code: intermidiateCode,
         interIndexMap: {
+            // 文件结束位置也需要记录双向索引映射
+            // typescript语言服务会使用结束索引后2位
             stoi: [...stoi, lastElem(stoi)],
             itos: [...itos, lastElem(itos)]
-        },
-        code: scriptSourceCode + ";" + interCodeSnippets.map(item => item[1]).join("")
+        }
     }
 }

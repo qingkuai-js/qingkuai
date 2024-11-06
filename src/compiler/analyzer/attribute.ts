@@ -42,7 +42,6 @@ import {
     InvalidRefAttr,
     SlotAttrIsEmpty,
     UnkonwDirective,
-    BadValueForRefAttr,
     CouldNotPassRefValue,
     DirectivesCantCoexist,
     MissingStartDirective,
@@ -216,14 +215,6 @@ export function analyzeAttribute(
             let needSetter = true
             let eventName = tag === "textarea" ? "input" : "change"
 
-            // 检查模式下不会调用transformInterpolation方法，这里需要检查一下引用传递的值是否合法
-            if (inputDescriptor.options.check) {
-                const ast = (parse(trimedValue)?.body[0] as any)?.expression
-                if (ast && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
-                    BadValueForRefAttr(value.raw, value.loc)
-                }
-            }
-
             // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
             // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
             // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
@@ -316,8 +307,12 @@ export function analyzeAttribute(
                     if (pureKey === "checked") {
                         interCodeSnippets.push(
                             [-1, `__c__.SatisfyBoolean(`],
-                            [trimedValueStartSourceIndex, trimedValue],
-                            [-1, ");"]
+                            [trimedValueStartSourceIndex, trimedValue]
+                        )
+                    } else if (pureKey === "value") {
+                        interCodeSnippets.push(
+                            [-1, `__c__.SatisfyString(`],
+                            [trimedValueStartSourceIndex, trimedValue]
                         )
                     } else if (pureKey === "group") {
                         const valueAttr = preProcessedAttr.filter(attr => {
@@ -329,28 +324,35 @@ export function analyzeAttribute(
                             [-2, ","]
                         )
 
-                        if (/[!@#&]/.test(valueAttr.key.raw[0])) {
-                            interCodeSnippets.push([
-                                valueAttr.value.loc.start.index,
-                                valueAttr.value.raw
-                            ])
-                            interCodeSnippets.push([-2, ");"])
+                        if (!isUndefined(valueAttr)) {
+                            if (/[!@#&]/.test(valueAttr.key.raw[0])) {
+                                interCodeSnippets.push([
+                                    valueAttr.value.loc.start.index,
+                                    valueAttr.value.raw
+                                ])
+                            } else {
+                                interCodeSnippets.push([-1, "`"])
+                                interCodeSnippets.push([
+                                    valueAttr.value.loc.start.index,
+                                    valueAttr.value.raw
+                                ])
+                            }
                         } else {
-                            interCodeSnippets.push([-1, "`"])
-                            interCodeSnippets.push([
-                                valueAttr.value.loc.start.index,
-                                valueAttr.value.raw
-                            ])
-                            interCodeSnippets.push([-2, "`);"])
+                            interCodeSnippets.push(
+                                [trimedValueStartSourceIndex, '"'],
+                                [trimedValueStartSourceIndex + trimedValue.length - 1, '"']
+                            )
                         }
                     }
+                    interCodeSnippets.push([-2, ");"])
                 }
 
-                // 非普通标签上的group引用属性时，检查给定值是否是左值（可赋值的目标）
-                if (isComponent || pureKey !== "group") {
+                // 普通标签的非group或非普通标签上的group引用属性时，检查给定值是否是左值（可赋值的目标）
+                if (isComponent || (pureKey !== "group" && !isEmptyString(trimedValue))) {
                     interCodeSnippets.push(
+                        [-2, "("],
                         [trimedValueStartSourceIndex, trimedValue],
-                        [-2, `=0${inputDescriptor.script.isTS ? " as any" : ""};`]
+                        [-2, `)=0${inputDescriptor.script.isTS ? " as any" : ""};`]
                     )
                 }
             }
