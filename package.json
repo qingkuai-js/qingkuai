@@ -30,20 +30,20 @@
     "build": "rimraf dist && tsc && rollup -c && rimraf dist/temp-types"
   },
   "dependencies": {
-    "@babel/parser": "^7.25.3",
+    "@babel/parser": "^7.25.8",
     "@jridgewell/sourcemap-codec": "^1.5.0"
   },
   "devDependencies": {
-    "vitest": "^2.1.2",
+    "@babel/types": "^7.25.8",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.16.11",
+    "fs-extra": "^11.2.0",
     "rimraf": "^6.0.1",
     "rollup": "^4.24.0",
-    "fs-extra": "^11.2.0",
-    "typescript": "^5.4.5",
-    "@babel/types": "^7.25.2",
-    "@types/node": "^20.14.2",
-    "@types/fs-extra": "^11.0.4",
     "rollup-plugin-dts": "^6.1.1",
-    "rollup-plugin-esbuild": "^6.1.1"
+    "rollup-plugin-esbuild": "^6.1.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2"
   },
   "description": "A lighteight(Qing) and fast(Kuai) front end framework, it will make you development work easier(QingKuai)"
 }

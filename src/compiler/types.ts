@@ -18,7 +18,7 @@ export interface CompileOptions {
     check?: boolean
     debug?: boolean
     sourcemap?: boolean
-    typeCheckerStatement?: string
+    typeRefStatement?: string
     reserveTemplateComment?: boolean
 }
 

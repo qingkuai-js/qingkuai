@@ -141,9 +141,9 @@ export function generateCompileResult(
 }
 
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
-export function generateIntermidiateResult(source: string, typeCheckerStatement: string) {
+export function generateIntermidiateResult(source: string, typeRefStatement: string) {
     const stoi: number[] = Array(source.length).fill(-1)
-    const itos: number[] = Array(typeCheckerStatement.length).fill(-1)
+    const itos: number[] = Array(typeRefStatement.length).fill(-1)
 
     const snippetLen = interCodeSnippets.length
     const scriptSourceCode = inputDescriptor.script.code
@@ -188,7 +188,7 @@ export function generateIntermidiateResult(source: string, typeCheckerStatement:
     })
 
     const joinedSnippets = interCodeSnippets.map(item => item[1]).join("")
-    const intermidiateCode = `${typeCheckerStatement}${scriptSourceCode};${joinedSnippets}`
+    const intermidiateCode = `${typeRefStatement}${scriptSourceCode};${joinedSnippets}`
     return {
         code: intermidiateCode,
         interIndexMap: {

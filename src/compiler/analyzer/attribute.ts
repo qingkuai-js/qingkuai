@@ -100,6 +100,7 @@ export function analyzeAttribute(
 
     const { tag } = node
     const isSlot = tag === "slot"
+    const useTsCheck = inputDescriptor.script.isTS
     const eventStu: TransformInterpolationRet[] = []
     const aliasArgs: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
@@ -189,12 +190,13 @@ export function analyzeAttribute(
                 if (inputDescriptor.options.check) {
                     if (pureKey === "slot") {
                     } else if (pureKey === "then") {
-                        // prettier-ignore
-                        interCodeSnippets.push(
-                            [-2, "=__c__.SatisfyResolve("],
-                            awaitExpression!,
-                            [-2, ");"]
-                        )
+                        if (useTsCheck) {
+                            interCodeSnippets.push(
+                                [-2, "=__c__.SatisfyResolve("],
+                                awaitExpression!,
+                                [-2, ");"]
+                            )
+                        }
                     } else {
                         interCodeSnippets.push([-2, "= 0 as any;"])
                     }
@@ -303,7 +305,7 @@ export function analyzeAttribute(
                     eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
                 }
             } else {
-                if (!isComponent) {
+                if (!isComponent && useTsCheck) {
                     if (pureKey === "checked") {
                         interCodeSnippets.push(
                             [-1, `__c__.SatisfyBoolean(`],
@@ -352,7 +354,7 @@ export function analyzeAttribute(
                     interCodeSnippets.push(
                         [-2, "("],
                         [trimedValueStartSourceIndex, trimedValue],
-                        [-2, `)=0${inputDescriptor.script.isTS ? " as any" : ""};`]
+                        [-2, `)=0${useTsCheck ? " as any" : ""};`]
                     )
                 }
             }
@@ -547,11 +549,13 @@ export function analyzeAttribute(
                 case "await":
                     if (pureKey === "await") {
                         if (inputDescriptor.options.check) {
-                            interCodeSnippets.push(
-                                [-1, "__c__.SatisfyPromise("],
-                                [trimedValueStartSourceIndex, trimedValue],
-                                [-2, ");"]
-                            )
+                            if (useTsCheck) {
+                                interCodeSnippets.push(
+                                    [-1, "__c__.SatisfyPromise("],
+                                    [trimedValueStartSourceIndex, trimedValue],
+                                    [-2, ");"]
+                                )
+                            }
                             awaitExpression = [trimedValueStartSourceIndex, trimedValue]
                         } else {
                             const transRet = transDirective(rv, trimedValueStartSourceIndex)

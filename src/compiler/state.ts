@@ -102,7 +102,7 @@ function newInputDescriptor(): InputDescriptor {
             debug: false,
             check: false,
             sourcemap: false,
-            typeCheckerStatement: "",
+            typeRefStatement: "",
             reserveTemplateComment: false
         },
         script: {

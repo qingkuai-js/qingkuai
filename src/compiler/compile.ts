@@ -20,7 +20,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const templateNodes = parseTemplate(source)
     const componentName = options.componentName ?? "_"
     const scriptSourceCode = inputDescriptor.script.code
-    const typeCheckerStatement = options.typeCheckerStatement ?? ""
+    const typeRefStatement = options.typeRefStatement ?? ""
 
     // 关于检查模式：检查模式表示仅用来检查编译错误的情况，这种情况下遇到编译错误时不会
     // 中断编译器的解析和执行，此时不会生成可运行的js代码，只会生成一种用来检查ts错误的
@@ -32,6 +32,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     if (!options.check) {
         analyzeScript(scriptSourceCode)
     }
+    const templateAnalysisRet = analyzeTemplate(templateNodes)
 
     // 检查模式下无需执行转换操作，生成用于typescript语言服务的中间代码
     const basicResult = {
@@ -40,12 +41,11 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         inputDescriptor,
         indexIsInScript: inputDescriptor.indexIsInScript
     }
-    const templateAnalysisRet = analyzeTemplate(templateNodes)
     if (options.check) {
         return {
             mappings: "",
             ...basicResult,
-            ...generateIntermidiateResult(source, typeCheckerStatement)
+            ...generateIntermidiateResult(source, typeRefStatement)
         }
     }
 
