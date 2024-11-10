@@ -40,15 +40,20 @@ export function transformInterpolation(
     }
 
     const bodyAst = parse("_=" + expression)?.body
+    const expressionAst = (bodyAst as any)?.[0].expression
     const endSourceIndex = startSourceIndex + expression.length
+
+    // 检查模式下遇到解析错误时返回原表达式
     if (isUndefined(bodyAst)) {
         return expression
     }
+
+    // 插值块中最多允许出现一个表达式
     if (bodyAst!.length > 1) {
         return InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex), ""
     }
 
-    const expressionAst = (bodyAst as any)[0].expression
+    // 未被括号包裹的序列表达式在插值块中是不被允许的
     if (is(expressionAst, "SequenceExpression")) {
         return SequenceExpreesionInInterpolationBlock(startSourceIndex, endSourceIndex), ""
     }

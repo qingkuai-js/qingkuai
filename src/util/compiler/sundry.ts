@@ -92,11 +92,11 @@ export function isIndexEliminated(index: number, ranges: EliminateRanges) {
     return false
 }
 
-// 记录表达式中间代码片段，它们在中间代码中会被放在一个数组中
-// 为什么要这样处理：插值块中只能接受表达式，这一点与数组元素是一致的
+// 记录表达式中间代码片段，它们在中间代码中会被赋值给__c__.Receiver
+// 为什么要这样处理：插值块中只能接受表达式，这一点与赋值表达式等号右侧的规则是一致的
 export function recordInterExpression(startSourceIndex: number, exp: string) {
     if (!isEmptyString(exp)) {
-        interCodeSnippets.push([-1, "["], [startSourceIndex, exp], [-2, "];"])
+        interCodeSnippets.push([-1, "__c__.Receiver="], [startSourceIndex, exp], [-2, ";"])
     }
 }
 
