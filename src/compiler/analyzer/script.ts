@@ -11,12 +11,7 @@ import {
     tempStoredImportInfos,
     allExistingIdentifiers
 } from "../state"
-import {
-    RedundantArgs,
-    DerLoseReactivity,
-    MixTwoSyntaxOfDerived,
-    IdentifierMaybeOverwritten
-} from "../message/warn"
+import { RedundantArgs, MixTwoSyntaxOfDerived, IdentifierMaybeOverwritten } from "../message/warn"
 import {
     parse,
     getEsNode,
@@ -32,7 +27,8 @@ import {
     IdentifierFormatIsNotAllowed,
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
-    CompilerFuncWithoutVariableDeclaration
+    CompilerFuncWithoutVariableDeclaration,
+    ShortHandDerivedWithOtherReactFunc
 } from "../message/error"
 import {
     getGeneratedScriptLine,
@@ -543,6 +539,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
+        const shortHandDerived = is(id, "Identifier") && id.name.startsWith("$")
         const esCallee = is(esInit, "CallExpression") ? getEsNode(esInit.callee) : null
         const esIdentifierCalleeName = is(esCallee, "Identifier") ? esCallee.name : ""
         const declarationSourceLoc = getSourceLocByScriptLoc(node.declarations[index].loc!)
@@ -570,9 +567,17 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         isDerived = hasFnCall && esIdentifierCalleeName === "der"
         hasFnArg = hasFnCall && assertedCalleeInit.arguments.length > 0
 
-        // 检查是否混用了der和$前缀两种响应性状态声明方式（警告）
-        if (isDerived && is(id, "Identifier") && id.name.startsWith("$")) {
-            MixTwoSyntaxOfDerived(declarationSourceLoc)
+        // TODO: 可选择性关闭$前缀声明响应性状态
+        isDerived ||= shortHandDerived
+
+        // 检查是否混用了der和$前缀两种衍生响应性状态声明方式（警告）
+        // 检查是否使用了$前缀搭配了其他响应性声明编译助手函数（rea、stc）（报错）
+        if (shortHandDerived && hasFnCall) {
+            if (esIdentifierCalleeName === "der") {
+                MixTwoSyntaxOfDerived(declarationSourceLoc)
+            } else {
+                ShortHandDerivedWithOtherReactFunc(esIdentifierCalleeName, declarationSourceLoc)
+            }
         }
 
         // 标记是否解构声明语法，解构且未使用rea方法时标记id开始的位置至init开始的位置无需映射
@@ -644,10 +649,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         // 衍生响应性状态声明时标记是否需要转换为函数（非函数节点都需要转换为函数）
         // 调试模式下的const衍生响应性状态声明要改用let关键字，因为setter中要修改调试标识符的值
         if (isDerived) {
-            if (isDestructuring) {
-                // TODO 支持解构
-                DerLoseReactivity(declarationSourceLoc)
-            } else if (isDebug && isConst && index === 0) {
+            if (isDebug && isConst && index === 0) {
                 useLetKeyword = true
                 eliminateRanges.add([node.start, idRange[0]])
             }

@@ -1,5 +1,12 @@
+import type {
+    Setter,
+    PGetHandler,
+    PSetHandler,
+    EffectListItem,
+    PDeleteHandler,
+    DestructuringFunc
+} from "../types"
 import type { AnyObject } from "../../util/types"
-import type { Setter, PGetHandler, PSetHandler, EffectListItem, PDeleteHandler } from "../types"
 
 import { usedEffectList } from "./state"
 import { runSyncEffect } from "./effect"
@@ -220,7 +227,7 @@ function reactGen(levelDown = 0) {
 // 出来的标识符setter（调试模式下修改调试标识符时调用以修改原始标识符的值）
 export function destructuringReactGen(isConst = false) {
     const reactFn = isConst ? constReact : react
-    return (dfnAndSetters: [(v: any) => any[], ...Setter[]], value: any, level = Infinity) => {
+    return (dfnAndSetters: [DestructuringFunc, ...Setter[]], value: any, level = Infinity) => {
         const [dfn, ...setters] = dfnAndSetters
         const isDebug = !isUndefined(dfnAndSetters[1])
 

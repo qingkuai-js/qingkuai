@@ -12,6 +12,7 @@ export type Setter = (v: any) => void
 export type ValueOrValueArr<T> = T | T[]
 export type ObjectKeys = keyof AnyObject
 export type Noop = (...params: any[]) => any
+export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
 
 export type Opportunity = "sync" | "pre" | "post"
@@ -130,7 +131,7 @@ export type DestructionStruct = {
     c: Set<DestructionStruct[]>
 }
 
-export interface WatchCallback<T> {
+export type WatchCallback<T> = {
     (pre: T, cur: T): void
 }
 export interface WatchStruct {
@@ -143,13 +144,22 @@ export interface EffectStruct {
     fn: GeneralFunc
     type: Opportunity
 }
-export type WatchEffectStruct = WatchStruct | EffectStruct
-export type EffectListItem = [Set<UpdateFunc>, Set<WatchEffectStruct> | null]
+
+export interface DerivedTarget {
+    $: any
+}
+export interface DerivedInternalState {
+    dirty: boolean
+    initialized: boolean
+    effectList: EffectListItem[]
+}
 
 export interface RuntimeWatchFunc {
     <T>(getter: () => T, callback: WatchCallback<T>): () => void
-    <T>(expression: Exclude<T, Function>, callback: WatchCallback<T>): () => void
 }
+
+export type WatchEffectStruct = WatchStruct | EffectStruct
+export type EffectListItem = [Set<UpdateFunc>, Set<WatchEffectStruct> | null]
 
 export type PGetHandler = ProxyHandler<any>["get"]
 export type PSetHandler = ProxyHandler<any>["set"]

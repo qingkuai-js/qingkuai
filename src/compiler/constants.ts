@@ -46,6 +46,7 @@ export const fullRuntimeItems = new Set([
     "eventWrapper",
     "withReference",
     "destructuringReact",
+    "destructuringDerived",
     "constDestructuringReact"
 ])
 
