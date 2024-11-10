@@ -130,7 +130,7 @@ export function transformInterpolation(
             }
 
             // 处理ObjectProperty中的shrothand声明
-            // 将其格式转换为 propertyName: (_w_)propertyName(.$)
+            // 将其格式转换为 propertyName: (__w__)propertyName(.$)
             if (is(esParent?.v, "ObjectProperty") && esParent.v.shorthand) {
                 extendTransformInfo(start, `${name}: `)
             }
@@ -157,7 +157,7 @@ export function transformInterpolation(
                     useGetter = true
                     extendTransformInfo(end, ".$")
                     if (isDebug) {
-                        extendTransformInfo(start, "_w_")
+                        extendTransformInfo(start, "__w__")
                     }
                 }
             }
@@ -224,8 +224,8 @@ export function transformInterpolation(
         transformInfos.get(i)?.forEach(item => {
             const str = isFunction(item) ? item() : item
             transformedArr.push(str)
-            if (str === "_w_") {
-                nextOffset += 3
+            if (str === "__w__") {
+                nextOffset += 5
             } else {
                 offset += str.length
             }

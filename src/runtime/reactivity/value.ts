@@ -215,15 +215,16 @@ function reactGen(levelDown = 0) {
     }
 }
 
-// 解构语法响应性声明，将解构出的每一个标识符都声明为响应性变量
-// 生成方法的第二个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个结构出来的标识符的setter
+// 解构语法响应性声明，将解构出的每一个标识符都声明为响应性变量，生成方法
+// 的第二个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个解构
+// 出来的标识符setter（调试模式下修改调试标识符时调用以修改原始标识符的值）
 export function destructuringReactGen(isConst = false) {
     const reactFn = isConst ? constReact : react
     return (dfnAndSetters: [(v: any) => any[], ...Setter[]], value: any, level = Infinity) => {
         const [dfn, ...setters] = dfnAndSetters
         const isDebug = !isUndefined(dfnAndSetters[1])
 
-        // 这里当使用const声明时也处于非调试模式，不过并不影响整体逻辑
+        // 非调试模式
         if (!isDebug) {
             return dfn(value).map(v => {
                 return reactFn(v, level)

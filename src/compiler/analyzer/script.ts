@@ -61,7 +61,7 @@ const visitor: ASTVisitor = {
     ClassDeclaration(node, parent) {
         const name = node.id!.name
         const isDebug = inputDescriptor.options.debug
-        const id = isDebug ? `[_w_${name}, ${name}]` : name
+        const id = isDebug ? `[__w__${name}, ${name}]` : name
 
         const getReactFunc = () => {
             return getAlias("react")
@@ -128,13 +128,13 @@ const visitor: ASTVisitor = {
         // 需要通过.$访问的标识符
         if (identifierIsReference(node, parent)) {
             // ObjectProperty中的shorthand声明，
-            // 将其格式转换为 propertyName: (_w_)propertyName(.$)
+            // 将其格式转换为 propertyName: (__w__)propertyName(.$)
             if (accessByDotDollar && is(esParent?.v, "ObjectProperty") && esParent.v.shorthand) {
                 if (grand && is(getEsNodeOfParent(grand)!.v, "ObjectExpression")) {
                     replacementInfo.map.get(name)!.items.push(
                         initReplacementItem({
                             index: node.end,
-                            text: `: ${isDebug ? "_w_" : ""}${name}.$`
+                            text: `: ${isDebug ? "__w__" : ""}${name}.$`
                         })
                     )
                 }
@@ -145,7 +145,7 @@ const visitor: ASTVisitor = {
                 if (isDebug) {
                     replacementItem.items.push(
                         initReplacementItem({
-                            text: "_w_",
+                            text: "__w__",
                             index: node.start
                         })
                     )
@@ -206,7 +206,7 @@ const visitor: ASTVisitor = {
     // 任意节点都将被捕获进入，此捕获组主要用来记录sourcemap信息，具体分为下面几种情况：
     // 1. 非import语句（且不是Program）节点时，统一记录sourcemap信息
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
-    // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加_w_前缀
+    // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加__w__前缀
     AnyNode(node, parent) {
         if (inputDescriptor.options.sourcemap) {
             if (
@@ -322,7 +322,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         if (!internalReactFunc && !hasFnArg) {
             replacementItems.push(
                 initReplacementItem({
-                    index: initRange[0],
+                    index: initRange[1],
                     text: "void 0"
                 })
             )
@@ -350,7 +350,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 replacementItems.push(
                     initReplacementItem({
                         index: idRange[0],
-                        text: "[_w_"
+                        text: "[__w__"
                     }),
                     initReplacementItem({
                         index: idRange[1],
@@ -374,7 +374,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                     const gsa = () => (isDebug ? getSetterArg() : "")
                     replacementItems.push(
                         initReplacementItem({
-                            index: hasFnCall ? initRange[0] : idRange[1],
+                            index: hasFnCall ? initRange[1] : idRange[1],
                             text: () => `${equalToken}${getReactFunc()}_ => void 0${gsa()})`
                         })
                     )
@@ -419,7 +419,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         // 处理非衍生响应性变量声明
         // 当变量声明语句需要转换为响应性声明时标记文本替换，这里需要区分是否解构语法
-        // 调试模式时，为非const声明的标识符添加_w_前缀，并记录所有原始标识符名称，这些原始标识符
+        // 调试模式时，为非const声明的标识符添加__w__前缀，并记录所有原始标识符名称，这些原始标识符
         // 名称会在生成代码的底部被声明，并由响应性声明方法接受的setter参数进行赋值
         if (!isDerived && internalReactFunc) {
             if (!isDestructuring) {
@@ -438,7 +438,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                     replacementItems.push(
                         initReplacementItem({
                             index: idRange[0],
-                            text: "[_w_"
+                            text: "[__w__"
                         }),
                         initReplacementItem({
                             index: idRange[1],
@@ -448,14 +448,12 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 }
                 if (noInitOrNoArg) {
                     const equalToken = hasFnCall ? "" : " = "
-                    if (isDebug && !isConst) {
-                        replacementItems.push(
-                            initReplacementItem({
-                                index: hasFnCall ? initRange[0] : idRange[1],
-                                text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
-                            })
-                        )
-                    }
+                    replacementItems.push(
+                        initReplacementItem({
+                            index: hasFnCall ? initRange[1] : idRange[1],
+                            text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
+                        })
+                    )
                 } else {
                     replacementItems.push(
                         initReplacementItem({
@@ -507,7 +505,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                     )
                 } else {
                     const ddIdentifierArr = destructuringIdentifierArr.map(item => {
-                        return `[_w_${item}, ${item}]`
+                        return `[__w__${item}, ${item}]`
                     })
                     markReplacementCommon(`[${ddIdentifierArr.join(", ")}]`)
                     replacementItems.push(
@@ -539,19 +537,21 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         let initStart = init?.start ?? end!
 
         const esInit = init ? getEsNode(init) : init
+
+        // 断言为方法调用节点的init，使用前需确保hasFnCall为true
+        const assertedCalleeInit = esInit as CallExpression
+
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
-        const esInitIsIdentifierCallee = (hasFnCall = is(esInit, "CallExpression"))
-        const esCallee = esInitIsIdentifierCallee ? getEsNode(esInit.callee) : null
-        const calleeName = is(esCallee, "Identifier") ? esCallee.name : ""
+        const esCallee = is(esInit, "CallExpression") ? getEsNode(esInit.callee) : null
+        const esIdentifierCalleeName = is(esCallee, "Identifier") ? esCallee.name : ""
         const declarationSourceLoc = getSourceLocByScriptLoc(node.declarations[index].loc!)
 
         // 非顶部作用域声明
         if (!isInTopScope) {
-            names.forEach(name => {
+            return names.forEach(name => {
                 parent.parent?.excludes.add(name)
             })
-            return
         }
 
         // 去除类型注释
@@ -565,26 +565,20 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         hasInit = Boolean(init)
         idRange = [id.start!, id.end!]
         initRange = [initStart, initEnd]
-        if (esInitIsIdentifierCallee) {
-            hasFnCall = compilerFuncs.has(calleeName)
-            if (hasFnCall) {
-                reactFunc = calleeName
-                hasFnArg = esInit.arguments.length > 0
-            }
+        hasFnCall = compilerFuncs.has(esIdentifierCalleeName)
+        reactFunc = hasFnCall ? esIdentifierCalleeName : ""
+        isDerived = hasFnCall && esIdentifierCalleeName === "der"
+        hasFnArg = hasFnCall && assertedCalleeInit.arguments.length > 0
+
+        // 检查是否混用了der和$前缀两种响应性状态声明方式（警告）
+        if (isDerived && is(id, "Identifier") && id.name.startsWith("$")) {
+            MixTwoSyntaxOfDerived(declarationSourceLoc)
         }
 
-        // 标记是否解构声明语法，非解构声明时检查是否衍生响应性状态（使用$前缀）
-        if (is(id, "ObjectPattern") || is(id, "ArrayPattern")) {
-            isDestructuring = true
-            markSegmentShouldNotBeMapped(idRange[0], idRange[1] + 1)
+        // 标记是否解构声明语法，解构且未使用rea方法时标记id开始的位置至init开始的位置无需映射
+        if ((isDestructuring = is(id, "ObjectPattern") || is(id, "ArrayPattern"))) {
             destructuringIdentifierArr = getIdentifiersFromPattern(id)
-        } else if (is(id, "Identifier")) {
-            isDerived = id.name.startsWith("$")
-            if (isDerived) {
-                if (esInitIsIdentifierCallee && calleeName === "der") {
-                    MixTwoSyntaxOfDerived(declarationSourceLoc)
-                }
-            }
+            !hasFnCall && markSegmentShouldNotBeMapped(idRange[0], initRange[0])
         }
 
         // 检查是否是编译助手函数调用，是的话需要标记相关信息
@@ -595,7 +589,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             if (hasFnArg) {
                 const argLen = cinit.arguments.length
                 const [_, se] = [secondArg?.start, secondArg?.end]
-                const [__, fe] = (firstArgRange = [firstArg.start!, firstArg.end!])
+                const [fs, fe] = (firstArgRange = [firstArg.start!, firstArg.end!])
 
                 // 以下是用于报错/警告的一些源码位置
                 const sfe = getSourceIndexByScriptIndex(fe)
@@ -606,7 +600,12 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 // end index of callee start parentheses
                 const ps = findOutOfSC(scriptSource, "(", init!.start!)[0] + 1
 
-                switch (calleeName) {
+                // 解构时，将id的开始位置至第一个参数开始的位置标记为无需映射
+                if (isDestructuring) {
+                    markSegmentShouldNotBeMapped(idRange[0], fs)
+                }
+
+                switch (esIdentifierCalleeName) {
                     case "stc":
                         eliminateRanges.add([cs, ps])
                         eliminateRanges.add([fe, ce])
@@ -635,31 +634,30 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         break
                 }
             } else {
-                reactFunc = calleeName
                 eliminateRanges.add(initRange)
-                isDerived = reactFunc === "der"
-                if (isDestructuring) {
-                    DestructureReactFuncWithNoArg(reactFunc, declarationSourceLoc)
-                }
+
+                // 编译助手函数+解构声明且无参数时报错（其他情况如计算后的undefined、null等）会在运行时报错
+                isDestructuring && DestructureReactFuncWithNoArg(reactFunc, declarationSourceLoc)
             }
         }
 
-        // 衍生响应性状态声明时标记是否需要转换为函数
+        // 衍生响应性状态声明时标记是否需要转换为函数（非函数节点都需要转换为函数）
         // 调试模式下的const衍生响应性状态声明要改用let关键字，因为setter中要修改调试标识符的值
         if (isDerived) {
             if (isDestructuring) {
+                // TODO 支持解构
                 DerLoseReactivity(declarationSourceLoc)
             } else if (isDebug && isConst && index === 0) {
                 useLetKeyword = true
                 eliminateRanges.add([node.start, idRange[0]])
             }
-            if (!esInitIsIdentifierCallee) {
-                derInitTransToFunc = !isFunctionNode(init)
-            } else {
-                derInitTransToFunc = !isFunctionNode(esInit.arguments[0])
-            }
             if (derInitTransToFunc) {
                 markSegmentShouldNotBeMapped(initRange[0], initRange[1] + 1)
+            }
+            if (!hasFnCall) {
+                derInitTransToFunc = !isFunctionNode(init)
+            } else {
+                derInitTransToFunc = !isFunctionNode(assertedCalleeInit.arguments[0])
             }
         }
 
