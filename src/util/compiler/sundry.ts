@@ -13,7 +13,7 @@ import { isEmptyString } from "../shared/assert"
 
 // 获取调试setter标识符
 export function getSetterIdentifier(identifier: string) {
-    return `_d${debuggingInfo.setters.get(identifier)}_`
+    return `__d${debuggingInfo.setters.get(identifier)}__`
 }
 
 // 生成指定数量的缩进字符

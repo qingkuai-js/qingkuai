@@ -10,7 +10,7 @@ export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.s
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
-export const bannedIdentifierFormatRE = /^__w__|(?:[sd]\d+|dn|c)__$/
+export const bannedIdentifierFormatRE = /^__w__|__(?:[sd]\d+|dn|c)__$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
 

@@ -11,7 +11,6 @@ import {
     tempStoredImportInfos,
     allExistingIdentifiers
 } from "../state"
-import { RedundantArgs, MixTwoSyntaxOfDerived, IdentifierMaybeOverwritten } from "../message/warn"
 import {
     parse,
     getEsNode,
@@ -44,6 +43,7 @@ import { getSetterIdentifier } from "../../util/compiler/sundry"
 import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
 import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
+import { RedundantArgs, MixTwoSyntaxOfDerived, IdentifierMaybeOverwritten } from "../message/warn"
 
 const visitor: ASTVisitor = {
     VariableDeclaration(node, parent) {
@@ -273,6 +273,8 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         let useDollar = true
         let internalReactFunc = ""
         let status: ReplacementStatus = "pending"
+
+        const derTransParentheses = ["", ""]
         const createSetter = isDerived || !isConst
         const replacementItems: ReplacementItem[] = []
         const valueRange = hasFnCall ? firstArgRange : initRange
@@ -292,8 +294,11 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             arg = hasFnArg ? "" : "void 0"
         } else {
             if (isDerived) {
-                internalReactFunc = "derived"
-                useDollar = !isDestructuring
+                if (!isDestructuring) {
+                    internalReactFunc = "derived"
+                } else {
+                    internalReactFunc = "destructuringDerived"
+                }
             } else {
                 if (!hasFnArg) {
                     arg += "void 0"
@@ -355,17 +360,9 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 )
             }
 
-            // rwp: whether Return value should be Wrapped with Parentheses
-            // cwr: the Characters to Wrap Return value, useage: cwr[0] + <Return Value> + cwr[1]
-            // 非调试模式并且需要将初始值或参数值转换成函数时，需要判断返回值是否需要使用圆括号包裹（判断规则就是返回时是否以{开头）
-            // rwp 表示返回值是否需要使用括号包裹；cwr 表示括号字符，当rwp为true时，cwr就会被确定为["(", ")"]，否则是两个空字符串组成的数组
-            let [rwp, cwr] = [false, ["", ""]]
-
+            // 非调试模式并且需要将初始值或参数值转换成函数时，需要判断返回值是否需要使用圆括号包裹
             if (derInitTransToFunc) {
-                if (!noInitOrNoArg) {
-                    rwp = scriptSource[valueRange[0]] === "{"
-                    rwp && (cwr = ["(", ")"])
-                } else {
+                if (noInitOrNoArg) {
                     const equalToken = hasFnCall ? "" : " = "
                     const gsa = () => (isDebug ? getSetterArg() : "")
                     replacementItems.push(
@@ -374,41 +371,49 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                             text: () => `${equalToken}${getReactFunc()}_ => void 0${gsa()})`
                         })
                     )
+                } else if (scriptSource[valueRange[0]] === "{") {
+                    ;[derTransParentheses[0], derTransParentheses[1]] = ["(", ")"]
                 }
             }
 
             // 此时一定存在初始值($前缀便捷声明)或至少一个参数（der调用）
             if (!noInitOrNoArg) {
-                replacementItems.push(
-                    initReplacementItem({
-                        index: initRange[0],
-                        text: () => {
-                            const arrowFuncStr = derInitTransToFunc ? "_ => " : ""
-                            return `${getReactFunc()}${arrowFuncStr}${cwr[0]}`
-                        }
-                    })
-                )
                 if (isDestructuring) {
                     replacementItems.push(
                         initReplacementItem({
-                            index: initRange[1],
-                            text: `${cwr[1]}).$`
-                        })
-                    )
-                } else if (isDebug) {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: valueRange[1],
-                            text: () => `${getSetterArg()})`
+                            index: initRange[0],
+                            text: () => {
+                                return `${derInitTransToFunc ? "_ => " : ""}${
+                                    derTransParentheses[0]
+                                }`
+                            }
                         })
                     )
                 } else {
                     replacementItems.push(
                         initReplacementItem({
-                            index: valueRange[1],
-                            text: ")"
+                            index: initRange[0],
+                            text: () => {
+                                const arrowFuncStr = derInitTransToFunc ? "_ => " : ""
+                                return `${getReactFunc()}${arrowFuncStr}${derTransParentheses[0]}`
+                            }
                         })
                     )
+                    if (isDebug) {
+                        replacementItems.push(
+                            initReplacementItem({
+                                index: valueRange[1],
+                                text: () => `${getSetterArg()})`
+                            })
+                        )
+                    } else {
+                        replacementItems.push(
+                            initReplacementItem({
+                                index: valueRange[1],
+                                text: ")"
+                            })
+                        )
+                    }
                 }
             }
         }
@@ -472,54 +477,57 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         })
                     )
                 }
-            } else {
-                const id = `[${destructuringIdentifierArr.join(", ")}]`
-                const equalTokenIndex = findOutOfSC(scriptSource, "=", idRange[1])[0]
-                const markReplacementCommon = (idStr: string) => {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: idRange[0],
-                            text: () => `${idStr} = ${getReactFunc()}[(`
-                        }),
-                        initReplacementItem({
-                            index: idRange[1],
-                            text: ")"
-                        }),
-                        initReplacementItem({
-                            index: initRange[1],
-                            text: ")"
-                        })
-                    )
-                }
-                if (!isDebug) {
-                    markReplacementCommon(id)
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: equalTokenIndex + 1,
-                            text: `> ${id}],`
-                        })
-                    )
-                } else {
-                    const ddIdentifierArr = destructuringIdentifierArr.map(item => {
-                        return `[__w__${item}, ${item}]`
+            }
+        }
+
+        if (isDestructuring && reactFunc !== "stc") {
+            const id = `[${destructuringIdentifierArr.join(", ")}]`
+            const equalTokenIndex = findOutOfSC(scriptSource, "=", idRange[1])[0]
+            const lengthArg = `, ${isDerived ? destructuringIdentifierArr.length : ""}`
+            const markReplacementCommon = (idStr: string) => {
+                replacementItems.push(
+                    initReplacementItem({
+                        index: idRange[0],
+                        text: () => `${idStr} = ${getReactFunc()}[(`
+                    }),
+                    initReplacementItem({
+                        index: idRange[1],
+                        text: ")"
+                    }),
+                    initReplacementItem({
+                        index: initRange[1],
+                        text: `)${derTransParentheses[1]}`
                     })
-                    markReplacementCommon(`[${ddIdentifierArr.join(", ")}]`)
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: equalTokenIndex + 1,
-                            text: () => {
-                                const setters = destructuringIdentifierArr.map(identifier => {
-                                    if (isConst) {
-                                        return getAlias("noop")
-                                    } else {
-                                        return getSetterIdentifier(identifier)
-                                    }
-                                })
-                                return `> ${id}, ${setters.join(", ")}],`
-                            }
-                        })
-                    )
-                }
+                )
+            }
+            if (!isDebug) {
+                markReplacementCommon(id)
+                replacementItems.push(
+                    initReplacementItem({
+                        index: equalTokenIndex + 1,
+                        text: `> ${id}${lengthArg}],`
+                    })
+                )
+            } else {
+                const ddIdentifierArr = destructuringIdentifierArr.map(item => {
+                    return `[__w__${item}, ${item}]`
+                })
+                markReplacementCommon(`[${ddIdentifierArr.join(", ")}]`)
+                replacementItems.push(
+                    initReplacementItem({
+                        index: equalTokenIndex + 1,
+                        text: () => {
+                            const setters = destructuringIdentifierArr.map(identifier => {
+                                if (isConst && !isDerived) {
+                                    return getAlias("noop")
+                                } else {
+                                    return getSetterIdentifier(identifier)
+                                }
+                            })
+                            return `> ${id}${lengthArg}, ${setters.join(", ")}],`
+                        }
+                    })
+                )
             }
         }
 
@@ -580,7 +588,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             }
         }
 
-        // 标记是否解构声明语法，解构且未使用rea方法时标记id开始的位置至init开始的位置无需映射
+        // 标记是否解构声明语法，解构且未使用编译器助手函数时标记id开始的位置至init开始的位置无需映射
         if ((isDestructuring = is(id, "ObjectPattern") || is(id, "ArrayPattern"))) {
             destructuringIdentifierArr = getIdentifiersFromPattern(id)
             !hasFnCall && markSegmentShouldNotBeMapped(idRange[0], initRange[0])
@@ -652,9 +660,6 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             if (isDebug && isConst && index === 0) {
                 useLetKeyword = true
                 eliminateRanges.add([node.start, idRange[0]])
-            }
-            if (derInitTransToFunc) {
-                markSegmentShouldNotBeMapped(initRange[0], initRange[1] + 1)
             }
             if (!hasFnCall) {
                 derInitTransToFunc = !isFunctionNode(init)
