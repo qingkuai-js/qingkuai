@@ -1,6 +1,6 @@
 import type { FixedArray } from "../../util/types"
 import type { ASTLocation, ReplacementItem, ReplacementStatus } from "../types"
-import type { Pattern, CallExpression, VariableDeclaration } from "@babel/types"
+import type { Pattern, CallExpression, VariableDeclaration, Identifier } from "@babel/types"
 import type { ASTVisitor, EsPattern, RequiredPosition, TraverseParent } from "../estree/types"
 
 import {
@@ -12,6 +12,17 @@ import {
     allExistingIdentifiers
 } from "../state"
 import {
+    MixTwoSyntaxOfDerived,
+    IdentifierMaybeOverwritten,
+    RedundantArgsForCompilerFunc
+} from "../message/warn"
+import {
+    reactCompilerFuncRE,
+    watchCompilerFuncRE,
+    bannedIdentifierFormatRE,
+    scriptSourceIndentSpaceCount
+} from "../regular"
+import {
     parse,
     getEsNode,
     markExcludes,
@@ -22,12 +33,13 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
-    CompilerFuncNotInTopScope,
+    WatchCompilerFuncMissingArg,
+    ReactCompilerFuncNotInTopScope,
     IdentifierFormatIsNotAllowed,
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
-    CompilerFuncWithoutVariableDeclaration,
-    ShortHandDerivedWithOtherReactFunc
+    ShortHandDerivedWithOtherReactFunc,
+    ReactCompilerFuncWithoutVariableDeclaration
 } from "../message/error"
 import {
     getGeneratedScriptLine,
@@ -35,15 +47,13 @@ import {
     getSourceIndexByScriptIndex
 } from "../../util/compiler/locations"
 import { walk } from "../estree/walk"
+import { compilerFuncs } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
-import { compilerFuncs, watchRelatedFuncs } from "../constants"
 import { getSetterIdentifier } from "../../util/compiler/sundry"
 import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
-import { bannedIdentifierFormatRE, scriptSourceIndentSpaceCount } from "../regular"
-import { RedundantArgs, MixTwoSyntaxOfDerived, IdentifierMaybeOverwritten } from "../message/warn"
 
 const visitor: ASTVisitor = {
     VariableDeclaration(node, parent) {
@@ -84,25 +94,27 @@ const visitor: ASTVisitor = {
 
     CallExpression(node, parent) {
         const callee = getEsNode(node.callee)
-        const esParent = getEsNodeOfParent(parent)
-        const esGrand = getEsNodeOfParent(esParent?.parent)
-        const esGreatGrand = getEsNodeOfParent(esGrand?.parent)
+        const esParent1 = getEsNodeOfParent(parent)
+        const esParent2 = getEsNodeOfParent(esParent1?.parent)
+        const esParent3 = getEsNodeOfParent(esParent2?.parent)
         const nodeSourceLoc = getSourceLocByScriptLoc(node.loc)
-        if (is(callee, "Identifier")) {
-            const funcName = callee.name
-            const isExclude = parent.excludes.has(funcName)
-            if (compilerFuncs.has(funcName) && !isExclude) {
-                if (!is(esParent!.v, "VariableDeclarator")) {
-                    CompilerFuncWithoutVariableDeclaration(nodeSourceLoc)
+
+        if (
+            is(callee, "Identifier") &&
+            compilerFuncs.has(callee.name) &&
+            !parent.excludes.has(callee.name)
+        ) {
+            if (watchCompilerFuncRE.test(callee.name)) {
+                analyzeWatchCompilerFuncCall(node)
+            } else if (reactCompilerFuncRE.test(callee.name)) {
+                if (!is(esParent3?.v, "Program")) {
+                    ReactCompilerFuncNotInTopScope(nodeSourceLoc)
                 }
-                if (!is(esGreatGrand?.v, "Program")) {
-                    if (!parent.excludes.has(funcName)) {
-                        CompilerFuncNotInTopScope(nodeSourceLoc)
-                    }
+                if (!is(esParent1!.v, "VariableDeclarator")) {
+                    ReactCompilerFuncWithoutVariableDeclaration(nodeSourceLoc)
                 }
             }
         }
-        analyzeWatch(node, parent)
     },
 
     Identifier(node, parent) {
@@ -160,7 +172,6 @@ const visitor: ASTVisitor = {
     ImportDeclaration(node) {
         const { start, end } = node
         const scriptSource = inputDescriptor.script.code
-        const isQingKuaiRuntime = node.source.value === "qingkuai"
         eliminateRanges.add([start, end])
         node.specifiers.forEach(({ local: { name }, loc }) => {
             checkTopScopeIdentifier(name, loc!)
@@ -170,25 +181,6 @@ const visitor: ASTVisitor = {
             startColumn: node.loc.start.column,
             code: scriptSource.slice(start, end)
         })
-
-        // 标记watch相关的方法的导入名称或runtime命名空间导入名称
-        // 在CallExpression捕获组中这用到这些标记信息对watch相关方法调用进行getter包装
-        if (isQingKuaiRuntime) {
-            node.specifiers.forEach(specifier => {
-                if (is(specifier, "ImportSpecifier")) {
-                    const { imported } = specifier
-                    if (is(imported, "Identifier")) {
-                        if (watchRelatedFuncs.has(imported.name)) {
-                            inputDescriptor.script.runtime.watchIdentifiers.add(
-                                specifier.local.name
-                            )
-                        }
-                    }
-                } else if (is(specifier, "ImportNamespaceSpecifier")) {
-                    inputDescriptor.script.runtime.namespaceIdentifier = specifier.local.name
-                }
-            })
-        }
     },
 
     FunctionExpression(node, parent) {
@@ -566,17 +558,15 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         }
 
         // 状态标记
-        reactFunc = ""
         hasInit = Boolean(init)
         idRange = [id.start!, id.end!]
         initRange = [initStart, initEnd]
-        hasFnCall = compilerFuncs.has(esIdentifierCalleeName)
+        hasFnCall = reactCompilerFuncRE.test(esIdentifierCalleeName)
         reactFunc = hasFnCall ? esIdentifierCalleeName : ""
-        isDerived = hasFnCall && esIdentifierCalleeName === "der"
         hasFnArg = hasFnCall && assertedCalleeInit.arguments.length > 0
+        isDerived = shortHandDerived || (hasFnCall && esIdentifierCalleeName === "der")
 
         // TODO: 可选择性关闭$前缀声明响应性状态
-        isDerived ||= shortHandDerived
 
         // 检查是否混用了der和$前缀两种衍生响应性状态声明方式（警告）
         // 检查是否使用了$前缀搭配了其他响应性声明编译助手函数（rea、stc）（报错）
@@ -623,14 +613,14 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         eliminateRanges.add([cs, ps])
                         eliminateRanges.add([fe, ce])
                         if (argLen > 1) {
-                            RedundantArgs("stc", 1, sfe, sle)
+                            RedundantArgsForCompilerFunc("stc", 1, sfe, sle)
                         }
                         break
                     case "rea":
                         eliminateRanges.add([cs, ps])
                         if (argLen > 2) {
                             eliminateRanges.add([se!, ce])
-                            RedundantArgs("rea", 2, sse, sle)
+                            RedundantArgsForCompilerFunc("rea", 2, sse, sle)
                         } else {
                             eliminateRanges.add([ce - 1, ce])
                         }
@@ -640,7 +630,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         eliminateRanges.add([cs, ps])
                         if (argLen > 1) {
                             eliminateRanges.add([fe, ce])
-                            RedundantArgs("der", 1, sfe, sle)
+                            RedundantArgsForCompilerFunc("der", 1, sfe, sle)
                         } else {
                             eliminateRanges.add([ce - 1, ce])
                         }
@@ -673,52 +663,6 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
     })
 }
 
-// 分析watch相关运行时方法调用
-function analyzeWatch(node: CallExpression & RequiredPosition, parent: TraverseParent) {
-    const { callee } = node
-    const firstArg = node.arguments[0]
-    const scriptSource = inputDescriptor.script.code
-    const emptyStringReplacement = replacementInfo.map.get("")!
-    const retUseParentheses = scriptSource[firstArg?.start || 0] === "{"
-    const { namespaceIdentifier, watchIdentifiers } = inputDescriptor.script.runtime
-
-    if (node.arguments.length === 0) {
-        return
-    }
-
-    // prettier-ignore
-    if (
-        (
-            is(callee, "Identifier") &&
-            !parent.excludes.has(callee.name) &&
-            watchIdentifiers.has(callee.name)
-        ) ||
-        (
-            is(callee, "MemberExpression") &&
-            is(callee.object, "Identifier") &&
-            is(callee.property, "Identifier") &&
-            !parent.excludes.has(callee.object.name) &&
-            callee.object.name === namespaceIdentifier &&
-            watchRelatedFuncs.has(callee.property.name)
-        )
-    ) {
-        emptyStringReplacement.items.push(
-            initReplacementItem({
-                index: firstArg.start!,
-                text: `_ => ${retUseParentheses ? "(" : ""}`
-            })
-        )
-        if (retUseParentheses) {
-            emptyStringReplacement.items.push(
-                initReplacementItem({
-                    index: firstArg.end!,
-                    text: ")"
-                })
-            )
-        }
-    }
-}
-
 // 标记某个片段不需要被映射
 function markSegmentShouldNotBeMapped(start: number, end: number) {
     if (inputDescriptor.options.debug) {
@@ -738,7 +682,60 @@ function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
         RegisterExsitingIdentifierName(name, sourceLoc)
     }
 
-    if (name === "$event" || name === "$param") {
+    if (name === "$arg") {
         IdentifierMaybeOverwritten(name, sourceLoc)
+    }
+}
+
+// 分析watch相关编译器助手函数调用，如果用户已经从qingkuai/runtime导入了watch相关方法，助手函数转换
+// 后不会使用同名标识符，而是会从qingkuai/internal重新导入一份，由于两种导入方式实际都来自同一个chunk，
+// 因此不会导致打包结果中存在重复代码，这样的好处是从编译结果中可以区分用户在源码中对watch相关方法的调用方式
+function analyzeWatchCompilerFuncCall(node: CallExpression & RequiredPosition) {
+    const transMap = new Map([
+        ["waT", "watch"],
+        ["Wat", "preWatch"],
+        ["wat", "syncWatch"]
+    ])
+    const argsLen = node.arguments.length
+    const calleeName = (node.callee as Identifier).name
+    const emptyStringReplacement = replacementInfo.map.get("")!
+
+    // 检查参数数量
+    if (argsLen < 2) {
+        WatchCompilerFuncMissingArg(calleeName, argsLen, node.loc)
+    } else if (argsLen > 2) {
+        RedundantArgsForCompilerFunc(calleeName, 2, node.arguments[1].end!, node.end - 1)
+    }
+
+    // 转换watch相关编译助手函数调用
+    emptyStringReplacement.items.push(
+        initReplacementItem({
+            index: node.start,
+            text: () => getAlias(transMap.get(calleeName)!)
+        })
+    )
+    eliminateRanges.add([node.callee.start!, node.callee.end!])
+
+    // 首个参数非函数节点时转换为getter
+    if (argsLen > 0) {
+        const firstArg = node.arguments[0]
+        const [fs, fe] = [firstArg.start!, firstArg.end!]
+        const wrwp = inputDescriptor.script.code[fs] === "{" // Wrap Return value With Parentheses
+        if (!isFunctionNode(getEsNode(firstArg))) {
+            emptyStringReplacement.items.push(
+                initReplacementItem({
+                    index: fs,
+                    text: () => `_ => ${wrwp ? "(" : ""}`
+                })
+            )
+            if (wrwp) {
+                emptyStringReplacement.items.push(
+                    initReplacementItem({
+                        index: fe,
+                        text: ")"
+                    })
+                )
+            }
+        }
     }
 }

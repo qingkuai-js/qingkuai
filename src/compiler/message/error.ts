@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1042
+ * current-error-code: 1043
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -164,13 +164,20 @@ export const DuplicateNameAttrForSlot = withLocation(1035, (value: string) => {
     return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
 })
 
-export const CompilerFuncNotInTopScope = withLocation(1026, () => {
+export const ReactCompilerFuncNotInTopScope = withLocation(1026, () => {
     return "Reactivity related ompiler helper functions(rea, stc, der) must be used in the top scope."
 })
 
 export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: string) => {
     return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
 })
+
+export const WatchCompilerFuncMissingArg = withLocation(
+    1043,
+    (funcName: string, received: number) => {
+        return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
+    }
+)
 
 export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
     return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
@@ -180,7 +187,7 @@ export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
     return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
 })
 
-export const CompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
+export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
     return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
 })
 

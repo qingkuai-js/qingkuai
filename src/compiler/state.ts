@@ -111,11 +111,7 @@ function newInputDescriptor(): InputDescriptor {
             lineCount: 0,
             existing: false,
             loc: newASTLocation(),
-            generatedOffset: [0, 0],
-            runtime: {
-                namespaceIdentifier: "",
-                watchIdentifiers: new Set()
-            }
+            generatedOffset: [0, 0]
         }
     }
 }

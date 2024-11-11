@@ -30,14 +30,6 @@ export const AttributeForEndTag = withLocation(9001, () => {
     return "Attributes in the end tag will be ignored."
 })
 
-export const RedundantArgs = withLocation(9002, (fn: string, need: number | string) => {
-    let needMsg = "requires only one parameter"
-    if (!isNumber(need) || need > 1) {
-        needMsg = `accepts a maximum of ${need} parameters`
-    }
-    return `${fn} ${needMsg}, and the excess parameters has been ignored.`
-})
-
 export const IdentifierMaybeOverwritten = withLocation(9003, (name: string) => {
     return `The top scope identifier(${name}) may be overwrittern in inline event.`
 })
@@ -58,6 +50,17 @@ export const DuplicateEventModifiers = withLocation(
     9011,
     (modifiers: string[], eventName: string) => {
         return `There are some duplicate modifiers(${modifiers.join(", ")}) on ${eventName} event.`
+    }
+)
+
+export const RedundantArgsForCompilerFunc = withLocation(
+    9002,
+    (fn: string, need: number | string) => {
+        let needMsg = "requires only one parameter"
+        if (!isNumber(need) || need > 1) {
+            needMsg = `accepts a maximum of ${need} parameters`
+        }
+        return `The compiler helper function(${fn}) ${needMsg}, and the excess parameters has been ignored.`
     }
 )
 

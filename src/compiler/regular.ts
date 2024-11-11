@@ -18,6 +18,8 @@ export const DestructuringContextRE = /^[\{\[]/
 
 export const expressionReplaceWithSpaceRE = /(?:\s|\r?\n)+/y
 
+export const reactCompilerFuncRE = /^(?:rea|stc|der)$/
+export const watchCompilerFuncRE = /^(?:wat|Wat|waT)$/
 export const validIdentifierNameRE = /^[a-zA-Z_$][a-zA-Z_$\d]*$/
 
 export const scriptSourceIndentSpaceCount = /\n( +)\S/

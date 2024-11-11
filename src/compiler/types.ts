@@ -91,10 +91,6 @@ export interface InputDescriptor {
         lineCount: number
         loc: ASTLocation
         existing: boolean
-        runtime: {
-            namespaceIdentifier: string
-            watchIdentifiers: Set<string>
-        }
         generatedOffset: FixedArray<number, 2>
     }
 }
