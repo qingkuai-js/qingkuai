@@ -42,7 +42,6 @@ import {
     InvalidRefAttr,
     SlotAttrIsEmpty,
     UnkonwDirective,
-    CouldNotPassRefValue,
     DirectivesCantCoexist,
     MissingStartDirective,
     DuplicateAttributeKey,
@@ -50,6 +49,7 @@ import {
     NameAttrForSlotIsEmpty,
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
+    CanNotReceiveRefAttribute,
     NoBaseValueForForDirective,
     NoForDirectiveCtxNameSpeciffied,
     NoValueForRequiredValueAttribute,
@@ -226,7 +226,7 @@ export function analyzeAttribute(
                 let attrsForErr: string[] = []
 
                 if (!couldUseRefTags.has(tag)) {
-                    CouldNotPassRefValue(pureKey, tag, attr.loc)
+                    CanNotReceiveRefAttribute(pureKey, tag, attr.loc)
                 }
 
                 // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
@@ -881,31 +881,9 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             }
         }
 
-        // 检查是否存在重复的属性，检查规则如下：
-        // 1. 任何编译器指令都不能在同一个标签上重复出现
-        // 2. class外的属性名不能重复：name、!name、&name、@name均视为相同名称（其中事件的名称只有在组件
-        // 标签上不能与其他属性的名称重复，如果是普通标签，则只要不存在相同的时间名称就不会报错
-        // 3. 普通标签上可以同时存在普通class和动态class，但均只能同时存在一个，但如果当前标签是组件或slot，
-        // 那么class属性不能重复，只能存在一种（普通值或动态值）（普通标签上不能使用引用的class属性）
-        if (isDirective || !isClass || isComponentOrSlot) {
-            if (isDirective || (!isComponent && isEvent)) {
-                if (existingItem.has(rk)) {
-                    DuplicateAttributeKey(tag, rk, rk, loc)
-                }
-            } else {
-                ;["", "!", "@", "&"].forEach(char => {
-                    if (existingItem.has(char + pureKey)) {
-                        DuplicateAttributeKey(tag, char + pureKey, rk, loc)
-                    }
-                })
-            }
-            existingItem.set(rk, [currentAttribute])
-            continue
-        }
-
-        // 上述检查的第三种情况：非组件标签上的class属性，动态和非动态class均可出现一次，重复出现将报错
+        // 特殊情况：非组件标签上的class属性，动态和非动态class均可出现一次，rk相同且重复出现才会报错
         // 注意：这里需要单独检测是否是引用传递的class属性，若是则报错，因为多个class会被合并成一个动态
-        // class属性（!class)，合并之后的属性名并不会导致属性处理中检测到普通标签上使用引用属性的错误
+        // class属性（!class)，合并之后的属性名并不会导致分析属性时检测到普通标签上使用引用属性的错误
         if (isClass && !isComponentOrSlot) {
             if (!existingItem.has("!class")) {
                 existingItem.set("!class", [])
@@ -923,11 +901,60 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 normalClassIndex = target.push(currentAttribute) - 1
             } else {
                 if (rk.startsWith("&")) {
-                    CouldNotPassRefValue(pureKey, tag, loc)
+                    CanNotReceiveRefAttribute(pureKey, tag, loc)
                 }
                 dynamicClassIndex = target.push(currentAttribute) - 1
             }
+            continue
         }
+
+        // 任何完全相同的属性(包括指令、事件）都不能重复出现
+        if (existingItem.has(rk)) {
+            DuplicateAttributeKey(tag, rk, rk, loc)
+            continue
+        }
+
+        // 任何标签上的普通属性名和动态属性名都不能重复
+        if (
+            (isNative && existingItem.has("!" + rk)) ||
+            (rk.startsWith("!") && existingItem.has(pureKey))
+        ) {
+            if (isNative) {
+                DuplicateAttributeKey(tag, pureKey, rk, loc)
+            } else {
+                DuplicateAttributeKey(tag, pureKey, rk, loc)
+            }
+            continue
+        }
+
+        // 根据传入的chars数组检查是否存在重复属性名，当char+pureKey===rk时表示这是当前rk
+        // 第一次出现，无需检查，其他情况则只要char+pureKey在existingItem中存在则视为重复
+        const checkDuplicateWithChars = (chars: string[]) => {
+            return chars.some(char => {
+                if (char + pureKey === rk || !existingItem.has(char + pureKey)) {
+                    return false
+                }
+                return DuplicateAttributeKey(tag, char + pureKey, rk, loc), true
+            })
+        }
+
+        // 组件上的普通属性、动态属性、事件名三者之间的任意两两组合视为重复
+        if (isComponent && checkDuplicateWithChars(["", "!", "&"])) {
+            continue
+        }
+
+        // textarea标签的value或input标签的value/checked属性：
+        // 普通属性、动态属性、引用属性三者之间的任意两两组合视为重复
+        if (
+            (tag === "textarea" && pureKey === "value") ||
+            (tag === "input" && /^value|checked$/.test(pureKey))
+        ) {
+            if (checkDuplicateWithChars(["", "!", "&"])) {
+                continue
+            }
+        }
+
+        existingItem.set(rk, [currentAttribute])
     }
 
     // 整理属性值的格式：这里的规则是将普通或动态class合并为一个动态的class属性值并放在一个数组中，

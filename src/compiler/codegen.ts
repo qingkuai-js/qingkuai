@@ -60,7 +60,7 @@ export function generateInitCallStatement() {
     usedInitItems.forEach(item => {
         itemArr.push(item)
     })
-    itemArr.push("props")
+    itemArr.push("props", "refs")
     return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this)`
 }
 

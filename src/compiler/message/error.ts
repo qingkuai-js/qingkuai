@@ -24,7 +24,7 @@ import type { FixedArray, GeneralFunc } from "../../util/types"
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
-import { bannedIdentifierFormatRE } from "../regular"
+import { bannedIdentifierFormatRE, tagIsComponentRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
@@ -97,10 +97,6 @@ export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
     return "Key directive could not be used without for directive."
 })
 
-export const CouldNotPassRefValue = withLocation(1015, (key: string, tag: string) => {
-    return `Can not pass any reference value(&${key}) for normal tag(${tag})`
-})
-
 export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
     const itemDescription = getSpecialAttrDescription(key[0])
     return `The ${itemDescription}(${key}) must have a value.`
@@ -110,12 +106,20 @@ export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
     return "The interpolation attribute value must be wrapped with curly bracket."
 })
 
+export const EmbeddedLangNotInTopScope = withLocation(1038, (tag: string) => {
+    return `The embedded language block(${tag}) can only be used in the top scope.`
+})
+
 export const AttributeValueIsNotQuoted = withLocation(1018, () => {
     return "The normal attribute value must be quoted with single or double quote."
 })
 
 export const DirectivesCantCoexist = withLocation(1019, (directives: string[]) => {
     return `Directives(${directives.join(", ")}) can not be used simultaneously.`
+})
+
+export const MissingStartDirective = withLocation(1025, (d: string, pd: string) => {
+    return `The ${d} directive must be used after ${pd} directive.`
 })
 
 export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) => {
@@ -130,8 +134,8 @@ export const BasSlotDirectiveCarrier = withLocation(1013, () => {
     return `Slot directive(#slot) can only be used on the direct child element(first-level)`
 })
 
-export const EmbeddedLangNotInTopScope = withLocation(1038, (tag: string) => {
-    return `The embedded language block(${tag}) can only be used in the top scope.`
+export const CanNotReceiveRefAttribute = withLocation(1015, (key: string, tag: string) => {
+    return `The normal tag(${tag}) can not reiceive any reference attribute, but got &${key}.`
 })
 
 export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: string) => {
@@ -140,6 +144,7 @@ export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: 
 
 export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string, b: string) => {
     let description = ""
+    const isComponent = tagIsComponentRE.test(tag)
     if (a[0] === "#") {
         return `The directive(${a}) of <${tag}> tag is duplicate.`
     }
@@ -149,19 +154,16 @@ export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string,
         description = `${getSpecialAttrDescription(a[0])}(${a})`
         description += ` and ${getSpecialAttrDescription(b[0])}(${b})`
     }
-    return `The name for ${description} of <${tag}> tag is duplicate.`
-})
-
-export const MissingStartDirective = withLocation(1025, (d: string, pd: string) => {
-    return `The ${d} directive must be used after ${pd} directive.`
-})
-
-export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
-    return `Multiple elements used as slot in component(${component}) have the same name(${name})`
+    tag = `${isComponent ? "component" : "normal tag"}(${tag})`
+    return `The name for ${description} of ${tag} is duplicate.`
 })
 
 export const DuplicateNameAttrForSlot = withLocation(1035, (value: string) => {
     return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
+})
+
+export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
+    return `Multiple elements used as slot in component(${component}) have the same name(${name})`
 })
 
 export const ReactCompilerFuncNotInTopScope = withLocation(1026, () => {
