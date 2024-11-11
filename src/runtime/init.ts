@@ -1,49 +1,71 @@
+import type { AnyObject } from "../util/types"
 import type { QingKuaiComponent } from "./instance"
-import type { TemplateStuOrModuleFunc, PGetHandler, PSetHandler } from "./types"
+import type { TemplateStuOrModuleFunc } from "./types"
 
-import { Props, undef } from "./constants"
-import { setPropsAccessType } from "./tools"
+import { RawValue, undef } from "./constants"
 import { isFunction } from "../util/shared/assert"
 import { AssignmentToProps } from "./message/warn"
-import { AssignToUndefined } from "./message/error"
 
 // 获取已绑定组件实例的相关方法
 export function init(instance: QingKuaiComponent) {
     const properties = instance.__
     const { props, refs, ctx } = properties as any
+
+    // 获取refs的原始值表示（可阅读形式）
+    const getRawRefs = () => {
+        return Object.keys(refs).reduce((p, c) => {
+            return { ...p, [c]: refs[c][0](ctx) }
+        }, {} as AnyObject)
+    }
+
+    // 获取props的原始值表示（可阅读形式）
+    const getRawProps = () => {
+        return Object.keys(props).reduce((p, c) => {
+            const v = props[c]
+            const vf = isFunction(v) // whether Value is Function
+            return { ...p, [c]: vf ? v(ctx) : v }
+        }, {} as AnyObject)
+    }
+
     return {
         // sts: Set Component Template Structure
         scts(ts: TemplateStuOrModuleFunc[]) {
             properties.ts = ts
         },
 
-        // 调用init方法后此属性会被解构声明到组件构造函数的顶部作用域，访问props的属性时，会依次从组件实例属性中的
-        // props和refs中获取（编译器限制两者中的属性不能重名），修改属性时，只有refs中的属性值能被修改（通过setter），
-        // 而修改props中的属性将发出警告，如果props和refs中均不存在指定名称的属性，将抛出错误（不能为undefined赋值）
+        // 编译器生成的init调用会将props和refs解构声明到组件构造函数的顶部作用域
         props: new Proxy(
             {},
             {
                 get(_, property) {
-                    if (property === Props) {
-                        return properties
+                    if (property === RawValue) {
+                        return getRawProps()
                     }
-                    if (property in refs) {
-                        setPropsAccessType(2)
-                        return refs[property][0](ctx)
-                    } else if (property in props) {
-                        const item = props[property]
-                        setPropsAccessType(1)
-                        return isFunction(item) ? item(ctx) : item
+
+                    const v = props[property]
+                    return isFunction(v) ? v(ctx) : v
+                },
+                set() {
+                    return AssignmentToProps(), true
+                }
+            }
+        ),
+
+        refs: new Proxy(
+            {},
+            {
+                get(_, property) {
+                    if (property === RawValue) {
+                        return getRawRefs()
                     }
-                    return undef
+                    if (!(property in refs)) {
+                        return undef
+                    }
+                    return refs[property][0](ctx)
                 },
                 set(_, property, value) {
-                    if (property in props) {
-                        AssignmentToProps()
-                    } else if (property in refs) {
+                    if (property in refs) {
                         refs[property][1](value, ctx)
-                    } else {
-                        AssignToUndefined(property)
                     }
                     return true
                 }
