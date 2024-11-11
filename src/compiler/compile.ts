@@ -41,7 +41,6 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         inputDescriptor,
         indexIsInScript: inputDescriptor.indexIsInScript
     }
-    console.log(messages)
     if (options.check) {
         return {
             mappings: "",

@@ -173,13 +173,13 @@ const visitor: ASTVisitor = {
         const { start, end } = node
         const scriptSource = inputDescriptor.script.code
         eliminateRanges.add([start, end])
-        node.specifiers.forEach(({ local: { name }, loc }) => {
-            checkTopScopeIdentifier(name, loc!)
-        })
         tempStoredImportInfos.push({
             mappingLine: [],
             startColumn: node.loc.start.column,
             code: scriptSource.slice(start, end)
+        })
+        node.specifiers.forEach(specifier => {
+            checkTopScopeIdentifier(specifier.local.name, specifier.loc!)
         })
     },
 
