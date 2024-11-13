@@ -1,4 +1,4 @@
-import type { TemplateNode } from "../compiler/types"
+import type { TemplateNode } from "../src/compiler/types"
 
 export type TemplateNodeParent = TemplateNode["parent"]
 export type TemplateNodeAttributes = TemplateNode["attributes"]

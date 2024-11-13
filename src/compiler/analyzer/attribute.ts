@@ -12,26 +12,33 @@ import type { EsPattern } from "../estree/types"
 import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
 
 import {
-    kebab2Camel,
     confirmAlias,
+    findSpecificAttr,
+    markPositionFlag,
     checkIdentifierName,
-    recordInterExpression
+    recordInterExpression,
+    recordInterWithSpecificRange
 } from "../../util/compiler/sundry"
 import {
     stringify,
+    kebab2Camel,
     findOutOfSC,
     normalStringify,
     findEndCurlyBracket
 } from "../../util/compiler/strings"
 import {
     InvalidEventFlag,
-    InvalidEventForSlot,
     DuplicateEventModifiers,
     InvalidComposeModifier,
     InvalidKeyRelatedModifier,
     InvalidEventFlagForComponent,
     ConflictNormalKeyEventModifier
 } from "../message/warn"
+import {
+    validIdentifierNameRE,
+    DestructuringContextRE,
+    expressionReplaceWithSpaceRE
+} from "../regular"
 import {
     parse,
     getIdentifiersFromPattern,
@@ -51,30 +58,28 @@ import {
     RefuseReferenceAttribute,
     CanNotReceiveRefAttribute,
     NoBaseValueForForDirective,
+    BadEventListenerForSlotTag,
     NoForDirectiveCtxNameSpeciffied,
     NoValueForRequiredValueAttribute,
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
-import { is } from "../estree/assert"
 import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { DestructuringContextRE, expressionReplaceWithSpaceRE } from "../regular"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
 
-// dpm means Directives Priority Map
-// dpm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
-// 指令将会被按照他们的优先级进行排序，其他指令（包括动态/引用属性、事件）优先级默认为0（优先级低于dpm数组中的所有指令）
-// 指令优先级：#slot > #await > #catch > #then > #if > #elif > #else > #for > #key > 其他指令、属性、事件
-const dpm = ["key", "for", "else", "elif", "if", "then", "catch", "await"].reduce(
-    (pre, cur, index) => {
-        return { ...pre, [`#${cur}`]: index + 1 }
-    },
-    {} as AnyObject
+// apm: Attributes Priority Map
+// apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
+// 指令将会被按照他们的优先级进行排序，其他指令（包括动态/引用属性、事件）优先级默认为0（优先级低于apm数组中的所有指令）
+// 指令优先级：slot > #slot > #await > #catch > #then > #if > #elif > #else > #for > #key > 其他指令、属性、事件
+// 为什么普通slot属性优先级高于指令：普通slot属性中不会访问指令产生的标识符，且其在slot指令之前出现可以防止生成中间代码时的二次遍历
+const apm = ["key", "for", "else", "elif", "if", "then", "catch", "await", "slot"].reduce(
+    (ret, attr, index) => ({ ...ret, [`#${attr}`]: index + 1 }),
+    { slot: 100 } as AnyObject
 )
 
 export function analyzeAttribute(
@@ -89,9 +94,10 @@ export function analyzeAttribute(
     let pureKey: string
     let insertNullNum = 0
     let withAwait = false
+    let contextBlockCount = 0
     let createTemplate = false
-    let createdContextCount = 0
     let forModuleFuncIndex = -1
+    let hasSlotDirective = false
     let continueRE: RegExp | null = null
     let shouldContinueDirective: string | undefined
     let continueArg: TransformInterpolationRet | undefined
@@ -100,17 +106,44 @@ export function analyzeAttribute(
 
     const { tag } = node
     const isSlot = tag === "slot"
-    const useTsCheck = inputDescriptor.script.isTS
+    const nodeStartIndex = node.loc.start.index
     const eventStu: TransformInterpolationRet[] = []
     const aliasArgs: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
     const directiveStu: TransformInterpolationRet[][] = []
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
+    const useTsCheck = inputDescriptor.options.check && inputDescriptor.script.isTS
+
+    // 它记录了slot属性的相关信息：名称（包括单/双引号）以及这个名称指向的源码开始位置索引
+    const slotAttributeInfo: [string, number] = ['"default"', nodeStartIndex]
+
+    // 它记录了开始标签名的范围索引（包括开头的<，例如<div的范围索引)
+    const stnr = [nodeStartIndex, nodeStartIndex + node.tag.length + 1] as const // Start Tag Name Range
 
     // 修改continueRE变量，这里需要检测此变量是否已经被赋值，若已被赋值则不能覆盖原来的值，避免
     // 低优先级的指令高优先级指令，例如await指令的后续指令正则表达式可能会被if/elif指令覆盖
     const setContinueInfo = (v: RegExp | null) => {
         shouldContinueDirective = isNull((continueRE = v)) ? undefined : pureKey
+    }
+
+    // 记录slot节点中间代码片段的方法，当属性值未被单双引号包裹时无需处理
+    const recoedSlotAttributeInterSnippet = () => {
+        const [slotName, slotStartSourceIndex] = slotAttributeInfo
+        if (!/^['"]/.test(slotName)) return
+
+        const equalSign = hasSlotDirective ? "=" : ""
+        const parentComponentTag = node.parent!.componentTag
+        interCodeSnippets.push([-1, `${equalSign}__c__.getSlotProp(`])
+        recordInterWithSpecificRange(`${parentComponentTag},`, stnr[0] + 1, stnr[1])
+
+        // 当if条件成立时表示无slot属性
+        if (slotStartSourceIndex === nodeStartIndex) {
+            recordInterWithSpecificRange('"default"', ...stnr)
+        } else {
+            interCodeSnippets.push([slotStartSourceIndex, slotName])
+        }
+
+        interCodeSnippets.push([-2, ");"])
     }
 
     preProcessedAttr.forEach(attr => {
@@ -162,44 +195,35 @@ export function analyzeAttribute(
                 context.count++
             } else {
                 if (inputDescriptor.options.check) {
-                    interCodeSnippets.push([-1, "{"]), createdContextCount++
-                }
-                if (!DestructuringContextRE.test(trimedValue)) {
-                    if (inputDescriptor.options.check) {
-                        interCodeSnippets.push(
-                            [-1, "const "],
-                            [trimedValueStartSourceIndex, trimedValue]
-                        )
+                    contextBlockCount++
+                    interCodeSnippets.push(
+                        [-1, "{const "],
+                        [trimedValueStartSourceIndex, trimedValue]
+                    )
+
+                    if (pureKey === "slot") {
+                        recoedSlotAttributeInterSnippet()
+                    } else if (pureKey === "slot") {
+                        interCodeSnippets.push([-2, "=__c__.getResolve("])
+                        interCodeSnippets.push(awaitExpression!, [-2, ");"])
                     } else {
-                        checkIdentifierName(
-                            trimedValue,
-                            getLocByIndex(
-                                trimedValueStartSourceIndex,
-                                trimedValueStartSourceIndex + trimedValue.length
-                            )
-                        )
-                        extendContext(context, trimedValue)
+                        interCodeSnippets.push([-2, `=0${useTsCheck ? " as any" : ""};`])
                     }
+                } else if (!DestructuringContextRE.test(trimedValue)) {
+                    checkIdentifierName(
+                        trimedValue,
+                        getLocByIndex(
+                            trimedValueStartSourceIndex,
+                            trimedValueStartSourceIndex + trimedValue.length
+                        )
+                    )
+                    extendContext(context, trimedValue)
                 } else {
                     const tip = makeDestructuringPatternSignleLine(
                         trimedValue,
                         trimedValueStartSourceIndex
                     )
                     recordDestructuringIdentifiers(tip, aliasArgs, context, false, context.count++)
-                }
-                if (inputDescriptor.options.check) {
-                    if (pureKey === "slot") {
-                    } else if (pureKey === "then") {
-                        if (useTsCheck) {
-                            interCodeSnippets.push(
-                                [-2, "=__c__.SatisfyResolve("],
-                                awaitExpression!,
-                                [-2, ");"]
-                            )
-                        }
-                    } else {
-                        interCodeSnippets.push([-2, "= 0 as any;"])
-                    }
                 }
             }
         }
@@ -233,14 +257,12 @@ export function analyzeAttribute(
                 // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
                 // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
                 if (tag === "input") {
-                    const [typeAttr] = preProcessedAttr.filter(attr => {
-                        return /^[!@#&]?type$/.test(attr.key.raw)
-                    })
+                    const typeAttr = findSpecificAttr(preProcessedAttr, /^[!@#&]?type$/)
                     if (typeAttr?.key.raw.startsWith("!")) {
                         RefuseReferenceAttribute("input", "type", attr.loc)
                     }
 
-                    const typeValueRaw = typeAttr?.value.raw
+                    const typeValueRaw = typeAttr?.value.raw ?? ""
                     if (/^(?:radio|checkbox)$/.test(typeValueRaw)) {
                         needSetter = pureKey !== "group"
                         attrsForErr = ["checked", "group"]
@@ -253,9 +275,7 @@ export function analyzeAttribute(
                         tagForErr = `${tag}[type="${typeAttr?.value.raw || "text"}"]`
                     }
                 } else if (tag === "select") {
-                    const [multipleAttr] = preProcessedAttr.filter(attr => {
-                        return attr.key.raw.endsWith("multiple")
-                    })
+                    const multipleAttr = findSpecificAttr(preProcessedAttr, "multiple")
                     if (multipleAttr?.key.raw.startsWith("!")) {
                         RefuseReferenceAttribute("select", "multiple", attr.loc)
                     }
@@ -375,7 +395,7 @@ export function analyzeAttribute(
                         )
                         break
                     }
-                    createdContextCount += Number(hasContextIdentifier)
+                    contextBlockCount += Number(hasContextIdentifier)
 
                     if (!inputDescriptor.options.check) {
                         const preContextCount = context.count
@@ -602,6 +622,7 @@ export function analyzeAttribute(
                     if (!parentIsComponent) {
                         BasSlotDirectiveCarrier(key.loc)
                     }
+                    hasSlotDirective = true
                     recordAliasIdentifiers()
                     break
 
@@ -615,167 +636,162 @@ export function analyzeAttribute(
             }
         } else if (isEvent) {
             if (isSlot) {
-                InvalidEventForSlot(rk, attr.loc)
-            } else {
-                let eventFlag = 0
-                let flagComment = ""
-                let eventName = pureKey
-                let eventWrapperFlag = 0
+                return BadEventListenerForSlotTag(rk, attr.loc)
+            }
 
-                const existringModifiers = new Set<string>()
-                const duplicateModifiers = new Set<string>()
+            let eventFlag = 0
+            let flagComment = ""
+            let eventName = pureKey
+            let eventWrapperFlag = 0
 
-                const eventModifierArr: string[] = []
-                const eventWrapperModifierArr: string[] = []
-                const existingKeyRelatedModifiers: string[] = []
-                const modifierArrWithIndex: [string, number, number][] = []
+            const existringModifiers = new Set<string>()
+            const duplicateModifiers = new Set<string>()
 
-                const modifierStartIndex = pureKey.indexOf("|")
-                const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
-                const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
-                modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
+            const eventModifierArr: string[] = []
+            const eventWrapperModifierArr: string[] = []
+            const existingKeyRelatedModifiers: string[] = []
+            const modifierArrWithIndex: [string, number, number][] = []
 
-                // flagArrWithIndex记录了每个flag的名称及开始结束索引
-                for (let i = 0; i < modifierArr.length; i++) {
-                    const preLen = modifierArr[i - 1]?.length || 0
-                    const preIndex = modifierArrWithIndex[i - 1]?.[1] || 0
-                    modifierArrWithIndex.push([
-                        modifierArr[i],
-                        preIndex + preLen + 1,
-                        preIndex + preLen + modifierArr[i].length + 1
-                    ])
-                }
+            const modifierStartIndex = pureKey.indexOf("|")
+            const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
+            const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
+            modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
 
-                if (modifierStartIndex !== -1) {
-                    eventName = eventName.slice(0, modifierStartIndex)
-                    if (isComponent) {
-                        InvalidEventFlagForComponent(
-                            modifierArr.map(item => item.trim()).join(", "),
-                            modifierStartSourceIndex,
-                            key.loc.end.index
-                        )
-                    } else {
-                        modifierArrWithIndex.forEach(item => {
-                            const [modifier, startIndex, endIndex] = item
-                            const endSourceIndex = modifierStartSourceIndex + endIndex
-                            const startSourceIndex = modifierStartSourceIndex + startIndex
-                            const currentFlagNum = (EventListenerFlag as any)[modifier]
-                            const currentWrapperFlagNum = (EventWrapperFlag as any)[modifier]
-                            if (!currentFlagNum && !currentWrapperFlagNum) {
-                                InvalidEventFlag(
+            // flagArrWithIndex记录了每个flag的名称及开始结束索引
+            for (let i = 0; i < modifierArr.length; i++) {
+                const preLen = modifierArr[i - 1]?.length || 0
+                const preIndex = modifierArrWithIndex[i - 1]?.[1] || 0
+                modifierArrWithIndex.push([
+                    modifierArr[i],
+                    preIndex + preLen + 1,
+                    preIndex + preLen + modifierArr[i].length + 1
+                ])
+            }
+
+            if (modifierStartIndex !== -1) {
+                eventName = eventName.slice(0, modifierStartIndex)
+                if (isComponent) {
+                    InvalidEventFlagForComponent(
+                        modifierArr.map(item => item.trim()).join(", "),
+                        modifierStartSourceIndex,
+                        key.loc.end.index
+                    )
+                } else {
+                    modifierArrWithIndex.forEach(item => {
+                        const [modifier, startIndex, endIndex] = item
+                        const endSourceIndex = modifierStartSourceIndex + endIndex
+                        const startSourceIndex = modifierStartSourceIndex + startIndex
+                        const currentFlagNum = (EventListenerFlag as any)[modifier]
+                        const currentWrapperFlagNum = (EventWrapperFlag as any)[modifier]
+                        if (!currentFlagNum && !currentWrapperFlagNum) {
+                            InvalidEventFlag(modifier, eventName, startSourceIndex, endSourceIndex)
+                        }
+                        if (currentFlagNum) {
+                            // 只有input事件可以使用compose修饰符
+                            if (modifier === "compose" && eventName !== "@input") {
+                                InvalidComposeModifier(
+                                    eventName.slice(1),
+                                    startSourceIndex,
+                                    endSourceIndex
+                                )
+                            }
+
+                            // 重复出现的修饰符记录到duplicateModifiers
+                            if (existringModifiers.has(modifier)) {
+                                duplicateModifiers.add(modifier)
+                            } else {
+                                eventModifierArr.push(modifier)
+                                existringModifiers.add(modifier)
+                                eventFlag |= currentFlagNum || 0
+                            }
+                        } else if (currentWrapperFlagNum) {
+                            // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
+                            if (
+                                keyRelatedEventModifiers.has(modifier) &&
+                                !/^key(?:up|down|press)$/.test(eventName)
+                            ) {
+                                InvalidKeyRelatedModifier(
                                     modifier,
                                     eventName,
                                     startSourceIndex,
                                     endSourceIndex
                                 )
-                            }
-                            if (currentFlagNum) {
-                                // 只有input事件可以使用compose修饰符
-                                if (modifier === "compose" && eventName !== "@input") {
-                                    InvalidComposeModifier(
-                                        eventName.slice(1),
-                                        startSourceIndex,
-                                        endSourceIndex
-                                    )
+                            } else if (keyRelatedEventModifiers.has(modifier)) {
+                                // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
+                                // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
+                                //
+                                // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
+                                // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
+                                if (existingKeyRelatedModifiers.length > 0) {
+                                    eventWrapperFlag &= ~((1 << 9) - 1)
                                 }
-
-                                // 重复出现的修饰符记录到duplicateModifiers
-                                if (existringModifiers.has(modifier)) {
-                                    duplicateModifiers.add(modifier)
-                                } else {
-                                    eventModifierArr.push(modifier)
-                                    existringModifiers.add(modifier)
-                                    eventFlag |= currentFlagNum || 0
-                                }
-                            } else if (currentWrapperFlagNum) {
-                                // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
-                                if (
-                                    keyRelatedEventModifiers.has(modifier) &&
-                                    !/^key(?:up|down|press)$/.test(eventName)
-                                ) {
-                                    InvalidKeyRelatedModifier(
-                                        modifier,
-                                        eventName,
-                                        startSourceIndex,
-                                        endSourceIndex
-                                    )
-                                } else if (keyRelatedEventModifiers.has(modifier)) {
-                                    // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
-                                    // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
-                                    //
-                                    // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
-                                    // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
-                                    if (existingKeyRelatedModifiers.length > 0) {
-                                        eventWrapperFlag &= ~((1 << 9) - 1)
-                                    }
-                                    if (!existringModifiers.has(modifier)) {
-                                        existingKeyRelatedModifiers.push(modifier)
-                                    }
-                                }
-
-                                // 重复出现的修饰符记录到duplicateModifiers
-                                if (existringModifiers.has(modifier)) {
-                                    duplicateModifiers.add(modifier)
-                                } else {
-                                    existringModifiers.add(modifier)
-                                    eventWrapperFlag |= currentWrapperFlagNum || 0
+                                if (!existringModifiers.has(modifier)) {
+                                    existingKeyRelatedModifiers.push(modifier)
                                 }
                             }
-                        })
 
-                        // 普通按键修饰符存在多个时发出警告
-                        if (existingKeyRelatedModifiers.length > 1) {
-                            ConflictNormalKeyEventModifier(
-                                existingKeyRelatedModifiers,
-                                modifierStartSourceIndex,
-                                key.loc.end.index
-                            )
-                        }
-
-                        // 存在重复的修饰符时发出警告
-                        if (duplicateModifiers.size > 0) {
-                            DuplicateEventModifiers(
-                                Array.from(duplicateModifiers),
-                                eventName,
-                                modifierStartSourceIndex,
-                                key.loc.end.index
-                            )
-                        }
-
-                        // 将最后一个普通按键修饰符记录到eventWrapperModifierArr
-                        if (existingKeyRelatedModifiers.length > 0) {
-                            eventWrapperModifierArr.push(lastElem(existingKeyRelatedModifiers))
-                        }
-                    }
-                }
-
-                if (isComponent) {
-                    attributeStu.push(
-                        concatStrAndTIR(
-                            stringify(eventName) + ", ",
-                            transAttrValue(trimedValue, {
-                                isComponentEvent: true
-                            }),
-                            ""
-                        )
-                    )
-                } else {
-                    const tir = transAttrValue(trimedValue, {
-                        eventWrapper: {
-                            flag: eventWrapperFlag,
-                            modifiers: eventWrapperModifierArr
+                            // 重复出现的修饰符记录到duplicateModifiers
+                            if (existringModifiers.has(modifier)) {
+                                duplicateModifiers.add(modifier)
+                            } else {
+                                existringModifiers.add(modifier)
+                                eventWrapperFlag |= currentWrapperFlagNum || 0
+                            }
                         }
                     })
-                    if (eventFlag === 0) {
-                        flagComment = "no flag"
-                    } else {
-                        flagComment = eventModifierArr.join(", ")
+
+                    // 普通按键修饰符存在多个时发出警告
+                    if (existingKeyRelatedModifiers.length > 1) {
+                        ConflictNormalKeyEventModifier(
+                            existingKeyRelatedModifiers,
+                            modifierStartSourceIndex,
+                            key.loc.end.index
+                        )
                     }
 
-                    const prefix = `${stringify(eventName)}, `
-                    const postfix = `, /* ${flagComment} */ ${eventFlag}`
-                    eventStu.push(concatStrAndTIR(prefix, tir, postfix))
+                    // 存在重复的修饰符时发出警告
+                    if (duplicateModifiers.size > 0) {
+                        DuplicateEventModifiers(
+                            Array.from(duplicateModifiers),
+                            eventName,
+                            modifierStartSourceIndex,
+                            key.loc.end.index
+                        )
+                    }
+
+                    // 将最后一个普通按键修饰符记录到eventWrapperModifierArr
+                    if (existingKeyRelatedModifiers.length > 0) {
+                        eventWrapperModifierArr.push(lastElem(existingKeyRelatedModifiers))
+                    }
                 }
+            }
+
+            if (isComponent) {
+                attributeStu.push(
+                    concatStrAndTIR(
+                        stringify(eventName) + ", ",
+                        transAttrValue(trimedValue, {
+                            isComponentEvent: true
+                        }),
+                        ""
+                    )
+                )
+            } else {
+                const tir = transAttrValue(trimedValue, {
+                    eventWrapper: {
+                        flag: eventWrapperFlag,
+                        modifiers: eventWrapperModifierArr
+                    }
+                })
+                if (eventFlag === 0) {
+                    flagComment = "no flag"
+                } else {
+                    flagComment = eventModifierArr.join(", ")
+                }
+
+                const prefix = `${stringify(eventName)}, `
+                const postfix = `, /* ${flagComment} */ ${eventFlag}`
+                eventStu.push(concatStrAndTIR(prefix, tir, postfix))
             }
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
             // slot标签的name属性（或组件的直接子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
@@ -798,10 +814,16 @@ export function analyzeAttribute(
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
             }
-            if (isSlotAttribute) {
-                slotOfAnyTag = attrWithLocationStu
-            } else {
+            if (!isSlotAttribute) {
                 nameOfSlotTag = attrWithLocationStu
+            } else {
+                const sqi = value.loc.start.index - 1
+                const qc = inputDescriptor.source[sqi]
+                slotAttributeInfo[1] = sqi
+                slotOfAnyTag = attrWithLocationStu
+                slotAttributeInfo[0] = `${qc}${attr.value.raw}${qc}`
+                markPositionFlag(sqi, "isSlotAttrStartQuote")
+                markPositionFlag(value.loc.end.index + 1, "isSlotAttrEndQuote")
             }
         } else {
             const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)
@@ -814,6 +836,56 @@ export function analyzeAttribute(
         directiveStu.push([getAlias("aliasModule"), ...aliasArgs])
     }
 
+    // 检查模式时，需要为组件标签生成实例化的相关中间代码（指令的中间代码与其他标签处理一致），
+    // 组件的普通属性/动态属性/事件、引用属性、slots会被组合为组件构造函数的三个对象类型参数
+    if (inputDescriptor.options.check && isComponent) {
+        const attrRecords = Array.from({ length: 2 }, () => {
+            return [] as [string, number, number][]
+        })
+
+        preProcessedAttr.forEach(attr => {
+            const rk = attr.key.raw
+            const rv = attr.value.raw
+            if (rk.startsWith("#")) {
+                return
+            }
+
+            const target = attrRecords[+rk.startsWith("&")]
+            const camelKey = kebab2Camel(rk.replace(/^[!@&]/, ""))
+            const isValidIdentifier = validIdentifierNameRE.test(camelKey)
+            const objectKey = isValidIdentifier ? camelKey : normalStringify(camelKey)
+            target.push(
+                [`${objectKey}:`, attr.key.loc.start.index, attr.key.loc.end.index],
+                [`${rv}`, attr.value.loc.start.index, attr.value.loc.end.index]
+            )
+        })
+
+        interCodeSnippets.push([-1, "new "])
+        recordInterWithSpecificRange(`${node.componentTag}(`, ...stnr)
+
+        for (const target of attrRecords) {
+            target.forEach((item, index) => {
+                const isValue = index % 2 !== 0
+                const isLast = index === target.length - 1
+                item[0] += isLast ? "}" : isValue ? "," : ""
+                if (index === 0) {
+                    interCodeSnippets.push([stnr[0], "{"])
+                }
+                recordInterWithSpecificRange(...item)
+
+                if (isLast) {
+                    interCodeSnippets.push([stnr[1], ","])
+                }
+            })
+        }
+        interCodeSnippets.push([-2, `${useTsCheck ? "0 as any" : ""});`])
+    }
+
+    // slot节点未使用slot指令时记录slot属性相关的中间代码片段
+    if (useTsCheck && parentIsComponent && !hasSlotDirective) {
+        recoedSlotAttributeInterSnippet()
+    }
+
     return {
         eventStu,
         directiveStu,
@@ -823,7 +895,7 @@ export function analyzeAttribute(
         nameOfSlotTag,
         createTemplate,
         awaitExpression,
-        createdContextCount,
+        contextBlockCount,
         continueInfo: {
             re: continueRE,
             arg: continueArg,
@@ -848,16 +920,25 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     const existingItem = new Map<string, TemplateAttribute[]>()
 
     for (let i = 0; i < attributes.length; i++) {
-        const currentAttribute = attributes[i]
-        const { key, value, loc } = currentAttribute
-        const [rk] = [key.raw, value.raw]
+        const curAttr = attributes[i]
+        const { key, value, loc } = curAttr
+        const isSpecial = /^[!@#&]/.test(key.raw)
+        const isDirective = key.raw.startsWith("#")
 
-        const isNative = /^[^@!#&]/.test(rk)
-        const isDynamicOrReference = /^[!&]/.test(rk)
-        const isEvent = rk.startsWith("@")
-        const isDirective = rk.startsWith("#")
+        // 组件或slot标签时需要将串型属性名转换为驼峰格式
+        if (isComponentOrSlot) {
+            key.raw = kebab2Camel(key.raw)
+        }
+
+        // 当属性为动态/引用属性、事件且无值时使用key的名称作为值
+        if (isSpecial && !value.raw && !isDirective) {
+            value.raw = key.raw.slice(1)
+        }
+
+        const [rk, rv] = [key.raw, value.raw]
         const isClass = /^[!&]?class/.test(rk)
-        const pureKey = isNative ? rk : rk.slice(1)
+        const pureKey = !isSpecial ? rk : rk.slice(1)
+        const isDynamicOrReference = /^[!&]/.test(rk)
 
         // 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]
         if (isDirective) {
@@ -876,7 +957,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 }
             }
             // 检查必须传递属性值的属性是否有值
-            if (mustPassValueDirectives.has(pureKey) && !value.raw) {
+            if (mustPassValueDirectives.has(pureKey) && !rv) {
                 NoValueForRequiredValueAttribute(rk, loc)
             }
         }
@@ -898,12 +979,12 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
 
             const target = existingItem.get("!class")!
             if (!isDynamicOrReference) {
-                normalClassIndex = target.push(currentAttribute) - 1
+                normalClassIndex = target.push(curAttr) - 1
             } else {
                 if (rk.startsWith("&")) {
                     CanNotReceiveRefAttribute(pureKey, tag, loc)
                 }
-                dynamicClassIndex = target.push(currentAttribute) - 1
+                dynamicClassIndex = target.push(curAttr) - 1
             }
             continue
         }
@@ -916,11 +997,11 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
 
         // 任何标签上的普通属性名和动态属性名都不能重复
         if (
-            (isNative && existingItem.has("!" + rk)) ||
+            (!isSpecial && existingItem.has("!" + rk)) ||
             (rk.startsWith("!") && existingItem.has(pureKey))
         ) {
-            if (isNative) {
-                DuplicateAttributeKey(tag, pureKey, rk, loc)
+            if (!isSpecial) {
+                DuplicateAttributeKey(tag, "!" + rk, rk, loc)
             } else {
                 DuplicateAttributeKey(tag, pureKey, rk, loc)
             }
@@ -939,9 +1020,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
         }
 
         // 组件上的普通属性、动态属性、事件名三者之间的任意两两组合视为重复
-        if (isComponent && checkDuplicateWithChars(["", "!", "&"])) {
-            continue
-        }
+        if (isComponent && checkDuplicateWithChars(["", "!", "&"])) continue
 
         // textarea标签的value或input标签的value/checked属性：
         // 普通属性、动态属性、引用属性三者之间的任意两两组合视为重复
@@ -949,79 +1028,71 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             (tag === "textarea" && pureKey === "value") ||
             (tag === "input" && /^value|checked$/.test(pureKey))
         ) {
-            if (checkDuplicateWithChars(["", "!", "&"])) {
-                continue
-            }
+            if (checkDuplicateWithChars(["", "!", "&"])) continue
         }
 
-        existingItem.set(rk, [currentAttribute])
+        existingItem.set(rk, [curAttr])
     }
 
     // 整理属性值的格式：这里的规则是将普通或动态class合并为一个动态的class属性值并放在一个数组中，
     // 此格式是runtime需要的唯一格式，这里无需关注转换后的属性（包括键值）位置信息（均与第一项保持一致），
-    // 因为如果它包含动态class就会在调用transformInterpolation时传入positionMap，并根据这个位置映射来
-    // 记录需要生成sourcemap的位置，而如果它不包含动态class，则整个表达式都不会被记录sourcemap位置信息
-    // 注意：检查模式下无需上述处理，且会忽略普通class属性（纯字符串部分无需再检查模式下生成中间代码表示）
+    // 因为如果它包含动态class就会在调用transformInterpolation时传入positionMap，并根据这个位置映射
+    // 来记录需要生成sourcemap的位置，而如果它不包含动态class，则整个表达式都不会被记录sourcemap位置信息
+    // 注意：检查模式下无需上述处理，且会忽略普通class属性（另外纯字符串部分无需在检查模式下生成中间代码表示）
     existingItem.forEach((attrItems, attrKey) => {
         if (isComponentOrSlot || inputDescriptor.options.check || attrKey !== "!class") {
-            attrItems.forEach(item => {
-                item.key.raw !== "class" && ret.push(item)
-            })
-        } else {
-            const rawValues = attrItems.map((item, index) => {
-                if (index !== normalClassIndex) {
-                    return item.value.raw
-                }
-                return normalStringify(item.value.raw)
-            })
-            const transformedValue = rawValues.join(", ")
+            return attrItems.forEach(item => ret.push(item))
+        }
 
-            // positionMap用来存储位置映射信息，只有动态class值的部分会存在位置映射（动态值字符索引 -> 源码字符索引），
-            // 在transformInterpolation方法中如果传入了位置映射信息，只有在表达式索引存在源码位置映射时才生成sourcemap
-            // 例如，模板语法：class="aaa" !class="aaa"，转换后的class值为["aaa", aaa]，动态class在转换后的数组
-            // 的第二个元素，所以positionMap只有下标为8，9，10的元素存在源码位置，访问其他下标都将得到undefined
-            const positionMap: number[] = []
+        const rawValues = attrItems.map((item, index) => {
+            if (index !== normalClassIndex) {
+                return item.value.raw
+            }
+            return normalStringify(item.value.raw)
+        })
+        const transformedValue = rawValues.join(", ")
 
-            if (inputDescriptor.options.sourcemap) {
-                // 存在动态class时，记录转换后class值的位置映射（class值字符索引 -> 源码字符索引）
-                // dynamicStartIndex表示动态class值在组合转换后的值中开始字符的索引，将从这一索引开始记录位置映射
-                let dynamicStartIndex = 1
-                if (dynamicClassIndex === 1) {
-                    // 这里的+2为拼接是添加的 逗号空格 的固定长度
-                    dynamicStartIndex += rawValues[0].length + 2
-                }
+        // positionMap用来存储位置映射信息，只有动态class值的部分会存在位置映射（动态值字符索引 -> 源码字符索引），
+        // 在transformInterpolation方法中如果传入了位置映射信息，只有在表达式索引存在源码位置映射时才生成sourcemap
+        // 例如，模板语法：class="aaa" !class="aaa"，转换后的class值为["aaa", aaa]，动态class在转换后的数组
+        // 的第二个元素，所以positionMap只有下标为8，9，10的元素存在源码位置，访问其他下标都将得到undefined
+        const positionMap: number[] = []
 
-                if (dynamicClassIndex !== -1) {
-                    const dynamicValueLoc = attrItems[dynamicClassIndex].value.loc
-                    for (let i = 0; i <= rawValues[dynamicClassIndex].length; i++) {
-                        positionMap[dynamicStartIndex + i] = dynamicValueLoc.start.index + i
-                    }
-                }
+        if (inputDescriptor.options.sourcemap) {
+            // 存在动态class时，记录转换后class值的位置映射（class值字符索引 -> 源码字符索引）
+            // dynamicStartIndex表示动态class值在组合转换后的值中开始字符的索引，将从这一索引开始记录位置映射
+            let dynamicStartIndex = 1
+            if (dynamicClassIndex === 1) {
+                // 这里的+2为拼接是添加的 逗号空格 的固定长度
+                dynamicStartIndex += rawValues[0].length + 2
             }
 
-            ret.push({
-                loc: attrItems[0].loc,
-                key: {
-                    raw: attrKey,
-                    loc: attrItems[0].key.loc
-                },
-                value: {
-                    raw: `[${transformedValue}]`,
-                    loc: attrItems[0].value.loc
-                },
-                positionMap: positionMap.length ? positionMap : undefined
-            })
+            if (dynamicClassIndex !== -1) {
+                const dynamicValueLoc = attrItems[dynamicClassIndex].value.loc
+                for (let i = 0; i <= rawValues[dynamicClassIndex].length; i++) {
+                    positionMap[dynamicStartIndex + i] = dynamicValueLoc.start.index + i
+                }
+            }
         }
+
+        ret.push({
+            loc: attrItems[0].loc,
+            key: {
+                raw: attrKey,
+                loc: attrItems[0].key.loc
+            },
+            value: {
+                raw: `[${transformedValue}]`,
+                loc: attrItems[0].value.loc
+            },
+            positionMap: positionMap.length ? positionMap : undefined
+        })
     })
 
-    // 属性排序，具体排序规则参考dpm变量定义处的注释，这里单独处理的slot指令的排序（优先级最高）
+    // 属性排序，具体排序规则参考apm变量定义处的注释
     return ret.sort((a, b) => {
         const [ak, bk] = [a.key.raw, b.key.raw]
-        const akIsSlot = ak.startsWith("#slot")
-        if (akIsSlot || bk.startsWith("#slot")) {
-            return akIsSlot ? -1 : 1
-        }
-        return (dpm[bk] || 0) - (dpm[ak] || 0)
+        return (apm[bk] || 0) - (apm[ak] || 0)
     })
 }
 

@@ -30,7 +30,6 @@ export interface CompileResult {
         stoi: number[]
     }
     messages: MessageItem[]
-    indexIsInScript: boolean[]
     templateNodes: TemplateNode[]
     inputDescriptor: InputDescriptor
 }
@@ -81,10 +80,10 @@ export interface TempStoredImportInfo {
 }
 export interface InputDescriptor {
     options: Required<CompileOptions>
+    source: string
     indentSpaceCount: number
-    positions: ASTPosition[]
-    indexIsInScript: boolean[]
     stringConstantCount: number
+    positions: ASTPositionWithFlag[]
     script: {
         code: string
         isTS: boolean
@@ -119,7 +118,7 @@ export interface TemplateNode {
     content: string
     loc: ASTLocation
     isEmbedded: boolean
-    isComponent: boolean
+    componentTag: string
     children: TemplateNode[]
     startTagEndPos: ASTPosition
     endTagStartPos: ASTPosition
@@ -170,7 +169,8 @@ export interface AttributeAnalysisRet {
     }
     insertNullNum?: number
     createTemplate?: boolean
-    createdContextCount?: number
+    contextBlockCount?: number
+    componentCombinedArgs?: string[]
     awaitExpression?: [number, string]
     slotOfAnyTag: ValueWithLocation<string> | null
     nameOfSlotTag?: ValueWithLocation<string> | null
@@ -198,3 +198,4 @@ export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type EliminateRanges = Set<FixedArray<number, 2>>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)
+export type ASTPositionWithFlag = ASTPosition & { flag: number }

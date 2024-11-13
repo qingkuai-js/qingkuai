@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1043
+ * current-error-code: 1044
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -24,8 +24,8 @@ import type { FixedArray, GeneralFunc } from "../../util/types"
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
-import { bannedIdentifierFormatRE, tagIsComponentRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { bannedIdentifierFormatRE, tagIsComponentRE } from "../regular"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -97,11 +97,6 @@ export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
     return "Key directive could not be used without for directive."
 })
 
-export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
-    const itemDescription = getSpecialAttrDescription(key[0])
-    return `The ${itemDescription}(${key}) must have a value.`
-})
-
 export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
     return "The interpolation attribute value must be wrapped with curly bracket."
 })
@@ -124,6 +119,11 @@ export const MissingStartDirective = withLocation(1025, (d: string, pd: string) 
 
 export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) => {
     return `The identifier name(${name}) to register already exists in the top scope.`
+})
+
+export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
+    const itemDescription = getSpecialAttrDescription(key[0])
+    return `The ${itemDescription}(${key}) must have a value.`
 })
 
 export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
@@ -207,6 +207,10 @@ export const DestructureReactFuncWithNoArg = withLocation(10301, (funcName: stri
 
 export const BadValueForRefAttr = withLocation(1032, (exp: string) => {
     return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
+})
+
+export const BadEventListenerForSlotTag = withLocation(1044, (attr: string) => {
+    return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
 })
 
 export const ShortHandDerivedWithOtherReactFunc = withLocation(1042, (funcName: string) => {

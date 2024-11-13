@@ -1,11 +1,11 @@
+import { inputDescriptor } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { inputDescriptor, interCodeSnippets } from "../state"
 import { newTemplateContext } from "../../util/compiler/structure"
 import { transformInterpolation } from "../transformer/interpolation"
 import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
+import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
-import { recordInterExpression } from "../../util/compiler/sundry"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
@@ -63,7 +63,7 @@ export function content2script(content: string, startSourceIndex: number) {
 
             // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
             for (let i = 0; i < str.length; i++) {
-                inputDescriptor.indexIsInScript[sourceIndex + i + 1] = true
+                markPositionFlag(sourceIndex + i + 1, "isScript")
             }
 
             transformedArr.push(isDebug ? `(${str})` : str)

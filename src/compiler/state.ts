@@ -93,8 +93,8 @@ function newReplacementInfo(): ReplacementInfo {
 // 生成一个新的输入源状态描述符
 function newInputDescriptor(): InputDescriptor {
     return {
+        source: "",
         positions: [],
-        indexIsInScript: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
         options: {

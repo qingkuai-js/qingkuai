@@ -11,12 +11,11 @@ import { specialTags } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { lastElem } from "../../util/shared/sundry"
-import { kebab2Camel } from "../../util/compiler/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { isNull, isUndefined } from "../../util/shared/assert"
+import { isEmptyString, isNull, isUndefined } from "../../util/shared/assert"
 import { transformInterpolation } from "../transformer/interpolation"
-import { normalStringify, stringify } from "../../util/compiler/strings"
 import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
+import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
 import { inputDescriptor, interCodeSnippets, stringConstantsSourceMap } from "../state"
 
 export function analyzeTemplate(
@@ -35,7 +34,7 @@ export function analyzeTemplate(
     for (let i = 0; i < nodes.length; i++) {
         let trimedContentStartIndex = 0
         let currentContext: TemplateContext
-        let { tag, content, attributes, children, isComponent } = nodes[i]
+        let { tag, content, attributes, children, componentTag } = nodes[i]
         let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
         const currentRet: TemplateAnalysisRet = {
@@ -46,6 +45,7 @@ export function analyzeTemplate(
             isTemplate: tag === "template"
         }
         const isSlot = tag === "slot"
+        const isComponent = !isEmptyString(componentTag)
 
         // 获取默认的slot属性(或slot标签的name属性)值，返回ValueWithLocationM<string>类型，
         // 其中loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
@@ -244,11 +244,11 @@ export function analyzeTemplate(
             })
         }
 
-        // 检查模式下，如果属性（目前单指指令）产生了上下文标识符，会在中间代码中插入块级作用域，属性分析结果
-        // 中的contextCount记录了当前节点的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
+        // 检查模式下，如果属性（目前单指指令）产生了上下文标识符，会在中间代码中插入块级作用域，属性分析结果中的
+        // contextBlockCount记录了当前节点创建的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
         if (inputDescriptor.options.check) {
-            const bc = currentRet.aar?.createdContextCount || 0
-            bc && interCodeSnippets.push([-2, "}".repeat(bc)])
+            const contextBlockCount = currentRet.aar?.contextBlockCount || 0
+            contextBlockCount && interCodeSnippets.push([-2, "}".repeat(contextBlockCount)])
         }
     }
 

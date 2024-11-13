@@ -1,6 +1,7 @@
 import type { FindOutOfSC, FixedArray, StartBracket } from "../types"
 
 import { isString, isUndefined } from "../shared/assert"
+import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
 import { stringConstants, stringConstantsSourceMap } from "../../compiler/state"
 
 // JSON.stringify别名
@@ -88,15 +89,22 @@ export const findOutOfSC: FindOutOfSC = (
                 return cr(i, pattern.length)
             }
         } else {
-            const re = new RegExp(pattern)
-            const matched = re.exec(ls)
-            if (matched) {
+            const matched = pattern.exec(ls)
+            if (matched?.index === 0) {
                 return cr(i + matched.index, matched[0].length)
             }
         }
     }
 
     return cr(-1, 0)
+}
+
+// kebab命名转Camel
+export function kebab2Camel(str: string, startWithUppercase = false) {
+    const re = startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE
+    return str.replace(re, s => {
+        return s === "-" ? "" : s.toUpperCase()
+    })
 }
 
 // 在表达式中找到关闭括号的位置， 使用此方法时，startIndex应为开始括号的下一个位置

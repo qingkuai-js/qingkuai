@@ -1,15 +1,16 @@
-import type { FixedArray } from "../types"
-import type { ASTLocation, ASTPosition, EliminateRanges } from "../../compiler/types"
+import type {
+    ASTLocation,
+    EliminateRanges,
+    TemplateAttribute,
+    ASTPositionWithFlag
+} from "../../compiler/types"
+import type { FixedArray, PositionFlagKeys } from "../types"
 
-import {
-    kebabWholeRE,
-    validIdentifierNameRE,
-    bannedIdentifierFormatRE,
-    kebabWithoutFirstLetterRE
-} from "../../compiler/regular"
+import { PositionFlag } from "../shared/flag"
+import { isEmptyString, isString } from "../shared/assert"
+import { validIdentifierNameRE, bannedIdentifierFormatRE } from "../../compiler/regular"
 import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
 import { IdentifierFormatIsNotAllowed, InvalidIdentifierName } from "../../compiler/message/error"
-import { isEmptyString } from "../shared/assert"
 
 // 获取调试setter标识符
 export function getSetterIdentifier(identifier: string) {
@@ -27,14 +28,6 @@ export function confirmAlias(name: string, existing: Set<string>) {
         name = "_" + name
     }
     return name
-}
-
-// kebab命名转Camel
-export function kebab2Camel(str: string, startWithUppercase = false) {
-    const re = startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE
-    return str.replace(re, s => {
-        return s === "-" ? "" : s.toUpperCase()
-    })
 }
 
 // 从source字符串中获取指定范围的字符串，返回值将去除被er包裹的部分
@@ -64,9 +57,9 @@ export function getPositionOfEachChar(str: string) {
     let line = 1
     let column = 0
     let char = str[0]
-    const ret: ASTPosition[] = []
+    const ret: ASTPositionWithFlag[] = []
     for (let i = 0; i <= str.length; char = str[++i]) {
-        ret.push({ line, column, index: i })
+        ret.push({ line, column, index: i, flag: 0 })
         if (char !== "\n") {
             column++
         } else {
@@ -92,12 +85,38 @@ export function isIndexEliminated(index: number, ranges: EliminateRanges) {
     return false
 }
 
+// 为inputDescript.positions中某个索引的位置添加指定的flag标记
+export function markPositionFlag(index: number, flagName: PositionFlagKeys) {
+    inputDescriptor.positions[index].flag |= PositionFlag[flagName]
+}
+
+// 从templateNode的attribute列表中查找符合指定模式的属性
+export function findSpecificAttr(attrs: TemplateAttribute[], pattern: RegExp | string) {
+    const patternIsString = isString(pattern)
+    for (const attr of attrs) {
+        if (
+            (patternIsString && attr.key.raw === pattern) ||
+            (!patternIsString && pattern.test(attr.key.raw))
+        ) {
+            return attr
+        }
+    }
+    return undefined
+}
+
 // 记录表达式中间代码片段，它们在中间代码中会被赋值给__c__.Receiver
 // 为什么要这样处理：插值块中只能接受表达式，这一点与赋值表达式等号右侧的规则是一致的
 export function recordInterExpression(startSourceIndex: number, exp: string) {
     if (!isEmptyString(exp)) {
         interCodeSnippets.push([-1, "__c__.Receiver="], [startSourceIndex, exp], [-2, ";"])
     }
+}
+
+// 根据指定原始范围记录一个中间代码片段，有时生成的中间代码片段会与源码片段长度不一致，此时只需将源码除最后一个
+// 字符外的部分正常记录，最后一个字符记录到结束位置即可，如果原始片段长度仅为1，可以在中间代码片段最后补一个空格
+export function recordInterWithSpecificRange(snippet: string, start: number, end: number) {
+    snippet.length === 1 && (snippet += " ")
+    interCodeSnippets.push([start, snippet.slice(0, -1)], [end, snippet.slice(-1)])
 }
 
 // 将数组按size划分为二维数组

@@ -16,6 +16,7 @@ import { inputDescriptor, messages, resetCompilerState } from "./state"
 
 export function compile(source: string, options: CompileOptions): CompileResult {
     resetCompilerState(options)
+    inputDescriptor.source = source
 
     const templateNodes = parseTemplate(source)
     const componentName = options.componentName ?? "_"
@@ -39,7 +40,6 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         messages,
         templateNodes,
         inputDescriptor,
-        indexIsInScript: inputDescriptor.indexIsInScript
     }
     if (options.check) {
         return {
