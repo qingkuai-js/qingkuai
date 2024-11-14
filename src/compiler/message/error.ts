@@ -134,7 +134,7 @@ export const BasSlotDirectiveCarrier = withLocation(1013, () => {
     return `Slot directive(#slot) can only be used on the direct child element(first-level)`
 })
 
-export const CanNotReceiveRefAttribute = withLocation(1015, (key: string, tag: string) => {
+export const CanNotAcceptRefAttribute = withLocation(1015, (key: string, tag: string) => {
     return `The normal tag(${tag}) can not reiceive any reference attribute, but got &${key}.`
 })
 

@@ -56,7 +56,7 @@ import {
     NameAttrForSlotIsEmpty,
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
-    CanNotReceiveRefAttribute,
+    CanNotAcceptRefAttribute,
     NoBaseValueForForDirective,
     BadEventListenerForSlotTag,
     NoForDirectiveCtxNameSpeciffied,
@@ -76,10 +76,13 @@ import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } fr
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
 // 指令将会被按照他们的优先级进行排序，其他指令（包括动态/引用属性、事件）优先级默认为0（优先级低于apm数组中的所有指令）
 // 指令优先级：slot > #slot > #await > #catch > #then > #if > #elif > #else > #for > #key > 其他指令、属性、事件
-// 为什么普通slot属性优先级高于指令：普通slot属性中不会访问指令产生的标识符，且其在slot指令之前出现可以防止生成中间代码时的二次遍历
+//
+// 为什么普通slot和name属性优先级高于指令：普通slot属性用于声明组件一级子节点作为插槽插入到哪个slot标签的位置，且其中不会访问#slot
+// 指令产生的标识符，普通name属性在slot标签上用于声明其插槽名称（与组件一级子节点的普通slot属性绑定），提高它们的优先级可以确保其在
+// #slot指令或检查模式下生成中间代码时记录slot标签属性位置（inputDescriptor.slotInfo)之前出现，以有效地防止二次遍历发生的次数
 const apm = ["key", "for", "else", "elif", "if", "then", "catch", "await", "slot"].reduce(
     (ret, attr, index) => ({ ...ret, [`#${attr}`]: index + 1 }),
-    { slot: 100 } as AnyObject
+    { slot: 100, name: 101 } as AnyObject
 )
 
 export function analyzeAttribute(
@@ -106,13 +109,14 @@ export function analyzeAttribute(
 
     const { tag } = node
     const isSlot = tag === "slot"
+    const isTS = inputDescriptor.script.isTS
     const nodeStartIndex = node.loc.start.index
+    const isCheckMode = inputDescriptor.options.check
     const eventStu: TransformInterpolationRet[] = []
     const aliasArgs: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
     const directiveStu: TransformInterpolationRet[][] = []
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
-    const useTsCheck = inputDescriptor.options.check && inputDescriptor.script.isTS
 
     // 它记录了slot属性的相关信息：名称（包括单/双引号）以及这个名称指向的源码开始位置索引
     const slotAttributeInfo: [string, number] = ['"default"', nodeStartIndex]
@@ -165,16 +169,16 @@ export function analyzeAttribute(
             startSourceIndex: number,
             option?: TransformInterpolationOptionalParam
         ) => {
-            if (inputDescriptor.options.check) {
-                recordInterExpression(startSourceIndex, exp), ""
+            if (isCheckMode) {
+                recordInterExpression(startSourceIndex, exp)
             }
             return transformInterpolation(exp, startSourceIndex, context, "directive", option)
         }
 
         // 转换标签属性值
         const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
-            if (inputDescriptor.options.check) {
-                recordInterExpression(trimedValueStartSourceIndex, exp), ""
+            if (isCheckMode) {
+                recordInterExpression(trimedValueStartSourceIndex, exp)
             }
 
             if (!option) {
@@ -194,7 +198,7 @@ export function analyzeAttribute(
             if (isEmptyString(trimedValue)) {
                 context.count++
             } else {
-                if (inputDescriptor.options.check) {
+                if (isCheckMode) {
                     contextBlockCount++
                     interCodeSnippets.push(
                         [-1, "{const "],
@@ -207,7 +211,7 @@ export function analyzeAttribute(
                         interCodeSnippets.push([-2, "=__c__.getResolve("])
                         interCodeSnippets.push(awaitExpression!, [-2, ");"])
                     } else {
-                        interCodeSnippets.push([-2, `=0${useTsCheck ? " as any" : ""};`])
+                        interCodeSnippets.push([-2, `=0${isTS ? " as any" : ""};`])
                     }
                 } else if (!DestructuringContextRE.test(trimedValue)) {
                     checkIdentifierName(
@@ -250,7 +254,7 @@ export function analyzeAttribute(
                 let attrsForErr: string[] = []
 
                 if (!couldUseRefTags.has(tag)) {
-                    CanNotReceiveRefAttribute(pureKey, tag, attr.loc)
+                    return CanNotAcceptRefAttribute(pureKey, tag, attr.loc)
                 }
 
                 // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
@@ -292,7 +296,7 @@ export function analyzeAttribute(
             }
 
             // 非检查模式时正常编译，检查模式下记录中间代码片段
-            if (!inputDescriptor.options.check) {
+            if (!isCheckMode) {
                 const tiGetter = transAttrValue(trimedValue)
                 const tiSetter = transAttrValue(trimedValue, { usedAsSetter: true })
                 let setter = isString(tiSetter) ? tiSetter : tiSetter.transformedExp
@@ -325,7 +329,7 @@ export function analyzeAttribute(
                     eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
                 }
             } else {
-                if (!isComponent && useTsCheck) {
+                if (!isComponent && isTS) {
                     if (pureKey === "checked") {
                         interCodeSnippets.push(
                             [-1, `__c__.SatisfyBoolean(`],
@@ -374,7 +378,7 @@ export function analyzeAttribute(
                     interCodeSnippets.push(
                         [-2, "("],
                         [trimedValueStartSourceIndex, trimedValue],
-                        [-2, `)=0${useTsCheck ? " as any" : ""};`]
+                        [-2, `)=0${isTS ? " as any" : ""};`]
                     )
                 }
             }
@@ -397,7 +401,7 @@ export function analyzeAttribute(
                     }
                     contextBlockCount += Number(hasContextIdentifier)
 
-                    if (!inputDescriptor.options.check) {
+                    if (!isCheckMode) {
                         const preContextCount = context.count
 
                         // 转换for指令依赖的表达式部分（不含item及index标识符部分）
@@ -568,8 +572,8 @@ export function analyzeAttribute(
                 case "catch":
                 case "await":
                     if (pureKey === "await") {
-                        if (inputDescriptor.options.check) {
-                            if (useTsCheck) {
+                        if (isCheckMode) {
+                            if (isTS) {
                                 interCodeSnippets.push(
                                     [-1, "__c__.SatisfyPromise("],
                                     [trimedValueStartSourceIndex, trimedValue],
@@ -826,6 +830,24 @@ export function analyzeAttribute(
                 markPositionFlag(value.loc.end.index + 1, "isSlotAttrEndQuote")
             }
         } else {
+            if (isCheckMode && isSlot) {
+                // 如果存在name属性，在这之前它一定被记录到了nameOfSlotTag中，因为普通
+                // name属性的优先级高于其他属性（参考当前文件顶部对amp变量描述的注释内容）
+                let slotName = "default"
+                if (nameOfSlotTag?.value) {
+                    slotName = JSON.parse(nameOfSlotTag.value)
+                }
+
+                // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引它们
+                // 需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
+                // 通过inputDescriptor.interIndexMap[源码索引]能访问中间代码中对应字符的索引
+                let target = inputDescriptor.slotInfo.get(slotName)
+                if (isUndefined(target)) {
+                    inputDescriptor.slotInfo.set(slotName, (target = {}))
+                }
+                target[pureKey] = isInterpolation ? trimedValueStartSourceIndex : -1
+            }
+
             const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)
             attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
         }
@@ -838,7 +860,7 @@ export function analyzeAttribute(
 
     // 检查模式时，需要为组件标签生成实例化的相关中间代码（指令的中间代码与其他标签处理一致），
     // 组件的普通属性/动态属性/事件、引用属性、slots会被组合为组件构造函数的三个对象类型参数
-    if (inputDescriptor.options.check && isComponent) {
+    if (isCheckMode && isComponent) {
         const attrRecords = Array.from({ length: 2 }, () => {
             return [] as [string, number, number][]
         })
@@ -878,11 +900,11 @@ export function analyzeAttribute(
                 }
             })
         }
-        interCodeSnippets.push([-2, `${useTsCheck ? "0 as any" : ""});`])
+        interCodeSnippets.push([-2, `0${isTS ? " as any" : ""});`])
     }
 
     // slot节点未使用slot指令时记录slot属性相关的中间代码片段
-    if (useTsCheck && parentIsComponent && !hasSlotDirective) {
+    if (isCheckMode && parentIsComponent && !hasSlotDirective) {
         recoedSlotAttributeInterSnippet()
     }
 
@@ -982,7 +1004,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 normalClassIndex = target.push(curAttr) - 1
             } else {
                 if (rk.startsWith("&")) {
-                    CanNotReceiveRefAttribute(pureKey, tag, loc)
+                    CanNotAcceptRefAttribute(pureKey, tag, loc)
                 }
                 dynamicClassIndex = target.push(curAttr) - 1
             }

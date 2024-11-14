@@ -2,7 +2,7 @@ import type { FindOutOfSC, FixedArray, StartBracket } from "../types"
 
 import { isString, isUndefined } from "../shared/assert"
 import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
-import { stringConstants, stringConstantsSourceMap } from "../../compiler/state"
+import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../../compiler/state"
 
 // JSON.stringify别名
 export function normalStringify(v: any) {
@@ -12,6 +12,9 @@ export function normalStringify(v: any) {
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
 export function stringify(v: any) {
     const s = normalStringify(v)
+    if (inputDescriptor.options.check) {
+        return s
+    }
     if (stringConstants.has(s)) {
         const existingItem = stringConstants.get(s)!
         existingItem.count++

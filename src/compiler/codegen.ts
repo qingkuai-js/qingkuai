@@ -161,7 +161,7 @@ export function generateIntermidiateResult(source: string, typeRefStatement: str
     interCodeSnippets.forEach(([toi, tos], index) => {
         if (toi >= 0) {
             for (let i = 0; i < tos.length; i++) {
-                stoi[toi + i] = itos.push(toi + i) - 2
+                stoi[toi + i] = itos.push(toi + i) - 1
             }
             return
         }

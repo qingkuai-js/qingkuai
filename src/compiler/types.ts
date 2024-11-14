@@ -92,6 +92,7 @@ export interface InputDescriptor {
         existing: boolean
         generatedOffset: FixedArray<number, 2>
     }
+    slotInfo: Map<string, Record<string, number>>
 }
 
 export type MessageItem =
