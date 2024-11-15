@@ -108,7 +108,7 @@ export function findSpecificAttr(attrs: TemplateAttribute[], pattern: RegExp | s
 // 为什么要这样处理：插值块中只能接受表达式，这一点与赋值表达式等号右侧的规则是一致的
 export function recordInterExpression(startSourceIndex: number, exp: string) {
     if (!isEmptyString(exp)) {
-        interCodeSnippets.push([-1, "__c__.Receiver="], [startSourceIndex, exp], [-2, ";"])
+        interCodeSnippets.push([-3, "__c__.Receiver="], [startSourceIndex, exp], [-2, ";"])
     }
 }
 

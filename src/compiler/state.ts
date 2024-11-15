@@ -94,8 +94,8 @@ function newReplacementInfo(): ReplacementInfo {
 function newInputDescriptor(): InputDescriptor {
     return {
         source: "",
+        slotInfo: {},
         positions: [],
-        slotInfo: new Map(),
         indentSpaceCount: 0,
         stringConstantCount: 0,
         options: {
@@ -113,6 +113,6 @@ function newInputDescriptor(): InputDescriptor {
             existing: false,
             loc: newASTLocation(),
             generatedOffset: [0, 0]
-        },
+        }
     }
 }

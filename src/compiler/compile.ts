@@ -41,8 +41,6 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         templateNodes,
         inputDescriptor,
     }
-    console.log(inputDescriptor.slotInfo)
-    console.log(messages)
     if (options.check) {
         return {
             mappings: "",

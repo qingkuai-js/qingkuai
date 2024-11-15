@@ -332,12 +332,12 @@ export function analyzeAttribute(
                 if (!isComponent && isTS) {
                     if (pureKey === "checked") {
                         interCodeSnippets.push(
-                            [-1, `__c__.SatisfyBoolean(`],
+                            [-3, `__c__.SatisfyBoolean(`],
                             [trimedValueStartSourceIndex, trimedValue]
                         )
                     } else if (pureKey === "value") {
                         interCodeSnippets.push(
-                            [-1, `__c__.SatisfyString(`],
+                            [-3, `__c__.SatisfyString(`],
                             [trimedValueStartSourceIndex, trimedValue]
                         )
                     } else if (pureKey === "group") {
@@ -345,7 +345,7 @@ export function analyzeAttribute(
                             return /^[!@#&]?value/.test(attr.key.raw)
                         })?.[0]
                         interCodeSnippets.push(
-                            [-1, `__c__.SatisfyRefGroup(`],
+                            [-3, `__c__.SatisfyRefGroup(`],
                             [trimedValueStartSourceIndex, trimedValue],
                             [-2, ","]
                         )
@@ -511,7 +511,7 @@ export function analyzeAttribute(
                     } else {
                         if (!hasContextIdentifier) {
                             interCodeSnippets.push(
-                                [-1, "__c__.GetKVPair("],
+                                [-3, "__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex, trimedValue],
                                 [-2, ");"]
                             )
@@ -519,7 +519,7 @@ export function analyzeAttribute(
                             interCodeSnippets.push(
                                 [-1, "{const ["],
                                 [trimedValueStartSourceIndex, contextStr],
-                                [-2, "]=__c__.GetKVPair("],
+                                [-3, "]=__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex + baseStartIndex, forBaseValue],
                                 [-2, ");"]
                             )
@@ -575,7 +575,7 @@ export function analyzeAttribute(
                         if (isCheckMode) {
                             if (isTS) {
                                 interCodeSnippets.push(
-                                    [-1, "__c__.SatisfyPromise("],
+                                    [-3, "__c__.SatisfyPromise("],
                                     [trimedValueStartSourceIndex, trimedValue],
                                     [-2, ");"]
                                 )
@@ -841,9 +841,9 @@ export function analyzeAttribute(
                 // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引它们
                 // 需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
                 // 通过inputDescriptor.interIndexMap[源码索引]能访问中间代码中对应字符的索引
-                let target = inputDescriptor.slotInfo.get(slotName)
+                let target = inputDescriptor.slotInfo[slotName]
                 if (isUndefined(target)) {
-                    inputDescriptor.slotInfo.set(slotName, (target = {}))
+                    target = inputDescriptor.slotInfo[slotName] = {}
                 }
                 target[pureKey] = isInterpolation ? trimedValueStartSourceIndex : -1
             }

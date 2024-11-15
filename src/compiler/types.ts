@@ -81,6 +81,7 @@ export interface TempStoredImportInfo {
 export interface InputDescriptor {
     options: Required<CompileOptions>
     source: string
+    slotInfo: SlotInfo
     indentSpaceCount: number
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
@@ -92,7 +93,6 @@ export interface InputDescriptor {
         existing: boolean
         generatedOffset: FixedArray<number, 2>
     }
-    slotInfo: Map<string, Record<string, number>>
 }
 
 export type MessageItem =
@@ -199,4 +199,5 @@ export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type EliminateRanges = Set<FixedArray<number, 2>>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)
+export type SlotInfo = Record<string, Record<string, number>>
 export type ASTPositionWithFlag = ASTPosition & { flag: number }
