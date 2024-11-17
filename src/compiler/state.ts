@@ -112,7 +112,8 @@ function newInputDescriptor(): InputDescriptor {
             lineCount: 0,
             existing: false,
             loc: newASTLocation(),
-            generatedOffset: [0, 0]
+            generatedOffset: [0, 0],
+            startTagNameRange: [-1, -1]
         }
     }
 }

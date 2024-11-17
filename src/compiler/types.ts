@@ -92,6 +92,7 @@ export interface InputDescriptor {
         loc: ASTLocation
         existing: boolean
         generatedOffset: FixedArray<number, 2>
+        startTagNameRange: FixedArray<number, 2>
     }
 }
 

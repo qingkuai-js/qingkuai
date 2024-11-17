@@ -178,7 +178,12 @@ export function analyzeAttribute(
         // 转换标签属性值
         const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
             if (isCheckMode) {
-                recordInterExpression(trimedValueStartSourceIndex, exp)
+                // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
+                let keyRange: FixedArray<number, 2> | undefined = undefined
+                if (value.loc.start.index === -1) {
+                    keyRange = [key.loc.start.index, key.loc.end.index - 1]
+                }
+                recordInterExpression(trimedValueStartSourceIndex, exp, keyRange)
             }
 
             if (!option) {
@@ -952,8 +957,8 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             key.raw = kebab2Camel(key.raw)
         }
 
-        // 当属性为动态/引用属性、事件且无值时使用key的名称作为值
-        if (isSpecial && !value.raw && !isDirective) {
+        // 当属性为动态/引用属性、事件且无值时使用key的名称作为值，需确保不存在插值块
+        if (isSpecial && !isDirective && value.loc.start.index === -1) {
             value.raw = key.raw.slice(1)
         }
 

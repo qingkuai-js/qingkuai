@@ -325,9 +325,13 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     markPositionFlag(contentStartIndex + i, "isScript")
                 }
 
-                // 记录嵌入script块的内容、是否ts、是否已存在以及源码位置信息
+                // 记录嵌入script块的内容、是否ts、开始标签名范围、是否已存在以及源码位置信息
                 scriptDescriptor.loc = getLocByIndex(contentStartIndex, index)
                 scriptDescriptor.isTS = embeddedLang === "ts"
+                scriptDescriptor.startTagNameRange = [
+                    ast.range[0],
+                    ast.range[0] + ast.tag.length + 1
+                ]
                 scriptDescriptor.existing = true
                 scriptDescriptor.code = content
 
