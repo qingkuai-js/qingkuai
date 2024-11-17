@@ -1,7 +1,6 @@
 import type {
     TemplateNode,
     TemplateContext,
-    ValueWithLocation,
     TemplateAnalysisRet,
     AttributeAnalysisRet
 } from "../types"
@@ -11,12 +10,10 @@ import { specialTags } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { lastElem } from "../../util/shared/sundry"
-import { getLocByIndex } from "../../util/compiler/locations"
-import { isEmptyString, isNull, isUndefined } from "../../util/shared/assert"
+import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
-import { DuplicateNameAttrForSlot, DuplicateSlotAttr } from "../message/error"
+import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
-import { inputDescriptor, interCodeSnippets, stringConstantsSourceMap } from "../state"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
@@ -24,7 +21,7 @@ export function analyzeTemplate(
     context?: TemplateContext,
     continueByDirective?: string,
     awaitExpression?: [number, string],
-    existingNameOfSlot = new Set<string>()
+    existingSlotOfAnyTag = new Set<string>()
 ) {
     const result: TemplateAnalysisRet[] = []
 
@@ -34,6 +31,8 @@ export function analyzeTemplate(
     for (let i = 0; i < nodes.length; i++) {
         let trimedContentStartIndex = 0
         let currentContext: TemplateContext
+        let continueRE: RegExp | undefined | null
+        let shouldContinueDirective: string | undefined
         let { tag, content, attributes, children, componentTag } = nodes[i]
         let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
@@ -46,16 +45,6 @@ export function analyzeTemplate(
         }
         const isSlot = tag === "slot"
         const isComponent = !isEmptyString(componentTag)
-
-        // 获取默认的slot属性(或slot标签的name属性)值，返回ValueWithLocationM<string>类型，
-        // 其中loc为当前节点开始标签的范围，例如对于一个div节点的loc是 <div 所在的范围（用做报错位置）
-        const getDefaultNameOfSlotOrSlotOfAny = (): ValueWithLocation<string> => {
-            const nodeRange = nodes[i].range
-            return {
-                value: stringify("default"),
-                loc: getLocByIndex(nodeRange[0], nodeRange[0] + tag.length + 1)
-            }
-        }
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
         shouldHoistContent &&= !isComponent && !isSlot
@@ -78,117 +67,84 @@ export function analyzeTemplate(
         }
 
         // 分析属性列表
-        if (!attributes.length) {
-            if (parentIsComponent) {
-                currentRet.aar = getDefaultAar()
+        const contextBeforeAnalyzeAttribute = cloneContext(currentContext)
+        const aar = analyzeAttribute(
+            nodes[i],
+            isComponent,
+            parentIsComponent,
+            attributes,
+            currentContext,
+            existingSlotOfAnyTag,
+            continueByDirective,
+            awaitExpression
+        )
+        currentRet.aar = aar
+        continueRE = aar.continueInfo?.re
+        shouldContinueDirective = aar.continueInfo?.by
+
+        // 对于使用了if指令或await指令的节点可能需要创建一个template挂载点，因为此时
+        // 需要将多个节点结构作为参数传入ifMNodule/awaitModule
+        if (aar.createTemplate) {
+            const useBracketWrap = shouldUseBracketWrap(tag, aar)
+            const awaitNullChild = { tar: null, useBracket: false }
+            const mockTemplateRet: TemplateAnalysisRet = {
+                isTemplate: true,
+                tag: "template",
+                content: "",
+                aar: {
+                    eventStu: [],
+                    attributeStu: [],
+                    slotOfAnyTag: aar.slotOfAnyTag,
+                    directiveStu: [aar.directiveStu[0]]
+                },
+                children: [
+                    {
+                        tar: currentRet,
+                        useBracket: useBracketWrap
+                    }
+                ]
             }
-        } else {
-            let continueRE: RegExp | undefined | null
-            let shouldContinueDirective: string | undefined
-            const contextBeforeAnalyzeAttribute = cloneContext(currentContext)
-            const aar = analyzeAttribute(
-                nodes[i],
-                isComponent,
-                parentIsComponent,
-                attributes,
-                currentContext,
-                continueByDirective,
-                awaitExpression
-            )
-            currentRet.aar = aar
-            continueRE = aar.continueInfo?.re
-            shouldContinueDirective = aar.continueInfo?.by
+            result.pop()
+            result.push(mockTemplateRet)
+            aar.directiveStu = aar.directiveStu.slice(1)
 
-            // 对于使用了if指令或await指令的节点可能需要创建一个template挂载点，因为此时
-            // 需要将多个节点结构作为参数传入ifMNodule/awaitModule
-            if (aar.createTemplate) {
-                const useBracketWrap = shouldUseBracketWrap(tag, aar)
-                const awaitNullChild = { tar: null, useBracket: false }
-                const mockTemplateRet: TemplateAnalysisRet = {
-                    isTemplate: true,
-                    tag: "template",
-                    content: "",
-                    aar: {
-                        eventStu: [],
-                        attributeStu: [],
-                        slotOfAnyTag: aar.slotOfAnyTag,
-                        directiveStu: [aar.directiveStu[0]]
-                    },
-                    children: [
-                        {
-                            tar: currentRet,
-                            useBracket: useBracketWrap
-                        }
-                    ]
-                }
-                result.pop()
-                aar.slotOfAnyTag = null
-                result.push(mockTemplateRet)
-                aar.directiveStu = aar.directiveStu.slice(1)
-
-                if (aar.insertNullNum) {
-                    for (let i = 0; i < aar.insertNullNum; i++) {
-                        mockTemplateRet.children.unshift(awaitNullChild)
-                    }
-                }
-
-                // 如果后一个兄弟节点节点是当前节点的后续指令（elif/else - if、then/catch - await)，
-                // 优先处理后一个兄弟节点，如果按照正常顺序会先递归处理当前节点的所有子节点，但如果是连接
-                // 指令就需要先将当前指令的所有后续指令都处理完，再递归处理当前节点的子节点
-                while (shouldContinue(nodes[i + 1], continueRE)) {
-                    const cotinueContext = cloneContext(contextBeforeAnalyzeAttribute)
-                    const [childTemplateAnalysisRet] = analyzeTemplate(
-                        [nodes[++i]],
-                        isComponent,
-                        cotinueContext,
-                        shouldContinueDirective,
-                        aar.awaitExpression
-                    )
-                    const useBracketWrap = shouldUseBracketWrap(
-                        nodes[i].tag,
-                        childTemplateAnalysisRet.aar!
-                    )
-                    const childAarContinueArg = childTemplateAnalysisRet.aar!.continueInfo?.arg
-                    if (childTemplateAnalysisRet.aar?.insertNullNum) {
-                        mockTemplateRet.children.push(awaitNullChild)
-                    }
-                    if (childAarContinueArg) {
-                        mockTemplateRet.aar!.directiveStu[0].push(childAarContinueArg)
-                    }
-                    mockTemplateRet.children.push({
-                        useBracket: useBracketWrap,
-                        tar: childTemplateAnalysisRet
-                    })
-                    continueRE = childTemplateAnalysisRet.aar?.continueInfo?.re
-                    shouldContinueDirective = childTemplateAnalysisRet.aar?.continueInfo?.by
+            if (aar.insertNullNum) {
+                for (let i = 0; i < aar.insertNullNum; i++) {
+                    mockTemplateRet.children.unshift(awaitNullChild)
                 }
             }
-        }
 
-        // 组件的子元素默认使用default作为slot属性值
-        if (parentIsComponent && isNull(currentRet.aar!.slotOfAnyTag)) {
-            currentRet.aar!.slotOfAnyTag = getDefaultNameOfSlotOrSlotOfAny()
-        }
-
-        // slot标签的name属性默认值为default
-        if (tag === "slot") {
-            if (isNull(currentRet.aar)) {
-                currentRet.aar = getDefaultAar()
+            // 如果后一个兄弟节点节点是当前节点的后续指令（elif/else - if、then/catch - await)，
+            // 优先处理后一个兄弟节点，如果按照正常顺序会先递归处理当前节点的所有子节点，但如果是连接
+            // 指令就需要先将当前指令的所有后续指令都处理完，再递归处理当前节点的子节点
+            while (shouldContinue(nodes[i + 1], continueRE)) {
+                const cotinueContext = cloneContext(contextBeforeAnalyzeAttribute)
+                const [childTemplateAnalysisRet] = analyzeTemplate(
+                    [nodes[++i]],
+                    isComponent,
+                    cotinueContext,
+                    shouldContinueDirective,
+                    aar.awaitExpression,
+                    existingSlotOfAnyTag
+                )
+                const useBracketWrap = shouldUseBracketWrap(
+                    nodes[i].tag,
+                    childTemplateAnalysisRet.aar!
+                )
+                const childAarContinueArg = childTemplateAnalysisRet.aar!.continueInfo?.arg
+                if (childTemplateAnalysisRet.aar?.insertNullNum) {
+                    mockTemplateRet.children.push(awaitNullChild)
+                }
+                if (childAarContinueArg) {
+                    mockTemplateRet.aar!.directiveStu[0].push(childAarContinueArg)
+                }
+                mockTemplateRet.children.push({
+                    useBracket: useBracketWrap,
+                    tar: childTemplateAnalysisRet
+                })
+                continueRE = childTemplateAnalysisRet.aar?.continueInfo?.re
+                shouldContinueDirective = childTemplateAnalysisRet.aar?.continueInfo?.by
             }
-            if (
-                isNull(currentRet.aar?.nameOfSlotTag) ||
-                isUndefined(currentRet.aar?.nameOfSlotTag)
-            ) {
-                currentRet.aar.nameOfSlotTag = getDefaultNameOfSlotOrSlotOfAny()
-            }
-
-            // 检查slot标签的name属性是否重复
-            const { value, loc } = currentRet.aar.nameOfSlotTag
-            if (existingNameOfSlot.has(value)) {
-                const restoredValue = stringConstantsSourceMap.get(value)!
-                DuplicateNameAttrForSlot(JSON.parse(restoredValue), loc)
-            }
-            existingNameOfSlot.add(value)
         }
 
         // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有一个文本
@@ -210,7 +166,7 @@ export function analyzeTemplate(
         if (specialTags.has(tag)) {
             currentRet.content = normalStringify(content)
         } else if (currentRet.aar?.nameOfSlotTag) {
-            currentRet.content = currentRet.aar.nameOfSlotTag.value
+            currentRet.content = currentRet.aar.nameOfSlotTag
         } else {
             const parseRet = content2script(content, trimedContentStartIndex)
             const teOptionalParam = { positionMap: parseRet.positionMap }
@@ -227,19 +183,17 @@ export function analyzeTemplate(
 
         // 递归处理当前节点的所有子节点，在这里判断组件中多个子标签上的slot属性是否重复
         if (!shouldHoistContent) {
-            const existingSlotOfAny = new Set<string>()
-            analyzeTemplate(children, isComponent, currentContext).forEach(childRet => {
-                const slot = childRet.aar?.slotOfAnyTag
-                if (slot) {
-                    if (existingSlotOfAny.has(slot.value)) {
-                        const restoredSlotName = stringConstantsSourceMap.get(slot.value)!
-                        DuplicateSlotAttr(JSON.parse(restoredSlotName), tag, slot.loc)
-                    }
-                    existingSlotOfAny.add(slot.value)
-                }
+            analyzeTemplate(
+                children,
+                isComponent,
+                currentContext,
+                undefined,
+                undefined,
+                new Set()
+            ).forEach(childRet => {
                 currentRet.children.push({
                     tar: childRet,
-                    useBracket: Boolean(slot)
+                    useBracket: Boolean(childRet.aar?.slotOfAnyTag)
                 })
             })
         }
@@ -253,16 +207,6 @@ export function analyzeTemplate(
     }
 
     return result
-}
-
-// 获取默认的AttributeAnalysisRet结构
-function getDefaultAar(): AttributeAnalysisRet {
-    return {
-        eventStu: [],
-        directiveStu: [],
-        attributeStu: [],
-        slotOfAnyTag: null
-    }
 }
 
 // 拷贝一份context，得到的新context中的map属性的每一个标识符转换项与原context中

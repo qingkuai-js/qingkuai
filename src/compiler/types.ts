@@ -156,10 +156,6 @@ export type TemplateContext = {
     count: number
 }
 
-export interface ValueWithLocation<T> {
-    value: T
-    loc: ASTLocation
-}
 export interface AttributeAnalysisRet {
     directiveStu: TransformInterpolationRet[][]
     eventStu: TransformInterpolationRet[]
@@ -169,13 +165,13 @@ export interface AttributeAnalysisRet {
         by?: string | undefined
         arg?: TransformInterpolationRet
     }
+    slotOfAnyTag?: string
+    nameOfSlotTag?: string
     insertNullNum?: number
     createTemplate?: boolean
     contextBlockCount?: number
     componentCombinedArgs?: string[]
     awaitExpression?: [number, string]
-    slotOfAnyTag: ValueWithLocation<string> | null
-    nameOfSlotTag?: ValueWithLocation<string> | null
 }
 
 export interface TransformInterpolationOptionalParam {
@@ -196,9 +192,15 @@ export type TransformInterpolationRet =
           mappings: FixedArray<number, 4>[]
       }
 
+export type SlotInfo = Record<
+    string,
+    {
+        landingIndex: number
+        properties: [string, number][]
+    }
+>
 export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type EliminateRanges = Set<FixedArray<number, 2>>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)
-export type SlotInfo = Record<string, Record<string, number>>
 export type ASTPositionWithFlag = ASTPosition & { flag: number }

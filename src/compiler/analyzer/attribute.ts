@@ -2,11 +2,11 @@ import type {
     TemplateNode,
     TemplateContext,
     TemplateAttribute,
-    ValueWithLocation,
     AttributeAnalysisRet,
     TransformInterpolationRet,
     FilteredTemplateAttribute,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptionalParam,
+    ASTLocation
 } from "../types"
 import type { EsPattern } from "../estree/types"
 import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
@@ -61,7 +61,9 @@ import {
     BadEventListenerForSlotTag,
     NoForDirectiveCtxNameSpeciffied,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective
+    UseKeyDirectiveWithoutForDirective,
+    DuplicateNameAttrForSlot,
+    DuplicateSlotAttr
 } from "../message/error"
 import { getAlias } from "./alias"
 import { lastElem } from "../../util/shared/sundry"
@@ -91,6 +93,7 @@ export function analyzeAttribute(
     parentIsComponent: boolean,
     attrs: TemplateAttribute[],
     context: TemplateContext,
+    existingSlotOfAnyTag: Set<string>,
     continueByDirective?: string,
     awaitExpression?: [number, string]
 ): AttributeAnalysisRet {
@@ -103,9 +106,9 @@ export function analyzeAttribute(
     let hasSlotDirective = false
     let continueRE: RegExp | null = null
     let shouldContinueDirective: string | undefined
+    let slotOfAnyTag: string | undefined = undefined
+    let nameOfSlotTag: string | undefined = undefined
     let continueArg: TransformInterpolationRet | undefined
-    let slotOfAnyTag: ValueWithLocation<string> | null = null
-    let nameOfSlotTag: ValueWithLocation<string> | null = null
 
     const { tag } = node
     const isSlot = tag === "slot"
@@ -117,12 +120,26 @@ export function analyzeAttribute(
     const attributeStu: TransformInterpolationRet[] = []
     const directiveStu: TransformInterpolationRet[][] = []
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
-
-    // 它记录了slot属性的相关信息：名称（包括单/双引号）以及这个名称指向的源码开始位置索引
-    const slotAttributeInfo: [string, number] = ['"default"', nodeStartIndex]
+    const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
     // 它记录了开始标签名的范围索引（包括开头的<，例如<div的范围索引)
-    const stnr = [nodeStartIndex, nodeStartIndex + node.tag.length + 1] as const // Start Tag Name Range
+    const stnr = [nodeStartIndex, startTagNameEndIndex] as const // Start Tag Name Range
+
+    // 它记录了slot属性的相关信息：名称（包括单/双引号）以及插槽名称报错/跳转时的源码位置范围
+    const slotAttributeInfo: [string, number, number] = ['"default"', ...stnr]
+
+    // 记录当前组件文件中的slot信息
+    const recordSlotInfo = (name: string, loc: ASTLocation) => {
+        if (!isUndefined(inputDescriptor.slotInfo[name])) {
+            DuplicateNameAttrForSlot(name, loc)
+        } else {
+            inputDescriptor.slotInfo[name] = {
+                properties: [],
+                landingIndex: loc.start.index
+            }
+        }
+        nameOfSlotTag = stringify(name)
+    }
 
     // 修改continueRE变量，这里需要检测此变量是否已经被赋值，若已被赋值则不能覆盖原来的值，避免
     // 低优先级的指令高优先级指令，例如await指令的后续指令正则表达式可能会被if/elif指令覆盖
@@ -132,8 +149,17 @@ export function analyzeAttribute(
 
     // 记录slot节点中间代码片段的方法，当属性值未被单双引号包裹时无需处理
     const recoedSlotAttributeInterSnippet = () => {
-        const [slotName, slotStartSourceIndex] = slotAttributeInfo
-        if (!/^['"]/.test(slotName)) return
+        const [slotName, ...range] = slotAttributeInfo
+        if (!/^['"]/.test(slotName)) {
+            return
+        }
+
+        const parsedSlotName = JSON.parse(slotName)
+        if (!existingSlotOfAnyTag.has(parsedSlotName)) {
+            existingSlotOfAnyTag.add(parsedSlotName)
+        } else {
+            DuplicateSlotAttr(parsedSlotName, node.parent!.tag, ...range)
+        }
 
         const equalSign = hasSlotDirective ? "=" : ""
         const parentComponentTag = node.parent!.componentTag
@@ -141,13 +167,19 @@ export function analyzeAttribute(
         recordInterWithSpecificRange(`${parentComponentTag},`, stnr[0] + 1, stnr[1])
 
         // 当if条件成立时表示无slot属性
-        if (slotStartSourceIndex === nodeStartIndex) {
-            recordInterWithSpecificRange('"default"', ...stnr)
+        if (range[0] === nodeStartIndex) {
+            recordInterWithSpecificRange(slotName, ...stnr)
         } else {
-            interCodeSnippets.push([slotStartSourceIndex, slotName])
+            interCodeSnippets.push([range[0], slotName])
         }
 
         interCodeSnippets.push([-2, ");"])
+    }
+
+    // slot标签无name属性时默认使用default，报错/跳转位置与开始标签名的范围一致
+    // 如果存在name属性，则它一定是第一个元素，原因参考本文件顶部对于amp变量的注释
+    if (isSlot && preProcessedAttr[0]?.key.raw !== "name") {
+        recordSlotInfo("default", getLocByIndex(...stnr))
     }
 
     preProcessedAttr.forEach(attr => {
@@ -628,11 +660,12 @@ export function analyzeAttribute(
 
                 case "slot":
                     // 父元素非组件，不能使用slot指令
-                    if (!parentIsComponent) {
+                    if (parentIsComponent) {
+                        hasSlotDirective = true
+                        recordAliasIdentifiers()
+                    } else {
                         BasSlotDirectiveCarrier(key.loc)
                     }
-                    hasSlotDirective = true
-                    recordAliasIdentifiers()
                     break
 
                 default:
@@ -805,10 +838,6 @@ export function analyzeAttribute(
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
             // slot标签的name属性（或组件的直接子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
             // 这里只需检测name或slot属性是不是动态类型即可，因为引用类型属性的处理不会经过这里的代码块
-            const attrWithLocationStu = {
-                loc: attr.loc,
-                value: stringify(rv)
-            }
             const isSlotAttribute = pureKey === "slot"
             if (isDynamic) {
                 if (isSlotAttribute) {
@@ -822,35 +851,36 @@ export function analyzeAttribute(
                 } else {
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
-            }
-            if (!isSlotAttribute) {
-                nameOfSlotTag = attrWithLocationStu
             } else {
-                const sqi = value.loc.start.index - 1
-                const qc = inputDescriptor.source[sqi]
-                slotAttributeInfo[1] = sqi
-                slotOfAnyTag = attrWithLocationStu
-                slotAttributeInfo[0] = `${qc}${attr.value.raw}${qc}`
-                markPositionFlag(sqi, "isSlotAttrStartQuote")
-                markPositionFlag(value.loc.end.index + 1, "isSlotAttrEndQuote")
+                if (!isSlotAttribute) {
+                    recordSlotInfo(rv, attr.loc)
+                } else {
+                    const sqi = value.loc.start.index - 1
+                    const qc = inputDescriptor.source[sqi]
+                    slotAttributeInfo[1] = sqi
+                    slotOfAnyTag = stringify(rv)
+                    slotAttributeInfo[0] = `${qc}${attr.value.raw}${qc}`
+                    markPositionFlag(sqi, "isSlotAttrStartQuote")
+                    markPositionFlag(value.loc.end.index + 1, "isSlotAttrEndQuote")
+                }
             }
         } else {
             if (isCheckMode && isSlot) {
                 // 如果存在name属性，在这之前它一定被记录到了nameOfSlotTag中，因为普通
                 // name属性的优先级高于其他属性（参考当前文件顶部对amp变量描述的注释内容）
-                let slotName = "default"
-                if (nameOfSlotTag?.value) {
-                    slotName = JSON.parse(nameOfSlotTag.value)
-                }
+                const slotName = JSON.parse(nameOfSlotTag || '"default"')
 
                 // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引它们
                 // 需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
                 // 通过inputDescriptor.interIndexMap[源码索引]能访问中间代码中对应字符的索引
-                let target = inputDescriptor.slotInfo[slotName]
+                let target = inputDescriptor.slotInfo[slotName]?.properties
                 if (isUndefined(target)) {
-                    target = inputDescriptor.slotInfo[slotName] = {}
+                    inputDescriptor.slotInfo[slotName] = {
+                        properties: (target = []),
+                        landingIndex: node.loc.start.index
+                    }
                 }
-                target[pureKey] = isInterpolation ? trimedValueStartSourceIndex : -1
+                target.push([pureKey, isInterpolation ? trimedValueStartSourceIndex : -1])
             }
 
             const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)
@@ -891,19 +921,17 @@ export function analyzeAttribute(
         recordInterWithSpecificRange(`${node.componentTag}(`, ...stnr)
 
         for (const target of attrRecords) {
+            interCodeSnippets.push([stnr[0], "{"])
             target.forEach((item, index) => {
                 const isValue = index % 2 !== 0
                 const isLast = index === target.length - 1
-                item[0] += isLast ? "}" : isValue ? "," : ""
-                if (index === 0) {
-                    interCodeSnippets.push([stnr[0], "{"])
-                }
+                item[0] += isValue && !isLast ? "," : ""
                 recordInterWithSpecificRange(...item)
-
                 if (isLast) {
                     interCodeSnippets.push([stnr[1], ","])
                 }
             })
+            interCodeSnippets.push([-2, "}"], [stnr[1], ","])
         }
         interCodeSnippets.push([-2, `0${isTS ? " as any" : ""});`])
     }

@@ -143,9 +143,9 @@ export function generateCompileResult(
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
 export function generateIntermidiateResult(source: string, typeRefStatement: string) {
     if (inputDescriptor.script.isTS) {
-        typeRefStatement += `const refs:Refs=0 as any;const props:Props=0 as any;`
+        typeRefStatement += `const refs:Refs=0 as any;const props:Readonly<Props>=0 as any;`
     } else {
-        typeRefStatement += `/**@type {Refs}*/const refs:Refs=0;/**@type {Props}*/const props:Props=0;`
+        typeRefStatement += `/**@type {Refs}*/const refs:Refs=0;/**@type {Readonly<Props>}*/const props:Props=0;`
     }
 
     const stoi: number[] = Array(source.length).fill(-1)
