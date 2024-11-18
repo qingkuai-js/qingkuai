@@ -1,4 +1,4 @@
-import type { FindOutOfSC, FixedArray, StartBracket } from "../types"
+import type { FindOutOfSC, NumNum, StartBracket } from "../types"
 
 import { isString, isUndefined } from "../shared/assert"
 import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
@@ -49,7 +49,7 @@ export const findOutOfSC: FindOutOfSC = (
         if (withoutStartIndex) {
             return index
         } else {
-            return [index, len] as FixedArray<number, 2>
+            return [index, len] as NumNum
         }
     }
 

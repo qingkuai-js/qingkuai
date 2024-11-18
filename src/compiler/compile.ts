@@ -1,10 +1,10 @@
 import type { CompileOptions, CompileResult } from "./types"
 
 import {
+    generateInterResult,
     generateCompileResult,
     generateImportStatements,
-    generateInitCallStatement,
-    generateIntermidiateResult
+    generateInitCallStatement
 } from "./codegen"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
@@ -33,24 +33,25 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     if (!options.check) {
         analyzeScript(scriptSourceCode)
     }
+
+    // 分析模板部分的代码，非检查模式下它需要在分析完脚本代码之后执行
     const templateAnalysisRet = analyzeTemplate(templateNodes)
 
-    // 检查模式下无需执行转换操作，生成用于typescript语言服务的中间代码
+    // 检查模式下仅生成用于js/ts语言服务的中间代码，无需执行正常编译模式的转换操作
     const basicResult = {
         messages,
         templateNodes,
-        inputDescriptor,
+        inputDescriptor
     }
-    console.log(inputDescriptor.slotInfo)
-    console.log(messages)
     if (options.check) {
-        return {
+        return exchangeInterIndexOfSlotInfo({
             mappings: "",
             ...basicResult,
-            ...generateIntermidiateResult(source, typeRefStatement)
-        }
+            ...generateInterResult(source, typeRefStatement)
+        })
     }
 
+    // 转换脚本代码并确定编译结果中可压缩代码体积的地方（相同字符串、冗余字符等）
     const scriptTranformedRet = transformScript(scriptSourceCode, 1)
     compressCompileSize(templateAnalysisRet)
 
@@ -75,4 +76,17 @@ export function compile(source: string, options: CompileOptions): CompileResult 
             templateTransformedRet
         )
     }
+}
+
+// 将slotInfo-properties中每项的第三个元素（源码索引）转换为中间代码索引
+// 更详细的内容可参考当前目录下的 types.ts 文件中对于SlotInfo类型的描述注释
+function exchangeInterIndexOfSlotInfo(interCompileRes: CompileResult) {
+    const { slotInfo } = inputDescriptor
+    const { stoi } = interCompileRes.interIndexMap
+    Object.keys(slotInfo).forEach(slotName => {
+        slotInfo[slotName].properties.forEach(property => {
+            property[2] !== -1 && (property[2] = stoi[property[2]])
+        })
+    })
+    return interCompileRes
 }

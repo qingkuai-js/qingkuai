@@ -1,15 +1,15 @@
 import type {
+    ASTLocation,
     TemplateNode,
     TemplateContext,
     TemplateAttribute,
     AttributeAnalysisRet,
     TransformInterpolationRet,
     FilteredTemplateAttribute,
-    TransformInterpolationOptionalParam,
-    ASTLocation
+    TransformInterpolationOptionalParam
 } from "../types"
 import type { EsPattern } from "../estree/types"
-import type { AnyObject, FixedArray, StartBracket } from "../../util/types"
+import type { AnyObject, NumNum, StartBracket } from "../../util/types"
 
 import {
     confirmAlias,
@@ -17,7 +17,8 @@ import {
     markPositionFlag,
     checkIdentifierName,
     recordInterExpression,
-    recordInterWithSpecificRange
+    recordInterWithSpecificRange,
+    getRangeByLoc
 } from "../../util/compiler/sundry"
 import {
     stringify,
@@ -123,7 +124,7 @@ export function analyzeAttribute(
     const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
     // 它记录了开始标签名的范围索引（包括开头的<，例如<div的范围索引)
-    const stnr = [nodeStartIndex, startTagNameEndIndex] as const // Start Tag Name Range
+    const stnr: NumNum = [nodeStartIndex, startTagNameEndIndex] // Start Tag Name Range
 
     // 它记录了slot属性的相关信息：名称（包括单/双引号）以及插槽名称报错/跳转时的源码位置范围
     const slotAttributeInfo: [string, number, number] = ['"default"', ...stnr]
@@ -135,7 +136,7 @@ export function analyzeAttribute(
         } else {
             inputDescriptor.slotInfo[name] = {
                 properties: [],
-                landingIndex: loc.start.index
+                landingRange: getRangeByLoc(loc)
             }
         }
         nameOfSlotTag = stringify(name)
@@ -211,7 +212,7 @@ export function analyzeAttribute(
         const transAttrValue = (exp: string, option?: TransformInterpolationOptionalParam) => {
             if (isCheckMode) {
                 // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
-                let keyRange: FixedArray<number, 2> | undefined = undefined
+                let keyRange: NumNum | undefined = undefined
                 if (value.loc.start.index === -1) {
                     keyRange = [key.loc.start.index, key.loc.end.index - 1]
                 }
@@ -451,7 +452,7 @@ export function analyzeAttribute(
                         if (hasContextIdentifier) {
                             let indexPart = ""
                             let itemPart: string
-                            let commaFind: FixedArray<number, 2>
+                            let commaFind: NumNum
 
                             // 截取item部分的pattern，并找到commaFind（它是findOutOfSC的返回值，它是一个包含两个
                             // 数字的数组，这两个数字分别代表：逗号所在的索引，匹配字符的长度（逗号及前后空白字符的））
@@ -870,17 +871,15 @@ export function analyzeAttribute(
                 // name属性的优先级高于其他属性（参考当前文件顶部对amp变量描述的注释内容）
                 const slotName = JSON.parse(nameOfSlotTag || '"default"')
 
-                // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引它们
-                // 需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
-                // 通过inputDescriptor.interIndexMap[源码索引]能访问中间代码中对应字符的索引
-                let target = inputDescriptor.slotInfo[slotName]?.properties
-                if (isUndefined(target)) {
-                    inputDescriptor.slotInfo[slotName] = {
-                        properties: (target = []),
-                        landingIndex: node.loc.start.index
-                    }
-                }
-                target.push([pureKey, isInterpolation ? trimedValueStartSourceIndex : -1])
+                // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引，
+                // 它们需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
+                const target = inputDescriptor.slotInfo[slotName]?.properties
+
+                target.push([
+                    pureKey,
+                    getRangeByLoc(key.loc),
+                    isInterpolation ? trimedValueStartSourceIndex : -1
+                ])
             }
 
             const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)

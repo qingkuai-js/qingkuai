@@ -21,8 +21,7 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
             tar.content = singleTerConfirm(tar.content)
         }
         if (tar.aar?.slotOfAnyTag) {
-            const sav = tar.aar.slotOfAnyTag.value
-            tar.aar.slotOfAnyTag.value = singleTerConfirm(sav)
+            tar.aar.slotOfAnyTag = singleTerConfirm(tar.aar.slotOfAnyTag)
         }
         for (let i = 0; true; i++) {
             const estu = tar.aar?.eventStu

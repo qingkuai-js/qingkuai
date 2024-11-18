@@ -4,13 +4,18 @@ import type {
     TemplateAttribute,
     ASTPositionWithFlag
 } from "../../compiler/types"
-import type { FixedArray, PositionFlagKeys } from "../types"
+import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
 import { PositionFlag } from "../shared/flag"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
 import { validIdentifierNameRE, bannedIdentifierFormatRE } from "../../compiler/regular"
 import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
 import { IdentifierFormatIsNotAllowed, InvalidIdentifierName } from "../../compiler/message/error"
+
+// 通过ASTLocation获取[number,number]类型的索引范围表示
+export function getRangeByLoc(loc: ASTLocation): NumNum {
+    return [loc.start.index, loc.end.index]
+}
 
 // 获取调试setter标识符
 export function getSetterIdentifier(identifier: string) {
@@ -106,11 +111,7 @@ export function findSpecificAttr(attrs: TemplateAttribute[], pattern: RegExp | s
 
 // 记录表达式中间代码片段，它们在中间代码中会被赋值给__c__.Receiver
 // 为什么要这样处理：插值块中只能接受表达式，这一点与赋值表达式等号右侧的规则是一致的
-export function recordInterExpression(
-    startSourceIndex: number,
-    exp: string,
-    range?: FixedArray<number, 2>
-) {
+export function recordInterExpression(startSourceIndex: number, exp: string, range?: NumNum) {
     if (isEmptyString(exp)) {
         return
     }

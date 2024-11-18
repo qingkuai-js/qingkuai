@@ -1,4 +1,4 @@
-import type { FixedArray } from "../../util/types"
+import type { NumNum } from "../../util/types"
 import type { ASTLocation, ReplacementItem, ReplacementStatus } from "../types"
 import type { Pattern, CallExpression, VariableDeclaration, Identifier } from "@babel/types"
 import type { ASTVisitor, EsPattern, RequiredPosition, TraverseParent } from "../estree/types"
@@ -241,9 +241,9 @@ export function analyzeScript(source: string) {
 // 分析reactivity相关编译助手函数调用
 function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent: TraverseParent) {
     let reactFunc: string
-    let idRange: FixedArray<number, 2>
-    let initRange: FixedArray<number, 2>
-    let firstArgRange: FixedArray<number, 2>
+    let idRange: NumNum
+    let initRange: NumNum
+    let firstArgRange: NumNum
 
     let hasInit = false
     let hasFnArg = false

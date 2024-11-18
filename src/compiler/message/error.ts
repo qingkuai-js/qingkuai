@@ -19,7 +19,7 @@
  */
 
 import type { ASTLocation } from "../types"
-import type { FixedArray, GeneralFunc } from "../../util/types"
+import type { GeneralFunc, NumNum } from "../../util/types"
 
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
@@ -258,7 +258,7 @@ function withLocation<T extends GeneralFunc>(code: number, fn: T) {
         let errorMethodArgs: [...Parameters<T>]
         if (isNumber(lastElem(args))) {
             errorMethodArgs = args.slice(0, -2) as any
-            errorLoc = getLocByIndex(...(args.slice(-2) as FixedArray<number, 2>))
+            errorLoc = getLocByIndex(...(args.slice(-2) as NumNum))
         } else {
             errorLoc = lastElem(args) as ASTLocation
             errorMethodArgs = args.slice(0, -1) as any

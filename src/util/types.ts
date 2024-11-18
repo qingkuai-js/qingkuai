@@ -1,5 +1,7 @@
 import type { EventListenerFlag, EventWrapperFlag, PositionFlag } from "./shared/flag"
 
+export type NumNum = FixedArray<number, 2>
+
 export type StartBracket = "{" | "[" | "("
 
 export type GeneralFunc = (...args: any) => any
@@ -20,5 +22,5 @@ export type FixedArray<T, L extends number, R extends T[] = []> = R["length"] ex
 
 export interface FindOutOfSC {
     (str: string, pattern: string | RegExp): number
-    (str: string, pattern: string | RegExp, startIndex: number): FixedArray<number, 2>
+    (str: string, pattern: string | RegExp, startIndex: number): NumNum
 }

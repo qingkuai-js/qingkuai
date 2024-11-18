@@ -1,4 +1,4 @@
-import type { FixedArray } from "../../util/types"
+import type { NumNum } from "../../util/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
@@ -17,7 +17,7 @@ const transformTemplateFlag = {
 // 从templateAnalysisRet生成模版结构js代码
 export function transformTemplate(
     analysisRet: (TemplateAnalysisRet | null)[],
-    generatingPosition: FixedArray<number, 2>,
+    generatingPosition: NumNum,
     indentN = 2,
     flag = 1
 ) {
@@ -27,13 +27,14 @@ export function transformTemplate(
     const useLineBreak = shouldUseLineBreak(analysisRet, true)
     const parentUseLineBreak = vf(flag, "parentUseLineBreak") || useLineBreak
 
-    // 判断当前处理目标是否用作组件的slot，只需判断analysisRet[0]即可，因为用作slot的analysisRet的
+    // 判断当前处理目标是否用作组件的slot，只需判断analysisRet[0]即可，因为用作slot时
     // useBracket属性会被设置为true，而在调用chunkChildren之后他就会被划分为一个单独的块
-    const slotAttrValue = analysisRet[0]?.aar?.slotOfAnyTag?.value
+    // 注意：只有children中的节点才有可能是组件slot，qk文件中的一级节点不属于任何组件的子节点
+    const slotAttrValue = analysisRet[0]?.aar?.slotOfAnyTag
 
-    // generatingPosition表示当前生成代码的位置，访问它得到的就是下一个字符在转换结果中的行、列
-    // 当生成结果需要使用中括号包裹且需要换行时，将生成代码位置的行（下标为0的元素）+1
-    // 如果上述条件成立，且slotAttrValue有值的话，应该在将生成代码位置的行+1
+    // generatingPosition表示当前生成代码的位置，访问它得到的就是下一个字符在转换结果中的
+    // 行、列，当生成结果需要使用中括号包裹且需要换行时，将生成代码位置的行（下标为0的元素）+1
+    // 注意：若上述条件成立，且slotAttrValue有值（需用方括号包裹），应该在将生成代码位置的行+1
     if (useBracketWrap && useLineBreak) {
         generatingPosition[0]++
         if (slotAttrValue) {
@@ -331,7 +332,7 @@ function shouldUseLineBreak(
         const hasChild = item.children.length > 0
         const contentLen = getLengthOfTER(item.content)
         const withFunc = aar && aar.directiveStu.length > 0
-        const slotAttrValueLen = aar?.slotOfAnyTag?.value.length || 0
+        const slotAttrValueLen = aar?.slotOfAnyTag?.length || 0
         const keys = ["attributeStu", "eventStu", "directiveStu"] as const
         if (aar) {
             if (checkFuncStu && withFunc) {
