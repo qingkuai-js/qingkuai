@@ -12,14 +12,14 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * current-warn-code: 9012
+ * current-warn-code: 9010
  *
  * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
  * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning
  */
 
 import type { ASTLocation } from "../types"
-import type { FixedArray, GeneralFunc } from "../../util/types"
+import type { GeneralFunc, NumNum } from "../../util/types"
 
 import { messages } from "../state"
 import { isNumber } from "../../util/shared/assert"
@@ -30,60 +30,60 @@ export const AttributeForEndTag = withLocation(9001, () => {
     return "Attributes in the end tag will be ignored."
 })
 
-export const RedundantArgs = withLocation(9002, (fn: string, need: number | string) => {
-    let needMsg = "requires only one parameter"
-    if (!isNumber(need) || need > 1) {
-        needMsg = `accepts a maximum of ${need} parameters`
-    }
-    return `${fn} ${needMsg}, and the excess parameters has been ignored.`
-})
-
 export const IdentifierMaybeOverwritten = withLocation(9003, (name: string) => {
     return `The top scope identifier(${name}) may be overwrittern in inline event.`
 })
 
-export const DerLoseReactivity = withLocation(9004, () => {
-    return "Destructure the return value of der will result in a loss of reacativity."
-})
-
-export const MixTwoSyntaxOfDerived = withLocation(9005, () => {
+export const MixTwoSyntaxOfDerived = withLocation(9004, () => {
     return "Mixing the two syntax to declare derived reactive state is not recommended."
 })
 
-export const InvalidEventFlag = withLocation(9006, (flagName: string, eventName: string) => {
+export const InvalidEventFlag = withLocation(9005, (flagName: string, eventName: string) => {
     return `Invalid flag(${flagName}) for event(@${eventName}) and it has been ignored.`
 })
 
-export const InvalidEventForSlot = withLocation(9007, (eventName: string) => {
-    return `Event listener(${eventName}) is invalid for slot tag, and it has been ignored.`
-})
-
 export const DuplicateEventModifiers = withLocation(
-    9012,
+    9010,
     (modifiers: string[], eventName: string) => {
         return `There are some duplicate modifiers(${modifiers.join(", ")}) on ${eventName} event.`
     }
 )
 
-export const InvalidComposeModifier = withLocation(9009, (eventName: string) => {
+export const RedundantArgsForCompilerFunc = withLocation(
+    9002,
+    (fn: string, need: number | string) => {
+        let needMsg = "requires only one parameter"
+        if (!isNumber(need) || need > 1) {
+            needMsg = `accepts a maximum of ${need} parameters`
+        }
+        return `The compiler helper function(${fn}) ${needMsg}, and the excess parameters has been ignored.`
+    }
+)
+
+export const InvalidComposeModifier = withLocation(9007, (eventName: string) => {
     return `The event modifier(compose) is not valid for ${eventName} even, it can only be used for input event.`
 })
 
-export const InvalidEventFlagForComponent = withLocation(9008, (flagDescription: string) => {
+export const InvalidEventFlagForComponent = withLocation(9006, (flagDescription: string) => {
     return `The event parameter for component can not accept any flag(${flagDescription}), and they has been ignored.`
 })
 
-export const ConflictNormalKeyEventModifier = withLocation(9011, (modifiers: string[]) => {
+export const ConflictNormalKeyEventModifier = withLocation(9009, (modifiers: string[]) => {
     const [joined, last] = [modifiers.join(", "), lastElem(modifiers)]
     return `The normal key event modifiers(${joined}) is conflict, and the last one(${last}) will be applied according to the priority.`
 })
 
 export const InvalidKeyRelatedModifier = withLocation(
-    9010,
+    9008,
     (modifier: string, eventName: string) => {
         return `The event modifier(${modifier}) is not valid for ${eventName} even, it can only be used for these events: keyup, keydown, keypress.`
     }
 )
+
+// 检查参数是否是QingKuai编译器警告
+export function isCompileWarning(v: any): v is CompileWarning {
+    return v instanceof CompileWarning
+}
 
 // 为返回警告描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的警告信息发出，
 // 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
@@ -97,7 +97,7 @@ function withLocation<T extends GeneralFunc>(code: number, fn: T) {
         let warnMethodArgs: [...Parameters<T>]
         if (isNumber(lastElem(args))) {
             warnMethodArgs = args.slice(0, -2) as any
-            warnLoc = getLocByIndex(...(args.slice(-2) as FixedArray<number, 2>))
+            warnLoc = getLocByIndex(...(args.slice(-2) as NumNum))
         } else {
             warnLoc = lastElem(args) as ASTLocation
             warnMethodArgs = args.slice(0, -1) as any

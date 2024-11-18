@@ -12,20 +12,20 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1038
+ * current-error-code: 1044
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
  */
 
 import type { ASTLocation } from "../types"
-import type { FixedArray, GeneralFunc } from "../../util/types"
+import type { GeneralFunc, NumNum } from "../../util/types"
 
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
-import { bannedIdentifierFormatRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { bannedIdentifierFormatRE, tagIsComponentRE } from "../regular"
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -35,12 +35,20 @@ export const SlotAttrIsEmpty = withLocation(1022, () => {
     return "The slot attribute can not be empty."
 })
 
+export const NoBaseValueForForDirective = withLocation(1039, () => {
+    return `Must pass a base value for #for directive.`
+})
+
 export const UnclosedNormalAttributeValue = withLocation(1003, () => {
     return "Unclosed attribute value."
 })
 
 export const DynamicNameAttrForSlot = withLocation(1020, () => {
     return `Dynamic name attribute(!name) for slot tag is not allowed.`
+})
+
+export const InterpolationExpOutOfLimit = withLocation(1040, () => {
+    return "At most one expression can appear in the interpolation block."
 })
 
 export const UnclosedInterpolationExpression = withLocation(1004, () => {
@@ -89,17 +97,12 @@ export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
     return "Key directive could not be used without for directive."
 })
 
-export const CouldNotPassRefValue = withLocation(1015, (key: string, tag: string) => {
-    return `Can not pass any reference value(&${key}) for normal tag(${tag})`
-})
-
-export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
-    const itemDescription = getSpecialAttrDescription(key[0])
-    return `The ${itemDescription}(${key}) must have a value.`
-})
-
 export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
     return "The interpolation attribute value must be wrapped with curly bracket."
+})
+
+export const EmbeddedLangNotInTopScope = withLocation(1038, (tag: string) => {
+    return `The embedded language block(${tag}) can only be used in the top scope.`
 })
 
 export const AttributeValueIsNotQuoted = withLocation(1018, () => {
@@ -110,8 +113,17 @@ export const DirectivesCantCoexist = withLocation(1019, (directives: string[]) =
     return `Directives(${directives.join(", ")}) can not be used simultaneously.`
 })
 
+export const MissingStartDirective = withLocation(1025, (d: string, pd: string) => {
+    return `The ${d} directive must be used after ${pd} directive.`
+})
+
 export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) => {
     return `The identifier name(${name}) to register already exists in the top scope.`
+})
+
+export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
+    const itemDescription = getSpecialAttrDescription(key[0])
+    return `The ${itemDescription}(${key}) must have a value.`
 })
 
 export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
@@ -122,8 +134,8 @@ export const BasSlotDirectiveCarrier = withLocation(1013, () => {
     return `Slot directive(#slot) can only be used on the direct child element(first-level)`
 })
 
-export const EmbeddedLangNotInTopScope = withLocation(1038, (tag: string) => {
-    return `The embedded language block(${tag}) can only be used in the top scope.`
+export const CanNotAcceptRefAttribute = withLocation(1015, (key: string, tag: string) => {
+    return `The normal tag(${tag}) can not reiceive any reference attribute, but got &${key}.`
 })
 
 export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: string) => {
@@ -132,6 +144,7 @@ export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: 
 
 export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string, b: string) => {
     let description = ""
+    const isComponent = tagIsComponentRE.test(tag)
     if (a[0] === "#") {
         return `The directive(${a}) of <${tag}> tag is duplicate.`
     }
@@ -141,22 +154,19 @@ export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string,
         description = `${getSpecialAttrDescription(a[0])}(${a})`
         description += ` and ${getSpecialAttrDescription(b[0])}(${b})`
     }
-    return `The name for ${description} of <${tag}> tag is duplicate.`
-})
-
-export const MissingStartDirective = withLocation(1025, (d: string, pd: string) => {
-    return `The ${d} directive must be used after ${pd} directive.`
-})
-
-export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
-    return `Multiple elements used as slot in component(${component}) have the same name(${name})`
+    tag = `${isComponent ? "component" : "normal tag"}(${tag})`
+    return `The name for ${description} of ${tag} is duplicate.`
 })
 
 export const DuplicateNameAttrForSlot = withLocation(1035, (value: string) => {
     return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
 })
 
-export const CompilerFuncNotInTopScope = withLocation(1026, () => {
+export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
+    return `Multiple elements used as slot in component(${component}) have the same name(${name})`
+})
+
+export const ReactCompilerFuncNotInTopScope = withLocation(1026, () => {
     return "Reactivity related ompiler helper functions(rea, stc, der) must be used in the top scope."
 })
 
@@ -164,11 +174,22 @@ export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: s
     return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
 })
 
+export const WatchCompilerFuncMissingArg = withLocation(
+    1043,
+    (funcName: string, received: number) => {
+        return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
+    }
+)
+
 export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
     return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
 })
 
-export const CompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
+export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
+    return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
+})
+
+export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
     return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
 })
 
@@ -188,6 +209,14 @@ export const BadValueForRefAttr = withLocation(1032, (exp: string) => {
     return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
 })
 
+export const BadEventListenerForSlotTag = withLocation(1044, (attr: string) => {
+    return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
+})
+
+export const ShortHandDerivedWithOtherReactFunc = withLocation(1042, (funcName: string) => {
+    return `The short hand derived state declaration(using $ prefix) and another react related compiler helper function(${funcName}) can not be coexisting.`
+})
+
 export const InvalidRefAttr = withLocation(1033, (tag: string, attr: string[], given: string) => {
     const allowedAttrJoined = attr.join(" or ")
     const allowedAttrDescription = attr.map(item => "&" + item).join(", ")
@@ -200,11 +229,10 @@ export function isCompileError(err: Error): err is CompileError {
 }
 
 export class CompileError extends Error {
-    declare Description: string
+    public description = "The QingKuai compiler encountered a fatal error during execution"
 
     constructor(public loc: ASTLocation, public code: number, msg: string) {
         super(msg)
-        this.Description = "The QingKuai compiler encountered a fatal error during execution"
 
         // 非检查模式下直接抛出错误，检查模式下将错误对象存放在messages中
         if (!inputDescriptor.options.check) {
@@ -230,7 +258,7 @@ function withLocation<T extends GeneralFunc>(code: number, fn: T) {
         let errorMethodArgs: [...Parameters<T>]
         if (isNumber(lastElem(args))) {
             errorMethodArgs = args.slice(0, -2) as any
-            errorLoc = getLocByIndex(...(args.slice(-2) as FixedArray<number, 2>))
+            errorLoc = getLocByIndex(...(args.slice(-2) as NumNum))
         } else {
             errorLoc = lastElem(args) as ASTLocation
             errorMethodArgs = args.slice(0, -1) as any

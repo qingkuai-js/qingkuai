@@ -30,9 +30,9 @@ import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
 import { selfClosingTags, specialTags } from "../constants"
 import { isEmptyString, isNull } from "../../util/shared/assert"
-import { getPositionOfEachChar } from "../../util/compiler/sundry"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
-import { findEndCurlyBracket, findOutOfSC } from "../../util/compiler/strings"
+import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
+import { findEndCurlyBracket, findOutOfSC, kebab2Camel } from "../../util/compiler/strings"
 import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/compiler/locations"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
@@ -127,11 +127,12 @@ export function parseTemplate(source: string, checkWrapChar = true) {
 
         // 初始 template AST 节点
         const tag = tagStructure.slice(1)
+        const isComponent = tagIsComponentRE.test(tag)
         const ast = initTemplateNode(positions, {
             tag,
             parent,
             range: [index, -1],
-            isComponent: tagIsComponentRE.test(tag)
+            componentTag: isComponent ? kebab2Camel(tag, true) : ""
         })
         reduceSource(tag.length + 1)
 
@@ -188,7 +189,9 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     } else {
                         NoBracketForAttributeInterpolation(equalTokenEndLoc)
                     }
-                    attrValue = source.slice(0, endIndex)
+                    if (!isInterpolationAttr) {
+                        attrValue = source.slice(0, endIndex)
+                    }
                     valueStartIndex = wrapValueStartIndex = equalTokenEndIndex
                     valueEndIndex = wrapValueEndIndex = reduceSource(endIndex).index
                 } else {
@@ -196,15 +199,22 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     const wrapValueStartLoc = getLocByIndex(
                         (wrapValueStartIndex = reduceSpaces().index)
                     )
+
+                    // 如果找不到属性值结束字符（关闭大括号或单双引号）则报错，空插值块也需要报错
                     if (isInterpolationAttr) {
                         if ((endCharIndex = findEndCurlyBracket(source, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
-                        } else if (isEmptyString(source.slice(0, endCharIndex).trim())) {
-                            EmptyInterpolationExpression(wrapValueStartIndex, endCharIndex + 1)
+                        } else if (isEmptyString(source.slice(1, endCharIndex).trim())) {
+                            EmptyInterpolationExpression(
+                                wrapValueStartIndex,
+                                index + endCharIndex + 1
+                            )
                         }
                     } else if ((endCharIndex = source.indexOf(source[0], 1)) === -1) {
                         UnclosedNormalAttributeValue(wrapValueStartLoc)
                     }
+
+                    // 记录属性值以及属性值的位置信息（不包含前后包裹字符）
                     if (endCharIndex === -1) {
                         attrValue = source.slice(1)
                         valueStartIndex = wrapValueStartIndex
@@ -213,6 +223,13 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                         valueEndIndex = index + endCharIndex
                         attrValue = source.slice(1, endCharIndex)
                         wrapValueEndIndex = reduceSource(endCharIndex + 1).index
+                    }
+
+                    // 如果是插值属性，则将属性值范围内的索引标记为处于script块
+                    if (isInterpolationAttr) {
+                        for (let i = valueStartIndex; i < valueEndIndex; i++) {
+                            markPositionFlag(i, "isScript")
+                        }
                     }
                 }
             }
@@ -303,8 +320,18 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     return
                 }
 
+                // 将嵌入script代码部分都标记为处的索引标记为处于脚本
+                for (let i = 0; i < content.length; i++) {
+                    markPositionFlag(contentStartIndex + i, "isScript")
+                }
+
+                // 记录嵌入script块的内容、是否ts、开始标签名范围、是否已存在以及源码位置信息
                 scriptDescriptor.loc = getLocByIndex(contentStartIndex, index)
                 scriptDescriptor.isTS = embeddedLang === "ts"
+                scriptDescriptor.startTagNameRange = [
+                    ast.range[0],
+                    ast.range[0] + ast.tag.length + 1
+                ]
                 scriptDescriptor.existing = true
                 scriptDescriptor.code = content
 
@@ -357,7 +384,7 @@ export function parseTemplate(source: string, checkWrapChar = true) {
                     parseContent(ast)
                 }
             }
-        } else if (isSelfClosingTag || (ast.isComponent && closeMatched[2])) {
+        } else if (isSelfClosingTag || (isComponent && closeMatched[2])) {
             ast.range[1] = index
             ast.loc.end = getPosByIndex(index)
             ast.startTagEndPos = getPosByIndex(index)
@@ -420,11 +447,9 @@ function initTemplateNode(
             }
         }
     }
-    const isComponent = Boolean(options.isComponent)
     return {
         parent: options.parent || null,
         tag: options.tag || "",
-        isComponent,
         isEmbedded: false,
         content: options.content || "",
         range: options.range || [-1, -1],
@@ -432,6 +457,7 @@ function initTemplateNode(
         endTagStartPos: newASTPosition(),
         attributes: options.attributes || [],
         loc: options.loc || newASTLocation(),
+        componentTag: options.componentTag || "",
         children: options.children || []
     }
 }

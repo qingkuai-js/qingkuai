@@ -7,11 +7,13 @@ import {
     stringConstants,
     inputDescriptor,
     usedRuntimeItems,
+    interCodeSnippets,
     tempStoredImportInfos
 } from "./state"
 import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
 import { indent } from "../util/compiler/sundry"
+import { lastElem } from "../util/shared/sundry"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"
 
@@ -58,7 +60,7 @@ export function generateInitCallStatement() {
     usedInitItems.forEach(item => {
         itemArr.push(item)
     })
-    itemArr.push("props")
+    itemArr.push("props", "refs")
     return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this)`
 }
 
@@ -113,11 +115,11 @@ export function generateCompileResult(
     if (hasDebuggingSetter || hasNonBeCalledSetter) {
         debuggingStatementArr.push(postfix, "// debugging setters area")
         debuggingInfo.setters.forEach((id, identifier) => {
-            const setterFuncDeclaration = `function _d${id}_(v){ ${identifier} = v }`
+            const setterFuncDeclaration = `function __d${id}__(v){ ${identifier} = v }`
             debuggingStatementArr.push(`\n${indent(2)}${setterFuncDeclaration}`)
         })
         if (hasNonBeCalledSetter) {
-            debuggingStatementArr.push(`\n${indent(2)}function _dn_(){`)
+            debuggingStatementArr.push(`\n${indent(2)}function __dn__(){`)
             debuggingInfo.constIdentifiers.forEach(identifier => {
                 debuggingStatementArr.push(` ${identifier};`)
             })
@@ -136,4 +138,70 @@ export function generateCompileResult(
         `\n${indent(1)}}\n}`
 
     return { code, mappings }
+}
+
+// 生成typescript语言服务可用的中间代码（包含双向索引映射）
+export function generateInterResult(source: string, typeRefStatement: string) {
+    if (inputDescriptor.script.isTS) {
+        typeRefStatement += `const refs:Refs=0 as any;const props:Readonly<Props>=0 as any;`
+    } else {
+        typeRefStatement += `/**@type {Refs}*/const refs:Refs=0;/**@type {Readonly<Props>}*/const props:Props=0;`
+    }
+
+    const stoi: number[] = Array(source.length).fill(-1)
+    const itos: number[] = Array(typeRefStatement.length).fill(-1)
+
+    const snippetLen = interCodeSnippets.length
+    const scriptSourceCode = inputDescriptor.script.code
+    const scriptSourceCodeLen = scriptSourceCode.length
+    const scriptSourceStartIndex = inputDescriptor.script.loc.start.index
+
+    // 记录<lang-js>或<lang-ts>部分与中间代码的双向索引映射
+    for (let i = 0; i < scriptSourceCodeLen; i++) {
+        stoi[scriptSourceStartIndex + i] = itos.push(scriptSourceStartIndex + i) - 1
+    }
+
+    // 在script与template部分之间补一个分号避免语法错误
+    itos.push(scriptSourceStartIndex + scriptSourceCodeLen)
+
+    interCodeSnippets.forEach(([toi, tos], index) => {
+        if (toi >= 0) {
+            for (let i = 0; i < tos.length; i++) {
+                stoi[toi + i] = itos.push(toi + i) - 1
+            }
+            return
+        }
+
+        let asasi = -1 // Added Snippet Applied Source Index
+
+        // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到首个
+        // 有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引（结束位置需+1）
+        if (toi === -1) {
+            for (let i = index + 1; i < snippetLen; i++) {
+                const si = interCodeSnippets[i]?.[0]
+                if (si >= 0) {
+                    asasi = si
+                    break
+                }
+            }
+        } else if (toi === -2) {
+            asasi = itos.findLast(n => n >= 0) ?? -1
+            asasi !== -1 && asasi++
+        }
+        for (let i = 0; i < tos.length; i++) {
+            itos.push(asasi)
+        }
+    })
+
+    const joinedSnippets = interCodeSnippets.map(item => item[1]).join("")
+    const intermidiateCode = `${typeRefStatement}${scriptSourceCode};${joinedSnippets}`
+    return {
+        code: intermidiateCode,
+        interIndexMap: {
+            // 文件结束位置也需要记录双向索引映射
+            // typescript语言服务会使用结束索引后2位
+            stoi: [...stoi, lastElem(stoi)],
+            itos: [...itos, lastElem(itos)]
+        }
+    }
 }

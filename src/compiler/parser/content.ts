@@ -1,7 +1,10 @@
 import { inputDescriptor } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { newTemplateContext } from "../../util/compiler/structure"
+import { transformInterpolation } from "../transformer/interpolation"
 import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
+import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
@@ -17,14 +20,27 @@ export function content2script(content: string, startSourceIndex: number) {
 
     const positionMap: number[] = []
     const transformedArr: string[] = []
+    const context = newTemplateContext()
     const { positions } = inputDescriptor
     const emptyStrSource = normalStringify("")
 
     const pushTransformedArr = (str: string, useStringify = true) => {
         const sourceIndex = startSourceIndex + contentSourceIndex
 
-        // useStringify为true时表示当前处于普通字符串范围，此时只需记录字符串开头和结尾处对应的源码索引，
-        // 否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
+        // 检查模式下，将插值表达式部分记录到中间代码片段，由于检查模式下后续步骤不会
+        // 调用transformInterpolation方法，所以这里需要主动调用对插值块进行语法检查
+        if (inputDescriptor.options.check) {
+            if (
+                !useStringify &&
+                transformInterpolation(str, startSourceIndex, context, "content")
+            ) {
+                recordInterExpression(sourceIndex + 1, str)
+            }
+            return (contentSourceIndex += str.length + (useStringify ? 0 : 2)), void 0
+        }
+
+        // useStringify为true时表示当前处于普通字符串范围，此时只需记录字符串开头和结尾处
+        // 对应的源码索引，否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
         if (useStringify) {
             const stringified = normalStringify(str)
             if (shouldGenerateSourcemap) {
@@ -39,14 +55,20 @@ export function content2script(content: string, startSourceIndex: number) {
             if (shouldGenerateSourcemap) {
                 for (let i = 0; i <= str.length; i++) {
                     const delta = Number(isDebug && positionMap.length !== 0)
-                    const charSourceIndex = positions[sourceIndex + i + 1].index
-                    positionMap[delta + transformedStrLen + i] = charSourceIndex
+                    positionMap[delta + transformedStrLen + i] = sourceIndex + i + 1
                 }
                 transformedStrLen += str.length + (isDebug ? 5 : 2)
                 contentSourceIndex += 2
             }
+
+            // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
+            for (let i = 0; i < str.length; i++) {
+                markPositionFlag(sourceIndex + i + 1, "isScript")
+            }
+
             transformedArr.push(isDebug ? `(${str})` : str)
         }
+
         contentSourceIndex += str.length
     }
 
@@ -80,7 +102,9 @@ export function content2script(content: string, startSourceIndex: number) {
             } else {
                 pushTransformedArr(interpolationExp, false)
 
-                if (!isDebug) continue
+                if (!isDebug) {
+                    continue
+                }
 
                 // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，
                 // 若它在结尾处，需要将positionMap的最后一个元素 + 1（最后一个插值表达式的结束位置）
@@ -98,6 +122,11 @@ export function content2script(content: string, startSourceIndex: number) {
                 }
             }
         }
+    }
+
+    // 检查模式下无需后续处理，直接返回
+    if (inputDescriptor.options.check) {
+        return { positionMap: [], script: "" }
     }
 
     // 调试模式下，将第一个存在的映射位置元素放在positionMap首位，保持首个断点设置位在content开始位置的一致性

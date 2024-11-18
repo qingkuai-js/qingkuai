@@ -541,8 +541,8 @@ function getKeyValuePairIterator(value: any): [any, any][] {
     if (tps === "Map") {
         return entries(value)
     }
-    if (isNumber(value) && !isNaN(value)) {
-        return arrayFill(value, 0).map((_, index) => {
+    if (isNumber(value)) {
+        return arrayFill(value || 0, 0).map((_, index) => {
             return [index, index + 1]
         })
     }

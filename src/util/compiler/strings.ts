@@ -1,7 +1,8 @@
-import type { FindOutOfSC, FixedArray, StartBracket } from "../types"
+import type { FindOutOfSC, NumNum, StartBracket } from "../types"
 
 import { isString, isUndefined } from "../shared/assert"
-import { stringConstants, stringConstantsSourceMap } from "../../compiler/state"
+import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
+import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../../compiler/state"
 
 // JSON.stringify别名
 export function normalStringify(v: any) {
@@ -11,12 +12,15 @@ export function normalStringify(v: any) {
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
 export function stringify(v: any) {
     const s = normalStringify(v)
+    if (inputDescriptor.options.check) {
+        return s
+    }
     if (stringConstants.has(s)) {
         const existingItem = stringConstants.get(s)!
         existingItem.count++
         return existingItem.value
     } else {
-        const value = `_s${stringConstants.size}_`
+        const value = `__s${stringConstants.size}__`
         stringConstants.set(s, {
             value,
             count: 1,
@@ -45,7 +49,7 @@ export const findOutOfSC: FindOutOfSC = (
         if (withoutStartIndex) {
             return index
         } else {
-            return [index, len] as FixedArray<number, 2>
+            return [index, len] as NumNum
         }
     }
 
@@ -88,15 +92,22 @@ export const findOutOfSC: FindOutOfSC = (
                 return cr(i, pattern.length)
             }
         } else {
-            const re = new RegExp(pattern)
-            const matched = re.exec(ls)
-            if (matched) {
+            const matched = pattern.exec(ls)
+            if (matched?.index === 0) {
                 return cr(i + matched.index, matched[0].length)
             }
         }
     }
 
     return cr(-1, 0)
+}
+
+// kebab命名转Camel
+export function kebab2Camel(str: string, startWithUppercase = false) {
+    const re = startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE
+    return str.replace(re, s => {
+        return s === "-" ? "" : s.toUpperCase()
+    })
 }
 
 // 在表达式中找到关闭括号的位置， 使用此方法时，startIndex应为开始括号的下一个位置

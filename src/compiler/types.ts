@@ -1,6 +1,6 @@
-import type { FixedArray } from "../util/types"
 import type { CompileError } from "./message/error"
 import type { CompileWarning } from "./message/warn"
+import type { FixedArray, NumNum } from "../util/types"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 
 export interface ASTPosition {
@@ -14,16 +14,21 @@ export interface ASTLocation {
 }
 
 export interface CompileOptions {
-    componentName: string
+    componentName?: string
     check?: boolean
     debug?: boolean
     sourcemap?: boolean
+    typeRefStatement?: string
     reserveTemplateComment?: boolean
 }
 
 export interface CompileResult {
     code: string
     mappings: string
+    interIndexMap: {
+        itos: number[]
+        stoi: number[]
+    }
     messages: MessageItem[]
     templateNodes: TemplateNode[]
     inputDescriptor: InputDescriptor
@@ -75,20 +80,19 @@ export interface TempStoredImportInfo {
 }
 export interface InputDescriptor {
     options: Required<CompileOptions>
+    source: string
+    slotInfo: SlotInfo
     indentSpaceCount: number
-    positions: ASTPosition[]
     stringConstantCount: number
+    positions: ASTPositionWithFlag[]
     script: {
         code: string
         isTS: boolean
         lineCount: number
         loc: ASTLocation
         existing: boolean
-        runtime: {
-            namespaceIdentifier: string
-            watchIdentifiers: Set<string>
-        }
-        generatedOffset: FixedArray<number, 2>
+        generatedOffset: NumNum
+        startTagNameRange: NumNum
     }
 }
 
@@ -113,15 +117,15 @@ export interface TemplateAttribute {
 }
 export interface TemplateNode {
     tag: string
+    range: NumNum
     content: string
     loc: ASTLocation
     isEmbedded: boolean
-    isComponent: boolean
+    componentTag: string
     children: TemplateNode[]
     startTagEndPos: ASTPosition
     endTagStartPos: ASTPosition
     parent: TemplateNode | null
-    range: FixedArray<number, 2>
     attributes: TemplateAttribute[]
 }
 export type FilteredTemplateAttribute = TemplateAttribute & {
@@ -152,10 +156,6 @@ export type TemplateContext = {
     count: number
 }
 
-export interface ValueWithLocation<T> {
-    value: T
-    loc: ASTLocation
-}
 export interface AttributeAnalysisRet {
     directiveStu: TransformInterpolationRet[][]
     eventStu: TransformInterpolationRet[]
@@ -165,11 +165,13 @@ export interface AttributeAnalysisRet {
         by?: string | undefined
         arg?: TransformInterpolationRet
     }
+    slotOfAnyTag?: string
+    nameOfSlotTag?: string
     insertNullNum?: number
     createTemplate?: boolean
-    awaitContextStartIndex?: number
-    slotOfAnyTag: ValueWithLocation<string> | null
-    nameOfSlotTag?: ValueWithLocation<string> | null
+    contextBlockCount?: number
+    componentCombinedArgs?: string[]
+    awaitExpression?: [number, string]
 }
 
 export interface TransformInterpolationOptionalParam {
@@ -190,7 +192,30 @@ export type TransformInterpolationRet =
           mappings: FixedArray<number, 4>[]
       }
 
+/**
+ * - landingRnage表示报错/代码跳转的源码位置（slot标签无name属性时指向开始标签名）
+ * 
+ * - properties中的三个元素分别表示：属性名称、属性名称源码范围、属性值在中间代码中的开始位置
+ *   注意：第三个元素在分析阶段记录的是源码索引，在生成中间代码后才会通过源码索引换取中间代码索引
+ *
+ * - landingRange: indicates the source position for errors/code jumping, it will
+ *   refs to the range of start tag name(<slot) when there is no name attribute.
+ *
+ * - properties: three of its elements are: attribute name, source range of attribute
+ *   name, and the start index of attribute value in the intermidiate code.
+ *   Note: the third element is the source code index during the analysis phase, which
+ *   is exchanged for the intermidiate code index after the intermidiate code generated.
+ */
+export type SlotInfo = Record<
+    string,
+    {
+        landingRange: NumNum
+        properties: [string, NumNum, number][]
+    }
+>
+
+export type EliminateRanges = Set<NumNum>
 export type RegExpExecRet = ReturnType<RegExp["exec"]>
-export type EliminateRanges = Set<FixedArray<number, 2>>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)
+export type ASTPositionWithFlag = ASTPosition & { flag: number }

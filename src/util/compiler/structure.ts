@@ -1,4 +1,4 @@
-import type { ASTLocation, ASTPosition } from "../../compiler/types"
+import type { ASTLocation, ASTPosition, TemplateContext } from "../../compiler/types"
 
 import { isUndefined } from "../shared/assert"
 
@@ -17,6 +17,14 @@ export function newASTLocation(): ASTLocation {
     return {
         start: pos,
         end: pos
+    }
+}
+
+// 生成一个默认的TemplateContext结构
+export function newTemplateContext(): TemplateContext {
+    return {
+        count: 0,
+        map: new Map()
     }
 }
 

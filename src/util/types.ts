@@ -1,4 +1,6 @@
-import type { EventListenerFlag, EventWrapperFlag } from "./shared/flag"
+import type { EventListenerFlag, EventWrapperFlag, PositionFlag } from "./shared/flag"
+
+export type NumNum = FixedArray<number, 2>
 
 export type StartBracket = "{" | "[" | "("
 
@@ -10,6 +12,7 @@ export type SetValue<S> = S extends Set<infer U> ? U : never
 export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
 export type MapValueType<M> = M extends Map<any, infer U> ? U : never
 
+export type PositionFlagKeys = keyof typeof PositionFlag
 export type EventWrapperFlagKeys = keyof typeof EventWrapperFlag
 export type EventListenerFlagKeys = keyof typeof EventListenerFlag
 
@@ -19,5 +22,5 @@ export type FixedArray<T, L extends number, R extends T[] = []> = R["length"] ex
 
 export interface FindOutOfSC {
     (str: string, pattern: string | RegExp): number
-    (str: string, pattern: string | RegExp, startIndex: number): FixedArray<number, 2>
+    (str: string, pattern: string | RegExp, startIndex: number): NumNum
 }

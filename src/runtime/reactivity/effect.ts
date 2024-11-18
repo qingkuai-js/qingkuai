@@ -119,7 +119,7 @@ function watchFuncGen(type: Opportunity): RuntimeWatchFunc {
 
 // 产生effect相关运行时函数的方法，它返回的方法不接受初始副作用列表
 function runtimeEffectFuncGen(type: Opportunity) {
-    return (callback: GeneralFunc) => {
+    return (callback: () => void) => {
         return initEffect(callback, type, nil)
     }
 }

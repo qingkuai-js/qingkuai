@@ -6,10 +6,11 @@ import type {
 } from "./types"
 import { GeneralFunc } from "../util/types"
 
-import { nil, noop } from "./constants"
 import { isUndefined } from "../util/shared/assert"
+import { IntantiatedByH, nil, noop } from "./constants"
 import { arrayFill, len, runAll } from "../util/shared/sundry"
 import { destroyBlock, newDestruction } from "../util/runtime/separate"
+import { IntantiateComponentManually } from "./message/error"
 
 // 用于存储当前操作的组件实例
 let currentInstance: QingKuaiComponent | null = nil
@@ -35,7 +36,10 @@ export class QingKuaiComponent {
         dst: newDestruction()
     }
 
-    constructor(args?: QingKuaiComponentConstructonParam) {
+    constructor(args?: QingKuaiComponentConstructonParam, sign?: Symbol) {
+        if (sign !== IntantiatedByH) {
+            IntantiateComponentManually()
+        }
         if (isUndefined(args)) {
             return
         }
@@ -74,7 +78,7 @@ export function createComponent(stu: ComponentStructure) {
             constructorArg.slots[slots[i][0]] = stus
         }
     }
-    return new Component(constructorArg)
+    return new Component(constructorArg, IntantiatedByH)
 }
 
 // 销毁组件

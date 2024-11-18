@@ -1,5 +1,4 @@
 import type {
-    ASTLocation,
     EliminateRanges,
     TemplateContext,
     StringOrStringGetter,
@@ -11,15 +10,10 @@ import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
 import {
-    validIdentifierNameRE,
-    bannedIdentifierFormatRE,
-    expressionReplaceWithSpaceRE
-} from "../regular"
-import {
     BadValueForRefAttr,
-    InvalidIdentifierName,
-    IdentifierFormatIsNotAllowed,
-    ContextIdentifierUsedAsReferenceTarget
+    InterpolationExpOutOfLimit,
+    ContextIdentifierUsedAsReferenceTarget,
+    SequenceExpreesionInInterpolationBlock
 } from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
@@ -27,11 +21,12 @@ import { runAll } from "../../util/shared/sundry"
 import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
+import { expressionReplaceWithSpaceRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
-import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
+import { checkIdentifierName, confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 
 export function transformInterpolation(
     expression: string,
@@ -40,16 +35,39 @@ export function transformInterpolation(
     type: "directive" | "attribute" | "event" | "content",
     optionalParams: TransformInterpolationOptionalParam = {}
 ): TransformInterpolationRet {
-    // 在检查模式下，遇到编译错误时会重新恢复执行
-    // 这种情况下会存在空的插值表达式块，此时可以直接返回
     if (isEmptyString(expression)) {
         return ""
+    }
+
+    const bodyAst = parse("_=" + expression)?.body
+    const expressionAst = (bodyAst as any)?.[0].expression
+    const endSourceIndex = startSourceIndex + expression.length
+
+    // 检查模式下遇到解析错误时返回原表达式
+    if (isUndefined(bodyAst)) {
+        return expression
+    }
+
+    // 插值块中最多允许出现一个表达式
+    if (bodyAst!.length > 1) {
+        return InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex), ""
+    }
+
+    // 未被括号包裹的序列表达式在插值块中是不被允许的
+    if (is(expressionAst, "SequenceExpression")) {
+        return SequenceExpreesionInInterpolationBlock(startSourceIndex, endSourceIndex), ""
+    }
+
+    // 检查模式下语法检查完成后无需执行后续的转换操作
+    if (inputDescriptor.options.check) {
+        return expression
     }
 
     let vParam = "v"
     let ctxParam = "ctx"
     let useGetter = false
     let useContext = false
+    let underlineParam = "_"
     let firstMappingOffsetLeft = 0
 
     const indexMap: number[] = []
@@ -62,13 +80,13 @@ export function transformInterpolation(
     const allIndentifiersInExpression = new Set<string>()
     const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
+    const ast = expressionAst.right
     const isDebug = inputDescriptor.options.debug
     const eventWrapper = optionalParams.eventWrapper
     const usedAsSetter = optionalParams.usedAsSetter || false
     const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
-    const ast = (parse("_=" + expression)?.body[0] as any)?.expression.right
     const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
 
     // 扩展转换信息数组
@@ -79,11 +97,6 @@ export function transformInterpolation(
         } else {
             transformInfos.set(index - 2, [str])
         }
-    }
-
-    // 检查模式下的遇到babel内部错误时，直接返回
-    if (isUndefined(ast)) {
-        return ""
     }
 
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
@@ -122,7 +135,7 @@ export function transformInterpolation(
             }
 
             // 处理ObjectProperty中的shrothand声明
-            // 将其格式转换为 propertyName: (_w_)propertyName(.$)
+            // 将其格式转换为 propertyName: (__w__)propertyName(.$)
             if (is(esParent?.v, "ObjectProperty") && esParent.v.shorthand) {
                 extendTransformInfo(start, `${name}: `)
             }
@@ -149,7 +162,7 @@ export function transformInterpolation(
                     useGetter = true
                     extendTransformInfo(end, ".$")
                     if (isDebug) {
-                        extendTransformInfo(start, "_w_")
+                        extendTransformInfo(start, "__w__")
                     }
                 }
             }
@@ -183,10 +196,6 @@ export function transformInterpolation(
         }
     })
 
-    // 确定表达式转换为函数后参数标识符的别名
-    vParam = confirmAlias(vParam, allExistingIdentifiers)
-    ctxParam = confirmAlias(ctxParam, allExistingIdentifiers)
-
     // walk结束后执行的方法：有些转换的顺序不一定与walk遍历时相同，例如需要调用ctx
     // 以绑定当前节点的CallExpression转换信息就需要在Identifier捕获组之后被添加，
     // 这种情况在walk中Identifer捕获组先于CallExpression
@@ -198,7 +207,7 @@ export function transformInterpolation(
         useGetter = isEvent || expressionMaybeFunction(ast)
     }
 
-    // 如果当前用作setter（引用传递），如果目标是上下文标识符则报错（它是常量）
+    // 如果当前用作setter（引用传递）的目标是上下文标识符则报错（它是常量）
     if (usedAsSetter && useContext && is(ast, "Identifier")) {
         ContextIdentifierUsedAsReferenceTarget(
             expression,
@@ -206,6 +215,11 @@ export function transformInterpolation(
             startSourceIndex + expression.length
         )
     }
+
+    // 确定表达式转换为函数后参数标识符的别名
+    vParam = confirmAlias(vParam, allExistingIdentifiers)
+    ctxParam = confirmAlias(ctxParam, allExistingIdentifiers)
+    underlineParam = confirmAlias(underlineParam, allExistingIdentifiers)
 
     // 根据标记的trasformInfos和expEliminateRanges转换表达式，并生成转换前后每个字符的索引映射，
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
@@ -215,8 +229,8 @@ export function transformInterpolation(
         transformInfos.get(i)?.forEach(item => {
             const str = isFunction(item) ? item() : item
             transformedArr.push(str)
-            if (str === "_w_") {
-                nextOffset += 3
+            if (str === "__w__") {
+                nextOffset += 5
             } else {
                 offset += str.length
             }
@@ -294,7 +308,7 @@ export function transformInterpolation(
     if (usedAsSetter) {
         transformedExp = `${vParam} => (${transformedExp} = ${vParam})`
     } else if (useGetter) {
-        const paramStr = useContext ? ctxParam : "_"
+        const paramStr = useContext ? ctxParam : underlineParam
         if (useParenthesesWrap) {
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
@@ -341,17 +355,6 @@ export function transformInterpolation(
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp
-}
-
-// 检查标识符名称是否合法, checkInvalid用来控制是否需要检测标识符名称是否合法，如果
-// 是从AST的Identifier捕获组中调用此方法的话，可以将其设置为false，省去一部分检测开销
-export function checkIdentifierName(name: string, errLoc: ASTLocation, checkInvalid = true) {
-    if (checkInvalid && !validIdentifierNameRE.test(name)) {
-        InvalidIdentifierName(name, errLoc)
-    }
-    if (bannedIdentifierFormatRE.test(name)) {
-        IdentifierFormatIsNotAllowed(name, errLoc)
-    }
 }
 
 // 判断表达式是否是内联事件处理器

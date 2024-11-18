@@ -1,7 +1,7 @@
 /**
  * 此文件是为了避免循环依赖而提取的一些方法
  * This file is a collection of methods extracted to avoid circular dependencies
- * Reference: https://en.wikipedia.org/wiki/Circular_dependency
+ * Circular Dependency Reference: https://en.wikipedia.org/wiki/Circular_dependency
  */
 
 import type {

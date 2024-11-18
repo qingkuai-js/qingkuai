@@ -10,15 +10,16 @@ export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.s
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
-export const bannedIdentifierFormatRE = /^_(?:[sd]\d+|dn)_$/
+export const bannedIdentifierFormatRE = /^__w__|__(?:[sd]\d+|dn|c)__$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
 
-export const SlotDirectiveRE = /^slot(?::|$)/
 export const DestructuringContextRE = /^[\{\[]/
 
 export const expressionReplaceWithSpaceRE = /(?:\s|\r?\n)+/y
 
+export const reactCompilerFuncRE = /^(?:rea|stc|der)$/
+export const watchCompilerFuncRE = /^(?:wat|Wat|waT)$/
 export const validIdentifierNameRE = /^[a-zA-Z_$][a-zA-Z_$\d]*$/
 
 export const scriptSourceIndentSpaceCount = /\n( +)\S/

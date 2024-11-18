@@ -13,12 +13,15 @@ import type {
 import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
-export const sourceMapInfo = newSourceMapInfo()
+// 在编译结果中返回的编译器内布值要打断其引用状态
+export let messages: MessageItem[] = []
+export let sourceMapInfo = newSourceMapInfo()
+export let inputDescriptor = newInputDescriptor()
+
 export const debuggingInfo = newDebuggingInfo()
 export const replacementInfo = newReplacementInfo()
-export const inputDescriptor = newInputDescriptor()
 
-export const messages: MessageItem[] = []
+export const interCodeSnippets: [number, string][] = []
 export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
 export const usedInitItems = new Set<string>()
@@ -35,14 +38,16 @@ export function resetCompilerState(options: CompileOptions) {
     eliminateRanges.clear()
     stringConstants.clear()
     usedRuntimeItems.clear()
-    setArrLength(messages, 0)
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
+    setArrLength(interCodeSnippets, 0)
     setArrLength(tempStoredImportInfos, 0)
-    Object.assign(sourceMapInfo, newSourceMapInfo())
     Object.assign(debuggingInfo, newDebuggingInfo())
     Object.assign(replacementInfo, newReplacementInfo())
-    Object.assign(inputDescriptor, newInputDescriptor())
+
+    messages = []
+    sourceMapInfo = newSourceMapInfo()
+    inputDescriptor = newInputDescriptor()
 
     // 调试模式下一定会生成sourcemap
     if (options.debug === true) {
@@ -88,6 +93,8 @@ function newReplacementInfo(): ReplacementInfo {
 // 生成一个新的输入源状态描述符
 function newInputDescriptor(): InputDescriptor {
     return {
+        source: "",
+        slotInfo: {},
         positions: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
@@ -96,6 +103,7 @@ function newInputDescriptor(): InputDescriptor {
             debug: false,
             check: false,
             sourcemap: false,
+            typeRefStatement: "",
             reserveTemplateComment: false
         },
         script: {
@@ -105,10 +113,7 @@ function newInputDescriptor(): InputDescriptor {
             existing: false,
             loc: newASTLocation(),
             generatedOffset: [0, 0],
-            runtime: {
-                namespaceIdentifier: "",
-                watchIdentifiers: new Set()
-            }
+            startTagNameRange: [-1, -1]
         }
     }
 }
