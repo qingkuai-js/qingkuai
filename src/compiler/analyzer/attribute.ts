@@ -873,13 +873,14 @@ export function analyzeAttribute(
 
                 // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引，
                 // 它们需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
-                const target = inputDescriptor.slotInfo[slotName]?.properties
+                const { properties } = inputDescriptor.slotInfo[slotName]
 
-                target.push([
-                    pureKey,
-                    getRangeByLoc(key.loc),
-                    isInterpolation ? trimedValueStartSourceIndex : -1
-                ])
+                // Value Index in Intermidiate(code)
+                let vii = trimedValueStartSourceIndex
+                if (isInterpolation && vii === -1) {
+                    vii = key.loc.start.index
+                }
+                properties.push([pureKey, getRangeByLoc(key.loc), isInterpolation ? vii : rv])
             }
 
             const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)
@@ -906,13 +907,15 @@ export function analyzeAttribute(
                 return
             }
 
+            const isSpecial = /^[!@&]/.test(rk)
             const target = attrRecords[+rk.startsWith("&")]
-            const camelKey = kebab2Camel(rk.replace(/^[!@&]/, ""))
+            const value = isSpecial ? rv : normalStringify(rv)
+            const camelKey = kebab2Camel(rk.slice(+isSpecial))
             const isValidIdentifier = validIdentifierNameRE.test(camelKey)
             const objectKey = isValidIdentifier ? camelKey : normalStringify(camelKey)
             target.push(
                 [`${objectKey}:`, attr.key.loc.start.index, attr.key.loc.end.index],
-                [`${rv}`, attr.value.loc.start.index, attr.value.loc.end.index]
+                [`${value}`, attr.value.loc.start.index, attr.value.loc.end.index]
             )
         })
 

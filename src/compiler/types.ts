@@ -194,9 +194,10 @@ export type TransformInterpolationRet =
 
 /**
  * - landingRnage表示报错/代码跳转的源码位置（slot标签无name属性时指向开始标签名）
- * 
+ *
  * - properties中的三个元素分别表示：属性名称、属性名称源码范围、属性值在中间代码中的开始位置
  *   注意：第三个元素在分析阶段记录的是源码索引，在生成中间代码后才会通过源码索引换取中间代码索引
+ *   当属性是一个普通属性时，properties的第三个元素是一个字符串，值为属性值（静态字符串常量类型）
  *
  * - landingRange: indicates the source position for errors/code jumping, it will
  *   refs to the range of start tag name(<slot) when there is no name attribute.
@@ -205,12 +206,14 @@ export type TransformInterpolationRet =
  *   name, and the start index of attribute value in the intermidiate code.
  *   Note: the third element is the source code index during the analysis phase, which
  *   is exchanged for the intermidiate code index after the intermidiate code generated.
+ *   When the attribute is normal, the third element of properties is a string with the
+ *   value of attribute value(the static string constant type)
  */
 export type SlotInfo = Record<
     string,
     {
         landingRange: NumNum
-        properties: [string, NumNum, number][]
+        properties: [string, NumNum, number | string][]
     }
 >
 
