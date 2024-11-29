@@ -929,11 +929,13 @@ export function analyzeAttribute(
                 const isLast = index === target.length - 1
                 item[0] += isValue && !isLast ? "," : ""
                 recordInterWithSpecificRange(...item)
-                if (isLast) {
-                    interCodeSnippets.push([stnr[1], ","])
-                }
             })
-            interCodeSnippets.push([-2, "}"], [stnr[1], ","])
+            if (!isTS || target.length > 0) {
+                interCodeSnippets.push([-2, "}"])
+            } else {
+                interCodeSnippets.push([-2, "} as never"])
+            }
+            interCodeSnippets.push([stnr[1], ","])
         }
         interCodeSnippets.push([-2, `0${isTS ? " as any" : ""});`])
     }

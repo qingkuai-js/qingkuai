@@ -39,7 +39,8 @@ import {
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
     ShortHandDerivedWithOtherReactFunc,
-    ReactCompilerFuncWithoutVariableDeclaration
+    ReactCompilerFuncWithoutVariableDeclaration,
+    BadExportRelatedStatement
 } from "../message/error"
 import {
     getGeneratedScriptLine,
@@ -196,7 +197,13 @@ const visitor: ASTVisitor = {
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
     // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加__w__前缀
     AnyNode(node, parent) {
-        if (inputDescriptor.options.sourcemap) {
+        if (
+            is(node, "ExportAllDeclaration") ||
+            is(node, "ExportDefaultDeclaration") ||
+            is(node, "ExportNamedDeclaration")
+        ) {
+            BadExportRelatedStatement(node.loc)
+        } else if (inputDescriptor.options.sourcemap) {
             if (
                 is(node, "ImportDeclaration") ||
                 is(parent.v, "ImportSpecifier") ||

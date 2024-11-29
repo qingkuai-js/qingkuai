@@ -145,7 +145,7 @@ export function generateInterResult(source: string, typeRefStatement: string) {
     if (inputDescriptor.script.isTS) {
         typeRefStatement += `const refs:Refs=0 as any;const props:Readonly<Props>=0 as any;`
     } else {
-        typeRefStatement += `/**@type {Refs}*/const refs:Refs=0;/**@type {Readonly<Props>}*/const props:Props=0;`
+        typeRefStatement += `/**@type {Refs}*/const refs=0;/**@type {Readonly<Props>}*/const props=0;`
     }
 
     const stoi: number[] = Array(source.length).fill(-1)

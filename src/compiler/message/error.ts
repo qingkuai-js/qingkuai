@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1044
+ * current-error-code: 1045
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -128,6 +128,10 @@ export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string)
 
 export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
     return `The ${isEndTag ? "end" : "start"} tag(${tag}) is not closing.`
+})
+
+export const BadExportRelatedStatement = withLocation(1045, () => {
+    return `Export related statements can not appear in embedded script language block.`
 })
 
 export const BasSlotDirectiveCarrier = withLocation(1013, () => {
