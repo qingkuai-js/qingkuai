@@ -78,22 +78,23 @@ export interface TempStoredImportInfo {
     startColumn: number
     mappingLine: SourceMapLine
 }
+export interface ScriptDescriptor {
+    code: string
+    isTS: boolean
+    lineCount: number
+    loc: ASTLocation
+    existing: boolean
+    generatedOffset: NumNum
+    startTagNameRange: NumNum
+}
 export interface InputDescriptor {
     options: Required<CompileOptions>
     source: string
     slotInfo: SlotInfo
     indentSpaceCount: number
+    script: ScriptDescriptor
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
-    script: {
-        code: string
-        isTS: boolean
-        lineCount: number
-        loc: ASTLocation
-        existing: boolean
-        generatedOffset: NumNum
-        startTagNameRange: NumNum
-    }
 }
 
 export type MessageItem =

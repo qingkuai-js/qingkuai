@@ -25,7 +25,7 @@ import {
     UnclosedInterpolationExpression,
     NoBracketForAttributeInterpolation
 } from "../message/error"
-import { inputDescriptor } from "../state"
+import { inputDescriptor, newScriptDescriptor } from "../state"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
 import { selfClosingTags, specialTags } from "../constants"
@@ -36,14 +36,21 @@ import { findEndCurlyBracket, findOutOfSC, kebab2Camel } from "../../util/compil
 import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/compiler/locations"
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
-// 第二个参数表示是否需要检查属性值的包裹方式，处理emmet语法展开时无需检查此项，可传入false
-export function parseTemplate(source: string, checkWrapChar = true) {
+// 第二个参数表示是否为外部独立调用（如语言服务器的emmt功能，prettier插件的代码整理等）
+export function parseTemplate(source: string, standalone = false) {
     let index = 0
 
     const astList: TemplateNode[] = []
     const sourceLength = source.length
+    const scriptDescriptor = newScriptDescriptor()
+    const positions = getPositionOfEachChar(source)
     const reserveAllComment = inputDescriptor.options.reserveTemplateComment
-    const positions = (inputDescriptor.positions = getPositionOfEachChar(source))
+
+    // 独立调用时不要修改编译器内部状态
+    if (!standalone) {
+        inputDescriptor.positions = positions
+        inputDescriptor.script = scriptDescriptor
+    }
 
     // 收缩source并修改index，并返回下次开始的位置
     // reduce souce and change index
@@ -164,7 +171,7 @@ export function parseTemplate(source: string, checkWrapChar = true) {
             }
 
             // 插值属性长度为1时表示没有指定属性名称
-            const isInterpolationAttr = /^[!@#&]/.test(attrName) && checkWrapChar
+            const isInterpolationAttr = /^[!@#&]/.test(attrName) && !standalone
             if (isInterpolationAttr && attrName.length === 1) {
                 EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
             }
@@ -313,7 +320,6 @@ export function parseTemplate(source: string, checkWrapChar = true) {
 
             // embedded script block
             if (/js|ts/.test(embeddedLang)) {
-                const scriptDescriptor = inputDescriptor.script
                 if (scriptDescriptor.existing) {
                     // 检查模式下，快进到脚本块结束位置，继续执行解析...
                     EmbeddedScriptBlockOutOfLimit(tagStructureLoc)
@@ -401,7 +407,6 @@ export function parseTemplate(source: string, checkWrapChar = true) {
             ast && astList.push(ast)
         }
     }
-    inputDescriptor.positions = positions
 
     // 过滤无需渲染的节点，规则如下：
     // 1. template标签且无子节点时无需保留

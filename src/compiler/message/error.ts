@@ -21,11 +21,16 @@
 import type { ASTLocation } from "../types"
 import type { GeneralFunc, NumNum } from "../../util/types"
 
+import { commonMessage } from "./common"
+import { tagIsComponentRE } from "../regular"
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { bannedIdentifierFormatRE, tagIsComponentRE } from "../regular"
+
+export const IdentifierFormatIsNotAllowed = withLocation(
+    ...commonMessage.IdentifierFormatIsNotAllowed
+)
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
     return `Unexpected token: ${char}`
@@ -199,10 +204,6 @@ export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(1028, ()
 
 export const UnkonwDirective = withLocation(1029, (name: string) => {
     return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
-})
-
-export const IdentifierFormatIsNotAllowed = withLocation(1030, (identifier: string) => {
-    return `The identifier(${identifier}) format is not allowed, banned identifier format: /${bannedIdentifierFormatRE.source}/`
 })
 
 export const DestructureReactFuncWithNoArg = withLocation(10301, (funcName: string) => {

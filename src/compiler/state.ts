@@ -7,6 +7,7 @@ import type {
     EliminateRanges,
     ReplacementInfo,
     InputDescriptor,
+    ScriptDescriptor,
     TempStoredImportInfo
 } from "./types"
 
@@ -60,6 +61,18 @@ export function resetCompilerState(options: CompileOptions) {
     Object.assign(inputDescriptor.options, options)
 }
 
+export function newScriptDescriptor(): ScriptDescriptor {
+    return {
+        code: "",
+        isTS: false,
+        lineCount: 0,
+        existing: false,
+        loc: newASTLocation(),
+        generatedOffset: [0, 0],
+        startTagNameRange: [-1, -1]
+    }
+}
+
 // 生成新的sourcemap信息结构
 function newSourceMapInfo(): SourceMapInfo {
     return {
@@ -106,14 +119,6 @@ function newInputDescriptor(): InputDescriptor {
             typeRefStatement: "",
             reserveTemplateComment: false
         },
-        script: {
-            code: "",
-            isTS: false,
-            lineCount: 0,
-            existing: false,
-            loc: newASTLocation(),
-            generatedOffset: [0, 0],
-            startTagNameRange: [-1, -1]
-        }
+        script: newScriptDescriptor()
     }
 }
