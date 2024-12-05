@@ -22,20 +22,27 @@ import type { ASTLocation } from "../types"
 import type { GeneralFunc, NumNum } from "../../util/types"
 
 import { messages } from "../state"
+import { commonMessage } from "./common"
 import { isNumber } from "../../util/shared/assert"
 import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 
+// prettier-ignore
+export const MixTwoSyntaxOfDerived = withLocation(
+    ...commonMessage.MixTwoSyntaxOfDerived
+)
+
+// prettier-ignore
+export const IdentifierMaybeOverwritten = withLocation(
+    ...commonMessage.IdentifierMaybeOverwritten
+)
+
+export const RedundantArgsForCompilerFunc = withLocation(
+    ...commonMessage.RedundantArgsForCompilerFunc
+)
+
 export const AttributeForEndTag = withLocation(9001, () => {
     return "Attributes in the end tag will be ignored."
-})
-
-export const IdentifierMaybeOverwritten = withLocation(9003, (name: string) => {
-    return `The top scope identifier(${name}) may be overwrittern in inline event.`
-})
-
-export const MixTwoSyntaxOfDerived = withLocation(9004, () => {
-    return "Mixing the two syntax to declare derived reactive state is not recommended."
 })
 
 export const InvalidEventFlag = withLocation(9005, (flagName: string, eventName: string) => {
@@ -46,17 +53,6 @@ export const DuplicateEventModifiers = withLocation(
     9010,
     (modifiers: string[], eventName: string) => {
         return `There are some duplicate modifiers(${modifiers.join(", ")}) on ${eventName} event.`
-    }
-)
-
-export const RedundantArgsForCompilerFunc = withLocation(
-    9002,
-    (fn: string, need: number | string) => {
-        let needMsg = "requires only one parameter"
-        if (!isNumber(need) || need > 1) {
-            needMsg = `accepts a maximum of ${need} parameters`
-        }
-        return `The compiler helper function(${fn}) ${needMsg}, and the excess parameters has been ignored.`
     }
 )
 

@@ -20,6 +20,7 @@ export interface CompileOptions {
     sourcemap?: boolean
     typeRefStatement?: string
     reserveTemplateComment?: boolean
+    convenientDerivedDeclaration?: boolean
 }
 
 export interface CompileResult {

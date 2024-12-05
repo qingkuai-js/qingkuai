@@ -11,6 +11,7 @@ import type {
     TempStoredImportInfo
 } from "./types"
 
+import { isUndefined } from "../util/shared/assert"
 import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
@@ -117,7 +118,8 @@ function newInputDescriptor(): InputDescriptor {
             check: false,
             sourcemap: false,
             typeRefStatement: "",
-            reserveTemplateComment: false
+            reserveTemplateComment: false,
+            convenientDerivedDeclaration: true
         },
         script: newScriptDescriptor()
     }

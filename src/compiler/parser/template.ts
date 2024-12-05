@@ -4,7 +4,7 @@ import {
     tagIsComponentRE,
     templateCloseCharsRE,
     templateTagStructureRE,
-    TemplateEmbeddedLangTag,
+    templateEmbeddedLangTag,
     templateAttributeNameRE,
     startWithTagStructureRE,
     templateConditionalCommentRE,
@@ -280,7 +280,7 @@ export function parseTemplate(source: string, standalone = false) {
         }
 
         // script或style标签直接快进到闭合标签处
-        const langMatched = TemplateEmbeddedLangTag.exec(tag)
+        const langMatched = templateEmbeddedLangTag.exec(tag)
         const embeddedLang = langMatched?.[1] || ""
         if (specialTags.has(tag) || embeddedLang) {
             const endTagIndex = findOutOfSC(source, "</" + tag)

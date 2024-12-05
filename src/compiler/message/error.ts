@@ -28,8 +28,37 @@ import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
 
+// prettier-ignore
+export const BadExportRelatedStatement = withLocation(
+    ...commonMessage.BadExportRelatedStatement
+)
+
+export const WatchCompilerFuncMissingArg = withLocation(
+    ...commonMessage.WatchCompilerFuncMissingArg
+)
+
 export const IdentifierFormatIsNotAllowed = withLocation(
     ...commonMessage.IdentifierFormatIsNotAllowed
+)
+
+export const DestructureReactFuncWithNoArg = withLocation(
+    ...commonMessage.DestructureReactFuncWithNoArg
+)
+
+export const ReactCompilerFuncNotInTopScope = withLocation(
+    ...commonMessage.ReactCompilerFuncNotInTopScope
+)
+
+export const RegisterExsitingIdentifierName = withLocation(
+    ...commonMessage.RegisterExsitingIdentifierName
+)
+
+export const ShortHandDerivedWithOtherReactFunc = withLocation(
+    ...commonMessage.ShortHandDerivedWithOtherReactFunc
+)
+
+export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(
+    ...commonMessage.ReactCompilerFuncWithoutVariableDeclaration
 )
 
 export const UnexpectedToken = withLocation(1001, (char: string) => {
@@ -122,10 +151,6 @@ export const MissingStartDirective = withLocation(1025, (d: string, pd: string) 
     return `The ${d} directive must be used after ${pd} directive.`
 })
 
-export const RegisterExsitingIdentifierName = withLocation(1021, (name: string) => {
-    return `The identifier name(${name}) to register already exists in the top scope.`
-})
-
 export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
     const itemDescription = getSpecialAttrDescription(key[0])
     return `The ${itemDescription}(${key}) must have a value.`
@@ -133,10 +158,6 @@ export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string)
 
 export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
     return `The ${isEndTag ? "end" : "start"} tag(${tag}) is not closing.`
-})
-
-export const BadExportRelatedStatement = withLocation(1045, () => {
-    return `Export related statements can not appear in embedded script language block.`
 })
 
 export const BasSlotDirectiveCarrier = withLocation(1013, () => {
@@ -175,20 +196,9 @@ export const DuplicateSlotAttr = withLocation(1014, (name: string, component: st
     return `Multiple elements used as slot in component(${component}) have the same name(${name})`
 })
 
-export const ReactCompilerFuncNotInTopScope = withLocation(1026, () => {
-    return "Reactivity related ompiler helper functions(rea, stc, der) must be used in the top scope."
-})
-
 export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: string) => {
     return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
 })
-
-export const WatchCompilerFuncMissingArg = withLocation(
-    1043,
-    (funcName: string, received: number) => {
-        return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
-    }
-)
 
 export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
     return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
@@ -198,16 +208,8 @@ export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
     return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
 })
 
-export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(1028, () => {
-    return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
-})
-
 export const UnkonwDirective = withLocation(1029, (name: string) => {
     return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
-})
-
-export const DestructureReactFuncWithNoArg = withLocation(10301, (funcName: string) => {
-    return `Compiler helper function(${funcName}) will return undefined when no argument is passed, so it cannot be destructured.`
 })
 
 export const BadValueForRefAttr = withLocation(1032, (exp: string) => {
@@ -216,10 +218,6 @@ export const BadValueForRefAttr = withLocation(1032, (exp: string) => {
 
 export const BadEventListenerForSlotTag = withLocation(1044, (attr: string) => {
     return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
-})
-
-export const ShortHandDerivedWithOtherReactFunc = withLocation(1042, (funcName: string) => {
-    return `The short hand derived state declaration(using $ prefix) and another react related compiler helper function(${funcName}) can not be coexisting.`
 })
 
 export const InvalidRefAttr = withLocation(1033, (tag: string, attr: string[], given: string) => {
