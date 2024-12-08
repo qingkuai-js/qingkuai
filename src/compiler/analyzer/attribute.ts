@@ -164,7 +164,7 @@ export function analyzeAttribute(
 
         const equalSign = hasSlotDirective ? "=" : ""
         const parentComponentTag = node.parent!.componentTag
-        interCodeSnippets.push([-1, `${equalSign}__c__.getSlotProp(`])
+        interCodeSnippets.push([-3, `${equalSign}__c__.getSlotProp(`])
         recordInterWithSpecificRange(`${parentComponentTag},`, stnr[0] + 1, stnr[1])
 
         // 当if条件成立时表示无slot属性
