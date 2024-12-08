@@ -25,15 +25,20 @@ import {
     UnclosedInterpolationExpression,
     NoBracketForAttributeInterpolation
 } from "../message/error"
-import { inputDescriptor, newScriptDescriptor } from "../state"
 import { AttributeForEndTag } from "../message/warn"
 import { replaceEachItems } from "../../util/shared/sundry"
 import { selfClosingTags, specialTags } from "../constants"
+import { inputDescriptor, newScriptDescriptor } from "../state"
 import { isEmptyString, isNull } from "../../util/shared/assert"
+import { getLocationMethodsGen } from "../../util/compiler/locations"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
 import { findEndCurlyBracket, findOutOfSC, kebab2Camel } from "../../util/compiler/strings"
-import { getLocByIndex, getLocWithDefaultEnd, getPosByIndex } from "../../util/compiler/locations"
+
+// 独立调用的parseTemplate方法，compiler包会导出此方法
+export function parseTemplateStandalone(source: string) {
+    return parseTemplate(source, true)
+}
 
 // 这里采用嵌套函数的方式主要是为了共享index、source等变量，并在解析完成后自动清理
 // 第二个参数表示是否为外部独立调用（如语言服务器的emmt功能，prettier插件的代码整理等）
@@ -44,7 +49,10 @@ export function parseTemplate(source: string, standalone = false) {
     const sourceLength = source.length
     const scriptDescriptor = newScriptDescriptor()
     const positions = getPositionOfEachChar(source)
-    const reserveAllComment = inputDescriptor.options.reserveTemplateComment
+    const reserveAllComment = standalone || inputDescriptor.options.reserveTemplateComment
+
+    // 由于此方法可能被独立调用，所以需要单独声明获取位置的相关方法（基于本地的positions而不是inputDescriptor.positions）
+    const { getPosByIndex, getLocByIndex, getLocWithDefaultEnd } = getLocationMethodsGen(positions)
 
     // 独立调用时不要修改编译器内部状态
     if (!standalone) {

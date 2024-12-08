@@ -40,7 +40,7 @@ import {
     IdentifierFormatIsNotAllowed,
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
-    ShortHandDerivedWithOtherReactFunc,
+    ConvenientDerivedWithOtherReactFunc,
     ReactCompilerFuncWithoutVariableDeclaration
 } from "../message/error"
 import {
@@ -605,7 +605,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             if (esIdentifierCalleeName === "der") {
                 MixTwoSyntaxOfDerived(declarationSourceLoc)
             } else {
-                ShortHandDerivedWithOtherReactFunc(esIdentifierCalleeName, declarationSourceLoc)
+                ConvenientDerivedWithOtherReactFunc(esIdentifierCalleeName, declarationSourceLoc)
             }
         }
 

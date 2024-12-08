@@ -47,7 +47,7 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
             return `Compiler helper function(${funcName}) will return undefined when no argument is passed, so it cannot be destructured.`
         }
     ],
-    ShortHandDerivedWithOtherReactFunc: [
+    ConvenientDerivedWithOtherReactFunc: [
         1042,
         (funcName: string) => {
             return `Using both short hand derived state declaration(using $ prefix) and reactivity realted compiler helper function(${funcName}) is ambiguous.`

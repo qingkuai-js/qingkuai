@@ -49,23 +49,30 @@ export function getSourceLocByScriptLoc(loc: ASTLocation): ASTLocation {
     }
 }
 
-// 通过源码索引生成一个ASTPosition结构
-export function getPosByIndex(index: number): ASTPosition {
-    return inputDescriptor.positions[index]
+// 生成获取位置相关的方法，需要传入依赖的位置信息列表
+export function getLocationMethodsGen(baseon?: ASTPosition[]) {
+    // 通过源码索引生成一个ASTPosition结构
+    const getPosByIndex = (index: number): ASTPosition => {
+        return (baseon || inputDescriptor.positions)[index]
+    }
+
+    // 通过源码索引生成一个带有默认结束位置的ASTLocation结构
+    const getLocWithDefaultEnd = (index: number): ASTLocation => {
+        return {
+            start: getPosByIndex(index),
+            end: newASTPosition()
+        }
+    }
+
+    // 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
+    const getLocByIndex = (start: number, end?: number): ASTLocation => {
+        return {
+            start: getPosByIndex(start),
+            end: getPosByIndex(end ?? start)
+        }
+    }
+
+    return { getPosByIndex, getLocWithDefaultEnd, getLocByIndex }
 }
 
-// 通过源码索引生成一个带有默认结束位置的ASTLocation结构
-export function getLocWithDefaultEnd(index: number): ASTLocation {
-    return {
-        start: getPosByIndex(index),
-        end: newASTPosition()
-    }
-}
-
-// 通过源码索引生成一个ASTLocation结构，未传入结束索引时开始和结束位置一致
-export function getLocByIndex(start: number, end?: number): ASTLocation {
-    return {
-        start: getPosByIndex(start),
-        end: getPosByIndex(end || start)
-    }
-}
+export const { getPosByIndex, getLocWithDefaultEnd, getLocByIndex } = getLocationMethodsGen()

@@ -10,5 +10,5 @@ export type {
 export { compile } from "./compile"
 export { commonMessage } from "./message/common"
 export { isCompileError } from "./message/error"
-export { parseTemplate } from "./parser/template"
 export { isCompileWarning } from "./message/warn"
+export { parseTemplateStandalone as parseTemplate } from "./parser/template"

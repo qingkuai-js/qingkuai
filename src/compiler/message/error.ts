@@ -53,8 +53,8 @@ export const RegisterExsitingIdentifierName = withLocation(
     ...commonMessage.RegisterExsitingIdentifierName
 )
 
-export const ShortHandDerivedWithOtherReactFunc = withLocation(
-    ...commonMessage.ShortHandDerivedWithOtherReactFunc
+export const ConvenientDerivedWithOtherReactFunc = withLocation(
+    ...commonMessage.ConvenientDerivedWithOtherReactFunc
 )
 
 export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(
