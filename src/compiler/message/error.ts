@@ -66,7 +66,7 @@ export const UnexpectedToken = withLocation(1001, (char: string) => {
 })
 
 export const SlotAttrIsEmpty = withLocation(1022, () => {
-    return "The slot attribute can not be empty."
+    return "Must set a value for slot attribute."
 })
 
 export const NoBaseValueForForDirective = withLocation(1039, () => {
@@ -112,7 +112,7 @@ export const EmptyInterpolationAttrName = withLocation(1007, (char: string) => {
 })
 
 export const NameAttrForSlotIsEmpty = withLocation(1008, () => {
-    return "The name attribute for slot tag can not be empty."
+    return "Must set a value for name attribute of slot tag."
 })
 
 export const EmptyInterpolationExpression = withLocation(1009, () => {

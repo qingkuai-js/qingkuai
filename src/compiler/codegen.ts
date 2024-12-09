@@ -143,7 +143,7 @@ export function generateCompileResult(
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
 export function generateInterResult(source: string, typeRefStatement: string) {
     if (inputDescriptor.script.isTS) {
-        typeRefStatement += `const refs:Refs=0 as any;const props:Readonly<Props>=0 as any;`
+        typeRefStatement += `const refs=0 as Refs;const props=0 as Readonly<Props>;`
     } else {
         typeRefStatement += `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;`
     }

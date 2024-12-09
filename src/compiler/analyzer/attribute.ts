@@ -13,12 +13,12 @@ import type { AnyObject, NumNum, StartBracket } from "../../util/types"
 
 import {
     confirmAlias,
+    getRangeByLoc,
     findSpecificAttr,
     markPositionFlag,
     checkIdentifierName,
     recordInterExpression,
-    recordInterWithSpecificRange,
-    getRangeByLoc
+    recordInterWithSpecificRange
 } from "../../util/compiler/sundry"
 import {
     stringify,
@@ -50,6 +50,7 @@ import {
     InvalidRefAttr,
     SlotAttrIsEmpty,
     UnkonwDirective,
+    DuplicateSlotAttr,
     DirectivesCantCoexist,
     MissingStartDirective,
     DuplicateAttributeKey,
@@ -58,13 +59,12 @@ import {
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
     CanNotAcceptRefAttribute,
+    DuplicateNameAttrForSlot,
     NoBaseValueForForDirective,
     BadEventListenerForSlotTag,
     NoForDirectiveCtxNameSpeciffied,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective,
-    DuplicateNameAttrForSlot,
-    DuplicateSlotAttr
+    UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
 import { lastElem } from "../../util/shared/sundry"
@@ -164,17 +164,18 @@ export function analyzeAttribute(
 
         const equalSign = hasSlotDirective ? "=" : ""
         const parentComponentTag = node.parent!.componentTag
-        interCodeSnippets.push([-3, `${equalSign}__c__.getSlotProp(`])
+        interCodeSnippets.push([-3, `${equalSign}__c__.GetSlotProp(`])
         recordInterWithSpecificRange(`${parentComponentTag},`, stnr[0] + 1, stnr[1])
 
         // 当if条件成立时表示无slot属性
         if (range[0] === nodeStartIndex) {
-            recordInterWithSpecificRange(slotName, ...stnr)
+            recordInterWithSpecificRange(slotName + ")", ...stnr)
+            markPositionFlag(stnr[0], "isSlotAttrStart")
+            interCodeSnippets.push([-3, ";"])
         } else {
-            interCodeSnippets.push([range[0], slotName])
+            interCodeSnippets.push([range[0], slotName], [-2, ");"])
+            markPositionFlag(range[0], "isSlotAttrStart")
         }
-
-        interCodeSnippets.push([-2, ");"])
     }
 
     // slot标签无name属性时默认使用default，报错/跳转位置与开始标签名的范围一致
@@ -268,6 +269,10 @@ export function analyzeAttribute(
                     recordDestructuringIdentifiers(tip, aliasArgs, context, false, context.count++)
                 }
             }
+        }
+
+        if (isComponent) {
+            markPositionFlag(key.loc.start.index, "isComponentAttrStart")
         }
 
         // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
@@ -852,6 +857,7 @@ export function analyzeAttribute(
                 } else {
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
+                recordSlotInfo('"default"', getLocByIndex(...stnr))
             } else {
                 if (!isSlotAttribute) {
                     recordSlotInfo(rv, attr.loc)
@@ -908,10 +914,24 @@ export function analyzeAttribute(
             }
 
             const isSpecial = /^[!@&]/.test(rk)
+            const noEqualSign = attr.key.loc.end.index === attr.loc.end.index
+            const valueWrapChar = inputDescriptor.source[attr.value.loc.start.index - 1]
+
+            // prettier-ignore
+            if (
+                noEqualSign &&
+                (
+                    (isSpecial && valueWrapChar !== "{") ||
+                    (!isSpecial && /['"]/.test(valueWrapChar))
+                )
+            ) {
+                return
+            }
+
             const target = attrRecords[+rk.startsWith("&")]
-            const value = isSpecial ? rv : normalStringify(rv)
             const camelKey = kebab2Camel(rk.slice(+isSpecial))
             const isValidIdentifier = validIdentifierNameRE.test(camelKey)
+            const value = isSpecial ? rv : noEqualSign ? "true" : normalStringify(rv)
             const objectKey = isValidIdentifier ? camelKey : normalStringify(camelKey)
             target.push(
                 [`${objectKey}:`, attr.key.loc.start.index, attr.key.loc.end.index],
