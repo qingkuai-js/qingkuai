@@ -9,6 +9,20 @@ export function normalStringify(v: any) {
     return JSON.stringify(v)
 }
 
+// 转义空白字符为实体化字符（\n、\r、\t）
+export function escapeWhiteSpace(s: string) {
+    return s.replace(/[\n\r\t]/g, m => {
+        switch (m) {
+            case "\n":
+                return "\\n"
+            case "\r":
+                return "\\r"
+            default:
+                return "\\t"
+        }
+    })
+}
+
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
 export function stringify(v: any) {
     const s = normalStringify(v)

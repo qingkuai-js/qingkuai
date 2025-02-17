@@ -56,7 +56,7 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
 
     // warnings
     RedundantArgsForCompilerFunc: [
-        9002,
+        9001,
         (fn: string, need: number | string) => {
             let needMsg = "requires only one parameter"
             if (!isNumber(need) || need > 1) {
@@ -66,13 +66,13 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
         }
     ],
     IdentifierMaybeOverwritten: [
-        9003,
+        9002,
         (identifierName: string) => {
             return `The top scope identifier(${identifierName}) may be overwrittern in inline event.`
         }
     ],
     MixTwoSyntaxOfDerived: [
-        9004,
+        9003,
         () => {
             return "Mixing the two syntax to declare derived reactive state is not recommended."
         }

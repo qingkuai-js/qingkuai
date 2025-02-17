@@ -116,18 +116,22 @@ export interface TemplateAttribute {
     loc: ASTLocation
     key: AttributeKeyValue
     value: AttributeKeyValue
+    quote: AttributeQuoteKinds
 }
 export interface TemplateNode {
     tag: string
     range: NumNum
     content: string
     loc: ASTLocation
+    withinPre: boolean
     isEmbedded: boolean
     componentTag: string
     children: TemplateNode[]
     startTagEndPos: ASTPosition
     endTagStartPos: ASTPosition
     parent: TemplateNode | null
+    prev: TemplateNode | undefined
+    next: TemplateNode | undefined
     attributes: TemplateAttribute[]
 }
 export type FilteredTemplateAttribute = TemplateAttribute & {
@@ -224,3 +228,4 @@ export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)
 export type ASTPositionWithFlag = ASTPosition & { flag: number }
+export type AttributeQuoteKinds = "single" | "double" | "curly" | "none"

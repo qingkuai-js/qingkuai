@@ -903,7 +903,7 @@ export function analyzeAttribute(
     // 组件的普通属性/动态属性/事件、引用属性、slots会被组合为组件构造函数的三个对象类型参数
     if (isCheckMode && isComponent) {
         const attrRecords = Array.from({ length: 2 }, () => {
-            return [] as [string, number, number][]
+            return [] as [string, number, number?][]
         })
 
         preProcessedAttr.forEach(attr => {
@@ -935,7 +935,7 @@ export function analyzeAttribute(
             const objectKey = isValidIdentifier ? camelKey : normalStringify(camelKey)
             target.push(
                 [`${objectKey}:`, attr.key.loc.start.index, attr.key.loc.end.index],
-                [`${value}`, attr.value.loc.start.index, attr.value.loc.end.index]
+                [`${value}`, attr.value.loc.start.index]
             )
         })
 
@@ -948,7 +948,12 @@ export function analyzeAttribute(
                 const isValue = index % 2 !== 0
                 const isLast = index === target.length - 1
                 item[0] += isValue && !isLast ? "," : ""
-                recordInterWithSpecificRange(...item)
+                if (!isValue) {
+                    // @ts-expect-error: type assert
+                    recordInterWithSpecificRange(...item)
+                } else {
+                    interCodeSnippets.push([item[1], item[0]])
+                }
             })
             if (!isTS || target.length > 0) {
                 interCodeSnippets.push([-2, "}"])
@@ -1117,7 +1122,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     // 此格式是runtime需要的唯一格式，这里无需关注转换后的属性（包括键值）位置信息（均与第一项保持一致），
     // 因为如果它包含动态class就会在调用transformInterpolation时传入positionMap，并根据这个位置映射
     // 来记录需要生成sourcemap的位置，而如果它不包含动态class，则整个表达式都不会被记录sourcemap位置信息
-    // 注意：检查模式下无需上述处理，且会忽略普通class属性（另外纯字符串部分无需在检查模式下生成中间代码表示）
+    // 注意：检查模式下无需上述处理，且会忽略普通class属性（因为纯字符串部分无需在检查模式下生成中间代码表示）
     existingItem.forEach((attrItems, attrKey) => {
         if (isComponentOrSlot || inputDescriptor.options.check || attrKey !== "!class") {
             return attrItems.forEach(item => ret.push(item))
@@ -1164,6 +1169,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 raw: `[${transformedValue}]`,
                 loc: attrItems[0].value.loc
             },
+            quote: attrItems[0].quote,
             positionMap: positionMap.length ? positionMap : undefined
         })
     })

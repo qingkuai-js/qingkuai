@@ -29,11 +29,12 @@ export function analyzeTemplate(
     nodes = nodes.filter(node => !node.isEmbedded)
 
     for (let i = 0; i < nodes.length; i++) {
-        let trimedContentStartIndex = 0
+        let { parent, tag, content, attributes, children, componentTag } = nodes[i]
+
+        let trimedContentStartIndex: number
         let currentContext: TemplateContext
         let continueRE: RegExp | undefined | null
         let shouldContinueDirective: string | undefined
-        let { tag, content, attributes, children, componentTag } = nodes[i]
         let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
         const currentRet: TemplateAnalysisRet = {
@@ -44,6 +45,7 @@ export function analyzeTemplate(
             isTemplate: tag === "template"
         }
         const isSlot = tag === "slot"
+        const isTextarea = tag === "textarea"
         const isComponent = !isEmptyString(componentTag)
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
@@ -147,17 +149,17 @@ export function analyzeTemplate(
             }
         }
 
-        // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有一个文本
-        // 子节点，那这个文本子节点会被提升作为当前节点的textContent部分
-        if (!shouldHoistContent) {
-            trimedContentStartIndex = nodes[i].range[0]
-        } else {
+        // 分析文本内容，如果shouldHoistContent为true，则表示当前节点只有
+        // 一个文本子节点，那这个文本子节点会被提升作为当前节点的textContent部分
+        if (shouldHoistContent) {
             content = children[0].content
             trimedContentStartIndex = children[0].range[0]
+        } else {
+            trimedContentStartIndex = isTextarea ? nodes[i].startTagEndPos.index : nodes[i].range[0]
         }
 
         // 注释和pre节点的内容不去除开头和结尾的空白字符
-        if (tag !== "!" && tag !== "pre") {
+        if (!isTextarea && tag !== "!" && !nodes[i].withinPre) {
             const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount
@@ -169,20 +171,20 @@ export function analyzeTemplate(
             currentRet.content = currentRet.aar.nameOfSlotTag
         } else {
             const parseRet = content2script(content, trimedContentStartIndex)
-            const teOptionalParam = { positionMap: parseRet.positionMap }
+            const optionalParam = { positionMap: parseRet.positionMap }
             if (!inputDescriptor.options.check) {
                 currentRet.content = transformInterpolation(
                     parseRet.script,
                     trimedContentStartIndex,
                     currentContext,
                     "content",
-                    teOptionalParam
+                    optionalParam
                 )
             }
         }
 
         // 递归处理当前节点的所有子节点，在这里判断组件中多个子标签上的slot属性是否重复
-        if (!shouldHoistContent) {
+        if (!shouldHoistContent && !isTextarea) {
             analyzeTemplate(
                 children,
                 isComponent,

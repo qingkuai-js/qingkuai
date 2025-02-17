@@ -62,8 +62,8 @@ export function content2script(content: string, startSourceIndex: number) {
             }
 
             // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
-            for (let i = 0; i < str.length; i++) {
-                markPositionFlag(sourceIndex + i + 1, "isScript")
+            for (let i = 0; i <= str.length; i++) {
+                markPositionFlag(sourceIndex + i + 1, "inScript")
             }
 
             transformedArr.push(isDebug ? `(${str})` : str)

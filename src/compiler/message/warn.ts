@@ -12,7 +12,7 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * current-warn-code: 9010
+ * current-warn-code: 9009
  *
  * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
  * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning
@@ -41,36 +41,32 @@ export const RedundantArgsForCompilerFunc = withLocation(
     ...commonMessage.RedundantArgsForCompilerFunc
 )
 
-export const AttributeForEndTag = withLocation(9001, () => {
-    return "Attributes in the end tag will be ignored."
-})
-
-export const InvalidEventFlag = withLocation(9005, (flagName: string, eventName: string) => {
+export const InvalidEventFlag = withLocation(9004, (flagName: string, eventName: string) => {
     return `Invalid flag(${flagName}) for event(@${eventName}) and it has been ignored.`
 })
 
 export const DuplicateEventModifiers = withLocation(
-    9010,
+    9009,
     (modifiers: string[], eventName: string) => {
         return `There are some duplicate modifiers(${modifiers.join(", ")}) on ${eventName} event.`
     }
 )
 
-export const InvalidComposeModifier = withLocation(9007, (eventName: string) => {
+export const InvalidComposeModifier = withLocation(9006, (eventName: string) => {
     return `The event modifier(compose) is not valid for ${eventName} even, it can only be used for input event.`
 })
 
-export const InvalidEventFlagForComponent = withLocation(9006, (flagDescription: string) => {
+export const InvalidEventFlagForComponent = withLocation(9005, (flagDescription: string) => {
     return `The event parameter for component can not accept any flag(${flagDescription}), and they has been ignored.`
 })
 
-export const ConflictNormalKeyEventModifier = withLocation(9009, (modifiers: string[]) => {
+export const ConflictNormalKeyEventModifier = withLocation(9008, (modifiers: string[]) => {
     const [joined, last] = [modifiers.join(", "), lastElem(modifiers)]
     return `The normal key event modifiers(${joined}) is conflict, and the last one(${last}) will be applied according to the priority.`
 })
 
 export const InvalidKeyRelatedModifier = withLocation(
-    9008,
+    9007,
     (modifier: string, eventName: string) => {
         return `The event modifier(${modifier}) is not valid for ${eventName} even, it can only be used for these events: keyup, keydown, keypress.`
     }

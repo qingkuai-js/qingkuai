@@ -1,6 +1,6 @@
 import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
-import { findOutOfSC } from "../../util/compiler/strings"
+import { escapeWhiteSpace, findOutOfSC } from "../../util/compiler/strings"
 import { isNull, isString, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
 
@@ -75,7 +75,7 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
         const restoredStrLiteral = stringConstantsSourceMap.get(matchedStr)!
         const currentStringConstant = stringConstants.get(restoredStrLiteral)!
         if (currentStringConstant.count > 1 && restoredStrLiteral.length > 2) {
-            const restoreToComment = `/* ${JSON.parse(restoredStrLiteral)} */ `
+            const restoreToComment = `/* ${escapeWhiteSpace(JSON.parse(restoredStrLiteral))} */ `
             if (!currentStringConstant.using) {
                 const resetNumStr = `__s${inputDescriptor.stringConstantCount++}__`
                 transformedArr.push((saveAs = restoreToComment + resetNumStr))

@@ -142,14 +142,20 @@ export function generateCompileResult(
 
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
 export function generateInterResult(source: string, typeRefStatement: string) {
-    if (inputDescriptor.script.isTS) {
-        typeRefStatement += `const refs=0 as Refs;const props=0 as Readonly<Props>;`
+    let typeDefStatement: string
+    if (!inputDescriptor.script.isTS) {
+        typeDefStatement = `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;`
     } else {
-        typeRefStatement += `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;`
+        typeDefStatement = `const refs=__c__.GetTypedValue<Refs>();const props=__c__.GetTypedValue<Props>();`
     }
 
+    const trl = typeRefStatement.length
+    const tdl = typeDefStatement.length
+    const itos: number[] = Array(trl + tdl).fill(-1)
     const stoi: number[] = Array(source.length).fill(-1)
-    const itos: number[] = Array(typeRefStatement.length).fill(-1)
+
+    // 全局类型定义开始处的位置映射到脚本内容开始处
+    itos[trl] = inputDescriptor.script.loc.start.index
 
     const snippetLen = interCodeSnippets.length
     const scriptSourceCode = inputDescriptor.script.code
@@ -194,14 +200,13 @@ export function generateInterResult(source: string, typeRefStatement: string) {
     })
 
     const joinedSnippets = interCodeSnippets.map(item => item[1]).join("")
-    const intermidiateCode = `${typeRefStatement}${scriptSourceCode};${joinedSnippets}`
     return {
-        code: intermidiateCode,
         interIndexMap: {
             // 文件结束位置也需要记录双向索引映射
             // typescript语言服务会使用结束索引后2位
             stoi: [...stoi, lastElem(stoi)],
             itos: [...itos, lastElem(itos)]
-        }
+        },
+        code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};${joinedSnippets}`
     }
 }
