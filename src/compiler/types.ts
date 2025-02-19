@@ -123,8 +123,9 @@ export interface TemplateNode {
     range: NumNum
     content: string
     loc: ASTLocation
-    withinPre: boolean
     isEmbedded: boolean
+    isSelfClosing: boolean
+    preWhiteSpace: boolean
     componentTag: string
     children: TemplateNode[]
     startTagEndPos: ASTPosition

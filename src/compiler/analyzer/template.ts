@@ -159,7 +159,7 @@ export function analyzeTemplate(
         }
 
         // 注释和pre节点的内容不去除开头和结尾的空白字符
-        if (!isTextarea && tag !== "!" && !nodes[i].withinPre) {
+        if (!isTextarea && tag !== "!" && !nodes[i].preWhiteSpace) {
             const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount

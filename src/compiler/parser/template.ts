@@ -97,15 +97,15 @@ export function parseTemplate(source: string, standalone = false) {
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | undefined) {
         const contentEndIndex = findOutOfTextContentInterpolation(dps, templateTagStructureRE)
         const content = dps.slice(0, contentEndIndex === -1 ? Infinity : contentEndIndex)
-        const withinPre = parent?.tag === "pre" || parent?.withinPre
+        const preWhiteSpace = parent?.tag === "pre" || parent?.preWhiteSpace
         const contentLen = content.length
         if ((reduceSource(contentLen), contentLen)) {
-            if (content.trim() || withinPre) {
+            if (content.trim() || preWhiteSpace) {
                 const ret = initTemplateNode(positions, {
                     prev,
                     content,
                     parent,
-                    withinPre,
+                    preWhiteSpace,
                     range: [index, index + contentLen]
                 })
                 return prev && (prev.next = ret), ret
@@ -157,7 +157,7 @@ export function parseTemplate(source: string, standalone = false) {
             parent,
             range: [index, -1],
             componentTag: isComponent ? kebab2Camel(tag, true) : "",
-            withinPre: parent?.tag === "pre" || isPrevNodeWithPreWhiteSpace(prev)
+            preWhiteSpace: parent?.tag === "pre" || isPrevNodeWithPreWhiteSpace(prev)
         })
         reduceSource(tag.length + 1)
 
@@ -427,6 +427,7 @@ export function parseTemplate(source: string, standalone = false) {
             }
         } else if (isSelfClosingTag || (isComponent && closeMatched[2])) {
             ast.range[1] = index
+            ast.isSelfClosing = true
             ast.loc.end = getPosByIndex(index)
             ast.startTagEndPos = getPosByIndex(index)
         } else {
@@ -435,7 +436,7 @@ export function parseTemplate(source: string, standalone = false) {
         return ast
     }
 
-    for (let cur: TemplateNode | undefined = undefined; index < dps.length; ) {
+    for (let cur: TemplateNode | undefined = undefined; dps.length; ) {
         const textNode = parseContent(null, cur)
         textNode && (cur = textNode)
         if (dps) {
@@ -489,7 +490,7 @@ function initTemplateNode(
         }
     }
 
-    options.withinPre ||= options.parent?.withinPre
+    options.preWhiteSpace ||= options.parent?.preWhiteSpace
 
     return {
         parent: options.parent || null,
@@ -497,7 +498,8 @@ function initTemplateNode(
         next: undefined,
         tag: options.tag || "",
         isEmbedded: false,
-        withinPre: !!options.withinPre,
+        isSelfClosing: false,
+        preWhiteSpace: !!options.preWhiteSpace,
         content: options.content || "",
         range: options.range || [-1, -1],
         startTagEndPos: newASTPosition(),
