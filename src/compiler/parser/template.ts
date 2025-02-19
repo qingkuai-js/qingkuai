@@ -106,7 +106,7 @@ export function parseTemplate(source: string, standalone = false) {
                     content,
                     parent,
                     preWhiteSpace,
-                    range: [index, index + contentLen]
+                    range: [index - contentLen, index]
                 })
                 return prev && (prev.next = ret), ret
             }
@@ -413,6 +413,10 @@ export function parseTemplate(source: string, standalone = false) {
                         )
                     }
 
+                    if (prev) {
+                        prev.next = ast
+                    }
+
                     break
                 }
 
@@ -423,7 +427,7 @@ export function parseTemplate(source: string, standalone = false) {
 
                 // 继续递归解析textContext或子标签
                 cur = (startWithTagStructureRE.test(dps) ? parse : parseContent)(ast, cur)
-                cur && ast.children.push(cur) && prev && (prev.next = cur)
+                cur && ast.children.push(cur) && cur.prev && (cur.prev.next = cur)
             }
         } else if (isSelfClosingTag || (isComponent && closeMatched[2])) {
             ast.range[1] = index
@@ -438,7 +442,7 @@ export function parseTemplate(source: string, standalone = false) {
 
     for (let cur: TemplateNode | undefined = undefined; dps.length; ) {
         const textNode = parseContent(null, cur)
-        textNode && (cur = textNode)
+        textNode && astList.push((cur = textNode))
         if (dps) {
             cur = parse(null, cur)
             cur && astList.push(cur)
