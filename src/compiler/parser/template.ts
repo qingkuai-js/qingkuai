@@ -9,13 +9,13 @@ import type {
 import {
     tagIsComponentRE,
     templateCloseCharsRE,
+    preWhiteSpaceCommentRE,
     templateTagStructureRE,
     templateEmbeddedLangTag,
     templateAttributeNameRE,
     startWithTagStructureRE,
     templateConditionalCommentRE,
-    templateInvalidAttributeNameRE,
-    preWhiteSpaceCommentRE
+    templateInvalidAttributeNameRE
 } from "../regular"
 import {
     NoEndTagMatched,
@@ -39,7 +39,7 @@ import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getLocationMethodsGen } from "../../util/compiler/locations"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
-import { findEndCurlyBracket, findOutOfSC, kebab2Camel } from "../../util/compiler/strings"
+import { findEndBracket, findOutOfSC, kebab2Camel } from "../../util/compiler/strings"
 
 // 独立调用的parseTemplate方法，compiler包会导出此方法
 export function parseTemplateStandalone(source: string) {
@@ -96,7 +96,7 @@ export function parseTemplate(source: string, standalone = false) {
     // 解析标签内容，所有的TextNode都会被解析为一个单独的节点，其tag为空字符串
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | undefined) {
         const contentEndIndex = findOutOfTextContentInterpolation(dps, templateTagStructureRE)
-        const content = dps.slice(0, contentEndIndex === -1 ? Infinity : contentEndIndex)
+        const content = dps.slice(0, contentEndIndex === -1 ? dps.length : contentEndIndex)
         const preWhiteSpace = parent?.tag === "pre" || parent?.preWhiteSpace
         const contentLen = content.length
         if ((reduceSource(contentLen), contentLen)) {
@@ -234,7 +234,7 @@ export function parseTemplate(source: string, standalone = false) {
 
                     // 如果找不到属性值结束字符（关闭大括号或单双引号）则报错，空插值块也需要报错
                     if (isInterpolationAttr) {
-                        if ((endCharIndex = findEndCurlyBracket(dps, 1)) === -1) {
+                        if ((endCharIndex = findEndBracket(dps, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
                         } else if (isEmptyString(dps.slice(1, endCharIndex).trim())) {
                             EmptyInterpolationExpression(
@@ -523,8 +523,8 @@ function isPrevNodeWithPreWhiteSpace(node: TemplateNode | undefined) {
     return preWhiteSpaceCommentRE.test(node.content)
 }
 
-// 在textContent范围内脱离插值表达式范围查找字符位置，目前只有一处使用：在textContent范围内
-// 脱离插值表达式的范围找到下一个开始标签的位置，这个方法可以过滤多个插值表达式返回进行查找
+// 在textContent范围内脱离插值表达式范围查找字符位置
+// 目前仅一处使用：在textContent范围内找到第一个标签结构的位置（即文本节点结束位置）
 function findOutOfTextContentInterpolation(str: string, re: RegExp) {
     let startIndex = 0
 
@@ -534,16 +534,18 @@ function findOutOfTextContentInterpolation(str: string, re: RegExp) {
             return -1
         }
 
-        const searchStr = str.slice(0, matched.index)
+        const matchedIndex = matched.index!
+        const searchStr = str.slice(0, matchedIndex)
         const startBracketIndex = searchStr.indexOf("{")
-        if (startBracketIndex === -1) {
-            return startIndex + matched.index!
+        if (startBracketIndex === -1 || startBracketIndex > matchedIndex) {
+            return startIndex + matchedIndex
         }
 
-        const endBracketIndex = findEndCurlyBracket(str, startBracketIndex + 1)
+        const endBracketIndex = findEndBracket(str, startBracketIndex + 1)
         if (endBracketIndex === -1) {
             return -1
         }
+
         startIndex += endBracketIndex + 1
         str = str.slice(endBracketIndex + 1)
     }

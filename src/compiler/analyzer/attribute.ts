@@ -24,8 +24,8 @@ import {
     stringify,
     kebab2Camel,
     findOutOfSC,
-    normalStringify,
-    findEndCurlyBracket
+    findEndBracket,
+    normalStringify
 } from "../../util/compiler/strings"
 import {
     InvalidEventFlag,
@@ -467,11 +467,7 @@ export function analyzeAttribute(
                                 itemPart = contextStr.slice(0, itemPartEndIndex)
                             } else {
                                 const startBracket = contextStr[0] as StartBracket
-                                const endBracketIndex = findEndCurlyBracket(
-                                    contextStr,
-                                    1,
-                                    startBracket
-                                )
+                                const endBracketIndex = findEndBracket(contextStr, 1, startBracket)
                                 commaFind = findOutOfSC(contextStr, /\s*,\s*/, endBracketIndex + 1)
                                 itemPart = contextStr.slice(0, endBracketIndex + 1)
                             }

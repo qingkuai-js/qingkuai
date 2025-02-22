@@ -125,7 +125,7 @@ export function kebab2Camel(str: string, startWithUppercase = false) {
 }
 
 // 在表达式中找到关闭括号的位置， 使用此方法时，startIndex应为开始括号的下一个位置
-export function findEndCurlyBracket(str: string, startIndex: number, char: StartBracket = "{") {
+export function findEndBracket(str: string, startIndex: number, char: StartBracket = "{") {
     const pairMap = { "{": "}", "[": "]", "(": ")" }
 
     while (true) {

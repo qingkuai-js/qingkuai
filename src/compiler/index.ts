@@ -1,3 +1,6 @@
+import { parseTemplateStandalone } from "./parser/template"
+import { findEndBracket, findOutOfSC, kebab2Camel } from "../util/compiler/strings"
+
 export type {
     SlotInfo,
     ASTLocation,
@@ -13,4 +16,6 @@ export { commonMessage } from "./message/common"
 export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
 export { PositionFlag } from "../util/shared/flag"
-export { parseTemplateStandalone as parseTemplate } from "./parser/template"
+
+export const parseTemplate = parseTemplateStandalone
+export const util = { findEndBracket, findOutOfSC, kebab2Camel }

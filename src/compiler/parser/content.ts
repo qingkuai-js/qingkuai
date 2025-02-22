@@ -3,7 +3,7 @@ import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { newTemplateContext } from "../../util/compiler/structure"
 import { transformInterpolation } from "../transformer/interpolation"
-import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
+import { findEndBracket, normalStringify } from "../../util/compiler/strings"
 import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
@@ -87,7 +87,7 @@ export function content2script(content: string, startSourceIndex: number) {
         }
 
         // 查找关闭花括号的位置，不存在就报错，存在则检查是否是空的插值表达式块，若为空同样需要报错
-        const endBracketIndex = findEndCurlyBracket(content, startBracketNextIndex)
+        const endBracketIndex = findEndBracket(content, startBracketNextIndex)
         if (endBracketIndex === -1) {
             UnclosedInterpolationExpression(getLocByIndex(startBracketSourceIndex))
             pushTransformedArr(content.slice(startBracketIndex))
