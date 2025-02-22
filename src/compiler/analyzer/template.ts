@@ -6,7 +6,7 @@ import type {
 } from "../types"
 
 import { getAlias } from "./alias"
-import { specialTags } from "../constants"
+import { SPECIAL_TAGS } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { lastElem } from "../../util/shared/sundry"
@@ -165,7 +165,7 @@ export function analyzeTemplate(
             trimedContentStartIndex += preSpaceCount
         }
 
-        if (specialTags.has(tag)) {
+        if (SPECIAL_TAGS.has(tag)) {
             currentRet.content = normalStringify(content)
         } else if (currentRet.aar?.nameOfSlotTag) {
             currentRet.content = currentRet.aar.nameOfSlotTag

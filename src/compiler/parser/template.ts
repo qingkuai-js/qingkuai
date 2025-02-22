@@ -33,7 +33,7 @@ import {
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import { replaceEachItems } from "../../util/shared/sundry"
-import { selfClosingTags, specialTags } from "../constants"
+import { SELF_CLOSING_TAGS, SPECIAL_TAGS } from "../constants"
 import { inputDescriptor, newScriptDescriptor } from "../state"
 import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getLocationMethodsGen } from "../../util/compiler/locations"
@@ -308,7 +308,7 @@ export function parseTemplate(source: string, standalone = false) {
         // script或style标签直接快进到闭合标签处
         const langMatched = templateEmbeddedLangTag.exec(tag)
         const embeddedLang = langMatched?.[1] || ""
-        if (specialTags.has(tag) || embeddedLang) {
+        if (SPECIAL_TAGS.has(tag) || embeddedLang) {
             const endTagIndex = findOutOfSC(dps, "</" + tag)
             const neverOver = endTagIndex === -1
             const contentStartIndex = index
@@ -388,7 +388,7 @@ export function parseTemplate(source: string, standalone = false) {
         // 自关闭标签或组件开始标签以/>结尾时，无需解析子节点，其他情况解析文本内容和子节点
         // when tag is self-closing tag or a component start tag end in />, there is no need
         // to parse child nodes, otherwise, the content and child nodes should be parsed
-        const isSelfClosingTag = selfClosingTags.has(tag)
+        const isSelfClosingTag = SELF_CLOSING_TAGS.has(tag)
         if (!isSelfClosingTag && !closeMatched[2]) {
             for (let cur: TemplateNode | undefined = undefined; true; ) {
                 const endtagStartIndex = index

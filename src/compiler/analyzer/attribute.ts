@@ -41,6 +41,11 @@ import {
     expressionReplaceWithSpaceRE
 } from "../regular"
 import {
+    COULD_USE_REF_TAGS,
+    MUST_PASS_VALUE_DIRECTIVES,
+    KEY_RELATED_EVENT_MODIFIERS
+} from "../constants"
+import {
     parse,
     getIdentifiersFromPattern,
     getIdentifiersFromPatternWithPath
@@ -73,7 +78,6 @@ import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { couldUseRefTags, keyRelatedEventModifiers, mustPassValueDirectives } from "../constants"
 
 // apm: Attributes Priority Map
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -296,7 +300,7 @@ export function analyzeAttribute(
                 let attrIsNotAllowed = false
                 let attrsForErr: string[] = []
 
-                if (!couldUseRefTags.has(tag)) {
+                if (!COULD_USE_REF_TAGS.has(tag)) {
                     return CanNotAcceptRefAttribute(pureKey, tag, attr.loc)
                 }
 
@@ -751,7 +755,7 @@ export function analyzeAttribute(
                         } else if (currentWrapperFlagNum) {
                             // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
                             if (
-                                keyRelatedEventModifiers.has(modifier) &&
+                                KEY_RELATED_EVENT_MODIFIERS.has(modifier) &&
                                 !/^key(?:up|down|press)$/.test(eventName)
                             ) {
                                 InvalidKeyRelatedModifier(
@@ -760,7 +764,7 @@ export function analyzeAttribute(
                                     startSourceIndex,
                                     endSourceIndex
                                 )
-                            } else if (keyRelatedEventModifiers.has(modifier)) {
+                            } else if (KEY_RELATED_EVENT_MODIFIERS.has(modifier)) {
                                 // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
                                 // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
                                 //
@@ -1037,7 +1041,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                 }
             }
             // 检查必须传递属性值的属性是否有值
-            if (mustPassValueDirectives.has(pureKey) && !rv) {
+            if (MUST_PASS_VALUE_DIRECTIVES.has(pureKey) && !rv) {
                 NoValueForRequiredValueAttribute(rk, loc)
             }
         }

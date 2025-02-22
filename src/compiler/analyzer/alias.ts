@@ -1,5 +1,5 @@
 import { confirmAlias } from "../../util/compiler/sundry"
-import { fullInitItems, fullRuntimeItems } from "../constants"
+import { FULL_INIT_ITEMS, FULL_RUNTIME_ITEMS } from "../constants"
 import { allExistingIdentifiers, usedInitItems, usedRuntimeItems } from "../state"
 
 const aliases = new Map<string, string>()
@@ -10,7 +10,7 @@ const aliases = new Map<string, string>()
 // 注意：此方法的运行时机应该在分析（analyze）完成后且转换（transform）开始前，另外，此方法建立在
 // 以上两类标识符列表中不存在相同元素的基础上运行，若之后存在相同名称元素，需重新考虑标识符别名的确定逻辑
 export function confirmQingKuaiIdentifierAliases() {
-    ;[fullRuntimeItems, fullInitItems].forEach(items => {
+    ;[FULL_RUNTIME_ITEMS, FULL_INIT_ITEMS].forEach(items => {
         items.forEach(item => {
             const alias = confirmAlias(item, allExistingIdentifiers)
             if (alias !== item) {
@@ -30,11 +30,11 @@ export function getAlias(key: string, shouldRecord = true) {
     const aliasKey = aliases.get(key)
 
     const isInitItem = (k: any) => {
-        return fullInitItems.has(k)
+        return FULL_INIT_ITEMS.has(k)
     }
 
     const isRuntimeItem = (k: any) => {
-        return fullRuntimeItems.has(k)
+        return FULL_RUNTIME_ITEMS.has(k)
     }
 
     if (shouldRecord) {

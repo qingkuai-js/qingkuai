@@ -49,7 +49,7 @@ import {
     getSourceIndexByScriptIndex
 } from "../../util/compiler/locations"
 import { walk } from "../estree/walk"
-import { compilerFuncs } from "../constants"
+import { COMPILER_FUNCS } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
@@ -124,7 +124,7 @@ const visitor: ASTVisitor = {
 
         if (
             is(callee, "Identifier") &&
-            compilerFuncs.has(callee.name) &&
+            COMPILER_FUNCS.has(callee.name) &&
             !parent.excludes.has(callee.name)
         ) {
             if (watchCompilerFuncRE.test(callee.name)) {
@@ -709,7 +709,7 @@ function markSegmentShouldNotBeMapped(start: number, end: number) {
 function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
     const sourceLoc = getSourceLocByScriptLoc(loc)
 
-    if (compilerFuncs.has(name) || name === "props" || name === "refs") {
+    if (COMPILER_FUNCS.has(name) || name === "props" || name === "refs") {
         RegisterExsitingIdentifierName(name, sourceLoc)
     }
 
