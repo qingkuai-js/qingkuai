@@ -10,10 +10,11 @@ import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
 import {
-    BadValueForRefAttr,
+    BadValueToRefAttr,
     InterpolationExpOutOfLimit,
     ContextIdentifierUsedAsReferenceTarget,
-    SequenceExpreesionInInterpolationBlock
+    SequenceExpreesionInInterpolationBlock,
+    IdentifierFormatIsNotAllowed
 } from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
@@ -21,12 +22,12 @@ import { runAll } from "../../util/shared/sundry"
 import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
-import { expressionReplaceWithSpaceRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { bannedIdentifierFormatRE, expressionReplaceWithSpaceRE } from "../regular"
 import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
-import { checkIdentifierName, confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 
 export function transformInterpolation(
     expression: string,
@@ -104,7 +105,7 @@ export function transformInterpolation(
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
     if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
         const expressionEndSourceIndex = startSourceIndex + expression.length
-        BadValueForRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
+        BadValueToRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
     }
 
     walk(ast, {
@@ -118,7 +119,9 @@ export function transformInterpolation(
             allIndentifiersInExpression.add(name)
 
             // 检查插值表达式中是否使用了禁止使用的标识符
-            checkIdentifierName(node.name, nodeLoc, false)
+            if (bannedIdentifierFormatRE.test(name)) {
+                IdentifierFormatIsNotAllowed(name, nodeLoc)
+            }
 
             if (!identifierIsReference(node, parent)) {
                 return

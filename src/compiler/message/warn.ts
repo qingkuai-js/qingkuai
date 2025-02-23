@@ -8,11 +8,11 @@
  * put the warn method with less code in the front, however this results
  * in warn codes can not conform to the order of the methods.
  * So, the last warn code used is recorded in the file header comment
- * (at last-warn code below), each time you add a new warn method and use a
+ * (at last-warn-code below), each time you add a new warn method and use a
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * current-warn-code: 9009
+ * last-warn-code: 9009
  *
  * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
  * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning

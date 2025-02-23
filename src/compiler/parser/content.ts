@@ -3,8 +3,8 @@ import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { newTemplateContext } from "../../util/compiler/structure"
 import { transformInterpolation } from "../transformer/interpolation"
-import { findEndBracket, normalStringify } from "../../util/compiler/strings"
 import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
+import { findEndBracket, findOutOfSC, normalStringify } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
@@ -94,7 +94,7 @@ export function content2script(content: string, startSourceIndex: number) {
             break
         } else {
             const interpolationExp = content.slice(startBracketNextIndex, endBracketIndex)
-            if (((index = endBracketIndex + 1), !interpolationExp.trim())) {
+            if (((index = endBracketIndex + 1), findOutOfSC(interpolationExp, /\S/) === -1)) {
                 EmptyInterpolationExpression(
                     startBracketSourceIndex,
                     endBracketIndex + 1 + startSourceIndex

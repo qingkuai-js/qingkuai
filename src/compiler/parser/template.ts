@@ -236,7 +236,7 @@ export function parseTemplate(source: string, standalone = false) {
                     if (isInterpolationAttr) {
                         if ((endCharIndex = findEndBracket(dps, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
-                        } else if (isEmptyString(dps.slice(1, endCharIndex).trim())) {
+                        } else if (findOutOfSC(dps.slice(1, endCharIndex), /\S/) === -1) {
                             EmptyInterpolationExpression(
                                 wrapValueStartIndex,
                                 index + endCharIndex + 1
@@ -318,7 +318,7 @@ export function parseTemplate(source: string, standalone = false) {
 
             // 如果没有匹配到结束标签，整个source都被认为是当前标签的内容
             const endtagStartIndex = endTagIndex + index
-            const content = dps.slice(0, neverOver ? Infinity : endTagIndex)
+            const content = dps.slice(0, neverOver ? undefined : endTagIndex)
             reduceSource(neverOver ? dps.length : endTagIndex + tag.length + 2)
 
             // 检查结束标签是否闭合，并记录当前ast节点的相关位置信息
@@ -333,14 +333,12 @@ export function parseTemplate(source: string, standalone = false) {
             }
 
             // 如果是特殊标签（这里只能是script或style），则直接返回节点对象
-            if (embeddedLang) {
-                ast.isEmbedded = true
-            } else {
-                return (ast.content = content), ast
+            if (((ast.content = content), !embeddedLang)) {
+                return ast
             }
 
             // 嵌入语言标签只能出现在顶层作用域
-            if (ast.isEmbedded && !isNull(ast.parent)) {
+            if (((ast.isEmbedded = true), !isNull(ast.parent))) {
                 EmbeddedLangNotInTopScope(tag, tagStructureLoc)
             }
 

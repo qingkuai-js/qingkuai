@@ -5,15 +5,16 @@ import type {
     WalkPatternArr,
     PartialPattern,
     TraverseParent,
+    PartialAnyNode,
     AnyNodeWithStartEnd,
-    WalkPatternCallback,
-    PartialAnyNode
+    WalkPatternCallback
 } from "../../compiler/estree/types"
-import { isProgram, type Function } from "@babel/types"
+import { Function } from "@babel/types"
 import type { ValueOrValueArr } from "../../runtime/types"
 import type { ReplacementItem, ReplacementStatus } from "../../compiler/types"
 
 import * as babel from "@babel/parser"
+import { findOutOfSC } from "./strings"
 import { isArray, isUndefined } from "../../util/shared/assert"
 import { replacementInfo, inputDescriptor } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
@@ -25,6 +26,30 @@ export function getEsNode(node: AnyNode) {
         node = node.expression
     }
     return node as AnyNodeWithStartEnd
+}
+
+// 有些需要定义标识符的插值块可能存在注释，此方法用于提取标识符
+export function extractIdentifier(str: string) {
+    const start = findOutOfSC(str, /\S/)
+    if (start === -1) {
+        return {
+            identifier: str,
+            range: [0, str.length]
+        }
+    }
+
+    const end = str.slice(start).search(/\s|$/)
+    if (end === -1) {
+        return {
+            range: [start, str.length],
+            identifier: str.slice(start)
+        }
+    }
+
+    return {
+        range: [start, start + end],
+        identifier: str.slice(start, start + end)
+    }
 }
 
 // js或ts解析为抽象语法树

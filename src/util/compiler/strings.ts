@@ -88,7 +88,7 @@ export const findOutOfSC: FindOutOfSC = (
             if (endIndex === -1) {
                 return cr(-1, 0)
             }
-            i += endIndex
+            i += endIndex + 1
             continue
         }
 
@@ -97,7 +97,7 @@ export const findOutOfSC: FindOutOfSC = (
             if (endIndex === -1) {
                 return cr(-1, 0)
             }
-            i += endIndex
+            i += endIndex + 2
             continue
         }
 

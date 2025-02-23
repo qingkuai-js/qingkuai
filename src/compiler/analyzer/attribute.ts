@@ -8,7 +8,7 @@ import type {
     FilteredTemplateAttribute,
     TransformInterpolationOptionalParam
 } from "../types"
-import type { EsPattern } from "../estree/types"
+import type { AnyNode, EsPattern } from "../estree/types"
 import type { AnyObject, NumNum, StartBracket } from "../../util/types"
 
 import {
@@ -16,17 +16,9 @@ import {
     getRangeByLoc,
     findSpecificAttr,
     markPositionFlag,
-    checkIdentifierName,
     recordInterExpression,
     recordInterWithSpecificRange
 } from "../../util/compiler/sundry"
-import {
-    stringify,
-    kebab2Camel,
-    findOutOfSC,
-    findEndBracket,
-    normalStringify
-} from "../../util/compiler/strings"
 import {
     InvalidEventFlag,
     DuplicateEventModifiers,
@@ -59,25 +51,27 @@ import {
     DirectivesCantCoexist,
     MissingStartDirective,
     DuplicateAttributeKey,
+    BadValueToForDirective,
     DynamicNameAttrForSlot,
     NameAttrForSlotIsEmpty,
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
     CanNotAcceptRefAttribute,
     DuplicateNameAttrForSlot,
-    NoBaseValueForForDirective,
     BadEventListenerForSlotTag,
-    NoForDirectiveCtxNameSpeciffied,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective
+    UseKeyDirectiveWithoutForDirective,
+    BadValueToContextGenDirective
 } from "../message/error"
 import { getAlias } from "./alias"
+import { is } from "../estree/assert"
 import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
+import { stringify, kebab2Camel, findOutOfSC, normalStringify } from "../../util/compiler/strings"
 
 // apm: Attributes Priority Map
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -201,6 +195,9 @@ export function analyzeAttribute(
         const pureKeyStartSourceIndex = key.loc.start.index + /\s*/.exec(rk)![0].length
         const trimedValueStartSourceIndex = value.loc.start.index + /\s*/.exec(rv)![0].length
 
+        // prettier-ignore
+        const trimedValueLoc = getLocByIndex(trimedValueStartSourceIndex, trimedValueStartSourceIndex + trimedValue.length)
+
         // 转换标签指令
         const transDirective = (
             exp: string,
@@ -256,21 +253,25 @@ export function analyzeAttribute(
                     } else {
                         interCodeSnippets.push([-2, `=0${isTS ? " as any" : ""};`])
                     }
-                } else if (!DestructuringContextRE.test(trimedValue)) {
-                    checkIdentifierName(
-                        trimedValue,
-                        getLocByIndex(
-                            trimedValueStartSourceIndex,
-                            trimedValueStartSourceIndex + trimedValue.length
-                        )
-                    )
-                    extendContext(context, trimedValue)
                 } else {
-                    const tip = makeDestructuringPatternSignleLine(
-                        trimedValue,
-                        trimedValueStartSourceIndex
-                    )
-                    recordDestructuringIdentifiers(tip, aliasArgs, context, false, context.count++)
+                    const ast = (parse(`(${trimedValue})`)?.body[0] as any).expression
+                    if (is(ast, "Identifier")) {
+                        extendContext(context, ast.name)
+                    } else if (is(ast, "ArrayExpression") || is(ast, "ObjectExpression")) {
+                        const tir = makeDestructuringPatternSignleLine(
+                            trimedValue.slice(ast.loc!.start.index - 1, ast.loc!.end.index - 1),
+                            trimedValueStartSourceIndex + ast.loc!.start.index - 1
+                        )
+                        recordDestructuringIdentifiers(
+                            tir,
+                            aliasArgs,
+                            context,
+                            false,
+                            context.count++
+                        )
+                    } else {
+                        BadValueToContextGenDirective(pureKey, trimedValueLoc)
+                    }
                 }
             }
         }
@@ -430,22 +431,85 @@ export function analyzeAttribute(
                 }
             }
         } else if (isDirective) {
-            switch (pureKey) {
+            outter: switch (pureKey) {
                 case "for":
-                    const inKeywordIndex = findOutOfSC(trimedValue, / in(?: |$)/)
-                    const hasContextIdentifier = inKeywordIndex !== -1
-                    const contextStr = trimedValue.slice(0, inKeywordIndex).trim()
-                    const baseStartIndex = hasContextIdentifier ? inKeywordIndex + 4 : 0
-                    const forBaseValue = trimedValue.slice(baseStartIndex)
-                    const basePreSpaceCount = /\s*/.exec(forBaseValue)![0].length
+                    let itemPart = ""
+                    let indexPart = ""
+                    let baseValue = ""
+                    let itemPartIsDestructuring = false
+                    let indexPartIsDestructuring = false
+                    let itemPartRange: NumNum | null = null
+                    let indexPartRange: NumNum | null = null
+                    let baseValueRange: NumNum | null = null
+                    let hasContextIdentifier: boolean = false
+                    const ofKeywordIndex = findOutOfSC(trimedValue, / of(?: |$)/)
 
-                    if (!forBaseValue && !isEmptyString(trimedValue)) {
-                        NoBaseValueForForDirective(
+                    const isPartNodeValid = (node: AnyNode) => {
+                        return (
+                            is(node, "Identifier") ||
+                            is(node, "ArrayExpression") ||
+                            is(node, "ObjectExpression")
+                        )
+                    }
+
+                    if (ofKeywordIndex === -1) {
+                        baseValue = trimedValue
+                        baseValueRange = [0, trimedValue.length]
+                    } else {
+                        const ast = parse(`(${trimedValue.slice(0, ofKeywordIndex)})`)?.body[0]
+                        baseValue = trimedValue.slice(ofKeywordIndex + 4)
+                        baseValueRange = [ofKeywordIndex + 4, trimedValue.length]
+
+                        if (!is(ast, "ExpressionStatement")) {
+                            BadValueToForDirective(trimedValueLoc)
+                            break
+                        }
+
+                        switch (ast.expression.type) {
+                            case "Identifier":
+                            case "ArrayExpression":
+                            case "ObjectExpression":
+                                itemPartRange = [
+                                    ast.expression.loc!.start.index - 1,
+                                    ast.expression.loc!.end.index - 1
+                                ]
+                                itemPartIsDestructuring = !is(ast.expression, "Identifier")
+                                break
+                            case "SequenceExpression":
+                                const [firstNode, secondNode] = ast.expression.expressions
+                                if (!isPartNodeValid(firstNode) || !isPartNodeValid(secondNode)) {
+                                    BadValueToForDirective(trimedValueLoc)
+                                    break outter
+                                }
+                                itemPartRange = [
+                                    firstNode.loc!.start.index - 1,
+                                    firstNode.loc!.end.index - 1
+                                ]
+                                indexPartRange = [
+                                    secondNode.loc!.start.index - 1,
+                                    secondNode.loc!.end.index - 1
+                                ]
+                                itemPartIsDestructuring = !is(firstNode, "Identifier")
+                                indexPartIsDestructuring = !is(secondNode, "Identifier")
+                                break
+                            default:
+                                BadValueToForDirective(trimedValueLoc)
+                                break outter
+                        }
+                    }
+
+                    !isNull(itemPartRange) && (itemPart = trimedValue.slice(...itemPartRange))
+                    !isNull(indexPartRange) && (indexPart = trimedValue.slice(...indexPartRange))
+                    !isNull(baseValueRange) && (baseValue = trimedValue.slice(...baseValueRange))
+
+                    if (findOutOfSC(baseValue, /\S/) === -1) {
+                        BadValueToForDirective(
                             trimedValueStartSourceIndex,
                             trimedValueStartSourceIndex + trimedValue.length
                         )
                         break
                     }
+
                     contextBlockCount += Number(hasContextIdentifier)
 
                     if (!isCheckMode) {
@@ -453,94 +517,47 @@ export function analyzeAttribute(
 
                         // 转换for指令依赖的表达式部分（不含item及index标识符部分）
                         const transformedForBaseValue = transDirective(
-                            trimedValue.slice(baseStartIndex).trim(),
-                            trimedValueStartSourceIndex + baseStartIndex + basePreSpaceCount
+                            baseValue,
+                            trimedValueStartSourceIndex + baseValueRange[0]
                         )
 
                         // 处理for指令上下文绑定
                         if (hasContextIdentifier) {
-                            let indexPart = ""
-                            let itemPart: string
-                            let commaFind: NumNum
-
-                            // 截取item部分的pattern，并找到commaFind（它是findOutOfSC的返回值，它是一个包含两个
-                            // 数字的数组，这两个数字分别代表：逗号所在的索引，匹配字符的长度（逗号及前后空白字符的））
-                            if (!DestructuringContextRE.test(contextStr)) {
-                                const itemPartEndIndex = findOutOfSC(contextStr, /$|[,\s]/)
-                                commaFind = findOutOfSC(contextStr, /\s*,\s*/, itemPartEndIndex)
-                                itemPart = contextStr.slice(0, itemPartEndIndex)
-                            } else {
-                                const startBracket = contextStr[0] as StartBracket
-                                const endBracketIndex = findEndBracket(contextStr, 1, startBracket)
-                                commaFind = findOutOfSC(contextStr, /\s*,\s*/, endBracketIndex + 1)
-                                itemPart = contextStr.slice(0, endBracketIndex + 1)
-                            }
-
-                            // 如果存在逗号时，检查item或index部分的名称是否未指定
-                            const [commaStartIndex, commaMatchedLen] = commaFind
-                            const commaEndIndex = commaStartIndex + commaMatchedLen
-                            const commastartSourceIndex =
-                                trimedValueStartSourceIndex + commaStartIndex
-                            if (commaStartIndex !== -1) {
-                                indexPart = contextStr.slice(commaEndIndex)
-                                if (!itemPart || !indexPart) {
-                                    NoForDirectiveCtxNameSpeciffied(
-                                        itemPart ? "index" : "item",
-                                        // +!itemPart 与 item? 0: 1 等效，其他地方也有相似处理
-                                        getLocByIndex(commastartSourceIndex + +!itemPart)
-                                    )
-                                }
-                            }
-
                             // 即使index部分不存在也占用context中一个标识符空间
                             if (!indexPart) {
                                 context.count++
-                            } else if (DestructuringContextRE.test(indexPart)) {
-                                const tip = makeDestructuringPatternSignleLine(
+                            } else if (indexPartIsDestructuring) {
+                                const tir = makeDestructuringPatternSignleLine(
                                     indexPart,
-                                    trimedValueStartSourceIndex + commaEndIndex
+                                    trimedValueStartSourceIndex + indexPartRange![0]
                                 )
                                 recordDestructuringIdentifiers(
-                                    tip,
+                                    tir,
                                     aliasArgs,
                                     context,
                                     true,
                                     preContextCount
                                 )
                             } else {
-                                checkIdentifierName(
-                                    indexPart,
-                                    getLocByIndex(
-                                        commastartSourceIndex + commaMatchedLen,
-                                        trimedValueStartSourceIndex + contextStr.length
-                                    )
-                                )
                                 extendContext(context, indexPart, "")
                             }
 
                             // 即使item部分不存在也占用context中一个标识符空间
                             if (!itemPart) {
                                 context.count++
-                            } else if (DestructuringContextRE.test(itemPart)) {
-                                const tip = makeDestructuringPatternSignleLine(
+                            } else if (itemPartIsDestructuring) {
+                                const tir = makeDestructuringPatternSignleLine(
                                     itemPart,
-                                    trimedValueStartSourceIndex
+                                    trimedValueStartSourceIndex + itemPartRange![0]
                                 )
                                 recordDestructuringIdentifiers(
-                                    tip,
+                                    tir,
                                     aliasArgs,
                                     context,
                                     true,
                                     preContextCount + 1
                                 )
                             } else {
-                                checkIdentifierName(
-                                    itemPart,
-                                    getLocByIndex(
-                                        trimedValueStartSourceIndex,
-                                        trimedValueStartSourceIndex + itemPart.length
-                                    )
-                                )
                                 extendContext(context, itemPart, "")
                             }
                         }
@@ -561,9 +578,12 @@ export function analyzeAttribute(
                         } else {
                             interCodeSnippets.push(
                                 [-1, "{const ["],
-                                [trimedValueStartSourceIndex, contextStr],
+                                [
+                                    trimedValueStartSourceIndex,
+                                    trimedValue.slice(itemPartRange![0], indexPartRange![1])
+                                ],
                                 [-3, "]=__c__.GetKVPair("],
-                                [trimedValueStartSourceIndex + baseStartIndex, forBaseValue],
+                                [trimedValueStartSourceIndex + baseValueRange![0], baseValue],
                                 [-2, ");"]
                             )
                         }

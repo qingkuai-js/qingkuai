@@ -6,7 +6,7 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
     return obj
 })({
     IdentifierFormatIsNotAllowed: [
-        1030,
+        1029,
         (identifierName: string) => {
             return `The banned identifier(${identifierName}) format is not allowed.`
         }
@@ -18,37 +18,37 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
         }
     ],
     BadExportRelatedStatement: [
-        1045,
+        1044,
         () => {
             return `Export related statements can not appear in embedded script language block.`
         }
     ],
     ReactCompilerFuncNotInTopScope: [
-        1026,
+        1025,
         () => {
             return "Reactivity related compiler helper functions(rea, stc, der) must be used in the top scope."
         }
     ],
     ReactCompilerFuncWithoutVariableDeclaration: [
-        1028,
+        1027,
         () => {
             return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
         }
     ],
     WatchCompilerFuncMissingArg: [
-        1043,
+        1042,
         (funcName: string, received: number) => {
             return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
         }
     ],
     DestructureReactFuncWithNoArg: [
-        1031,
+        1030,
         (funcName: string) => {
             return `Compiler helper function(${funcName}) will return undefined when no argument is passed, so it cannot be destructured.`
         }
     ],
     ConvenientDerivedWithOtherReactFunc: [
-        1042,
+        1041,
         (funcName: string) => {
             return `Using both short hand derived state declaration(using $ prefix) and reactivity realted compiler helper function(${funcName}) is ambiguous.`
         }

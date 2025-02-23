@@ -4,6 +4,7 @@ import type {
     TemplateAttribute,
     ASTPositionWithFlag
 } from "../../compiler/types"
+import type { PartialAnyNode } from "../../compiler/estree/types"
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
 import { PositionFlag } from "../shared/flag"
@@ -144,15 +145,4 @@ export function arrayChunk<T, S extends number>(arr: T[], size: S): FixedArray<T
         ret[j++] = arr.slice(i, i + size)
     }
     return ret
-}
-
-// 检查标识符名称是否合法, checkInvalid用来控制是否需要检测标识符名称是否合法，如果
-// 是从AST的Identifier捕获组中调用此方法的话，可以将其设置为false，省去一部分检测开销
-export function checkIdentifierName(name: string, errLoc: ASTLocation, checkInvalid = true) {
-    if (checkInvalid && !validIdentifierNameRE.test(name)) {
-        InvalidIdentifierName(name, errLoc)
-    }
-    if (bannedIdentifierFormatRE.test(name)) {
-        IdentifierFormatIsNotAllowed(name, errLoc)
-    }
 }

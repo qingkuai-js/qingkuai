@@ -8,11 +8,11 @@
  * put the error method with less code in the front, however this results
  * in error codes can not conform to the order of the methods.
  * So, the last error code used is recorded in the file header comment
- * (at last-error code below), each time you add a new error method and use a
+ * (at last-error-code below), each time you add a new error method and use a
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * current-error-code: 1045
+ * last-error-code: 1045
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -69,8 +69,8 @@ export const SlotAttrIsEmpty = withLocation(1022, () => {
     return "Must set a value for slot attribute."
 })
 
-export const NoBaseValueForForDirective = withLocation(1039, () => {
-    return `Must pass a base value for #for directive.`
+export const BadValueToForDirective = withLocation(1038, () => {
+    return `Bad value to the for directive.`
 })
 
 export const UnclosedNormalAttributeValue = withLocation(1003, () => {
@@ -81,7 +81,7 @@ export const DynamicNameAttrForSlot = withLocation(1020, () => {
     return `Dynamic name attribute(!name) for slot tag is not allowed.`
 })
 
-export const InterpolationExpOutOfLimit = withLocation(1040, () => {
+export const InterpolationExpOutOfLimit = withLocation(1039, () => {
     return "At most one expression can appear in the interpolation block."
 })
 
@@ -89,7 +89,7 @@ export const UnclosedInterpolationExpression = withLocation(1004, () => {
     return "Unclosed interpolation expression."
 })
 
-export const InvalidSlotAttr = withLocation(1034, (typeChar: string) => {
+export const InvalidSlotAttr = withLocation(1033, (typeChar: string) => {
     const description = typeChar === "!" ? "Dynamic" : "Reference"
     return `${description} slot attribute(${typeChar}slot) is not allowed.`
 })
@@ -98,7 +98,7 @@ export const InvalidIdentifierName = withLocation(1005, (name: string) => {
     return `The identifier name(${name}) is invalid.`
 })
 
-export const NoEndTagMatched = withLocation(1037, (tag: string) => {
+export const NoEndTagMatched = withLocation(1036, (tag: string) => {
     return `The <${tag}> tag does not have a matched end tag(</${tag}>)`
 })
 
@@ -135,7 +135,7 @@ export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
     return "The interpolation attribute value must be wrapped with curly bracket."
 })
 
-export const EmbeddedLangNotInTopScope = withLocation(1038, (tag: string) => {
+export const EmbeddedLangNotInTopScope = withLocation(1037, (tag: string) => {
     return `The embedded language block(${tag}) can only be used in the top scope.`
 })
 
@@ -147,7 +147,7 @@ export const DirectivesCantCoexist = withLocation(1019, (directives: string[]) =
     return `Directives(${directives.join(", ")}) can not be used simultaneously.`
 })
 
-export const MissingStartDirective = withLocation(1025, (d: string, pd: string) => {
+export const MissingStartDirective = withLocation(1024, (d: string, pd: string) => {
     return `The ${d} directive must be used after ${pd} directive.`
 })
 
@@ -168,11 +168,7 @@ export const CanNotAcceptRefAttribute = withLocation(1015, (key: string, tag: st
     return `The normal tag(${tag}) can not reiceive any reference attribute, but got &${key}.`
 })
 
-export const NoForDirectiveCtxNameSpeciffied = withLocation(1023, (sectionName: string) => {
-    return `Must specify a name for the ${sectionName} section context of the #for directive.`
-})
-
-export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string, b: string) => {
+export const DuplicateAttributeKey = withLocation(1023, (tag: string, a: string, b: string) => {
     let description = ""
     const isComponent = tagIsComponentRE.test(tag)
     if (a[0] === "#") {
@@ -188,7 +184,7 @@ export const DuplicateAttributeKey = withLocation(1024, (tag: string, a: string,
     return `The name for ${description} of ${tag} is duplicate.`
 })
 
-export const DuplicateNameAttrForSlot = withLocation(1035, (value: string) => {
+export const DuplicateNameAttrForSlot = withLocation(1034, (value: string) => {
     return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
 })
 
@@ -196,31 +192,35 @@ export const DuplicateSlotAttr = withLocation(1014, (name: string, component: st
     return `Multiple elements used as slot in component(${component}) have the same name(${name})`
 })
 
-export const RefuseReferenceAttribute = withLocation(1027, (tag: string, attr: string) => {
-    return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
-})
-
-export const ContextIdentifierUsedAsReferenceTarget = withLocation(1036, (name: string) => {
-    return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
-})
-
-export const SequenceExpreesionInInterpolationBlock = withLocation(1041, () => {
-    return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
-})
-
-export const UnkonwDirective = withLocation(1029, (name: string) => {
-    return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
-})
-
-export const BadValueForRefAttr = withLocation(1032, (exp: string) => {
-    return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
-})
-
-export const BadEventListenerForSlotTag = withLocation(1044, (attr: string) => {
+export const BadEventListenerForSlotTag = withLocation(1043, (attr: string) => {
     return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
 })
 
-export const InvalidRefAttr = withLocation(1033, (tag: string, attr: string[], given: string) => {
+export const RefuseReferenceAttribute = withLocation(1026, (tag: string, attr: string) => {
+    return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
+})
+
+export const ContextIdentifierUsedAsReferenceTarget = withLocation(1035, (name: string) => {
+    return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
+})
+
+export const SequenceExpreesionInInterpolationBlock = withLocation(1040, () => {
+    return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
+})
+
+export const UnkonwDirective = withLocation(1028, (name: string) => {
+    return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
+})
+
+export const BadValueToRefAttr = withLocation(1031, (exp: string) => {
+    return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
+})
+
+export const BadValueToContextGenDirective = withLocation(1045, (directive: string) => {
+    return `Bad value for ${directive} directive, it expectes the following three node types: Identifier, ArrayExpression or ObjectExpression.`
+})
+
+export const InvalidRefAttr = withLocation(1032, (tag: string, attr: string[], given: string) => {
     const allowedAttrJoined = attr.join(" or ")
     const allowedAttrDescription = attr.map(item => "&" + item).join(", ")
     return `Normal tag(${tag}) can only accept ${allowedAttrJoined} as reference attribute(${allowedAttrDescription}), and the given item(&${given}) is not allowed.`
