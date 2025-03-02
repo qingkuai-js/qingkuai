@@ -122,10 +122,10 @@ export function analyzeAttribute(
     const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
     // 它记录了开始标签名的范围索引（包括开头的<，例如<div的范围索引)
-    const stnr: NumNum = [nodeStartIndex, startTagNameEndIndex] // Start Tag Name Range
+    const openingTagStartMarkerRange: NumNum = [nodeStartIndex, startTagNameEndIndex]
 
-    // 它记录了slot属性的相关信息：名称（包括单/双引号）以及插槽名称报错/跳转时的源码位置范围
-    const slotAttributeInfo: [string, number, number] = ['"default"', ...stnr]
+    // 它记录了slot属性的相关信息：名称以及插槽名称报错/跳转时的源码位置范围
+    const slotAttributeInfo: [string, number, number] = ["default", ...openingTagStartMarkerRange]
 
     // 记录当前组件文件中的slot信息
     const recordSlotInfo = (name: string, loc: ASTLocation) => {
@@ -163,12 +163,16 @@ export function analyzeAttribute(
         const equalSign = hasSlotDirective ? "=" : ""
         const parentComponentTag = node.parent!.componentTag
         interCodeSnippets.push([-3, `${equalSign}__c__.GetSlotProp(`])
-        recordInterWithSpecificRange(`${parentComponentTag},`, stnr[0] + 1, stnr[1])
+        recordInterWithSpecificRange(
+            `${parentComponentTag},`,
+            openingTagStartMarkerRange[0] + 1,
+            openingTagStartMarkerRange[1]
+        )
 
         // 当if条件成立时表示无slot属性
         if (range[0] === nodeStartIndex) {
-            recordInterWithSpecificRange(slotName + ")", ...stnr)
-            markPositionFlag(stnr[0], "isSlotAttrStart")
+            recordInterWithSpecificRange(slotName + ")", ...openingTagStartMarkerRange)
+            markPositionFlag(openingTagStartMarkerRange[0], "isSlotAttrStart")
             interCodeSnippets.push([-3, ";"])
         } else {
             interCodeSnippets.push([range[0], slotName], [-2, ");"])
@@ -179,7 +183,7 @@ export function analyzeAttribute(
     // slot标签无name属性时默认使用default，报错/跳转位置与开始标签名的范围一致
     // 如果存在name属性，则它一定是第一个元素，原因参考本文件顶部对于amp变量的注释
     if (isSlot && preProcessedAttr[0]?.key.raw !== "name") {
-        recordSlotInfo("default", getLocByIndex(...stnr))
+        recordSlotInfo("default", getLocByIndex(...openingTagStartMarkerRange))
     }
 
     preProcessedAttr.forEach(attr => {
@@ -193,7 +197,7 @@ export function analyzeAttribute(
         const isDirective = rk.startsWith("#")
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
         const pureKeyStartSourceIndex = key.loc.start.index + /\s*/.exec(rk)![0].length
-        const trimedValueStartSourceIndex = value.loc.start.index + /\s*/.exec(rv)![0].length
+        const trimedValueStartSourceIndex = value.loc.start.index + /^\s*/.exec(rv)![0].length
 
         // prettier-ignore
         const trimedValueLoc = getLocByIndex(trimedValueStartSourceIndex, trimedValueStartSourceIndex + trimedValue.length)
@@ -457,8 +461,9 @@ export function analyzeAttribute(
                         baseValueRange = [0, trimedValue.length]
                     } else {
                         const ast = parse(`(${trimedValue.slice(0, ofKeywordIndex)})`)?.body[0]
-                        baseValue = trimedValue.slice(ofKeywordIndex + 4)
                         baseValueRange = [ofKeywordIndex + 4, trimedValue.length]
+                        baseValue = trimedValue.slice(ofKeywordIndex + 4)
+                        hasContextIdentifier = true
 
                         if (!is(ast, "ExpressionStatement")) {
                             BadValueToForDirective(trimedValueLoc)
@@ -477,7 +482,11 @@ export function analyzeAttribute(
                                 break
                             case "SequenceExpression":
                                 const [firstNode, secondNode] = ast.expression.expressions
-                                if (!isPartNodeValid(firstNode) || !isPartNodeValid(secondNode)) {
+                                if (
+                                    !isPartNodeValid(firstNode) ||
+                                    !isPartNodeValid(secondNode) ||
+                                    ast.expression.expressions.length !== 2
+                                ) {
                                     BadValueToForDirective(trimedValueLoc)
                                     break outter
                                 }
@@ -877,7 +886,6 @@ export function analyzeAttribute(
                 } else {
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
-                recordSlotInfo('"default"', getLocByIndex(...stnr))
             } else {
                 if (!isSlotAttribute) {
                     recordSlotInfo(rv, attr.loc)
@@ -892,21 +900,12 @@ export function analyzeAttribute(
                 }
             }
         } else {
-            if (isCheckMode && isSlot) {
-                // 如果存在name属性，在这之前它一定被记录到了nameOfSlotTag中，因为普通
-                // name属性的优先级高于其他属性（参考当前文件顶部对amp变量描述的注释内容）
-                const slotName = JSON.parse(nameOfSlotTag || '"default"')
-
-                // slotInfo是一个存储了某个slot标签上除name属性外其他属性的值部分的源码索引，
-                // 它们需要通过ts语言服务将属性组合为一个对象并获取对象类型来完善插槽属性类型检查
-                const { properties } = inputDescriptor.slotInfo[slotName]
-
-                // Value Index in Intermidiate(code)
-                let vii = trimedValueStartSourceIndex
-                if (isInterpolation && vii === -1) {
-                    vii = key.loc.start.index
-                }
-                properties.push([pureKey, getRangeByLoc(key.loc), isInterpolation ? vii : rv])
+            if (isCheckMode && isSlot && nameOfSlotTag) {
+                inputDescriptor.slotInfo[JSON.parse(nameOfSlotTag)].properties.push([
+                    pureKey,
+                    getRangeByLoc(key.loc),
+                    isInterpolation ? trimedValueStartSourceIndex : rv
+                ])
             }
 
             const tir = isInterpolation ? transAttrValue(trimedValue) : stringify(rv)
@@ -960,10 +959,10 @@ export function analyzeAttribute(
         })
 
         interCodeSnippets.push([-1, "new "])
-        recordInterWithSpecificRange(`${node.componentTag}(`, ...stnr)
+        recordInterWithSpecificRange(`${node.componentTag}(`, ...openingTagStartMarkerRange)
 
         for (const target of attrRecords) {
-            interCodeSnippets.push([stnr[0], "{"])
+            interCodeSnippets.push([openingTagStartMarkerRange[0], "{"])
             target.forEach((item, index) => {
                 const isValue = index % 2 !== 0
                 const isLast = index === target.length - 1
@@ -980,7 +979,7 @@ export function analyzeAttribute(
             } else {
                 interCodeSnippets.push([-2, "} as never"])
             }
-            interCodeSnippets.push([stnr[1], ","])
+            interCodeSnippets.push([openingTagStartMarkerRange[1], ","])
         }
         interCodeSnippets.push([-2, `0${isTS ? " as any" : ""});`])
     }
@@ -1063,6 +1062,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             // 检查必须传递属性值的属性是否有值
             if (MUST_PASS_VALUE_DIRECTIVES.has(pureKey) && !rv) {
                 NoValueForRequiredValueAttribute(rk, loc)
+                continue
             }
         }
 

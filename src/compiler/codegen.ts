@@ -144,9 +144,11 @@ export function generateCompileResult(
 export function generateInterResult(source: string, typeRefStatement: string) {
     let typeDefStatement: string
     if (!inputDescriptor.script.isTS) {
-        typeDefStatement = `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;`
+        typeDefStatement = `/**@typedef {never}Props @typedef {never}Refs*/\n`
+        typeDefStatement += `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;\n`
     } else {
-        typeDefStatement = `const refs=__c__.GetTypedValue<Refs>();const props=__c__.GetTypedValue<Props>();`
+        typeDefStatement = `type Props=never;type Refs=never;\n`
+        typeDefStatement += `const refs=__c__.GetTypedValue<Refs>();const props=__c__.GetTypedValue<Props>();\n`
     }
 
     const trl = typeRefStatement.length
@@ -180,8 +182,10 @@ export function generateInterResult(source: string, typeRefStatement: string) {
 
         let asasi = -1 // Added Snippet Applied Source Index
 
-        // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到首个
-        // 有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引（结束位置需+1）
+        // 中间代码片段的第一个元素有三个值：-3、-2、-1，它们对应的含义如下：
+        // -3：当前片段的所有位置对应的源码索引都为-1（没有与之对应的源码索引）
+        // -2：向前查找其他片段的第一个有效源码索引（不为-1），此片段的所有位置对应的源码索引都与找到的源码索引一致
+        // -1：向后查找其他片段的第一个有效源码索引（不为-1），此片段中的所有位置对应的源码索引都为这个找到的有效源码索引+1
         if (toi === -1) {
             for (let i = index + 1; i < snippetLen; i++) {
                 const si = interCodeSnippets[i]?.[0]

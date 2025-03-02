@@ -1,5 +1,5 @@
 import { parseTemplateStandalone } from "./parser/template"
-import { findEndBracket, findOutOfSC, kebab2Camel } from "../util/compiler/strings"
+import { camel2Kebab, findEndBracket, findOutOfSC, kebab2Camel } from "../util/compiler/strings"
 
 export type {
     SlotInfo,
@@ -18,4 +18,4 @@ export { isCompileWarning } from "./message/warn"
 export { PositionFlag } from "../util/shared/flag"
 
 export const parseTemplate = parseTemplateStandalone
-export const util = { findEndBracket, findOutOfSC, kebab2Camel }
+export const util = { findEndBracket, findOutOfSC, kebab2Camel, camel2Kebab }

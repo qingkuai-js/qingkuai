@@ -29,7 +29,7 @@ export function analyzeTemplate(
     nodes = nodes.filter(node => !node.isEmbedded)
 
     for (let i = 0; i < nodes.length; i++) {
-        let { parent, tag, content, attributes, children, componentTag } = nodes[i]
+        let { tag, content, attributes, children, componentTag } = nodes[i]
 
         let trimedContentStartIndex: number
         let currentContext: TemplateContext

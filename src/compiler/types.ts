@@ -204,7 +204,7 @@ export type TransformInterpolationRet =
  *
  * - properties中的三个元素分别表示：属性名称、属性名称源码范围、属性值在中间代码中的开始位置
  *   注意：第三个元素在分析阶段记录的是源码索引，在生成中间代码后才会通过源码索引换取中间代码索引
- *   当属性是一个普通属性时，properties的第三个元素是一个字符串，值为属性值（静态字符串常量类型）
+ *   当属性是一个HTML普通属性时，properties的第三个元素是一个字符串，值为属性值（静态字符串常量类型）
  *
  * - landingRange: indicates the source position for errors/code jumping, it will
  *   refs to the range of start tag name(<slot) when there is no name attribute.

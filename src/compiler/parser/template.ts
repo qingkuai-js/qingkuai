@@ -203,11 +203,12 @@ export function parseTemplate(source: string, standalone = false) {
                 const equalTokenEndIndex = reduceSource(mi + ml).index
                 const equalTokenEndLoc = getLocByIndex(equalTokenEndIndex)
 
-                // 普通属性值未被引号包裹或插值属性值未被大括号包裹时，如果等号后为空白字符，
-                // 则属性值为空字符串，否则属性值则为等号之后的连续的非空白字符串
+                // 普通属性值未被引号包裹或插值属性值未被大括号包裹时报错，如果等号后为空白字符，
+                // 解析出的属性值为空字符串，否则解析出的属性值则为等号之后的连续的非空白字符串
+                // 注意：在独立调用模式（standalone=true)下，插值属性使用单双引号可以正常解析
                 if (
-                    (isInterpolationAttr && !/^\s*\{/.test(dps)) ||
-                    (!isInterpolationAttr && !/^\s*['"]/.test(dps))
+                    (!isInterpolationAttr && !/^\s*['"]/.test(dps)) ||
+                    (!standalone && isInterpolationAttr && !/^\s*\{/.test(dps))
                 ) {
                     const endIndex = /\s|>|$/.exec(dps)!.index
                     if (!isInterpolationAttr) {
@@ -226,14 +227,14 @@ export function parseTemplate(source: string, standalone = false) {
                         (wrapValueStartIndex = reduceSpaces().index)
                     )
 
-                    if (isInterpolationAttr) {
+                    if (isInterpolationAttr && dps[0] === "{") {
                         quoteKind = "curly"
                     } else {
                         quoteKind = dps[0] === "'" ? "single" : "double"
                     }
 
                     // 如果找不到属性值结束字符（关闭大括号或单双引号）则报错，空插值块也需要报错
-                    if (isInterpolationAttr) {
+                    if (quoteKind === "curly") {
                         if ((endCharIndex = findEndBracket(dps, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
                         } else if (findOutOfSC(dps.slice(1, endCharIndex), /\S/) === -1) {
