@@ -1,4 +1,5 @@
 import { parseTemplateStandalone } from "./parser/template"
+import { isEmbededLanguageTag } from "../util/compiler/sundry"
 import { camel2Kebab, findEndBracket, findOutOfSC, kebab2Camel } from "../util/compiler/strings"
 
 export type {
@@ -18,4 +19,4 @@ export { isCompileWarning } from "./message/warn"
 export { PositionFlag } from "../util/shared/flag"
 
 export const parseTemplate = parseTemplateStandalone
-export const util = { findEndBracket, findOutOfSC, kebab2Camel, camel2Kebab }
+export const util = { findEndBracket, findOutOfSC, kebab2Camel, camel2Kebab, isEmbededLanguageTag }

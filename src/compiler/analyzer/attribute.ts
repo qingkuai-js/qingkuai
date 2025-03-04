@@ -8,16 +8,15 @@ import type {
     FilteredTemplateAttribute,
     TransformInterpolationOptionalParam
 } from "../types"
+import type { AnyObject, NumNum } from "../../util/types"
 import type { AnyNode, EsPattern } from "../estree/types"
-import type { AnyObject, NumNum, StartBracket } from "../../util/types"
 
 import {
     confirmAlias,
     getRangeByLoc,
     findSpecificAttr,
-    markPositionFlag,
     recordInterExpression,
-    recordInterWithSpecificRange
+    recordInterSnippetWithSpecificRange
 } from "../../util/compiler/sundry"
 import {
     InvalidEventFlag,
@@ -27,11 +26,6 @@ import {
     InvalidEventFlagForComponent,
     ConflictNormalKeyEventModifier
 } from "../message/warn"
-import {
-    validIdentifierNameRE,
-    DestructuringContextRE,
-    expressionReplaceWithSpaceRE
-} from "../regular"
 import {
     COULD_USE_REF_TAGS,
     MUST_PASS_VALUE_DIRECTIVES,
@@ -70,6 +64,7 @@ import { getLocByIndex } from "../../util/compiler/locations"
 import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
+import { validIdentifierNameRE, expressionReplaceWithSpaceRE } from "../regular"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { stringify, kebab2Camel, findOutOfSC, normalStringify } from "../../util/compiler/strings"
 
@@ -122,10 +117,7 @@ export function analyzeAttribute(
     const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
     // 它记录了开始标签名的范围索引（包括开头的<，例如<div的范围索引)
-    const openingTagStartMarkerRange: NumNum = [nodeStartIndex, startTagNameEndIndex]
-
-    // 它记录了slot属性的相关信息：名称以及插槽名称报错/跳转时的源码位置范围
-    const slotAttributeInfo: [string, number, number] = ["default", ...openingTagStartMarkerRange]
+    const stnr: NumNum = [nodeStartIndex, startTagNameEndIndex] // Start Tag Name Range
 
     // 记录当前组件文件中的slot信息
     const recordSlotInfo = (name: string, loc: ASTLocation) => {
@@ -137,7 +129,19 @@ export function analyzeAttribute(
                 landingRange: getRangeByLoc(loc)
             }
         }
-        nameOfSlotTag = stringify(name)
+        nameOfSlotTag = name
+    }
+
+    /**
+     * 获取name或slot属性节点，若其存在则一定为preProcessedAttr的前两个元素，原因见{@link apm}变量定义处注释
+     */
+    const getNameOfSlotAttribute = (name: "name" | "slot") => {
+        if (preProcessedAttr[0]?.key.raw === name) {
+            return preProcessedAttr[0]
+        }
+        if (preProcessedAttr[1]?.key.raw === name) {
+            return preProcessedAttr[1]
+        }
     }
 
     // 修改continueRE变量，这里需要检测此变量是否已经被赋值，若已被赋值则不能覆盖原来的值，避免
@@ -146,44 +150,41 @@ export function analyzeAttribute(
         shouldContinueDirective = isNull((continueRE = v)) ? undefined : pureKey
     }
 
-    // 记录slot节点中间代码片段的方法，当属性值未被单双引号包裹时无需处理
-    const recoedSlotAttributeInterSnippet = () => {
-        const [slotName, ...range] = slotAttributeInfo
-        if (!/^['"]/.test(slotName)) {
-            return
-        }
-
-        const parsedSlotName = JSON.parse(slotName)
-        if (!existingSlotOfAnyTag.has(parsedSlotName)) {
-            existingSlotOfAnyTag.add(parsedSlotName)
+    // 记录组件一级子节点的slot属性的中间代码片段
+    const recordSlotAttributeInterSnippet = () => {
+        const slotAttr = getNameOfSlotAttribute("slot")
+        const slotName = slotAttr?.value.raw || "default"
+        if (!existingSlotOfAnyTag.has(slotName)) {
+            existingSlotOfAnyTag.add(slotName)
         } else {
-            DuplicateSlotAttr(parsedSlotName, node.parent!.tag, ...range)
+            DuplicateSlotAttr(
+                slotName,
+                node.parent!.tag,
+                slotAttr?.value.loc || getLocByIndex(...stnr)
+            )
         }
-
-        const equalSign = hasSlotDirective ? "=" : ""
-        const parentComponentTag = node.parent!.componentTag
-        interCodeSnippets.push([-3, `${equalSign}__c__.GetSlotProp(`])
-        recordInterWithSpecificRange(
-            `${parentComponentTag},`,
-            openingTagStartMarkerRange[0] + 1,
-            openingTagStartMarkerRange[1]
-        )
-
-        // 当if条件成立时表示无slot属性
-        if (range[0] === nodeStartIndex) {
-            recordInterWithSpecificRange(slotName + ")", ...openingTagStartMarkerRange)
-            markPositionFlag(openingTagStartMarkerRange[0], "isSlotAttrStart")
-            interCodeSnippets.push([-3, ";"])
-        } else {
-            interCodeSnippets.push([range[0], slotName], [-2, ");"])
-            markPositionFlag(range[0], "isSlotAttrStart")
+        if (isCheckMode) {
+            interCodeSnippets.push([-2, `__c__.GetSlotProp(${node.parent!.componentTag},`])
+            if (slotAttr) {
+                recordInterSnippetWithSpecificRange(
+                    normalStringify(slotName),
+                    slotAttr.value.loc.start.index,
+                    slotAttr.value.loc.end.index
+                )
+            } else {
+                recordInterSnippetWithSpecificRange(
+                    normalStringify(slotName),
+                    nodeStartIndex,
+                    stnr[1]
+                )
+            }
+            interCodeSnippets.push([-2, ");"])
         }
     }
 
-    // slot标签无name属性时默认使用default，报错/跳转位置与开始标签名的范围一致
-    // 如果存在name属性，则它一定是第一个元素，原因参考本文件顶部对于amp变量的注释
-    if (isSlot && preProcessedAttr[0]?.key.raw !== "name") {
-        recordSlotInfo("default", getLocByIndex(...openingTagStartMarkerRange))
+    // slot标签无name属性或name属性为空时默认使用default，报错/跳转位置与开始标签名称一致
+    if (isSlot && !getNameOfSlotAttribute("name")?.value.raw) {
+        recordSlotInfo("default", getLocByIndex(...stnr))
     }
 
     preProcessedAttr.forEach(attr => {
@@ -197,7 +198,7 @@ export function analyzeAttribute(
         const isDirective = rk.startsWith("#")
         const isInterpolation = isEvent || isDynamic || isDirective || isRef
         const pureKeyStartSourceIndex = key.loc.start.index + /\s*/.exec(rk)![0].length
-        const trimedValueStartSourceIndex = value.loc.start.index + /^\s*/.exec(rv)![0].length
+        const trimedValueStartSourceIndex = value.loc.start.index + /\s*/.exec(rv)![0].length
 
         // prettier-ignore
         const trimedValueLoc = getLocByIndex(trimedValueStartSourceIndex, trimedValueStartSourceIndex + trimedValue.length)
@@ -248,14 +249,12 @@ export function analyzeAttribute(
                         [-1, "{const "],
                         [trimedValueStartSourceIndex, trimedValue]
                     )
-
                     if (pureKey === "slot") {
-                        recoedSlotAttributeInterSnippet()
-                    } else if (pureKey === "slot") {
+                        interCodeSnippets.push([-2, "="])
+                        recordSlotAttributeInterSnippet()
+                    } else {
                         interCodeSnippets.push([-2, "=__c__.getResolve("])
                         interCodeSnippets.push(awaitExpression!, [-2, ");"])
-                    } else {
-                        interCodeSnippets.push([-2, `=0${isTS ? " as any" : ""};`])
                     }
                 } else {
                     const ast = (parse(`(${trimedValue})`)?.body[0] as any).expression
@@ -278,10 +277,6 @@ export function analyzeAttribute(
                     }
                 }
             }
-        }
-
-        if (isComponent) {
-            markPositionFlag(key.loc.start.index, "isComponentAttrStart")
         }
 
         // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
@@ -871,7 +866,7 @@ export function analyzeAttribute(
                 eventStu.push(concatStrAndTIR(prefix, tir, postfix))
             }
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
-            // slot标签的name属性（或组件的直接子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
+            // slot标签的name属性（或组件的一级子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
             // 这里只需检测name或slot属性是不是动态类型即可，因为引用类型属性的处理不会经过这里的代码块
             const isSlotAttribute = pureKey === "slot"
             if (isDynamic) {
@@ -887,21 +882,15 @@ export function analyzeAttribute(
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
             } else {
-                if (!isSlotAttribute) {
-                    recordSlotInfo(rv, attr.loc)
+                if (isSlotAttribute) {
+                    slotOfAnyTag = rv
                 } else {
-                    const sqi = value.loc.start.index - 1
-                    const qc = inputDescriptor.source[sqi]
-                    slotAttributeInfo[1] = sqi
-                    slotOfAnyTag = stringify(rv)
-                    slotAttributeInfo[0] = `${qc}${attr.value.raw}${qc}`
-                    markPositionFlag(sqi, "isSlotAttrStartQuote")
-                    markPositionFlag(value.loc.end.index + 1, "isSlotAttrEndQuote")
+                    recordSlotInfo(rv, attr.loc)
                 }
             }
         } else {
-            if (isCheckMode && isSlot && nameOfSlotTag) {
-                inputDescriptor.slotInfo[JSON.parse(nameOfSlotTag)].properties.push([
+            if (isCheckMode && isSlot) {
+                inputDescriptor.slotInfo[nameOfSlotTag!].properties.push([
                     pureKey,
                     getRangeByLoc(key.loc),
                     isInterpolation ? trimedValueStartSourceIndex : rv
@@ -959,17 +948,17 @@ export function analyzeAttribute(
         })
 
         interCodeSnippets.push([-1, "new "])
-        recordInterWithSpecificRange(`${node.componentTag}(`, ...openingTagStartMarkerRange)
+        recordInterSnippetWithSpecificRange(`${node.componentTag}(`, ...stnr)
 
         for (const target of attrRecords) {
-            interCodeSnippets.push([openingTagStartMarkerRange[0], "{"])
+            interCodeSnippets.push([stnr[0], "{"])
             target.forEach((item, index) => {
                 const isValue = index % 2 !== 0
                 const isLast = index === target.length - 1
                 item[0] += isValue && !isLast ? "," : ""
                 if (!isValue) {
                     // @ts-expect-error: type assert
-                    recordInterWithSpecificRange(...item)
+                    recordInterSnippetWithSpecificRange(...item)
                 } else {
                     interCodeSnippets.push([item[1], item[0]])
                 }
@@ -979,14 +968,14 @@ export function analyzeAttribute(
             } else {
                 interCodeSnippets.push([-2, "} as never"])
             }
-            interCodeSnippets.push([openingTagStartMarkerRange[1], ","])
+            interCodeSnippets.push([stnr[1], ","])
         }
         interCodeSnippets.push([-2, `0${isTS ? " as any" : ""});`])
     }
 
     // slot节点未使用slot指令时记录slot属性相关的中间代码片段
     if (isCheckMode && parentIsComponent && !hasSlotDirective) {
-        recoedSlotAttributeInterSnippet()
+        recordSlotAttributeInterSnippet()
     }
 
     return {
@@ -994,8 +983,6 @@ export function analyzeAttribute(
         directiveStu,
         attributeStu,
         insertNullNum,
-        slotOfAnyTag,
-        nameOfSlotTag,
         createTemplate,
         awaitExpression,
         contextBlockCount,
@@ -1003,7 +990,9 @@ export function analyzeAttribute(
             re: continueRE,
             arg: continueArg,
             by: shouldContinueDirective
-        }
+        },
+        slotOfAnyTag: normalStringify(slotOfAnyTag),
+        nameOfSlotTag: normalStringify(nameOfSlotTag)
     }
 }
 

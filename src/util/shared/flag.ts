@@ -28,9 +28,5 @@ export const EventWrapperFlag = {
 }
 
 export const PositionFlag = {
-    inScript: 1 << 0,
-    isSlotAttrStart: 1 << 2,
-    isSlotAttrEndQuote: 1 << 3,
-    isSlotAttrStartQuote: 1 << 4,
-    isComponentAttrStart: 1 << 5
+    inScript: 1 << 0
 }

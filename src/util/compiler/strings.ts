@@ -117,9 +117,12 @@ export const findOutOfSC: FindOutOfSC = (
 }
 
 // 驼峰命名转串型命名格式
-export function camel2Kebab(s: string) {
-    return s.replace(/[A-Z]/g, (m, i) => {
-        return (i === 0 ? "" : "-") + m.toLocaleLowerCase()
+export function camel2Kebab(str: string, allowFullLower = true) {
+    if (!allowFullLower && !/[A-Z]/.test(str.slice(1))) {
+        return str
+    }
+    return str.replace(/[A-Z]/g, (m, i) => {
+        return (i === 0 ? "" : "-") + m.toLowerCase()
     })
 }
 

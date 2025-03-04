@@ -4,14 +4,16 @@ import type {
     TemplateAttribute,
     ASTPositionWithFlag
 } from "../../compiler/types"
-import type { PartialAnyNode } from "../../compiler/estree/types"
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
 import { PositionFlag } from "../shared/flag"
+import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
-import { validIdentifierNameRE, bannedIdentifierFormatRE } from "../../compiler/regular"
 import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
-import { IdentifierFormatIsNotAllowed, InvalidIdentifierName } from "../../compiler/message/error"
+
+export function isEmbededLanguageTag(tag: string) {
+    return templateEmbeddedLangTagRE.test(tag)
+}
 
 // 通过ASTLocation获取[number,number]类型的索引范围表示
 export function getRangeByLoc(loc: ASTLocation): NumNum {
@@ -121,7 +123,7 @@ export function recordInterExpression(startSourceIndex: number, exp: string, ran
 
     // range存在时需要调用recordInterWithSpecificRange方法记录中间代码片段
     if (!isUndefined(range)) {
-        recordInterWithSpecificRange(exp, ...range)
+        recordInterSnippetWithSpecificRange(exp, ...range)
     } else {
         interCodeSnippets.push([startSourceIndex, exp])
     }
@@ -131,7 +133,7 @@ export function recordInterExpression(startSourceIndex: number, exp: string, ran
 
 // 根据指定原始范围记录一个中间代码片段，有时生成的中间代码片段会与源码片段长度不一致，此时只需将源码除最后一个
 // 字符外的部分正常记录，最后一个字符记录到结束位置即可，如果原始片段长度仅为1，可以在中间代码片段最后补一个空格
-export function recordInterWithSpecificRange(snippet: string, start: number, end: number) {
+export function recordInterSnippetWithSpecificRange(snippet: string, start: number, end: number) {
     snippet.length === 1 && (snippet += " ")
     interCodeSnippets.push([start, snippet.slice(0, -1)], [end, snippet.slice(-1)])
 }
