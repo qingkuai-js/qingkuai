@@ -34,7 +34,7 @@ export function content2script(content: string, startSourceIndex: number) {
                 !useStringify &&
                 transformInterpolation(str, startSourceIndex, context, "content")
             ) {
-                recordInterExpression(sourceIndex + 1, str)
+                recordInterExpression(str, [sourceIndex + 1])
             }
             return (contentSourceIndex += str.length + (useStringify ? 0 : 2)), void 0
         }

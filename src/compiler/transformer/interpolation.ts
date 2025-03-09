@@ -12,9 +12,9 @@ import type { GeneralFunc } from "../../util/types"
 import {
     BadValueToRefAttr,
     InterpolationExpOutOfLimit,
+    IdentifierFormatIsNotAllowed,
     ContextIdentifierUsedAsReferenceTarget,
-    SequenceExpreesionInInterpolationBlock,
-    IdentifierFormatIsNotAllowed
+    SequenceExpreesionInInterpolationBlock
 } from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
@@ -328,7 +328,7 @@ export function transformInterpolation(
 
     // 记录表达式的sourcemap片段，注意：这里的mpaaings与sourcemap中的表示有所不同，它的四个元素
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
-    // 在调用transformTemplate时会根据这个mappings生成正确的sourcemap的mappings
+    // 在调用transformTemplate时会根据这个mappings来转换生成sourcemap需要的mappings格式
     if (shouldGenerateSourcemap && useGetter) {
         sourcemapIndexes.sort((a, b) => {
             return a - b
@@ -354,6 +354,11 @@ export function transformInterpolation(
         if (firstMappingOffsetLeft && mappings[0]) {
             mappings[0][1] -= firstMappingOffsetLeft
         }
+    }
+
+    // 没有属性值时将mappings首个记录的源码索引向左偏移1
+    if (optionalParams.attributeWithNoValue && mappings.length) {
+        mappings[0][0]--, mappings[0][3]--
     }
 
     // 未转换成getter时不需要源码映射

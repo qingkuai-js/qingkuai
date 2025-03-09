@@ -78,6 +78,23 @@ export function getPositionOfEachChar(str: string) {
     return ret
 }
 
+// 从templateNode的attribute列表中查找符合指定模式的属性
+export function findSpecificAttr<T extends TemplateAttribute>(
+    attrs: T[],
+    pattern: RegExp | string
+): T | undefined {
+    const patternIsString = isString(pattern)
+    for (const attr of attrs) {
+        if (
+            (patternIsString && attr.key.raw === pattern) ||
+            (!patternIsString && pattern.test(attr.key.raw))
+        ) {
+            return attr
+        }
+    }
+    return undefined
+}
+
 // 判断某个索引是否被er包围，er的情况同getPieceOfStrOutOfER相同
 export function isIndexEliminated(index: number, ranges: EliminateRanges) {
     for (const range of ranges) {
@@ -98,34 +115,20 @@ export function markPositionFlag(index: number, flagName: PositionFlagKeys) {
     inputDescriptor.positions[index].flag |= PositionFlag[flagName]
 }
 
-// 从templateNode的attribute列表中查找符合指定模式的属性
-export function findSpecificAttr(attrs: TemplateAttribute[], pattern: RegExp | string) {
-    const patternIsString = isString(pattern)
-    for (const attr of attrs) {
-        if (
-            (patternIsString && attr.key.raw === pattern) ||
-            (!patternIsString && pattern.test(attr.key.raw))
-        ) {
-            return attr
-        }
-    }
-    return undefined
-}
-
 // 记录表达式中间代码片段，它们在中间代码中会被赋值给__c__.Receiver
 // 为什么要这样处理：插值块中只能接受表达式，这一点与赋值表达式等号右侧的规则是一致的
-export function recordInterExpression(startSourceIndex: number, exp: string, range?: NumNum) {
+export function recordInterExpression(exp: string, range: [number, number?]) {
     if (isEmptyString(exp)) {
         return
     }
 
     interCodeSnippets.push([-3, "__c__.Receiver="])
 
-    // range存在时需要调用recordInterWithSpecificRange方法记录中间代码片段
-    if (!isUndefined(range)) {
-        recordInterSnippetWithSpecificRange(exp, ...range)
+    // range[1]存在时需要调用recordInterWithSpecificRange方法记录中间代码片段
+    if (isUndefined(range[1])) {
+        interCodeSnippets.push([range[0], exp])
     } else {
-        interCodeSnippets.push([startSourceIndex, exp])
+        recordInterSnippetWithSpecificRange(exp, ...(range as NumNum))
     }
 
     interCodeSnippets.push([-2, ";"])

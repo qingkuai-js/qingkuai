@@ -35,6 +35,13 @@ export interface CompileResult {
     inputDescriptor: InputDescriptor
 }
 
+export interface InterAttributeRecord {
+    value: string
+    range: NumNum
+    type: "key" | "value"
+    specificRange: boolean
+}
+
 export interface SourceMapInfo {
     mappings: SourceMapMappings
     hasScript: boolean
@@ -135,7 +142,8 @@ export interface TemplateNode {
     next: TemplateNode | undefined
     attributes: TemplateAttribute[]
 }
-export type FilteredTemplateAttribute = TemplateAttribute & {
+export type PreprocessedTemplateAttribute = TemplateAttribute & {
+    inferredValue: string
     positionMap?: number[]
 }
 
@@ -190,6 +198,7 @@ export interface TransformInterpolationOptionalParam {
     usedAsSetter?: boolean
     isKeyDirective?: boolean
     isComponentEvent?: boolean
+    attributeWithNoValue?: boolean
 }
 
 export type TransformInterpolationRet =
