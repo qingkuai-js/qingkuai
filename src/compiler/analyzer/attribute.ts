@@ -15,6 +15,7 @@ import {
     confirmAlias,
     getRangeByLoc,
     findSpecificAttr,
+    markPositionFlag,
     recordInterExpression,
     recordInterSnippetWithSpecificRange
 } from "../../util/compiler/sundry"
@@ -164,7 +165,7 @@ export function analyzeAttribute(
             )
         }
         if (isCheckMode) {
-            interCodeSnippets.push([-2, `__c__.GetSlotProp(${node.parent!.componentTag},`])
+            interCodeSnippets.push([-3, `__c__.GetSlotProp(${node.parent!.componentTag},`])
             if (slotAttr) {
                 recordInterSnippetWithSpecificRange(
                     normalStringify(slotName),
@@ -250,10 +251,10 @@ export function analyzeAttribute(
                         [trimedValueStartSourceIndex, trimedValue]
                     )
                     if (pureKey === "slot") {
-                        interCodeSnippets.push([-2, "="])
+                        interCodeSnippets.push([-3, "="])
                         recordSlotAttributeInterSnippet()
                     } else {
-                        interCodeSnippets.push([-2, "=__c__.getResolve("])
+                        interCodeSnippets.push([-3, "=__c__.getResolve("])
                         interCodeSnippets.push(awaitExpression!, [-2, ");"])
                     }
                 } else {
@@ -283,6 +284,10 @@ export function analyzeAttribute(
         if ((pureKey = rk.slice(+isInterpolation)) && isComponent) {
             pureKey = kebab2Camel(pureKey)
         }
+
+        // 标记属性的开始位置
+        markPositionFlag(key.loc.start.index, "isAttributeStart")
+        isInterpolation && markPositionFlag(key.loc.start.index, "isInterpolationAttributeStart")
 
         // 处理引用值，如果是组件，就把引用传递放在eventStu的位置
         // 由于select的value属性与普通属性的处理逻辑并不相同（需要判断子option元素的选择情况，
@@ -966,7 +971,7 @@ export function analyzeAttribute(
             if (!isTS || target.length > 0) {
                 interCodeSnippets.push([-2, "}"])
             } else {
-                interCodeSnippets.push([-2, "} as never"])
+                interCodeSnippets.push([-2, "}"])
             }
             interCodeSnippets.push([stnr[1], ","])
         }

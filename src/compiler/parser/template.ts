@@ -81,7 +81,7 @@ export function parseTemplate(source: string, standalone = false) {
     }
 
     // 找到结束标签的关闭字符>，如果遇到无意义字符（非空白及>）则报错
-    function findCloseCharOfEndTag(tag: string) {
+    function findCloseCharOfEndTag() {
         if ((reduceSpaces(), !dps.startsWith(">"))) {
             const endCharIndex = dps.indexOf(">")
             if (endCharIndex !== -1) {
@@ -144,7 +144,7 @@ export function parseTemplate(source: string, standalone = false) {
 
             // 检查模式下直接快进到结束标签关闭字符，继续执行解析...
             reduceSource(tagStructure.length)
-            findCloseCharOfEndTag(tagStructure.slice(1))
+            findCloseCharOfEndTag()
             return
         }
 
@@ -325,7 +325,7 @@ export function parseTemplate(source: string, standalone = false) {
             // 检查结束标签是否闭合，并记录当前ast节点的相关位置信息
             if (!neverOver) {
                 ast.endTagStartPos = getPosByIndex(endtagStartIndex)
-                if (findCloseCharOfEndTag(tag)) {
+                if (findCloseCharOfEndTag()) {
                     ast.range[1] = index
                     ast.loc.end = getPosByIndex(index)
                 } else {
@@ -397,7 +397,7 @@ export function parseTemplate(source: string, standalone = false) {
                     ast.endTagStartPos = getPosByIndex(endtagStartIndex)
 
                     // 未找到结束标签的关闭字符时报错
-                    if (findCloseCharOfEndTag(tag)) {
+                    if (findCloseCharOfEndTag()) {
                         ast.range[1] = index
                         ast.loc.end = positions[index]
                     } else {
@@ -424,9 +424,9 @@ export function parseTemplate(source: string, standalone = false) {
                     break
                 }
 
-                // 继续递归解析textContext或子标签
-                cur = (startWithTagStructureRE.test(dps) ? parse : parseContent)(ast, cur)
-                cur && ast.children.push(cur) && cur.prev && (cur.prev.next = cur)
+                // 继续递归解析textContent或子标签
+                const child = (startWithTagStructureRE.test(dps) ? parse : parseContent)(ast, cur)
+                child && ast.children.push((cur = child)) && cur.prev && (cur.prev.next = cur)
             }
         } else if (isSelfClosingTag || (isComponent && closeMatched[2])) {
             ast.range[1] = index

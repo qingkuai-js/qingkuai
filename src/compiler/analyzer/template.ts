@@ -10,6 +10,7 @@ import { SPECIAL_TAGS } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { lastElem } from "../../util/shared/sundry"
+import { markPositionFlag } from "../../util/compiler/sundry"
 import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
@@ -57,6 +58,7 @@ export function analyzeTemplate(
             currentRet.tag = stringify(tag)
         } else {
             currentRet.tag = kebab2Camel(tag, true)
+            markPositionFlag(nodes[i].range[0], "isComponentStart")
         }
 
         if (isUndefined(context)) {
