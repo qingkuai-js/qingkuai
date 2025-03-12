@@ -150,7 +150,8 @@ export function parseTemplate(source: string, standalone = false) {
 
         // 初始 template AST 节点
         const tag = tagStructure.slice(1)
-        const isComponent = tagIsComponentRE.test(tag)
+        const langMatched = templateEmbeddedLangTagRE.exec(tag)
+        const isComponent = !langMatched && tagIsComponentRE.test(tag)
         const ast = initTemplateNode(positions, {
             tag,
             prev,
@@ -307,7 +308,6 @@ export function parseTemplate(source: string, standalone = false) {
         }
 
         // script或style标签直接快进到闭合标签处
-        const langMatched = templateEmbeddedLangTagRE.exec(tag)
         const embeddedLang = langMatched?.[1] || ""
         if (SPECIAL_TAGS.has(tag) || embeddedLang) {
             const endTagIndex = findOutOfSC(dps, "</" + tag)

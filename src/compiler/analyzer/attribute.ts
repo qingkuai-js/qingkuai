@@ -55,9 +55,9 @@ import {
     CanNotAcceptRefAttribute,
     DuplicateNameAttrForSlot,
     BadEventListenerForSlotTag,
+    BadValueToContextGenDirective,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective,
-    BadValueToContextGenDirective
+    UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
 import { is } from "../estree/assert"
@@ -166,21 +166,20 @@ export function analyzeAttribute(
             )
         }
         if (isCheckMode) {
-            interCodeSnippets.push([-3, `__c__.GetSlotProp(${node.parent!.componentTag},`])
+            let [startSourceIndex, endSourceIndex] = [0, 0]
             if (slotAttr) {
-                recordInterSnippetWithSpecificRange(
-                    normalStringify(slotName),
-                    slotAttr.value.loc.start.index,
-                    slotAttr.value.loc.end.index
-                )
+                endSourceIndex = slotAttr.value.loc.end.index
+                startSourceIndex = slotAttr.value.loc.start.index
             } else {
-                recordInterSnippetWithSpecificRange(
-                    normalStringify(slotName),
-                    nodeStartIndex,
-                    stnr[1]
-                )
+                ;[startSourceIndex, endSourceIndex] = [nodeStartIndex, stnr[1]]
             }
-            interCodeSnippets.push([-2, ");"])
+            interCodeSnippets.push([-3, `__c__.GetSlotProp(${node.parent!.componentTag},`])
+            recordInterSnippetWithSpecificRange(
+                normalStringify(slotName) + ")",
+                startSourceIndex,
+                endSourceIndex
+            )
+            interCodeSnippets.push([-3, ";"])
         }
     }
 
@@ -380,23 +379,43 @@ export function analyzeAttribute(
             } else {
                 if (!isComponent && isTS && iv) {
                     const recordValueCheckSnippet = (type: string) => {
+                        const suffix = pureKey === "group" ? "," : ")"
                         interCodeSnippets.push([-3, `__c__.Satisfy${type}(`])
-                        if (!rv) {
-                            recordInterSnippetWithSpecificRange(iv, ...keyRange)
+                        if (rv) {
+                            interCodeSnippets.push(
+                                [trimedValueStartSourceIndex, trimedValue],
+                                [-2, suffix]
+                            )
                         } else {
-                            interCodeSnippets.push([trimedValueStartSourceIndex, trimedValue])
+                            recordInterSnippetWithSpecificRange(iv + suffix, ...keyRange)
                         }
                     }
-                    if (pureKey === "group") {
-                        recordValueCheckSnippet("Group")
-                        interCodeSnippets.push([-2, ","])
 
+                    switch (pureKey) {
+                        case "group":
+                            recordValueCheckSnippet("Group")
+                            break
+                        case "value":
+                            recordValueCheckSnippet("String")
+                            break
+                        case "checked":
+                            recordValueCheckSnippet("Boolean")
+                            break
+                    }
+
+                    if (pureKey === "group") {
                         const valueAttr = findSpecificAttr(preProcessedAttr, /^!?value/)
-                        if (!isUndefined(valueAttr)) {
+                        if (isUndefined(valueAttr)) {
+                            recordInterSnippetWithSpecificRange(
+                                '"")',
+                                trimedValueLoc.start.index,
+                                trimedValueLoc.end.index
+                            )
+                        } else {
                             const isDynamicValue = valueAttr.key.raw[0] === "!"
                             const quote = valueAttr.quote === "single" ? "'" : '"'
                             if (!isDynamicValue) {
-                                interCodeSnippets.push([-3, quote])
+                                interCodeSnippets.push([valueAttr.loc.start.index, quote])
                             }
                             if (valueAttr.value.raw) {
                                 interCodeSnippets.push([
@@ -405,39 +424,32 @@ export function analyzeAttribute(
                                 ])
                             } else if (valueAttr.inferredValue) {
                                 recordInterSnippetWithSpecificRange(
-                                    valueAttr.inferredValue,
+                                    valueAttr.inferredValue + ")",
                                     valueAttr.key.loc.start.index,
                                     valueAttr.key.loc.end.index
                                 )
                             }
                             if (!isDynamicValue) {
-                                interCodeSnippets.push([-3, quote])
+                                interCodeSnippets.push([valueAttr.loc.end.index, quote])
                             }
-                        } else {
-                            if (!rv) {
-                                recordInterSnippetWithSpecificRange('""', ...keyRange)
-                            } else {
-                                interCodeSnippets.push(
-                                    [trimedValueStartSourceIndex, '"'],
-                                    [trimedValueStartSourceIndex + trimedValue.length - 1, '"']
-                                )
+                            if (valueAttr.value.raw || !valueAttr.inferredValue) {
+                                interCodeSnippets.push([-2, ")"])
                             }
                         }
-                    } else if (pureKey === "checked" || pureKey === "value") {
-                        recordValueCheckSnippet(pureKey === "checked" ? "Boolean" : "String")
                     }
-                    interCodeSnippets.push([-2, ");"])
+
+                    interCodeSnippets.push([-2, ";"])
                 }
 
                 // 组件标签或普通标签的非group引用属性时，检查给定值是否是左值（可赋值的目标）
                 if (isComponent || (pureKey !== "group" && iv)) {
-                    interCodeSnippets.push([-2, "("])
+                    interCodeSnippets.push([-3, "("])
                     if (!rv) {
-                        recordInterSnippetWithSpecificRange(iv, ...keyRange)
+                        recordInterSnippetWithSpecificRange(iv + ")", ...keyRange)
                     } else {
-                        interCodeSnippets.push([value.loc.start.index, normalStringify(rv)])
+                        interCodeSnippets.push([value.loc.start.index, rv], [-3, ")"])
                     }
-                    interCodeSnippets.push([-2, `)=0${isTS ? " as any" : ""};`])
+                    interCodeSnippets.push([-2, `=0${isTS ? " as any" : ""};`])
                 }
             }
         } else if (isDirective) {
@@ -930,11 +942,12 @@ export function analyzeAttribute(
             }
 
             const isSpecial = /^[!@&]/.test(rk)
+            const noEqualSign = keyRange[1] === attr.loc.end.index
             const valueWrapChar = inputDescriptor.source[valueRange[0] - 1]
 
             // prettier-ignore
             if (
-                attr.quote !== "none" &&
+                !noEqualSign &&
                 (
                     (isSpecial && valueWrapChar !== "{") ||
                     (!isSpecial && !/['"]/.test(valueWrapChar))
@@ -943,15 +956,14 @@ export function analyzeAttribute(
                 return
             }
 
-            const noEqualSign = attr.quote === "none"
             const target = attrRecords[+rk.startsWith("&")]
-            if (rv) {
+            if (!noEqualSign || !iv) {
                 const camelPureKey = kebab2Camel(rk.slice(+isSpecial))
                 const isValidIdentifier = validIdentifierNameRE.test(camelPureKey)
                 target.push({
                     type: "key",
                     range: keyRange,
-                    specificRange: false,
+                    specificRange: true,
                     value: isValidIdentifier ? camelPureKey : normalStringify(camelPureKey)
                 })
             }
@@ -969,13 +981,15 @@ export function analyzeAttribute(
         for (const target of attrRecords) {
             interCodeSnippets.push([stnr[0], "{"])
             target.forEach((item, index) => {
+                const isKey = item.type === "key"
+                const isLast = index === target.length - 1
+                const suffix = isKey ? ":" : isLast ? "" : ","
                 if (!item.specificRange) {
                     interCodeSnippets.push([item.range[0], item.value])
+                    suffix && interCodeSnippets.push([-2, suffix])
                 } else {
-                    recordInterSnippetWithSpecificRange(item.value, ...item.range)
-                }
-                if (item.type === "value" && index !== target.length - 1) {
-                    interCodeSnippets.push([-1, ","])
+                    const specificSnippet = item.value + (suffix || " ")
+                    recordInterSnippetWithSpecificRange(specificSnippet, ...item.range)
                 }
             })
             if (!isTS || target.length > 0) {
@@ -1041,6 +1055,10 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
         const preProcessedItem: PreprocessedTemplateAttribute = {
             ...currentAttribute,
             inferredValue: rv || (isSpecial && noEqualSign ? kebab2Camel(pureKey) : "")
+        }
+
+        if (!noEqualSign && currentAttribute.quote === "none") {
+            continue
         }
 
         // 检查是否使用了不能同时存在的指令搭配[if elif else]和[then catch]

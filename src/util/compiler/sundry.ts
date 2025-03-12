@@ -134,13 +134,6 @@ export function recordInterExpression(exp: string, range: [number, number?]) {
     interCodeSnippets.push([-2, ";"])
 }
 
-// 根据指定原始范围记录一个中间代码片段，有时生成的中间代码片段会与源码片段长度不一致，此时只需将源码除最后一个
-// 字符外的部分正常记录，最后一个字符记录到结束位置即可，如果原始片段长度仅为1，可以在中间代码片段最后补一个空格
-export function recordInterSnippetWithSpecificRange(snippet: string, start: number, end: number) {
-    snippet.length === 1 && (snippet += " ")
-    interCodeSnippets.push([start, snippet.slice(0, -1)], [end, snippet.slice(-1)])
-}
-
 // 将数组按size划分为二维数组
 export function arrayChunk<T, S extends number>(arr: T[], size: S): FixedArray<T, S>[] {
     const arrLen = arr.length
@@ -150,4 +143,18 @@ export function arrayChunk<T, S extends number>(arr: T[], size: S): FixedArray<T
         ret[j++] = arr.slice(i, i + size)
     }
     return ret
+}
+
+// 根据指定原始范围记录一个中间代码片段，有时生成的中间代码片段会与源码片段长度不一致，此时只需将源码除最后一个
+// 字符外的部分正常记录，最后一个字符记录到结束位置即可，此方法需要再片段末尾补一个空格以保证结尾处的位置映射正确
+export function recordInterSnippetWithSpecificRange(snippet: string, start: number, end: number) {
+    switch (snippet.length) {
+        case 0:
+            return
+        case 1:
+            interCodeSnippets.push([start, snippet])
+            break
+        default:
+            interCodeSnippets.push([start, snippet.slice(0, -1)], [end, snippet.slice(-1)])
+    }
 }

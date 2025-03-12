@@ -156,9 +156,6 @@ export function generateInterResult(source: string, typeRefStatement: string) {
     const itos: number[] = Array(trl + tdl).fill(-1)
     const stoi: number[] = Array(source.length).fill(-1)
 
-    // 全局类型定义开始处的位置映射到脚本内容开始处
-    itos[trl] = inputDescriptor.script.loc.start.index
-
     const snippetLen = interCodeSnippets.length
     const scriptSourceCode = inputDescriptor.script.code
     const scriptSourceCodeLen = scriptSourceCode.length
@@ -175,7 +172,10 @@ export function generateInterResult(source: string, typeRefStatement: string) {
     interCodeSnippets.forEach(([toi, tos], index) => {
         if (toi >= 0) {
             for (let i = 0; i < tos.length; i++) {
-                stoi[toi + i] = itos.push(toi + i) - 1
+                const interIndex = itos.push(toi + i) - 1
+                if (stoi[toi + i] === -1) {
+                    stoi[toi + i] = interIndex
+                }
             }
             return
         }
