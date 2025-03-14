@@ -6,6 +6,7 @@ import {
     generateImportStatements,
     generateInitCallStatement
 } from "./codegen"
+import { isString } from "../util/shared/assert"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
 import { analyzeTemplate } from "./analyzer/template"
@@ -85,7 +86,7 @@ function exchangeInterIndexOfSlotInfo(interCompileRes: CompileResult) {
     const { stoi } = interCompileRes.interIndexMap
     Object.keys(slotInfo).forEach(slotName => {
         slotInfo[slotName].properties.forEach(property => {
-            property[2] !== -1 && (property[2] = stoi[property[2]])
+            !isString(property[2]) && (property[2] = stoi[property[2]])
         })
     })
     return interCompileRes

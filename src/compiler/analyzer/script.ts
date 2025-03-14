@@ -26,6 +26,7 @@ import {
     parse,
     getEsNode,
     markExcludes,
+    isInTopScope,
     getEsNodeOfParent,
     extendReplacement,
     initReplacementItem,
@@ -33,12 +34,13 @@ import {
     getIdentifiersFromPattern
 } from "../../util/compiler/estree"
 import {
+    BadExportRelatedStatement,
     WatchCompilerFuncMissingArg,
     ReactCompilerFuncNotInTopScope,
     IdentifierFormatIsNotAllowed,
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
-    ShortHandDerivedWithOtherReactFunc,
+    ConvenientDerivedWithOtherReactFunc,
     ReactCompilerFuncWithoutVariableDeclaration
 } from "../message/error"
 import {
@@ -47,7 +49,7 @@ import {
     getSourceIndexByScriptIndex
 } from "../../util/compiler/locations"
 import { walk } from "../estree/walk"
-import { compilerFuncs } from "../constants"
+import { COMPILER_FUNCS } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
 import { findOutOfSC } from "../../util/compiler/strings"
@@ -60,12 +62,31 @@ const visitor: ASTVisitor = {
         analyzeReactivity(node, parent)
     },
 
+    TSEnumDeclaration(node, parent) {
+        if (isInTopScope(node, parent)) {
+            checkTopScopeIdentifier(node.id.name, node.id.loc!)
+        }
+    },
+
+    TSModuleDeclaration(node, parent) {
+        if (is(node.id, "Identifier") && isInTopScope(node, parent)) {
+            checkTopScopeIdentifier(node.id.name, node.id.loc!)
+        }
+    },
+
     FunctionDeclaration(node, parent) {
+        if (node.id && isInTopScope(node, parent)) {
+            checkTopScopeIdentifier(node.id.name, node.id.loc!)
+        }
         functionMarkExcludes(node, parent.excludes)
     },
 
     ClassDeclaration(node, parent) {
-        const name = node.id!.name
+        if (!node.id) {
+            return
+        }
+
+        const name = node.id?.name
         const isDebug = inputDescriptor.options.debug
         const id = isDebug ? `[__w__${name}, ${name}]` : name
 
@@ -75,6 +96,10 @@ const visitor: ASTVisitor = {
 
         const getSetterArg = () => {
             return isDebug ? ", " + getSetterIdentifier(name) : name
+        }
+
+        if (isInTopScope(node, parent)) {
+            checkTopScopeIdentifier(name, node.id.loc!)
         }
 
         if (is(parent.v, "Program") && name) {
@@ -94,23 +119,21 @@ const visitor: ASTVisitor = {
 
     CallExpression(node, parent) {
         const callee = getEsNode(node.callee)
-        const esParent1 = getEsNodeOfParent(parent)
-        const esParent2 = getEsNodeOfParent(esParent1?.parent)
-        const esParent3 = getEsNodeOfParent(esParent2?.parent)
+        const esParent = getEsNodeOfParent(parent)?.v
         const nodeSourceLoc = getSourceLocByScriptLoc(node.loc)
 
         if (
             is(callee, "Identifier") &&
-            compilerFuncs.has(callee.name) &&
+            COMPILER_FUNCS.has(callee.name) &&
             !parent.excludes.has(callee.name)
         ) {
             if (watchCompilerFuncRE.test(callee.name)) {
                 analyzeWatchCompilerFuncCall(node)
             } else if (reactCompilerFuncRE.test(callee.name)) {
-                if (!is(esParent3?.v, "Program")) {
+                if (!isInTopScope(callee, parent)) {
                     ReactCompilerFuncNotInTopScope(nodeSourceLoc)
                 }
-                if (!is(esParent1!.v, "VariableDeclarator")) {
+                if (!is(esParent, "VariableDeclarator")) {
                     ReactCompilerFuncWithoutVariableDeclaration(nodeSourceLoc)
                 }
             }
@@ -169,7 +192,7 @@ const visitor: ASTVisitor = {
         }
     },
 
-    ImportDeclaration(node) {
+    ImportDeclaration(node, parent) {
         const { start, end } = node
         const scriptSource = inputDescriptor.script.code
         eliminateRanges.add([start, end])
@@ -178,9 +201,11 @@ const visitor: ASTVisitor = {
             startColumn: node.loc.start.column,
             code: scriptSource.slice(start, end)
         })
-        node.specifiers.forEach(specifier => {
-            checkTopScopeIdentifier(specifier.local.name, specifier.loc!)
-        })
+        if (isInTopScope(node, parent)) {
+            node.specifiers.forEach(specifier => {
+                checkTopScopeIdentifier(specifier.local.name, specifier.loc!)
+            })
+        }
     },
 
     FunctionExpression(node, parent) {
@@ -196,7 +221,13 @@ const visitor: ASTVisitor = {
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
     // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加__w__前缀
     AnyNode(node, parent) {
-        if (inputDescriptor.options.sourcemap) {
+        if (
+            is(node, "ExportAllDeclaration") ||
+            is(node, "ExportDefaultDeclaration") ||
+            is(node, "ExportNamedDeclaration")
+        ) {
+            BadExportRelatedStatement(node.loc)
+        } else if (inputDescriptor.options.sourcemap) {
             if (
                 is(node, "ImportDeclaration") ||
                 is(parent.v, "ImportSpecifier") ||
@@ -570,11 +601,11 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         // 检查是否混用了der和$前缀两种衍生响应性状态声明方式（警告）
         // 检查是否使用了$前缀搭配了其他响应性声明编译助手函数（rea、stc）（报错）
-        if (shortHandDerived && hasFnCall) {
+        if (inputDescriptor.options.convenientDerivedDeclaration && shortHandDerived && hasFnCall) {
             if (esIdentifierCalleeName === "der") {
                 MixTwoSyntaxOfDerived(declarationSourceLoc)
             } else {
-                ShortHandDerivedWithOtherReactFunc(esIdentifierCalleeName, declarationSourceLoc)
+                ConvenientDerivedWithOtherReactFunc(esIdentifierCalleeName, declarationSourceLoc)
             }
         }
 
@@ -678,7 +709,7 @@ function markSegmentShouldNotBeMapped(start: number, end: number) {
 function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
     const sourceLoc = getSourceLocByScriptLoc(loc)
 
-    if (compilerFuncs.has(name) || name === "props") {
+    if (COMPILER_FUNCS.has(name) || name === "props" || name === "refs") {
         RegisterExsitingIdentifierName(name, sourceLoc)
     }
 

@@ -7,9 +7,11 @@ import type {
     EliminateRanges,
     ReplacementInfo,
     InputDescriptor,
+    ScriptDescriptor,
     TempStoredImportInfo
 } from "./types"
 
+import { isUndefined } from "../util/shared/assert"
 import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
@@ -60,6 +62,18 @@ export function resetCompilerState(options: CompileOptions) {
     Object.assign(inputDescriptor.options, options)
 }
 
+export function newScriptDescriptor(): ScriptDescriptor {
+    return {
+        code: "",
+        isTS: false,
+        lineCount: 0,
+        existing: false,
+        loc: newASTLocation(),
+        generatedOffset: [0, 0],
+        startTagNameRange: [-1, -1]
+    }
+}
+
 // 生成新的sourcemap信息结构
 function newSourceMapInfo(): SourceMapInfo {
     return {
@@ -104,16 +118,9 @@ function newInputDescriptor(): InputDescriptor {
             check: false,
             sourcemap: false,
             typeRefStatement: "",
-            reserveTemplateComment: false
+            reserveTemplateComment: false,
+            convenientDerivedDeclaration: true
         },
-        script: {
-            code: "",
-            isTS: false,
-            lineCount: 0,
-            existing: false,
-            loc: newASTLocation(),
-            generatedOffset: [0, 0],
-            startTagNameRange: [-1, -1]
-        }
+        script: newScriptDescriptor()
     }
 }

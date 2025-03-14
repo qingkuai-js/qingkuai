@@ -10,8 +10,9 @@ import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
 import {
-    BadValueForRefAttr,
+    BadValueToRefAttr,
     InterpolationExpOutOfLimit,
+    IdentifierFormatIsNotAllowed,
     ContextIdentifierUsedAsReferenceTarget,
     SequenceExpreesionInInterpolationBlock
 } from "../message/error"
@@ -21,12 +22,12 @@ import { runAll } from "../../util/shared/sundry"
 import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
-import { expressionReplaceWithSpaceRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
+import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { bannedIdentifierFormatRE, expressionReplaceWithSpaceRE } from "../regular"
 import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
-import { checkIdentifierName, confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
 
 export function transformInterpolation(
     expression: string,
@@ -104,7 +105,7 @@ export function transformInterpolation(
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
     if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
         const expressionEndSourceIndex = startSourceIndex + expression.length
-        BadValueForRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
+        BadValueToRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
     }
 
     walk(ast, {
@@ -118,7 +119,9 @@ export function transformInterpolation(
             allIndentifiersInExpression.add(name)
 
             // 检查插值表达式中是否使用了禁止使用的标识符
-            checkIdentifierName(node.name, nodeLoc, false)
+            if (bannedIdentifierFormatRE.test(name)) {
+                IdentifierFormatIsNotAllowed(name, nodeLoc)
+            }
 
             if (!identifierIsReference(node, parent)) {
                 return
@@ -325,7 +328,7 @@ export function transformInterpolation(
 
     // 记录表达式的sourcemap片段，注意：这里的mpaaings与sourcemap中的表示有所不同，它的四个元素
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
-    // 在调用transformTemplate时会根据这个mappings生成正确的sourcemap的mappings
+    // 在调用transformTemplate时会根据这个mappings来转换生成sourcemap需要的mappings格式
     if (shouldGenerateSourcemap && useGetter) {
         sourcemapIndexes.sort((a, b) => {
             return a - b
@@ -351,6 +354,11 @@ export function transformInterpolation(
         if (firstMappingOffsetLeft && mappings[0]) {
             mappings[0][1] -= firstMappingOffsetLeft
         }
+    }
+
+    // 没有属性值时将mappings首个记录的源码索引向左偏移1
+    if (optionalParams.attributeWithNoValue && mappings.length) {
+        mappings[0][0]--, mappings[0][3]--
     }
 
     // 未转换成getter时不需要源码映射

@@ -20,6 +20,7 @@ export interface CompileOptions {
     sourcemap?: boolean
     typeRefStatement?: string
     reserveTemplateComment?: boolean
+    convenientDerivedDeclaration?: boolean
 }
 
 export interface CompileResult {
@@ -32,6 +33,13 @@ export interface CompileResult {
     messages: MessageItem[]
     templateNodes: TemplateNode[]
     inputDescriptor: InputDescriptor
+}
+
+export interface InterAttributeRecord {
+    value: string
+    range: NumNum
+    type: "key" | "value"
+    specificRange: boolean
 }
 
 export interface SourceMapInfo {
@@ -78,22 +86,23 @@ export interface TempStoredImportInfo {
     startColumn: number
     mappingLine: SourceMapLine
 }
+export interface ScriptDescriptor {
+    code: string
+    isTS: boolean
+    lineCount: number
+    loc: ASTLocation
+    existing: boolean
+    generatedOffset: NumNum
+    startTagNameRange: NumNum
+}
 export interface InputDescriptor {
     options: Required<CompileOptions>
     source: string
     slotInfo: SlotInfo
     indentSpaceCount: number
+    script: ScriptDescriptor
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
-    script: {
-        code: string
-        isTS: boolean
-        lineCount: number
-        loc: ASTLocation
-        existing: boolean
-        generatedOffset: NumNum
-        startTagNameRange: NumNum
-    }
 }
 
 export type MessageItem =
@@ -114,6 +123,7 @@ export interface TemplateAttribute {
     loc: ASTLocation
     key: AttributeKeyValue
     value: AttributeKeyValue
+    quote: AttributeQuoteKinds
 }
 export interface TemplateNode {
     tag: string
@@ -121,14 +131,19 @@ export interface TemplateNode {
     content: string
     loc: ASTLocation
     isEmbedded: boolean
+    isSelfClosing: boolean
+    preWhiteSpace: boolean
     componentTag: string
     children: TemplateNode[]
     startTagEndPos: ASTPosition
     endTagStartPos: ASTPosition
     parent: TemplateNode | null
+    prev: TemplateNode | undefined
+    next: TemplateNode | undefined
     attributes: TemplateAttribute[]
 }
-export type FilteredTemplateAttribute = TemplateAttribute & {
+export type PreprocessedTemplateAttribute = TemplateAttribute & {
+    inferredValue: string
     positionMap?: number[]
 }
 
@@ -183,6 +198,7 @@ export interface TransformInterpolationOptionalParam {
     usedAsSetter?: boolean
     isKeyDirective?: boolean
     isComponentEvent?: boolean
+    attributeWithNoValue?: boolean
 }
 
 export type TransformInterpolationRet =
@@ -194,9 +210,10 @@ export type TransformInterpolationRet =
 
 /**
  * - landingRnage表示报错/代码跳转的源码位置（slot标签无name属性时指向开始标签名）
- * 
+ *
  * - properties中的三个元素分别表示：属性名称、属性名称源码范围、属性值在中间代码中的开始位置
  *   注意：第三个元素在分析阶段记录的是源码索引，在生成中间代码后才会通过源码索引换取中间代码索引
+ *   当属性是一个HTML普通属性时，properties的第三个元素是一个字符串，值为属性值（静态字符串常量类型）
  *
  * - landingRange: indicates the source position for errors/code jumping, it will
  *   refs to the range of start tag name(<slot) when there is no name attribute.
@@ -205,12 +222,14 @@ export type TransformInterpolationRet =
  *   name, and the start index of attribute value in the intermidiate code.
  *   Note: the third element is the source code index during the analysis phase, which
  *   is exchanged for the intermidiate code index after the intermidiate code generated.
+ *   When the attribute is normal, the third element of properties is a string with the
+ *   value of attribute value(the static string constant type)
  */
 export type SlotInfo = Record<
     string,
     {
         landingRange: NumNum
-        properties: [string, NumNum, number][]
+        properties: [string, NumNum, number | string][]
     }
 >
 
@@ -219,3 +238,4 @@ export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)
 export type ASTPositionWithFlag = ASTPosition & { flag: number }
+export type AttributeQuoteKinds = "single" | "double" | "curly" | "none"

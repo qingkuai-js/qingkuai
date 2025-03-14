@@ -42,7 +42,8 @@
     "rollup": "^4.24.0",
     "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-esbuild": "^6.1.1",
-    "typescript": "^5.6.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.2",
     "vitest": "^2.1.2"
   },
   "description": "A lighteight(Qing) and fast(Kuai) front end framework, it will make you development work easier(QingKuai)"

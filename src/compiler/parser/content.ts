@@ -3,8 +3,8 @@ import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { newTemplateContext } from "../../util/compiler/structure"
 import { transformInterpolation } from "../transformer/interpolation"
-import { findEndCurlyBracket, normalStringify } from "../../util/compiler/strings"
 import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
+import { findEndBracket, findOutOfSC, normalStringify } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
@@ -34,7 +34,7 @@ export function content2script(content: string, startSourceIndex: number) {
                 !useStringify &&
                 transformInterpolation(str, startSourceIndex, context, "content")
             ) {
-                recordInterExpression(sourceIndex + 1, str)
+                recordInterExpression(str, [sourceIndex + 1])
             }
             return (contentSourceIndex += str.length + (useStringify ? 0 : 2)), void 0
         }
@@ -62,8 +62,8 @@ export function content2script(content: string, startSourceIndex: number) {
             }
 
             // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
-            for (let i = 0; i < str.length; i++) {
-                markPositionFlag(sourceIndex + i + 1, "isScript")
+            for (let i = 0; i <= str.length; i++) {
+                markPositionFlag(sourceIndex + i + 1, "inScript")
             }
 
             transformedArr.push(isDebug ? `(${str})` : str)
@@ -87,14 +87,14 @@ export function content2script(content: string, startSourceIndex: number) {
         }
 
         // 查找关闭花括号的位置，不存在就报错，存在则检查是否是空的插值表达式块，若为空同样需要报错
-        const endBracketIndex = findEndCurlyBracket(content, startBracketNextIndex)
+        const endBracketIndex = findEndBracket(content, startBracketNextIndex)
         if (endBracketIndex === -1) {
             UnclosedInterpolationExpression(getLocByIndex(startBracketSourceIndex))
             pushTransformedArr(content.slice(startBracketIndex))
             break
         } else {
             const interpolationExp = content.slice(startBracketNextIndex, endBracketIndex)
-            if (((index = endBracketIndex + 1), !interpolationExp.trim())) {
+            if (((index = endBracketIndex + 1), findOutOfSC(interpolationExp, /\S/) === -1)) {
                 EmptyInterpolationExpression(
                     startBracketSourceIndex,
                     endBracketIndex + 1 + startSourceIndex

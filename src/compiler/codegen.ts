@@ -142,14 +142,19 @@ export function generateCompileResult(
 
 // 生成typescript语言服务可用的中间代码（包含双向索引映射）
 export function generateInterResult(source: string, typeRefStatement: string) {
-    if (inputDescriptor.script.isTS) {
-        typeRefStatement += `const refs:Refs=0 as any;const props:Readonly<Props>=0 as any;`
+    let typeDefStatement: string
+    if (!inputDescriptor.script.isTS) {
+        typeDefStatement = `/**@typedef {{}}Props @typedef {{}}Refs*/\n`
+        typeDefStatement += `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;\n`
     } else {
-        typeRefStatement += `/**@type {Refs}*/const refs:Refs=0;/**@type {Readonly<Props>}*/const props:Props=0;`
+        typeDefStatement = `type Props={};type Refs={};\n`
+        typeDefStatement += `const refs=__c__.GetTypedValue<Refs>();const props=__c__.GetTypedValue<Readonly<Props>>();\n`
     }
 
+    const trl = typeRefStatement.length
+    const tdl = typeDefStatement.length
+    const itos: number[] = Array(trl + tdl).fill(-1)
     const stoi: number[] = Array(source.length).fill(-1)
-    const itos: number[] = Array(typeRefStatement.length).fill(-1)
 
     const snippetLen = interCodeSnippets.length
     const scriptSourceCode = inputDescriptor.script.code
@@ -161,21 +166,26 @@ export function generateInterResult(source: string, typeRefStatement: string) {
         stoi[scriptSourceStartIndex + i] = itos.push(scriptSourceStartIndex + i) - 1
     }
 
-    // 在script与template部分之间补一个分号避免语法错误
+    // 在script与template部分之间将补一个分号避免语法错误
     itos.push(scriptSourceStartIndex + scriptSourceCodeLen)
 
     interCodeSnippets.forEach(([toi, tos], index) => {
         if (toi >= 0) {
             for (let i = 0; i < tos.length; i++) {
-                stoi[toi + i] = itos.push(toi + i) - 1
+                const interIndex = itos.push(toi + i) - 1
+                if (stoi[toi + i] === -1) {
+                    stoi[toi + i] = interIndex
+                }
             }
             return
         }
 
         let asasi = -1 // Added Snippet Applied Source Index
 
-        // 中间代码片段中的第一个元素为-1/-2时代表需要在所有片段中向后/向前查找到首个
-        // 有效的源码索引，此时中间代码片段的任意位置都映射到这个源码索引（结束位置需+1）
+        // 中间代码片段的第一个元素小于0时有三种情况：-3、-2、-1，它们对应的含义如下：
+        // -3：当前片段的所有位置对应的源码索引都为-1（没有与之对应的源码索引）
+        // -2：向前查找其他片段的第一个有效源码索引（不为-1），此片段的所有位置对应的源码索引都与找到的源码索引一致
+        // -1：向后查找其他片段的第一个有效源码索引（不为-1），此片段中的所有位置对应的源码索引都为这个找到的有效源码索引+1
         if (toi === -1) {
             for (let i = index + 1; i < snippetLen; i++) {
                 const si = interCodeSnippets[i]?.[0]
@@ -194,14 +204,13 @@ export function generateInterResult(source: string, typeRefStatement: string) {
     })
 
     const joinedSnippets = interCodeSnippets.map(item => item[1]).join("")
-    const intermidiateCode = `${typeRefStatement}${scriptSourceCode};${joinedSnippets}`
     return {
-        code: intermidiateCode,
         interIndexMap: {
             // 文件结束位置也需要记录双向索引映射
             // typescript语言服务会使用结束索引后2位
             stoi: [...stoi, lastElem(stoi)],
             itos: [...itos, lastElem(itos)]
-        }
+        },
+        code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};${joinedSnippets}`
     }
 }

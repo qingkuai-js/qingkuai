@@ -9,6 +9,20 @@ export function normalStringify(v: any) {
     return JSON.stringify(v)
 }
 
+// 转义空白字符为实体化字符（\n、\r、\t）
+export function escapeWhiteSpace(s: string) {
+    return s.replace(/[\n\r\t]/g, m => {
+        switch (m) {
+            case "\n":
+                return "\\n"
+            case "\r":
+                return "\\r"
+            default:
+                return "\\t"
+        }
+    })
+}
+
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
 export function stringify(v: any) {
     const s = normalStringify(v)
@@ -83,7 +97,7 @@ export const findOutOfSC: FindOutOfSC = (
             if (endIndex === -1) {
                 return cr(-1, 0)
             }
-            i += endIndex
+            i += endIndex + 1
             continue
         }
 
@@ -102,6 +116,16 @@ export const findOutOfSC: FindOutOfSC = (
     return cr(-1, 0)
 }
 
+// 驼峰命名转串型命名格式
+export function camel2Kebab(str: string, allowFullLower = true) {
+    if (!allowFullLower && !/[A-Z]/.test(str.slice(1))) {
+        return str
+    }
+    return str.replace(/[A-Z]/g, (m, i) => {
+        return (i === 0 ? "" : "-") + m.toLowerCase()
+    })
+}
+
 // kebab命名转Camel
 export function kebab2Camel(str: string, startWithUppercase = false) {
     const re = startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE
@@ -111,7 +135,7 @@ export function kebab2Camel(str: string, startWithUppercase = false) {
 }
 
 // 在表达式中找到关闭括号的位置， 使用此方法时，startIndex应为开始括号的下一个位置
-export function findEndCurlyBracket(str: string, startIndex: number, char: StartBracket = "{") {
+export function findEndBracket(str: string, startIndex: number, char: StartBracket = "{") {
     const pairMap = { "{": "}", "[": "]", "(": ")" }
 
     while (true) {
