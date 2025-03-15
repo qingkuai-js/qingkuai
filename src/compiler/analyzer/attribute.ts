@@ -609,7 +609,8 @@ export function analyzeAttribute(
                                     trimedValueStartSourceIndex,
                                     trimedValue.slice(itemPartRange![0], indexPartRange![1])
                                 ],
-                                [-3, "]=__c__.GetKVPair("],
+                                [-2, "]"],
+                                [-3, "=__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex + baseValueRange![0], baseValue],
                                 [-2, ");"]
                             )

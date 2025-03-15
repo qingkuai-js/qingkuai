@@ -27,6 +27,13 @@ export function content2script(content: string, startSourceIndex: number) {
     const pushTransformedArr = (str: string, useStringify = true) => {
         const sourceIndex = startSourceIndex + contentSourceIndex
 
+        // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
+        const markCurrentStrInScriptInterpolationBlock = () => {
+            for (let i = 0; i <= str.length; i++) {
+                markPositionFlag(sourceIndex + i + 1, "inScript")
+            }
+        }
+
         // 检查模式下，将插值表达式部分记录到中间代码片段，由于检查模式下后续步骤不会
         // 调用transformInterpolation方法，所以这里需要主动调用对插值块进行语法检查
         if (inputDescriptor.options.check) {
@@ -34,6 +41,7 @@ export function content2script(content: string, startSourceIndex: number) {
                 !useStringify &&
                 transformInterpolation(str, startSourceIndex, context, "content")
             ) {
+                markCurrentStrInScriptInterpolationBlock()
                 recordInterExpression(str, [sourceIndex + 1])
             }
             return (contentSourceIndex += str.length + (useStringify ? 0 : 2)), void 0
@@ -60,12 +68,7 @@ export function content2script(content: string, startSourceIndex: number) {
                 transformedStrLen += str.length + (isDebug ? 5 : 2)
                 contentSourceIndex += 2
             }
-
-            // 将textContent部分中的插值表达式范围内的索引标记为处于脚本块
-            for (let i = 0; i <= str.length; i++) {
-                markPositionFlag(sourceIndex + i + 1, "inScript")
-            }
-
+            markCurrentStrInScriptInterpolationBlock()
             transformedArr.push(isDebug ? `(${str})` : str)
         }
 
