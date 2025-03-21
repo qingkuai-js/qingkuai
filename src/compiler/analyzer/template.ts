@@ -206,11 +206,12 @@ export function analyzeTemplate(
         // contextBlockCount记录了当前节点创建的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
         if (inputDescriptor.options.check) {
             const contextBlockCount = currentRet.aar?.contextBlockCount || 0
-            contextBlockCount &&
+            if (contextBlockCount) {
                 interCodeSnippets.push([
                     IntercodeSnippetKind.SearchForward,
                     "}".repeat(contextBlockCount)
                 ])
+            }
         }
     }
 

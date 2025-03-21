@@ -145,10 +145,10 @@ export function generateCompileResult(
 export function generateInterResult(source: string, typeRefStatement: string) {
     let typeDefStatement: string
     if (!inputDescriptor.script.isTS) {
-        typeDefStatement = `/**@typedef {{}}Props @typedef {{}}Refs*/\n`
+        typeDefStatement = `/**@typedef {__c__.EmptyObject}Props @typedef {__c__.EmptyObject}Refs*/\n`
         typeDefStatement += `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;\n`
     } else {
-        typeDefStatement = `type Props={};type Refs={};\n`
+        typeDefStatement = `type Props=__c__.EmptyObject;type Refs=__c__.EmptyObject;\n`
         typeDefStatement += `const refs=__c__.GetTypedValue<Refs>();const props=__c__.GetTypedValue<Readonly<Props>>();\n`
     }
 
