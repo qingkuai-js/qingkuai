@@ -1,6 +1,6 @@
 import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
-import { escapeWhiteSpace, findOutOfSC } from "../../util/compiler/strings"
+import { escapeWhiteSpace, findOutOfStringComment } from "../../util/compiler/strings"
 import { isNull, isString, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
 
@@ -26,7 +26,8 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
         for (let i = 0; true; i++) {
             const estu = tar.aar?.eventStu
             const astu = tar.aar?.attributeStu
-            if (!astu?.[i] && !estu?.[i]) {
+            const dstu = tar.aar?.directiveStu
+            if (!astu?.[i] && !estu?.[i] && !dstu?.[i]) {
                 break
             }
             if (!isUndefined(astu?.[i])) {
@@ -34,6 +35,9 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
             }
             if (!isUndefined(estu?.[i])) {
                 estu[i] = singleTerConfirm(estu[i])
+            }
+            if (!isUndefined(dstu?.[i])) {
+                dstu[i][1] = singleTerConfirm(dstu[i][1])
             }
         }
         confirmStringConstants(tar.children.map(child => child.tar))
@@ -64,7 +68,7 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
     const mappingOffsets: number[] = Array(tirIsString ? 0 : mappings.length).fill(0)
 
     for (let startIndex = 0, saveAs = ""; true; ) {
-        const [matchedIndex, matchedLen] = findOutOfSC(code, /__s\d+__/, startIndex)
+        const [matchedIndex, matchedLen] = findOutOfStringComment(code, /__s\d+__/, startIndex)
         if (matchedIndex === -1) {
             transformedArr.push(code.slice(startIndex))
             break

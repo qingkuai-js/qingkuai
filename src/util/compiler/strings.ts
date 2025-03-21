@@ -1,4 +1,4 @@
-import type { FindOutOfSC, NumNum, StartBracket } from "../types"
+import type { FindOutOfFuncCommon, NumNum, StartBracket } from "../types"
 
 import { isString, isUndefined } from "../shared/assert"
 import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
@@ -45,10 +45,116 @@ export function stringify(v: any) {
     }
 }
 
-// 脱离字符串和注释范围从js代码中查找指定子串
-// 这是一个重载函数，当未传入startIndex时它只返回匹配子串的开始索引
+// 脱离字符串范围从js代码中查找指定子串
+// FindOutOfFuncBase是一个重载函数，当未传入startIndex时它只返回匹配子串的开始索引
 // 当传入了startIndex时，它将返回一个由两个number组成的数组，格式：[匹配子串开始索引，匹配子串长度]
-export const findOutOfSC: FindOutOfSC = (
+export const findOutOfString: FindOutOfFuncCommon = (
+    str: string,
+    pattern: string | RegExp,
+    startIndex?: number
+): any => {
+    const withoutStartIndex = isUndefined(startIndex)
+    if (withoutStartIndex) {
+        startIndex = 0
+    }
+
+    // 根据是否传入了startIndex返回正确的重载返回值
+    const cr = (index: number, len: number) => {
+        if (withoutStartIndex) {
+            return index
+        } else {
+            return [index, len] as NumNum
+        }
+    }
+
+    // ls代表剩余未查询部分的字符串
+    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
+        if (/^['"`]/.test(str[i])) {
+            const endChar = str[i]
+            while (str[++i] !== endChar) {
+                if ("\\" === str[i]) {
+                    i++
+                    continue
+                }
+                if (i >= str.length) {
+                    return cr(-1, 0)
+                }
+            }
+            ls = str.slice(++i)
+        }
+
+        if (isString(pattern)) {
+            if (ls.startsWith(pattern)) {
+                return cr(i, pattern.length)
+            }
+        } else {
+            const matched = pattern.exec(ls)
+            if (matched?.index === 0) {
+                return cr(i + matched.index, matched[0].length)
+            }
+        }
+    }
+
+    return cr(-1, 0)
+}
+
+// 脱离注释范围从js代码中查找指定子串，重载形式与findOutOfString相同
+export const findOutOfComment: FindOutOfFuncCommon = (
+    str: string,
+    pattern: string | RegExp,
+    startIndex?: number
+): any => {
+    const withoutStartIndex = isUndefined(startIndex)
+    if (withoutStartIndex) {
+        startIndex = 0
+    }
+
+    // 根据是否传入了startIndex返回正确的重载返回值
+    const cr = (index: number, len: number) => {
+        if (withoutStartIndex) {
+            return index
+        } else {
+            return [index, len] as NumNum
+        }
+    }
+
+    // ls代表剩余未查询部分的字符串
+    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
+        if (ls.startsWith("//")) {
+            const endIndex = ls.indexOf("\n")
+            if (endIndex === -1) {
+                return cr(-1, 0)
+            }
+            i += endIndex
+            continue
+        }
+
+        if (ls.startsWith("/*")) {
+            const endIndex = ls.indexOf("*/")
+            if (endIndex === -1) {
+                return cr(-1, 0)
+            }
+            i += endIndex + 1
+            continue
+        }
+
+        if (isString(pattern)) {
+            if (ls.startsWith(pattern)) {
+                return cr(i, pattern.length)
+            }
+        } else {
+            const matched = pattern.exec(ls)
+            if (matched?.index === 0) {
+                return cr(i + matched.index, matched[0].length)
+            }
+        }
+    }
+
+    return cr(-1, 0)
+}
+
+// 脱离字符串和注释范围从js代码中查找指定子串，重载形式与findOutOfString相同
+export const findOutOfStringComment: FindOutOfFuncCommon = (
     str: string,
     pattern: string | RegExp,
     startIndex?: number
@@ -139,8 +245,8 @@ export function findEndBracket(str: string, startIndex: number, char: StartBrack
     const pairMap = { "{": "}", "[": "]", "(": ")" }
 
     while (true) {
-        const [startBracketIndex] = findOutOfSC(str, char, startIndex)
-        const [endBracketIndex] = findOutOfSC(str, pairMap[char], startIndex)
+        const [startBracketIndex] = findOutOfStringComment(str, char, startIndex)
+        const [endBracketIndex] = findOutOfStringComment(str, pairMap[char], startIndex)
         if (endBracketIndex === -1) {
             return -1
         }

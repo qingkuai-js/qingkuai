@@ -7,6 +7,12 @@ import type {
 } from "../types"
 
 import {
+    kebab2Camel,
+    findEndBracket,
+    findOutOfComment,
+    findOutOfStringComment
+} from "../../util/compiler/strings"
+import {
     tagIsComponentRE,
     templateCloseCharsRE,
     preWhiteSpaceCommentRE,
@@ -39,7 +45,6 @@ import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getLocationMethodsGen } from "../../util/compiler/locations"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
-import { findEndBracket, findOutOfSC, kebab2Camel } from "../../util/compiler/strings"
 
 // 独立调用的parseTemplate方法，compiler包会导出此方法
 export function parseTemplateStandalone(source: string) {
@@ -238,7 +243,7 @@ export function parseTemplate(source: string, standalone = false) {
                     if (quoteKind === "curly") {
                         if ((endCharIndex = findEndBracket(dps, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
-                        } else if (findOutOfSC(dps.slice(1, endCharIndex), /\S/) === -1) {
+                        } else if (findOutOfComment(dps.slice(1, endCharIndex), /\S/) === -1) {
                             EmptyInterpolationExpression(
                                 wrapValueStartIndex,
                                 index + endCharIndex + 1
@@ -310,7 +315,7 @@ export function parseTemplate(source: string, standalone = false) {
         // script或style标签直接快进到闭合标签处
         const embeddedLang = langMatched?.[1] || ""
         if (SPECIAL_TAGS.has(tag) || embeddedLang) {
-            const endTagIndex = findOutOfSC(dps, "</" + tag)
+            const endTagIndex = findOutOfStringComment(dps, "</" + tag)
             const neverOver = endTagIndex === -1
             const contentStartIndex = index
             if (neverOver) {

@@ -52,7 +52,7 @@ import { walk } from "../estree/walk"
 import { COMPILER_FUNCS } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
-import { findOutOfSC } from "../../util/compiler/strings"
+import { findOutOfStringComment } from "../../util/compiler/strings"
 import { getSetterIdentifier } from "../../util/compiler/sundry"
 import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
@@ -505,7 +505,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         if (isDestructuring && reactFunc !== "stc") {
             const id = `[${destructuringIdentifierArr.join(", ")}]`
-            const equalTokenIndex = findOutOfSC(scriptSource, "=", idRange[1])[0]
+            const equalTokenIndex = findOutOfStringComment(scriptSource, "=", idRange[1])[0]
             const lengthArg = `, ${isDerived ? destructuringIdentifierArr.length : ""}`
             const markReplacementCommon = (idStr: string) => {
                 replacementItems.push(
@@ -632,7 +632,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
                 // 函数调用开始括号的索引
                 // end index of callee start parentheses
-                const ps = findOutOfSC(scriptSource, "(", init!.start!)[0] + 1
+                const ps = findOutOfStringComment(scriptSource, "(", init!.start!)[0] + 1
 
                 // 解构时，将id的开始位置至第一个参数开始的位置标记为无需映射
                 if (isDestructuring) {

@@ -20,7 +20,7 @@ export type FixedArray<T, L extends number, R extends T[] = []> = R["length"] ex
     ? R
     : FixedArray<T, L, [...R, T]>
 
-export interface FindOutOfSC {
+export interface FindOutOfFuncCommon {
     (str: string, pattern: string | RegExp): number
     (str: string, pattern: string | RegExp, startIndex: number): NumNum
 }

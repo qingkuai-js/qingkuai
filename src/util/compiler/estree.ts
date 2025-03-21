@@ -14,7 +14,7 @@ import type { ValueOrValueArr } from "../../runtime/types"
 import type { ReplacementItem, ReplacementStatus } from "../../compiler/types"
 
 import * as babel from "@babel/parser"
-import { findOutOfSC } from "./strings"
+import { findOutOfComment } from "./strings"
 import { isArray, isUndefined } from "../../util/shared/assert"
 import { replacementInfo, inputDescriptor } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
@@ -30,7 +30,7 @@ export function getEsNode(node: AnyNode) {
 
 // 有些需要定义标识符的插值块可能存在注释，此方法用于提取标识符
 export function extractIdentifier(str: string) {
-    const start = findOutOfSC(str, /\S/)
+    const start = findOutOfComment(str, /\S/)
     if (start === -1) {
         return {
             identifier: str,

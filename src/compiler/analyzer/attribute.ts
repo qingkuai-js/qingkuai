@@ -40,6 +40,13 @@ import {
     getIdentifiersFromPatternWithPath
 } from "../../util/compiler/estree"
 import {
+    stringify,
+    kebab2Camel,
+    normalStringify,
+    findOutOfComment,
+    findOutOfStringComment,
+} from "../../util/compiler/strings"
+import {
     InvalidSlotAttr,
     InvalidRefAttr,
     SlotAttrIsEmpty,
@@ -69,7 +76,6 @@ import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { validIdentifierNameRE, expressionReplaceWithSpaceRE } from "../regular"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { stringify, kebab2Camel, findOutOfSC, normalStringify } from "../../util/compiler/strings"
 
 // apm: Attributes Priority Map
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -483,7 +489,7 @@ export function analyzeAttribute(
                     let indexPartRange: NumNum | null = null
                     let baseValueRange: NumNum | null = null
                     let hasContextIdentifier: boolean = false
-                    const ofKeywordIndex = findOutOfSC(trimedValue, / of(?: |$)/)
+                    const ofKeywordIndex = findOutOfStringComment(trimedValue, / of(?: |$)/)
 
                     const isPartNodeValid = (node: AnyNode) => {
                         return (
@@ -548,7 +554,7 @@ export function analyzeAttribute(
                     !isNull(indexPartRange) && (indexPart = trimedValue.slice(...indexPartRange))
                     !isNull(baseValueRange) && (baseValue = trimedValue.slice(...baseValueRange))
 
-                    if (findOutOfSC(baseValue, /\S/) === -1) {
+                    if (findOutOfComment(baseValue, /\S/) === -1) {
                         BadValueToForDirective(
                             trimedValueStartSourceIndex,
                             trimedValueStartSourceIndex + trimedValue.length
