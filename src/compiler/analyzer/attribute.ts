@@ -397,7 +397,7 @@ export function analyzeAttribute(
                     const recordValueCheckSnippet = (type: string) => {
                         const suffix = pureKey === "group" ? "," : ")"
                         interCodeSnippets.push([
-                            IntercodeSnippetKind.SearchForward,
+                            IntercodeSnippetKind.VoidSource,
                             `__c__.Satisfy${type}(`
                         ])
                         if (rv) {
