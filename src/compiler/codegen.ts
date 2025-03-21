@@ -14,6 +14,7 @@ import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
 import { indent } from "../util/compiler/sundry"
 import { lastElem } from "../util/shared/sundry"
+import { IntercodeSnippetKind } from "./constants"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"
 
@@ -182,11 +183,11 @@ export function generateInterResult(source: string, typeRefStatement: string) {
 
         let asasi = -1 // Added Snippet Applied Source Index
 
-        // 中间代码片段的第一个元素小于0时有三种情况：-3、-2、-1，它们对应的含义如下：
-        // -3：当前片段的所有位置对应的源码索引都为-1（没有与之对应的源码索引）
-        // -2：向前查找其他片段的第一个有效源码索引（不为-1），此片段的所有位置对应的源码索引都与找到的源码索引一致
-        // -1：向后查找其他片段的第一个有效源码索引（不为-1），此片段中的所有位置对应的源码索引都为这个找到的有效源码索引+1
-        if (toi === -1) {
+        // 中间代码片段的第一个元素小于0时有三种情况，它们对应的含义如下：
+        // VoidSource：当前片段的所有位置对应的源码索引都为-1（没有与之对应的源码索引）
+        // SearchBackward：向后查找其他片段的第一个有效源码索引（不为-1），此片段的所有位置对应的源码索引都与找到的源码索引一致
+        // SearchForward：向前查找其他片段的第一个有效源码索引（不为-1），此片段中的所有位置对应的源码索引都为这个找到的有效源码索引+1
+        if (toi === IntercodeSnippetKind.SearchBackward) {
             for (let i = index + 1; i < snippetLen; i++) {
                 const si = interCodeSnippets[i]?.[0]
                 if (si >= 0) {
@@ -194,7 +195,7 @@ export function generateInterResult(source: string, typeRefStatement: string) {
                     break
                 }
             }
-        } else if (toi === -2) {
+        } else if (toi === IntercodeSnippetKind.SearchForward) {
             asasi = itos.findLast(n => n >= 0) ?? -1
             asasi !== -1 && asasi++
         }

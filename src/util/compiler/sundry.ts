@@ -7,6 +7,7 @@ import type {
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
 import { PositionFlag } from "../shared/flag"
+import { IntercodeSnippetKind } from "../../compiler/constants"
 import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
 import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
@@ -122,7 +123,7 @@ export function recordInterExpression(exp: string, range: [number, number?]) {
         return
     }
 
-    interCodeSnippets.push([-3, "__c__.Receiver="])
+    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "__c__.Receiver="])
 
     // range[1]存在时需要调用recordInterWithSpecificRange方法记录中间代码片段
     if (isUndefined(range[1])) {
@@ -131,7 +132,7 @@ export function recordInterExpression(exp: string, range: [number, number?]) {
         recordInterSnippetWithSpecificRange(exp, ...(range as NumNum))
     }
 
-    interCodeSnippets.push([-2, ";"])
+    interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ";"])
 }
 
 // 将数组按size划分为二维数组

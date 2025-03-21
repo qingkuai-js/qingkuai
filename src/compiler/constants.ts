@@ -63,6 +63,12 @@ export const FULL_RUNTIME_ITEMS = new Set([
     "constDestructuringReact"
 ])
 
+export enum IntercodeSnippetKind {
+    VoidSource = -3,
+    SearchForward = -2,
+    SearchBackward = -1
+}
+
 export const SPECIAL_TAGS = new Set(["!", "script", "style"])
 
 export const FULL_INIT_ITEMS = new Set(["args", "scts", "props"])

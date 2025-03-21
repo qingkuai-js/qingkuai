@@ -6,12 +6,12 @@ import type {
 } from "../types"
 
 import { getAlias } from "./alias"
-import { SPECIAL_TAGS } from "../constants"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
 import { lastElem } from "../../util/shared/sundry"
 import { markPositionFlag } from "../../util/compiler/sundry"
 import { inputDescriptor, interCodeSnippets } from "../state"
+import { IntercodeSnippetKind, SPECIAL_TAGS } from "../constants"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
@@ -206,7 +206,11 @@ export function analyzeTemplate(
         // contextBlockCount记录了当前节点创建的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
         if (inputDescriptor.options.check) {
             const contextBlockCount = currentRet.aar?.contextBlockCount || 0
-            contextBlockCount && interCodeSnippets.push([-2, "}".repeat(contextBlockCount)])
+            contextBlockCount &&
+                interCodeSnippets.push([
+                    IntercodeSnippetKind.SearchForward,
+                    "}".repeat(contextBlockCount)
+                ])
         }
     }
 

@@ -29,6 +29,7 @@ import {
     ConflictNormalKeyEventModifier
 } from "../message/warn"
 import {
+    IntercodeSnippetKind,
     COULD_USE_REF_TAGS,
     MUST_PASS_VALUE_DIRECTIVES,
     KEY_RELATED_EVENT_MODIFIERS
@@ -173,13 +174,16 @@ export function analyzeAttribute(
             } else {
                 ;[startSourceIndex, endSourceIndex] = [nodeStartIndex, stnr[1]]
             }
-            interCodeSnippets.push([-3, `__c__.GetSlotProp(${node.parent!.componentTag},`])
+            interCodeSnippets.push([
+                IntercodeSnippetKind.VoidSource,
+                `__c__.GetSlotProp(${node.parent!.componentTag},`
+            ])
             recordInterSnippetWithSpecificRange(
                 normalStringify(slotName) + ")",
                 startSourceIndex,
                 endSourceIndex
             )
-            interCodeSnippets.push([-3, ";"])
+            interCodeSnippets.push([IntercodeSnippetKind.VoidSource, ";"])
         }
     }
 
@@ -243,15 +247,21 @@ export function analyzeAttribute(
                 if (isCheckMode) {
                     contextBlockCount++
                     interCodeSnippets.push(
-                        [-1, "{const "],
+                        [IntercodeSnippetKind.SearchBackward, "{const "],
                         [trimedValueStartSourceIndex, trimedValue]
                     )
                     if (pureKey === "slot") {
-                        interCodeSnippets.push([-3, "="])
+                        interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "="])
                         recordSlotAttributeInterSnippet()
                     } else {
-                        interCodeSnippets.push([-3, "=__c__.getResolve("])
-                        interCodeSnippets.push(awaitExpression!, [-2, ");"])
+                        interCodeSnippets.push([
+                            IntercodeSnippetKind.VoidSource,
+                            "=__c__.getResolve("
+                        ])
+                        interCodeSnippets.push(awaitExpression!, [
+                            IntercodeSnippetKind.SearchForward,
+                            ");"
+                        ])
                     }
                 } else {
                     const ast = (parse(`(${trimedValue})`)?.body[0] as any).expression
@@ -380,11 +390,14 @@ export function analyzeAttribute(
                 if (!isComponent && isTS && iv) {
                     const recordValueCheckSnippet = (type: string) => {
                         const suffix = pureKey === "group" ? "," : ")"
-                        interCodeSnippets.push([-3, `__c__.Satisfy${type}(`])
+                        interCodeSnippets.push([
+                            IntercodeSnippetKind.SearchForward,
+                            `__c__.Satisfy${type}(`
+                        ])
                         if (rv) {
                             interCodeSnippets.push(
                                 [trimedValueStartSourceIndex, trimedValue],
-                                [-2, suffix]
+                                [IntercodeSnippetKind.SearchForward, suffix]
                             )
                         } else {
                             recordInterSnippetWithSpecificRange(iv + suffix, ...keyRange)
@@ -433,23 +446,29 @@ export function analyzeAttribute(
                                 interCodeSnippets.push([valueAttr.loc.end.index, quote])
                             }
                             if (valueAttr.value.raw || !valueAttr.inferredValue) {
-                                interCodeSnippets.push([-2, ")"])
+                                interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ")"])
                             }
                         }
                     }
 
-                    interCodeSnippets.push([-2, ";"])
+                    interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ";"])
                 }
 
                 // 组件标签或普通标签的非group引用属性时，检查给定值是否是左值（可赋值的目标）
                 if (isComponent || (pureKey !== "group" && iv)) {
-                    interCodeSnippets.push([-3, "("])
+                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "("])
                     if (!rv) {
                         recordInterSnippetWithSpecificRange(iv + ")", ...keyRange)
                     } else {
-                        interCodeSnippets.push([value.loc.start.index, rv], [-3, ")"])
+                        interCodeSnippets.push(
+                            [value.loc.start.index, rv],
+                            [IntercodeSnippetKind.VoidSource, ")"]
+                        )
                     }
-                    interCodeSnippets.push([-2, `=0${isTS ? " as any" : ""};`])
+                    interCodeSnippets.push([
+                        IntercodeSnippetKind.SearchForward,
+                        `=0${isTS ? " as any" : ""};`
+                    ])
                 }
             }
         } else if (isDirective) {
@@ -598,30 +617,31 @@ export function analyzeAttribute(
                     } else {
                         if (!hasContextIdentifier) {
                             interCodeSnippets.push(
-                                [-3, "__c__.GetKVPair("],
+                                [IntercodeSnippetKind.VoidSource, "__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex, trimedValue],
-                                [-2, ");"]
+                                [IntercodeSnippetKind.SearchForward, ");"]
                             )
                         } else {
+                            interCodeSnippets.push([
+                                IntercodeSnippetKind.SearchBackward,
+                                "{const ["
+                            ])
                             if (indexPart) {
-                                interCodeSnippets.push(
-                                    [-1, "{const ["],
-                                    [
-                                        trimedValueStartSourceIndex + itemPartRange![0],
-                                        trimedValue.slice(itemPartRange![0], indexPartRange![1])
-                                    ],
-                                    [-2, "]"]
-                                )
+                                interCodeSnippets.push([
+                                    trimedValueStartSourceIndex + itemPartRange![0],
+                                    trimedValue.slice(itemPartRange![0], indexPartRange![1])
+                                ])
                             } else {
-                                interCodeSnippets.push(
-                                    [-1, "const "],
-                                    [trimedValueStartSourceIndex + itemPartRange![0], itemPart]
-                                )
+                                interCodeSnippets.push([
+                                    trimedValueStartSourceIndex + itemPartRange![0],
+                                    itemPart
+                                ])
                             }
                             interCodeSnippets.push(
-                                [-3, "=__c__.GetKVPair("],
+                                [IntercodeSnippetKind.SearchForward, "]"],
+                                [IntercodeSnippetKind.VoidSource, "=__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex + baseValueRange![0], baseValue],
-                                [-2, ");"]
+                                [IntercodeSnippetKind.SearchForward, ");"]
                             )
                         }
                     }
@@ -675,9 +695,9 @@ export function analyzeAttribute(
                         if (isCheckMode) {
                             if (isTS) {
                                 interCodeSnippets.push(
-                                    [-3, "__c__.SatisfyPromise("],
+                                    [IntercodeSnippetKind.VoidSource, "__c__.SatisfyPromise("],
                                     [trimedValueStartSourceIndex, trimedValue],
-                                    [-2, ");"]
+                                    [IntercodeSnippetKind.SearchForward, ");"]
                                 )
                             }
                             awaitExpression = [trimedValueStartSourceIndex, trimedValue]
@@ -985,7 +1005,7 @@ export function analyzeAttribute(
             })
         })
 
-        interCodeSnippets.push([-1, "new "])
+        interCodeSnippets.push([IntercodeSnippetKind.SearchBackward, "new "])
         recordInterSnippetWithSpecificRange(`${node.componentTag}(`, ...stnr)
 
         for (const target of attrRecords) {
@@ -996,20 +1016,15 @@ export function analyzeAttribute(
                 const suffix = isKey ? ":" : isLast ? "" : ","
                 if (!item.specificRange) {
                     interCodeSnippets.push([item.range[0], item.value])
-                    suffix && interCodeSnippets.push([-2, suffix])
+                    suffix && interCodeSnippets.push([IntercodeSnippetKind.SearchForward, suffix])
                 } else {
                     const specificSnippet = item.value + (suffix || " ")
                     recordInterSnippetWithSpecificRange(specificSnippet, ...item.range)
                 }
             })
-            if (!isTS || target.length > 0) {
-                interCodeSnippets.push([-2, "}"])
-            } else {
-                interCodeSnippets.push([-2, "}"])
-            }
-            interCodeSnippets.push([stnr[1], ","])
+            interCodeSnippets.push([IntercodeSnippetKind.SearchForward, "}"], [stnr[1], ","])
         }
-        interCodeSnippets.push([-2, `0${isTS ? " as any" : ""});`])
+        interCodeSnippets.push([IntercodeSnippetKind.SearchForward, `0${isTS ? " as any" : ""});`])
     }
 
     // slot节点未使用slot指令时记录slot属性相关的中间代码片段
