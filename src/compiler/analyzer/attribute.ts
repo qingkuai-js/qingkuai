@@ -603,13 +603,22 @@ export function analyzeAttribute(
                                 [-2, ");"]
                             )
                         } else {
+                            if (indexPart) {
+                                interCodeSnippets.push(
+                                    [-1, "{const ["],
+                                    [
+                                        trimedValueStartSourceIndex + itemPartRange![0],
+                                        trimedValue.slice(itemPartRange![0], indexPartRange![1])
+                                    ],
+                                    [-2, "]"]
+                                )
+                            } else {
+                                interCodeSnippets.push(
+                                    [-1, "const "],
+                                    [trimedValueStartSourceIndex + itemPartRange![0], itemPart]
+                                )
+                            }
                             interCodeSnippets.push(
-                                [-1, "{const ["],
-                                [
-                                    trimedValueStartSourceIndex,
-                                    trimedValue.slice(itemPartRange![0], indexPartRange![1])
-                                ],
-                                [-2, "]"],
                                 [-3, "=__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex + baseValueRange![0], baseValue],
                                 [-2, ");"]

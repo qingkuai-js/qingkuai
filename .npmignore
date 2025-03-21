@@ -1,5 +1,6 @@
 node_modules
 test-space
+tests
 src
 
 .prettierrc
