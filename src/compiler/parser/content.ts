@@ -1,8 +1,6 @@
 import { inputDescriptor } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { newTemplateContext } from "../../util/compiler/structure"
-import { transformInterpolation } from "../transformer/interpolation"
 import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
 import { findEndBracket, findOutOfComment, normalStringify } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
@@ -20,8 +18,6 @@ export function content2script(content: string, startSourceIndex: number) {
 
     const positionMap: number[] = []
     const transformedArr: string[] = []
-    const context = newTemplateContext()
-    const { positions } = inputDescriptor
     const emptyStrSource = normalStringify("")
 
     const pushTransformedArr = (str: string, useStringify = true) => {
@@ -34,13 +30,9 @@ export function content2script(content: string, startSourceIndex: number) {
             }
         }
 
-        // 检查模式下，将插值表达式部分记录到中间代码片段，由于检查模式下后续步骤不会
-        // 调用transformInterpolation方法，所以这里需要主动调用对插值块进行语法检查
+        // 检查模式下，将插值表达式部分记录到中间代码片段
         if (inputDescriptor.options.check) {
-            if (
-                !useStringify &&
-                transformInterpolation(str, startSourceIndex, context, "content")
-            ) {
+            if (!useStringify) {
                 markCurrentStrInScriptInterpolationBlock()
                 recordInterExpression(str, [sourceIndex + 1])
             }

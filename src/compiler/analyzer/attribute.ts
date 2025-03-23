@@ -223,7 +223,7 @@ export function analyzeAttribute(
             option?: TransformInterpolationOptionalParam
         ) => {
             if (isCheckMode) {
-                recordInterExpression(exp, [startSourceIndex])
+                return recordInterExpression(exp, [startSourceIndex]), ""
             }
             return transformInterpolation(exp, startSourceIndex, context, "directive", option)
         }
@@ -234,7 +234,7 @@ export function analyzeAttribute(
 
             // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
             if (isCheckMode) {
-                return recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
+                return recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange), ""
             }
 
             option = Object.assign(option || {}, {
@@ -370,8 +370,8 @@ export function analyzeAttribute(
 
             // 非检查模式时正常编译，检查模式下记录中间代码片段
             if (!isCheckMode) {
-                const tiGetter = transAttrValue()!
-                const tiSetter = transAttrValue({ usedAsSetter: true })!
+                const tiGetter = transAttrValue()
+                const tiSetter = transAttrValue({ usedAsSetter: true })
                 let setter = isString(tiSetter) ? tiSetter : tiSetter.transformedExp
                 if (isComponent) {
                     // slot是特殊属性，不会被当做组件props，引用传递时要报错
