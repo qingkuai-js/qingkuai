@@ -9,6 +9,7 @@ import type {
     PreprocessedTemplateAttribute,
     TransformInterpolationOptionalParam
 } from "../types"
+import type { Expression } from "@babel/types"
 import type { AnyObject, NumNum } from "../../util/types"
 import type { AnyNode, EsPattern } from "../estree/types"
 
@@ -44,7 +45,7 @@ import {
     kebab2Camel,
     normalStringify,
     findOutOfComment,
-    findOutOfStringComment,
+    findOutOfStringComment
 } from "../../util/compiler/strings"
 import {
     InvalidSlotAttr,
@@ -254,15 +255,15 @@ export function analyzeAttribute(
                     contextBlockCount++
                     interCodeSnippets.push(
                         [IntercodeSnippetKind.SearchBackward, "{const "],
-                        [trimedValueStartSourceIndex, trimedValue]
+                        [trimedValueStartSourceIndex, trimedValue],
+                        [IntercodeSnippetKind.SearchForward, "="]
                     )
                     if (pureKey === "slot") {
-                        interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "="])
                         recordSlotAttributeInterSnippet()
                     } else {
                         interCodeSnippets.push([
                             IntercodeSnippetKind.VoidSource,
-                            "=__c__.getResolve("
+                            "__c__.GetResolve("
                         ])
                         interCodeSnippets.push(awaitExpression!, [
                             IntercodeSnippetKind.SearchForward,
@@ -270,20 +271,28 @@ export function analyzeAttribute(
                         ])
                     }
                 } else {
-                    const ast = (parse(`(${trimedValue})`)?.body[0] as any).expression
-                    if (is(ast, "Identifier")) {
-                        extendContext(context, ast.name)
-                    } else if (is(ast, "ArrayExpression") || is(ast, "ObjectExpression")) {
+                    const ast = parse(`(${trimedValue})`, 1, trimedValueStartSourceIndex)
+                    const expressionNode = (ast?.body[0] as any).expression as Expression
+                    if (is(expressionNode, "Identifier")) {
+                        extendContext(context, expressionNode.name)
+                    } else if (
+                        is(expressionNode, "ArrayExpression") ||
+                        is(expressionNode, "ObjectExpression")
+                    ) {
+                        const endIndex = expressionNode.loc!.end.index - 1
+                        const startIndex = expressionNode.loc!.start.index - 1
+                        const startSourceIndex = trimedValueStartSourceIndex + startIndex
                         const tir = makeDestructuringPatternSignleLine(
-                            trimedValue.slice(ast.loc!.start.index - 1, ast.loc!.end.index - 1),
-                            trimedValueStartSourceIndex + ast.loc!.start.index - 1
+                            trimedValue.slice(startIndex, endIndex),
+                            startSourceIndex
                         )
                         recordDestructuringIdentifiers(
                             tir,
                             aliasArgs,
                             context,
                             false,
-                            context.count++
+                            context.count++,
+                            startSourceIndex
                         )
                     } else {
                         BadValueToContextGenDirective(pureKey, trimedValueLoc)
@@ -503,7 +512,8 @@ export function analyzeAttribute(
                         baseValue = trimedValue
                         baseValueRange = [0, trimedValue.length]
                     } else {
-                        const ast = parse(`(${trimedValue.slice(0, ofKeywordIndex)})`)?.body[0]
+                        const exp = `(${trimedValue.slice(0, ofKeywordIndex)})`
+                        const ast = parse(exp, 1, trimedValueStartSourceIndex)?.body[0]
                         baseValueRange = [ofKeywordIndex + 4, trimedValue.length]
                         baseValue = trimedValue.slice(ofKeywordIndex + 4)
                         hasContextIdentifier = true
@@ -579,16 +589,19 @@ export function analyzeAttribute(
                             if (!indexPart) {
                                 context.count++
                             } else if (indexPartIsDestructuring) {
+                                const startSourceIndex =
+                                    trimedValueStartSourceIndex + indexPartRange![0]
                                 const tir = makeDestructuringPatternSignleLine(
                                     indexPart,
-                                    trimedValueStartSourceIndex + indexPartRange![0]
+                                    startSourceIndex
                                 )
                                 recordDestructuringIdentifiers(
                                     tir,
                                     aliasArgs,
                                     context,
                                     true,
-                                    preContextCount
+                                    preContextCount,
+                                    startSourceIndex
                                 )
                             } else {
                                 extendContext(context, indexPart, "")
@@ -598,16 +611,19 @@ export function analyzeAttribute(
                             if (!itemPart) {
                                 context.count++
                             } else if (itemPartIsDestructuring) {
+                                const startSourceIndex =
+                                    trimedValueStartSourceIndex + itemPartRange![0]
                                 const tir = makeDestructuringPatternSignleLine(
                                     itemPart,
-                                    trimedValueStartSourceIndex + itemPartRange![0]
+                                    startSourceIndex
                                 )
                                 recordDestructuringIdentifiers(
                                     tir,
                                     aliasArgs,
                                     context,
                                     true,
-                                    preContextCount + 1
+                                    preContextCount + 1,
+                                    startSourceIndex
                                 )
                             } else {
                                 extendContext(context, itemPart, "")
@@ -1292,13 +1308,14 @@ function recordDestructuringIdentifiers(
     aliasArgs: TransformInterpolationRet[],
     context: TemplateContext,
     isForDirective: boolean,
-    baseCtxIndex: number
+    baseCtxIndex: number,
+    startSourceIndex: number
 ) {
     const identifiers = new Set<string>()
     const patternStr = isString(tir) ? tir : tir.transformedExp
     const declarationSourceCode = `const ${patternStr}={}`
 
-    const ast = parse(declarationSourceCode)?.body[0]
+    const ast = parse(declarationSourceCode, 6, startSourceIndex)?.body[0]
     const patternNode = (ast as any).declarations[0].id as EsPattern
 
     // 检查模式下的遇到babel内部错误时，直接返回

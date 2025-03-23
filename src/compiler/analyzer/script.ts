@@ -265,7 +265,7 @@ export function analyzeScript(source: string) {
         items: []
     })
 
-    walk(parse(source), visitor)
+    walk(parse(source, 0, getSourceIndexByScriptIndex(0)), visitor)
     confirmQingKuaiIdentifierAliases()
 }
 

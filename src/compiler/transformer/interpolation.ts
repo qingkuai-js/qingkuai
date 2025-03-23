@@ -11,10 +11,8 @@ import type { GeneralFunc } from "../../util/types"
 
 import {
     BadValueToRefAttr,
-    InterpolationExpOutOfLimit,
     IdentifierFormatIsNotAllowed,
-    ContextIdentifierUsedAsReferenceTarget,
-    SequenceExpreesionInInterpolationBlock
+    ContextIdentifierUsedAsReferenceTarget
 } from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
@@ -36,33 +34,12 @@ export function transformInterpolation(
     type: "directive" | "attribute" | "event" | "content",
     optionalParams: TransformInterpolationOptionalParam = {}
 ): TransformInterpolationRet {
-    if (isEmptyString(expression)) {
+    if (inputDescriptor.options.check || isEmptyString(expression)) {
         return ""
     }
 
-    const bodyAst = parse("_=" + expression)?.body
-    const expressionAst = (bodyAst as any)?.[0].expression
-    const endSourceIndex = startSourceIndex + expression.length
-
-    // 检查模式下遇到解析错误时返回原表达式
-    if (isUndefined(bodyAst)) {
-        return expression
-    }
-
-    // 插值块中最多允许出现一个表达式
-    if (bodyAst!.length > 1) {
-        return InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex), ""
-    }
-
-    // 未被括号包裹的序列表达式在插值块中是不被允许的
-    if (is(expressionAst, "SequenceExpression")) {
-        return SequenceExpreesionInInterpolationBlock(startSourceIndex, endSourceIndex), ""
-    }
-
-    // 检查模式下语法检查完成后无需执行后续的转换操作
-    if (inputDescriptor.options.check) {
-        return expression
-    }
+    const { eventWrapper, positionMap } = optionalParams
+    const bodyAst = parse("_=" + expression, 2, startSourceIndex, positionMap)?.body[0]
 
     let vParam = "v"
     let ctxParam = "ctx"
@@ -73,19 +50,19 @@ export function transformInterpolation(
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
-    const sourcemapIndexes: number[] = []
     const afterWalkFuncs: GeneralFunc[] = []
     const mappings: FixedArray<number, 4>[] = []
     const contextVariables: [string, number][] = []
+
+    const sourcemapIndexes = new Set<number>()
     const expEliminateRanges: EliminateRanges = new Set()
     const allIndentifiersInExpression = new Set<string>()
     const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
-    const ast = expressionAst.right
+    const ast = (bodyAst as any).expression.right
     const isDebug = inputDescriptor.options.debug
-    const eventWrapper = optionalParams.eventWrapper
+    const noPositionMap = isUndefined(positionMap)
     const usedAsSetter = optionalParams.usedAsSetter || false
-    const noPositionMap = isUndefined(optionalParams.positionMap)
     const isKeyDirective = optionalParams.isKeyDirective || false
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
     const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
@@ -194,7 +171,8 @@ export function transformInterpolation(
         // indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
         AnyNode(node) {
             if (startSourceIndex !== -1) {
-                sourcemapIndexes.push(node.start - 2, node.end - 2)
+                sourcemapIndexes.add(node.end - 2)
+                sourcemapIndexes.add(node.start - 2)
             }
         }
     })
@@ -330,13 +308,11 @@ export function transformInterpolation(
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
     // 在调用transformTemplate时会根据这个mappings来转换生成sourcemap需要的mappings格式
     if (shouldGenerateSourcemap && useGetter) {
-        sourcemapIndexes.sort((a, b) => {
+        const sortedSourceMapIndexes = Array.from(sourcemapIndexes).sort((a, b) => {
             return a - b
         })
-        sourcemapIndexes.forEach(index => {
-            const sourceIndex = noPositionMap
-                ? index + startSourceIndex
-                : optionalParams.positionMap![index]
+        sortedSourceMapIndexes.forEach(index => {
+            const sourceIndex = noPositionMap ? index + startSourceIndex : positionMap![index]
             const generateIndex = indexMap[index] + addedPrefixLen
             if (!isUndefined(sourceIndex)) {
                 mappings.push([

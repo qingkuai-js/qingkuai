@@ -18,7 +18,6 @@ import { findOutOfComment } from "./strings"
 import { isArray, isUndefined } from "../../util/shared/assert"
 import { replacementInfo, inputDescriptor } from "../../compiler/state"
 import { is, isTypeOperationExpression } from "../../compiler/estree/assert"
-import { getSourceIndexByScriptIndex, getSourcePosByScriptPos } from "./locations"
 
 // 提取任意节点对应的EsTree节点，忽略ts断言相关语法往下查找
 export function getEsNode(node: AnyNode) {
@@ -53,22 +52,24 @@ export function extractIdentifier(str: string) {
 }
 
 // js或ts解析为抽象语法树
-export function parse(source: string) {
+export function parse(
+    source: string,
+    prefixLen: number,
+    startSourceIndex: number,
+    positionMap?: number[]
+) {
     const isCheck = inputDescriptor.options.check
 
     // @babel/parser解析遇到错误时，将位置修改为正确的源码位置
     const changeErrorLoc = (e: any) => {
-        if (!isUndefined(e.loc) && !isUndefined(e.pos)) {
-            e.loc = getSourcePosByScriptPos(e.loc)
-            e.pos = getSourceIndexByScriptIndex(e.pos)
-        }
-        // 修改报错信息中的位置描述
+        const pos = (e.pos = e.pos - prefixLen) as number
+        const sourceIndex = positionMap?.[pos] ?? startSourceIndex + pos
+
+        // 修改报错位置及描述信息
         if (!isUndefined(e.loc)) {
-            const { line: newLine, column: newColumn } = e.loc
-            const positionDescription = `(${newLine}:${newColumn})`
-            e.message = e.message.replace(/\(\d+:\d+\)$/, positionDescription)
+            const { line, column } = (e.loc = inputDescriptor.positions[sourceIndex])
+            e.message = e.message.replace(/\(\d+:\d+\)$/, `(${line}:${column})`)
         }
-        return e
     }
 
     try {
@@ -81,9 +82,8 @@ export function parse(source: string) {
         }
         return babel.parse(source, parseOption).program
     } catch (err: any) {
-        err = changeErrorLoc(err)
         if (!isCheck) {
-            throw err
+            throw (changeErrorLoc(err), err)
         }
     }
 }

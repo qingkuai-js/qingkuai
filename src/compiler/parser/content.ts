@@ -54,19 +54,19 @@ export function content2script(content: string, startSourceIndex: number) {
             if (shouldGenerateSourcemap) {
                 const stringifiedLen = stringified.length
                 const endIndex = transformedStrLen + stringifiedLen
-                positionMap[transformedStrLen] = positions[sourceIndex].index
-                positionMap[endIndex] = positions[sourceIndex + str.length].index
-                transformedStrLen = +isDebug + endIndex + 2
+                positionMap[endIndex] = sourceIndex + str.length
+                positionMap[transformedStrLen] = sourceIndex
+                transformedStrLen += stringifiedLen + (isDebug ? 3 : 2)
             }
             transformedArr.push(stringified)
         } else {
             if (shouldGenerateSourcemap) {
-                for (let i = 0; i <= str.length; i++) {
-                    const delta = Number(isDebug && positionMap.length !== 0)
-                    positionMap[delta + transformedStrLen + i] = sourceIndex + i + 1
+                const delta = Number(isDebug)
+                for (let i = -delta; i <= str.length + delta; i++) {
+                    positionMap[transformedStrLen + i + 1] = sourceIndex + i + 1
                 }
-                transformedStrLen += str.length + (isDebug ? 5 : 2)
                 contentSourceIndex += 2
+                transformedStrLen += str.length + (isDebug ? 5 : 2)
             }
             markCurrentStrInScriptInterpolationBlock()
             transformedArr.push(isDebug ? `(${str})` : str)
@@ -77,7 +77,6 @@ export function content2script(content: string, startSourceIndex: number) {
 
     while (index < content.length) {
         const startBracketIndex = content.indexOf("{", index)
-        const startBracketNextIndex = startBracketIndex + 1
         const startBracketSourceIndex = startBracketIndex + startSourceIndex
         if (startBracketIndex === -1) {
             pushTransformedArr(content.slice(index))
@@ -90,13 +89,13 @@ export function content2script(content: string, startSourceIndex: number) {
         }
 
         // 查找关闭花括号的位置，不存在就报错，存在则检查是否是空的插值表达式块，若为空同样需要报错
-        const endBracketIndex = findEndBracket(content, startBracketNextIndex)
+        const endBracketIndex = findEndBracket(content, startBracketIndex + 1)
         if (endBracketIndex === -1) {
             UnclosedInterpolationExpression(getLocByIndex(startBracketSourceIndex))
             pushTransformedArr(content.slice(startBracketIndex))
             break
         } else {
-            const interpolationExp = content.slice(startBracketNextIndex, endBracketIndex)
+            const interpolationExp = content.slice(startBracketIndex + 1, endBracketIndex)
             if (((index = endBracketIndex + 1), findOutOfComment(interpolationExp, /\S/) === -1)) {
                 EmptyInterpolationExpression(
                     startBracketSourceIndex,
@@ -104,24 +103,8 @@ export function content2script(content: string, startSourceIndex: number) {
                 )
             } else {
                 pushTransformedArr(interpolationExp, false)
-
                 if (!isDebug) {
                     continue
-                }
-
-                // 这里定义isStart和isEnd分别用来判断插值表达式是否在textContent的结尾和开头处，
-                // 若它在结尾处，需要将positionMap的最后一个元素 + 1（最后一个插值表达式的结束位置）
-                // 若它在开头处，需要将positionMap下标为1的元素 - 1（第一个插值表达式的起始位置，下标为0处是开始大括号）
-                //
-                // 此处理是为了在调试代码时，将断点设置位放置在以插值表达式开始的开始大括号前和以插值表达式结尾的结束大括号后
-                // 这样做是为了保持与其他情况断点位置的一致性（均为textContent部分开头首个非空白字符和最后一个非空白字符处）
-                const isEnd = endBracketIndex === content.length - 1
-                const isStart = transformedStrLen === transformedStrInitLen
-                if (isEnd) {
-                    positionMap[transformedStrLen - 4]++
-                }
-                if (isStart) {
-                    positionMap[transformedStrInitLen + 1]--
                 }
             }
         }
@@ -135,7 +118,6 @@ export function content2script(content: string, startSourceIndex: number) {
     // 调试模式下，将第一个存在的映射位置元素放在positionMap首位，保持首个断点设置位在content开始位置的一致性
     if (isDebug && isNumber(positionMap[5])) {
         positionMap[0] = positionMap[5]
-        delete positionMap[5]
     }
 
     // 调试模式和飞调试模式的转换结果不同，对于相同的输入字符串：a {b} c，它们的转换结果格式如下：
@@ -158,3 +140,4 @@ export function content2script(content: string, startSourceIndex: number) {
         script: transformedStr
     }
 }
+// "" + (a) + " " + (b)

@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 1045
+ * last-error-code: 1043
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -79,10 +79,6 @@ export const UnclosedNormalAttributeValue = withLocation(1003, () => {
 
 export const DynamicNameAttrForSlot = withLocation(1020, () => {
     return `Dynamic name attribute(!name) for slot tag is not allowed.`
-})
-
-export const InterpolationExpOutOfLimit = withLocation(1039, () => {
-    return "At most one expression can appear in the interpolation block."
 })
 
 export const UnclosedInterpolationExpression = withLocation(1004, () => {
@@ -192,7 +188,7 @@ export const DuplicateSlotAttr = withLocation(1014, (name: string, component: st
     return `Multiple elements used as slot in component(${component}) have the same name(${name})`
 })
 
-export const BadEventListenerForSlotTag = withLocation(1043, (attr: string) => {
+export const BadEventListenerForSlotTag = withLocation(1041, (attr: string) => {
     return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
 })
 
@@ -204,10 +200,6 @@ export const ContextIdentifierUsedAsReferenceTarget = withLocation(1035, (name: 
     return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
 })
 
-export const SequenceExpreesionInInterpolationBlock = withLocation(1040, () => {
-    return "The sequence expressions that not be wrapped with parentheses can not be used in the interpolation block."
-})
-
 export const UnkonwDirective = withLocation(1028, (name: string) => {
     return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
 })
@@ -216,7 +208,7 @@ export const BadValueToRefAttr = withLocation(1031, (exp: string) => {
     return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
 })
 
-export const BadValueToContextGenDirective = withLocation(1045, (directive: string) => {
+export const BadValueToContextGenDirective = withLocation(1043, (directive: string) => {
     return `Bad value for ${directive} directive, it expectes the following three node types: Identifier, ArrayExpression or ObjectExpression.`
 })
 
