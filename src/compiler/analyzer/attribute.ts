@@ -251,54 +251,57 @@ export function analyzeAttribute(
         const recordAliasIdentifiers = () => {
             if (isEmptyString(trimedValue)) {
                 context.count++
-            } else {
-                if (isCheckMode) {
-                    contextBlockCount++
-                    interCodeSnippets.push(
-                        [IntercodeSnippetKind.SearchBackward, "{const "],
-                        [trimedValueStartSourceIndex, trimedValue],
-                        [IntercodeSnippetKind.SearchForward, "="]
-                    )
-                    if (pureKey === "slot") {
-                        recordSlotAttributeInterSnippet()
-                    } else {
-                        interCodeSnippets.push([
-                            IntercodeSnippetKind.VoidSource,
-                            "__c__.GetResolve("
-                        ])
-                        interCodeSnippets.push(awaitExpression!, [
-                            IntercodeSnippetKind.SearchForward,
-                            ");"
-                        ])
-                    }
+                return
+            }
+            if (isCheckMode) {
+                contextBlockCount++
+                interCodeSnippets.push(
+                    [IntercodeSnippetKind.SearchBackward, "{const "],
+                    [trimedValueStartSourceIndex, trimedValue],
+                    [IntercodeSnippetKind.SearchForward, "="]
+                )
+                if (pureKey === "slot") {
+                    recordSlotAttributeInterSnippet()
+                } else if (!awaitExpression || pureKey !== "slot") {
+                    interCodeSnippets.push([
+                        IntercodeSnippetKind.VoidSource,
+                        `0${isTS ? " as any" : ""};`
+                    ])
                 } else {
-                    const ast = parse(`(${trimedValue})`, 1, trimedValueStartSourceIndex)
-                    const expressionNode = (ast?.body[0] as any).expression as Expression
-                    if (is(expressionNode, "Identifier")) {
-                        extendContext(context, expressionNode.name)
-                    } else if (
-                        is(expressionNode, "ArrayExpression") ||
-                        is(expressionNode, "ObjectExpression")
-                    ) {
-                        const endIndex = expressionNode.loc!.end.index - 1
-                        const startIndex = expressionNode.loc!.start.index - 1
-                        const startSourceIndex = trimedValueStartSourceIndex + startIndex
-                        const tir = makeDestructuringPatternSignleLine(
-                            trimedValue.slice(startIndex, endIndex),
-                            startSourceIndex
-                        )
-                        recordDestructuringIdentifiers(
-                            tir,
-                            aliasArgs,
-                            context,
-                            false,
-                            context.count++,
-                            startSourceIndex
-                        )
-                    } else {
-                        BadValueToContextGenDirective(rk, trimedValueLoc)
-                    }
+                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "__c__.GetResolve("])
+                    interCodeSnippets.push(awaitExpression!, [
+                        IntercodeSnippetKind.SearchForward,
+                        ");"
+                    ])
                 }
+                return
+            }
+
+            const ast = parse(`(${trimedValue})`, 1, trimedValueStartSourceIndex)
+            const expressionNode = (ast?.body[0] as any).expression as Expression
+            if (is(expressionNode, "Identifier")) {
+                extendContext(context, expressionNode.name)
+            } else if (
+                is(expressionNode, "ArrayExpression") ||
+                is(expressionNode, "ObjectExpression")
+            ) {
+                const endIndex = expressionNode.loc!.end.index - 1
+                const startIndex = expressionNode.loc!.start.index - 1
+                const startSourceIndex = trimedValueStartSourceIndex + startIndex
+                const tir = makeDestructuringPatternSignleLine(
+                    trimedValue.slice(startIndex, endIndex),
+                    startSourceIndex
+                )
+                recordDestructuringIdentifiers(
+                    tir,
+                    aliasArgs,
+                    context,
+                    false,
+                    context.count++,
+                    startSourceIndex
+                )
+            } else {
+                BadValueToContextGenDirective(rk, trimedValueLoc)
             }
         }
 
@@ -721,6 +724,8 @@ export function analyzeAttribute(
                                     [trimedValueStartSourceIndex, trimedValue],
                                     [IntercodeSnippetKind.SearchForward, ");"]
                                 )
+                            } else {
+                                recordInterExpression(trimedValue, [trimedValueStartSourceIndex])
                             }
                             awaitExpression = [trimedValueStartSourceIndex, trimedValue]
                         } else {
