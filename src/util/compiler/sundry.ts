@@ -6,10 +6,14 @@ import type {
 } from "../../compiler/types"
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
+import {
+    SELF_CLOSING_TAGS,
+    IntercodeSnippetKind,
+    MUST_PASS_VALUE_DIRECTIVES
+} from "../../compiler/constants"
 import { PositionFlag } from "../shared/flag"
 import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
-import { IntercodeSnippetKind, SELF_CLOSING_TAGS } from "../../compiler/constants"
 import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
 
 export function isSelfClosingTag(tag: string) {
@@ -18,6 +22,10 @@ export function isSelfClosingTag(tag: string) {
 
 export function isEmbededLanguageTag(tag: string) {
     return templateEmbeddedLangTagRE.test(tag)
+}
+
+export function mustDirectiveHasValue(name: string) {
+    return MUST_PASS_VALUE_DIRECTIVES.has(name)
 }
 
 // 通过ASTLocation获取[number,number]类型的索引范围表示

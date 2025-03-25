@@ -6,13 +6,17 @@ import {
     findOutOfComment,
     findOutOfStringComment
 } from "../util/compiler/strings"
+import {
+    isSelfClosingTag,
+    isEmbededLanguageTag,
+    mustDirectiveHasValue
+} from "../util/compiler/sundry"
 export { compile } from "./compile"
 export { commonMessage } from "./message/common"
 export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
 export { PositionFlag } from "../util/shared/flag"
 import { parseTemplateStandalone } from "./parser/template"
-import { isEmbededLanguageTag, isSelfClosingTag } from "../util/compiler/sundry"
 
 export const util = {
     kebab2Camel,
@@ -22,6 +26,7 @@ export const util = {
     findOutOfComment,
     isSelfClosingTag,
     isEmbededLanguageTag,
+    mustDirectiveHasValue,
     findOutOfStringComment
 }
 export const parseTemplate = parseTemplateStandalone
