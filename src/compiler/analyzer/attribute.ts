@@ -697,7 +697,7 @@ export function analyzeAttribute(
                     if (pureKey === "else") {
                         continueArg = "1"
                         setContinueInfo(null)
-                        rv && DirectiveValueIsIgnored(rk, key.loc)
+                        rv && DirectiveValueIsIgnored(rk, attr.loc)
                     } else {
                         const transRet = transDirective(rv, trimedValueStartSourceIndex)
                         if (pureKey === "elif") {
