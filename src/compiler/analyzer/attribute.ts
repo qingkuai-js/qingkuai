@@ -27,7 +27,8 @@ import {
     InvalidComposeModifier,
     InvalidKeyRelatedModifier,
     InvalidEventFlagForComponent,
-    ConflictNormalKeyEventModifier
+    ConflictNormalKeyEventModifier,
+    DirectiveValueIsIgnored
 } from "../message/warn"
 import {
     IntercodeSnippetKind,
@@ -295,7 +296,7 @@ export function analyzeAttribute(
                             startSourceIndex
                         )
                     } else {
-                        BadValueToContextGenDirective(pureKey, trimedValueLoc)
+                        BadValueToContextGenDirective(rk, trimedValueLoc)
                     }
                 }
             }
@@ -682,13 +683,11 @@ export function analyzeAttribute(
                 case "if":
                 case "elif":
                 case "else":
-                    // 使用elif指令的节点的前一个兄弟节点必须使用了if指令
-                    if (pureKey === "elif" && continueByDirective !== "if") {
-                        MissingStartDirective(rk, "#if", key.loc)
-                    }
-
-                    // 使用了else指令的节点的前一个兄弟节点必须使用了if/elif指令
-                    if (pureKey === "else" && !/^(?:el)?if$/.test(continueByDirective || "")) {
+                    // 使用elif或else指令的节点的前一个兄弟节点必须使用了if或elif指令
+                    if (
+                        /^el(?:if|se)$/.test(pureKey) &&
+                        !/^(?:el)?if$/.test(continueByDirective || "")
+                    ) {
                         MissingStartDirective(rk, "#if or #elif", key.loc)
                     }
 
@@ -698,6 +697,7 @@ export function analyzeAttribute(
                     if (pureKey === "else") {
                         continueArg = "1"
                         setContinueInfo(null)
+                        rv && DirectiveValueIsIgnored(rk, key.loc)
                     } else {
                         const transRet = transDirective(rv, trimedValueStartSourceIndex)
                         if (pureKey === "elif") {

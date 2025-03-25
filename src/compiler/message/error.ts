@@ -70,7 +70,7 @@ export const SlotAttrIsEmpty = withLocation(1022, () => {
 })
 
 export const BadValueToForDirective = withLocation(1038, () => {
-    return `Bad value to the for directive.`
+    return `Bad value to the #for directive.`
 })
 
 export const UnclosedNormalAttributeValue = withLocation(1003, () => {
@@ -124,7 +124,7 @@ export const TagCanNotBeSelfClosing = withLocation(1011, (tag: string) => {
 })
 
 export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
-    return "Key directive could not be used without for directive."
+    return "Key directive could not be used without #for directive."
 })
 
 export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
