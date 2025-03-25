@@ -546,7 +546,7 @@ function getKeyValuePairIterator(value: any): [any, any][] {
             return [index, index + 1]
         })
     }
-    NonTraverse()
+    return NonTraverse()
 }
 
 // (keyed)forModule: 更新键值对

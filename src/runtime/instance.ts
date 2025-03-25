@@ -9,8 +9,8 @@ import { GeneralFunc } from "../util/types"
 import { isUndefined } from "../util/shared/assert"
 import { IntantiatedByH, nil, noop } from "./constants"
 import { arrayFill, len, runAll } from "../util/shared/sundry"
+import { InstantiateComponentManually } from "./message/error"
 import { destroyBlock, newDestruction } from "../util/runtime/separate"
-import { IntantiateComponentManually } from "./message/error"
 
 // 用于存储当前操作的组件实例
 let currentInstance: QingKuaiComponent | null = nil
@@ -38,7 +38,7 @@ export class QingKuaiComponent {
 
     constructor(args?: QingKuaiComponentConstructonParam, sign?: Symbol) {
         if (sign !== IntantiatedByH) {
-            IntantiateComponentManually()
+            InstantiateComponentManually()
         }
         if (isUndefined(args)) {
             return
