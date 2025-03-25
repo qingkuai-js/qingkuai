@@ -12,7 +12,7 @@ export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
 export { PositionFlag } from "../util/shared/flag"
 import { parseTemplateStandalone } from "./parser/template"
-import { isEmbededLanguageTag } from "../util/compiler/sundry"
+import { isEmbededLanguageTag, isSelfClosingTag } from "../util/compiler/sundry"
 
 export const util = {
     kebab2Camel,
@@ -20,6 +20,7 @@ export const util = {
     findEndBracket,
     findOutOfString,
     findOutOfComment,
+    isSelfClosingTag,
     isEmbededLanguageTag,
     findOutOfStringComment
 }

@@ -27,20 +27,20 @@ import {
     NoEndTagMatched,
     UnexpectedToken,
     TagIsNotClosing,
-    EmbeddedLangNotInTopScope,
     TagCanNotBeSelfClosing,
-    EmptyInterpolationAttrName,
     TemplateStartsWithEndTag,
-    UnclosedNormalAttributeValue,
+    EmbeddedLangNotInTopScope,
     AttributeValueIsNotQuoted,
+    EmptyInterpolationAttrName,
     EmptyInterpolationExpression,
+    UnclosedNormalAttributeValue,
     EmbeddedScriptBlockOutOfLimit,
     UnclosedInterpolationExpression,
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import { replaceEachItems } from "../../util/shared/sundry"
 import { SELF_CLOSING_TAGS, SPECIAL_TAGS } from "../constants"
-import { inputDescriptor, newScriptDescriptor } from "../state"
+import { inputDescriptor, newScriptDescriptor, resetCompilerState } from "../state"
 import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getLocationMethodsGen } from "../../util/compiler/locations"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
@@ -48,6 +48,7 @@ import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sun
 
 // 独立调用的parseTemplate方法，compiler包会导出此方法
 export function parseTemplateStandalone(source: string) {
+    resetCompilerState({})
     return parseTemplate(source, true)
 }
 

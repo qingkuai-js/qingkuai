@@ -13,15 +13,15 @@ export interface ASTLocation {
     end: ASTPosition
 }
 
-export interface CompileOptions {
-    componentName?: string
-    check?: boolean
-    debug?: boolean
-    sourcemap?: boolean
-    typeRefStatement?: string
-    reserveTemplateComment?: boolean
-    convenientDerivedDeclaration?: boolean
-}
+export type CompileOptions = Partial<{
+    componentName: string
+    check: boolean
+    debug: boolean
+    sourcemap: boolean
+    typeRefStatement: string
+    reserveTemplateComment: boolean
+    convenientDerivedDeclaration: boolean
+}>
 
 export interface CompileResult {
     code: string

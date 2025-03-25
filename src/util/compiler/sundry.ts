@@ -7,10 +7,14 @@ import type {
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
 import { PositionFlag } from "../shared/flag"
-import { IntercodeSnippetKind } from "../../compiler/constants"
 import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
+import { IntercodeSnippetKind, SELF_CLOSING_TAGS } from "../../compiler/constants"
 import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
+
+export function isSelfClosingTag(tag: string) {
+    return SELF_CLOSING_TAGS.has(tag)
+}
 
 export function isEmbededLanguageTag(tag: string) {
     return templateEmbeddedLangTagRE.test(tag)
