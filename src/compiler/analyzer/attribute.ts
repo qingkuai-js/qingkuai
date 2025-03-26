@@ -1265,7 +1265,9 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
         })
     })
 
-    // 属性排序，具体排序规则参考apm变量定义处的注释
+    /**
+     * 属性排序，排序规则参考：{@link apm}
+     */
     return ret.sort((a, b) => {
         const [ak, bk] = [a.key.raw, b.key.raw]
         return (apm[bk] || 0) - (apm[ak] || 0)

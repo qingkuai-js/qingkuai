@@ -5,7 +5,7 @@ import { RawValue } from "./constants"
 import { velf } from "../util/runtime/sundry"
 import { isReactive } from "../util/runtime/assert"
 import { AssignmentToDOMGetterProp } from "./message/warn"
-import { isArray, isBoolean, isObject, isString } from "../util/shared/assert"
+import { isArray, isBoolean, isObject } from "../util/shared/assert"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -53,8 +53,8 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
 
-    // 如果value是一个响应式值，需要将其修改为其原始值，因为响应式值的每次获取
-    // 都是一个新的Proxy包装值，参考：src/runtime/reactivity/value.ts
+    // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值
+    // 每次访问响应式值都会得到一个新的Proxy包装值，参考：file://./reactivity/value.ts
     if (isReactive(value)) {
         value = value[RawValue]
     }

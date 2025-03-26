@@ -6,8 +6,7 @@ import type {
 } from "./types"
 import { GeneralFunc } from "../util/types"
 
-import { isUndefined } from "../util/shared/assert"
-import { IntantiatedByH, nil, noop } from "./constants"
+import { InstantiatedByH, nil, noop } from "./constants"
 import { arrayFill, len, runAll } from "../util/shared/sundry"
 import { InstantiateComponentManually } from "./message/error"
 import { destroyBlock, newDestruction } from "../util/runtime/separate"
@@ -25,6 +24,7 @@ export class QingKuaiComponent {
      */
     __: QingKuaiProperties = {
         updating: false,
+        id: "",
         ts: [],
         deps: [],
         hooks: [],
@@ -36,13 +36,11 @@ export class QingKuaiComponent {
         dst: newDestruction()
     }
 
-    constructor(args?: QingKuaiComponentConstructonParam, sign?: Symbol) {
-        if (sign !== IntantiatedByH) {
+    constructor(args: QingKuaiComponentConstructonParam) {
+        if (args.sign !== InstantiatedByH) {
             InstantiateComponentManually()
         }
-        if (isUndefined(args)) {
-            return
-        }
+        delete args.sign
         Object.assign(this.__, args)
         setCurrentInstance(this)
     }
@@ -53,7 +51,7 @@ export function getCurrentInstance() {
     return currentInstance
 }
 
-// 设置当前组件实例（到currentInstance）
+// 设置当前组件实例到currentInstance
 export function setCurrentInstance(ins: QingKuaiComponent) {
     currentInstance = ins
 }
@@ -78,7 +76,7 @@ export function createComponent(stu: ComponentStructure) {
             constructorArg.slots[slots[i][0]] = stus
         }
     }
-    return new Component(constructorArg, IntantiatedByH)
+    return new Component({ ...constructorArg, sign: InstantiatedByH })
 }
 
 // 销毁组件

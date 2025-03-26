@@ -7,9 +7,10 @@ import { isFunction } from "../util/shared/assert"
 import { AssignmentToProps } from "./message/warn"
 
 // 获取已绑定组件实例的相关方法
-export function init(instance: QingKuaiComponent) {
+export function init(instance: QingKuaiComponent, hashId: string) {
     const properties = instance.__
     const { props, refs, ctx } = properties as any
+    properties.id = hashId
 
     // 获取refs的原始值表示（可阅读形式）
     const getRawRefs = () => {

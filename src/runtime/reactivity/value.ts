@@ -15,7 +15,16 @@ import { getCurrentInstance } from "../instance"
 import { BadReactivityLevel } from "../message/error"
 import { isReactive } from "../../util/runtime/assert"
 import { notEqual, optc } from "../../util/shared/sundry"
-import { reflect, undef, RawValue, nil, IsProxy, Wrapper, noop } from "../constants"
+import {
+    reflect,
+    undef,
+    RawValue,
+    nil,
+    IsProxy,
+    Wrapper,
+    noop,
+    ExposeDependencies
+} from "../constants"
 import { isNull, isArray, isNumber, isFunction, isUndefined } from "../../util/shared/assert"
 
 const react = reactGen()
@@ -208,12 +217,9 @@ function reactGen(levelDown = 0) {
             effect
         )
         if (isDeclaration) {
-            const component = getCurrentInstance()
-            if (component) {
-                const { deps } = component.__
-                // if (conf.exposeDeps) {
-                //     deps.push(ret)
-                // }
+            if (ExposeDependencies) {
+                const component = getCurrentInstance()
+                component && component.__.deps.push(ret)
             }
         }
 

@@ -1,12 +1,10 @@
 import type {
-    Directive,
     KeyedInfo,
     UpdateFunc,
     PartialNode,
     RenderContext,
     EventStructure,
     RenderStructure,
-    ValueOrValueArr,
     DestructionStruct,
     QingKuaiNodeStruct,
     ComponentStructure,
@@ -32,16 +30,16 @@ import {
 import {
     usedEffectList,
     setUsedEffectList,
-    clearUsedEffectList,
+    cleanUsedEffectList,
     withCleanUsedEffectList
 } from "./reactivity/state"
 import { velf } from "../util/runtime/sundry"
 import { InvalidMountNode } from "./message/error"
 import { isModuleFunc } from "../util/runtime/assert"
-import { IsWithReferenceRet, nil } from "./constants"
 import { internalPreEffect } from "./reactivity/effect"
 import { lastElem, len, values } from "../util/shared/sundry"
 import { isArray, isFunction, isNull } from "../util/shared/assert"
+import { ExposeDestructions, InstantiatedByH, IsWithReferenceRet, nil } from "./constants"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
 export function render(
@@ -53,12 +51,13 @@ export function render(
 ) {
     let dst: DestructionStruct
     const properties = instance.__
-    // if (!conf.exposeDsts) {
-    //     dst = newDestruction()
-    // }
-    dst = properties.dst
-    properties.context = context
+    if (ExposeDestructions) {
+        dst = properties.dst
+    } else {
+        dst = newDestruction()
+    }
     properties.ctx = getContextFuncGen(context)
+    properties.context = context
     setCurrentInstance(instance)
 
     const ts = properties.ts
@@ -96,16 +95,27 @@ export const h = withCleanUsedEffectList(function (
     isKeyedTop: boolean = false
 ) {
     let dref: Text
+    let rstu: RenderStructure
     let isInputOrOption = false
     let isInputOrTextarea = false
 
-    const { directive, toms } = toRenderStructure(stu, context)
-    const isKeyedForModule = directive && directive.t === 1
-    const isAliasModule = directive && directive.t === 2
-    const destructionArr: DestructionStruct[] = []
-    const isDirectiveModule = !isNull(directive)
+    if (!isModuleFunc(stu)) {
+        rstu = {
+            toms: [stu],
+            directive: nil
+        }
+    } else {
+        rstu = stu(getContextFuncGen(context))
+    }
+
+    const { directive, toms } = rstu
     const times = directive?.v[0] ?? 1
+    const isDirectiveModule = !isNull(directive)
+    const isAliasModule = isDirectiveModule && directive.t === 2
+    const isKeyedForModule = isDirectiveModule && directive.t === 1
+
     const keyedInfo: KeyedInfo = []
+    const destructionArr: DestructionStruct[] = []
 
     const selfAttachUpdate = (fn: UpdateFunc) => {
         attachUpdate(fn, instance, destruction)
@@ -146,7 +156,7 @@ export const h = withCleanUsedEffectList(function (
         if (moduleUpdateFn && !isAliasModule) {
             setUsedEffectList(directive.e)
             selfAttachUpdate(moduleUpdateFn)
-            clearUsedEffectList()
+            cleanUsedEffectList()
         }
     }
 
@@ -158,11 +168,30 @@ export const h = withCleanUsedEffectList(function (
             nks: [],
             dst: isKeyedForModule ? destruction || nil : nil
         })
-        toms.forEach((tom: RenderStructure["toms"][number]) => {
-            const qkNode: QingKuaiNodeStruct = { n: nil, text: "", attrs: {} }
-            const [tag, content, attrs, events, ...children] = tom.template
+        toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
             const currentKeyedInfo = lastElem(keyedInfo)
+
+            // rstu是子指令模块
+            if (isModuleFunc(tom)) {
+                const cki = h(
+                    instance,
+                    tom,
+                    target,
+                    dref || reference,
+                    shouldDestroy,
+                    currentContext,
+                    destruction,
+                    isKeyedTop
+                )
+                if (isKeyedTop) {
+                    extendNks(currentKeyedInfo.nks, cki)
+                }
+                return
+            }
+
+            const qkNode: QingKuaiNodeStruct = { n: nil, text: "", attrs: {} }
+            const [tag, content, attrs, events, ...children] = tom
             const cif = isFunction(content)
 
             // 调用获取内容的函数
@@ -178,9 +207,9 @@ export const h = withCleanUsedEffectList(function (
                 return invokeGetter(getter)
             }
 
-            // 子组件，此时tag是组件实例
+            // 子组件，此时tag是组件标识符
             if (isFunction(tag)) {
-                const componentStu = tom.template as ComponentStructure
+                const componentStu = tom as ComponentStructure
                 const component = createComponent(componentStu)
 
                 // prettier-ignore
@@ -193,24 +222,6 @@ export const h = withCleanUsedEffectList(function (
                 )
                 shouldDestroy && destruction.c.add([dst])
                 extendNks(currentKeyedInfo.nks, nki)
-                return
-            }
-
-            // rstu是子命令模块
-            if (tom.module) {
-                const cki = h(
-                    instance,
-                    tom.module,
-                    target,
-                    dref || reference,
-                    shouldDestroy,
-                    currentContext,
-                    destruction,
-                    isKeyedTop
-                )
-                if (isKeyedTop) {
-                    extendNks(currentKeyedInfo.nks, cki)
-                }
                 return
             }
 
@@ -322,6 +333,7 @@ export const h = withCleanUsedEffectList(function (
                         })
                     }
                 }
+                attribute(qkNode, "qingkuai-" + instance.__.id, "", false)
             }
 
             // 处理events
@@ -398,9 +410,12 @@ export function createApp(
     if (!target) {
         InvalidMountNode(selector)
     } else {
-        const app = new Component(options as any)
-        render(app, target)
-        return app
+        // @ts-ignore
+        const app = new Component({
+            ...options,
+            sign: InstantiatedByH
+        })
+        return render(app, target), app
     }
 }
 
@@ -408,41 +423,6 @@ export function createApp(
 export function extendDsts(dsts: DestructionStruct[]) {
     const ret = newDestruction()
     dsts.push(ret)
-    return ret
-}
-
-// 将TemplateStructure或ModuelFunc转换为RenderStructure
-export function toRenderStructure(
-    stus: ValueOrValueArr<TemplateStuOrModuleFunc>,
-    context: RenderContext[] = [],
-    directive: Directive = nil
-) {
-    let ret: RenderStructure = {
-        toms: [],
-        directive: nil
-    }
-    if (!isArray(stus) || (!isModuleFunc(stus[0]) && !isArray(stus[0]))) {
-        stus = [stus] as TemplateStuOrModuleFunc[]
-    }
-    ;(stus as TemplateStuOrModuleFunc[]).forEach(stu => {
-        const stuIsModuleFunc = isModuleFunc(stu)
-        if (isNull(directive) && stuIsModuleFunc) {
-            ret = stu(getContextFuncGen(context), context)
-        } else {
-            ret.directive = directive
-            if (stuIsModuleFunc) {
-                ret.toms.push({
-                    module: stu,
-                    template: []
-                })
-            } else {
-                ret.toms.push({
-                    module: nil,
-                    template: stu
-                })
-            }
-        }
-    })
     return ret
 }
 
@@ -457,7 +437,7 @@ export function attachUpdate(
         list.add(fn)
         attachDestroy(() => list.delete(fn), destrcution)
     })
-    clearUsedEffectList()
+    cleanUsedEffectList()
 }
 
 // 添加销毁函数

@@ -1,7 +1,7 @@
 import type { QingKuaiComponent } from "./instance"
 import type { ReactivityWrapper } from "./reactivity/value"
 import type { AnyObject, GeneralFunc } from "../util/types"
-import type { IsModuleFunc, IsWithReferenceRet } from "./constants"
+import type { IsModuleFunc, IsWithReferenceRet, InstantiatedByH } from "./constants"
 
 export type ZeroOrOne = 0 | 1
 export type AnySet = Set<any>
@@ -18,6 +18,7 @@ export type PartialGeneralFunc = GeneralFunc | null
 export type Opportunity = "sync" | "pre" | "post"
 
 export interface QingKuaiProperties {
+    id: string
     updating: boolean
     ctx: GetContextFunc
     hooks: GeneralFunc[][]
@@ -30,6 +31,7 @@ export interface QingKuaiProperties {
     refs: Record<string, [(ctx: GetContextFunc) => any, (v: any, ctx: GetContextFunc) => any]>
 }
 export interface QingKuaiComponentConstructonParam {
+    sign?: typeof InstantiatedByH
     refs: QingKuaiProperties["refs"]
     props: QingKuaiProperties["props"]
     slots: QingKuaiProperties["slots"]
@@ -52,17 +54,13 @@ export type ComponentStructure = [
 export type TemplateStructure = NormalTemplateStructure | ComponentStructure
 
 export interface RenderStructure {
-    // means TemplateStructures Or ModuleFuncs
-    toms: {
-        module: ModuleFunc | null
-        template: TemplateStructure | []
-    }[]
     directive: Directive
+    toms: TemplateStuOrModuleFunc[]
 }
 
 export interface ModuleFunc {
     [IsModuleFunc]?: boolean
-    (ctx: GetContextFunc, context: RenderContext[]): RenderStructure
+    (ctx: GetContextFunc): RenderStructure
 }
 
 // 这里必须为NormalEventHandlerGetter也添加一个IsWithReferenceRet属性，
@@ -98,7 +96,7 @@ export type RenderContext = {
     v: any[][]
     e: EffectListItem[]
 }
-export type UpdateFunc = {
+export interface UpdateFunc {
     (): boolean
     called?: boolean
     instance?: QingKuaiComponent

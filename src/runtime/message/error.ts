@@ -37,7 +37,7 @@ export const DuplicateKey = withCode(2003, (key: string) => {
 })
 
 export const InvalidMountNode = withCode(2004, (selector: string) => {
-    return `The specified mount node could not be found, by selector: ${selector}`
+    return `The specified mount node could not be found, selector: ${selector}`
 })
 
 export const ContainerTypeIsBad = withCode(2005, (attrName: string, tag: string) => {

@@ -31,12 +31,12 @@ import {
 } from "../util/shared/sundry"
 import { insert } from "./dom"
 import { CancelablePromise } from "./promise"
-import { isNode } from "../util/runtime/assert"
 import { IsModuleFunc, nil } from "./constants"
+import { h, extendDsts, attachDestroy } from "./h"
 import { spliceByElem } from "../util/runtime/sundry"
 import { DuplicateKey, NonTraverse } from "./message/error"
+import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { invokeIndexedHooks, onAfterMount } from "./instance"
-import { h, toRenderStructure, extendDsts, attachDestroy } from "./h"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
@@ -57,22 +57,24 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
                 }
             }
         }
-        updateContext()
 
-        // 这里不能通过省略effect的第三个参数来达到直接执行一次的目的，
+        // 这里不能通过省略effect的第三个参数来达到直接执行一次的目的
         // 因为在在调用attachDestroy和removeEffect的时候需要知道使用的依赖项副作用列表
+        const effectList = (updateContext(), values(usedEffectList))
         const updateGen: DirectiveUpdateFuncGen = (...args) => {
             const unsetEffect = internalPreEffect(updateContext, effectList)
             attachDestroy(unsetEffect, args[5])
             return nil
         }
 
-        const effectList = values(usedEffectList)
-        return toRenderStructure(toms, [], {
-            t: 2,
-            e: effectList,
-            v: [1, contextValues, updateGen]
-        })
+        return {
+            toms,
+            directive: {
+                t: 2,
+                e: effectList,
+                v: [1, contextValues, updateGen]
+            }
+        }
     })
     return attachMarkForModuleFunc(aliasModuleFunc)
 }
@@ -141,18 +143,21 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
             return depsWithGetter ? updateIfModule : nil
         }
 
-        return toRenderStructure(toms2d[oldBlockIndex], [], {
-            t: 0,
-            e: effectList,
-            v: [oldBlockIndex === -1 ? 0 : 1, [], updateGen]
-        })
+        return {
+            toms: toms2d[oldBlockIndex],
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [oldBlockIndex === -1 ? 0 : 1, [], updateGen]
+            }
+        }
     })
     return attachMarkForModuleFunc(ifModuleFunc)
 }
 
 export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
     const depIsGetter = isFunction(dep)
-    const ifModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+    const forModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
         let oldLength: number
         let newLength: number
 
@@ -224,13 +229,16 @@ export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
             return depIsGetter ? updateForModule : nil
         }
 
-        return toRenderStructure(toms, [], {
-            t: 0,
-            e: effectList,
-            v: [(oldLength = len(kvPair)), kvPair, updateGen]
-        })
+        return {
+            toms,
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [(oldLength = len(kvPair)), kvPair, updateGen]
+            }
+        }
     })
-    return attachMarkForModuleFunc(ifModuleFunc)
+    return attachMarkForModuleFunc(forModuleFunc)
 }
 
 export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModuleFunc[]) {
@@ -375,16 +383,22 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
             return depIsGetter ? updateKeyedForModule : nil
         }
 
-        return toRenderStructure(toms, [], {
-            t: 1,
-            e: effectList,
-            v: [len(kvPair), kvPair, updateGen]
-        })
+        return {
+            toms,
+            directive: {
+                t: 1,
+                e: effectList,
+                v: [len(kvPair), kvPair, updateGen]
+            }
+        }
     })
     return attachMarkForModuleFunc(keyedForModuleFunc)
 }
 
-export function awaitModule(dep: any, ...toms: ValueOrValueArr<TemplateStuOrModuleFunc | null>[]) {
+export function awaitModule(
+    dep: any,
+    ...toms: (ValueOrValueArr<TemplateStuOrModuleFunc> | null)[]
+) {
     const depIsGetter = isFunction(dep)
     const hasPendingBlock = !isNull(toms[0])
     const toms2d = toTwoDemensionalToms(toms)
@@ -474,11 +488,14 @@ export function awaitModule(dep: any, ...toms: ValueOrValueArr<TemplateStuOrModu
             return depIsGetter ? updateAwaitModule : null
         }
 
-        return toRenderStructure(toms2d[0], [], {
-            t: 0,
-            e: effectList,
-            v: [hasPendingBlock ? 1 : 0, waitRes, updateGen]
-        })
+        return {
+            toms: toms2d[0],
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [hasPendingBlock ? 1 : 0, waitRes, updateGen]
+            }
+        }
     })
     return attachMarkForModuleFunc(awaitModuleFunc)
 }
@@ -490,16 +507,15 @@ function attachMarkForModuleFunc(fn: ModuleFunc) {
 
 // toms means TemplateStructures Or ModuleFuncs
 // 将一维或二维的TemplateStuOrModuleFunc|null转换为固定二维结构
-function toTwoDemensionalToms(toms: ValueOrValueArr<TemplateStuOrModuleFunc | null>[]) {
-    return toms.map(tom => {
+function toTwoDemensionalToms(
+    toms: (ValueOrValueArr<TemplateStuOrModuleFunc> | null)[]
+): TemplateStuOrModuleFunc[][] {
+    return toms.map<any>(tom => {
         if (isNull(tom)) {
             return []
         }
-        if (!isArray(tom)) {
-            return [tom]
-        }
-        return tom
-    }) as TemplateStuOrModuleFunc[][]
+        return isArray(tom) && (isArray(tom[0]) || isModuleFunc(tom[0])) ? tom : [tom]
+    })
 }
 
 // keyedForModule: 检查是否具有重复的key值

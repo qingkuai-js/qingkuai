@@ -79,8 +79,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     }
 }
 
-// 将slotInfo-properties中每项的第三个元素（源码索引）转换为中间代码索引
-// 更详细的内容可参考当前目录下的 types.ts 文件中对于SlotInfo类型的描述注释
+// 将slotInfo-properties中每项的第三个元素（源码索引）转换为中间代码索引，参考: file://./types.ts
 function exchangeInterIndexOfSlotInfo(interCompileRes: CompileResult) {
     const { slotInfo } = inputDescriptor
     const { stoi } = interCompileRes.interIndexMap
