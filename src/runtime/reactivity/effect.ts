@@ -14,7 +14,7 @@ import { opportunities, nil } from "../constants"
 import { len, values } from "../../util/shared/sundry"
 import { getRawValue } from "../../util/runtime/sundry"
 import { asyncWatchEffectList, usedEffectList } from "./state"
-import { WatchEffectDependenNoReactiveValue } from "../message/warn"
+import { WatchEffectDependentNoReactiveValue } from "../message/warn"
 
 // 执行同步的effect，并将异步effect放入执行队列
 export function runSyncEffect(list: EffectListItem[1]) {
@@ -84,7 +84,7 @@ function initWatch(getter: Getter, fn: WatchStruct["fn"], type: Opportunity) {
     }
     if (len(effectList) === 0) {
         const funcName = type === "post" ? "watch" : type + "Watch"
-        WatchEffectDependenNoReactiveValue(funcName, false)
+        WatchEffectDependentNoReactiveValue(funcName, false)
     }
     return createWatchEffect(effectList, watchStruct)
 }
@@ -105,7 +105,7 @@ function initEffect(fn: GeneralFunc, type: Opportunity, initEffectList?: EffectL
     }
     if (isRuntime && len(effectList) === 0) {
         const funcName = type === "post" ? "effect" : type + "Effect"
-        WatchEffectDependenNoReactiveValue(funcName, true)
+        WatchEffectDependentNoReactiveValue(funcName, true)
     }
     return createWatchEffect(effectList, reactiveRunStruct)
 }

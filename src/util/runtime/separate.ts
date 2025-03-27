@@ -40,13 +40,11 @@ export function mockDirective(
 }
 
 // 扩展KeyedInfoItem.nks
-export function extendNks(nks: KeyedInfoItem["nks"], nki: KeyedInfo) {
-    if (len(nki) !== 1) {
-        nks.push(nki)
+export function extendNks(nks: KeyedInfoItem["nks"], item: KeyedInfo) {
+    if (len(item) !== 1) {
+        nks.push(item)
     } else {
-        nki[0].nks.forEach(nk => {
-            nks.push(nk)
-        })
+        nks.push(...item[0].nks)
     }
 }
 

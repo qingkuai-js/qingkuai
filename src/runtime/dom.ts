@@ -157,12 +157,6 @@ export function transformClassName(value: any) {
     return valueArr.join(" ").replace(/\s+/g, " ")
 }
 
-// 获取节点内容，QingKuai只会将textContent位置编译为字符串（调试模式）或数组（非调试模式）
-// 两种类型，如果是字符串类型直接返回，如果是数组类型则使用join方法拼接为字符串后返回
 function textContenValuet2Str(content: string | any[]) {
-    if (isArray(content)) {
-        return content.join("")
-    } else {
-        return "" + content
-    }
+    return isArray(content) ? content.join("") : content
 }

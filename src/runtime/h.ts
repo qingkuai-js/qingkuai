@@ -117,24 +117,21 @@ export const h = withCleanUsedEffectList(function (
     const keyedInfo: KeyedInfo = []
     const destructionArr: DestructionStruct[] = []
 
-    const selfAttachUpdate = (fn: UpdateFunc) => {
+    const attachUpdateLocal = (fn: UpdateFunc) => {
         attachUpdate(fn, instance, destruction)
     }
 
-    const selfAttachDestroy = (fn: GeneralFunc) => {
+    const attachDestroyLocal = (fn: GeneralFunc) => {
         attachDestroy(fn, destruction)
     }
 
     // 开始指令模块前的处理
     if (isDirectiveModule) {
-        // const t = `--- ${
-        //     directive.t === 1 ? "keyed-for" : directive?.v[1].length ? "for" : "if"
-        // } ---`
         if (!isAliasModule) {
             dref = textNode("")
             insert(target, dref, reference)
             isKeyedTop ||= directive.t === 1
-            selfAttachDestroy(() => destroy(dref!))
+            attachDestroyLocal(() => destroy(dref!))
         }
 
         for (let i = 0; i < times; i++) {
@@ -155,9 +152,10 @@ export const h = withCleanUsedEffectList(function (
         )
         if (moduleUpdateFn && !isAliasModule) {
             setUsedEffectList(directive.e)
-            selfAttachUpdate(moduleUpdateFn)
+            attachUpdateLocal(moduleUpdateFn)
             cleanUsedEffectList()
         }
+        dref! && (reference = dref)
     }
 
     for (let i = 0; i < times; i++) {
@@ -178,7 +176,7 @@ export const h = withCleanUsedEffectList(function (
                     instance,
                     tom,
                     target,
-                    dref || reference,
+                    reference,
                     shouldDestroy,
                     currentContext,
                     destruction,
@@ -232,7 +230,7 @@ export const h = withCleanUsedEffectList(function (
                 const attrsLen = len(attrs)
                 const slotArgs: AnyObject = {}
 
-                // 获取slot从子组件传递的参数
+                // 获取slot传递的参数
                 const updateSlotContext = () => {
                     for (let i = 0; i < attrsLen; i += 2) {
                         slotArgs[attrs![i]] = getValue(attrs![i + 1])
@@ -301,10 +299,10 @@ export const h = withCleanUsedEffectList(function (
                 currentKeyedInfo.nks.push(qkNode.n!)
             }
             if (shouldDestroy || isDirectiveModule) {
-                selfAttachDestroy(() => destroy(qkNode.n!))
+                attachDestroyLocal(() => destroy(qkNode.n!))
             }
             if (cif) {
-                selfAttachUpdate(() => {
+                attachUpdateLocal(() => {
                     return setText(qkNode, invokeGetter(content), true)
                 })
             }
@@ -328,7 +326,7 @@ export const h = withCleanUsedEffectList(function (
                     // 如果属性值是一个getter，将修改属性的方法记录到响应性变量的effect列表中
                     // 记录完成后，当前attribue所依赖的响应性变量改变时，attribute将会被重新调用
                     if (attrValueIsFunction) {
-                        selfAttachUpdate(() => {
+                        attachUpdateLocal(() => {
                             return attribute(qkNode, key, invokeGetter(value), true)
                         })
                     }
@@ -349,12 +347,12 @@ export const h = withCleanUsedEffectList(function (
                     if (!eventHandlerGetter[IsWithReferenceRet]) {
                         eventHandler = invokeGetter(eventHandlerGetter)
                     } else {
-                        eventHandler = eventHandlerGetter(qkNode, invokeGetter, selfAttachUpdate)
+                        eventHandler = eventHandlerGetter(qkNode, invokeGetter, attachUpdateLocal)
                     }
 
                     // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器
                     const selfListen = (eventName: string, eventHandler: EventListener) => {
-                        selfAttachDestroy(listen(qkNode.n!, eventName, eventHandler, eventFlag))
+                        attachDestroyLocal(listen(qkNode.n!, eventName, eventHandler, eventFlag))
                     }
 
                     // 默认情况下输入合成阶段（如汉语拼音输入法合成过程中，即未选定输入前）不会触发input事件
@@ -382,15 +380,6 @@ export const h = withCleanUsedEffectList(function (
             }
         })
     }
-
-    // 将空文本参考节点放至keyedInfo最后
-    if (isDirectiveModule && isKeyedTop && !isAliasModule) {
-        keyedInfo.push({ nks: [dref!], dst: nil })
-    }
-
-    // if (directive && directive.t === 1) {
-    //     console.log(keyedInfo)
-    // }
 
     return keyedInfo
 })

@@ -32,7 +32,7 @@ export const AssignmentToDerived = withCode(8003, () => {
     return "An assignment to derived reacativity state is invalid, this operation has been ignored."
 })
 
-export const WatchEffectDependenNoReactiveValue = withCode(
+export const WatchEffectDependentNoReactiveValue = withCode(
     8004,
     (funcName: string, isEffect = false) => {
         const postfix = isEffect ? " again" : ""

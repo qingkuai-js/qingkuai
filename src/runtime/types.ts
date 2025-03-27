@@ -39,7 +39,7 @@ export interface QingKuaiComponentConstructonParam {
 
 export type NormalTemplateStructure = [
     string,
-    string | Function,
+    string | GeneralFunc,
     AttributeStructure | null,
     EventStructure | null,
     ...TemplateStuOrModuleFunc[]
