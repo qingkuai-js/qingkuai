@@ -1,5 +1,5 @@
 import { inputDescriptor } from "../state"
-import { isNumber } from "../../util/shared/assert"
+import { isNumber, isUndefined } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
 import { findEndBracket, findOutOfComment, normalStringify } from "../../util/compiler/strings"
@@ -8,13 +8,12 @@ import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from ".
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
 export function content2script(content: string, startSourceIndex: number) {
     const isDebug = inputDescriptor.options.debug
-    const transformedStrInitLen = isDebug ? 5 : 1
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
 
     let index = 0
+    let transformedStrLen = 1
     let transformedStr: string
     let contentSourceIndex = 0
-    let transformedStrLen = transformedStrInitLen
 
     const positionMap: number[] = []
     const transformedArr: string[] = []
@@ -48,23 +47,22 @@ export function content2script(content: string, startSourceIndex: number) {
                 const endIndex = transformedStrLen + stringifiedLen
                 positionMap[endIndex] = sourceIndex + str.length
                 positionMap[transformedStrLen] = sourceIndex
-                transformedStrLen += stringifiedLen + (isDebug ? 3 : 2)
+                transformedStrLen += stringifiedLen + 2
             }
             transformedArr.push(stringified)
         } else {
             if (shouldGenerateSourcemap) {
                 const delta = Number(isDebug)
                 for (let i = -delta; i <= str.length + delta; i++) {
-                    positionMap[transformedStrLen + i + 1] = sourceIndex + i + 1
+                    positionMap[transformedStrLen + i] = sourceIndex + i
                 }
-                contentSourceIndex += 2
-                transformedStrLen += str.length + (isDebug ? 5 : 2)
+                transformedStrLen += str.length + 2
             }
+            transformedArr.push(str)
             markCurrentStrInScriptInterpolationBlock()
-            transformedArr.push(isDebug ? `(${str})` : str)
         }
 
-        contentSourceIndex += str.length
+        contentSourceIndex += str.length + Number(!useStringify)
     }
 
     while (index < content.length) {
@@ -94,6 +92,7 @@ export function content2script(content: string, startSourceIndex: number) {
                     endBracketIndex + 1 + startSourceIndex
                 )
             } else {
+                contentSourceIndex = startBracketIndex + 1
                 pushTransformedArr(interpolationExp, false)
                 if (!isDebug) {
                     continue
@@ -107,9 +106,9 @@ export function content2script(content: string, startSourceIndex: number) {
         return { positionMap: [], script: "" }
     }
 
-    // 调试模式下，将第一个存在的映射位置元素放在positionMap首位，保持首个断点设置位在content开始位置的一致性
-    if (isDebug && isNumber(positionMap[5])) {
-        positionMap[0] = positionMap[5]
+    // 调试模式下，将第一个存在的映射位置元素放在positionMap首位，以保持断点设置在textContent开始和结尾处的一致性
+    if (isDebug && isNumber(positionMap[1]) && isUndefined(positionMap[0])) {
+        positionMap[0] = positionMap[1]
     }
 
     // 调试模式和飞调试模式的转换结果不同，对于相同的输入字符串：a {b} c，它们的转换结果格式如下：
@@ -121,10 +120,8 @@ export function content2script(content: string, startSourceIndex: number) {
     // 意义的，相较于实现对无意义括号的检测使用数组更方便一些，且这两种方式在压缩后占用的字节数一致
     if (!transformedArr.length) {
         transformedStr = emptyStrSource
-    } else if (!isDebug) {
-        transformedStr = `[${transformedArr.join(", ")}]`
     } else {
-        transformedStr = `${emptyStrSource} + ${transformedArr.join(" + ")}`
+        transformedStr = `[${transformedArr.join(", ")}]`
     }
 
     return {
@@ -132,4 +129,3 @@ export function content2script(content: string, startSourceIndex: number) {
         script: transformedStr
     }
 }
-// "" + (a) + " " + (b)
