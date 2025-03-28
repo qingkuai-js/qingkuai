@@ -15,6 +15,7 @@ export interface ASTLocation {
 
 export type CompileOptions = Partial<{
     componentName: string
+    hashId: string
     check: boolean
     debug: boolean
     sourcemap: boolean
@@ -25,6 +26,7 @@ export type CompileOptions = Partial<{
 
 export interface CompileResult {
     code: string
+    hashId: string
     mappings: string
     interIndexMap: {
         itos: number[]

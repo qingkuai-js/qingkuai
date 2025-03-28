@@ -56,26 +56,28 @@ export function generateImportStatements() {
 }
 
 // 生成init方法的调用及解构语句
-export function generateInitCallStatement() {
+export function generateInitCallStatement(hashId: string) {
     const itemArr: string[] = []
     usedInitItems.forEach(item => {
         itemArr.push(item)
     })
     itemArr.push("props", "refs")
-    return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this)`
+    return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this, "${hashId}")`
 }
 
 // 生成最终编译结果
 export function generateCompileResult(
+    hashId: string,
     componentName: string,
-    importStatements: string,
-    initCallStatement: string,
     scriptTranformedRet: string,
     templateTransformedRet: string
 ) {
     let mappings = ""
     let debuggingStatementArr: string[] = []
+
     const setTemplateStructureFuncName = getAlias("scts")
+    const importStatements = generateImportStatements()
+    const initCallStatement = generateInitCallStatement(hashId)
     const withScriptSourceCode = !isEmptyString(scriptTranformedRet)
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
     sourceMapInfo.columnOffsetOfFirstTemplateLine += setTemplateStructureFuncName.length + 2

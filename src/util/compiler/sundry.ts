@@ -11,6 +11,7 @@ import {
     IntercodeSnippetKind,
     MUST_PASS_VALUE_DIRECTIVES
 } from "../../compiler/constants"
+import { randomBytes } from "node:crypto"
 import { PositionFlag } from "../shared/flag"
 import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
@@ -42,6 +43,20 @@ export function getSetterIdentifier(identifier: string) {
 export function indent(n = 1) {
     return " ".repeat(inputDescriptor.indentSpaceCount * n)
 }
+
+// 生成指定长度的随机哈希字符串
+export const createHashId = (function () {
+    const existing = new Set<string>()
+    return () => {
+        while (true) {
+            const hash = randomBytes(4).toString("hex")
+            if (existing.has(hash)) {
+                continue
+            }
+            return existing.add(hash), hash
+        }
+    }
+})()
 
 // 确定标识符别名
 export function confirmAlias(name: string, existing: Set<string>) {

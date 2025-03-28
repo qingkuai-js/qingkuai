@@ -1,18 +1,14 @@
 import type { CompileOptions, CompileResult } from "./types"
 
-import {
-    generateInterResult,
-    generateCompileResult,
-    generateImportStatements,
-    generateInitCallStatement
-} from "./codegen"
 import { isString } from "../util/shared/assert"
 import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
 import { analyzeTemplate } from "./analyzer/template"
+import { createHashId } from "../util/compiler/sundry"
 import { transformScript } from "./transformer/script"
 import { transformTemplate } from "./transformer/template"
 import { compressCompileSize } from "./optimizer/compile-size"
+import { generateInterResult, generateCompileResult } from "./codegen"
 import { inputDescriptor, messages, resetCompilerState } from "./state"
 
 export function compile(source: string, options: CompileOptions): CompileResult {
@@ -20,6 +16,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     inputDescriptor.source = source
 
     const templateNodes = parseTemplate(source)
+    const hashId = options.hashId || createHashId()
     const componentName = options.componentName ?? "_"
     const scriptSourceCode = inputDescriptor.script.code
     const typeRefStatement = options.typeRefStatement ?? ""
@@ -40,6 +37,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
 
     // 检查模式下仅生成用于js/ts语言服务的中间代码，无需执行正常编译模式的转换操作
     const basicResult = {
+        hashId,
         messages,
         templateNodes,
         inputDescriptor
@@ -56,13 +54,6 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const scriptTranformedRet = transformScript(scriptSourceCode, 1)
     compressCompileSize(templateAnalysisRet)
 
-    // prettier-ignore
-    const templateTransformedRet = transformTemplate(
-        templateAnalysisRet,
-        [inputDescriptor.script.lineCount, 0]
-    )
-    const importStatements = generateImportStatements()
-    const initCallStatement = generateInitCallStatement()
     return {
         interIndexMap: {
             stoi: [],
@@ -70,11 +61,10 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         },
         ...basicResult,
         ...generateCompileResult(
+            hashId,
             componentName,
-            importStatements,
-            initCallStatement,
             scriptTranformedRet,
-            templateTransformedRet
+            transformTemplate(templateAnalysisRet, [inputDescriptor.script.lineCount, 0])
         )
     }
 }
