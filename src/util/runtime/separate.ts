@@ -39,15 +39,6 @@ export function mockDirective(
     }
 }
 
-// 扩展KeyedInfoItem.nks
-export function extendNks(nks: KeyedInfoItem["nks"], item: KeyedInfo) {
-    if (len(item) !== 1) {
-        nks.push(item)
-    } else {
-        nks.push(...item[0].nks)
-    }
-}
-
 // 卸载block
 export function destroyBlock(destruction: DestructionStruct) {
     runAll(destruction.v)

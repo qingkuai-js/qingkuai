@@ -20,7 +20,6 @@ import {
     setCurrentInstance
 } from "./instance"
 import {
-    extendNks,
     mockDirective,
     combineContext,
     newDestruction,
@@ -74,7 +73,7 @@ export function render(
             dst,
             isKeyedTop
         )
-        extendNks(keyedInfo[0].nks, nki)
+        keyedInfo[0].nks.push(nki)
     }
     invokeIndexedHooks(instance, 0)
     ts.forEach(renderEachTopBlock)
@@ -167,11 +166,11 @@ export const h = withCleanUsedEffectList(function (
         })
         toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
-            const currentKeyedInfo = lastElem(keyedInfo)
+            const keyedInfoItem = lastElem(keyedInfo)
 
             if (isNode(tom)) {
                 if (isKeyedTop) {
-                    currentKeyedInfo.nks.push(tom)
+                    keyedInfoItem.nks.push(tom)
                 }
                 insert(target, tom, reference)
                 attachDestroyLocal(() => destroy(tom))
@@ -191,7 +190,7 @@ export const h = withCleanUsedEffectList(function (
                     isKeyedTop
                 )
                 if (isKeyedTop) {
-                    extendNks(currentKeyedInfo.nks, cki)
+                    keyedInfoItem.nks.push(cki)
                 }
                 return
             }
@@ -226,8 +225,12 @@ export const h = withCleanUsedEffectList(function (
                     context,
                     isKeyedTop
                 )
-                shouldDestroy && destruction.c.add([dst])
-                extendNks(currentKeyedInfo.nks, nki)
+                if (shouldDestroy) {
+                    destruction.c.add([dst])
+                }
+                if (isKeyedTop) {
+                    keyedInfoItem.nks.push(nki)
+                }
                 return
             }
 
@@ -276,7 +279,7 @@ export const h = withCleanUsedEffectList(function (
                         isKeyedTop
                     )
                     if (isKeyedTop) {
-                        extendNks(currentKeyedInfo.nks, nki)
+                        keyedInfoItem.nks.push(nki)
                     }
                 })
                 return
@@ -304,7 +307,7 @@ export const h = withCleanUsedEffectList(function (
             }
 
             if (isKeyedTop) {
-                currentKeyedInfo.nks.push(qkNode.n!)
+                keyedInfoItem.nks.push(qkNode.n!)
             }
             if (shouldDestroy || isDirectiveModule) {
                 attachDestroyLocal(() => destroy(qkNode.n!))
@@ -387,6 +390,10 @@ export const h = withCleanUsedEffectList(function (
                 h(instance, assertedChild, qkNode.n!, nil, false, currentContext, destruction)
             }
         })
+    }
+
+    if (isKeyedTop && isDirectiveModule && !isKeyedForModule) {
+        lastElem(keyedInfo)?.nks.push(dref!)
     }
 
     return keyedInfo
