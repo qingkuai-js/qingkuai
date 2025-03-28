@@ -78,7 +78,7 @@ export function transformTemplate(
             return
         }
 
-        const { isTemplate } = item
+        const { isSpread } = item
         const hasAar = !isNull(item.aar)
         const hasChild = childrenLen! > 0
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
@@ -174,7 +174,7 @@ export function transformTemplate(
         if (elementUseIndent) {
             pushTransformedArr(indent(n))
         }
-        if (!isTemplate) {
+        if (!isSpread) {
             pushTransformedArr("[")
             if (elementUseLineBreak) {
                 pushTransformedArr("\n", indent(n + 1))
@@ -182,7 +182,7 @@ export function transformTemplate(
         }
 
         // 添加tag、content、attribute和event结构
-        if (!isTemplate) {
+        if (!isSpread) {
             pushTransformedArr(item.tag)
             addTemplateStuJoinStr(true)
 
@@ -225,7 +225,7 @@ export function transformTemplate(
                     flag &= ~transformTemplateFlag.parentUseLineBreak
                 }
 
-                const childIndentN = +(useLineBreak && !isTemplate) + n
+                const childIndentN = +(useLineBreak && !isSpread) + n
                 const transformedChild = transformTemplate(
                     chunk.tars,
                     generatingPosition,
@@ -243,7 +243,7 @@ export function transformTemplate(
         }
 
         // 添加当前TemplateStructure的结束字符
-        if (!isTemplate) {
+        if (!isSpread) {
             if (elementUseLineBreak) {
                 pushTransformedArr("\n", indent(n))
             }

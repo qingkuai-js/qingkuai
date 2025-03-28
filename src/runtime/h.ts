@@ -85,7 +85,7 @@ export function render(
 
 export const h = withCleanUsedEffectList(function (
     instance: QingKuaiComponent,
-    stu: TemplateStuOrModuleFunc,
+    stu: Node | TemplateStuOrModuleFunc,
     target: Node,
     reference: PartialNode,
     shouldDestroy: boolean,

@@ -19,7 +19,8 @@ import {
     destroyBlock,
     mockDirective,
     combineContext,
-    getContextFuncGen
+    getContextFuncGen,
+    newDestruction
 } from "../util/runtime/separate"
 import {
     arrayFill,
@@ -34,13 +35,13 @@ import { insert } from "./dom"
 import { CancelablePromise } from "./promise"
 import { IsModuleFunc, nil } from "./constants"
 import { h, extendDsts, attachDestroy } from "./h"
-import { spliceByElem } from "../util/runtime/sundry"
+import { spliceByElem } from "../util/shared/sundry"
 import { DuplicateKey, NonTraverse } from "./message/error"
 import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { invokeIndexedHooks, onAfterMount } from "./instance"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
-import { isArray, isFunction, isNull, isNumber, isUndefined } from "../util/shared/assert"
+import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
@@ -77,7 +78,7 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
             }
         }
     })
-    return markModuleFunc(aliasModuleFunc)
+    return markupModuleFunc(aliasModuleFunc)
 }
 
 export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
@@ -91,13 +92,26 @@ export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
         const effectList = values(usedEffectList)
         const nodes = html ? createUnescapeNodes(html, options) : []
 
-        const updateGen: DirectiveUpdateFuncGen = (_, __, target, dref, ___, ____, dsta) => {
+        const updateGen: DirectiveUpdateFuncGen = (
+            instance,
+            _,
+            target,
+            dref,
+            context,
+            __,
+            dsta,
+            isKeyedTop,
+            keyedInfo
+        ) => {
             return () => {
                 const newHtml = dep(ctx)
-                if ((dsta.forEach(destroyBlock), newHtml)) {
-                    for (const node of createUnescapeNodes(newHtml, options)) {
-                        insert(target, node, dref)
-                    }
+                if ((destroyBlock(dsta.pop()!), newHtml)) {
+                    const newDst = newDestruction()
+                    const nodes = createUnescapeNodes(newHtml, options)
+                    nodes.forEach(node => {
+                        h(instance, node, target, dref, true, context, newDst, isKeyedTop)
+                    })
+                    isKeyedTop && replaceKeyedInfoWithSingleItem(keyedInfo, newDst, nodes)
                 }
                 return true
             }
@@ -112,7 +126,7 @@ export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
             }
         }
     })
-    return markModuleFunc(escapeModuleFunc)
+    return markupModuleFunc(escapeModuleFunc)
 }
 
 export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModuleFunc>[]) {
@@ -147,6 +161,7 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
                 }
                 if (shouleCreateBlock) {
                     const newDst = extendDsts(dsta)
+                    const newKeyedInfos: KeyedInfo[] = []
                     toms2d[newBlockIndex].forEach(tom => {
                         const nki = h(
                             instance,
@@ -158,15 +173,11 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
                             newDst,
                             isKeyedTop
                         )
-                        if (isKeyedTop) {
-                            replaceEachItems(keyedInfo, [
-                                {
-                                    dst: newDst,
-                                    nks: [nki]
-                                }
-                            ])
-                        }
+                        newKeyedInfos.push(nki)
                     })
+                    if (isKeyedTop) {
+                        replaceKeyedInfoWithSingleItem(keyedInfo, newDst, newKeyedInfos)
+                    }
                 }
                 return (oldBlockIndex = newBlockIndex), true
             }
@@ -191,7 +202,7 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
             }
         }
     })
-    return markModuleFunc(ifModuleFunc)
+    return markupModuleFunc(ifModuleFunc)
 }
 
 export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
@@ -277,7 +288,7 @@ export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
             }
         }
     })
-    return markModuleFunc(forModuleFunc)
+    return markupModuleFunc(forModuleFunc)
 }
 
 export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModuleFunc[]) {
@@ -431,7 +442,7 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
             }
         }
     })
-    return markModuleFunc(keyedForModuleFunc)
+    return markupModuleFunc(keyedForModuleFunc)
 }
 
 export function awaitModule(
@@ -463,6 +474,7 @@ export function awaitModule(
             const ch = (index: number) => {
                 if (toms[index]) {
                     const newDst = extendDsts(dsta)
+                    const newKeyedInfos: KeyedInfo[] = []
                     const currentContext = combineContext(directive, context, 0)
                     toms2d[index].forEach(tom => {
                         const nki = h(
@@ -475,15 +487,11 @@ export function awaitModule(
                             newDst,
                             isKeyedTop
                         )
-                        if (isKeyedTop) {
-                            replaceEachItems(keyedInfo, [
-                                {
-                                    dst: newDst,
-                                    nks: [nki]
-                                }
-                            ])
-                        }
+                        newKeyedInfos.push(nki)
                     })
+                    if (isKeyedTop) {
+                        replaceKeyedInfoWithSingleItem(keyedInfo, newDst, newKeyedInfos)
+                    }
                 }
                 currentIsPending = index === 0
             }
@@ -538,11 +546,11 @@ export function awaitModule(
             }
         }
     })
-    return markModuleFunc(awaitModuleFunc)
+    return markupModuleFunc(awaitModuleFunc)
 }
 
 // 为ModuleFunc添加标记
-function markModuleFunc(fn: ModuleFunc) {
+function markupModuleFunc(fn: ModuleFunc) {
     return (fn[IsModuleFunc] = true), fn
 }
 
@@ -559,14 +567,23 @@ function toTwoDemensionalToms(
     })
 }
 
-// escapeModule: 通过html内容字符串创建DOM节点
+// unescapeModule, ifModule, awaitModule: 用指定KeyedInfoItem替换KeyedInfo
+function replaceKeyedInfoWithSingleItem(
+    info: KeyedInfo,
+    dst: DestructionStruct,
+    nks: KeyedInfoItem["nks"]
+) {
+    replaceEachItems(info, [{ dst, nks }])
+}
+
+// unescapeModule: 通过html内容字符串创建DOM节点
 function createUnescapeNodes(html: string, options: UnescapeOptions) {
     const escapeTags: string[] = options.escapeTags || []
-    if (options.escapeScript) {
-        escapeTags.push("script")
-    }
     if (options.escapeStyle) {
         escapeTags.push("style")
+    }
+    if (options.escapeScript) {
+        escapeTags.push("script")
     }
 
     const reSources: string[] = []

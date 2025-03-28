@@ -149,7 +149,7 @@ export type PreprocessedTemplateAttribute = TemplateAttribute & {
 
 export interface TemplateAnalysisRet {
     tag: string
-    isTemplate: boolean
+    isSpread: boolean
     content: TransformInterpolationRet
     children: {
         useBracket: boolean
@@ -183,7 +183,7 @@ export interface AttributeAnalysisRet {
     slotOfAnyTag?: string
     nameOfSlotTag?: string
     insertNullNum?: number
-    createTemplate?: boolean
+    createSpread?: boolean
     contextBlockCount?: number
     componentCombinedArgs?: string[]
     awaitExpression?: [number, string]

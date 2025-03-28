@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 1043
+ * last-error-code: 1044
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -125,6 +125,10 @@ export const TagCanNotBeSelfClosing = withLocation(1011, (tag: string) => {
 
 export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
     return "Key directive could not be used without #for directive."
+})
+
+export const HtmlDirectiveWithChildElement = withLocation(1044, () => {
+    return "The tag with #html directive can only accept text content children."
 })
 
 export const NoBracketForAttributeInterpolation = withLocation(1017, () => {

@@ -8,12 +8,12 @@ import type {
 import { getAlias } from "./alias"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
-import { lastElem } from "../../util/shared/sundry"
+import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { markPositionFlag } from "../../util/compiler/sundry"
 import { inputDescriptor, interCodeSnippets } from "../state"
-import { IntercodeSnippetKind, SPECIAL_TAGS } from "../constants"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
+import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
 
 export function analyzeTemplate(
@@ -32,26 +32,41 @@ export function analyzeTemplate(
     for (let i = 0; i < nodes.length; i++) {
         let { tag, content, attributes, children, componentTag } = nodes[i]
 
+        let shouldHoistContent = false
         let trimedContentStartIndex: number
         let currentContext: TemplateContext
         let continueRE: RegExp | undefined | null
         let shouldContinueDirective: string | undefined
-        let shouldHoistContent = children.length === 1 && children[0].tag === ""
 
         const currentRet: TemplateAnalysisRet = {
             aar: null,
             tag: "",
             content: "",
             children: [],
-            isTemplate: tag === "template"
+            isSpread: tag === SPREAD_TAG
         }
         const isSlot = tag === "slot"
         const isTextarea = tag === "textarea"
         const isComponent = !isEmptyString(componentTag)
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
-        shouldHoistContent &&= !isComponent && !isSlot
-        result.push(currentRet)
+        if (
+            !isSlot &&
+            !isComponent &&
+            !currentRet.isSpread &&
+            children.length === 1 &&
+            isEmptyString(children[0].tag)
+        ) {
+            shouldHoistContent = true
+        }
+
+        // 如果当前标签使用了#html指令且非SPREAD_TAG，则将#html指令转移到content上
+        const htmlDirective = attributes.find(({ key }) => key.raw === "#html")
+        if (htmlDirective && !currentRet.isSpread && !isEmptyString(tag)) {
+            shouldHoistContent = false
+            spliceByElem(attributes, htmlDirective)
+            children[0].attributes.push(htmlDirective)
+        }
 
         // kebab组件名转为驼峰命名
         if (!isComponent) {
@@ -83,17 +98,18 @@ export function analyzeTemplate(
             awaitExpression
         )
         currentRet.aar = aar
+        result.push(currentRet)
         continueRE = aar.continueInfo?.re
         shouldContinueDirective = aar.continueInfo?.by
 
         // 对于使用了if指令或await指令的节点可能需要创建一个template挂载点，因为此时
         // 需要将多个节点结构作为参数传入ifMNodule/awaitModule
-        if (aar.createTemplate) {
+        if (aar.createSpread) {
             const useBracketWrap = shouldUseBracketWrap(tag, aar)
             const awaitNullChild = { tar: null, useBracket: false }
-            const mockTemplateRet: TemplateAnalysisRet = {
-                isTemplate: true,
-                tag: "template",
+            const mockSpreadRet: TemplateAnalysisRet = {
+                tag: SPREAD_TAG,
+                isSpread: true,
                 content: "",
                 aar: {
                     eventStu: [],
@@ -109,12 +125,12 @@ export function analyzeTemplate(
                 ]
             }
             result.pop()
-            result.push(mockTemplateRet)
+            result.push(mockSpreadRet)
             aar.directiveStu = aar.directiveStu.slice(1)
 
             if (aar.insertNullNum) {
                 for (let i = 0; i < aar.insertNullNum; i++) {
-                    mockTemplateRet.children.unshift(awaitNullChild)
+                    mockSpreadRet.children.unshift(awaitNullChild)
                 }
             }
 
@@ -137,12 +153,12 @@ export function analyzeTemplate(
                 )
                 const childAarContinueArg = childTemplateAnalysisRet.aar!.continueInfo?.arg
                 if (childTemplateAnalysisRet.aar?.insertNullNum) {
-                    mockTemplateRet.children.push(awaitNullChild)
+                    mockSpreadRet.children.push(awaitNullChild)
                 }
                 if (childAarContinueArg) {
-                    mockTemplateRet.aar!.directiveStu[0].push(childAarContinueArg)
+                    mockSpreadRet.aar!.directiveStu[0].push(childAarContinueArg)
                 }
-                mockTemplateRet.children.push({
+                mockSpreadRet.children.push({
                     useBracket: useBracketWrap,
                     tar: childTemplateAnalysisRet
                 })
@@ -238,7 +254,7 @@ function shouldContinue(node: TemplateNode, re: RegExp | undefined | null) {
     })
 }
 
-// 判断展开的多个节点是否需要使用中括号包裹(template标签中的节点)
+// 判断展开的多个节点是否需要使用中括号包裹(SPREAD_TAG中的节点)
 function shouldUseBracketWrap(tag: string, aar: AttributeAnalysisRet) {
     const removeBrackWrapFuncNames = new Set([
         getAlias("forModule", false),
@@ -246,7 +262,7 @@ function shouldUseBracketWrap(tag: string, aar: AttributeAnalysisRet) {
         getAlias("keyedForModule", false)
     ])
     return (
-        tag === "template" &&
+        tag === SPREAD_TAG &&
         !removeBrackWrapFuncNames.has(lastElem(aar.directiveStu)?.[0] as string)
     )
 }

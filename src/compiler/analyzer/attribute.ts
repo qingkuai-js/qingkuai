@@ -34,7 +34,8 @@ import {
     IntercodeSnippetKind,
     COULD_USE_REF_TAGS,
     MUST_PASS_VALUE_DIRECTIVES,
-    KEY_RELATED_EVENT_MODIFIERS
+    KEY_RELATED_EVENT_MODIFIERS,
+    SPREAD_TAG
 } from "../constants"
 import {
     parse,
@@ -67,7 +68,8 @@ import {
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective
+    UseKeyDirectiveWithoutForDirective,
+    HtmlDirectiveWithChildElement
 } from "../message/error"
 import { getAlias } from "./alias"
 import { is } from "../estree/assert"
@@ -105,8 +107,8 @@ export function analyzeAttribute(
     let pureKey: string
     let insertNullNum = 0
     let withAwait = false
+    let createSpread = false
     let contextBlockCount = 0
-    let createTemplate = false
     let forModuleFuncIndex = -1
     let hasSlotDirective = false
     let continueRE: RegExp | null = null
@@ -706,7 +708,7 @@ export function analyzeAttribute(
                         if (pureKey === "elif") {
                             continueArg = transRet
                         } else {
-                            createTemplate = true
+                            createSpread = true
                             directiveStu.push([getAlias("ifModule"), transRet])
                         }
                         setContinueInfo(/^#(?:elif|else)$/)
@@ -732,7 +734,7 @@ export function analyzeAttribute(
                             const transRet = transDirective(rv, trimedValueStartSourceIndex)
                             directiveStu.push([getAlias("awaitModule"), transRet])
                         }
-                        withAwait = createTemplate = true
+                        withAwait = createSpread = true
                         setContinueInfo(/^#(?:then|catch)$/)
                     } else {
                         // 使用了then指令的节点必须同时使用了await指令或前一个兄弟节点使用了await指令
@@ -775,6 +777,20 @@ export function analyzeAttribute(
                         recordAliasIdentifiers()
                     } else {
                         BasSlotDirectiveCarrier(key.loc)
+                    }
+                    break
+
+                case "html":
+                    for (const child of node.children) {
+                        if (!isEmptyString(child.tag)) {
+                            HtmlDirectiveWithChildElement(child.loc)
+                        }
+                    }
+                    if (isEmptyString(tag) || tag === SPREAD_TAG) {
+                        directiveStu.push([
+                            getAlias("unescapeModule"),
+                            rv ? transAttrValue() : "{}"
+                        ])
                     }
                     break
 
@@ -1063,8 +1079,8 @@ export function analyzeAttribute(
         eventStu,
         directiveStu,
         attributeStu,
+        createSpread,
         insertNullNum,
-        createTemplate,
         awaitExpression,
         contextBlockCount,
         continueInfo: {

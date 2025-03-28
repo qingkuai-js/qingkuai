@@ -58,6 +58,7 @@ export const FULL_RUNTIME_ITEMS = new Set([
     "awaitModule",
     "eventWrapper",
     "withReference",
+    "unescapeModule",
     "destructuringReact",
     "destructuringDerived",
     "constDestructuringReact"
@@ -68,6 +69,8 @@ export enum IntercodeSnippetKind {
     SearchForward = -2,
     SearchBackward = -1
 }
+
+export const SPREAD_TAG = "template"
 
 export const SPECIAL_TAGS = new Set(["!", "script", "style"])
 
