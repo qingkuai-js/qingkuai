@@ -1,6 +1,7 @@
 import type {
     KeyedInfo,
     ModuleFunc,
+    UnescapeOptions,
     KeyedInfoItem,
     PartialNode,
     EffectListItem,
@@ -9,7 +10,8 @@ import type {
     ValueOrValueArr,
     DestructionStruct,
     DirectiveUpdateFuncGen,
-    TemplateStuOrModuleFunc
+    TemplateStuOrModuleFunc,
+    NormalTemplateStructure
 } from "./types"
 
 import {
@@ -30,7 +32,7 @@ import {
 } from "../util/shared/sundry"
 import { insert } from "./dom"
 import { CancelablePromise } from "./promise"
-import { IsModuleFunc, nil, noop } from "./constants"
+import { IsModuleFunc, nil } from "./constants"
 import { h, extendDsts, attachDestroy } from "./h"
 import { spliceByElem } from "../util/runtime/sundry"
 import { DuplicateKey, NonTraverse } from "./message/error"
@@ -38,7 +40,7 @@ import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { invokeIndexedHooks, onAfterMount } from "./instance"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
-import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
+import { isArray, isFunction, isNull, isNumber, isUndefined } from "../util/shared/assert"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
@@ -75,7 +77,42 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
             }
         }
     })
-    return attachMarkForModuleFunc(aliasModuleFunc)
+    return markModuleFunc(aliasModuleFunc)
+}
+
+export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
+    const escapeModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        const dep: any = stu[1]
+        const depIsGetter = isFunction(dep)
+        const html = depIsGetter ? dep(ctx) : dep
+        const optionsDepIsGetter = isFunction(optionsDep)
+        const options: UnescapeOptions = optionsDepIsGetter ? optionsDep(ctx) : optionsDep
+
+        const effectList = values(usedEffectList)
+        const nodes = html ? createUnescapeNodes(html, options) : []
+
+        const updateGen: DirectiveUpdateFuncGen = (_, __, target, dref, ___, ____, dsta) => {
+            return () => {
+                const newHtml = dep(ctx)
+                if ((dsta.forEach(destroyBlock), newHtml)) {
+                    for (const node of createUnescapeNodes(newHtml, options)) {
+                        insert(target, node, dref)
+                    }
+                }
+                return true
+            }
+        }
+
+        return {
+            toms: nodes,
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [nodes.length ? 1 : 0, [], updateGen]
+            }
+        }
+    })
+    return markModuleFunc(escapeModuleFunc)
 }
 
 export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModuleFunc>[]) {
@@ -154,7 +191,7 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
             }
         }
     })
-    return attachMarkForModuleFunc(ifModuleFunc)
+    return markModuleFunc(ifModuleFunc)
 }
 
 export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
@@ -240,7 +277,7 @@ export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
             }
         }
     })
-    return attachMarkForModuleFunc(forModuleFunc)
+    return markModuleFunc(forModuleFunc)
 }
 
 export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModuleFunc[]) {
@@ -248,9 +285,6 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
     const keyedForModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
         let orderedOldKeys: string[] = []
         let orderedWillKeys: [string, number][] = []
-
-        // 记录usedEffectList
-        dep2IsGetter && dep2(2, noop)
 
         const value = dep1IsGetter ? dep1(ctx) : dep1
         const effectList = values(usedEffectList)
@@ -334,7 +368,7 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
                 return hasDomOperation
             }
 
-            if (dep1IsGetter) {
+            if (dep1IsGetter || dep2IsGetter) {
                 // 新key存在对应的kvPair时即更新kvPair，否则创建新的pair
                 // 记录有序的新key列表和新key对应的KeyedInfoItem的索引（为-1时代表新添加的key）
                 const updateContext = () => {
@@ -381,7 +415,10 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
                 attachDestroy(unsetEffect, dst)
             }
 
+            usedEffectList.clear()
             checkDuplicateKey(dep2, kvPair, context)
+            effectList.push(...values(usedEffectList))
+
             return dep1IsGetter || dep2IsGetter ? updateKeyedForModule : nil
         }
 
@@ -394,7 +431,7 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
             }
         }
     })
-    return attachMarkForModuleFunc(keyedForModuleFunc)
+    return markModuleFunc(keyedForModuleFunc)
 }
 
 export function awaitModule(
@@ -501,11 +538,11 @@ export function awaitModule(
             }
         }
     })
-    return attachMarkForModuleFunc(awaitModuleFunc)
+    return markModuleFunc(awaitModuleFunc)
 }
 
 // 为ModuleFunc添加标记
-function attachMarkForModuleFunc(fn: ModuleFunc) {
+function markModuleFunc(fn: ModuleFunc) {
     return (fn[IsModuleFunc] = true), fn
 }
 
@@ -520,6 +557,34 @@ function toTwoDemensionalToms(
         }
         return isArray(tom) && (isArray(tom[0]) || isModuleFunc(tom[0])) ? tom : [tom]
     })
+}
+
+// escapeModule: 通过html内容字符串创建DOM节点
+function createUnescapeNodes(html: string, options: UnescapeOptions) {
+    const escapeTags: string[] = options.escapeTags || []
+    if (options.escapeScript) {
+        escapeTags.push("script")
+    }
+    if (options.escapeStyle) {
+        escapeTags.push("style")
+    }
+
+    const reSources: string[] = []
+    if (escapeTags.length) {
+        reSources.push(`</?(?:${escapeTags.join("|")})`)
+    }
+    if (options.escapeEntities) {
+        reSources.push("&(?:[a-zA-Z]+|#d+|#x[a-fA-F0-9]+)")
+    }
+    if (reSources.length) {
+        html = html.replaceAll(new RegExp(`(?:${reSources.join("|")})`, "g"), s => {
+            if (s[0] !== "<" && s[0] !== "&") {
+                return s
+            }
+            return (s[0] === "<" ? "&lt;" : "&amp;") + s.slice(1)
+        })
+    }
+    return Array.from(document.createRange().createContextualFragment(html).childNodes)
 }
 
 // keyedForModule: 检查是否具有重复的key值

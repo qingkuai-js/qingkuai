@@ -14,7 +14,6 @@ import type {
 import type { AnyObject, GeneralFunc } from "../util/types"
 
 import {
-    createComponent,
     QingKuaiComponent,
     getCurrentInstance,
     invokeIndexedHooks,
@@ -35,7 +34,7 @@ import {
 } from "./reactivity/state"
 import { velf } from "../util/runtime/sundry"
 import { InvalidMountNode } from "./message/error"
-import { isModuleFunc } from "../util/runtime/assert"
+import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { internalPreEffect } from "./reactivity/effect"
 import { lastElem, len, values } from "../util/shared/sundry"
 import { isArray, isFunction, isNull } from "../util/shared/assert"
@@ -169,6 +168,15 @@ export const h = withCleanUsedEffectList(function (
         toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
             const currentKeyedInfo = lastElem(keyedInfo)
+
+            if (isNode(tom)) {
+                if (isKeyedTop) {
+                    currentKeyedInfo.nks.push(tom)
+                }
+                insert(target, tom, reference)
+                attachDestroyLocal(() => destroy(tom))
+                return
+            }
 
             // rstu是子指令模块
             if (isModuleFunc(tom)) {
@@ -432,4 +440,30 @@ export function attachUpdate(
 // 添加销毁函数
 export function attachDestroy(fn: GeneralFunc, destruction: DestructionStruct) {
     destruction.v.push(fn)
+}
+
+function createComponent(stu: ComponentStructure) {
+    const [Component, _, props, refs, ...slots] = stu
+    const constructorArg: QingKuaiComponentConstructonParam = {
+        props: {},
+        refs: {},
+        slots: {}
+    }
+    if (props) {
+        for (let i = 0; i < len(props); i += 2) {
+            constructorArg.props[props[i]] = props[i + 1]
+        }
+    }
+    if (refs) {
+        for (let i = 0; i < len(refs); i += 2) {
+            constructorArg.refs[refs[i]] = [refs[i + 1][0], refs[i + 1][1]]
+        }
+    }
+    if (slots) {
+        for (let i = 0; i < len(slots); i++) {
+            const stus = slots[i].slice(1) as TemplateStuOrModuleFunc[]
+            constructorArg.slots[slots[i][0]] = stus
+        }
+    }
+    return new Component({ ...constructorArg, sign: InstantiatedByH })
 }

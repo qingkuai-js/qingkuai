@@ -52,9 +52,7 @@ export function extendNks(nks: KeyedInfoItem["nks"], item: KeyedInfo) {
 export function destroyBlock(destruction: DestructionStruct) {
     runAll(destruction.v)
     destruction.c.forEach(child => {
-        child.forEach(dst => {
-            destroyBlock(dst)
-        })
+        child.forEach(destroyBlock)
     })
 }
 

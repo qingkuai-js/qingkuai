@@ -17,6 +17,13 @@ export type PartialGeneralFunc = GeneralFunc | null
 
 export type Opportunity = "sync" | "pre" | "post"
 
+export type UnescapeOptions = Partial<{
+    escapeTags: string[]
+    escapeStyle: boolean
+    escapeScript: boolean
+    escapeEntities: boolean
+}>
+
 export interface QingKuaiProperties {
     id: string
     updating: boolean
@@ -55,7 +62,7 @@ export type TemplateStructure = NormalTemplateStructure | ComponentStructure
 
 export interface RenderStructure {
     directive: Directive
-    toms: TemplateStuOrModuleFunc[]
+    toms: (TemplateStuOrModuleFunc | Node)[]
 }
 
 export interface ModuleFunc {

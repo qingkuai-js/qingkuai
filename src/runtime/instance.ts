@@ -1,13 +1,8 @@
-import type {
-    ComponentStructure,
-    QingKuaiProperties,
-    TemplateStuOrModuleFunc,
-    QingKuaiComponentConstructonParam
-} from "./types"
-import { GeneralFunc } from "../util/types"
+import type { GeneralFunc } from "../util/types"
+import type { QingKuaiProperties, QingKuaiComponentConstructonParam } from "./types"
 
 import { InstantiatedByH, nil, noop } from "./constants"
-import { arrayFill, len, runAll } from "../util/shared/sundry"
+import { arrayFill, runAll } from "../util/shared/sundry"
 import { InstantiateComponentManually } from "./message/error"
 import { destroyBlock, newDestruction } from "../util/runtime/separate"
 
@@ -56,29 +51,6 @@ export function setCurrentInstance(ins: QingKuaiComponent) {
     currentInstance = ins
 }
 
-// 通过TemplateStructure实例化组件
-export function createComponent(stu: ComponentStructure) {
-    const [Component, _, props, refs, ...slots] = stu
-    const constructorArg = initComponentConstrctorParam()
-    if (props) {
-        for (let i = 0; i < len(props); i += 2) {
-            constructorArg.props[props[i]] = props[i + 1]
-        }
-    }
-    if (refs) {
-        for (let i = 0; i < len(refs); i += 2) {
-            constructorArg.refs[refs[i]] = [refs[i + 1][0], refs[i + 1][1]]
-        }
-    }
-    if (slots) {
-        for (let i = 0; i < len(slots); i++) {
-            const stus = slots[i].slice(1) as TemplateStuOrModuleFunc[]
-            constructorArg.slots[slots[i][0]] = stus
-        }
-    }
-    return new Component({ ...constructorArg, sign: InstantiatedByH })
-}
-
 // 销毁组件
 export function destroyComponent(instance: QingKuaiComponent) {
     invokeIndexedHooks(instance, 4)
@@ -91,11 +63,6 @@ export function destroyComponent(instance: QingKuaiComponent) {
 export function invokeIndexedHooks(instance: QingKuaiComponent, index: number) {
     const container = instance.__.hooks[index]
     container && runAll(container)
-}
-
-// 初始化一个QingKuaiComponentConstructorParam
-function initComponentConstrctorParam(): QingKuaiComponentConstructonParam {
-    return { props: {}, refs: {}, slots: {} }
 }
 
 // 由于所有声明周期钩子挂载方法相同，此函数批量注册这些方法
