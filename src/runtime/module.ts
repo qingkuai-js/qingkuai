@@ -26,12 +26,13 @@ import {
     optc,
     values,
     entries,
+    emptyArr,
     setArrLength,
     replaceEachItems
 } from "../util/shared/sundry"
 import { insert } from "./dom"
 import { CancelablePromise } from "./promise"
-import { IsModuleFunc, nil } from "./constants"
+import { ALIAS_MODULE_KIND, IS_MODULE_FUNC, KEYED_FOR_MODULE_KIND, NIL } from "./constants"
 import { h, extendDsts, attachDestroy } from "./h"
 import { spliceByElem } from "../util/shared/sundry"
 import { DuplicateKey, NonTraverse } from "./message/error"
@@ -64,14 +65,14 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
         const updateGen: DirectiveUpdateFuncGen = (...args) => {
             const unsetEffect = internalPreEffect(updateContext, effectList)
             attachDestroy(unsetEffect, args[5])
-            return nil
+            return NIL
         }
 
         return {
             toms,
             directive: {
-                t: 2,
                 e: effectList,
+                t: ALIAS_MODULE_KIND,
                 v: [1, contextValues, updateGen]
             }
         }
@@ -195,7 +196,7 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
             }
 
             if (!depsWithGetter) {
-                return nil
+                return NIL
             }
 
             const updateBlockIndex = () => {
@@ -288,7 +289,7 @@ export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
                 attachDestroy(unsetEffect, dst)
             }
 
-            return depIsGetter ? updateForModule : nil
+            return depIsGetter ? updateForModule : NIL
         }
 
         return {
@@ -396,8 +397,7 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
                 // 记录有序的新key列表和新key对应的KeyedInfoItem的索引（为-1时代表新添加的key）
                 const updateContext = () => {
                     const newPair = getKeyValuePairIterator(dep1(ctx))
-                    setArrLength(kvPair, 0)
-                    setArrLength(orderedWillKeys, 0)
+                    emptyArr(kvPair, orderedWillKeys)
                     for (let i = 0; i < len(newPair); i++) {
                         const currentKey = getKey(dep2, newPair, context, i)
                         const oldPairAndIndex = oldKeyToPairAndIndex.get(currentKey)
@@ -416,9 +416,8 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
                 // 记录旧key到kvPair项及其在KeyedInfo中的索引的映射关系、记录有序的旧key列表
                 // orderedOldKeys和keyedInfo参数都是上次更新（或初次渲染）后的信息，两者一一对应
                 const recordOldKeys = () => {
+                    emptyArr(orderedOldKeys)
                     oldKeyToPairAndIndex.clear()
-                    setArrLength(orderedOldKeys, 0)
-
                     for (let i = 0; i < len(kvPair); i++) {
                         const currentKey = getKey(dep2, kvPair, context, i)
                         oldKeyToPairAndIndex.set(currentKey, [kvPair[i], i])
@@ -442,14 +441,14 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
             checkDuplicateKey(dep2, kvPair, context)
             effectList.push(...values(usedEffectList))
 
-            return dep1IsGetter || dep2IsGetter ? updateKeyedForModule : nil
+            return dep1IsGetter || dep2IsGetter ? updateKeyedForModule : NIL
         }
 
         return {
             toms,
             directive: {
-                t: 1,
                 e: effectList,
+                t: KEYED_FOR_MODULE_KIND,
                 v: [len(kvPair), kvPair, updateGen]
             }
         }
@@ -562,7 +561,7 @@ export function awaitModule(
 
 // 为ModuleFunc添加标记
 function markupModuleFunc(fn: ModuleFunc) {
-    return (fn[IsModuleFunc] = true), fn
+    return (fn[IS_MODULE_FUNC] = true), fn
 }
 
 // toms means TemplateStructures Or ModuleFuncs
@@ -669,7 +668,7 @@ function updateKeyValuePair(kvPair: any[][], newPair: any[][], startIndex = 0) {
 function getFirstNode(keyedInfoItem: KeyedInfoItem | undefined): PartialNode {
     const fst = keyedInfoItem?.nks[0]
     if (!fst) {
-        return nil
+        return NIL
     }
     if (isNode(fst)) {
         return fst
@@ -703,7 +702,7 @@ function getKey(dep: any, pairs: any[], context: RenderContext[], index: number)
 
 // unescapeModule, ifModule, awaitModule: 用指定KeyedInfoItem替换KeyedInfo
 function replaceKeyedInfoWithSingleItem(info: KeyedInfo, nks: KeyedInfoItem["nks"]) {
-    replaceEachItems(info, [{ dst: nil, nks }])
+    replaceEachItems(info, [{ dst: NIL, nks }])
 }
 
 export { getKeyValuePairIterator }

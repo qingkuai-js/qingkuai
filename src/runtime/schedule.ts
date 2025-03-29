@@ -1,7 +1,7 @@
 import type { QingKuaiComponent } from "./instance"
 import type { EffectListItem, UpdateFunc } from "./types"
 
-import { noop } from "./constants"
+import { NOOP } from "./constants"
 import { resolvedPromise } from "./promise"
 import { isNull } from "../util/shared/assert"
 import { invokeIndexedHooks } from "./instance"
@@ -60,7 +60,7 @@ export function scheduleUpdate(item: Set<UpdateFunc>) {
 
 // 新建事件循环微任务
 export function nextTick(fn?: () => void) {
-    return resolvedPromise.then(fn || noop)
+    return resolvedPromise.then(fn || NOOP)
 }
 
 export { updateList }

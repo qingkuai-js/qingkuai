@@ -2,7 +2,7 @@ import type { AnyObject } from "../util/types"
 import type { QingKuaiComponent } from "./instance"
 import type { TemplateStuOrModuleFunc } from "./types"
 
-import { RawValue, undef } from "./constants"
+import { RAW_VALUE, UNDEF } from "./constants"
 import { isFunction } from "../util/shared/assert"
 import { AssignmentToProps } from "./message/warn"
 
@@ -39,7 +39,7 @@ export function init(instance: QingKuaiComponent, hashId: string) {
             {},
             {
                 get(_, property) {
-                    if (property === RawValue) {
+                    if (property === RAW_VALUE) {
                         return getRawProps()
                     }
 
@@ -56,11 +56,11 @@ export function init(instance: QingKuaiComponent, hashId: string) {
             {},
             {
                 get(_, property) {
-                    if (property === RawValue) {
+                    if (property === RAW_VALUE) {
                         return getRawRefs()
                     }
                     if (!(property in refs)) {
-                        return undef
+                        return UNDEF
                     }
                     return refs[property][0](ctx)
                 },

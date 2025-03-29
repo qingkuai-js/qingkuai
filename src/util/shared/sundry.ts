@@ -15,6 +15,11 @@ export function notEqual(v1: any, v2: any) {
     return v1 !== v1 ? v2 === v2 : v1 !== v2
 }
 
+// 清空数组
+export function emptyArr(...arrs: any[][]) {
+    arrs.forEach(arr => setArrLength(arr, 0))
+}
+
 // 将类数组值转换为数组
 export function toArray<T>(iter: Iterable<T>) {
     return Array.from(iter)

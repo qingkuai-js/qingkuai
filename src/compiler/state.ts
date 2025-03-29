@@ -11,8 +11,7 @@ import type {
     TempStoredImportInfo
 } from "./types"
 
-import { isUndefined } from "../util/shared/assert"
-import { setArrLength } from "../util/shared/sundry"
+import { emptyArr } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
 // 在编译结果中返回的编译器内布值要打断其引用状态
@@ -42,8 +41,7 @@ export function resetCompilerState(options: CompileOptions) {
     usedRuntimeItems.clear()
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
-    setArrLength(interCodeSnippets, 0)
-    setArrLength(tempStoredImportInfos, 0)
+    emptyArr(interCodeSnippets, tempStoredImportInfos)
     Object.assign(debuggingInfo, newDebuggingInfo())
     Object.assign(replacementInfo, newReplacementInfo())
 
@@ -114,6 +112,7 @@ function newInputDescriptor(): InputDescriptor {
         stringConstantCount: 0,
         options: {
             componentName: "",
+            hashId: "",
             debug: false,
             check: false,
             sourcemap: false,

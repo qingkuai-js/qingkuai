@@ -6,16 +6,14 @@
 
 import type {
     Directive,
-    KeyedInfo,
     PartialNode,
-    KeyedInfoItem,
     RenderContext,
     EffectListItem,
     DestructionStruct
 } from "../../runtime/types"
 
 import { len, runAll } from "../shared/sundry"
-import { nil, noop } from "../../runtime/constants"
+import { NIL, NOOP } from "../../runtime/constants"
 import { isFunction, isNumber } from "../shared/assert"
 import { setUsedEffectList } from "../../runtime/reactivity/state"
 
@@ -35,7 +33,7 @@ export function mockDirective(
     return {
         t: 0,
         e: effectList || [],
-        v: [0, contextValues, noop]
+        v: [0, contextValues, NOOP]
     }
 }
 
@@ -64,7 +62,7 @@ export function combineContext(
 }
 
 // 生成获取context的方法
-export function getContextFuncGen(context: RenderContext[], node: PartialNode = nil) {
+export function getContextFuncGen(context: RenderContext[], node: PartialNode = NIL) {
     return (p: any) => {
         if (isNumber(p)) {
             for (let i = 0; true; i++) {

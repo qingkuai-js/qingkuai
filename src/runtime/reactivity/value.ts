@@ -16,14 +16,14 @@ import { BadReactivityLevel } from "../message/error"
 import { isReactive } from "../../util/runtime/assert"
 import { notEqual, optc } from "../../util/shared/sundry"
 import {
-    reflect,
-    undef,
-    RawValue,
-    nil,
-    IsProxy,
-    Wrapper,
-    noop,
-    ExposeDependencies
+    REFLECT,
+    UNDEF,
+    RAW_VALUE,
+    NIL,
+    IS_PROXY,
+    WRAPPER,
+    NOOP,
+    EXPOSE_DEPENDECIES
 } from "../constants"
 import { isNull, isArray, isNumber, isFunction, isUndefined } from "../../util/shared/assert"
 
@@ -44,23 +44,23 @@ export class ReactivityWrapper {
         initEffect?: EffectListItem
     ) {
         this.proxy = new Proxy(raw, this)
-        this.effect = initEffect || [new Set(), nil]
+        this.effect = initEffect || [new Set(), NIL]
     }
 
     get: PGetHandler = (target, property, receiver) => {
         // 特殊属性读取
-        if (property === IsProxy) {
+        if (property === IS_PROXY) {
             return true
         }
-        if (property === Wrapper) {
+        if (property === WRAPPER) {
             return this
         }
-        if (property === RawValue) {
+        if (property === RAW_VALUE) {
             return this.raw
         }
 
         const { effect, typeFlag, level } = this
-        const propValue = reflect.get(target, property, receiver)
+        const propValue = REFLECT.get(target, property, receiver)
 
         // 再次将某个子属性值包装为代理值，层级-1，共享副作用列表
         const reactAgain = (nextTarget: any) => {
@@ -106,7 +106,7 @@ export class ReactivityWrapper {
                 const isSet = !(typeFlag & 4)
                 const result = getResultOfMethodCall()
                 const isMapSet = !isSet && property === "set"
-                const preValue = isMapSet ? target.get(key) : undef
+                const preValue = isMapSet ? target.get(key) : UNDEF
                 const valueChanged = isMapSet && notEqual(preValue, value)
                 if (
                     property === "clear" ||
@@ -126,11 +126,11 @@ export class ReactivityWrapper {
     set: PSetHandler = (target, property, value, receiver) => {
         const { debugSetter, effect } = this
         if (notEqual(target[property], value)) {
-            if (debugSetter !== noop) {
+            if (debugSetter !== NOOP) {
                 debugSetter(value)
             }
             // prettier-ignore
-            const ret = reflect.set(
+            const ret = REFLECT.set(
                 target,
                 property,
                 value,
@@ -143,13 +143,13 @@ export class ReactivityWrapper {
 
     deleteProperty: PDeleteHandler = (target, property) => {
         processEffect(this.effect)
-        return reflect.deleteProperty(target, property)
+        return REFLECT.deleteProperty(target, property)
     }
 }
 
 // 获取代理值的原始值
 export function raw<T extends AnyObject>(v: T): T {
-    return (isReactive(v) ? v[RawValue] : v) as any
+    return (isReactive(v) ? v[RAW_VALUE] : v) as any
 }
 
 // 生成reactivity和constReact的方法
@@ -166,8 +166,8 @@ export function raw<T extends AnyObject>(v: T): T {
 function reactGen(levelDown = 0) {
     return (target?: any, los?: number | Setter, eol?: EffectListItem | number) => {
         let level = Infinity
-        let debugSetter: Setter = noop
-        let effect: EffectListItem | undefined = undef
+        let debugSetter: Setter = NOOP
+        let effect: EffectListItem | undefined = UNDEF
 
         const isDebug = isFunction(los)
         const eolIsNumber = isNumber(eol)
@@ -191,7 +191,7 @@ function reactGen(levelDown = 0) {
             level -= levelDown
 
             if (isReactive(target)) {
-                target = target[RawValue]
+                target = target[RAW_VALUE]
             }
 
             // 声明响应式变量时需要将其作为对象的$属性
@@ -217,7 +217,7 @@ function reactGen(levelDown = 0) {
             effect
         )
         if (isDeclaration) {
-            if (ExposeDependencies) {
+            if (EXPOSE_DEPENDECIES) {
                 const component = getCurrentInstance()
                 component && component.__.deps.push(ret)
             }

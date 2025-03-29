@@ -33,23 +33,23 @@ import {
 } from "./reactivity/state"
 import { velf } from "../util/runtime/sundry"
 import { InvalidMountNode } from "./message/error"
-import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { internalPreEffect } from "./reactivity/effect"
+import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { lastElem, len, values } from "../util/shared/sundry"
 import { isArray, isFunction, isNull } from "../util/shared/assert"
-import { ExposeDestructions, InstantiatedByH, IsWithReferenceRet, nil } from "./constants"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
+import { EXPOSE_DESTRUCTIONS, INSTANTIATE_BY_H, IS_WITH_REFERENCE_RET, NIL } from "./constants"
 
 export function render(
     instance: QingKuaiComponent,
     target: Node,
-    reference: PartialNode = nil,
+    reference: PartialNode = NIL,
     context: RenderContext[] = [],
     isKeyedTop: boolean = false
 ) {
     let dst: DestructionStruct
     const properties = instance.__
-    if (ExposeDestructions) {
+    if (EXPOSE_DESTRUCTIONS) {
         dst = properties.dst
     } else {
         dst = newDestruction()
@@ -58,7 +58,7 @@ export function render(
     properties.context = context
     setCurrentInstance(instance)
 
-    const ts = properties.ts
+    const { ts } = properties
     const preInstance = getCurrentInstance()
     const keyedInfo: KeyedInfo = [{ nks: [], dst }]
     const renderEachTopBlock = (stu: TemplateStuOrModuleFunc) => {
@@ -100,7 +100,7 @@ export const h = withCleanUsedEffectList(function (
     if (!isModuleFunc(stu)) {
         rstu = {
             toms: [stu],
-            directive: nil
+            directive: NIL
         }
     } else {
         rstu = stu(getContextFuncGen(context))
@@ -162,7 +162,7 @@ export const h = withCleanUsedEffectList(function (
         }
         keyedInfo.push({
             nks: [],
-            dst: isKeyedForModule ? destruction || nil : nil
+            dst: isKeyedForModule ? destruction || NIL : NIL
         })
         toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
@@ -195,7 +195,7 @@ export const h = withCleanUsedEffectList(function (
                 return
             }
 
-            const qkNode: QingKuaiNodeStruct = { n: nil, text: "", attrs: {} }
+            const qkNode: QingKuaiNodeStruct = { n: NIL, text: "", attrs: {} }
             const [tag, content, attrs, events, ...children] = tom
             const cif = isFunction(content)
 
@@ -342,7 +342,7 @@ export const h = withCleanUsedEffectList(function (
                         })
                     }
                 }
-                attribute(qkNode, "qingkuai-" + instance.__.id, "", false)
+                attribute(qkNode, "qk-" + instance.__.id, "", false)
             }
 
             // 处理events
@@ -355,7 +355,7 @@ export const h = withCleanUsedEffectList(function (
                     // 判断是否是withReference方法的返回值，如果是的话则需要先调用它，它会返回真正的
                     // NormalEventHandlerGetter，调用时它会设置属性的初始值并将修改属性值的方法记录到
                     // 依赖的响应性变量的effect中（这一操作同上attribute处理部分，但这样做可以有效压缩生成代码体积）
-                    if (!eventHandlerGetter[IsWithReferenceRet]) {
+                    if (!eventHandlerGetter[IS_WITH_REFERENCE_RET]) {
                         eventHandler = invokeGetter(eventHandlerGetter)
                     } else {
                         eventHandler = eventHandlerGetter(qkNode, invokeGetter, attachUpdateLocal)
@@ -387,7 +387,7 @@ export const h = withCleanUsedEffectList(function (
             // 处理子节点
             for (const child of children) {
                 const assertedChild = child as TemplateStuOrModuleFunc
-                h(instance, assertedChild, qkNode.n!, nil, false, currentContext, destruction)
+                h(instance, assertedChild, qkNode.n!, NIL, false, currentContext, destruction)
             }
         })
     }
@@ -417,7 +417,7 @@ export function createApp(
         // @ts-ignore
         const app = new Component({
             ...options,
-            sign: InstantiatedByH
+            sign: INSTANTIATE_BY_H
         })
         return render(app, target), app
     }
@@ -472,5 +472,5 @@ function createComponent(stu: ComponentStructure) {
             constructorArg.slots[slots[i][0]] = stus
         }
     }
-    return new Component({ ...constructorArg, sign: InstantiatedByH })
+    return new Component({ ...constructorArg, sign: INSTANTIATE_BY_H })
 }

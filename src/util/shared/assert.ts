@@ -1,7 +1,6 @@
 import type { AnyObject } from "../types"
 
 import { optc } from "../shared/sundry"
-import { undef } from "../../runtime/constants"
 
 export function isNull(v: any): v is null {
     return v === null
@@ -44,5 +43,5 @@ export function isFunction(v: any): v is Function {
 }
 
 export function isUndefined(v: any): v is undefined {
-    return v === undef
+    return v === void 0
 }

@@ -1,7 +1,7 @@
 import type { QingKuaiComponent } from "./instance"
 import type { ReactivityWrapper } from "./reactivity/value"
 import type { AnyObject, GeneralFunc } from "../util/types"
-import type { IsModuleFunc, IsWithReferenceRet, InstantiatedByH } from "./constants"
+import type { IS_MODULE_FUNC, IS_WITH_REFERENCE_RET, INSTANTIATE_BY_H } from "./constants"
 
 export type ZeroOrOne = 0 | 1
 export type AnySet = Set<any>
@@ -38,7 +38,7 @@ export interface QingKuaiProperties {
     refs: Record<string, [(ctx: GetContextFunc) => any, (v: any, ctx: GetContextFunc) => any]>
 }
 export interface QingKuaiComponentConstructonParam {
-    sign?: typeof InstantiatedByH
+    sign?: typeof INSTANTIATE_BY_H
     refs: QingKuaiProperties["refs"]
     props: QingKuaiProperties["props"]
     slots: QingKuaiProperties["slots"]
@@ -66,7 +66,7 @@ export interface RenderStructure {
 }
 
 export interface ModuleFunc {
-    [IsModuleFunc]?: boolean
+    [IS_MODULE_FUNC]?: boolean
     (ctx: GetContextFunc): RenderStructure
 }
 
@@ -74,7 +74,7 @@ export interface ModuleFunc {
 // 否则会导致ts类型推导失败，这样写使得此类型该属性恒为undefined，否则排除此类型
 export interface NormalEventHandlerGetter {
     (): EventListener
-    [IsWithReferenceRet]?: undefined
+    [IS_WITH_REFERENCE_RET]?: undefined
 }
 export interface RefEventHandlerGetterGen {
     (
@@ -82,7 +82,7 @@ export interface RefEventHandlerGetterGen {
         invokeGetter: (getter: Function) => any,
         attachUpdate: (fn: UpdateFunc) => void
     ): EventListener
-    [IsWithReferenceRet]: boolean
+    [IS_WITH_REFERENCE_RET]: boolean
 }
 export type EventHandlerGetter = NormalEventHandlerGetter | RefEventHandlerGetterGen
 
@@ -94,9 +94,13 @@ export type EventStructure = [string, EventHandlerGetter, number, ...EventStruct
 export type ReferenceStructure = [string, any, (v: any) => any, ...ReferenceStructure[]]
 
 export type Directive = {
-    t: number
+    t: number /** type */
     e: EffectListItem[]
-    v: [number, any[][], DirectiveUpdateFuncGen]
+    v: [
+        number /** run times */,
+        any[][] /** context */,
+        DirectiveUpdateFuncGen /** update method generator */
+    ]
 } | null
 
 export type RenderContext = {

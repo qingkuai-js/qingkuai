@@ -4,12 +4,12 @@ import { attribute } from "./dom"
 import { raw } from "./reactivity/value"
 import { resolvedPromise } from "./promise"
 import { vewf } from "../util/runtime/sundry"
-import { IsWithReferenceRet } from "./constants"
+import { IS_WITH_REFERENCE_RET } from "./constants"
 import { ContainerTypeIsBad } from "./message/error"
 import { EventWrapperFlagKeys } from "../util/types"
 import { isArray, isNull } from "../util/shared/assert"
 import { EventListenerFlag } from "../util/shared/flag"
-import { notEqual, optc, setArrLength } from "../util/shared/sundry"
+import { emptyArr, notEqual, optc } from "../util/shared/sundry"
 
 const Arrow = "Arrow"
 const keyTypes = ["keydown", "keyup", "keypress"]
@@ -170,15 +170,11 @@ export function withReference(
                 // 修改选项都有较大的同步开销，而采用先清空后添加可以将同步过程的时间复杂度降低至O(n)
                 let add!: (rv: any) => void
                 if (isArray(gotValue)) {
-                    add = rv => {
-                        gotValue.push(rv)
-                    }
-                    setArrLength(gotValue, 0)
+                    emptyArr(gotValue)
+                    add = rv => gotValue.push(rv)
                 } else if (optc(gotValue) === "Set") {
-                    add = rv => {
-                        gotValue.add(rv)
-                    }
                     gotValue.clear()
+                    add = rv => gotValue.add(rv)
                 }
 
                 // 下面的操作都是建立在gotValue类型只能为Array或Set的前提下进行的，此前提一定成立，原因如下：
@@ -200,7 +196,7 @@ export function withReference(
     // 标记返回值为withReference方法的返回值，在h方法中处理事件监听时，会识别
     // withReference的返回值，并调用它的返回值（即handlerGen)以设置属性的初始值，
     // 并记录更新属性的方法到依赖的响应性值的effect中
-    handlerGen[IsWithReferenceRet] = true
+    handlerGen[IS_WITH_REFERENCE_RET] = true
 
     // 返回eventStructure，这里设置了compose标志，这样做是为了在输入合成过程中让setter随着
     // 输入的进行被实时调用并更新响应性值（setter是一个仅包含赋值操作的单语句函数，执行开销非常小）

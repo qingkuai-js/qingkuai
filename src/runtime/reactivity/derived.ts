@@ -8,9 +8,9 @@ import type {
 import type { GeneralFunc } from "../../util/types"
 
 import { internalSyncEffect } from "./effect"
-import { IsProxy, reflect, undef } from "../constants"
 import { len, values } from "../../util/shared/sundry"
 import { isUndefined } from "../../util/shared/assert"
+import { IS_PROXY, REFLECT, UNDEF } from "../constants"
 import { setUsedEffectList, usedEffectList, withCleanUsedEffectList } from "./state"
 import { AssignmentToDerived, DerivedDependenNoReactiveValue } from "../message/warn"
 
@@ -64,7 +64,7 @@ export const destructuringDerived = withCleanUsedEffectList(
 )
 
 function newDerivedTarget(): DerivedTarget {
-    return { $: undef as any }
+    return { $: UNDEF as any }
 }
 
 function newDerivedState(): DerivedInternalState {
@@ -78,7 +78,7 @@ function newDerivedState(): DerivedInternalState {
 function newDerivedProxy(target: DerivedTarget, state: DerivedInternalState, udpate: GeneralFunc) {
     return new Proxy<any>(target, {
         get(target, property) {
-            if (property === IsProxy) {
+            if (property === IS_PROXY) {
                 return true
             }
             if (state.dirty) {
@@ -96,7 +96,7 @@ function newDerivedProxy(target: DerivedTarget, state: DerivedInternalState, udp
                 }, state.effectList)
             }
             setUsedEffectList(state.effectList)
-            return reflect.get(target, property)
+            return REFLECT.get(target, property)
         },
 
         set() {

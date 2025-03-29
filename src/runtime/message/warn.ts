@@ -18,7 +18,7 @@
  * Warning Code Explanation: Code beginning with the number 8 indicates that this is a runtime warning
  */
 
-import { GeneralFunc } from "../../util/types"
+import type { GeneralFunc } from "../../util/types"
 
 export function AssignmentToDOMGetterProp(error: any) {
     console.warn(`[QingKuai Warnning](${8001}):`, "Operation is invalid." + error)

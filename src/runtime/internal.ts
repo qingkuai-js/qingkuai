@@ -7,7 +7,7 @@ export {
     keyedForModule
 } from "./module"
 export { init } from "./init"
-export { nil, noop } from "./constants"
+export { NIL as nil, NOOP as noop } from "./constants"
 export { QingKuaiComponent } from "./instance"
 export { eventWrapper, withReference } from "./event"
 export { syncWatch, preWatch, watch } from "./reactivity/effect"

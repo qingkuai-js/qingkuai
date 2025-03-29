@@ -1,13 +1,13 @@
 import type { GeneralFunc } from "../util/types"
 import type { QingKuaiProperties, QingKuaiComponentConstructonParam } from "./types"
 
-import { InstantiatedByH, nil, noop } from "./constants"
-import { arrayFill, runAll } from "../util/shared/sundry"
+import { INSTANTIATE_BY_H, NIL, NOOP } from "./constants"
 import { InstantiateComponentManually } from "./message/error"
+import { arrayFill, emptyArr, runAll } from "../util/shared/sundry"
 import { destroyBlock, newDestruction } from "../util/runtime/separate"
 
 // 用于存储当前操作的组件实例
-let currentInstance: QingKuaiComponent | null = nil
+let currentInstance: QingKuaiComponent | null = NIL
 
 export class QingKuaiComponent {
     /**
@@ -26,13 +26,13 @@ export class QingKuaiComponent {
         refs: {},
         slots: {},
         props: {},
-        ctx: noop,
+        ctx: NOOP,
         context: [],
         dst: newDestruction()
     }
 
     constructor(args: QingKuaiComponentConstructonParam) {
-        if (args.sign !== InstantiatedByH) {
+        if (args.sign !== INSTANTIATE_BY_H) {
             InstantiateComponentManually()
         }
         delete args.sign
@@ -59,15 +59,18 @@ export function destroyComponent(instance: QingKuaiComponent) {
     invokeIndexedHooks(instance, 5)
 }
 
-// 调用某个组件对应索引下的所有钩子函数，index对应的钩子参见当前文件17-18行
+// 调用某个组件对应索引下的所有钩子函数，索引对应的钩子参见当前文件17-18行
 export function invokeIndexedHooks(instance: QingKuaiComponent, index: number) {
     const container = instance.__.hooks[index]
-    container && runAll(container)
+    if (container) {
+        runAll(container)
+        index <= 1 && emptyArr(container)
+    }
 }
 
 // 由于所有声明周期钩子挂载方法相同，此函数批量注册这些方法
 function hooksHandlerGen() {
-    const ret = arrayFill(6, noop as (fn: GeneralFunc) => void)
+    const ret = arrayFill(6, NOOP as (fn: GeneralFunc) => void)
     for (let i = 0; i < 6; i++) {
         ret[i] = (fn: GeneralFunc) => {
             const { hooks } = currentInstance!.__
