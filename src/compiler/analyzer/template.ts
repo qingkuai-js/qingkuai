@@ -41,7 +41,7 @@ export function analyzeTemplate(
         const isSlot = tag === "slot"
         const isTextarea = tag === "textarea"
         const isComponent = !isEmptyString(componentTag)
-        const shouldCache = pure && !parent?.pure && tag !== "slot" && !isComponent
+        const shouldCache = pure && !parent?.pure && !isSlot && !isComponent
 
         const curRetItem: TemplateAnalysisRet = {
             aar: null,
@@ -49,7 +49,7 @@ export function analyzeTemplate(
             content: "",
             children: [],
             isSpread: tag === SPREAD_TAG,
-            cacheId: shouldCache ? getCacheId() : -1
+            cacheId: shouldCache && !isEmptyString(tag) ? getCacheId() : -1
         }
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
@@ -72,11 +72,16 @@ export function analyzeTemplate(
         }
 
         // kebab组件名转为驼峰命名
-        if (!isComponent) {
-            curRetItem.tag = stringify(tag)
-        } else {
+        if (isComponent) {
             curRetItem.tag = kebab2Camel(tag, true)
             markPositionFlag(nodes[i].range[0], "isComponentStart")
+        } else {
+            if (!isEmptyString(tag)) {
+                curRetItem.tag = stringify(tag)
+            } else {
+                const insertCommment = inputDescriptor.options.comment
+                curRetItem.tag = (insertCommment ? "/* cache id */ " : "") + getCacheId()
+            }
         }
 
         if (isUndefined(context)) {

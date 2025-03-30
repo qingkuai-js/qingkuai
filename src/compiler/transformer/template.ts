@@ -7,6 +7,7 @@ import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/sundry"
 import { isArray, isNull, isString } from "../../util/shared/assert"
 import { lastElem, replaceEachItems } from "../../util/shared/sundry"
+import { inputDescriptor } from "../state"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
@@ -80,8 +81,8 @@ export function transformTemplate(
 
         const { isSpread } = item
         const hasAar = !isNull(item.aar)
-        const shouldCache = item.cacheId !== -1
-        const hasChild = childrenLen! > 0 || shouldCache
+        const cacheIdIsFirstChild = item.cacheId !== -1
+        const hasChild = childrenLen! > 0 || cacheIdIsFirstChild
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
         const elementUseLineBreak = shouldUseLineBreak(item, hasChild)
         const isContinued = hasAar && Boolean(item.aar!.continueInfo?.re)
@@ -206,12 +207,15 @@ export function transformTemplate(
             }
         }
 
-        if (shouldCache) {
-            pushTransformedArr(
-                `/* cache id */ `,
-                item.cacheId.toString(),
-                item.children.length ? ", " : ""
-            )
+        if (cacheIdIsFirstChild) {
+            if (inputDescriptor.options.comment) {
+                pushTransformedArr("/* cache id */ ")
+            }
+            pushTransformedArr(item.cacheId.toString())
+
+            if (item.children.length) {
+                pushTransformedArr(", ")
+            }
             if (elementUseLineBreak) {
                 pushTransformedArr("\n", indent(n + 1))
             }

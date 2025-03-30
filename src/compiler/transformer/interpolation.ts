@@ -273,8 +273,9 @@ export function transformInterpolation(
 
     // 如果使用了EventWrapperFlag，则调用eventWrapper方法将包裹事件，并传入flag参数
     if (!isUndefined(eventWrapper)) {
+        const insertComment = inputDescriptor.options.comment
         const eventWrapperFuncName = getAlias("eventWrapper")
-        const comment = `/* ${eventWrapper.modifiers.join(", ")} */`
+        const comment = insertComment ? `/* ${eventWrapper.modifiers.join(", ")} */` : ""
         if (!useInlineEventHandler) {
             firstMappingOffsetLeft += eventWrapperFuncName.length + 1
         }

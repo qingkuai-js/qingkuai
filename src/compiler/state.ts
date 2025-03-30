@@ -121,6 +121,7 @@ function newInputDescriptor(): InputDescriptor {
             hashId: "",
             debug: false,
             check: false,
+            comment: true,
             sourcemap: false,
             typeRefStatement: "",
             reserveTemplateComment: false,

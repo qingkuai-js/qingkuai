@@ -18,6 +18,7 @@ export type CompileOptions = Partial<{
     hashId: string
     check: boolean
     debug: boolean
+    comment: boolean
     sourcemap: boolean
     typeRefStatement: string
     reserveTemplateComment: boolean
