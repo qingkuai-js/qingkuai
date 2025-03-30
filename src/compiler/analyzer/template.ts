@@ -238,6 +238,11 @@ export function analyzeTemplate(
                 ])
             }
         }
+
+        // 如果上下文中存在于组件名称相同的标识符，则采用上下文中的值作为组件类
+        if (isComponent && currentContext.map.has(curRetItem.tag)) {
+            curRetItem.tag = `ctx => ctx(${currentContext.map.get(curRetItem.tag)!.num})`
+        }
     }
 
     return result

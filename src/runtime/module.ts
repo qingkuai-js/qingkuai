@@ -484,7 +484,7 @@ export function awaitModule(
             topNodes
         ) => {
             const ch = (index: number) => {
-                if (toms[index]) {
+                if ((len(dst.c) && destroyBlock(dst.c.pop()!), toms[index])) {
                     const newDst = appendChildForDestruction(dst)
                     const currentContext = combineContext(directive, context, 0)
                     const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
@@ -518,15 +518,14 @@ export function awaitModule(
             }
 
             const updateAwaitModule = () => {
-                const hasDomOperation = !pendingBlockIsActivity && hasPendingBlock
-                if (hasDomOperation) {
+                if (!pendingBlockIsActivity) {
                     destroyBlock(dst.c.pop()!)
                     topNodes.pop()
                     ch(0)
                 }
                 value = dep(ctx)
                 mountPromise(value)
-                return hasDomOperation
+                return !pendingBlockIsActivity
             }
 
             return mountPromise(value), depIsGetter ? updateAwaitModule : null

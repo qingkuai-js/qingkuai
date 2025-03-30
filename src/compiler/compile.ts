@@ -26,8 +26,8 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     // typescript中间代码，目前只有qingkuai语言服务器会在调用compile方法时使用该模式
     //
     // 检查模式下无需分析script代码，这样可以避免@babel/parser解析script代码的性能损耗，若需要
-    // 诊断script部分的代码，typescript-qingkuai-plugin会复用vscode内置的typescript语言服务
-    // 获取其AST进行诊断，诊断完成后会将诊断结果通过该插件独立启动的ipc服务器通知给qingkuai语言服务器
+    // 诊断script部分的代码，typescript-qingkuai-plugin会复用vscode内置的typescript语言服务的
+    // SourceFile AST进行诊断，诊断完成后会将诊断结果通过该插件独立启动的ipc服务器通知给qingkuai语言服务器
     if (!options.check) {
         analyzeScript(scriptSourceCode)
     }

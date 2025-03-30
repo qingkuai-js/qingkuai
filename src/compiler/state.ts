@@ -28,6 +28,7 @@ export const tempStoredImportInfos: TempStoredImportInfo[] = []
 
 export const usedInitItems = new Set<string>()
 export const usedRuntimeItems = new Set<string>()
+export const importedIdentifiers = new Set<string>()
 export const allExistingIdentifiers = new Set<string>()
 export const eliminateRanges: EliminateRanges = new Set()
 

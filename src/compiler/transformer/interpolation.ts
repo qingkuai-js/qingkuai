@@ -8,7 +8,12 @@ import type {
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
-
+import {
+    inputDescriptor,
+    replacementInfo,
+    importedIdentifiers,
+    allExistingIdentifiers
+} from "../state"
 import {
     BadValueToRefAttr,
     IdentifierFormatIsNotAllowed,
@@ -21,11 +26,10 @@ import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
-import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
 import { bannedIdentifierFormatRE, expressionReplaceWithSpaceRE } from "../regular"
-import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
 
 export function transformInterpolation(
     expression: string,
@@ -39,12 +43,13 @@ export function transformInterpolation(
     }
 
     const { eventWrapper, positionMap } = optionalParams
+    const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
     const bodyAst = parse("_=" + expression, 2, startSourceIndex, positionMap)?.body[0]
 
     let vParam = "v"
     let ctxParam = "ctx"
-    let useGetter = false
     let useContext = false
+    let useGetter = isEvent
     let underlineParam = "_"
     let firstMappingOffsetLeft = 0
 
@@ -65,7 +70,6 @@ export function transformInterpolation(
     const usedAsSetter = optionalParams.usedAsSetter || false
     const isKeyDirective = optionalParams.isKeyDirective || false
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
-    const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
 
     // 扩展转换信息数组
     const extendTransformInfo = (index: number, str: StringOrStringGetter) => {
@@ -107,6 +111,10 @@ export function transformInterpolation(
             const ctx = context.map.get(name)
             const dep = replacementInfo.map.get(name)
             const esParent = getEsNodeOfParent(parent)
+
+            if (importedIdentifiers.has(node.name)) {
+                useGetter = true
+            }
 
             // 如果表达式访问了props或refs，就要使用getter包装
             if (!dep && /^(?:prop|ref)s$/.test(name)) {
@@ -181,12 +189,6 @@ export function transformInterpolation(
     // 以绑定当前节点的CallExpression转换信息就需要在Identifier捕获组之后被添加，
     // 这种情况在walk中Identifer捕获组先于CallExpression
     runAll(afterWalkFuncs)
-
-    // 如果当前表达式未使用getter包装，则判断其本身是否有可能是函数，如果有可能的话，
-    // 需要标记其需要使用getter包装，不然运行时可能错误地将其认为是getter进行调用
-    if (!useGetter) {
-        useGetter = isEvent || expressionMaybeFunction(ast)
-    }
 
     // 如果当前用作setter（引用传递）的目标是上下文标识符则报错（它是常量）
     if (usedAsSetter && useContext && is(ast, "Identifier")) {
@@ -349,25 +351,5 @@ function isInlineEventHandler(node: AnyNode) {
         is(node, "Identifier") ||
         is(node, "MemberExpression") ||
         is(node, "OptionalMemberExpression")
-    )
-}
-
-// 判断表达式是否有可能是函数
-function expressionMaybeFunction(exp: AnyNode) {
-    const esExp = getEsNode(exp)
-    return !(
-        is(esExp, "NullLiteral") ||
-        is(esExp, "RegexLiteral") ||
-        is(esExp, "BigIntLiteral") ||
-        is(esExp, "StringLiteral") ||
-        is(esExp, "BooleanLiteral") ||
-        is(esExp, "DecimalLiteral") ||
-        is(esExp, "NumericLiteral") ||
-        is(esExp, "TemplateLiteral") ||
-        is(esExp, "UnaryExpression") ||
-        is(esExp, "ArrayExpression") ||
-        is(esExp, "ObjectExpression") ||
-        is(esExp, "BinaryExpression") ||
-        is(esExp, "UpdateExpression")
     )
 }

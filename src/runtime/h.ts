@@ -41,13 +41,14 @@ import {
     extendTopNodes,
     newDestruction,
     getContextFuncGen,
+    putTopNodesIntoItem,
     appendChildForDestruction
 } from "../util/runtime/separate"
 import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
 import { internalPreEffect } from "./reactivity/effect"
-import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { len, spliceByElem, values } from "../util/shared/sundry"
+import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
@@ -70,8 +71,17 @@ export function render(
         }
     }
     properties.ctx = getContextFuncGen(context)
+    properties.dst = destruction
     properties.context = context
     setCurrentInstance(instance)
+
+    destruction.v.unshift(() => {
+        invokeIndexedHooks(instance, 4)
+    })
+    destruction.v.push(() => {
+        invokeIndexedHooks(instance, 5)
+        instance.__ = null as any
+    })
 
     const { ts } = properties
     const preInstance = getCurrentInstance()
@@ -161,6 +171,10 @@ export const h = withCleanUsedEffectList(function (
             spliceByElem(topNodes, topNodesItem)
         })
 
+        const extendTopNodesItemLocal = (topNodes: TopNodes) => {
+            putTopNodesIntoItem(topNodesItem, topNodes)
+        }
+
         toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
             if (isNode(tom)) {
@@ -172,10 +186,9 @@ export const h = withCleanUsedEffectList(function (
 
             // rstu是子指令模块
             if (isModuleFunc(tom)) {
-                topNodesItem.push(
+                return extendTopNodesItemLocal(
                     h(instance, tom, target, reference, shouldDestroy, currentContext, destruction)
                 )
-                return
             }
 
             const [tag, content, attrs, events, ...children] = tom
@@ -196,16 +209,16 @@ export const h = withCleanUsedEffectList(function (
                 return invokeGetter(getter)
             }
 
-            // 子组件，此时tag是组件标识符
+            // 子组件，此时tag是组件标识符（或组件getter）
             if (isFunction(tag)) {
-                let newDst: DestructionStruct | null = NIL
                 const componentStu = tom as ComponentStructure
-                const component = createComponent(componentStu)
-                if (shouldDestroy) {
-                    newDst = appendChildForDestruction(destruction)
-                }
-                topNodesItem.push(render(component, target, reference, context, newDst))
-                return
+                const component = isComponent(tag) ? tag : getValue(tag)
+
+                // @ts-ignore
+                const componentInstance = createComponent([component, ...componentStu.slice(1)])
+                return extendTopNodesItemLocal(
+                    render(componentInstance, target, reference, context, destruction)
+                )
             }
 
             // 组件slot，此时content是插槽名称，attrs是参数列表，children是默认模板结构
@@ -241,12 +254,11 @@ export const h = withCleanUsedEffectList(function (
                 attachDestroyLocal(internalPreEffect(updateSlotContext, effectList))
 
                 // 渲染slot中的内容
-                slot.forEach(tom => {
-                    topNodesItem.push(
+                return slot.forEach(tom => {
+                    extendTopNodesItemLocal(
                         h(instance, tom, target, reference, shouldDestroy, slotContext, destruction)
                     )
                 })
-                return
             }
 
             // 创建节点及处理textContent

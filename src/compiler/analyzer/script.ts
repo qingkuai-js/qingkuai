@@ -8,6 +8,7 @@ import {
     replacementInfo,
     eliminateRanges,
     inputDescriptor,
+    importedIdentifiers,
     tempStoredImportInfos,
     allExistingIdentifiers
 } from "../state"
@@ -52,8 +53,8 @@ import { walk } from "../estree/walk"
 import { COMPILER_FUNCS } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
-import { findOutOfStringComment } from "../../util/compiler/strings"
 import { getSetterIdentifier } from "../../util/compiler/sundry"
+import { findOutOfStringComment } from "../../util/compiler/strings"
 import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
 
@@ -200,6 +201,9 @@ const visitor: ASTVisitor = {
             mappingLine: [],
             startColumn: node.loc.start.column,
             code: scriptSource.slice(start, end)
+        })
+        node.specifiers.forEach(specifier => {
+            importedIdentifiers.add(specifier.local.name)
         })
         if (isInTopScope(node, parent)) {
             node.specifiers.forEach(specifier => {

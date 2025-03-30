@@ -134,7 +134,6 @@ export type QingKuaiNodeStruct = {
 export type DestructionStruct = {
     v: GeneralFunc[] // values
     c: DestructionStruct[] // children
-    p: DestructionStruct | null // parent
 }
 
 export type WatchCallback<T> = {

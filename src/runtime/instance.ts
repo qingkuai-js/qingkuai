@@ -51,14 +51,6 @@ export function setCurrentInstance(ins: QingKuaiComponent) {
     currentInstance = ins
 }
 
-// 销毁组件
-export function destroyComponent(instance: QingKuaiComponent) {
-    invokeIndexedHooks(instance, 4)
-    destroyBlock(instance.__.dst)
-    instance.__ = null as any
-    invokeIndexedHooks(instance, 5)
-}
-
 // 调用某个组件对应索引下的所有钩子函数，索引对应的钩子参见当前文件17-18行
 export function invokeIndexedHooks(instance: QingKuaiComponent, index: number) {
     const container = instance.__.hooks[index]

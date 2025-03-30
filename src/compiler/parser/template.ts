@@ -39,11 +39,11 @@ import {
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import { replaceEachItems } from "../../util/shared/sundry"
+import { inputDescriptor, resetCompilerState } from "../state"
 import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getLocationMethodsGen } from "../../util/compiler/locations"
 import { SELF_CLOSING_TAGS, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
-import { inputDescriptor, newScriptDescriptor, resetCompilerState } from "../state"
 import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
 
 // 独立调用的parseTemplate方法，compiler包会导出此方法
