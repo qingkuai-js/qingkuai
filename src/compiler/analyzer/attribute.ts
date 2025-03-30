@@ -84,7 +84,7 @@ import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/
 // apm: Attributes Priority Map
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
 // 指令将会被按照他们的优先级进行排序，其他指令（包括动态/引用属性、事件）优先级默认为0（优先级低于apm数组中的所有指令）
-// 指令优先级：slot > #slot > #await > #catch > #then > #if > #elif > #else > #for > #key > 其他指令、属性、事件
+// 优先级：name > slot > #slot > #await > #catch > #then > #if > #elif > #else > #for > #key > 其他指令、属性、事件
 //
 // 为什么普通slot和name属性优先级高于指令：普通slot属性用于声明组件一级子节点作为插槽插入到哪个slot标签的位置，且其中不会访问#slot
 // 指令产生的标识符，普通name属性在slot标签上用于声明其插槽名称（与组件一级子节点的普通slot属性绑定），提高它们的优先级可以确保其在
@@ -794,10 +794,12 @@ export function analyzeAttribute(
                     }
                     break
 
+                case "target":
+                    directiveStu.push([getAlias("targetModule"), transAttrValue()])
+                    break
+
                 default:
-                    if (!isEmptyString(pureKey)) {
-                        UnkonwDirective(rk, key.loc)
-                    }
+                    UnkonwDirective(rk, key.loc)
                 //
                 // switch code block end here
                 //

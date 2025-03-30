@@ -22,7 +22,8 @@ export const MUST_PASS_VALUE_DIRECTIVES = new Set([
     "await",
     "for",
     "key",
-    "slot"
+    "slot",
+    "target"
 ])
 
 export const KEY_RELATED_EVENT_MODIFIERS = new Set([
