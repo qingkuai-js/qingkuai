@@ -20,5 +20,7 @@ export const IS_WITH_REFERENCE_RET = Symbol()
 export const OPPORTUNITIES: Opportunity[] = ["sync", "pre", "post"]
 
 // 以下常量更合适的表达是使用对象映射或enum，但为了压缩运行时编译体积而采用普通常量
-export const KEYED_FOR_MODULE_KIND = 1
-export const ALIAS_MODULE_KIND = 2
+export const ALIAS_MODULE_KIND = 1
+
+export const BAD_TARGET_MOUNT_KIND = 1
+export const BAD_TAEGET_DIRECTIVE_KIND = 2

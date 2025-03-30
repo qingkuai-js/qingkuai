@@ -21,6 +21,7 @@
 import type { GeneralFunc } from "../../util/types"
 
 import { commonMessage } from "./common"
+import { BAD_TARGET_MOUNT_KIND } from "../constants"
 
 export const InstantiateComponentManually = withCode(...commonMessage.InstantiateComponentManually)
 
@@ -36,20 +37,21 @@ export const DuplicateKey = withCode(2003, (key: string) => {
     return "Duplicate key for keyed-for-module, duplicate key: " + key
 })
 
-export const InvalidMountNode = withCode(2004, (selector: string) => {
-    return `The specified mount node could not be found, selector: ${selector}`
-})
-
-export const ContainerTypeIsBad = withCode(2005, (attrName: string, tag: string) => {
+export const ContainerTypeIsBad = withCode(2004, (attrName: string, tag: string) => {
     return `The container for reference attribute(&${attrName}) of <${tag}> tag must be an Array or Set.`
 })
 
-export const BadReactivityLevel = withCode(2007, (level: number) => {
+export const BadTarget = withCode(2007, (selector: string, kind: number) => {
+    const kindStr = kind === BAD_TARGET_MOUNT_KIND ? "app mounting" : "#target directive"
+    return `The given document selector(${selector}) can not find corresponding node for ${kindStr}.`
+})
+
+export const BadReactivityLevel = withCode(2006, (level: number) => {
     return `Bad reactivity level(${level}), if you don't want the target to be reactive, mark it with stc compiler helper function instead of rea.`
 })
 
-function withCode<T extends GeneralFunc>(code: number, msgGetter: T) {
+function withCode<T extends GeneralFunc<string>>(code: number, msgGetter: T) {
     return (...args: Parameters<T>): never => {
-        throw new TypeError(`${code}: ${msgGetter(...args)}`)
+        throw new TypeError(`${msgGetter(...args)} (${code})`)
     }
 }

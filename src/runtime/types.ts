@@ -11,7 +11,9 @@ export type PartialNode = Node | null
 export type Setter = (v: any) => void
 export type ValueOrValueArr<T> = T | T[]
 export type ObjectKeys = keyof AnyObject
+export type TopNodesItem = TopNodes[number]
 export type Noop = (...params: any[]) => any
+export type TopNodes = (Node | TopNodes)[][]
 export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
 
@@ -112,10 +114,6 @@ export interface UpdateFunc {
     called?: boolean
     instance?: QingKuaiComponent
 }
-export type KeyedInfoItem = {
-    dst: DestructionStruct | null
-    nks: (Node | KeyedInfo)[]
-}
 export type DirectiveUpdateFuncGen = (
     instance: QingKuaiComponent,
     directive: Directive,
@@ -123,11 +121,8 @@ export type DirectiveUpdateFuncGen = (
     derf: Text,
     context: RenderContext[],
     dst: DestructionStruct,
-    dsta: DestructionStruct[],
-    isKeyedTop: boolean,
-    keyedInfo: KeyedInfo
+    topNodes: TopNodes
 ) => UpdateFunc | null
-export type KeyedInfo = KeyedInfoItem[]
 export type UpdateFuncGenParams = Parameters<DirectiveUpdateFuncGen>
 
 export type QingKuaiNodeStruct = {
@@ -137,7 +132,8 @@ export type QingKuaiNodeStruct = {
 }
 export type DestructionStruct = {
     v: GeneralFunc[]
-    c: Set<DestructionStruct[]>
+    c: DestructionStruct[] /** children */
+    p: DestructionStruct | null /** parent */
 }
 
 export type WatchCallback<T> = {

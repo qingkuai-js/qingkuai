@@ -12,13 +12,17 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * last-warn-code: 8005
+ * last-warn-code: 8006
  *
  * 警告代码解释：以数字9开头的代码表示这是一个运行时警告
  * Warning Code Explanation: Code beginning with the number 8 indicates that this is a runtime warning
  */
 
 import type { GeneralFunc } from "../../util/types"
+
+export const InvalidTargetForTargetDirective = withCode(8006, () => {
+    return `The given value of #target directive is not a valid DOM Node.`
+})
 
 export function AssignmentToDOMGetterProp(error: any) {
     console.warn(`[QingKuai Warnning](${8001}):`, "Operation is invalid." + error)

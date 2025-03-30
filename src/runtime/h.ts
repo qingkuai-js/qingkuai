@@ -1,6 +1,7 @@
 import type {
-    KeyedInfo,
+    TopNodes,
     UpdateFunc,
+    TopNodesItem,
     PartialNode,
     RenderContext,
     EventStructure,
@@ -14,45 +15,57 @@ import type {
 import type { AnyObject, GeneralFunc } from "../util/types"
 
 import {
+    NIL,
+    UNDEF,
+    INSTANTIATE_BY_H,
+    ALIAS_MODULE_KIND,
+    EXPOSE_DESTRUCTIONS,
+    IS_WITH_REFERENCE_RET,
+    BAD_TARGET_MOUNT_KIND
+} from "./constants"
+import {
     QingKuaiComponent,
     getCurrentInstance,
     invokeIndexedHooks,
     setCurrentInstance
 } from "./instance"
 import {
-    mockDirective,
-    combineContext,
-    newDestruction,
-    getContextFuncGen
-} from "../util/runtime/separate"
-import {
     usedEffectList,
     setUsedEffectList,
     cleanUsedEffectList,
     withCleanUsedEffectList
 } from "./reactivity/state"
+import {
+    mockDirective,
+    combineContext,
+    extendTopNodes,
+    newDestruction,
+    getContextFuncGen,
+    appendChildForDestruction
+} from "../util/runtime/separate"
+import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
-import { InvalidMountNode } from "./message/error"
 import { internalPreEffect } from "./reactivity/effect"
 import { isModuleFunc, isNode } from "../util/runtime/assert"
-import { lastElem, len, values } from "../util/shared/sundry"
 import { isArray, isFunction, isNull } from "../util/shared/assert"
+import { lastElem, len, spliceByElem, values } from "../util/shared/sundry"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
-import { EXPOSE_DESTRUCTIONS, INSTANTIATE_BY_H, IS_WITH_REFERENCE_RET, NIL } from "./constants"
 
 export function render(
     instance: QingKuaiComponent,
     target: Node,
     reference: PartialNode = NIL,
     context: RenderContext[] = [],
-    isKeyedTop: boolean = false
+    destruction: DestructionStruct | null = NIL
 ) {
-    let dst: DestructionStruct
     const properties = instance.__
-    if (EXPOSE_DESTRUCTIONS) {
-        dst = properties.dst
-    } else {
-        dst = newDestruction()
+    const topNodesItem: TopNodesItem = []
+    if (isNull(destruction)) {
+        if (EXPOSE_DESTRUCTIONS) {
+            destruction = properties.dst
+        } else {
+            destruction = newDestruction()
+        }
     }
     properties.ctx = getContextFuncGen(context)
     properties.context = context
@@ -60,26 +73,14 @@ export function render(
 
     const { ts } = properties
     const preInstance = getCurrentInstance()
-    const keyedInfo: KeyedInfo = [{ nks: [], dst }]
-    const renderEachTopBlock = (stu: TemplateStuOrModuleFunc) => {
-        // prettier-ignore
-        const nki = h(
-            instance,
-            stu,
-            target,
-            reference,
-            true,
-            context,
-            dst,
-            isKeyedTop
-        )
-        keyedInfo[0].nks.push(nki)
+    const renderEachTopBlock = (tom: TemplateStuOrModuleFunc) => {
+        topNodesItem.push(h(instance, tom, target, reference, true, context, destruction))
     }
     invokeIndexedHooks(instance, 0)
     ts.forEach(renderEachTopBlock)
     invokeIndexedHooks(instance, 1)
     setCurrentInstance(preInstance!)
-    return [keyedInfo, dst] as const
+    return [topNodesItem]
 }
 
 export const h = withCleanUsedEffectList(function (
@@ -89,13 +90,12 @@ export const h = withCleanUsedEffectList(function (
     reference: PartialNode,
     shouldDestroy: boolean,
     context: RenderContext[],
-    destruction: DestructionStruct,
-    isKeyedTop: boolean = false
+    destruction: DestructionStruct
 ) {
-    let dref: Text
     let rstu: RenderStructure
     let isInputOrOption = false
     let isInputOrTextarea = false
+    let dref: Text | undefined = UNDEF
 
     if (!isModuleFunc(stu)) {
         rstu = {
@@ -106,14 +106,12 @@ export const h = withCleanUsedEffectList(function (
         rstu = stu(getContextFuncGen(context))
     }
 
+    const topNodes: TopNodes = []
     const { directive, toms } = rstu
     const times = directive?.v[0] ?? 1
+    const parentDestruction = destruction
     const isDirectiveModule = !isNull(directive)
-    const isAliasModule = isDirectiveModule && directive.t === 2
-    const isKeyedForModule = isDirectiveModule && directive.t === 1
-
-    const keyedInfo: KeyedInfo = []
-    const destructionArr: DestructionStruct[] = []
+    const isAliasModule = directive?.t === ALIAS_MODULE_KIND
 
     const attachUpdateLocal = (fn: UpdateFunc) => {
         attachUpdate(fn, instance, destruction)
@@ -127,15 +125,13 @@ export const h = withCleanUsedEffectList(function (
     if (isDirectiveModule) {
         if (!isAliasModule) {
             dref = textNode("")
-            insert(target, dref, reference)
-            isKeyedTop ||= directive.t === 1
             attachDestroyLocal(() => destroy(dref!))
+            insert(target, dref, reference), (reference = dref)
         }
 
         for (let i = 0; i < times; i++) {
-            extendDsts(destructionArr)
+            appendChildForDestruction(destruction)
         }
-        destruction.c.add(destructionArr)
 
         const moduleUpdateFn = directive.v[2](
             instance,
@@ -144,34 +140,29 @@ export const h = withCleanUsedEffectList(function (
             dref!,
             context,
             destruction,
-            destructionArr!,
-            isKeyedTop,
-            keyedInfo
+            topNodes
         )
         if (moduleUpdateFn && !isAliasModule) {
             setUsedEffectList(directive.e)
             attachUpdateLocal(moduleUpdateFn)
             cleanUsedEffectList()
         }
-        dref! && (reference = dref)
     }
 
     for (let i = 0; i < times; i++) {
         if (isDirectiveModule) {
-            destruction = destructionArr[i]
+            destruction = parentDestruction.c[i]
         }
-        keyedInfo.push({
-            nks: [],
-            dst: isKeyedForModule ? destruction || NIL : NIL
+
+        const topNodesItem = extendTopNodes(topNodes)
+        attachDestroyLocal(() => {
+            spliceByElem(topNodes, topNodesItem)
         })
+
         toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
-            const keyedInfoItem = lastElem(keyedInfo)
-
             if (isNode(tom)) {
-                if (isKeyedTop) {
-                    keyedInfoItem.nks.push(tom)
-                }
+                topNodesItem.push(tom)
                 insert(target, tom, reference)
                 attachDestroyLocal(() => destroy(tom))
                 return
@@ -179,19 +170,9 @@ export const h = withCleanUsedEffectList(function (
 
             // rstu是子指令模块
             if (isModuleFunc(tom)) {
-                const cki = h(
-                    instance,
-                    tom,
-                    target,
-                    reference,
-                    shouldDestroy,
-                    currentContext,
-                    destruction,
-                    isKeyedTop
+                topNodesItem.push(
+                    h(instance, tom, target, reference, shouldDestroy, currentContext, destruction)
                 )
-                if (isKeyedTop) {
-                    keyedInfoItem.nks.push(cki)
-                }
                 return
             }
 
@@ -214,28 +195,18 @@ export const h = withCleanUsedEffectList(function (
 
             // 子组件，此时tag是组件标识符
             if (isFunction(tag)) {
+                let newDst: DestructionStruct | null = NIL
                 const componentStu = tom as ComponentStructure
                 const component = createComponent(componentStu)
-
-                // prettier-ignore
-                const [nki, dst] = render(
-                    component,
-                    target,
-                    reference,
-                    context,
-                    isKeyedTop
-                )
                 if (shouldDestroy) {
-                    destruction.c.add([dst])
+                    newDst = appendChildForDestruction(destruction)
                 }
-                if (isKeyedTop) {
-                    keyedInfoItem.nks.push(nki)
-                }
+                topNodesItem.push(render(component, target, reference, context, newDst))
                 return
             }
 
-            // 组件slot，此时content是插槽名称，attrs是参数列表，children是默认内容
-            if (tag === "slot") {
+            // 组件slot，此时content是插槽名称，attrs是参数列表，children是默认模板结构
+            if ((cleanUsedEffectList(), tag === "slot")) {
                 let slot = instance.__.slots[content as string]
 
                 const attrsLen = len(attrs)
@@ -263,24 +234,13 @@ export const h = withCleanUsedEffectList(function (
                 const effectList = values(usedEffectList)
                 const md = mockDirective([[slotArgs]], effectList)
                 const slotContext = combineContext(md, context, 0)
-                const unsetEffect = internalPreEffect(updateSlotContext, effectList)
-                attachDestroy(unsetEffect, destruction)
+                attachDestroyLocal(internalPreEffect(updateSlotContext, effectList))
 
                 // 渲染slot中的内容
                 slot.forEach(tom => {
-                    const nki = h(
-                        instance,
-                        tom,
-                        target,
-                        reference,
-                        shouldDestroy,
-                        slotContext,
-                        destruction,
-                        isKeyedTop
+                    topNodesItem.push(
+                        h(instance, tom, target, reference, shouldDestroy, slotContext, destruction)
                     )
-                    if (isKeyedTop) {
-                        keyedInfoItem.nks.push(nki)
-                    }
                 })
                 return
             }
@@ -306,9 +266,6 @@ export const h = withCleanUsedEffectList(function (
                 ;(qkNode.n as any)["_qkNode"] = qkNode
             }
 
-            if (isKeyedTop) {
-                keyedInfoItem.nks.push(qkNode.n!)
-            }
             if (shouldDestroy || isDirectiveModule) {
                 attachDestroyLocal(() => destroy(qkNode.n!))
             }
@@ -317,7 +274,8 @@ export const h = withCleanUsedEffectList(function (
                     return setText(qkNode, invokeGetter(content), true)
                 })
             }
-            insert(target, qkNode.n!, dref || reference)
+            insert(target, qkNode.n!, reference)
+            topNodesItem.push(qkNode.n!)
 
             // 处理attributes
             if (attrs) {
@@ -362,7 +320,7 @@ export const h = withCleanUsedEffectList(function (
                     }
 
                     // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器
-                    const selfListen = (eventName: string, eventHandler: EventListener) => {
+                    const listenLocal = (eventName: string, eventHandler: EventListener) => {
                         attachDestroyLocal(listen(qkNode.n!, eventName, eventHandler, eventFlag))
                     }
 
@@ -372,10 +330,10 @@ export const h = withCleanUsedEffectList(function (
                     // 因为在浏览器的默认行为中，选定输入的那一刻(通常为按下上方主键盘数字键或空格键选定)也被
                     // 算在合成过程中，而这里的处理将选定输入的操作排除在合成过程之外
                     if (!isInputOrTextarea || eventName !== "input" || velf(eventFlag, "compose")) {
-                        selfListen(eventName, eventHandler)
+                        listenLocal(eventName, eventHandler)
                     } else {
-                        selfListen("compositionend", eventHandler)
-                        selfListen(eventName, event => {
+                        listenLocal("compositionend", eventHandler)
+                        listenLocal(eventName, event => {
                             if (!(event as InputEvent).isComposing) {
                                 eventHandler(event)
                             }
@@ -392,11 +350,7 @@ export const h = withCleanUsedEffectList(function (
         })
     }
 
-    if (isKeyedTop && isDirectiveModule && !isKeyedForModule) {
-        lastElem(keyedInfo)?.nks.push(dref!)
-    }
-
-    return keyedInfo
+    return dref && topNodes.push([dref]), topNodes
 })
 
 // 创建应用
@@ -411,23 +365,16 @@ export function createApp(
             options[key] = {}
         }
     })
-    if (!target) {
-        InvalidMountNode(selector)
-    } else {
+    if (target) {
         // @ts-ignore
         const app = new Component({
             ...options,
             sign: INSTANTIATE_BY_H
         })
         return render(app, target), app
+    } else {
+        BadTarget(selector, BAD_TARGET_MOUNT_KIND)
     }
-}
-
-// 扩展dsts并返回新元素
-export function extendDsts(dsts: DestructionStruct[]) {
-    const ret = newDestruction()
-    dsts.push(ret)
-    return ret
 }
 
 // 添加更新函数

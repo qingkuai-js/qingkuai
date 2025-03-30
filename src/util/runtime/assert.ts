@@ -6,7 +6,7 @@ import { IS_MODULE_FUNC, IS_PROXY, RAW_VALUE } from "../../runtime/constants"
 
 // 判断是否DOM节点
 export function isNode(v: any): v is Node {
-    return isNumber(v.nodeType)
+    return v instanceof Node
 }
 
 // 判断值是否为响应式值

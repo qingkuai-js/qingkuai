@@ -5,25 +5,19 @@
  */
 
 import type {
+    TopNodes,
     Directive,
     PartialNode,
+    TopNodesItem,
     RenderContext,
     EffectListItem,
     DestructionStruct
 } from "../../runtime/types"
 
-import { len, runAll } from "../shared/sundry"
 import { NIL, NOOP } from "../../runtime/constants"
-import { isFunction, isNumber } from "../shared/assert"
+import { lastElem, len, replaceEachItems, runAll, spliceByElem } from "../shared/sundry"
+import { isFunction, isNull, isNumber } from "../shared/assert"
 import { setUsedEffectList } from "../../runtime/reactivity/state"
-
-// 返回新创建的DestructStruct
-export function newDestruction(): DestructionStruct {
-    return {
-        v: [],
-        c: new Set()
-    }
-}
 
 // 根据contextValues模拟一个Directive
 export function mockDirective(
@@ -40,9 +34,10 @@ export function mockDirective(
 // 卸载block
 export function destroyBlock(destruction: DestructionStruct) {
     runAll(destruction.v)
-    destruction.c.forEach(child => {
-        child.forEach(destroyBlock)
-    })
+    destruction.c.forEach(destroyBlock)
+    if (!isNull(destruction.p)) {
+        spliceByElem(destruction.p.c, destruction)
+    }
 }
 
 // 组合嵌套module的context
@@ -59,6 +54,32 @@ export function combineContext(
         v: dv,
         e: directive.e
     })
+}
+
+// 扩展TopNodes并返回新创建的元素
+export function extendTopNodes(topNodes: TopNodes) {
+    const ret: TopNodesItem = []
+    topNodes.push(ret)
+    return ret
+}
+
+// 扩展TopNodes（在dref之前）并返回新创建的元素（Module中的dref始终应保持在最后）
+export function extendTopNodesBeforeDref(topNodes: TopNodes, dref: Text) {
+    const ret: TopNodesItem = []
+    if (lastElem(topNodes)?.[0] === dref) {
+        topNodes.push(ret)
+    } else {
+        topNodes.pop()
+        topNodes.push(ret, [dref])
+    }
+    return ret
+}
+
+// 扩展destruction子元素并返回新创建的DestructionStruct
+export function appendChildForDestruction(destruction: DestructionStruct) {
+    const ret = newDestruction(destruction)
+    destruction.c.push(ret)
+    return ret
 }
 
 // 生成获取context的方法
@@ -79,4 +100,9 @@ export function getContextFuncGen(context: RenderContext[], node: PartialNode = 
             return p.bind(node)
         }
     }
+}
+
+// 返回新创建的DestructStruct
+export function newDestruction(parent: DestructionStruct | null = NIL): DestructionStruct {
+    return { p: parent, v: [], c: [] }
 }

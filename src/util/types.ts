@@ -4,9 +4,9 @@ export type NumNum = FixedArray<number, 2>
 
 export type StartBracket = "{" | "[" | "("
 
-export type GeneralFunc = (...args: any) => any
 export type ObjectKeys = string | number | symbol
 export type AnyObject<V = any> = Record<ObjectKeys, V>
+export type GeneralFunc<R = any> = (...args: any) => R
 
 export type SetValue<S> = S extends Set<infer U> ? U : never
 export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
