@@ -47,18 +47,19 @@ export interface QingKuaiComponentConstructonParam {
 }
 
 export type NormalTemplateStructure = [
-    string,
-    string | GeneralFunc,
-    AttributeStructure | null,
-    EventStructure | null,
-    ...TemplateStuOrModuleFunc[]
+    string, // tag
+    string | GeneralFunc, // content
+    AttributeStructure | null, // attributes
+    EventStructure | null, // events
+    number | TemplateStructure, // cache id or child
+    ...TemplateStuOrModuleFunc[] // children
 ]
 export type ComponentStructure = [
-    typeof QingKuaiComponent,
+    typeof QingKuaiComponent, // component identifier
     "",
-    AttributeStructure | null,
-    ReferenceStructure | null,
-    ...SlotStructure[]
+    AttributeStructure | null, // props
+    ReferenceStructure | null, // refs
+    ...SlotStructure[] // slots
 ]
 export type TemplateStructure = NormalTemplateStructure | ComponentStructure
 
@@ -96,12 +97,12 @@ export type EventStructure = [string, EventHandlerGetter, number, ...EventStruct
 export type ReferenceStructure = [string, any, (v: any) => any, ...ReferenceStructure[]]
 
 export type Directive = {
-    t: number /** type */
+    t: number // type
     e: EffectListItem[]
     v: [
-        number /** run times */,
-        any[][] /** context */,
-        DirectiveUpdateFuncGen /** update method generator */
+        number, // times for runing
+        any[][], // context
+        DirectiveUpdateFuncGen // update method generator
     ]
 } | null
 
@@ -131,9 +132,9 @@ export type QingKuaiNodeStruct = {
     attrs: AnyObject
 }
 export type DestructionStruct = {
-    v: GeneralFunc[]
-    c: DestructionStruct[] /** children */
-    p: DestructionStruct | null /** parent */
+    v: GeneralFunc[] // values
+    c: DestructionStruct[] // children
+    p: DestructionStruct | null // parent
 }
 
 export type WatchCallback<T> = {

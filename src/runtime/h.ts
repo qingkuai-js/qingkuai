@@ -47,9 +47,11 @@ import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
 import { internalPreEffect } from "./reactivity/effect"
 import { isModuleFunc, isNode } from "../util/runtime/assert"
-import { isArray, isFunction, isNull } from "../util/shared/assert"
-import { lastElem, len, spliceByElem, values } from "../util/shared/sundry"
+import { len, spliceByElem, values } from "../util/shared/sundry"
+import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
+
+const cachedPureNodes = new Map<number, Node>()
 
 export function render(
     instance: QingKuaiComponent,
@@ -178,6 +180,7 @@ export const h = withCleanUsedEffectList(function (
 
             const qkNode: QingKuaiNodeStruct = { n: NIL, text: "", attrs: {} }
             const [tag, content, attrs, events, ...children] = tom
+            const cacheId = isNumber(children[0]) ? children[0] : -1
             const cif = isFunction(content)
 
             // 调用获取内容的函数
@@ -219,6 +222,7 @@ export const h = withCleanUsedEffectList(function (
                     }
                 }
 
+                // 编译器不会为组件和slot标签添加cache id，此处可以正常处理children
                 if (!slot) {
                     if (!children.length) {
                         return
@@ -246,18 +250,23 @@ export const h = withCleanUsedEffectList(function (
             }
 
             // 创建节点及处理textContent
-            if (!tag) {
-                text(qkNode, getValue(content), cif)
+            if (cachedPureNodes.has(cacheId)) {
+                qkNode.n = cachedPureNodes.get(cacheId)!
             } else {
-                element(qkNode, tag)
-                setText(qkNode, getValue(content), cif)
+                if (!tag) {
+                    text(qkNode, getValue(content), cif)
+                } else {
+                    element(qkNode, tag)
+                    setText(qkNode, getValue(content), cif)
 
-                // 判断元素是否为input、textarea或option，它们需要特殊处理：
-                // 1. input和textarea元素的input事件需要避免在输入法合成阶段触发
-                // 2. input和option元素的value属性无论是否是getter都需要被记录
-                const isInput = tag === "input"
-                isInputOrOption = isInput || tag === "option"
-                isInputOrTextarea = isInput || tag === "textarea"
+                    // 判断元素是否为input、textarea或option，它们需要特殊处理：
+                    // 1. input和textarea元素的input事件需要避免在输入法合成阶段触发
+                    // 2. input和option元素的value属性无论是否是getter都需要被记录
+                    const isInput = tag === "input"
+                    isInputOrOption = isInput || tag === "option"
+                    isInputOrTextarea = isInput || tag === "textarea"
+                }
+                cacheId !== -1 && cachedPureNodes.set(cacheId, qkNode.n!)
             }
 
             // 如果是option元素，把qkNode添加到DOM属性中，在处理select的引用
@@ -343,7 +352,7 @@ export const h = withCleanUsedEffectList(function (
             }
 
             // 处理子节点
-            for (const child of children) {
+            for (const child of children.slice(+(cacheId !== -1))) {
                 const assertedChild = child as TemplateStuOrModuleFunc
                 h(instance, assertedChild, qkNode.n!, NIL, false, currentContext, destruction)
             }
