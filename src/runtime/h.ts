@@ -178,10 +178,10 @@ export const h = withCleanUsedEffectList(function (
                 return
             }
 
-            const qkNode: QingKuaiNodeStruct = { n: NIL, text: "", attrs: {} }
             const [tag, content, attrs, events, ...children] = tom
-            const cacheId = isNumber(children[0]) ? children[0] : -1
             const cif = isFunction(content)
+            const qkNode: QingKuaiNodeStruct = { n: NIL, text: "", attrs: {} }
+            const cacheId = isNumber(children[0]) ? children[0] : isNumber(tag) ? tag : -1
 
             // 调用获取内容的函数
             const invokeGetter = (getter: Function) => {
@@ -256,7 +256,7 @@ export const h = withCleanUsedEffectList(function (
                 if (!tag) {
                     text(qkNode, getValue(content), cif)
                 } else {
-                    element(qkNode, tag)
+                    element(qkNode, tag as string)
                     setText(qkNode, getValue(content), cif)
 
                     // 判断元素是否为input、textarea或option，它们需要特殊处理：

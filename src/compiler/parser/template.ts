@@ -59,8 +59,8 @@ export function parseTemplate(source: string, standalone = false) {
     let dps = source // dynamic programming source
 
     const astList: TemplateNode[] = []
-    const scriptDescriptor = newScriptDescriptor()
     const positions = getPositionOfEachChar(dps)
+    const scriptDescriptor = inputDescriptor.script
     const reserveAllComment = standalone || inputDescriptor.options.reserveTemplateComment
 
     // 由于此方法可能被独立调用，所以需要单独声明获取位置的相关方法（基于本地的positions而不是inputDescriptor.positions）
@@ -69,7 +69,6 @@ export function parseTemplate(source: string, standalone = false) {
     // 独立调用时不要修改编译器内部状态
     if (!standalone) {
         inputDescriptor.positions = positions
-        inputDescriptor.script = scriptDescriptor
     }
 
     // 收缩source并修改index，并返回下次开始的位置
@@ -114,6 +113,9 @@ export function parseTemplate(source: string, standalone = false) {
                     preWhiteSpace,
                     range: [index - contentLen, index]
                 })
+                if (content.includes("{")) {
+                    markupNodeAndAncestorIsNotPure(ret)
+                }
                 return prev && (prev.next = ret), ret
             }
         }
@@ -250,6 +252,7 @@ export function parseTemplate(source: string, standalone = false) {
                                 index + endCharIndex + 1
                             )
                         }
+                        markupNodeAndAncestorIsNotPure(ast)
                     } else if ((endCharIndex = dps.indexOf(dps[0], 1)) === -1) {
                         UnclosedNormalAttributeValue(wrapValueStartLoc)
                     }
@@ -506,6 +509,7 @@ function initTemplateNode(
         prev: options.prev,
         next: undefined,
         tag: options.tag || "",
+        pure: true,
         isEmbedded: false,
         isSelfClosing: false,
         preWhiteSpace: !!options.preWhiteSpace,
@@ -518,6 +522,12 @@ function initTemplateNode(
         componentTag: options.componentTag || "",
         children: options.children || []
     }
+}
+
+// 标记节点及其祖先节点的pure为false
+function markupNodeAndAncestorIsNotPure(node: TemplateNode) {
+    node.pure = false
+    node.parent && markupNodeAndAncestorIsNotPure(node.parent)
 }
 
 // 检查节点是否为设置white-space属性为pre相关的注释节点

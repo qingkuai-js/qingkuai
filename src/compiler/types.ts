@@ -130,6 +130,7 @@ export interface TemplateAttribute {
 export interface TemplateNode {
     tag: string
     range: NumNum
+    pure: boolean
     content: string
     loc: ASTLocation
     isEmbedded: boolean
@@ -151,6 +152,7 @@ export type PreprocessedTemplateAttribute = TemplateAttribute & {
 
 export interface TemplateAnalysisRet {
     tag: string
+    cacheId: number
     isSpread: boolean
     content: TransformInterpolationRet
     children: {

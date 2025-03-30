@@ -8,11 +8,11 @@ import type {
 import { getAlias } from "./alias"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
-import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { markPositionFlag } from "../../util/compiler/sundry"
-import { inputDescriptor, interCodeSnippets } from "../state"
+import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
+import { getCacheId, inputDescriptor, interCodeSnippets } from "../state"
 import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
 
@@ -30,7 +30,7 @@ export function analyzeTemplate(
     nodes = nodes.filter(node => !node.isEmbedded)
 
     for (let i = 0; i < nodes.length; i++) {
-        let { tag, content, attributes, children, componentTag } = nodes[i]
+        let { tag, content, attributes, children, componentTag, pure, parent } = nodes[i]
 
         let shouldHoistContent = false
         let trimedContentStartIndex: number
@@ -38,22 +38,25 @@ export function analyzeTemplate(
         let continueRE: RegExp | undefined | null
         let shouldContinueDirective: string | undefined
 
-        const currentRet: TemplateAnalysisRet = {
+        const isSlot = tag === "slot"
+        const isTextarea = tag === "textarea"
+        const isComponent = !isEmptyString(componentTag)
+        const shouldCache = pure && !parent?.pure && tag !== "slot" && !isComponent
+
+        const curRetItem: TemplateAnalysisRet = {
             aar: null,
             tag: "",
             content: "",
             children: [],
-            isSpread: tag === SPREAD_TAG
+            isSpread: tag === SPREAD_TAG,
+            cacheId: shouldCache ? getCacheId() : -1
         }
-        const isSlot = tag === "slot"
-        const isTextarea = tag === "textarea"
-        const isComponent = !isEmptyString(componentTag)
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
         if (
             !isSlot &&
             !isComponent &&
-            !currentRet.isSpread &&
+            !curRetItem.isSpread &&
             children.length === 1 &&
             isEmptyString(children[0].tag)
         ) {
@@ -62,7 +65,7 @@ export function analyzeTemplate(
 
         // 如果当前标签使用了#html指令且非SPREAD_TAG，则将#html指令转移到content上
         const htmlDirective = attributes.find(({ key }) => key.raw === "#html")
-        if (htmlDirective && !currentRet.isSpread && !isEmptyString(tag)) {
+        if (htmlDirective && !curRetItem.isSpread && !isEmptyString(tag)) {
             shouldHoistContent = false
             spliceByElem(attributes, htmlDirective)
             children[0].attributes.push(htmlDirective)
@@ -70,9 +73,9 @@ export function analyzeTemplate(
 
         // kebab组件名转为驼峰命名
         if (!isComponent) {
-            currentRet.tag = stringify(tag)
+            curRetItem.tag = stringify(tag)
         } else {
-            currentRet.tag = kebab2Camel(tag, true)
+            curRetItem.tag = kebab2Camel(tag, true)
             markPositionFlag(nodes[i].range[0], "isComponentStart")
         }
 
@@ -97,8 +100,8 @@ export function analyzeTemplate(
             continueByDirective,
             awaitExpression
         )
-        currentRet.aar = aar
-        result.push(currentRet)
+        curRetItem.aar = aar
+        result.push(curRetItem)
         continueRE = aar.continueInfo?.re
         shouldContinueDirective = aar.continueInfo?.by
 
@@ -109,8 +112,9 @@ export function analyzeTemplate(
             const awaitNullChild = { tar: null, useBracket: false }
             const mockSpreadRet: TemplateAnalysisRet = {
                 tag: SPREAD_TAG,
-                isSpread: true,
                 content: "",
+                cacheId: -1,
+                isSpread: true,
                 aar: {
                     eventStu: [],
                     attributeStu: [],
@@ -119,7 +123,7 @@ export function analyzeTemplate(
                 },
                 children: [
                     {
-                        tar: currentRet,
+                        tar: curRetItem,
                         useBracket: useBracketWrap
                     }
                 ]
@@ -184,14 +188,14 @@ export function analyzeTemplate(
         }
 
         if (SPECIAL_TAGS.has(tag)) {
-            currentRet.content = normalStringify(content)
-        } else if (currentRet.aar?.nameOfSlotTag) {
-            currentRet.content = currentRet.aar.nameOfSlotTag
+            curRetItem.content = normalStringify(content)
+        } else if (curRetItem.aar?.nameOfSlotTag) {
+            curRetItem.content = curRetItem.aar.nameOfSlotTag
         } else {
             const parseRet = content2script(content, trimedContentStartIndex)
             const optionalParam = { positionMap: parseRet.positionMap }
             if (!inputDescriptor.options.check) {
-                currentRet.content = transformInterpolation(
+                curRetItem.content = transformInterpolation(
                     parseRet.script,
                     trimedContentStartIndex,
                     currentContext,
@@ -211,7 +215,7 @@ export function analyzeTemplate(
                 undefined,
                 new Set()
             ).forEach(childRet => {
-                currentRet.children.push({
+                curRetItem.children.push({
                     tar: childRet,
                     useBracket: Boolean(childRet.aar?.slotOfAnyTag)
                 })
@@ -221,7 +225,7 @@ export function analyzeTemplate(
         // 检查模式下，如果属性（目前单指指令）产生了上下文标识符，会在中间代码中插入块级作用域，属性分析结果中的
         // contextBlockCount记录了当前节点创建的块级作用域数量，这里要将对应数量的闭合花括号记录到中间代码片段
         if (inputDescriptor.options.check) {
-            const contextBlockCount = currentRet.aar?.contextBlockCount || 0
+            const contextBlockCount = curRetItem.aar?.contextBlockCount || 0
             if (contextBlockCount) {
                 interCodeSnippets.push([
                     IntercodeSnippetKind.SearchForward,

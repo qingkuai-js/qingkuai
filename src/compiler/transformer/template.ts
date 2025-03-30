@@ -80,7 +80,8 @@ export function transformTemplate(
 
         const { isSpread } = item
         const hasAar = !isNull(item.aar)
-        const hasChild = childrenLen! > 0
+        const shouldCache = item.cacheId !== -1
+        const hasChild = childrenLen! > 0 || shouldCache
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
         const elementUseLineBreak = shouldUseLineBreak(item, hasChild)
         const isContinued = hasAar && Boolean(item.aar!.continueInfo?.re)
@@ -205,8 +206,19 @@ export function transformTemplate(
             }
         }
 
+        if (shouldCache) {
+            pushTransformedArr(
+                `/* cache id */ `,
+                item.cacheId.toString(),
+                item.children.length ? ", " : ""
+            )
+            if (elementUseLineBreak) {
+                pushTransformedArr("\n", indent(n + 1))
+            }
+        }
+
         // 添加children调用结构
-        if (childrenLen) {
+        if (hasChild) {
             const test = chunkChildren(item.children)
             test.forEach(chunk => {
                 if (chunk.useBracket) {

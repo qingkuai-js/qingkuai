@@ -15,6 +15,7 @@ import { emptyArr } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
 // 在编译结果中返回的编译器内布值要打断其引用状态
+export let cacheId = 0
 export let messages: MessageItem[] = []
 export let sourceMapInfo = newSourceMapInfo()
 export let inputDescriptor = newInputDescriptor()
@@ -33,8 +34,13 @@ export const eliminateRanges: EliminateRanges = new Set()
 export const stringConstants = new Map<string, StringConstant>()
 export const stringConstantsSourceMap = new Map<string, string>()
 
+export function getCacheId() {
+    return ++cacheId
+}
+
 // 重置编译器状态
 export function resetCompilerState(options: CompileOptions) {
+    cacheId = 0
     usedInitItems.clear()
     eliminateRanges.clear()
     stringConstants.clear()
@@ -58,18 +64,6 @@ export function resetCompilerState(options: CompileOptions) {
         options.reserveTemplateComment = true
     }
     Object.assign(inputDescriptor.options, options)
-}
-
-export function newScriptDescriptor(): ScriptDescriptor {
-    return {
-        code: "",
-        isTS: false,
-        lineCount: 0,
-        existing: false,
-        loc: newASTLocation(),
-        generatedOffset: [0, 0],
-        startTagNameRange: [-1, -1]
-    }
 }
 
 // 生成新的sourcemap信息结构
@@ -99,6 +93,18 @@ function newReplacementInfo(): ReplacementInfo {
     return {
         count: 0,
         map: new Map()
+    }
+}
+
+function newScriptDescriptor(): ScriptDescriptor {
+    return {
+        code: "",
+        isTS: false,
+        lineCount: 0,
+        existing: false,
+        loc: newASTLocation(),
+        generatedOffset: [0, 0],
+        startTagNameRange: [-1, -1]
     }
 }
 
