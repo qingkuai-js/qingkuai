@@ -15,9 +15,9 @@ import type {
 } from "../../runtime/types"
 
 import { NIL, NOOP } from "../../runtime/constants"
-import { lastElem, len, replaceEachItems, runAll, spliceByElem } from "../shared/sundry"
-import { isFunction, isNull, isNumber } from "../shared/assert"
 import { setUsedEffectList } from "../../runtime/reactivity/state"
+import { lastElem, len, runAll, spliceByElem } from "../shared/sundry"
+import { isArray, isFunction, isNull, isNumber } from "../shared/assert"
 
 // 根据contextValues模拟一个Directive
 export function mockDirective(
@@ -105,4 +105,15 @@ export function getContextFuncGen(context: RenderContext[], node: PartialNode = 
 // 返回新创建的DestructStruct
 export function newDestruction(parent: DestructionStruct | null = NIL): DestructionStruct {
     return { p: parent, v: [], c: [] }
+}
+
+// 遍历TopNodes中的DOM节点
+export function traverseTopNodes(topNodes: TopNodes | TopNodesItem, cb: (node: Node) => void) {
+    topNodes.forEach(item => {
+        if (!isArray(item)) {
+            cb(item)
+        } else {
+            traverseTopNodes(item, cb)
+        }
+    })
 }

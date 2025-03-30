@@ -3,6 +3,7 @@ export {
     forModule,
     aliasModule,
     awaitModule,
+    targetModule,
     unescapeModule,
     keyedForModule
 } from "./module"

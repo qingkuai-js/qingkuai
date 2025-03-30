@@ -28,8 +28,10 @@ import {
 import {
     destroyBlock,
     mockDirective,
+    extendTopNodes,
     combineContext,
     newDestruction,
+    traverseTopNodes,
     getContextFuncGen,
     extendTopNodesBeforeDref,
     appendChildForDestruction
@@ -38,12 +40,13 @@ import { insert } from "./dom"
 import { h, attachDestroy } from "./h"
 import { CancelablePromise } from "./promise"
 import { invokeIndexedHooks } from "./instance"
-import { DuplicateKey, NonTraverse } from "./message/error"
 import { isModuleFunc, isNode } from "../util/runtime/assert"
-import { ALIAS_MODULE_KIND, IS_MODULE_FUNC, NIL } from "./constants"
+import { InvalidTargetForTargetDirective } from "./message/warn"
+import { BadTarget, DuplicateKey, NonTraverse } from "./message/error"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
-import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
+import { isArray, isFunction, isNull, isNumber, isString } from "../util/shared/assert"
+import { ALIAS_MODULE_KIND, BAD_TAEGET_DIRECTIVE_KIND, IS_MODULE_FUNC, NIL } from "./constants"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
@@ -81,6 +84,82 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
         }
     })
     return markupModuleFunc(aliasModuleFunc)
+}
+
+export function targetModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
+    const depIsGetter = isFunction(dep)
+    const targetModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        let lastTarget: Node | null = NIL
+        const value = depIsGetter ? dep(ctx) : dep
+        const effectList = values(usedEffectList)
+
+        const updateGen: DirectiveUpdateFuncGen = (
+            instance,
+            _,
+            target,
+            dref,
+            context,
+            dst,
+            topNodes
+        ) => {
+            const mountOrRepositionTopNodes = (depValue: any) => {
+                let newTarget = target
+                if (!isString(depValue)) {
+                    if (!isNode(depValue) && !isNull(depValue)) {
+                        InvalidTargetForTargetDirective()
+                    } else {
+                        newTarget = depValue ?? target
+                    }
+                } else {
+                    instance.__.hooks[1].unshift(() => {
+                        const selected = document.querySelector(depValue)
+                        if (!selected) {
+                            BadTarget(depValue, BAD_TAEGET_DIRECTIVE_KIND)
+                        }
+                        newTarget = selected!
+                    })
+                }
+
+                if (lastTarget === newTarget) {
+                    return false
+                }
+
+                const newRef = newTarget === target ? dref : NIL
+                if (dst.c.length) {
+                    traverseTopNodes(topNodes, node => {
+                        if (node !== dref) {
+                            insert(newTarget, node, newRef)
+                        }
+                    })
+                } else {
+                    const newDst = appendChildForDestruction(dst)
+                    const newTopNodesItem = extendTopNodes(topNodes)
+                    toms.forEach(tom => {
+                        newTopNodesItem.push(
+                            h(instance, tom, newTarget, newRef, true, context, newDst)
+                        )
+                    })
+                }
+                return (lastTarget = newTarget), true
+            }
+
+            mountOrRepositionTopNodes(value)
+            if (!depIsGetter) {
+                return NIL
+            }
+            return () => mountOrRepositionTopNodes(dep(ctx))
+        }
+
+        return {
+            toms: [],
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [0, [], updateGen]
+            }
+        }
+    })
+    return markupModuleFunc(targetModuleFunc)
 }
 
 export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
