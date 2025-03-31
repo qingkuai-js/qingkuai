@@ -3,53 +3,49 @@ import dts from "rollup-plugin-dts"
 import esbuild from "rollup-plugin-esbuild"
 
 export default rollup.defineConfig(commentLineArgs => {
+    const result = []
     const isWatchMode = commentLineArgs.watch
-    const inputOptions = {
-        external: ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto"],
-        input: {
-            "runtime/index": "./src/runtime/index.ts",
-            "compiler/index": "./src/compiler/index.ts",
-            "runtime/internal": "./src/runtime/internal.ts"
-        },
-        output: {
-            dir: "dist/esm",
-            format: "es",
-            chunkFileNames: "chunks/[name].js"
-        },
-        plugins: [
-            esbuild({
-                target: "esNext"
-            })
-        ]
-    }
+    const folders = ["runtime/index", "compiler/index", "runtime/internal"]
+    const external = ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto"]
 
-    const ret = [
-        inputOptions,
-        Object.assign({}, inputOptions, {
+    folders.forEach(folder => {
+        const esmItem = {
+            input: `./src/${folder}.ts`,
+            external,
+            plugins: [
+                esbuild({
+                    target: "esNext"
+                })
+            ],
             output: {
-                dir: "dist/cjs",
+                format: "es",
+                inlineDynamicImports: true,
+                file: `dist/esm/${folder}.js`
+            }
+        }
+        result.push(esmItem, {
+            ...esmItem,
+            output: {
+                ...esmItem.output,
                 format: "cjs",
-                entryFileNames: "[name].cjs",
-                chunkFileNames: "chunks/[name].cjs"
+                file: `dist/cjs/${folder}.cjs`
             }
         })
-    ]
+    })
 
     if (!isWatchMode) {
-        ret.push({
-            input: {
-                "runtime/index": "./dist/temp-types/runtime/index.d.ts",
-                "compiler/index": "./dist/temp-types/compiler/index.d.ts",
-                "runtime/internal": "./dist/temp-types/runtime/internal.d.ts"
-            },
-            output: {
-                dir: "dist/types",
-                format: "es",
-                chunkFileNames: "chunks/type.d.ts"
-            },
-            plugins: [dts()]
+        folders.forEach(folder => {
+            result.push({
+                input: `./dist/temp-types/${folder}.d.ts`,
+                output: {
+                    format: "es",
+                    inlineDynamicImports: true,
+                    file: `dist/types/${folder}.d.ts`
+                },
+                plugins: [dts()]
+            })
         })
     }
 
-    return ret
+    return result
 })
