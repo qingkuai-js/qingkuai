@@ -33,6 +33,7 @@ import {
     newDestruction,
     traverseTopNodes,
     getContextFuncGen,
+    putTopNodesIntoItem,
     extendTopNodesBeforeDref,
     appendChildForDestruction
 } from "../util/runtime/separate"
@@ -135,7 +136,8 @@ export function targetModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
                     const newDst = appendChildForDestruction(dst)
                     const newTopNodesItem = extendTopNodes(topNodes)
                     toms.forEach(tom => {
-                        newTopNodesItem.push(
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
                             h(instance, tom, newTarget, newRef, true, context, newDst)
                         )
                     })
@@ -243,7 +245,10 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
                     const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
                     const newDst = appendChildForDestruction(dst)
                     toms2d[newBlockIndex].forEach(tom => {
-                        newTopNodesItem.push(h(instance, tom, target, dref, true, context, newDst))
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
+                            h(instance, tom, target, dref, true, context, newDst)
+                        )
                     })
                 }
                 return (oldBlockIndex = newBlockIndex), true
@@ -292,7 +297,8 @@ export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
                     const currentContext = combineContext(directive, context, i)
                     const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
                     toms.forEach(tom => {
-                        newTopNodesItem.push(
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
                             h(instance, tom, target, dref, true, currentContext, newDst)
                         )
                     })
@@ -364,7 +370,8 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
                         const currentContext = combineContext(directive, context, i)
                         const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
                         toms.forEach(tom => {
-                            newTopNodesItem.push(
+                            putTopNodesIntoItem(
+                                newTopNodesItem,
                                 h(instance, tom, target, reference, true, currentContext, newDst)
                             )
                         })
@@ -489,7 +496,8 @@ export function awaitModule(
                     const currentContext = combineContext(directive, context, 0)
                     const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
                     toms2d[index].forEach(tom => {
-                        newTopNodesItem.push(
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
                             h(instance, tom!, target, dref, true, currentContext, newDst)
                         )
                     })

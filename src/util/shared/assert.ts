@@ -1,4 +1,4 @@
-import type { AnyObject } from "../types"
+import type { AnyObject, GeneralFunc } from "../types"
 
 import { optc } from "../shared/sundry"
 
@@ -16,6 +16,10 @@ export function isArray(v: any): v is any[] {
 
 export function isSymbol(v: any): v is symbol {
     return typeof v === "symbol"
+}
+
+export function isSet(v: any): v is Set<any> {
+    return v instanceof Set
 }
 
 export function isNumber(v: any): v is number {
@@ -38,10 +42,22 @@ export function isObject(v: any): v is AnyObject {
     return optc(v) === "Object"
 }
 
+export function isMap(v: any): v is Map<any, any> {
+    return v instanceof Map
+}
+
 export function isFunction(v: any): v is Function {
     return typeof v === "function"
 }
 
 export function isUndefined(v: any): v is undefined {
     return v === void 0
+}
+
+export function isPromise(v: any): v is Promise<any> {
+    return v instanceof Promise
+}
+
+export function isThenable(v: any): v is { then: GeneralFunc } {
+    return isFunction(v?.then)
 }

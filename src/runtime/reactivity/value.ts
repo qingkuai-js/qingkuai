@@ -2,12 +2,30 @@ import type {
     Setter,
     PGetHandler,
     PSetHandler,
+    ReactiveTarget,
     EffectListItem,
     PDeleteHandler,
     DestructuringFunc
 } from "../types"
-import type { AnyObject } from "../../util/types"
 
+import {
+    NIL,
+    UNDEF,
+    NOOP,
+    REFLECT,
+    WRAPPER,
+    IS_PROXY,
+    RAW_VALUE,
+    EXPOSE_DEPENDECIES
+} from "../constants"
+import {
+    isNull,
+    isArray,
+    isNumber,
+    isThenable,
+    isFunction,
+    isUndefined
+} from "../../util/shared/assert"
 import { usedEffectList } from "./state"
 import { runSyncEffect } from "./effect"
 import { scheduleUpdate } from "../schedule"
@@ -15,17 +33,6 @@ import { getCurrentInstance } from "../instance"
 import { BadReactivityLevel } from "../message/error"
 import { isReactive } from "../../util/runtime/assert"
 import { notEqual, optc } from "../../util/shared/sundry"
-import {
-    REFLECT,
-    UNDEF,
-    RAW_VALUE,
-    NIL,
-    IS_PROXY,
-    WRAPPER,
-    NOOP,
-    EXPOSE_DEPENDECIES
-} from "../constants"
-import { isNull, isArray, isNumber, isFunction, isUndefined } from "../../util/shared/assert"
 
 const react = reactGen()
 const constReact = reactGen(1)
@@ -148,8 +155,27 @@ export class ReactivityWrapper {
 }
 
 // 获取代理值的原始值
-export function raw<T extends AnyObject>(v: T): T {
+export function raw<T extends ReactiveTarget>(v: T): T {
     return (isReactive(v) ? v[RAW_VALUE] : v) as any
+}
+
+// 使用原始值更新：当需要频繁更新响应式值时，可在此方法回调中操作原始值，回调结束后
+// 响应式值的副作用列表会被调用，避免频繁更新时频繁运算ReactivityWrapper中的逻辑
+export function updateWithRaw<T extends ReactiveTarget>(
+    value: T,
+    cb: (raw: T) => Promise<any> | void
+) {
+    if (!isReactive(value)) {
+        return cb(value)
+    }
+
+    const ret = cb(raw(value))
+    const process = () => processEffect(value.effect)
+    isThenable(ret) ? ret.then(process) : process()
+}
+
+export function createStore<T extends ReactiveTarget>(value: T): T {
+    return constReact(value).$
 }
 
 // 生成reactivity和constReact的方法
@@ -229,7 +255,7 @@ function reactGen(levelDown = 0) {
 }
 
 // 解构语法响应性声明，将解构出的每一个标识符都声明为响应性变量，生成方法
-// 的第二个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个解构
+// 的第一个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个解构
 // 出来的标识符setter（调试模式下修改调试标识符时调用以修改原始标识符的值）
 export function destructuringReactGen(isConst = false) {
     const reactFn = isConst ? constReact : react

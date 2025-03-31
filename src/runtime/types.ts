@@ -16,6 +16,7 @@ export type Noop = (...params: any[]) => any
 export type TopNodes = (Node | TopNodes)[][]
 export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
+export type ReactiveTarget = AnyObject | AnyMap | AnySet
 
 export type Opportunity = "sync" | "pre" | "post"
 

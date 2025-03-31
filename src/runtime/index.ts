@@ -19,5 +19,5 @@ export {
 
 export { createApp } from "./h"
 export { nextTick } from "./schedule"
-export { raw } from "./reactivity/value"
 export { commonMessage } from "./message/common"
+export { raw, createStore, updateWithRaw } from "./reactivity/value"

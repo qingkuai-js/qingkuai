@@ -510,7 +510,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         if (isDestructuring && reactFunc !== "stc") {
             const id = `[${destructuringIdentifierArr.join(", ")}]`
             const equalTokenIndex = findOutOfStringComment(scriptSource, "=", idRange[1])[0]
-            const lengthArg = `, ${isDerived ? destructuringIdentifierArr.length : ""}`
+            const lengthArg = isDerived ? `, ${destructuringIdentifierArr.length}` : ""
             const markReplacementCommon = (idStr: string) => {
                 replacementItems.push(
                     initReplacementItem({
