@@ -98,12 +98,19 @@ export interface ScriptDescriptor {
     generatedOffset: NumNum
     startTagNameRange: NumNum
 }
+export interface StyleDescriptor {
+    code: string
+    lang: string
+    loc: ASTLocation
+    startTagNameRange: NumNum
+}
 export interface InputDescriptor {
     options: Required<CompileOptions>
     source: string
     slotInfo: SlotInfo
     indentSpaceCount: number
     script: ScriptDescriptor
+    style: StyleDescriptor[]
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
 }

@@ -5,36 +5,40 @@ import esbuild from "rollup-plugin-esbuild"
 export default rollup.defineConfig(commentLineArgs => {
     const result = []
     const isWatchMode = commentLineArgs.watch
-    const folders = ["runtime/index", "compiler/index", "runtime/internal"]
-    const external = ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto"]
 
-    folders.forEach(folder => {
-        const esmItem = {
-            input: `./src/${folder}.ts`,
-            external,
-            plugins: [
-                esbuild({
-                    target: "esNext"
-                })
-            ],
+    const inputOptions = {
+        external: ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto"],
+        input: {
+            "runtime/index": "./src/runtime/index.ts",
+            "compiler/index": "./src/compiler/index.ts",
+            "runtime/internal": "./src/runtime/internal.ts"
+        },
+        output: {
+            dir: "dist/esm",
+            format: "es",
+            chunkFileNames: "chunks/[name].js"
+        },
+        plugins: [
+            esbuild({
+                target: "esNext"
+            })
+        ]
+    }
+
+    result.push(
+        inputOptions,
+        Object.assign({}, inputOptions, {
             output: {
-                format: "es",
-                inlineDynamicImports: true,
-                file: `dist/esm/${folder}.js`
-            }
-        }
-        result.push(esmItem, {
-            ...esmItem,
-            output: {
-                ...esmItem.output,
+                dir: "dist/cjs",
                 format: "cjs",
-                file: `dist/cjs/${folder}.cjs`
+                entryFileNames: "[name].cjs",
+                chunkFileNames: "chunks/[name].cjs"
             }
         })
-    })
+    )
 
     if (!isWatchMode) {
-        folders.forEach(folder => {
+        ;["runtime/index", "compiler/index", "runtime/internal"].forEach(folder => {
             result.push({
                 input: `./dist/temp-types/${folder}.d.ts`,
                 output: {

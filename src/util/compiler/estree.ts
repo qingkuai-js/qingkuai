@@ -63,7 +63,7 @@ export function parse(
     // @babel/parser解析遇到错误时，将位置修改为正确的源码位置
     const changeErrorLoc = (e: any) => {
         const pos = (e.pos = e.pos - prefixLen) as number
-        const sourceIndex = positionMap?.[pos] ?? startSourceIndex + pos
+        const sourceIndex = (e.pos = positionMap?.[pos] ?? startSourceIndex + pos)
 
         // 修改报错位置及描述信息
         if (!isUndefined(e.loc)) {

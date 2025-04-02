@@ -5,6 +5,7 @@ import type {
     TemplateAttribute,
     AttributeQuoteKinds
 } from "../types"
+import type { NumNum } from "../../util/types"
 
 import {
     kebab2Camel,
@@ -352,6 +353,19 @@ export function parseTemplate(source: string, standalone = false) {
                 EmbeddedLangNotInTopScope(tag, tagStructureLoc)
             }
 
+            const loc = getLocByIndex(contentStartIndex, index)
+            const startTagNameRange: NumNum = [ast.range[0], ast.range[0] + ast.tag.length + 1]
+
+            // embedded style block
+            if (/css|s[ca]ss|less|stylus|postcss/.test(embeddedLang)) {
+                inputDescriptor.style.push({
+                    loc,
+                    code: content,
+                    startTagNameRange,
+                    lang: embeddedLang
+                })
+            }
+
             // embedded script block
             if (/js|ts/.test(embeddedLang)) {
                 if (scriptDescriptor.existing) {
@@ -370,24 +384,17 @@ export function parseTemplate(source: string, standalone = false) {
                 }
 
                 // 记录嵌入script块的内容、是否ts、开始标签名范围、是否已存在以及源码位置信息
-                scriptDescriptor.loc = getLocByIndex(contentStartIndex, index)
+                scriptDescriptor.startTagNameRange = startTagNameRange
                 scriptDescriptor.isTS = embeddedLang === "ts"
-                scriptDescriptor.startTagNameRange = [
-                    ast.range[0],
-                    ast.range[0] + ast.tag.length + 1
-                ]
                 scriptDescriptor.existing = true
                 scriptDescriptor.code = content
+                scriptDescriptor.loc = loc
 
                 // 记录生成代码中script部分的行数，4是两个换行符、一行注释、
                 // 以及结束行号和开始行号相减少时导致结构少一行的固定量
                 const startLine = scriptDescriptor.loc.start.line
                 const endLine = scriptDescriptor.loc.end.line
                 scriptDescriptor.lineCount = endLine - startLine + 1
-            }
-
-            // embedded style block
-            if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
             return ast

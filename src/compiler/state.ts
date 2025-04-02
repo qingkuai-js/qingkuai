@@ -113,10 +113,12 @@ function newScriptDescriptor(): ScriptDescriptor {
 function newInputDescriptor(): InputDescriptor {
     return {
         source: "",
+        style: [],
         slotInfo: {},
         positions: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
+        script: newScriptDescriptor(),
         options: {
             componentName: "",
             hashId: "",
@@ -127,7 +129,6 @@ function newInputDescriptor(): InputDescriptor {
             typeRefStatement: "",
             reserveTemplateComment: false,
             convenientDerivedDeclaration: true
-        },
-        script: newScriptDescriptor()
+        }
     }
 }

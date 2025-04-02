@@ -321,6 +321,9 @@ export const h = withCleanUsedEffectList(function (
                         })
                     }
                 }
+            }
+
+            if (tag && !isNumber(tag) && tag !== "!") {
                 attribute(qkNode, "qk-" + instance.__.id, "", false)
             }
 

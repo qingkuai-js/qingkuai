@@ -155,16 +155,17 @@ export class ReactivityWrapper {
 }
 
 // 获取代理值的原始值
-export function raw<T extends ReactiveTarget>(v: T): T {
+export function raw<T>(v: T): T {
     return (isReactive(v) ? v[RAW_VALUE] : v) as any
+}
+
+export function createStore<T extends ReactiveTarget>(value: T): T {
+    return constReact(value).$
 }
 
 // 使用原始值更新：当需要频繁更新响应式值时，可在此方法回调中操作原始值，回调结束后
 // 响应式值的副作用列表会被调用，避免频繁更新时频繁运算ReactivityWrapper中的逻辑
-export function updateWithRaw<T extends ReactiveTarget>(
-    value: T,
-    cb: (raw: T) => Promise<any> | void
-) {
+export function updateWithRaw<T>(value: T, cb: (raw: T) => Promise<any> | void) {
     if (!isReactive(value)) {
         return cb(value)
     }
@@ -172,10 +173,6 @@ export function updateWithRaw<T extends ReactiveTarget>(
     const ret = cb(raw(value))
     const process = () => processEffect(value.effect)
     isThenable(ret) ? ret.then(process) : process()
-}
-
-export function createStore<T extends ReactiveTarget>(value: T): T {
-    return constReact(value).$
 }
 
 // 生成reactivity和constReact的方法
