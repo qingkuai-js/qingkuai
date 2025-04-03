@@ -12,7 +12,10 @@ export const SELF_CLOSING_TAGS = new Set([
     "param",
     "source",
     "track",
-    "wbr"
+    "wbr",
+    "frame",
+    "isindex",
+    "basefont"
 ])
 
 export const MUST_PASS_VALUE_DIRECTIVES = new Set([

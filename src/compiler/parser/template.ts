@@ -48,8 +48,10 @@ import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
 
 // 独立调用的parseTemplate方法，compiler包会导出此方法
-export function parseTemplateStandalone(source: string) {
-    resetCompilerState({})
+export function parseTemplateStandalone(source: string, recover = false) {
+    resetCompilerState({
+        check: recover
+    })
     return parseTemplate(source, true)
 }
 
@@ -358,12 +360,15 @@ export function parseTemplate(source: string, standalone = false) {
 
             // embedded style block
             if (/css|s[ca]ss|less|stylus|postcss/.test(embeddedLang)) {
-                inputDescriptor.style.push({
+                inputDescriptor.styles.push({
                     loc,
                     code: content,
                     startTagNameRange,
                     lang: embeddedLang
                 })
+                for (let i = 0; !standalone && i < content.length; i++) {
+                    markPositionFlag(contentStartIndex + i, "inStyle")
+                }
             }
 
             // embedded script block
@@ -379,7 +384,7 @@ export function parseTemplate(source: string, standalone = false) {
                 }
 
                 // 将嵌入script代码部分都标记为处的索引标记为处于脚本
-                for (let i = 0; i <= content.length; i++) {
+                for (let i = 0; !standalone && i <= content.length; i++) {
                     markPositionFlag(contentStartIndex + i, "inScript")
                 }
 

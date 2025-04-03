@@ -35,4 +35,4 @@ export const parseTemplate = parseTemplateStandalone
 export type { PositionFlagKeys } from "../util/types"
 
 // prettier-ignore
-export type { SlotInfo, ASTLocation, ASTPosition, TemplateNode, CompileResult, CompileOptions, ASTPositionWithFlag} from "./types"
+export type { SlotInfo, ASTLocation, ASTPosition, TemplateNode, CompileResult, CompileOptions, ASTPositionWithFlag, ScriptDescriptor, StyleDescriptor} from "./types"

@@ -110,7 +110,7 @@ export interface InputDescriptor {
     slotInfo: SlotInfo
     indentSpaceCount: number
     script: ScriptDescriptor
-    style: StyleDescriptor[]
+    styles: StyleDescriptor[]
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
 }

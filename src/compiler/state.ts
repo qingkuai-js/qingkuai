@@ -113,7 +113,7 @@ function newScriptDescriptor(): ScriptDescriptor {
 function newInputDescriptor(): InputDescriptor {
     return {
         source: "",
-        style: [],
+        styles: [],
         slotInfo: {},
         positions: [],
         indentSpaceCount: 0,

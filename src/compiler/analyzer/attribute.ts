@@ -1050,7 +1050,7 @@ export function analyzeAttribute(
             })
         })
 
-        interCodeSnippets.push([IntercodeSnippetKind.SearchBackward, "new "])
+        interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "new "])
         recordInterSnippetWithSpecificRange(`${node.componentTag}(`, ...stnr)
 
         for (const target of attrRecords) {
