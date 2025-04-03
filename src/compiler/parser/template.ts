@@ -201,10 +201,15 @@ export function parseTemplate(source: string, standalone = false) {
                 continue
             }
 
-            // 插值属性长度为1时表示没有指定属性名称
+            // 标记使用插值属性的节点不是静态html节点
             const isInterpolationAttr = /^[!@#&]/.test(attrName)
-            if (isInterpolationAttr && attrName.length === 1) {
-                EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
+            if (isInterpolationAttr) {
+                markupNodeAndAncestorIsNotPure(ast)
+
+                // 插值属性长度为1时表示没有指定属性名称
+                if (attrName.length === 1) {
+                    EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
+                }
             }
 
             // check whether attribute value exists
@@ -255,7 +260,6 @@ export function parseTemplate(source: string, standalone = false) {
                                 index + endCharIndex + 1
                             )
                         }
-                        markupNodeAndAncestorIsNotPure(ast)
                     } else if ((endCharIndex = dps.indexOf(dps[0], 1)) === -1) {
                         UnclosedNormalAttributeValue(wrapValueStartLoc)
                     }
@@ -538,8 +542,10 @@ function initTemplateNode(
 
 // 标记节点及其祖先节点的pure为false
 function markupNodeAndAncestorIsNotPure(node: TemplateNode) {
-    node.pure = false
-    node.parent && markupNodeAndAncestorIsNotPure(node.parent)
+    if (node.pure) {
+        node.pure = false
+        node.parent && markupNodeAndAncestorIsNotPure(node.parent)
+    }
 }
 
 // 检查节点是否为设置white-space属性为pre相关的注释节点

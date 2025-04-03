@@ -30,9 +30,9 @@ import { usedEffectList } from "./state"
 import { runSyncEffect } from "./effect"
 import { scheduleUpdate } from "../schedule"
 import { getCurrentInstance } from "../instance"
-import { BadReactivityLevel } from "../message/error"
 import { isReactive } from "../../util/runtime/assert"
 import { notEqual, optc } from "../../util/shared/sundry"
+import { AssignToConstant, BadReactivityLevel } from "../message/error"
 
 const react = reactGen()
 const constReact = reactGen(1)
@@ -41,17 +41,16 @@ const constDestructuringReact = destructuringReactGen(true)
 
 export class ReactivityWrapper {
     declare proxy: any
-    declare effect: EffectListItem
 
     constructor(
         public raw: any,
         public level: number,
         public typeFlag: number,
         public debugSetter: Setter,
-        initEffect?: EffectListItem
+        public effect: EffectListItem,
+        public isConstDeclaration: boolean
     ) {
         this.proxy = new Proxy(raw, this)
-        this.effect = initEffect || [new Set(), NIL]
     }
 
     get: PGetHandler = (target, property, receiver) => {
@@ -131,18 +130,15 @@ export class ReactivityWrapper {
     }
 
     set: PSetHandler = (target, property, value, receiver) => {
-        const { debugSetter, effect } = this
+        const { debugSetter, effect, isConstDeclaration } = this
         if (notEqual(target[property], value)) {
+            if (isConstDeclaration) {
+                AssignToConstant()
+            }
             if (debugSetter !== NOOP) {
                 debugSetter(value)
             }
-            // prettier-ignore
-            const ret = REFLECT.set(
-                target,
-                property,
-                value,
-                receiver
-            )
+            const ret = REFLECT.set(target, property, value, receiver)
             return processEffect(effect), ret
         }
         return true
@@ -231,13 +227,13 @@ function reactGen(levelDown = 0) {
             return target
         }
 
-        // prettier-ignore
         const ret = new ReactivityWrapper(
             target,
             level,
             typeFlag,
             debugSetter,
-            effect
+            effect || [new Set(), NIL],
+            isDeclaration && levelDown === 1
         )
         if (isDeclaration) {
             if (EXPOSE_DEPENDECIES) {

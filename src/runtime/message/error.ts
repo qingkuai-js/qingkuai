@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 2007
+ * last-error-code: 2008
  *
  * 错误代码解释：以数字2开头的代码表示这是一个运行时致命错误
  * Error Code Explanation: code begining with the number 2 indicates that this is a runtime fatal error
@@ -24,6 +24,10 @@ import { commonMessage } from "./common"
 import { BAD_TARGET_MOUNT_KIND } from "../constants"
 
 export const InstantiateComponentManually = withCode(...commonMessage.InstantiateComponentManually)
+
+export const AssignToConstant = withCode(2008, () => {
+    return "Assignment to constant variable."
+})
 
 export const NonTraverse = withCode(2001, () => {
     return "The given value for for-directive is non-traversable."

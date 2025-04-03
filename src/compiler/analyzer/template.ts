@@ -8,13 +8,14 @@ import type {
 import { getAlias } from "./alias"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
-import { markPositionFlag } from "../../util/compiler/sundry"
 import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
 import { getCacheId, inputDescriptor, interCodeSnippets } from "../state"
 import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
+import { isSelfClosingTag, markPositionFlag } from "../../util/compiler/sundry"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
+import { BadTargetForHtmlDirective, HtmlDirectiveWithChildElement } from "../message/error"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
@@ -37,11 +38,20 @@ export function analyzeTemplate(
         let currentContext: TemplateContext
         let continueRE: RegExp | undefined | null
         let shouldContinueDirective: string | undefined
+        let htmlDirective = attributes.find(({ key }) => key.raw === "#html")
 
         const isSlot = tag === "slot"
+        const isText = isEmptyString(tag)
         const isTextarea = tag === "textarea"
         const isComponent = !isEmptyString(componentTag)
         const shouldCache = pure && !parent?.pure && !isSlot && !isComponent
+
+        const unsetHtmlDirective = () => {
+            if (htmlDirective) {
+                htmlDirective = undefined
+                spliceByElem(attributes, htmlDirective)
+            }
+        }
 
         const curRetItem: TemplateAnalysisRet = {
             aar: null,
@@ -49,7 +59,7 @@ export function analyzeTemplate(
             content: "",
             children: [],
             isSpread: tag === SPREAD_TAG,
-            cacheId: shouldCache && !isEmptyString(tag) ? getCacheId() : -1
+            cacheId: shouldCache && !isText ? getCacheId() : -1
         }
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
@@ -63,12 +73,25 @@ export function analyzeTemplate(
             shouldHoistContent = true
         }
 
-        // 如果当前标签使用了#html指令且非SPREAD_TAG，则将#html指令转移到content上
-        const htmlDirective = attributes.find(({ key }) => key.raw === "#html")
-        if (htmlDirective && !curRetItem.isSpread && !isEmptyString(tag)) {
-            shouldHoistContent = false
-            spliceByElem(attributes, htmlDirective)
-            children[0].attributes.push(htmlDirective)
+        if (htmlDirective && !isText) {
+            // 组件、slot以及自闭合标签上不能使用#html指令
+            if (isComponent || isSlot || isSelfClosingTag(tag)) {
+                unsetHtmlDirective()
+                BadTargetForHtmlDirective(htmlDirective.loc)
+            }
+
+            // 使用了#html指令的节点只能接受一个text节点
+            if (children.length !== 1 || !isEmptyString(children[0].tag)) {
+                unsetHtmlDirective()
+                HtmlDirectiveWithChildElement(nodes[i].loc)
+            }
+
+            // 如果当前标签使用了#html指令且非SPREAD_TAG，则将#html指令转移到content上
+            if (htmlDirective && !curRetItem.isSpread) {
+                shouldHoistContent = false
+                spliceByElem(attributes, htmlDirective)
+                children[0].attributes.push(htmlDirective)
+            }
         }
 
         // kebab组件名转为驼峰命名
@@ -76,7 +99,7 @@ export function analyzeTemplate(
             curRetItem.tag = kebab2Camel(tag, true)
             markPositionFlag(nodes[i].range[0], "isComponentStart")
         } else {
-            if (!isEmptyString(tag)) {
+            if (!isText || htmlDirective) {
                 curRetItem.tag = stringify(tag)
             } else {
                 const insertCommment = inputDescriptor.options.comment

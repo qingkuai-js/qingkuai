@@ -23,19 +23,18 @@ import {
 } from "../../util/compiler/sundry"
 import {
     InvalidEventFlag,
-    DuplicateEventModifiers,
     InvalidComposeModifier,
+    DirectiveValueIsIgnored,
+    DuplicateEventModifiers,
     InvalidKeyRelatedModifier,
     InvalidEventFlagForComponent,
-    ConflictNormalKeyEventModifier,
-    DirectiveValueIsIgnored
+    ConflictNormalKeyEventModifier
 } from "../message/warn"
 import {
-    IntercodeSnippetKind,
     COULD_USE_REF_TAGS,
+    IntercodeSnippetKind,
     MUST_PASS_VALUE_DIRECTIVES,
-    KEY_RELATED_EVENT_MODIFIERS,
-    SPREAD_TAG
+    KEY_RELATED_EVENT_MODIFIERS
 } from "../constants"
 import {
     parse,
@@ -68,12 +67,12 @@ import {
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective,
-    HtmlDirectiveWithChildElement
+    UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
 import { is } from "../estree/assert"
 import { lastElem } from "../../util/shared/sundry"
+import { REF_DOM_ATTR } from "../../util/shared/constants"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { inputDescriptor, interCodeSnippets } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
@@ -327,12 +326,12 @@ export function analyzeAttribute(
             // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
             // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
             // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
-            if (!isComponent) {
+            if (!isComponent && pureKey !== "dom") {
                 let tagForErr = tag
                 let attrIsNotAllowed = false
                 let attrsForErr: string[] = []
 
-                if (!COULD_USE_REF_TAGS.has(tag)) {
+                if (!COULD_USE_REF_TAGS.has(tag) && pureKey !== "dom") {
                     return CanNotAcceptRefAttribute(pureKey, tag, attr.loc)
                 }
 
@@ -368,7 +367,7 @@ export function analyzeAttribute(
                 }
 
                 // 检查引用传递的属性是否合法，允许的属性：input/textarea -> value；
-                // radio/checkbox -> checked/group；select -> value
+                // radio/checkbox -> checked/group；select -> value（均除&dom外）
                 if (attrIsNotAllowed) {
                     return InvalidRefAttr(tagForErr, attrsForErr, pureKey, attr.loc)
                 }
@@ -388,6 +387,11 @@ export function analyzeAttribute(
                         const prefix = `${stringify(pureKey)}, [`
                         eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
                     }
+                } else if (pureKey === "dom") {
+                    attributeStu.push(
+                        stringify(REF_DOM_ATTR),
+                        transAttrValue({ usedAsSetter: true })
+                    )
                 } else {
                     // select的value属性（非引用）时setter为null
                     // radio/checkbox(&group)或select[multiple](&value)时无setter
@@ -408,7 +412,7 @@ export function analyzeAttribute(
                     eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
                 }
             } else {
-                if (!isComponent && isTS && iv) {
+                if (!isComponent && iv && pureKey !== "dom") {
                     const recordValueCheckSnippet = (type: string) => {
                         const suffix = pureKey === "group" ? "," : ")"
                         interCodeSnippets.push([
@@ -720,15 +724,11 @@ export function analyzeAttribute(
                 case "await":
                     if (pureKey === "await") {
                         if (isCheckMode) {
-                            if (isTS) {
-                                interCodeSnippets.push(
-                                    [IntercodeSnippetKind.VoidSource, "__c__.SatisfyPromise("],
-                                    [trimedValueStartSourceIndex, trimedValue],
-                                    [IntercodeSnippetKind.SearchForward, ");"]
-                                )
-                            } else {
-                                recordInterExpression(trimedValue, [trimedValueStartSourceIndex])
-                            }
+                            interCodeSnippets.push(
+                                [IntercodeSnippetKind.VoidSource, "__c__.SatisfyPromise("],
+                                [trimedValueStartSourceIndex, trimedValue],
+                                [IntercodeSnippetKind.SearchForward, ");"]
+                            )
                             awaitExpression = [trimedValueStartSourceIndex, trimedValue]
                         } else {
                             const transRet = transDirective(rv, trimedValueStartSourceIndex)
@@ -780,22 +780,31 @@ export function analyzeAttribute(
                     }
                     break
 
-                case "html":
-                    for (const child of node.children) {
-                        if (!isEmptyString(child.tag)) {
-                            HtmlDirectiveWithChildElement(child.loc)
-                        }
+                case "target":
+                    if (isCheckMode) {
+                        interCodeSnippets.push(
+                            [IntercodeSnippetKind.VoidSource, "__c__.SatisfyTargetDirective("],
+                            [trimedValueStartSourceIndex, trimedValue],
+                            [IntercodeSnippetKind.SearchForward, ");"]
+                        )
+                    } else {
+                        directiveStu.push([getAlias("targetModule"), transAttrValue()])
                     }
-                    if (isEmptyString(tag) || tag === SPREAD_TAG) {
+                    break
+
+                case "html":
+                    if (!isCheckMode) {
                         directiveStu.push([
                             getAlias("unescapeModule"),
                             rv ? transAttrValue() : "{}"
                         ])
+                    } else {
+                        interCodeSnippets.push(
+                            [IntercodeSnippetKind.VoidSource, "__c__.SatisfyHtmlDirective("],
+                            [trimedValueStartSourceIndex, trimedValue],
+                            [IntercodeSnippetKind.SearchForward, ");"]
+                        )
                     }
-                    break
-
-                case "target":
-                    directiveStu.push([getAlias("targetModule"), transAttrValue()])
                     break
 
                 default:

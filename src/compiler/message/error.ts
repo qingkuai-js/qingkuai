@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 1044
+ * last-error-code: 1045
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -123,12 +123,12 @@ export const TagCanNotBeSelfClosing = withLocation(1011, (tag: string) => {
     return `The tag(${tag}) can not be used as self closing tag.`
 })
 
-export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
-    return "Key directive could not be used without #for directive."
+export const HtmlDirectiveWithChildElement = withLocation(1044, () => {
+    return "The tag with #html directive must accept one text node as child."
 })
 
-export const HtmlDirectiveWithChildElement = withLocation(1044, () => {
-    return "The tag with #html directive can only accept text content children."
+export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
+    return "Key directive could not be used without #for directive."
 })
 
 export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
@@ -165,7 +165,7 @@ export const BasSlotDirectiveCarrier = withLocation(1013, () => {
 })
 
 export const CanNotAcceptRefAttribute = withLocation(1015, (key: string, tag: string) => {
-    return `The normal tag(${tag}) can not reiceive any reference attribute, but got &${key}.`
+    return `The normal tag(${tag}) can only accept &dom reference attribute, but got &${key}.`
 })
 
 export const DuplicateAttributeKey = withLocation(1023, (tag: string, a: string, b: string) => {
@@ -196,6 +196,10 @@ export const BadEventListenerForSlotTag = withLocation(1041, (attr: string) => {
     return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
 })
 
+export const BadTargetForHtmlDirective = withLocation(1045, () => {
+    return `Bad target for #html directive: it can not be used with in component, slot and self-closing tag.`
+})
+
 export const RefuseReferenceAttribute = withLocation(1026, (tag: string, attr: string) => {
     return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
 })
@@ -217,9 +221,8 @@ export const BadValueToContextGenDirective = withLocation(1043, (directive: stri
 })
 
 export const InvalidRefAttr = withLocation(1032, (tag: string, attr: string[], given: string) => {
-    const allowedAttrJoined = attr.join(" or ")
-    const allowedAttrDescription = attr.map(item => "&" + item).join(", ")
-    return `Normal tag(${tag}) can only accept ${allowedAttrJoined} as reference attribute(${allowedAttrDescription}), and the given item(&${given}) is not allowed.`
+    const allowedAttrDescription = [...attr, "dom"].map(item => "&" + item).join(", ")
+    return `Normal tag(${tag}) can only accept specific reference attribute(${allowedAttrDescription}), and the given item(&${given}) is not allowed.`
 })
 
 // 判断错误类型是会否是QingKuai编译错误
