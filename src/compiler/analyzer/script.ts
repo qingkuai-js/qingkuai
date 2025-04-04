@@ -454,7 +454,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                 const getSetterArg = (ret = "") => {
                     if (isDebug) {
                         if (isConst) {
-                            ret = getAlias("noop")
+                            ret = getAlias("NOOP")
                         } else {
                             ret = getSetterIdentifier(names[0])
                         }
@@ -546,7 +546,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         text: () => {
                             const setters = destructuringIdentifierArr.map(identifier => {
                                 if (isConst && !isDerived) {
-                                    return getAlias("noop")
+                                    return getAlias("NOOP")
                                 } else {
                                     return getSetterIdentifier(identifier)
                                 }

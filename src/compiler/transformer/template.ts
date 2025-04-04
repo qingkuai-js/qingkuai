@@ -75,7 +75,7 @@ export function transformTemplate(
             n++
         }
         if (isNull(item)) {
-            pushTransformedArr(getAlias("nil"), ",", "\n", indent(n))
+            pushTransformedArr(getAlias("NIL"), ",", "\n", indent(n))
             return
         }
 
@@ -107,7 +107,7 @@ export function transformTemplate(
         const addAttributeOrEventStu = (tirs: TransformInterpolationRet[]) => {
             const tirsLen = tirs.length
             if (tirsLen === 0) {
-                return pushTransformedArr(getAlias("nil"))
+                return pushTransformedArr(getAlias("NIL"))
             }
 
             let charCount = 0

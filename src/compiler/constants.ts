@@ -44,8 +44,8 @@ export const KEY_RELATED_EVENT_MODIFIERS = new Set([
 
 export const FULL_RUNTIME_ITEMS = new Set([
     "QingKuaiComponent",
-    "noop",
-    "nil",
+    "NOOP",
+    "NIL",
     "raw",
     "init",
     "nextTick",

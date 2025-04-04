@@ -322,7 +322,7 @@ export function analyzeAttribute(
         // 处理引用值，如果是组件，就把引用传递放在eventStu的位置
         // 由于select的value属性与普通属性的处理逻辑并不相同（需要判断子option元素的选择情况，
         // 初始化时要异步设置初始值）所以这里将select元素的value属性使用withReference进行处理
-        // 但这种情况下最后一个参数（setter)会被传入nil，以打断选项改变时修改响应式值的渠道
+        // 但这种情况下最后一个参数（setter)会被传入null，以打断选项改变时修改响应式值的渠道
         if (isRef || (tag === "select" && pureKey === "value")) {
             let needSetter = true
             let eventName = tag === "textarea" ? "input" : "change"
@@ -407,7 +407,7 @@ export function analyzeAttribute(
                     if (!needSetter) {
                         setter = ""
                     } else if (!isRef) {
-                        setter = getAlias("nil")
+                        setter = getAlias("NIL")
                     }
 
                     if (setter) {
@@ -762,8 +762,8 @@ export function analyzeAttribute(
 
                         recordAliasIdentifiers()
 
-                        // insertNullNum表示需要插入的nil的数量，当await指令和then指令在同一个元素上使用时，
-                        // 相当于await指令元素不存在，需要插入一个nil，而当await指令和catch指令在同一个元素上
+                        // insertNullNum表示需要插入的NIL的数量，当await指令和then指令在同一个元素上使用时，
+                        // 相当于await指令元素不存在，需要插入一个NIL，而当await指令和catch指令在同一个元素上
                         // 使用时，相当于await指令元素和then指令元素都不存在，需要插入两个null
                         if (pureKey !== "catch") {
                             setContinueInfo(/^#catch$/)

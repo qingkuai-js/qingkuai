@@ -29,7 +29,7 @@ export function generateImportStatements() {
         itemArr.push(item)
         charCount += item.length
     })
-    itemArr.sort((a, b) => a.length - b.length)
+    itemArr.sort((a, b) => a.length - b.length || (a < b ? -1 : 1))
 
     const itemStr = () => {
         return itemArr.join(joinStr)
