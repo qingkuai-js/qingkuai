@@ -1,4 +1,5 @@
 import type {
+    TemplateNode,
     MessageItem,
     DebuggingInfo,
     SourceMapInfo,
@@ -34,6 +35,7 @@ export const eliminateRanges: EliminateRanges = new Set()
 
 export const stringConstants = new Map<string, StringConstant>()
 export const stringConstantsSourceMap = new Map<string, string>()
+export const templateNodeToContextIdentifiers = new Map<TemplateNode, Set<string>>()
 
 export function getCacheId() {
     return ++cacheId
@@ -46,8 +48,10 @@ export function resetCompilerState(options: CompileOptions) {
     eliminateRanges.clear()
     stringConstants.clear()
     usedRuntimeItems.clear()
+    importedIdentifiers.clear()
     allExistingIdentifiers.clear()
     stringConstantsSourceMap.clear()
+    templateNodeToContextIdentifiers.clear()
     emptyArr(interCodeSnippets, tempStoredImportInfos)
     Object.assign(debuggingInfo, newDebuggingInfo())
     Object.assign(replacementInfo, newReplacementInfo())

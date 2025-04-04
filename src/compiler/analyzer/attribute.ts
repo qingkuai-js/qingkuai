@@ -76,7 +76,7 @@ import { is } from "../estree/assert"
 import { lastElem } from "../../util/shared/sundry"
 import { REF_DOM_ATTR } from "../../util/shared/constants"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { inputDescriptor, interCodeSnippets } from "../state"
+import { inputDescriptor, interCodeSnippets, templateNodeToContextIdentifiers } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
 import { validIdentifierNameRE, expressionReplaceWithSpaceRE } from "../regular"
@@ -251,7 +251,7 @@ export function analyzeAttribute(
             return transformInterpolation(exp, startSourceIndex, context, "attribute", option)
         }
 
-        // then/catch和slot指令记录标识符的逻辑一致，提取到这里分别调用即可
+        // for，then/catch和slot指令记录标识符的逻辑一致，提取到这里分别调用即可
         const recordAliasIdentifiers = () => {
             if (isEmptyString(trimedValue)) {
                 context.count++
@@ -284,7 +284,7 @@ export function analyzeAttribute(
             const ast = parse(`(${trimedValue})`, 1, trimedValueStartSourceIndex)
             const expressionNode = (ast?.body[0] as any).expression as Expression
             if (is(expressionNode, "Identifier")) {
-                extendContext(context, expressionNode.name)
+                extendContext(node, context, expressionNode.name)
             } else if (
                 is(expressionNode, "ArrayExpression") ||
                 is(expressionNode, "ObjectExpression")
@@ -297,6 +297,7 @@ export function analyzeAttribute(
                     startSourceIndex
                 )
                 recordDestructuringIdentifiers(
+                    node,
                     tir,
                     aliasArgs,
                     context,
@@ -591,71 +592,70 @@ export function analyzeAttribute(
                         break
                     }
 
+                    const preContextCount = context.count
                     contextBlockCount += Number(hasContextIdentifier)
 
-                    if (!isCheckMode) {
-                        const preContextCount = context.count
+                    // 转换for指令依赖的表达式部分（不含item及index标识符部分）
+                    const transformedForBaseValue = transDirective(
+                        baseValue,
+                        trimedValueStartSourceIndex + baseValueRange[0]
+                    )
 
-                        // 转换for指令依赖的表达式部分（不含item及index标识符部分）
-                        const transformedForBaseValue = transDirective(
-                            baseValue,
-                            trimedValueStartSourceIndex + baseValueRange[0]
-                        )
-
-                        // 处理for指令上下文绑定
-                        if (hasContextIdentifier) {
-                            // 即使index部分不存在也占用context中一个标识符空间
-                            if (!indexPart) {
-                                context.count++
-                            } else if (indexPartIsDestructuring) {
-                                const startSourceIndex =
-                                    trimedValueStartSourceIndex + indexPartRange![0]
-                                const tir = makeDestructuringPatternSignleLine(
-                                    indexPart,
-                                    startSourceIndex
-                                )
-                                recordDestructuringIdentifiers(
-                                    tir,
-                                    aliasArgs,
-                                    context,
-                                    true,
-                                    preContextCount,
-                                    startSourceIndex
-                                )
-                            } else {
-                                extendContext(context, indexPart, "")
-                            }
-
-                            // 即使item部分不存在也占用context中一个标识符空间
-                            if (!itemPart) {
-                                context.count++
-                            } else if (itemPartIsDestructuring) {
-                                const startSourceIndex =
-                                    trimedValueStartSourceIndex + itemPartRange![0]
-                                const tir = makeDestructuringPatternSignleLine(
-                                    itemPart,
-                                    startSourceIndex
-                                )
-                                recordDestructuringIdentifiers(
-                                    tir,
-                                    aliasArgs,
-                                    context,
-                                    true,
-                                    preContextCount + 1,
-                                    startSourceIndex
-                                )
-                            } else {
-                                extendContext(context, itemPart, "")
-                            }
+                    // 处理for指令上下文绑定
+                    if (hasContextIdentifier) {
+                        // 即使index部分不存在也占用context中一个标识符空间
+                        if (!indexPart) {
+                            context.count++
+                        } else if (indexPartIsDestructuring) {
+                            const startSourceIndex =
+                                trimedValueStartSourceIndex + indexPartRange![0]
+                            const tir = makeDestructuringPatternSignleLine(
+                                indexPart,
+                                startSourceIndex
+                            )
+                            recordDestructuringIdentifiers(
+                                node,
+                                tir,
+                                aliasArgs,
+                                context,
+                                true,
+                                preContextCount,
+                                startSourceIndex
+                            )
+                        } else {
+                            extendContext(node, context, indexPart, "")
                         }
 
-                        // 记录forModule调用结构在directiveStu中的索引
-                        forModuleFuncIndex = directiveStu.length
+                        // 即使item部分不存在也占用context中一个标识符空间
+                        if (!itemPart) {
+                            context.count++
+                        } else if (itemPartIsDestructuring) {
+                            const startSourceIndex = trimedValueStartSourceIndex + itemPartRange![0]
+                            const tir = makeDestructuringPatternSignleLine(
+                                itemPart,
+                                startSourceIndex
+                            )
+                            recordDestructuringIdentifiers(
+                                node,
+                                tir,
+                                aliasArgs,
+                                context,
+                                true,
+                                preContextCount + 1,
+                                startSourceIndex
+                            )
+                        } else {
+                            extendContext(node, context, itemPart, "")
+                        }
+                    }
 
-                        // 记录for指令结构（forModule方法调用结构，transformTemplate中使用）
-                        directiveStu.push([getAlias("forModule"), transformedForBaseValue])
-                        //
-                    } else {
+                    // 记录forModule调用结构在directiveStu中的索引
+                    forModuleFuncIndex = directiveStu.length
+
+                    // 记录for指令结构（forModule方法调用结构，transformTemplate中使用）
+                    directiveStu.push([getAlias("forModule"), transformedForBaseValue])
+
+                    if (isCheckMode) {
                         if (!hasContextIdentifier) {
                             interCodeSnippets.push(
                                 [IntercodeSnippetKind.VoidSource, "__c__.GetKVPair("],
@@ -1334,6 +1334,33 @@ function makeDestructuringPatternSignleLine(
 }
 
 /**
+ * @description: 此方法用来扩展context，将指令（for、then、catch、slot）产生的上下文标识符记录到context中
+ *
+ * @param from 表示源码标识符名称（transformInterpolation方法中会将此标识符替换为上下文访问表达式）
+ *
+ * @param pathTo 是一个可选的字符串，未传入（为undefined）时扩展的context.map元素中path属性为空字符串，
+ * path属性为访问当前上下文标识符时需要使用的路径，它应该和num属性配合使用，拼接为类似于ctx(num).path的格式，
+ * 关于为什么要这样处理：可跳转到{@link recordDestructuringIdentifiers}方法定义处对isForDirective参数的注释
+ */
+function extendContext(
+    node: TemplateNode,
+    context: TemplateContext,
+    from: string,
+    pathTo?: string
+) {
+    const num = context.count++
+    context.map.set(from, {
+        num,
+        path: pathTo || ""
+    })
+    if (templateNodeToContextIdentifiers.has(node)) {
+        templateNodeToContextIdentifiers.get(node)!.add(from)
+    } else {
+        templateNodeToContextIdentifiers.set(node, new Set([from]))
+    }
+}
+
+/**
  * 添加指令中解构语法产生的标识符到context中
  * @param source 解构模式代码；aliasArgs表示调用
  *
@@ -1350,6 +1377,7 @@ function makeDestructuringPatternSignleLine(
  * 其中：ctx(1)为整个item，ctx(2)为整个index，ctx(3)为标识符a，但key指令只能通过 ctx(1).a.b 来访问标识符b
  */
 function recordDestructuringIdentifiers(
+    node: TemplateNode,
     tir: TransformInterpolationRet,
     aliasArgs: TransformInterpolationRet[],
     context: TemplateContext,
@@ -1370,13 +1398,13 @@ function recordDestructuringIdentifiers(
     if (!isForDirective) {
         getIdentifiersFromPattern(patternNode).forEach(from => {
             identifiers.add(from)
-            extendContext(context, from)
+            extendContext(node, context, from)
         })
     } else {
         getIdentifiersFromPatternWithPath(declarationSourceCode, patternNode).forEach(
             (path, from) => {
                 identifiers.add(from)
-                extendContext(context, from, path)
+                extendContext(node, context, from, path)
             }
         )
     }
@@ -1408,21 +1436,4 @@ function concatStrAndTIR<T extends TransformInterpolationRet>(
         item[1] += prefix.length
     })
     return (tir.transformedExp = prefix + tir.transformedExp + postfix), tir
-}
-
-/**
- * @description: 此方法用来扩展context，将指令（for、then、catch、slot）产生的上下文标识符记录到context中
- *
- * @param from 表示源码标识符名称（transformInterpolation方法中会将此标识符替换为上下文访问表达式）
- *
- * @param pathTo 是一个可选的字符串，未传入（为undefined）时扩展的context.map元素中path属性为空字符串，
- * path属性为访问当前上下文标识符时需要使用的路径，它应该和num属性配合使用，拼接为类似于ctx(num).path的格式，
- * 关于为什么要这样处理：可跳转到 recordDestructuringIdentifiers 方法定义处对 isForDirective 参数的注释
- */
-function extendContext(context: TemplateContext, from: string, pathTo?: string) {
-    const num = context.count++
-    context.map.set(from, {
-        num,
-        path: pathTo || ""
-    })
 }

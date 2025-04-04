@@ -1,5 +1,6 @@
 import type {
     ASTLocation,
+    TemplateNode,
     EliminateRanges,
     TemplateAttribute,
     ASTPositionWithFlag
@@ -15,7 +16,12 @@ import { randomBytes } from "node:crypto"
 import { PositionFlag } from "../shared/flag"
 import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
-import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
+import {
+    debuggingInfo,
+    inputDescriptor,
+    interCodeSnippets,
+    templateNodeToContextIdentifiers
+} from "../../compiler/state"
 
 export function isSelfClosingTag(tag: string) {
     return SELF_CLOSING_TAGS.has(tag)
@@ -136,6 +142,18 @@ export function isIndexEliminated(index: number, ranges: EliminateRanges) {
         }
     }
     return false
+}
+
+// 获取节点可用的上下文标识符
+export function getContextIdentifiers(node: TemplateNode) {
+    const result = new Set<string>()
+    while (node) {
+        templateNodeToContextIdentifiers.get(node)?.forEach(identifier => {
+            result.add(identifier)
+        })
+        node = node.parent as any
+    }
+    return Array.from(result)
 }
 
 // 为inputDescript.positions中某个索引的位置添加指定的flag标记

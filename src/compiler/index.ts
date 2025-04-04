@@ -9,7 +9,8 @@ import {
 import {
     isSelfClosingTag,
     isEmbededLanguageTag,
-    mustDirectiveHasValue
+    mustDirectiveHasValue,
+    getContextIdentifiers
 } from "../util/compiler/sundry"
 export { compile } from "./compile"
 export { commonMessage } from "./message/common"
@@ -26,6 +27,7 @@ export const util = {
     findOutOfComment,
     isSelfClosingTag,
     isEmbededLanguageTag,
+    getContextIdentifiers,
     mustDirectiveHasValue,
     findOutOfStringComment
 }
