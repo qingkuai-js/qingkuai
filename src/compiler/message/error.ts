@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 1045
+ * last-error-code: 1046
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -27,6 +27,7 @@ import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { SPREAD_TAG } from "../constants"
 
 // prettier-ignore
 export const BadExportRelatedStatement = withLocation(
@@ -210,6 +211,10 @@ export const ContextIdentifierUsedAsReferenceTarget = withLocation(1035, (name: 
 
 export const UnkonwDirective = withLocation(1028, (name: string) => {
     return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
+})
+
+export const BadTargetForReferenceDom = withLocation(1046, () => {
+    return `The &dom reference attribute can not be used on slot and ${SPREAD_TAG} tag, as they have no corresponding DOM Node.`
 })
 
 export const BadValueToRefAttr = withLocation(1031, (exp: string) => {

@@ -16,6 +16,7 @@ import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { isSelfClosingTag, markPositionFlag } from "../../util/compiler/sundry"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
 import { BadTargetForHtmlDirective, HtmlDirectiveWithChildElement } from "../message/error"
+import { getLocByIndex } from "../../util/compiler/locations"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
@@ -30,8 +31,8 @@ export function analyzeTemplate(
     // 嵌入语言标签节点无需分析处理
     nodes = nodes.filter(node => !node.isEmbedded)
 
-    for (let i = 0; i < nodes.length; i++) {
-        let { tag, content, attributes, children, componentTag, pure, parent } = nodes[i]
+    for (let i = 0, node = nodes[0]; i < nodes.length; node = nodes[++i]) {
+        let { tag, content, attributes, children, componentTag, pure, parent } = node
 
         let shouldHoistContent = false
         let trimedContentStartIndex: number
@@ -82,22 +83,22 @@ export function analyzeTemplate(
 
             // 使用了#html指令的节点只能接受一个text节点
             if (children.length !== 1 || !isEmptyString(children[0].tag)) {
-                unsetHtmlDirective()
-                HtmlDirectiveWithChildElement(nodes[i].loc)
+                HtmlDirectiveWithChildElement(
+                    getLocByIndex(node.range[0], node.range[0] + tag.length + 1)
+                )
             }
 
             // 如果当前标签使用了#html指令且非SPREAD_TAG，则将#html指令转移到content上
             if (htmlDirective && !curRetItem.isSpread) {
                 shouldHoistContent = false
-                spliceByElem(attributes, htmlDirective)
-                children[0].attributes.push(htmlDirective)
+                children[0]?.attributes.push(htmlDirective)
             }
         }
 
         // kebab组件名转为驼峰命名
         if (isComponent) {
             curRetItem.tag = kebab2Camel(tag, true)
-            markPositionFlag(nodes[i].range[0], "isComponentStart")
+            markPositionFlag(node.range[0], "isComponentStart")
         } else {
             if (!isText || htmlDirective) {
                 curRetItem.tag = stringify(tag)
@@ -119,7 +120,7 @@ export function analyzeTemplate(
         // 分析属性列表
         const contextBeforeAnalyzeAttribute = cloneContext(currentContext)
         const aar = analyzeAttribute(
-            nodes[i],
+            node,
             isComponent,
             parentIsComponent,
             attributes,
@@ -179,10 +180,7 @@ export function analyzeTemplate(
                     aar.awaitExpression,
                     existingSlotOfAnyTag
                 )
-                const useBracketWrap = shouldUseBracketWrap(
-                    nodes[i].tag,
-                    childTemplateAnalysisRet.aar!
-                )
+                const useBracketWrap = shouldUseBracketWrap(node.tag, childTemplateAnalysisRet.aar!)
                 const childAarContinueArg = childTemplateAnalysisRet.aar!.continueInfo?.arg
                 if (childTemplateAnalysisRet.aar?.insertNullNum) {
                     mockSpreadRet.children.push(awaitNullChild)
@@ -205,11 +203,11 @@ export function analyzeTemplate(
             content = children[0].content
             trimedContentStartIndex = children[0].range[0]
         } else {
-            trimedContentStartIndex = isTextarea ? nodes[i].startTagEndPos.index : nodes[i].range[0]
+            trimedContentStartIndex = isTextarea ? node.startTagEndPos.index : node.range[0]
         }
 
         // 注释以及pre、textarea节点的内容不去除开头和结尾的空白字符
-        if (!isTextarea && tag !== "!" && !nodes[i].preWhiteSpace) {
+        if (!isTextarea && tag !== "!" && !node.preWhiteSpace) {
             const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount

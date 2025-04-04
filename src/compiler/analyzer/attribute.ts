@@ -31,6 +31,7 @@ import {
     ConflictNormalKeyEventModifier
 } from "../message/warn"
 import {
+    SPREAD_TAG,
     COULD_USE_REF_TAGS,
     IntercodeSnippetKind,
     MUST_PASS_VALUE_DIRECTIVES,
@@ -67,7 +68,8 @@ import {
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective
+    UseKeyDirectiveWithoutForDirective,
+    BadTargetForReferenceDom
 } from "../message/error"
 import { getAlias } from "./alias"
 import { is } from "../estree/assert"
@@ -118,6 +120,7 @@ export function analyzeAttribute(
 
     const { tag } = node
     const isSlot = tag === "slot"
+    const isSpread = tag === SPREAD_TAG
     const isTS = inputDescriptor.script.isTS
     const nodeStartIndex = node.loc.start.index
     const isCheckMode = inputDescriptor.options.check
@@ -373,6 +376,11 @@ export function analyzeAttribute(
                 }
             }
 
+            // &dom不能用于SPREAD_TAG和slot标签
+            if (pureKey === "dom" && (isSlot || isSpread)) {
+                return BadTargetForReferenceDom(attr.loc)
+            }
+
             // 非检查模式时正常编译，检查模式下记录中间代码片段
             if (!isCheckMode) {
                 const tiGetter = transAttrValue()
@@ -412,9 +420,8 @@ export function analyzeAttribute(
                     eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
                 }
             } else {
-                if (!isComponent && iv && pureKey !== "dom") {
-                    const recordValueCheckSnippet = (type: string) => {
-                        const suffix = pureKey === "group" ? "," : ")"
+                if (isTS && !isComponent) {
+                    const recordValueCheckSnippet = (type: string, suffix = ")") => {
                         interCodeSnippets.push([
                             IntercodeSnippetKind.VoidSource,
                             `__c__.Satisfy${type}(`
@@ -428,16 +435,18 @@ export function analyzeAttribute(
                             recordInterSnippetWithSpecificRange(iv + suffix, ...keyRange)
                         }
                     }
-
                     switch (pureKey) {
-                        case "group":
-                            recordValueCheckSnippet("Group")
-                            break
                         case "value":
                             recordValueCheckSnippet("String")
                             break
                         case "checked":
                             recordValueCheckSnippet("Boolean")
+                            break
+                        case "dom":
+                            recordValueCheckSnippet("Node", "!)")
+                            break
+                        case "group":
+                            recordValueCheckSnippet("Group", ",")
                             break
                     }
 
@@ -487,7 +496,7 @@ export function analyzeAttribute(
                     } else {
                         interCodeSnippets.push(
                             [value.loc.start.index, rv],
-                            [IntercodeSnippetKind.VoidSource, ")"]
+                            [IntercodeSnippetKind.SearchForward, ")"]
                         )
                     }
                     interCodeSnippets.push([
@@ -793,6 +802,9 @@ export function analyzeAttribute(
                     break
 
                 case "html":
+                    if (!isEmptyString(tag) && !isSpread) {
+                        break
+                    }
                     if (!isCheckMode) {
                         directiveStu.push([
                             getAlias("unescapeModule"),

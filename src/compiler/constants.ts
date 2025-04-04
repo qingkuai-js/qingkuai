@@ -74,7 +74,7 @@ export enum IntercodeSnippetKind {
     SearchBackward = -1
 }
 
-export const SPREAD_TAG = "template"
+export const SPREAD_TAG = "spread"
 
 export const SPECIAL_TAGS = new Set(["!", "script", "style"])
 
