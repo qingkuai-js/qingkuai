@@ -1,0 +1,2 @@
+declare const __qk_expose_dependencies__: boolean
+declare const __qk_expose_destructions__: boolean

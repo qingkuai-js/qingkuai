@@ -77,7 +77,7 @@ function newDerivedState(): DerivedInternalState {
 
 function newDerivedProxy(target: DerivedTarget, state: DerivedInternalState, udpate: GeneralFunc) {
     return new Proxy<any>(target, {
-        get(target, property) {
+        get(target, property, receiver) {
             if (property === IS_PROXY) {
                 return true
             }
@@ -96,7 +96,7 @@ function newDerivedProxy(target: DerivedTarget, state: DerivedInternalState, udp
                 }, state.effectList)
             }
             setUsedEffectList(state.effectList)
-            return REFLECT.get(target, property)
+            return REFLECT.get(target, property, receiver)
         },
 
         set() {

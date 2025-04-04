@@ -19,7 +19,6 @@ import {
     UNDEF,
     INSTANTIATE_BY_H,
     ALIAS_MODULE_KIND,
-    EXPOSE_DESTRUCTIONS,
     IS_WITH_REFERENCE_RET,
     BAD_TARGET_MOUNT_KIND
 } from "./constants"
@@ -46,12 +45,12 @@ import {
 } from "../util/runtime/separate"
 import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
+import { REF_DOM_ATTR } from "../util/shared/constants"
 import { internalPreEffect } from "./reactivity/effect"
 import { len, spliceByElem, values } from "../util/shared/sundry"
 import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
-import { REF_DOM_ATTR } from "../util/shared/constants"
 
 const cachedPureNodes = new Map<number, Node>()
 
@@ -65,7 +64,7 @@ export function render(
     const properties = instance.__
     const topNodesItem: TopNodesItem = []
     if (isNull(destruction)) {
-        if (EXPOSE_DESTRUCTIONS) {
+        if (__qk_expose_destructions__) {
             destruction = properties.dst
         } else {
             destruction = newDestruction()

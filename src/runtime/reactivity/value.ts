@@ -9,16 +9,6 @@ import type {
 } from "../types"
 
 import {
-    NIL,
-    UNDEF,
-    NOOP,
-    REFLECT,
-    WRAPPER,
-    IS_PROXY,
-    RAW_VALUE,
-    EXPOSE_DEPENDECIES
-} from "../constants"
-import {
     isNull,
     isArray,
     isNumber,
@@ -33,6 +23,7 @@ import { getCurrentInstance } from "../instance"
 import { isReactive } from "../../util/runtime/assert"
 import { notEqual, optc } from "../../util/shared/sundry"
 import { AssignToConstant, BadReactivityLevel } from "../message/error"
+import { NIL, UNDEF, NOOP, REFLECT, WRAPPER, IS_PROXY, RAW_VALUE } from "../constants"
 
 const react = reactGen()
 const constReact = reactGen(1)
@@ -236,7 +227,7 @@ function reactGen(levelDown = 0) {
             isDeclaration && levelDown === 1
         )
         if (isDeclaration) {
-            if (EXPOSE_DEPENDECIES) {
+            if (__qk_expose_dependencies__) {
                 const component = getCurrentInstance()
                 component && component.__.deps.push(ret)
             }

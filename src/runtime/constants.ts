@@ -5,10 +5,6 @@ export const UNDEF = void 0
 export const REFLECT = Reflect
 export const NOOP: Noop = () => {}
 
-// configurations
-export const EXPOSE_DEPENDECIES = false
-export const EXPOSE_DESTRUCTIONS = false
-
 // unique symbols
 export const WRAPPER = Symbol()
 export const IS_PROXY = Symbol()
