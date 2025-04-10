@@ -1,4 +1,11 @@
 import {
+    isSelfClosingTag,
+    isBannedIdentifier,
+    isEmbededLanguageTag,
+    mustDirectiveHasValue,
+    getContextIdentifiers
+} from "../util/compiler/sundry"
+import {
     camel2Kebab,
     kebab2Camel,
     findEndBracket,
@@ -6,18 +13,26 @@ import {
     findOutOfComment,
     findOutOfStringComment
 } from "../util/compiler/strings"
-import {
-    isSelfClosingTag,
-    isEmbededLanguageTag,
-    mustDirectiveHasValue,
-    getContextIdentifiers
-} from "../util/compiler/sundry"
+import { parseTemplateStandalone } from "./parser/template"
+
+export type {
+    SlotInfo,
+    ASTLocation,
+    ASTPosition,
+    TemplateNode,
+    CompileResult,
+    CompileOptions,
+    StyleDescriptor,
+    ScriptDescriptor,
+    TemplateAttribute,
+    ASTPositionWithFlag
+} from "./types"
+
 export { compile } from "./compile"
 export { commonMessage } from "./message/common"
 export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
 export { PositionFlag } from "../util/shared/flag"
-import { parseTemplateStandalone } from "./parser/template"
 
 export const util = {
     kebab2Camel,
@@ -26,6 +41,7 @@ export const util = {
     findOutOfString,
     findOutOfComment,
     isSelfClosingTag,
+    isBannedIdentifier,
     isEmbededLanguageTag,
     getContextIdentifiers,
     mustDirectiveHasValue,
@@ -35,6 +51,3 @@ export const parseTemplate = parseTemplateStandalone
 
 // types
 export type { PositionFlagKeys } from "../util/types"
-
-// prettier-ignore
-export type { SlotInfo, ASTLocation, ASTPosition, TemplateNode, CompileResult, CompileOptions, ASTPositionWithFlag, ScriptDescriptor, StyleDescriptor} from "./types"

@@ -802,14 +802,13 @@ export function analyzeAttribute(
                     break
 
                 case "html":
-                    if (!isEmptyString(tag) && !isSpread) {
-                        break
-                    }
                     if (!isCheckMode) {
-                        directiveStu.push([
-                            getAlias("unescapeModule"),
-                            rv ? transAttrValue() : "{}"
-                        ])
+                        if (isEmptyString(tag) || isSpread) {
+                            directiveStu.push([
+                                getAlias("unescapeModule"),
+                                rv ? transAttrValue() : "{}"
+                            ])
+                        }
                     } else {
                         interCodeSnippets.push(
                             [IntercodeSnippetKind.VoidSource, "__c__.SatisfyHtmlDirective("],

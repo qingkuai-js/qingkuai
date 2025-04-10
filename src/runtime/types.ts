@@ -27,6 +27,10 @@ export type UnescapeOptions = Partial<{
     escapeEntities: boolean
 }>
 
+export interface Constructable {
+    constructor: GeneralFunc
+}
+
 export interface QingKuaiProperties {
     id: string
     updating: boolean

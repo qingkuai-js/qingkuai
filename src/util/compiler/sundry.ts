@@ -12,19 +12,23 @@ import {
     IntercodeSnippetKind,
     MUST_PASS_VALUE_DIRECTIVES
 } from "../../compiler/constants"
-import { randomBytes } from "node:crypto"
-import { PositionFlag } from "../shared/flag"
-import { templateEmbeddedLangTagRE } from "../../compiler/regular"
-import { isEmptyString, isString, isUndefined } from "../shared/assert"
 import {
     debuggingInfo,
     inputDescriptor,
     interCodeSnippets,
     templateNodeToContextIdentifiers
 } from "../../compiler/state"
+import { randomBytes } from "node:crypto"
+import { PositionFlag } from "../shared/flag"
+import { isEmptyString, isString, isUndefined } from "../shared/assert"
+import { bannedIdentifierFormatRE, templateEmbeddedLangTagRE } from "../../compiler/regular"
 
 export function isSelfClosingTag(tag: string) {
     return SELF_CLOSING_TAGS.has(tag)
+}
+
+export function isBannedIdentifier(name: string) {
+    return bannedIdentifierFormatRE.test(name)
 }
 
 export function isEmbededLanguageTag(tag: string) {

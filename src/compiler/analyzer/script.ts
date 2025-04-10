@@ -18,12 +18,6 @@ import {
     RedundantArgsForCompilerFunc
 } from "../message/warn"
 import {
-    reactCompilerFuncRE,
-    watchCompilerFuncRE,
-    bannedIdentifierFormatRE,
-    scriptSourceIndentSpaceCount
-} from "../regular"
-import {
     parse,
     getEsNode,
     markExcludes,
@@ -53,10 +47,11 @@ import { walk } from "../estree/walk"
 import { COMPILER_FUNCS } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
-import { getSetterIdentifier } from "../../util/compiler/sundry"
 import { findOutOfStringComment } from "../../util/compiler/strings"
 import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
+import { getSetterIdentifier, isBannedIdentifier } from "../../util/compiler/sundry"
+import { reactCompilerFuncRE, watchCompilerFuncRE, scriptSourceIndentSpaceCount } from "../regular"
 
 const visitor: ASTVisitor = {
     VariableDeclaration(node, parent) {
@@ -150,7 +145,7 @@ const visitor: ASTVisitor = {
         const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
 
         // 检查是否是被禁止的标识符格式
-        if (bannedIdentifierFormatRE.test(name)) {
+        if (isBannedIdentifier(name)) {
             IdentifierFormatIsNotAllowed(name, getSourceLocByScriptLoc(node.loc))
         }
 

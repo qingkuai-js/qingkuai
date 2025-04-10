@@ -18,11 +18,7 @@ export default rollup.defineConfig(commentLineArgs => {
             format: "es",
             chunkFileNames: "chunks/[name].js"
         },
-        plugins: [
-            esbuild({
-                target: "esNext"
-            })
-        ]
+        plugins: [esbuild()]
     }
 
     result.push(

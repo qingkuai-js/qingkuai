@@ -3,7 +3,7 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.0.28",
   "engines": {
     "node": ">=14"
   },
@@ -27,7 +27,8 @@
   "scripts": {
     "test": "vitest",
     "dev": "rollup -c -w",
-    "build": "rimraf dist && tsc && rollup -c && rimraf dist/temp-types"
+    "build": "rimraf dist && tsc && rollup -c && rimraf dist/temp-types",
+    "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/qingkuai/syncs'"
   },
   "dependencies": {
     "@babel/parser": "^7.25.8",

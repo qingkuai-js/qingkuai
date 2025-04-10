@@ -4,6 +4,7 @@ import type {
     TopNodesItem,
     PartialNode,
     RenderContext,
+    Constructable,
     EventStructure,
     RenderStructure,
     DestructionStruct,
@@ -381,7 +382,7 @@ export const h = withCleanUsedEffectList(function (
 // 创建应用
 export function createApp(
     selector: string,
-    Component: typeof QingKuaiComponent,
+    Component: Constructable,
     options: Partial<QingKuaiComponentConstructonParam> = {}
 ) {
     const target = document.querySelector(selector)

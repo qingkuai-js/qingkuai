@@ -25,11 +25,11 @@ import { runAll } from "../../util/shared/sundry"
 import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
+import { expressionReplaceWithSpaceRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
+import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
-import { bannedIdentifierFormatRE, expressionReplaceWithSpaceRE } from "../regular"
 
 export function transformInterpolation(
     expression: string,
@@ -100,7 +100,7 @@ export function transformInterpolation(
             allIndentifiersInExpression.add(name)
 
             // 检查插值表达式中是否使用了禁止使用的标识符
-            if (bannedIdentifierFormatRE.test(name)) {
+            if (isBannedIdentifier(name)) {
                 IdentifierFormatIsNotAllowed(name, nodeLoc)
             }
 
