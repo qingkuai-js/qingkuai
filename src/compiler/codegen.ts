@@ -214,6 +214,7 @@ export function generateInterResult(source: string, typeRefStatement: string) {
             stoi: [...stoi, lastElem(stoi)],
             itos: [...itos, lastElem(itos)]
         },
+        typeDeclarationLen: tdl,
         code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};${joinedSnippets}`
     }
 }

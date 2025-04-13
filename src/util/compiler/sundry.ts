@@ -18,7 +18,6 @@ import {
     interCodeSnippets,
     templateNodeToContextIdentifiers
 } from "../../compiler/state"
-import { randomBytes } from "node:crypto"
 import { PositionFlag } from "../shared/flag"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
 import { bannedIdentifierFormatRE, templateEmbeddedLangTagRE } from "../../compiler/regular"
@@ -53,20 +52,6 @@ export function getSetterIdentifier(identifier: string) {
 export function indent(n = 1) {
     return " ".repeat(inputDescriptor.indentSpaceCount * n)
 }
-
-// 生成指定长度的随机哈希字符串
-export const createHashId = (function () {
-    const existing = new Set<string>()
-    return () => {
-        while (true) {
-            const hash = randomBytes(4).toString("hex")
-            if (existing.has(hash)) {
-                continue
-            }
-            return existing.add(hash), hash
-        }
-    }
-})()
 
 // 确定标识符别名
 export function confirmAlias(name: string, existing: Set<string>) {
@@ -132,6 +117,21 @@ export function findSpecificAttr<T extends TemplateAttribute>(
     }
     return undefined
 }
+
+// 生成指定长度的随机哈希字符串
+export const createHashId = (function () {
+    const existing = new Set<string>()
+    const max = parseInt(`0x${"f".repeat(8)}`)
+    return () => {
+        while (true) {
+            const hash = Math.floor(Math.random() * max).toString(16)
+            if (existing.has(hash)) {
+                continue
+            }
+            return existing.add(hash), hash
+        }
+    }
+})()
 
 // 判断某个索引是否被er包围，er的情况同getPieceOfStrOutOfER相同
 export function isIndexEliminated(index: number, ranges: EliminateRanges) {

@@ -16,6 +16,7 @@ export type Noop = (...params: any[]) => any
 export type TopNodes = (Node | TopNodes)[][]
 export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
+export type Constructible = new (...args: any[]) => any
 export type ReactiveTarget = AnyObject | AnyMap | AnySet
 
 export type Opportunity = "sync" | "pre" | "post"
@@ -26,10 +27,6 @@ export type UnescapeOptions = Partial<{
     escapeScript: boolean
     escapeEntities: boolean
 }>
-
-export interface Constructable {
-    constructor: GeneralFunc
-}
 
 export interface QingKuaiProperties {
     id: string

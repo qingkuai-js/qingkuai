@@ -34,6 +34,7 @@ export interface CompileResult {
         stoi: number[]
     }
     messages: MessageItem[]
+    typeDeclarationLen: number
     templateNodes: TemplateNode[]
     inputDescriptor: InputDescriptor
 }

@@ -40,7 +40,8 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         hashId,
         messages,
         templateNodes,
-        inputDescriptor
+        inputDescriptor,
+        typeDeclarationLen: 0
     }
     if (options.check) {
         return exchangeInterIndexOfSlotInfo({
