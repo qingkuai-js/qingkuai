@@ -26,6 +26,7 @@ export const MUST_PASS_VALUE_DIRECTIVES = new Set([
     "for",
     "key",
     "slot",
+    "show",
     "target"
 ])
 

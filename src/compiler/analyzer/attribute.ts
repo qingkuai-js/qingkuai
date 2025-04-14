@@ -69,13 +69,12 @@ import {
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
     NoValueForRequiredValueAttribute,
-    UseKeyDirectiveWithoutForDirective,
+    UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
 import { is } from "../estree/assert"
 import { validIdentifierNameRE } from "../regular"
 import { lastElem } from "../../util/shared/sundry"
-import { REF_DOM_ATTR } from "../../util/shared/constants"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
@@ -396,12 +395,7 @@ export function analyzeAttribute(
                         const prefix = `${stringify(pureKey)}, [`
                         eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
                     }
-                } else if (pureKey === "dom") {
-                    attributeStu.push(
-                        stringify(REF_DOM_ATTR),
-                        transAttrValue({ usedAsSetter: true })
-                    )
-                } else {
+                } else if (pureKey !== "dom") {
                     // select的value属性（非引用）时setter为null
                     // radio/checkbox(&group)或select[multiple](&value)时无setter
                     if (!needSetter) {
@@ -419,6 +413,8 @@ export function analyzeAttribute(
                     const funcName = getAlias("withReference")
                     const prefix = `...${funcName}(${sev}, ${spk}, `
                     eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
+                } else {
+                    attributeStu.push(stringify("&dom"), transAttrValue({ usedAsSetter: true }))
                 }
             } else {
                 if (isTS && !isComponent) {
@@ -816,6 +812,10 @@ export function analyzeAttribute(
                             [IntercodeSnippetKind.SearchForward, ");"]
                         )
                     }
+                    break
+
+                case "show":
+                    attributeStu.push(stringify("#show"), transAttrValue())
                     break
 
                 default:

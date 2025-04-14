@@ -46,7 +46,6 @@ import {
 } from "../util/runtime/separate"
 import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
-import { REF_DOM_ATTR } from "../util/shared/constants"
 import { internalPreEffect } from "./reactivity/effect"
 import { len, spliceByElem, values } from "../util/shared/sundry"
 import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
@@ -301,7 +300,7 @@ export const h = withCleanUsedEffectList(function (
             // 处理attributes
             for (let i = 0; i < len(attrs); i += 2) {
                 let [key, value] = [attrs![i], attrs![i + 1]]
-                if (key === REF_DOM_ATTR) {
+                if (key === "&dom") {
                     value(qkNode.n)
                     continue
                 }

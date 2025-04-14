@@ -53,10 +53,13 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
 
-    // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值
-    // 每次访问响应式值都会得到一个新的Proxy包装值，参考：file://./reactivity/value.ts
+    // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值，每次访问响应式值都会得到一个新的Proxy包装值
     if (isReactive(value)) {
         value = value[RAW_VALUE]
+    }
+
+    if (key === "#show") {
+        elem.style.display = value ? "" : "none"
     }
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串
