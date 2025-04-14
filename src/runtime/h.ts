@@ -324,7 +324,7 @@ export const h = withCleanUsedEffectList(function (
             }
 
             if (tag && !tagIsNumber && tag !== "!") {
-                attribute(qkNode, "class", "qingkuai-" + instance.__.id, false)
+                attribute(qkNode, "qingkuai-" + instance.__.id, "", false)
             }
 
             // 处理events
