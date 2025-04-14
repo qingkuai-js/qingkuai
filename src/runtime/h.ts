@@ -285,7 +285,10 @@ export const h = withCleanUsedEffectList(function (
             }
 
             if (shouldDestroy || isDirectiveModule) {
-                attachDestroyLocal(() => destroy(qkNode.n!))
+                attachDestroyLocal(() => {
+                    destroy(qkNode.n!)
+                    cacheId !== -1 && cachedPureNodes.delete(cacheId)
+                })
             }
             if (cif) {
                 attachUpdateLocal(() => {
@@ -324,7 +327,7 @@ export const h = withCleanUsedEffectList(function (
             }
 
             if (tag && !tagIsNumber && tag !== "!") {
-                attribute(qkNode, "qingkuai-" + instance.__.id, "", false)
+                attribute(qkNode, "qk-" + instance.__.id, "", false)
             }
 
             // 处理events

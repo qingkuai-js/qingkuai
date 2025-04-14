@@ -60,6 +60,7 @@ export function parseTemplateStandalone(source: string, recover = false) {
 export function parseTemplate(source: string, standalone = false) {
     let index = 0
     let dps = source // dynamic programming source
+    let fdsn: TemplateNode | undefined = undefined // for directive start node
 
     const astList: TemplateNode[] = []
     const positions = getPositionOfEachChar(dps)
@@ -134,6 +135,7 @@ export function parseTemplate(source: string, standalone = false) {
                 tag: "!",
                 prev,
                 parent,
+                pure: !fdsn,
                 range: [index, -1],
                 content: dps.slice(4, contentEndIndex)
             })
@@ -167,6 +169,7 @@ export function parseTemplate(source: string, standalone = false) {
             tag,
             prev,
             parent,
+            pure: !fdsn,
             range: [index, -1],
             componentTag: isComponent ? kebab2Camel(tag, true) : "",
             preWhiteSpace: parent?.tag === "pre" || isPrevNodeWithPreWhiteSpace(prev)
@@ -205,6 +208,7 @@ export function parseTemplate(source: string, standalone = false) {
             const isInterpolationAttr = /^[!@#&]/.test(attrName)
             if (isInterpolationAttr) {
                 markupNodeAndAncestorIsNotPure(ast)
+                attrName === "#for" && (fdsn = ast)
 
                 // 插值属性长度为1时表示没有指定属性名称
                 if (attrName.length === 1) {
@@ -461,7 +465,7 @@ export function parseTemplate(source: string, standalone = false) {
         } else {
             TagCanNotBeSelfClosing(tag, index - 2, index)
         }
-        return ast
+        return ast === fdsn && (fdsn = undefined), ast
     }
 
     for (let cur: TemplateNode | undefined = undefined; dps.length; ) {
@@ -525,9 +529,9 @@ function initTemplateNode(
         prev: options.prev,
         next: undefined,
         tag: options.tag || "",
-        pure: true,
         isEmbedded: false,
         isSelfClosing: false,
+        pure: options.pure ?? true,
         preWhiteSpace: !!options.preWhiteSpace,
         content: options.content || "",
         range: options.range || [-1, -1],
