@@ -65,22 +65,22 @@ import {
     RefuseReferenceAttribute,
     CanNotAcceptRefAttribute,
     DuplicateNameAttrForSlot,
+    BadTargetForReferenceDom,
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
     NoValueForRequiredValueAttribute,
     UseKeyDirectiveWithoutForDirective,
-    BadTargetForReferenceDom
 } from "../message/error"
 import { getAlias } from "./alias"
 import { is } from "../estree/assert"
+import { validIdentifierNameRE } from "../regular"
 import { lastElem } from "../../util/shared/sundry"
 import { REF_DOM_ATTR } from "../../util/shared/constants"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { inputDescriptor, interCodeSnippets, templateNodeToContextIdentifiers } from "../state"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
-import { validIdentifierNameRE, expressionReplaceWithSpaceRE } from "../regular"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
+import { inputDescriptor, interCodeSnippets, templateNodeToContextIdentifiers } from "../state"
 
 // apm: Attributes Priority Map
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -1318,7 +1318,7 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
 
 // 将解构模式转换为单行模式，并记录开始和结束位置的映射(同TransformInterpolationRet中的mapping)
 // 这里的映射的四个元素分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
-// 此方法主要用来将for/then/catch/slot指令中的结构模式转换成单行模式并记录位置映射，方便之后生成sourcemap信息
+// 此方法主要用来将for/then/catch/slot指令中的结构模式转换成单行模式并记录位置映射，以便之后生成sourcemap信息
 function makeDestructuringPatternSignleLine(
     pattern: string,
     startSourceIndex: number
@@ -1326,7 +1326,7 @@ function makeDestructuringPatternSignleLine(
     const { positions } = inputDescriptor
     const endSourceIndex = startSourceIndex + pattern.length
     const [startLoc, endLoc] = [positions[startSourceIndex], positions[endSourceIndex]]
-    const transformedPattern = pattern.replace(new RegExp(expressionReplaceWithSpaceRE, "g"), " ")
+    const transformedPattern = pattern.replace(/\s{2,}/g, " ")
     return {
         transformedExp: transformedPattern,
         mappings: [

@@ -25,7 +25,6 @@ import { runAll } from "../../util/shared/sundry"
 import { is, isFunctionNode } from "../estree/assert"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
-import { expressionReplaceWithSpaceRE } from "../regular"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
@@ -204,11 +203,11 @@ export function transformInterpolation(
     ctxParam = confirmAlias(ctxParam, allExistingIdentifiers)
     underlineParam = confirmAlias(underlineParam, allExistingIdentifiers)
 
+    // rsc: Replaced Space Count
     // 根据标记的trasformInfos和expEliminateRanges转换表达式，并生成转换前后每个字符的索引映射，
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
-    // rsc: Replaced Space Count    pie: Pre(position) Is Eliminated
-    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false; i <= expression.length; i++) {
+    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0; i <= expression.length; i++) {
         transformInfos.get(i)?.forEach(item => {
             const str = isFunction(item) ? item() : item
             transformedArr.push(str)
@@ -220,27 +219,20 @@ export function transformInterpolation(
         })
         if (i < expression.length) {
             if (isIndexEliminated(i + 2, expEliminateRanges) || rsc > 0) {
-                rsc > 0 && rsc--
-                pie && offset--
-                pie = true
+                nextOffset--
+                rsc && rsc--
             } else {
-                const matched = expressionReplaceWithSpaceRE.exec(expression)
+                const matched = /^\s{2,}/.exec(expression.slice(i))
                 if (matched) {
                     transformedArr.push(" ")
                     rsc = matched[0].length - 1
                 } else {
                     transformedArr.push(expression[i])
                 }
-                if (pie) {
-                    offset--
-                }
-                pie = false
             }
         }
         shouldGenerateSourcemap && indexMap.push(i + offset)
-        expressionReplaceWithSpaceRE.lastIndex = i + 1
-        offset += nextOffset
-        nextOffset = 0
+        ;(offset += nextOffset), (nextOffset = 0)
     }
 
     // 生成转换结果

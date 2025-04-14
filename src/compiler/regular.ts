@@ -14,8 +14,6 @@ export const bannedIdentifierFormatRE = /^__w__|__(?:[sd]\d+|dn|c)__$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
 
-export const expressionReplaceWithSpaceRE = /(?:\s|\r?\n)+/y
-
 export const reactCompilerFuncRE = /^(?:rea|stc|der)$/
 export const watchCompilerFuncRE = /^(?:wat|Wat|waT)$/
 export const validIdentifierNameRE = /^[a-zA-Z_$][a-zA-Z_$\d]*$/
