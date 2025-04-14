@@ -1011,7 +1011,11 @@ export function analyzeAttribute(
                 ])
             }
 
-            const tir = isInterpolation ? transAttrValue() : stringify(rv)
+            const tir = isInterpolation
+                ? transAttrValue()
+                : isEmptyString(rv)
+                ? "!0"
+                : stringify(rv)
             tir && attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
         }
     })

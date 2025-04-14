@@ -2,9 +2,9 @@ import type { AnyObject } from "../util/types"
 import type { QingKuaiComponent } from "./instance"
 import type { TemplateStuOrModuleFunc } from "./types"
 
-import { RAW_VALUE, UNDEF } from "./constants"
 import { isFunction } from "../util/shared/assert"
 import { AssignmentToProps } from "./message/warn"
+import { IS_PROXY, RAW_VALUE, UNDEF } from "./constants"
 
 // 获取已绑定组件实例的相关方法
 export function init(instance: QingKuaiComponent, hashId: string) {
@@ -39,6 +39,9 @@ export function init(instance: QingKuaiComponent, hashId: string) {
             {},
             {
                 get(_, property) {
+                    if (property === IS_PROXY) {
+                        return true
+                    }
                     if (property === RAW_VALUE) {
                         return getRawProps()
                     }
@@ -56,6 +59,9 @@ export function init(instance: QingKuaiComponent, hashId: string) {
             {},
             {
                 get(_, property) {
+                    if (property === IS_PROXY) {
+                        return true
+                    }
                     if (property === RAW_VALUE) {
                         return getRawRefs()
                     }

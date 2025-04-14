@@ -3,7 +3,7 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.34",
+  "version": "1.0.35",
   "engines": {
     "node": ">=14"
   },
