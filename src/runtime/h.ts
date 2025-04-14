@@ -53,8 +53,6 @@ import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
-const cachedPureNodes = new Map<number, Node>()
-
 export function render(
     instance: QingKuaiComponent,
     target: Node,
@@ -84,16 +82,12 @@ export function render(
         instance.__ = null as any
     })
 
-    const { ts } = properties
-    const preInstance = getCurrentInstance()
     const renderEachTopBlock = (tom: TemplateStuOrModuleFunc) => {
         topNodesItem.push(h(instance, tom, target, reference, true, context, destruction))
     }
     invokeIndexedHooks(instance, 0)
-    ts.forEach(renderEachTopBlock)
-    invokeIndexedHooks(instance, 1)
-    setCurrentInstance(preInstance!)
-    return [topNodesItem]
+    properties.ts.forEach(renderEachTopBlock)
+    return invokeIndexedHooks(instance, 1), [topNodesItem]
 }
 
 export const h = withCleanUsedEffectList(function (
@@ -123,6 +117,7 @@ export const h = withCleanUsedEffectList(function (
     const { directive, toms } = rstu
     const times = directive?.v[0] ?? 1
     const parentDestruction = destruction
+    const cachedPureNodes = instance.__.cn
     const isDirectiveModule = !isNull(directive)
     const isAliasModule = directive?.t === ALIAS_MODULE_KIND
 

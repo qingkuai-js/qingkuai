@@ -12,6 +12,7 @@ let currentInstance: QingKuaiComponent | null = NIL
 export class QingKuaiComponent {
     /**
      * - ts means Template Structure
+     * - cn means Cached pure(static) Nodes
      * - deps means all Dependencies of component
      * - dst means Destruction Methods of component
      * - hooks in order: onBeforeMount, onAfterMount,
@@ -28,6 +29,7 @@ export class QingKuaiComponent {
         props: {},
         ctx: NOOP,
         context: [],
+        cn: new Map(),
         dst: newDestruction()
     }
 

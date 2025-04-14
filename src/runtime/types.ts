@@ -32,6 +32,7 @@ export interface QingKuaiProperties {
     id: string
     updating: boolean
     ctx: GetContextFunc
+    cn: Map<number, Node>
     hooks: GeneralFunc[][]
     dst: DestructionStruct
     context: RenderContext[]
