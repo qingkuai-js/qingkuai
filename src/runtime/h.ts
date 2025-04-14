@@ -189,8 +189,9 @@ export const h = withCleanUsedEffectList(function (
 
             const [tag, content, attrs, events, ...children] = tom
             const cif = isFunction(content)
+            const tagIsNumber = isNumber(tag)
             const qkNode: QingKuaiNodeStruct = { n: NIL, text: "", attrs: {} }
-            const cacheId = isNumber(children[0]) ? children[0] : isNumber(tag) ? tag : -1
+            const cacheId = isNumber(children[0]) ? children[0] : tagIsNumber ? tag : -1
 
             // 调用获取内容的函数
             const invokeGetter = (getter: Function) => {
@@ -261,10 +262,10 @@ export const h = withCleanUsedEffectList(function (
             if (cachedPureNodes.has(cacheId)) {
                 qkNode.n = cachedPureNodes.get(cacheId)!
             } else {
-                if (!tag) {
+                if (!tag || tagIsNumber) {
                     text(qkNode, getValue(content), cif)
                 } else {
-                    element(qkNode, tag as string)
+                    element(qkNode, tag)
                     setText(qkNode, getValue(content), cif)
 
                     // 判断元素是否为input、textarea或option，它们需要特殊处理：
@@ -322,8 +323,8 @@ export const h = withCleanUsedEffectList(function (
                 }
             }
 
-            if (tag && !isNumber(tag) && tag !== "!") {
-                attribute(qkNode, "qk-" + instance.__.id, "", false)
+            if (tag && !tagIsNumber && tag !== "!") {
+                attribute(qkNode, "class", "qingkuai-" + instance.__.id, false)
             }
 
             // 处理events
