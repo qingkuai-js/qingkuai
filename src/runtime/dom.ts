@@ -59,7 +59,7 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     }
 
     if (key === "#show") {
-        elem.style.display = value ? "" : "none"
+        return (elem.style.display = value ? "" : "none"), true
     }
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串

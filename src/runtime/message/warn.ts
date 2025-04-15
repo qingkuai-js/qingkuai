@@ -46,10 +46,10 @@ export const WatchEffectDependentNoReactiveValue = withCode(
 )
 
 export const DerivedDependenNoReactiveValue = withCode(8005, () => {
-    "The derived reactivity state declaration does not dependen any reactive value, consider replacing it to a normal declaration statement."
+    return "The derived reactivity state declaration does not dependen any reactive value, consider replacing it to a normal declaration statement."
 })
 
-function withCode<T extends GeneralFunc>(code: number, msgGetter: T) {
+function withCode<T extends (...args: any[]) => string>(code: number, msgGetter: T) {
     return (...args: Parameters<T>) => {
         console.warn(`[QingKuai Warnning](${code}):`, msgGetter(...args))
     }

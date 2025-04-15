@@ -1,15 +1,15 @@
-node_modules
-test-space
-tests
 src
+tests
+test-space
+node_modules
 
-.prettierrc
-.gitignore
-.npmignore
 .DS_Store
-.history
 .vscode
+.history
+.gitignore
+.prettierrc
 
 pnpm-lock.yaml
 tsconfig.json
+conf.env.d.ts
 rollup.config.js

@@ -61,6 +61,7 @@ export const FULL_RUNTIME_ITEMS = new Set([
     "keyedForModule",
     "aliasModule",
     "awaitModule",
+    "targetModule",
     "eventWrapper",
     "withReference",
     "unescapeModule",

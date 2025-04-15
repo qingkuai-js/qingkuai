@@ -29,8 +29,7 @@ export const derived = withCleanUsedEffectList((fn: Getter, setter?: Setter) => 
         target.$ = value
     }
     const proxy = newDerivedProxy(target, state, update)
-
-    return isDebug ? [proxy, proxy.$] : proxy
+    return isDebug ? [proxy, UNDEF] : proxy
 })
 
 // 解构注册衍生响应性状态：将解构的每个标识符单独声明为一个衍生响应性状态，被解构

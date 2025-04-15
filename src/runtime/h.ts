@@ -297,6 +297,11 @@ export const h = withCleanUsedEffectList(function (
             insert(target, qkNode.n!, reference)
             topNodesItem.push(qkNode.n!)
 
+            // 添加scope attribute
+            if (tag && !tagIsNumber && tag !== "!") {
+                attribute(qkNode, "qk-" + instance.__.id, "", false)
+            }
+
             // 处理attributes
             for (let i = 0; i < len(attrs); i += 2) {
                 let [key, value] = [attrs![i], attrs![i + 1]]
@@ -323,10 +328,6 @@ export const h = withCleanUsedEffectList(function (
                         return attribute(qkNode, key, invokeGetter(value), true)
                     })
                 }
-            }
-
-            if (tag && !tagIsNumber && tag !== "!") {
-                attribute(qkNode, "qk-" + instance.__.id, "", false)
             }
 
             // 处理events
