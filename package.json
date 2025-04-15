@@ -4,24 +4,21 @@
   "author": "lgq",
   "type": "module",
   "version": "1.0.37",
-  "engines": {
-    "node": ">=14"
-  },
   "exports": {
     ".": {
+      "types": "./dist/types/runtime/index.d.ts",
       "import": "./dist/esm/runtime/index.js",
-      "require": "./dist/cjs/runtime/index.cjs",
-      "types": "./dist/types/runtime/index.d.ts"
+      "require": "./dist/cjs/runtime/index.cjs"
     },
     "./internal": {
+      "types": "./dist/types/runtime/internal.d.ts",
       "import": "./dist/esm/runtime/internal.js",
-      "require": "./dist/cjs/runtime/internal.cjs",
-      "types": "./dist/types/runtime/internal.d.ts"
+      "require": "./dist/cjs/runtime/internal.cjs"
     },
     "./compiler": {
+      "types": "./dist/types/compiler/index.d.ts",
       "import": "./dist/esm/compiler/index.js",
-      "require": "./dist/cjs/compiler/index.cjs",
-      "types": "./dist/types/compiler/index.d.ts"
+      "require": "./dist/cjs/compiler/index.cjs"
     }
   },
   "scripts": {
