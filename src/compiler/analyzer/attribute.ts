@@ -439,11 +439,11 @@ export function analyzeAttribute(
                         case "checked":
                             recordValueCheckSnippet("Boolean")
                             break
-                        case "dom":
-                            recordValueCheckSnippet("Node", "!)")
-                            break
                         case "group":
                             recordValueCheckSnippet("Group", ",")
+                            break
+                        case "dom":
+                            recordValueCheckSnippet(`Element<${normalStringify(tag)}>`, "!)")
                             break
                     }
 
