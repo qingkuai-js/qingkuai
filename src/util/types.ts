@@ -19,8 +19,3 @@ export type EventListenerFlagKeys = keyof typeof EventListenerFlag
 export type FixedArray<T, L extends number, R extends T[] = []> = R["length"] extends L
     ? R
     : FixedArray<T, L, [...R, T]>
-
-export interface FindOutOfFuncCommon {
-    (str: string, pattern: string | RegExp): number
-    (str: string, pattern: string | RegExp, startIndex: number): NumNum
-}

@@ -1,8 +1,12 @@
-import type { FindOutOfFuncCommon, NumNum, StartBracket } from "../types"
+import type { NumNum, StartBracket } from "../types"
 
-import { isString, isUndefined } from "../shared/assert"
+import { isArray, isString, isUndefined } from "../shared/assert"
 import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../../compiler/state"
+
+export const findOutOfString = findOutOfGen(true, false)
+export const findOutOfComment = findOutOfGen(false, true)
+export const findOutOfStringComment = findOutOfGen(true, true)
 
 // JSON.stringify别名
 export function normalStringify(v: any) {
@@ -45,183 +49,6 @@ export function stringify(v: any) {
     }
 }
 
-// 脱离字符串范围从js代码中查找指定子串
-// FindOutOfFuncBase是一个重载函数，当未传入startIndex时它只返回匹配子串的开始索引
-// 当传入了startIndex时，它将返回一个由两个number组成的数组，格式：[匹配子串开始索引，匹配子串长度]
-export const findOutOfString: FindOutOfFuncCommon = (
-    str: string,
-    pattern: string | RegExp,
-    startIndex?: number
-): any => {
-    const withoutStartIndex = isUndefined(startIndex)
-    if (withoutStartIndex) {
-        startIndex = 0
-    }
-
-    // 根据是否传入了startIndex返回正确的重载返回值
-    const cr = (index: number, len: number) => {
-        if (withoutStartIndex) {
-            return index
-        } else {
-            return [index, len] as NumNum
-        }
-    }
-
-    // ls代表剩余未查询部分的字符串
-    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
-        if (/^['"`]/.test(str[i])) {
-            const endChar = str[i]
-            while (str[++i] !== endChar) {
-                if ("\\" === str[i]) {
-                    i++
-                    continue
-                }
-                if (i >= str.length) {
-                    return cr(-1, 0)
-                }
-            }
-            ls = str.slice(++i)
-        }
-
-        if (isString(pattern)) {
-            if (ls.startsWith(pattern)) {
-                return cr(i, pattern.length)
-            }
-        } else {
-            const matched = pattern.exec(ls)
-            if (matched?.index === 0) {
-                return cr(i + matched.index, matched[0].length)
-            }
-        }
-    }
-
-    return cr(-1, 0)
-}
-
-// 脱离注释范围从js代码中查找指定子串，重载形式与findOutOfString相同
-export const findOutOfComment: FindOutOfFuncCommon = (
-    str: string,
-    pattern: string | RegExp,
-    startIndex?: number
-): any => {
-    const withoutStartIndex = isUndefined(startIndex)
-    if (withoutStartIndex) {
-        startIndex = 0
-    }
-
-    // 根据是否传入了startIndex返回正确的重载返回值
-    const cr = (index: number, len: number) => {
-        if (withoutStartIndex) {
-            return index
-        } else {
-            return [index, len] as NumNum
-        }
-    }
-
-    // ls代表剩余未查询部分的字符串
-    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
-        if (ls.startsWith("//")) {
-            const endIndex = ls.indexOf("\n")
-            if (endIndex === -1) {
-                return cr(-1, 0)
-            }
-            i += endIndex
-            continue
-        }
-
-        if (ls.startsWith("/*")) {
-            const endIndex = ls.indexOf("*/")
-            if (endIndex === -1) {
-                return cr(-1, 0)
-            }
-            i += endIndex + 1
-            continue
-        }
-
-        if (isString(pattern)) {
-            if (ls.startsWith(pattern)) {
-                return cr(i, pattern.length)
-            }
-        } else {
-            const matched = pattern.exec(ls)
-            if (matched?.index === 0) {
-                return cr(i + matched.index, matched[0].length)
-            }
-        }
-    }
-
-    return cr(-1, 0)
-}
-
-// 脱离字符串和注释范围从js代码中查找指定子串，重载形式与findOutOfString相同
-export const findOutOfStringComment: FindOutOfFuncCommon = (
-    str: string,
-    pattern: string | RegExp,
-    startIndex?: number
-): any => {
-    const withoutStartIndex = isUndefined(startIndex)
-    if (withoutStartIndex) {
-        startIndex = 0
-    }
-
-    // 根据是否传入了startIndex返回正确的重载返回值
-    const cr = (index: number, len: number) => {
-        if (withoutStartIndex) {
-            return index
-        } else {
-            return [index, len] as NumNum
-        }
-    }
-
-    // ls代表剩余未查询部分的字符串
-    for (let i = startIndex!, ls = str.slice(i); i < str.length; i++, ls = str.slice(i)) {
-        if (/^['"`]/.test(str[i])) {
-            const endChar = str[i]
-            while (str[++i] !== endChar) {
-                if ("\\" === str[i]) {
-                    i++
-                    continue
-                }
-                if (i >= str.length) {
-                    return cr(-1, 0)
-                }
-            }
-            ls = str.slice(++i)
-        }
-
-        if (ls.startsWith("//")) {
-            const endIndex = ls.indexOf("\n")
-            if (endIndex === -1) {
-                return cr(-1, 0)
-            }
-            i += endIndex
-            continue
-        }
-
-        if (ls.startsWith("/*")) {
-            const endIndex = ls.indexOf("*/")
-            if (endIndex === -1) {
-                return cr(-1, 0)
-            }
-            i += endIndex + 1
-            continue
-        }
-
-        if (isString(pattern)) {
-            if (ls.startsWith(pattern)) {
-                return cr(i, pattern.length)
-            }
-        } else {
-            const matched = pattern.exec(ls)
-            if (matched?.index === 0) {
-                return cr(i + matched.index, matched[0].length)
-            }
-        }
-    }
-
-    return cr(-1, 0)
-}
-
 // 驼峰命名转串型命名格式
 export function camel2Kebab(str: string, allowFullLower = true) {
     if (!allowFullLower && !/[A-Z]/.test(str.slice(1))) {
@@ -255,4 +82,83 @@ export function findEndBracket(str: string, startIndex: number, char: StartBrack
         }
         startIndex = endBracketIndex + 1
     }
+}
+
+function findOutOfGen(outString: boolean, outComment: boolean) {
+    function generated(str: string, pattern: string | RegExp): number
+    function generated(str: string, pattern: string | RegExp, startIndex?: number): NumNum
+    function generated(str: string, pattern: string | RegExp, startIndex?: number) {
+        const withoutStartIndex = isUndefined(startIndex)
+        if (withoutStartIndex) {
+            startIndex = 0
+        }
+
+        // 根据是否传入了startIndex返回正确的重载返回值
+        const cr = (index: number, len: number) => {
+            if (withoutStartIndex) {
+                return index
+            } else {
+                return [index, len] as NumNum
+            }
+        }
+
+        // ls（last string）表示剩余未查询部分的字符串
+        for (let i = startIndex!, ls = str.slice(i); i < str.length; ls = str.slice(++i)) {
+            if (outString && /^['"`]/.test(str[i])) {
+                const stopCharacter = str[i]
+                while (!(ls = str.slice(++i)).startsWith(stopCharacter)) {
+                    // 模板字符串中插值表达式需要查找
+                    if (ls.startsWith("${")) {
+                        const endBracketIndex = findEndBracket(ls, 2)
+                        const interpolationFoundRet: NumNum = (generated as any)(
+                            ls.slice(2, endBracketIndex === -1 ? ls.length : endBracketIndex),
+                            pattern,
+                            0
+                        )
+                        if (interpolationFoundRet[0] === -1) {
+                            i += endBracketIndex
+                            continue
+                        }
+                        return [interpolationFoundRet[0] + i + 2, interpolationFoundRet[1]]
+                    }
+                    if ("\\" === str[i]) {
+                        i++
+                        continue
+                    }
+                    if (i >= str.length) {
+                        return cr(-1, 0)
+                    }
+                }
+                ls = str.slice(++i)
+            }
+            if (outComment && ls.startsWith("//")) {
+                const endIndex = ls.indexOf("\n")
+                if (endIndex === -1) {
+                    return cr(-1, 0)
+                }
+                i += endIndex
+                continue
+            }
+            if (outComment && ls.startsWith("/*")) {
+                const endIndex = ls.indexOf("*/")
+                if (endIndex === -1) {
+                    return cr(-1, 0)
+                }
+                i += endIndex + 1
+                continue
+            }
+            if (isString(pattern)) {
+                if (ls.startsWith(pattern)) {
+                    return cr(i, pattern.length)
+                }
+            } else {
+                const matched = pattern.exec(ls)
+                if (matched?.index === 0) {
+                    return cr(i, matched[0].length)
+                }
+            }
+        }
+        return cr(-1, 0)
+    }
+    return generated
 }

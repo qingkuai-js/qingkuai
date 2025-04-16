@@ -40,7 +40,9 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
                 dstu[i][1] = singleTerConfirm(dstu[i][1])
             }
         }
-        confirmStringConstants(tar.children.map(child => child.tar))
+        if (tar.children.length) {
+            confirmStringConstants(tar.children.map(child => child.tar))
+        }
     })
 }
 
@@ -64,7 +66,7 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
     const tirIsString = isString(tir)
     const transformedArr: string[] = []
     const mappings = tirIsString ? [] : tir.mappings
-    const code = isString(tir) ? tir : tir.transformedExp
+    const code = tirIsString ? tir : tir.transformedExp
     const mappingOffsets: number[] = Array(tirIsString ? 0 : mappings.length).fill(0)
 
     for (let startIndex = 0, saveAs = ""; true; ) {

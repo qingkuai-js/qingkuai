@@ -1,8 +1,6 @@
 import { confirmAlias } from "../../util/compiler/sundry"
 import { FULL_INIT_ITEMS, FULL_RUNTIME_ITEMS } from "../constants"
-import { allExistingIdentifiers, usedInitItems, usedRuntimeItems } from "../state"
-
-const aliases = new Map<string, string>()
+import { aliases, allExistingIdentifiers, usedInitItems, usedRuntimeItems } from "../state"
 
 // 确定标识符别名，分为以下两部分：
 // 1. runtime/internal 导入标识符

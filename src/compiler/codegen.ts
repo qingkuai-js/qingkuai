@@ -112,11 +112,11 @@ export function generateCompileResult(
     const stringConstantsPostfix = withStringConstant ? postfix : ""
     const hasNonBeCalledSetter = debuggingInfo.constIdentifiers.size > 0
     const scriptTransformedRetPostfix = withScriptSourceCode ? postfix : ""
-    const stringLiteralComment = withStringConstant ? "// string literals area" : ""
-    const scriptSourceComment = withScriptSourceCode ? "// javascript source code area\n" : ""
+    const stringLiteralComment = withStringConstant ? "// string literals" : ""
+    const scriptSourceComment = withScriptSourceCode ? "// script source code\n" : ""
 
     if (hasDebuggingSetter || hasNonBeCalledSetter) {
-        debuggingStatementArr.push(postfix, "// debugging setters area")
+        debuggingStatementArr.push(postfix, "// debugging setters")
         debuggingInfo.setters.forEach((id, identifier) => {
             const setterFuncDeclaration = `function __d${id}__(v){ ${identifier} = v }`
             debuggingStatementArr.push(`\n${indent(2)}${setterFuncDeclaration}`)
@@ -136,7 +136,7 @@ export function generateCompileResult(
         `{\n${indent(2)}super(${argsIdentifier})${postfix}${initCallStatement}${postfix}` +
         `${stringLiteralComment}${stringConstantStr}${stringConstantsPostfix}` +
         `${scriptSourceComment}${scriptTranformedRet}${scriptTransformedRetPostfix}` +
-        `// template structure area\n${indent(2)}${setTemplateStructureFuncName}` +
+        `// template structure\n${indent(2)}${setTemplateStructureFuncName}` +
         `(${templateTransformedRet || "[]"})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 

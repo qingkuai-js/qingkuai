@@ -90,6 +90,7 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
 export function targetModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
     const depIsGetter = isFunction(dep)
     const targetModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        let isInitial = true
         let lastTarget: Node | null = NIL
         const value = depIsGetter ? dep(ctx) : dep
         const effectList = values(usedEffectList)
@@ -126,7 +127,7 @@ export function targetModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
                 }
 
                 const newRef = newTarget === target ? dref : NIL
-                if (dst.c.length) {
+                if (!isInitial) {
                     traverseTopNodes(topNodes, node => {
                         if (node !== dref) {
                             insert(newTarget, node, newRef)
@@ -141,6 +142,7 @@ export function targetModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
                             h(instance, tom, newTarget, newRef, true, context, newDst)
                         )
                     })
+                    isInitial = false
                 }
                 return (lastTarget = newTarget), true
             }
