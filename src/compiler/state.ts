@@ -12,7 +12,7 @@ import type {
     TempStoredImportInfo
 } from "./types"
 
-import { emptyArr } from "../util/shared/sundry"
+import { isUndefined } from "../util/shared/assert"
 import { newASTLocation } from "../util/compiler/structure"
 
 // 在编译结果中返回的编译器内布值要打断其引用状态
@@ -21,54 +21,55 @@ export let messages: MessageItem[] = []
 export let sourceMapInfo = newSourceMapInfo()
 export let inputDescriptor = newInputDescriptor()
 
-export const debuggingInfo = newDebuggingInfo()
-export const replacementInfo = newReplacementInfo()
+export let debuggingInfo = newDebuggingInfo()
+export let replacementInfo = newReplacementInfo()
 
-export const interCodeSnippets: [number, string][] = []
-export const tempStoredImportInfos: TempStoredImportInfo[] = []
+export let interCodeSnippets: [number, string][] = []
+export let tempStoredImportInfos: TempStoredImportInfo[] = []
 
-export const usedInitItems = new Set<string>()
-export const usedRuntimeItems = new Set<string>()
-export const importedIdentifiers = new Set<string>()
-export const allExistingIdentifiers = new Set<string>()
-export const eliminateRanges: EliminateRanges = new Set()
+export let usedInitItems = new Set<string>()
+export let usedRuntimeItems = new Set<string>()
+export let importedIdentifiers = new Set<string>()
+export let allExistingIdentifiers = new Set<string>()
+export let eliminateRanges: EliminateRanges = new Set()
 
-export const stringConstants = new Map<string, StringConstant>()
-export const stringConstantsSourceMap = new Map<string, string>()
-export const templateNodeToContextIdentifiers = new Map<TemplateNode, Set<string>>()
+export let stringConstants = new Map<string, StringConstant>()
+export let stringConstantsSourceMap = new Map<string, string>()
+export let templateNodeToContextIdentifiers = new Map<TemplateNode, Set<string>>()
 
 export function getCacheId() {
-    return ++cacheId
+    return cacheId++
 }
 
 // 重置编译器状态
 export function resetCompilerState(options: CompileOptions) {
     cacheId = 0
-    usedInitItems.clear()
-    eliminateRanges.clear()
-    stringConstants.clear()
-    usedRuntimeItems.clear()
-    importedIdentifiers.clear()
-    allExistingIdentifiers.clear()
-    stringConstantsSourceMap.clear()
-    templateNodeToContextIdentifiers.clear()
-    emptyArr(interCodeSnippets, tempStoredImportInfos)
-    Object.assign(debuggingInfo, newDebuggingInfo())
-    Object.assign(replacementInfo, newReplacementInfo())
-
     messages = []
+    interCodeSnippets = []
+    tempStoredImportInfos = []
+    debuggingInfo = newDebuggingInfo()
     sourceMapInfo = newSourceMapInfo()
     inputDescriptor = newInputDescriptor()
+    replacementInfo = newReplacementInfo()
 
-    // 调试模式下一定会生成sourcemap
-    if (options.debug === true) {
-        options.sourcemap = true
+    usedInitItems = new Set()
+    stringConstants = new Map()
+    eliminateRanges = new Set()
+    usedRuntimeItems = new Set()
+    importedIdentifiers = new Set()
+    allExistingIdentifiers = new Set()
+    stringConstantsSourceMap = new Map()
+    templateNodeToContextIdentifiers = new Map()
+
+    // 调试模式下未指定是否生成sourcemap时默认生成sourcemap
+    if (options.debug && isUndefined(options.sourcemap)) {
+        inputDescriptor.options.sourcemap = true
     }
+
     // 检查模式下需要保留所有注释节点
-    if (options.check === true) {
-        options.reserveTemplateComment = true
+    if (options.check) {
+        inputDescriptor.options.reserveTemplateComment = true
     }
-    Object.assign(inputDescriptor.options, options)
 }
 
 // 生成新的sourcemap信息结构

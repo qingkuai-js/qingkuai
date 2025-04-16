@@ -21,6 +21,7 @@ export class QingKuaiComponent {
     __: QingKuaiProperties = {
         updating: false,
         id: "",
+        cn: [],
         ts: [],
         deps: [],
         hooks: [],
@@ -29,7 +30,6 @@ export class QingKuaiComponent {
         props: {},
         ctx: NOOP,
         context: [],
-        cn: new Map(),
         dst: newDestruction()
     }
 

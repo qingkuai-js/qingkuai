@@ -258,8 +258,8 @@ export const h = withCleanUsedEffectList(function (
             }
 
             // 创建节点及处理textContent
-            if (cachedPureNodes.has(cacheId)) {
-                qkNode.n = cachedPureNodes.get(cacheId)!
+            if (cachedPureNodes[cacheId]) {
+                qkNode.n = cachedPureNodes[cacheId]
             } else {
                 if (!tag || tagIsNumber) {
                     text(qkNode, getValue(content), cif)
@@ -274,7 +274,7 @@ export const h = withCleanUsedEffectList(function (
                     isInputOrOption = isInput || tag === "option"
                     isInputOrTextarea = isInput || tag === "textarea"
                 }
-                cacheId !== -1 && cachedPureNodes.set(cacheId, qkNode.n!)
+                cacheId !== -1 && (cachedPureNodes[cacheId] = qkNode.n!)
             }
 
             // 如果是option元素，把qkNode添加到DOM属性中，在处理select的引用
@@ -284,10 +284,7 @@ export const h = withCleanUsedEffectList(function (
             }
 
             if (shouldDestroy || isDirectiveModule) {
-                attachDestroyLocal(() => {
-                    destroy(qkNode.n!)
-                    cacheId !== -1 && cachedPureNodes.delete(cacheId)
-                })
+                attachDestroyLocal(() => destroy(qkNode.n!))
             }
             if (cif) {
                 attachUpdateLocal(() => {

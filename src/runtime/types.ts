@@ -30,9 +30,9 @@ export type UnescapeOptions = Partial<{
 
 export interface QingKuaiProperties {
     id: string
+    cn: Node[]
     updating: boolean
     ctx: GetContextFunc
-    cn: Map<number, Node>
     hooks: GeneralFunc[][]
     dst: DestructionStruct
     context: RenderContext[]

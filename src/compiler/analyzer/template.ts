@@ -8,6 +8,7 @@ import type {
 import { getAlias } from "./alias"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
+import { getLocByIndex } from "../../util/compiler/locations"
 import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
@@ -16,7 +17,6 @@ import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { isSelfClosingTag, markPositionFlag } from "../../util/compiler/sundry"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
 import { BadTargetForHtmlDirective, HtmlDirectiveWithChildElement } from "../message/error"
-import { getLocByIndex } from "../../util/compiler/locations"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
