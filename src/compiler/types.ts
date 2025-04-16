@@ -57,6 +57,7 @@ export interface SourceMapInfo {
     positionShouldNotBeMapped: (boolean | undefined)[]
 }
 export interface StringConstant {
+    n: number
     value: string
     count: number
     using: boolean
@@ -157,6 +158,7 @@ export interface TemplateNode {
 export type PreprocessedTemplateAttribute = TemplateAttribute & {
     inferredValue: string
     positionMap?: number[]
+    normalClassRange?: NumNum
 }
 
 export interface TemplateAnalysisRet {
@@ -202,16 +204,20 @@ export interface AttributeAnalysisRet {
     awaitExpression?: [number, string]
 }
 
-export interface TransformInterpolationOptionalParam {
-    eventWrapper?: {
+export type TransformInterpolationOptionalOptions = Partial<{
+    eventWrapper: {
         flag: number
         modifiers: string[]
     }
-    positionMap?: number[]
-    usedAsSetter?: boolean
-    isKeyDirective?: boolean
-    isComponentEvent?: boolean
-    attributeWithNoValue?: boolean
+    positionMap: number[]
+    usedAsSetter: boolean
+    isKeyDirective: boolean
+    normalClassRange: NumNum
+    isComponentEvent: boolean
+    attributeWithNoValue: boolean
+}>
+export type TransformInterpolationOptions = TransformInterpolationOptionalOptions & {
+    type: "directive" | "attribute" | "event" | "content"
 }
 
 export type TransformInterpolationRet =

@@ -13,6 +13,8 @@ export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 export const bannedIdentifierFormatRE = /^__w__|__(?:[sd]\d+|dn|c)__$/
 
 export const tagIsComponentRE = /^[A-Z]|-/
+export const stringLiteralConstantRE = /__s(\d+\.)?\d+__/
+export const tirNormalClassItemRE = /\[?__s\d+__(?:, )?\]?/g
 
 export const reactCompilerFuncRE = /^(?:rea|stc|der)$/
 export const watchCompilerFuncRE = /^(?:wat|Wat|waT)$/

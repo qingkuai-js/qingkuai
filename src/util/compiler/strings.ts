@@ -1,7 +1,11 @@
 import type { NumNum, StartBracket } from "../types"
 
-import { isArray, isString, isUndefined } from "../shared/assert"
-import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
+import {
+    kebabWholeRE,
+    stringLiteralConstantRE,
+    kebabWithoutFirstLetterRE
+} from "../../compiler/regular"
+import { isString, isUndefined } from "../shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../../compiler/state"
 
 export const findOutOfString = findOutOfGen(true, false)
@@ -28,24 +32,27 @@ export function escapeWhiteSpace(s: string) {
 }
 
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
-export function stringify(v: any) {
+export function stringify(v: any, padLeft = -1) {
     const s = normalStringify(v)
     if (inputDescriptor.options.check) {
         return s
     }
+
+    const padIt = (v: string) => {
+        return padLeft === -1 ? v : `__s${padLeft}.${v.slice(3)}`
+    }
     if (stringConstants.has(s)) {
         const existingItem = stringConstants.get(s)!
-        existingItem.count++
-        return existingItem.value
+        return existingItem.count++, padIt(existingItem.value)
     } else {
         const value = `__s${stringConstants.size}__`
         stringConstants.set(s, {
             value,
             count: 1,
-            using: false
+            using: false,
+            n: stringConstants.size
         })
-        stringConstantsSourceMap.set(value, s)
-        return value
+        return stringConstantsSourceMap.set(value, s), padIt(value)
     }
 }
 
@@ -65,6 +72,18 @@ export function kebab2Camel(str: string, startWithUppercase = false) {
     return str.replace(re, s => {
         return s === "-" ? "" : s.toUpperCase()
     })
+}
+
+// 通过转换后的字符串字面量标识符名称获取原始字符串字面量表达
+export function getResotedStringLiteral(identifier: string) {
+    const padMatched = stringLiteralConstantRE.exec(identifier)
+    if (padMatched?.[1]) {
+        identifier = identifier.slice(0, 3) + identifier.slice(3 + padMatched[1].length)
+    }
+    return {
+        value: stringConstantsSourceMap.get(identifier)!,
+        pad: Number(padMatched?.[1]?.slice(0, -1) ?? -1) as number
+    }
 }
 
 // 在表达式中找到关闭括号的位置， 使用此方法时，startIndex应为开始括号的下一个位置
@@ -88,10 +107,9 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
     function generated(str: string, pattern: string | RegExp): number
     function generated(str: string, pattern: string | RegExp, startIndex?: number): NumNum
     function generated(str: string, pattern: string | RegExp, startIndex?: number) {
+        const pis = isString(pattern)
         const withoutStartIndex = isUndefined(startIndex)
-        if (withoutStartIndex) {
-            startIndex = 0
-        }
+        const re = new RegExp(pis ? `^${pattern}` : `^${pattern.source}`, pis ? "" : pattern.flags)
 
         // 根据是否传入了startIndex返回正确的重载返回值
         const cr = (index: number, len: number) => {
@@ -103,7 +121,7 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
         }
 
         // ls（last string）表示剩余未查询部分的字符串
-        for (let i = startIndex!, ls = str.slice(i); i < str.length; ls = str.slice(++i)) {
+        for (let i = 0, ls = str; i < str.length; ls = str.slice(++i)) {
             if (outString && /^['"`]/.test(str[i])) {
                 const stopCharacter = str[i]
                 while (!(ls = str.slice(++i)).startsWith(stopCharacter)) {
@@ -113,7 +131,7 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
                         const interpolationFoundRet: NumNum = (generated as any)(
                             ls.slice(2, endBracketIndex === -1 ? ls.length : endBracketIndex),
                             pattern,
-                            0
+                            startIndex ? startIndex - i - 2 : undefined
                         )
                         if (interpolationFoundRet[0] === -1) {
                             i += endBracketIndex
@@ -147,15 +165,10 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
                 i += endIndex + 1
                 continue
             }
-            if (isString(pattern)) {
-                if (ls.startsWith(pattern)) {
-                    return cr(i, pattern.length)
-                }
-            } else {
-                const matched = pattern.exec(ls)
-                if (matched?.index === 0) {
-                    return cr(i, matched[0].length)
-                }
+
+            const matched = re.exec(ls)
+            if (matched && i >= (startIndex || -1)) {
+                return cr(i, matched[0].length)
             }
         }
         return cr(-1, 0)

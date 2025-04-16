@@ -7,7 +7,8 @@ import type {
     AttributeAnalysisRet,
     TransformInterpolationRet,
     PreprocessedTemplateAttribute,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptions,
+    TransformInterpolationOptionalOptions
 } from "../types"
 import type { Expression } from "@babel/types"
 import type { AnyObject, NumNum } from "../../util/types"
@@ -224,16 +225,20 @@ export function analyzeAttribute(
         const transDirective = (
             exp: string,
             startSourceIndex: number,
-            option?: TransformInterpolationOptionalParam
+            option?: TransformInterpolationOptionalOptions
         ) => {
             if (isCheckMode) {
                 return recordInterExpression(exp, [startSourceIndex]), ""
             }
-            return transformInterpolation(exp, startSourceIndex, context, "directive", option)
+
+            return transformInterpolation(exp, startSourceIndex, context, {
+                ...option,
+                type: "directive"
+            })
         }
 
         // 转换标签属性值
-        const transAttrValue = (option?: TransformInterpolationOptionalParam) => {
+        const transAttrValue = (option?: TransformInterpolationOptionalOptions) => {
             const exp = rv ? trimedValue : iv
 
             // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
@@ -247,7 +252,11 @@ export function analyzeAttribute(
             })
 
             const startSourceIndex = rv ? trimedValueStartSourceIndex : keyRange[0] + 1
-            return transformInterpolation(exp, startSourceIndex, context, "attribute", option)
+            return transformInterpolation(exp, startSourceIndex, context, {
+                ...option,
+                type: "attribute",
+                normalClassRange: attr.normalClassRange
+            })
         }
 
         // for，then/catch和slot指令记录标识符的逻辑一致，提取到这里分别调用即可
@@ -1260,13 +1269,19 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             return attrItems.forEach(item => ret.push(item))
         }
 
-        const rawValues = attrItems.map((item, index) => {
-            if (index !== normalClassIndex) {
-                return item.inferredValue
+        const rawValues: string[] = []
+        let normalClassRange: NumNum = [-1, -1]
+        for (let i = 0, combinedLen = 1; i < attrItems.length; i++) {
+            if (i !== normalClassIndex) {
+                rawValues.push(attrItems[i].inferredValue)
+                combinedLen += attrItems[i].inferredValue.length + 2
+            } else {
+                const normalArr = attrItems[i].inferredValue.split(/\s+/).filter(v => v)
+                const joinedNormalClass = normalArr.map(v => normalStringify(v)).join(", ")
+                normalClassRange = [combinedLen, combinedLen + joinedNormalClass.length]
+                rawValues.push(joinedNormalClass)
             }
-            return normalStringify(item.inferredValue)
-        })
-        const transformedValue = rawValues.join(", ")
+        }
 
         // positionMap用来存储位置映射信息，只有动态class值的部分会存在位置映射（动态值字符索引 -> 源码字符索引），
         // 在transformInterpolation方法中如果传入了位置映射信息，只有在表达式索引存在源码位置映射时才生成sourcemap
@@ -1291,7 +1306,9 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             }
         }
 
+        const transformedValue = rawValues.join(", ")
         ret.push({
+            normalClassRange,
             loc: attrItems[0].loc,
             key: {
                 raw: attrKey,
@@ -1326,7 +1343,7 @@ function makeDestructuringPatternSignleLine(
     const { positions } = inputDescriptor
     const endSourceIndex = startSourceIndex + pattern.length
     const [startLoc, endLoc] = [positions[startSourceIndex], positions[endSourceIndex]]
-    const transformedPattern = pattern.replace(/\s{2,}/g, " ")
+    const transformedPattern = pattern.replace(/\s+/g, " ")
     return {
         transformedExp: transformedPattern,
         mappings: [

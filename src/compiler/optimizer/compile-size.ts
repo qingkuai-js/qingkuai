@@ -1,8 +1,15 @@
-import type { TemplateAnalysisRet, TransformInterpolationRet } from "../types"
+import type { StringOrStringGetter, TemplateAnalysisRet, TransformInterpolationRet } from "../types"
 
-import { isNull, isString, isUndefined } from "../../util/shared/assert"
+import {
+    normalStringify,
+    escapeWhiteSpace,
+    findOutOfStringComment,
+    getResotedStringLiteral
+} from "../../util/compiler/strings"
+import { stringLiteralConstantRE, tirNormalClassItemRE } from "../regular"
+import { isFunction, isNull, isString, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
-import { escapeWhiteSpace, findOutOfStringComment } from "../../util/compiler/strings"
+import { StringLiteralLeftPad } from "../constants"
 
 export function compressCompileSize(tars: (TemplateAnalysisRet | null)[]) {
     ;[confirmBracket, confirmStringConstants].forEach(fn => fn(tars))
@@ -31,7 +38,7 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
                 break
             }
             if (!isUndefined(astu?.[i])) {
-                astu[i] = singleTerConfirm(astu[i])
+                astu[i] = singleTerConfirm(astu[i], true)
             }
             if (!isUndefined(estu?.[i])) {
                 estu[i] = singleTerConfirm(estu[i])
@@ -62,27 +69,35 @@ function confirmBracket(tars: (TemplateAnalysisRet | null)[]) {
 
 // 确定是否使用生成的字符串字面量变量，当其使用次数大于1且其本身长度大于2时就会被保留变量访问，
 // 如果搜索到的字符串字面量变量不同时满足以上两个条件，它将被还原为原始的字符串字面量
-function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
+function singleTerConfirm<T extends TransformInterpolationRet>(tir: T, isAttr = false): T {
     const tirIsString = isString(tir)
-    const transformedArr: string[] = []
+    const normalClasses: string[] = []
     const mappings = tirIsString ? [] : tir.mappings
+    const transformedArr: StringOrStringGetter[] = []
     const code = tirIsString ? tir : tir.transformedExp
     const mappingOffsets: number[] = Array(tirIsString ? 0 : mappings.length).fill(0)
 
-    for (let startIndex = 0, saveAs = ""; true; ) {
-        const [matchedIndex, matchedLen] = findOutOfStringComment(code, /__s\d+__/, startIndex)
+    for (let startIndex = 0, saveAs = "", isClassValue = false; startIndex < code.length; ) {
+        const [matchedIndex, matchedLen] = findOutOfStringComment(
+            code,
+            stringLiteralConstantRE,
+            startIndex
+        )
         if (matchedIndex === -1) {
             transformedArr.push(code.slice(startIndex))
             break
         }
-        transformedArr.push(code.slice(startIndex, matchedIndex))
+        if (matchedIndex !== startIndex) {
+            transformedArr.push(code.slice(startIndex, matchedIndex))
+        }
 
+        let replacedLen = matchedLen
         const matchedStr = code.slice(matchedIndex, matchedIndex + matchedLen)
-        const restoredStrLiteral = stringConstantsSourceMap.get(matchedStr)!
-        const currentStringConstant = stringConstants.get(restoredStrLiteral)!
-        if (currentStringConstant.count > 1 && restoredStrLiteral.length > 2) {
+        const { value: rvalue, pad: rpad } = getResotedStringLiteral(matchedStr)
+        const currentStringConstant = stringConstants.get(rvalue)!
+        if (currentStringConstant.count > 1 && rvalue.length > 2) {
             const restoreToComment = inputDescriptor.options.comment
-                ? `/* ${escapeWhiteSpace(JSON.parse(restoredStrLiteral))} */ `
+                ? `/* ${escapeWhiteSpace(JSON.parse(rvalue))} */ `
                 : ""
             if (!currentStringConstant.using) {
                 const resetNumStr = `__s${inputDescriptor.stringConstantCount++}__`
@@ -93,13 +108,26 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
                 transformedArr.push((saveAs = restoreToComment + currentStringConstant.value))
             }
         } else {
-            transformedArr.push((saveAs = restoredStrLiteral))
+            if (!isClassValue || rpad !== StringLiteralLeftPad.normalClass) {
+                transformedArr.push((saveAs = rvalue))
+            } else {
+                if (((saveAs = ""), matchedIndex + matchedLen + 2 <= code.length)) {
+                    replacedLen += 2
+                }
+                if (!normalClasses.length) {
+                    const hasNonNormal = !tirIsString || !!code.replace(tirNormalClassItemRE, "")
+                    transformedArr.push(() => {
+                        return normalStringify(normalClasses.join(" ")) + (hasNonNormal ? ", " : "")
+                    })
+                }
+                normalClasses.push(JSON.parse(rvalue))
+            }
         }
 
         // 当string constant被替换编号或还原时，将当前处理位置之后的段的列偏移量记录到
-        // mappingOffsets中，mapping中下标为n的项目的列偏移量记录在mappingOffset[n]中
+        // mappingOffsets中，mapping中下标为n的项目的列偏移量记录在mappingOffsets[n]中
         if (!tirIsString) {
-            const offset = saveAs.length - matchedStr.length
+            const offset = saveAs.length - replacedLen
             for (let i = 0; i < mappings.length; i++) {
                 if (mappings[i][1] > matchedIndex) {
                     mappingOffsets[i] += offset
@@ -107,16 +135,28 @@ function singleTerConfirm<T extends TransformInterpolationRet>(tir: T): T {
             }
         }
 
-        startIndex = matchedIndex + matchedLen
+        if (isAttr && !isClassValue) {
+            isClassValue = rvalue === '"class"'
+        }
+        startIndex = matchedIndex + replacedLen
     }
+
+    let normalClassLen = 0
+    transformedArr.forEach((item, index) => {
+        if (isFunction(item)) {
+            transformedArr[index] = item()
+            normalClassLen = transformedArr[index].length
+        }
+    })
 
     // 根据mappingOffsets的记录将mappings中的段进行列偏移
     if (!tirIsString) {
         mappings.forEach((item, index) => {
-            item[1] += mappingOffsets[index]
+            item[1] += mappingOffsets[index] + normalClassLen
         })
     }
 
+    // 将普通类名添追加到数组中
     const transformedStr = transformedArr.join("")
     if (tirIsString) {
         return transformedStr as any

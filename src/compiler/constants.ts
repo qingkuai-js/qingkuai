@@ -76,6 +76,10 @@ export enum IntercodeSnippetKind {
     SearchBackward = -1
 }
 
+export enum StringLiteralLeftPad {
+    normalClass = 0
+}
+
 export const SPREAD_TAG = "spread"
 
 export const TS_TYPE_DECLARATION_LEN = 149

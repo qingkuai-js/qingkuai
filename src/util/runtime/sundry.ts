@@ -11,10 +11,10 @@ export function getRawValue<T>(v: T) {
 
 // velf means Verify Event Listener Flag
 export function velf(flag: number, key: EventListenerFlagKeys) {
-    return !!(EventListenerFlag[key] & flag)
+    return (EventListenerFlag[key] & flag) === EventListenerFlag[key]
 }
 
 // vewf meas Verify Event Wrapper Flag
 export function vewf(flag: number, key: EventWrapperFlagKeys) {
-    return !!(EventWrapperFlag[key] & flag)
+    return (EventWrapperFlag[key] & flag) === EventWrapperFlag[key]
 }

@@ -3,11 +3,12 @@ import type {
     TemplateContext,
     StringOrStringGetter,
     TransformInterpolationRet,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptions
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
+
 import {
     inputDescriptor,
     replacementInfo,
@@ -27,30 +28,30 @@ import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
+import { StringLiteralLeftPad } from "../constants"
 
 export function transformInterpolation(
     expression: string,
     startSourceIndex: number,
     context: TemplateContext,
-    type: "directive" | "attribute" | "event" | "content",
-    optionalParams: TransformInterpolationOptionalParam = {}
+    options: TransformInterpolationOptions
 ): TransformInterpolationRet {
     if (inputDescriptor.options.check || isEmptyString(expression)) {
         return ""
     }
 
-    const { eventWrapper, positionMap } = optionalParams
-    const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
+    const { eventWrapper, positionMap, normalClassRange } = options
+    const isEvent = options.isComponentEvent || !isUndefined(eventWrapper)
     const bodyAst = parse("_=" + expression, 2, startSourceIndex, positionMap)?.body[0]
 
     let vParam = "v"
     let ctxParam = "ctx"
+    let firstMappingAt = 0
     let useContext = false
     let useGetter = isEvent
     let underlineParam = "_"
-    let firstMappingOffsetLeft = 0
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
@@ -66,8 +67,8 @@ export function transformInterpolation(
     const ast = (bodyAst as any).expression.right
     const isDebug = inputDescriptor.options.debug
     const noPositionMap = isUndefined(positionMap)
-    const usedAsSetter = optionalParams.usedAsSetter || false
-    const isKeyDirective = optionalParams.isKeyDirective || false
+    const usedAsSetter = options.usedAsSetter || false
+    const isKeyDirective = options.isKeyDirective || false
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
 
     // 扩展转换信息数组
@@ -83,7 +84,7 @@ export function transformInterpolation(
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
     // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
-    if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+    if (options.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
         const expressionEndSourceIndex = startSourceIndex + expression.length
         BadValueToRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
     }
@@ -128,7 +129,7 @@ export function transformInterpolation(
             }
 
             if (ctx) {
-                if (isDebug && !usedAsSetter && type !== "directive") {
+                if (isDebug && !usedAsSetter && options.type !== "directive") {
                     contextVariables.push([name, ctx.num])
                 } else {
                     if (!isKeyDirective) {
@@ -166,8 +167,17 @@ export function transformInterpolation(
             }
         },
         StringLiteral(node) {
+            const [ns, ne] = normalClassRange ?? [-1, -1]
+            const [os, oe] = [node.start - 2, node.end - 2]
             expEliminateRanges.add([node.start, node.end])
-            extendTransformInfo(node.end, stringify(node.value))
+            if (os >= ns && os <= ne && oe >= ns && oe <= ne) {
+                extendTransformInfo(
+                    node.end,
+                    stringify(node.value, StringLiteralLeftPad.normalClass)
+                )
+            } else {
+                extendTransformInfo(node.end, stringify(node.value))
+            }
         },
         TemplateElement(node) {
             expEliminateRanges.add([node.start, node.end])
@@ -220,11 +230,11 @@ export function transformInterpolation(
             }
         })
         if (i < expression.length) {
-            if (isIndexEliminated(i + 2, expEliminateRanges) || rsc > 0) {
+            if (rsc > 0 || isIndexEliminated(i + 2, expEliminateRanges)) {
                 nextOffset--
                 rsc && rsc--
             } else {
-                const matched = /^\s{2,}/.exec(expression.slice(i))
+                const matched = /^\s+/.exec(expression.slice(i))
                 if (matched) {
                     transformedArr.push(" ")
                     rsc = matched[0].length - 1
@@ -239,6 +249,7 @@ export function transformInterpolation(
 
     // 生成转换结果
     let addedPrefixLen = 0
+    let useReturnKeyword = false
     let transformedExp = transformedArr.join("")
     const useParenthesesWrap = /^ *{/.test(transformedExp)
     const hasContextVariable = contextVariables.length > 0
@@ -253,16 +264,16 @@ export function transformInterpolation(
         const contextVariableDeclaration = `const ${contextVariableValues.join(", ")};`
         transformedExp = `{ ${contextVariableDeclaration} return ${transformedExp} }`
         addedPrefixLen += contextVariableDeclaration.length + 10
-        firstMappingOffsetLeft += 7
+        useReturnKeyword = true
     }
 
     // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
-        if (!isDebug || firstMappingOffsetLeft) {
+        if (!isDebug && !useReturnKeyword) {
             transformedExp = `$arg => ${transformedExp}`
         } else {
             addedPrefixLen += 17
-            firstMappingOffsetLeft += 7
+            useReturnKeyword = true
             transformedExp = `$arg => { return ${transformedExp} }`
         }
     }
@@ -272,9 +283,6 @@ export function transformInterpolation(
         const insertComment = inputDescriptor.options.comment
         const eventWrapperFuncName = getAlias("eventWrapper")
         const comment = insertComment ? `/* ${eventWrapper.modifiers.join(", ")} */` : ""
-        if (!useInlineEventHandler) {
-            firstMappingOffsetLeft += eventWrapperFuncName.length + 1
-        }
         addedPrefixLen += eventWrapperFuncName.length + 1
         transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${comment} ${eventWrapper.flag})`
     }
@@ -291,11 +299,11 @@ export function transformInterpolation(
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
         }
-        if (!isDebug || firstMappingOffsetLeft) {
-            addedPrefixLen += paramStr.length + 4
+        if (!isDebug || useReturnKeyword) {
             transformedExp = `${paramStr} => ${transformedExp}`
+            firstMappingAt = addedPrefixLen += paramStr.length + 4
         } else {
-            firstMappingOffsetLeft += 7
+            firstMappingAt = paramStr.length + 6
             addedPrefixLen += paramStr.length + 13
             transformedExp = `${paramStr} => { return ${transformedExp} }`
         }
@@ -310,11 +318,10 @@ export function transformInterpolation(
         })
         sortedSourceMapIndexes.forEach(index => {
             const sourceIndex = noPositionMap ? index + startSourceIndex : positionMap![index]
-            const generateIndex = indexMap[index] + addedPrefixLen
             if (!isUndefined(sourceIndex)) {
                 mappings.push([
                     sourceIndex,
-                    generateIndex,
+                    indexMap[index] + addedPrefixLen,
                     inputDescriptor.positions[sourceIndex].line,
                     inputDescriptor.positions[sourceIndex].column
                 ])
@@ -324,13 +331,11 @@ export function transformInterpolation(
         // firstMappingOffsetLeft记录了首个映射位置需要向左偏移的量，当为转换结果
         // 添加了return关键字时，需要将首个映射位置修改为return关键字开始的位置，
         // 这样处理调试时可以保持在插值表达式的开始和结尾处设置断点的一致性
-        if (firstMappingOffsetLeft && mappings[0]) {
-            mappings[0][1] -= firstMappingOffsetLeft
-        }
+        mappings[0] && (mappings[0][1] = firstMappingAt)
     }
 
     // 没有属性值时将mappings首个记录的源码索引向左偏移1
-    if (optionalParams.attributeWithNoValue && mappings.length) {
+    if (options.attributeWithNoValue && mappings.length) {
         mappings[0][0]--, mappings[0][3]--
     }
 
