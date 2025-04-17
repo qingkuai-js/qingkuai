@@ -225,8 +225,7 @@ export function analyzeTemplate(
                     parseRet.script,
                     trimedContentStartIndex,
                     currentContext,
-                    "content",
-                    optionalParam
+                    { ...optionalParam, type: "content" }
                 )
             }
         }

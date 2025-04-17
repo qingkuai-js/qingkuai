@@ -30,6 +30,10 @@ export function entries<K, V>(target: Map<K, V>) {
     return toArray(target.entries())
 }
 
+export function escapeRegExpSource(s: string) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 // 通过指定元素删除数组中对应的元素（只会删除第一个匹配项）
 export function spliceByElem<T>(arr: T[], elem: T) {
     const index = arr.findIndex(item => item === elem)

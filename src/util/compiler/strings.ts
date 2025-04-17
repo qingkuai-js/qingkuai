@@ -5,6 +5,7 @@ import {
     stringLiteralConstantRE,
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
+import { escapeRegExpSource } from "../shared/sundry"
 import { isString, isUndefined } from "../shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../../compiler/state"
 
@@ -109,7 +110,8 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
     function generated(str: string, pattern: string | RegExp, startIndex?: number) {
         const pis = isString(pattern)
         const withoutStartIndex = isUndefined(startIndex)
-        const re = new RegExp(pis ? `^${pattern}` : `^${pattern.source}`, pis ? "" : pattern.flags)
+        const reSource = pis ? `^${escapeRegExpSource(pattern)}` : `^${pattern.source}`
+        const patternRE = new RegExp(reSource, pis ? "" : pattern.flags)
 
         // 根据是否传入了startIndex返回正确的重载返回值
         const cr = (index: number, len: number) => {
@@ -131,7 +133,7 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
                         const interpolationFoundRet: NumNum = (generated as any)(
                             ls.slice(2, endBracketIndex === -1 ? ls.length : endBracketIndex),
                             pattern,
-                            startIndex ? startIndex - i - 2 : undefined
+                            startIndex ? startIndex - i - 2 : 0
                         )
                         if (interpolationFoundRet[0] === -1) {
                             i += endBracketIndex
@@ -166,7 +168,7 @@ function findOutOfGen(outString: boolean, outComment: boolean) {
                 continue
             }
 
-            const matched = re.exec(ls)
+            const matched = patternRE.exec(ls)
             if (matched && i >= (startIndex || -1)) {
                 return cr(i, matched[0].length)
             }

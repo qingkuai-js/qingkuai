@@ -95,6 +95,7 @@ export function generateCompileResult(
             stringConstantArr.push([variable, literal])
         }
     })
+    stringConstantArr.sort((a, b) => (a >= b ? 1 : -1))
 
     const stringConstantStr = stringConstantArr.reduce((pre, [k, v], i) => {
         sourceMapInfo.preaddedLineCount += i === 0 ? 3 : 1
