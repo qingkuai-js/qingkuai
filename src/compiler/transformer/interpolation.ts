@@ -23,14 +23,14 @@ import {
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
-import { is, isFunctionNode } from "../estree/assert"
+import { StringLiteralLeftPad } from "../constants"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
+import { is, isInlineEventHandler } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
 import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
-import { StringLiteralLeftPad } from "../constants"
 
 export function transformInterpolation(
     expression: string,
@@ -341,14 +341,4 @@ export function transformInterpolation(
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp
-}
-
-// 判断表达式是否是内联事件处理器
-function isInlineEventHandler(node: AnyNode) {
-    return !(
-        isFunctionNode(node) ||
-        is(node, "Identifier") ||
-        is(node, "MemberExpression") ||
-        is(node, "OptionalMemberExpression")
-    )
 }

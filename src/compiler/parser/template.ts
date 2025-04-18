@@ -213,6 +213,7 @@ export function parseTemplate(source: string, standalone = false) {
                 // 插值属性长度为1时表示没有指定属性名称
                 if (attrName.length === 1) {
                     EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
+                    continue
                 }
             }
 

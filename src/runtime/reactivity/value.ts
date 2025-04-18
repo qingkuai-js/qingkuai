@@ -201,6 +201,7 @@ function reactGen(levelDown = 0) {
             level -= levelDown
 
             if (isReactive(target)) {
+                effect = target[WRAPPER].effect
                 target = target[RAW_VALUE]
             }
 

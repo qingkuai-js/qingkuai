@@ -15,6 +15,16 @@ export function is<T extends AnyNode["type"]>(
     return node?.type === type
 }
 
+// 判断表达式是否是内联事件处理器
+export function isInlineEventHandler(node: AnyNode) {
+    return !(
+        isFunctionNode(node) ||
+        is(node, "Identifier") ||
+        is(node, "MemberExpression") ||
+        is(node, "OptionalMemberExpression")
+    )
+}
+
 // 判断是否是函数节点
 export function isFunctionNode(node: PartialAnyNode) {
     return (
@@ -22,6 +32,22 @@ export function isFunctionNode(node: PartialAnyNode) {
         is(node, "FunctionExpression") ||
         is(node, "ArrowFunctionExpression")
     )
+}
+
+export function findAncestorUntil<T extends AnyNode["type"]>(
+    tp: TraverseParent,
+    type: T
+): (AnyNode & { type: T }) | undefined {
+    if (!tp.v) {
+        return undefined
+    }
+    if (tp.v.type === type) {
+        return tp.v as any
+    }
+    if (!tp.parent) {
+        return undefined
+    }
+    return findAncestorUntil(tp.parent, type)
 }
 
 // 判断是否estree pattern，用来过滤一些ts节点类型
@@ -48,7 +74,7 @@ export function isTypeOperationExpression(node: PartialAnyNode): node is TypeOpe
 
 // 识别标识符是否是引用
 // 调用此方法只需传入原始节点和TraverseParent即可，无需将parent向上遍历查找es节点，这里已经考虑了ts节点的情况
-export function identifierIsReference(node: Identifier, { v: parent }: TraverseParent): boolean {
+export function identifierIsReference(node: Identifier, tp: TraverseParent): boolean {
     const notReferenceWhenParentIs = new Set<AnyNode["type"]>([
         "CatchClause",
         "ArrayPattern",
@@ -61,29 +87,32 @@ export function identifierIsReference(node: Identifier, { v: parent }: TraverseP
         "FunctionDeclaration"
     ])
 
-    if (!parent) {
+    if (!tp.v) {
         return true
     }
-    if (parent.type.startsWith("TS")) {
+    if (tp.v.type.startsWith("TS")) {
         return false
     }
 
-    switch (parent.type) {
+    switch (tp.v.type) {
         case "VariableDeclarator":
-            return parent.id !== node
+            return tp.v.id !== node
         case "ClassMethod":
         case "ObjectMethod":
-            return parent.computed
+            return tp.v.computed
         case "ObjectProperty":
-            if (parent.shorthand) {
-                return node !== parent.key
+            if (findAncestorUntil(tp, "ObjectPattern")) {
+                return false
             }
-            return parent.computed || parent.key !== node
+            if (tp.v.shorthand) {
+                return node !== tp.v.key
+            }
+            return tp.v.computed || tp.v.key !== node
         case "ClassProperty":
-            return parent.computed || parent.key !== node
+            return tp.v.computed || tp.v.key !== node
         case "MemberExpression":
-            return parent.computed || parent.property !== node
+            return tp.v.computed || tp.v.property !== node
         default:
-            return !notReferenceWhenParentIs.has(parent.type)
+            return !notReferenceWhenParentIs.has(tp.v.type)
     }
 }

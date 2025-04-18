@@ -212,8 +212,8 @@ export function generateInterResult(source: string, typeRefStatement: string) {
         interIndexMap: {
             // 文件结束位置也需要记录双向索引映射
             // typescript语言服务会使用结束索引后2位
-            stoi: [...stoi, lastElem(stoi)],
-            itos: [...itos, lastElem(itos)]
+            stoi: stoi.concat(lastElem(stoi)),
+            itos: itos.concat(lastElem(itos))
         },
         typeDeclarationLen: tdl,
         code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};${joinedSnippets}`

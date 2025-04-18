@@ -37,7 +37,7 @@ export let eliminateRanges: EliminateRanges = new Set()
 export let aliases = new Map<string, string>()
 export let stringConstants = new Map<string, StringConstant>()
 export let stringConstantsSourceMap = new Map<string, string>()
-export let templateNodeToContextIdentifiers = new Map<TemplateNode, Set<string>>()
+export let templateNodeToContextIdentifiers = new WeakMap<TemplateNode, Set<string>>()
 
 // 重置编译器状态
 export function resetCompilerState(options: CompileOptions) {

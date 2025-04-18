@@ -444,61 +444,59 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         // 当变量声明语句需要转换为响应性声明时标记文本替换，这里需要区分是否解构语法
         // 调试模式时，为非const声明的标识符添加__w__前缀，并记录所有原始标识符名称，这些原始标识符
         // 名称会在生成代码的底部被声明，并由响应性声明方法接受的setter参数进行赋值
-        if (!isDerived && internalReactFunc) {
-            if (!isDestructuring) {
-                const getSetterArg = (ret = "") => {
-                    if (isDebug) {
-                        if (isConst) {
-                            ret = getAlias("NOOP")
-                        } else {
-                            ret = getSetterIdentifier(names[0])
-                        }
+        if (!isDerived && internalReactFunc && !isDestructuring) {
+            const getSetterArg = (ret = "") => {
+                if (isDebug) {
+                    if (isConst) {
+                        ret = getAlias("NOOP")
+                    } else {
+                        ret = getSetterIdentifier(names[0])
                     }
-                    return ret ? ", " + ret : ret
                 }
+                return ret ? ", " + ret : ret
+            }
 
+            if (isDebug) {
+                replacementItems.push(
+                    initReplacementItem({
+                        index: idRange[0],
+                        text: "[__w__"
+                    }),
+                    initReplacementItem({
+                        index: idRange[1],
+                        text: () => `, ${names[0]}]`
+                    })
+                )
+            }
+            if (noInitOrNoArg) {
+                const equalToken = hasFnCall ? "" : " = "
+                replacementItems.push(
+                    initReplacementItem({
+                        index: hasFnCall ? initRange[1] : idRange[1],
+                        text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
+                    })
+                )
+            } else {
+                replacementItems.push(
+                    initReplacementItem({
+                        index: initRange[0],
+                        text: () => getReactFunc()
+                    })
+                )
                 if (isDebug) {
                     replacementItems.push(
                         initReplacementItem({
-                            index: idRange[0],
-                            text: "[__w__"
-                        }),
-                        initReplacementItem({
-                            index: idRange[1],
-                            text: () => `, ${names[0]}]`
+                            index: valueRange[1],
+                            text: () => getSetterArg()
                         })
                     )
                 }
-                if (noInitOrNoArg) {
-                    const equalToken = hasFnCall ? "" : " = "
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: hasFnCall ? initRange[1] : idRange[1],
-                            text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
-                        })
-                    )
-                } else {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: initRange[0],
-                            text: () => getReactFunc()
-                        })
-                    )
-                    if (isDebug) {
-                        replacementItems.push(
-                            initReplacementItem({
-                                index: valueRange[1],
-                                text: () => getSetterArg()
-                            })
-                        )
-                    }
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: initRange[1],
-                            text: ")"
-                        })
-                    )
-                }
+                replacementItems.push(
+                    initReplacementItem({
+                        index: initRange[1],
+                        text: ")"
+                    })
+                )
             }
         }
 

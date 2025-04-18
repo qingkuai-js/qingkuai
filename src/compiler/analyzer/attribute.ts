@@ -7,7 +7,6 @@ import type {
     AttributeAnalysisRet,
     TransformInterpolationRet,
     PreprocessedTemplateAttribute,
-    TransformInterpolationOptions,
     TransformInterpolationOptionalOptions
 } from "../types"
 import type { Expression } from "@babel/types"
@@ -73,7 +72,7 @@ import {
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
-import { is } from "../estree/assert"
+import { is, isFunctionNode, isInlineEventHandler } from "../estree/assert"
 import { validIdentifierNameRE } from "../regular"
 import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
@@ -123,11 +122,13 @@ export function analyzeAttribute(
     const isSpread = tag === SPREAD_TAG
     const isTS = inputDescriptor.script.isTS
     const nodeStartIndex = node.loc.start.index
+    const interAnyValue = `0${isTS ? " as any" : ""}`
     const isCheckMode = inputDescriptor.options.check
     const eventStu: TransformInterpolationRet[] = []
     const aliasArgs: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
     const directiveStu: TransformInterpolationRet[][] = []
+    const inlineEventItems = new WeakSet<TemplateAttribute>()
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
     const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
@@ -243,7 +244,26 @@ export function analyzeAttribute(
 
             // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
             if (isCheckMode) {
-                return recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange), ""
+                if (isEvent) {
+                    const ast = parse(`_=${exp}`, 0, 0)?.body[0] as any
+                    if (isInlineEventHandler(ast?.expression.right)) {
+                        inlineEventItems.add(attr)
+                    } else if (!isComponent) {
+                        interCodeSnippets.push([
+                            IntercodeSnippetKind.VoidSource,
+                            `__c__.SatisfyEventHandler<"${pureKey}">(`
+                        ])
+                        if (rv) {
+                            interCodeSnippets.push([trimedValueStartSourceIndex, exp])
+                        } else {
+                            recordInterSnippetWithSpecificRange(exp, ...keyRange)
+                        }
+                        interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ");"])
+                    }
+                } else {
+                    recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
+                }
+                return ""
             }
 
             option = Object.assign(option || {}, {
@@ -275,10 +295,7 @@ export function analyzeAttribute(
                 if (pureKey === "slot") {
                     recordSlotAttributeInterSnippet()
                 } else if (!awaitExpression || pureKey !== "slot") {
-                    interCodeSnippets.push([
-                        IntercodeSnippetKind.VoidSource,
-                        `0${isTS ? " as any" : ""};`
-                    ])
+                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, interAnyValue + ";"])
                 } else {
                     interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "__c__.GetResolve("])
                     interCodeSnippets.push(awaitExpression!, [
@@ -507,7 +524,7 @@ export function analyzeAttribute(
                     }
                     interCodeSnippets.push([
                         IntercodeSnippetKind.SearchForward,
-                        `=0${isTS ? " as any" : ""};`
+                        `=${interAnyValue};`
                     ])
                 }
             }
@@ -1050,22 +1067,9 @@ export function analyzeAttribute(
             }
 
             const isSpecial = /^[!@&]/.test(rk)
-            const noEqualSign = keyRange[1] === attr.loc.end.index
-            const valueWrapChar = inputDescriptor.source[valueRange[0] - 1]
-
-            // prettier-ignore
-            if (
-                !noEqualSign &&
-                (
-                    (isSpecial && valueWrapChar !== "{") ||
-                    (!isSpecial && !/['"]/.test(valueWrapChar))
-                )
-            ) {
-                return
-            }
-
             const target = attrRecords[+rk.startsWith("&")]
-            if (!noEqualSign || !iv) {
+            const noEqualSign = keyRange[1] === attr.loc.end.index
+            if (!noEqualSign || iv) {
                 const camelPureKey = kebab2Camel(rk.slice(+isSpecial))
                 const isValidIdentifier = validIdentifierNameRE.test(camelPureKey)
                 target.push({
@@ -1075,14 +1079,24 @@ export function analyzeAttribute(
                     value: isValidIdentifier ? camelPureKey : normalStringify(camelPureKey)
                 })
             }
+
             target.push({
                 type: "value",
                 specificRange: !rv,
-                range: rv ? valueRange : keyRange,
-                value: isSpecial ? iv : noEqualSign ? "true" : normalStringify(iv)
+                value: isSpecial
+                    ? iv
+                        ? inlineEventItems.has(attr)
+                            ? interAnyValue
+                            : iv
+                        : interAnyValue
+                    : noEqualSign
+                    ? "true"
+                    : normalStringify(iv),
+                range: rv ? valueRange : keyRange
             })
         })
 
+        // 记录组件实例化中间代码（new ComponentName）
         interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "new "])
         recordInterSnippetWithSpecificRange(`${node.componentTag}(`, ...stnr)
 
@@ -1102,7 +1116,7 @@ export function analyzeAttribute(
             })
             interCodeSnippets.push([IntercodeSnippetKind.SearchForward, "}"], [stnr[1], ","])
         }
-        interCodeSnippets.push([IntercodeSnippetKind.SearchForward, `0${isTS ? " as any" : ""});`])
+        interCodeSnippets.push([IntercodeSnippetKind.SearchForward, `${interAnyValue});`])
     }
 
     // slot节点未使用slot指令时记录slot属性相关的中间代码片段
