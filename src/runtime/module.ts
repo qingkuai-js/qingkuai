@@ -1,45 +1,53 @@
 import type {
-    KeyedInfo,
+    TopNodes,
     ModuleFunc,
-    KeyedInfoItem,
+    TopNodesItem,
     PartialNode,
     EffectListItem,
     RenderContext,
     GetContextFunc,
     ValueOrValueArr,
+    UnescapeOptions,
     DestructionStruct,
     DirectiveUpdateFuncGen,
-    TemplateStuOrModuleFunc
+    TemplateStuOrModuleFunc,
+    NormalTemplateStructure
 } from "./types"
+import type { FixedArray } from "../util/types"
 
-import {
-    extendNks,
-    destroyBlock,
-    mockDirective,
-    combineContext,
-    getContextFuncGen
-} from "../util/runtime/separate"
 import {
     arrayFill,
     len,
     optc,
     values,
     entries,
-    lastElem,
+    emptyArr,
     setArrLength,
     replaceEachItems
 } from "../util/shared/sundry"
+import {
+    destroyBlock,
+    mockDirective,
+    extendTopNodes,
+    combineContext,
+    newDestruction,
+    traverseTopNodes,
+    getContextFuncGen,
+    putTopNodesIntoItem,
+    extendTopNodesBeforeDref,
+    appendChildForDestruction
+} from "../util/runtime/separate"
 import { insert } from "./dom"
+import { h, attachDestroy } from "./h"
 import { CancelablePromise } from "./promise"
-import { isNode } from "../util/runtime/assert"
-import { IsModuleFunc, nil } from "./constants"
-import { spliceByElem } from "../util/runtime/sundry"
-import { DuplicateKey, NonTraverse } from "./message/error"
-import { invokeIndexedHooks, onAfterMount } from "./instance"
-import { h, toRenderStructure, extendDsts, attachDestroy } from "./h"
+import { invokeIndexedHooks } from "./instance"
+import { isModuleFunc, isNode } from "../util/runtime/assert"
+import { InvalidTargetForTargetDirective } from "./message/warn"
+import { BadTarget, DuplicateKey, NonTraverse } from "./message/error"
 import { internalEffect, internalPreEffect } from "./reactivity/effect"
 import { usedEffectList, withCleanUsedEffectList } from "./reactivity/state"
-import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
+import { isArray, isFunction, isNull, isNumber, isString } from "../util/shared/assert"
+import { ALIAS_MODULE_KIND, BAD_TAEGET_DIRECTIVE_KIND, IS_MODULE_FUNC, NIL } from "./constants"
 
 export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
     const aliasModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
@@ -57,32 +65,161 @@ export function aliasModule(rules: any[], ...toms: TemplateStuOrModuleFunc[]) {
                 }
             }
         }
-        updateContext()
 
-        // 这里不能通过省略effect的第三个参数来达到直接执行一次的目的，
+        // 这里不能通过省略effect的第三个参数来达到直接执行一次的目的
         // 因为在在调用attachDestroy和removeEffect的时候需要知道使用的依赖项副作用列表
+        const effectList = (updateContext(), values(usedEffectList))
         const updateGen: DirectiveUpdateFuncGen = (...args) => {
             const unsetEffect = internalPreEffect(updateContext, effectList)
             attachDestroy(unsetEffect, args[5])
-            return nil
+            return NIL
         }
 
-        const effectList = values(usedEffectList)
-        return toRenderStructure(toms, [], {
-            t: 2,
-            e: effectList,
-            v: [1, contextValues, updateGen]
-        })
+        return {
+            toms,
+            directive: {
+                e: effectList,
+                t: ALIAS_MODULE_KIND,
+                v: [1, contextValues, updateGen]
+            }
+        }
     })
-    return attachMarkForModuleFunc(aliasModuleFunc)
+    return markupModuleFunc(aliasModuleFunc)
+}
+
+export function targetModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
+    const depIsGetter = isFunction(dep)
+    const targetModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        let isInitial = true
+        let lastTarget: Node | null = NIL
+        const value = depIsGetter ? dep(ctx) : dep
+        const effectList = values(usedEffectList)
+
+        const updateGen: DirectiveUpdateFuncGen = (
+            instance,
+            _,
+            target,
+            dref,
+            context,
+            dst,
+            topNodes
+        ) => {
+            const mountOrRepositionTopNodes = (depValue: any) => {
+                let newTarget = target
+                if (!isString(depValue)) {
+                    if (!isNode(depValue) && !isNull(depValue)) {
+                        InvalidTargetForTargetDirective()
+                    } else {
+                        newTarget = depValue ?? target
+                    }
+                } else {
+                    instance.__.hooks[1].unshift(() => {
+                        const selected = document.querySelector(depValue)
+                        if (!selected) {
+                            BadTarget(depValue, BAD_TAEGET_DIRECTIVE_KIND)
+                        }
+                        newTarget = selected!
+                    })
+                }
+
+                if (lastTarget === newTarget) {
+                    return false
+                }
+
+                const newRef = newTarget === target ? dref : NIL
+                if (!isInitial) {
+                    traverseTopNodes(topNodes, node => {
+                        if (node !== dref) {
+                            insert(newTarget, node, newRef)
+                        }
+                    })
+                } else {
+                    const newDst = appendChildForDestruction(dst)
+                    const newTopNodesItem = extendTopNodes(topNodes)
+                    toms.forEach(tom => {
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
+                            h(instance, tom, newTarget, newRef, true, context, newDst)
+                        )
+                    })
+                    isInitial = false
+                }
+                return (lastTarget = newTarget), true
+            }
+
+            mountOrRepositionTopNodes(value)
+            if (!depIsGetter) {
+                return NIL
+            }
+            return () => mountOrRepositionTopNodes(dep(ctx))
+        }
+
+        return {
+            toms: [],
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [0, [], updateGen]
+            }
+        }
+    })
+    return markupModuleFunc(targetModuleFunc)
+}
+
+export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
+    const escapeModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        const dep: any = stu[1]
+        const depIsGetter = isFunction(dep)
+        const optionsDepIsGetter = isFunction(optionsDep)
+        const options: UnescapeOptions = optionsDepIsGetter ? optionsDep(ctx) : optionsDep
+
+        let html = depIsGetter ? dep(ctx) : dep
+        const effectList = values(usedEffectList)
+        const nodes = html ? createUnescapeNodes(html, options) : []
+
+        const updateGen: DirectiveUpdateFuncGen = (
+            instance,
+            _,
+            target,
+            dref,
+            context,
+            dst,
+            topNodes
+        ) => {
+            return () => {
+                const newHtml = dep(ctx)
+                if (newHtml === html) {
+                    return false
+                }
+
+                if ((destroyBlock(dst.c[0]), newHtml)) {
+                    const newDst = appendChildForDestruction(dst)
+                    const nodes = createUnescapeNodes(newHtml, options)
+                    nodes.forEach(node => {
+                        h(instance, node, target, dref, true, context, newDst)
+                    })
+                    topNodes.unshift(nodes)
+                }
+                return true
+            }
+        }
+
+        return {
+            toms: nodes,
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [nodes.length ? 1 : 0, [], updateGen]
+            }
+        }
+    })
+    return markupModuleFunc(escapeModuleFunc)
 }
 
 export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModuleFunc>[]) {
     const toms2d = toTwoDemensionalToms(toms)
     const ifModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
-        let newBlockIndex: number
         let oldBlockIndex = findTrueIndex(ctx, deps)
-
         const effectList = values(usedEffectList)
         const depsWithGetter = usedEffectList.size > 0
 
@@ -93,156 +230,55 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
             dref,
             context,
             dst,
-            dsta,
-            isKeyedTop,
-            keyedInfo
+            topNodes
         ) => {
             const updateIfModule = () => {
+                const newBlockIndex = findTrueIndex(ctx, deps)
+                if (oldBlockIndex === newBlockIndex) {
+                    return false
+                }
+
                 const shouleCreateBlock = newBlockIndex !== -1
-                const hasDomOperation = oldBlockIndex !== newBlockIndex
-                if (hasDomOperation) {
-                    if (isKeyedTop && shouleCreateBlock) {
-                        resetFirstKeyedInfoItem(keyedInfo)
-                    }
-                    if (oldBlockIndex !== -1) {
-                        keyedInfo.shift()
-                        destroyBlock(dsta.pop()!)
-                    }
-                    if (shouleCreateBlock) {
-                        const newDst = extendDsts(dsta)
-                        toms2d[newBlockIndex].forEach(tom => {
-                            const nki = h(
-                                instance,
-                                tom,
-                                target,
-                                dref,
-                                true,
-                                context,
-                                newDst,
-                                isKeyedTop
-                            )
-                            if (isKeyedTop) {
-                                extendNks(keyedInfo[0].nks, nki)
-                            }
-                        })
-                    }
+                const shouldDestroyOldBlock = oldBlockIndex !== -1
+                if (shouldDestroyOldBlock) {
+                    destroyBlock(dst.c[0]!)
                 }
-                return (oldBlockIndex = newBlockIndex), hasDomOperation
-            }
-
-            if (depsWithGetter) {
-                const updateBlockIndex = () => {
-                    newBlockIndex = findTrueIndex(ctx, deps)
+                if (shouleCreateBlock) {
+                    const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
+                    const newDst = appendChildForDestruction(dst)
+                    toms2d[newBlockIndex].forEach(tom => {
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
+                            h(instance, tom, target, dref, true, context, newDst)
+                        )
+                    })
                 }
-                const unsetEffect = internalPreEffect(updateBlockIndex, effectList)
-                attachDestroy(unsetEffect, dst)
+                return (oldBlockIndex = newBlockIndex), true
             }
-
-            return depsWithGetter ? updateIfModule : nil
+            return depsWithGetter ? updateIfModule : NIL
         }
 
-        return toRenderStructure(toms2d[oldBlockIndex], [], {
-            t: 0,
-            e: effectList,
-            v: [oldBlockIndex === -1 ? 0 : 1, [], updateGen]
-        })
+        return {
+            toms: toms2d[oldBlockIndex],
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [oldBlockIndex === -1 ? 0 : 1, [], updateGen]
+            }
+        }
     })
-    return attachMarkForModuleFunc(ifModuleFunc)
+    return markupModuleFunc(ifModuleFunc)
 }
 
 export function forModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
     const depIsGetter = isFunction(dep)
-    const ifModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+    const forModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
         let oldLength: number
         let newLength: number
 
         const value = depIsGetter ? dep(ctx) : dep
         const effectList = values(usedEffectList)
-        const kvPair = getKeyValuePairIterator(value)
-
-        const updateGen: DirectiveUpdateFuncGen = (
-            instance,
-            directive,
-            target,
-            reference,
-            context,
-            dst,
-            dsta,
-            isKeyedTop,
-            keyedInfo
-        ) => {
-            const updateForModule = () => {
-                const drefKeyedInfo = keyedInfo.pop()!
-                const hasDomOperation = newLength !== oldLength
-                for (let i = newLength; i < oldLength; i++) {
-                    if (isKeyedTop) {
-                        keyedInfo.pop()
-                    }
-                    destroyBlock(dsta.pop()!)
-                }
-                for (let i = oldLength; i < newLength; i++) {
-                    const newDst = extendDsts(dsta)
-                    const currentContext = combineContext(directive, context, i)
-                    if (isKeyedTop) {
-                        keyedInfo[i] = {
-                            nks: [],
-                            dst: newDst
-                        }
-                    }
-                    toms.forEach(tom => {
-                        const nki = h(
-                            instance,
-                            tom,
-                            target,
-                            reference,
-                            true,
-                            currentContext,
-                            newDst,
-                            isKeyedTop
-                        )
-                        if (isKeyedTop) {
-                            extendNks(keyedInfo[i].nks, nki)
-                        }
-                    })
-                }
-                if (isKeyedTop) {
-                    keyedInfo.push(drefKeyedInfo)
-                }
-                return (oldLength = newLength), hasDomOperation
-            }
-
-            if (depIsGetter) {
-                const updateContext = () => {
-                    const newPair = getKeyValuePairIterator(dep(ctx))
-                    updateKeyValuePair(kvPair, newPair)
-                    newLength = len(newPair)
-                }
-                const unsetEffect = internalPreEffect(updateContext, effectList)
-                attachDestroy(unsetEffect, dst)
-            }
-
-            return depIsGetter ? updateForModule : nil
-        }
-
-        return toRenderStructure(toms, [], {
-            t: 0,
-            e: effectList,
-            v: [(oldLength = len(kvPair)), kvPair, updateGen]
-        })
-    })
-    return attachMarkForModuleFunc(ifModuleFunc)
-}
-
-export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModuleFunc[]) {
-    const depIsGetter = isFunction(dep1)
-    const keyedForModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
-        let orderedOldKeys: string[] = []
-        let orderedWillKeys: [string, number][] = []
-
-        const value = depIsGetter ? dep1(ctx) : dep1
-        const effectList = values(usedEffectList)
-        const kvPair = getKeyValuePairIterator(value)
-        const oldKeyPairIndexMap = new Map<string, [[any, any], number]>()
+        const kvPairs = getKeyValuePairIterator(value)
 
         const updateGen: DirectiveUpdateFuncGen = (
             instance,
@@ -251,146 +287,197 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
             dref,
             context,
             dst,
-            dsta,
-            _,
-            keyedInfo
+            topNodes
+        ) => {
+            const updateForModule = () => {
+                const hasDomOperation = newLength !== oldLength
+                for (let i = newLength; i < oldLength; i++) {
+                    destroyBlock(dst.c.pop()!)
+                }
+                for (let i = oldLength; i < newLength; i++) {
+                    const newDst = appendChildForDestruction(dst)
+                    const currentContext = combineContext(directive, context, i)
+                    const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
+                    toms.forEach(tom => {
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
+                            h(instance, tom, target, dref, true, currentContext, newDst)
+                        )
+                    })
+                }
+                return (oldLength = newLength), hasDomOperation
+            }
+
+            if (!depIsGetter) {
+                return NIL
+            }
+
+            const updateContext = () => {
+                const newPair = getKeyValuePairIterator(dep(ctx))
+                updateKeyValuePair(kvPairs, newPair)
+                newLength = len(newPair)
+            }
+            return attachDestroy(internalPreEffect(updateContext, effectList), dst), updateForModule
+        }
+
+        return {
+            toms,
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [(oldLength = len(kvPairs)), kvPairs, updateGen]
+            }
+        }
+    })
+    return markupModuleFunc(forModuleFunc)
+}
+
+export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModuleFunc[]) {
+    const [dep1IsGetter, dep2IsGetter] = [isFunction(dep1), isFunction(dep2)]
+    const keyedForModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        let orderedOldKeys: string[] = []
+        const orderedWillKeys: [string, number][] = []
+
+        const value = dep1IsGetter ? dep1(ctx) : dep1
+        const effectList = values(usedEffectList)
+        const kvPairs = getKeyValuePairIterator(value)
+        const oldKeyToPairAndIndex = new Map<string, [FixedArray<any, 2>, number]>()
+
+        const updateGen: DirectiveUpdateFuncGen = (
+            instance,
+            directive,
+            target,
+            dref,
+            context,
+            dst,
+            topNodes
         ) => {
             const updateKeyedForModule = () => {
                 let reference: Node = dref
                 let hasDomOperation = false
                 let refKey = orderedOldKeys[0]
 
-                const newLength = len(dep1(ctx))
-                const newKeyedInfo: KeyedInfo = []
-                const newDsta: DestructionStruct[] = []
-                const notUsedKeyedInfoItem = new Set(keyedInfo.slice(0, -1))
+                const newTopNodes: TopNodes = []
+                const sortedPair: FixedArray<any, 2>[] = []
+                const destructionsForNotUsedItem = new Set(dst.c)
+                const newDestructionChildren: DestructionStruct[] = []
 
-                for (let i = 0, refIndex = 0; i < newLength; i++) {
-                    const [willKey, willKeyIndexOfKeyedInfo] = orderedWillKeys[i]
+                for (let i = 0, refIndex = 0; i < len(kvPairs); i++) {
+                    const [willKey, willKeyIndexOfTopNodes] = orderedWillKeys[i]
                     if (i === 0) {
-                        reference = getFirstNode(keyedInfo[0]) || dref
+                        reference = getFirstNode(topNodes[0]) || dref
                     }
-                    if (willKeyIndexOfKeyedInfo === -1) {
-                        const newDst = extendDsts(dsta)
-                        const newKeyedInfoItem = {
-                            nks: [],
-                            dst: newDst
-                        }
-                        newDsta.push(newDst)
-                        newKeyedInfo.push(newKeyedInfoItem)
+                    if (willKeyIndexOfTopNodes === -1) {
+                        const newDst = newDestruction()
+                        const currentContext = combineContext(directive, context, i)
+                        const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
                         toms.forEach(tom => {
-                            const currentContext = combineContext(directive, context, i)
-                            const nki = h(
-                                instance,
-                                tom,
-                                target,
-                                reference,
-                                true,
-                                currentContext,
-                                newDst,
-                                true
+                            putTopNodesIntoItem(
+                                newTopNodesItem,
+                                h(instance, tom, target, reference, true, currentContext, newDst)
                             )
-                            extendNks(newKeyedInfoItem.nks, nki)
                         })
                         hasDomOperation = true
+                        newTopNodes.push(newTopNodesItem)
+                        newDestructionChildren.push(newDst)
                     } else {
-                        if ((hasDomOperation = refKey !== willKey)) {
-                            reposition(keyedInfo[willKeyIndexOfKeyedInfo], reference)
+                        if (refKey !== willKey) {
+                            hasDomOperation = true
+                            reposition(topNodes[willKeyIndexOfTopNodes], reference)
                         } else {
                             while (
-                                keyedInfo[++refIndex] &&
-                                !notUsedKeyedInfoItem.has(keyedInfo[refIndex])
+                                topNodes[++refIndex] &&
+                                !destructionsForNotUsedItem.has(dst.c[refIndex])
                             );
-                            reference = getFirstNode(keyedInfo[refIndex]) || dref
+                            reference = getFirstNode(topNodes[refIndex]) || dref
                             refKey = orderedOldKeys[refIndex]
                         }
-                        newDsta.push(keyedInfo[willKeyIndexOfKeyedInfo].dst!)
-                        newKeyedInfo.push(keyedInfo[willKeyIndexOfKeyedInfo])
-                        notUsedKeyedInfoItem.delete(keyedInfo[willKeyIndexOfKeyedInfo])
+                        newTopNodes.push(topNodes[willKeyIndexOfTopNodes])
+                        newDestructionChildren.push(dst.c[willKeyIndexOfTopNodes])
+                        destructionsForNotUsedItem.delete(dst.c[willKeyIndexOfTopNodes])
                     }
                 }
 
                 // 未使用的key对应的节点为需要卸载的节点
-                notUsedKeyedInfoItem.forEach(item => {
-                    notUsedKeyedInfoItem.delete(item)
-                    item.dst && destroyBlock(item.dst)
+                destructionsForNotUsedItem.forEach(dst => {
+                    destructionsForNotUsedItem.delete(dst)
+                    destroyBlock(dst)
                 })
-                replaceEachItems(dsta, newDsta)
-                newKeyedInfo.push(lastElem(keyedInfo))
-                replaceEachItems(keyedInfo, newKeyedInfo)
-
+                replaceEachItems(dst.c, newDestructionChildren)
+                replaceEachItems(topNodes, newTopNodes)
+                updateKeyValuePair(kvPairs, sortedPair)
                 return hasDomOperation
             }
 
-            if (depIsGetter) {
-                // 新key存在对应的kvPair时候即更新kvPair，否则创建新的pair
-                // 记录有序的新key列表和新key对应的KeyedInfoItem的索引（为-1时代表新添加的key）
-                const updateContext = () => {
-                    const odwk: [string, number][] = []
-                    const newPair = getKeyValuePairIterator(dep1(ctx))
-                    for (let i = 0; i < len(newPair); i++) {
-                        const currentKey = getKey(dep2, newPair, context, i)
-                        const pairAndIndex = oldKeyPairIndexMap.get(currentKey)
-                        if (i === 0) {
-                            setArrLength(kvPair, 0)
-                        }
-                        if (!pairAndIndex) {
-                            kvPair.push(newPair[i])
-                        } else {
-                            replaceEachItems(pairAndIndex[0], newPair[i])
-                            kvPair.push(pairAndIndex[0])
-                        }
-                        odwk.push([currentKey, pairAndIndex?.[1] ?? -1])
-                    }
-                    checkDuplicateKey(odwk.map(([k]) => k))
-                    directive!.v[0] = len(newPair)
-                    orderedWillKeys = odwk
-                }
-
-                // 记录旧key与kvPair项及其在KeyedInfo中的索引的映射关系、记录有序的旧key列表
-                // orderedOldKeys和updateKeyedForModule中的keyedInfo参数都是上次更新（或初次渲染）后的信息，两者一一对应
-                const recordOldKeys = () => {
-                    const odok: string[] = []
-                    for (let i = 0; i < len(kvPair); i++) {
-                        const currentKey = getKey(dep2, kvPair, context, i)
-                        oldKeyPairIndexMap.set(currentKey, [kvPair[i], i])
-                        odok.push(currentKey)
-                    }
-                    orderedOldKeys = odok
-                }
-
-                const unsetRecordKeysEffect = internalEffect(recordOldKeys, effectList)
-                const unsetUpdateContextEffect = internalPreEffect(updateContext, effectList)
-                const unsetEffect = () => {
-                    unsetRecordKeysEffect()
-                    unsetUpdateContextEffect()
-                    spliceByElem(instance.__.hooks[1], recordOldKeys)
-                }
-
-                onAfterMount(recordOldKeys)
-                attachDestroy(unsetEffect, dst)
+            if (!dep1IsGetter && !dep2IsGetter) {
+                return NIL
             }
 
-            checkDuplicateKey(dep2, kvPair, context)
-            return depIsGetter ? updateKeyedForModule : nil
+            // 新key存在对应的kvPair时即更新kvPair，否则创建新的kvPair
+            // 记录有序的新key列表和新key对应的TopNodes的索引（为-1时代表新添加的key）
+            const updateContext = () => {
+                const newPairs = getKeyValuePairIterator(dep1(ctx))
+                emptyArr(kvPairs, orderedWillKeys)
+                for (let i = 0; i < len(newPairs); i++) {
+                    const currentKey = getKey(dep2, newPairs, context, i)
+                    const oldPairAndIndex = oldKeyToPairAndIndex.get(currentKey)
+                    if (!oldPairAndIndex) {
+                        kvPairs.push(newPairs[i])
+                    } else {
+                        kvPairs.push(oldPairAndIndex[0])
+                        replaceEachItems(oldPairAndIndex[0], newPairs[i])
+                    }
+                    orderedWillKeys.push([currentKey, oldPairAndIndex?.[1] ?? -1])
+                }
+                checkDuplicateKey(orderedWillKeys.map(([k]) => k))
+            }
+
+            // 记录旧key到kvPair项及其在TopNodes中的索引的映射关系、记录有序的旧key列表
+            // orderedOldKeys和TopNodes参数都是上次更新（或初次渲染）后的信息，两者一一对应
+            const recordOldKeys = () => {
+                emptyArr(orderedOldKeys)
+                oldKeyToPairAndIndex.clear()
+                for (let i = 0; i < len(kvPairs); i++) {
+                    const currentKey = getKey(dep2, kvPairs, context, i)
+                    oldKeyToPairAndIndex.set(currentKey, [kvPairs[i], i])
+                    orderedOldKeys.push(currentKey)
+                }
+            }
+
+            recordOldKeys()
+            attachDestroy(internalEffect(recordOldKeys, effectList), dst)
+            attachDestroy(internalPreEffect(updateContext, effectList), dst)
+
+            // 记录key指令中依赖项的副作用列表
+            usedEffectList.clear()
+            checkDuplicateKey(dep2, kvPairs, context)
+            effectList.push(...values(usedEffectList))
+
+            return updateKeyedForModule
         }
 
-        return toRenderStructure(toms, [], {
-            t: 1,
-            e: effectList,
-            v: [len(kvPair), kvPair, updateGen]
-        })
+        return {
+            toms,
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [len(kvPairs), kvPairs, updateGen]
+            }
+        }
     })
-    return attachMarkForModuleFunc(keyedForModuleFunc)
+    return markupModuleFunc(keyedForModuleFunc)
 }
 
-export function awaitModule(dep: any, ...toms: ValueOrValueArr<TemplateStuOrModuleFunc | null>[]) {
+export function awaitModule(
+    dep: any,
+    ...toms: (ValueOrValueArr<TemplateStuOrModuleFunc> | null)[]
+) {
     const depIsGetter = isFunction(dep)
     const hasPendingBlock = !isNull(toms[0])
     const toms2d = toTwoDemensionalToms(toms)
     const awaitModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
-        let currentIsPending = true
         let cp: CancelablePromise<any>
+        let pendingBlockIsActivity = true
         let value = depIsGetter ? dep(ctx) : dep
 
         const waitRes: any[][] = [[]]
@@ -400,46 +487,31 @@ export function awaitModule(dep: any, ...toms: ValueOrValueArr<TemplateStuOrModu
             instance,
             directive,
             target,
-            reference,
+            dref,
             context,
             dst,
-            dsta,
-            isKeyedTop,
-            keyedInfo
+            topNodes
         ) => {
             const ch = (index: number) => {
-                if (toms[index]) {
-                    const newDst = extendDsts(dsta)
+                if ((len(dst.c) && destroyBlock(dst.c.pop()!), toms[index])) {
+                    const newDst = appendChildForDestruction(dst)
                     const currentContext = combineContext(directive, context, 0)
-                    if (isKeyedTop) {
-                        resetFirstKeyedInfoItem(keyedInfo)
-                    }
+                    const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
                     toms2d[index].forEach(tom => {
-                        const nki = h(
-                            instance,
-                            tom!,
-                            target,
-                            reference,
-                            true,
-                            currentContext,
-                            newDst,
-                            isKeyedTop
+                        putTopNodesIntoItem(
+                            newTopNodesItem,
+                            h(instance, tom!, target, dref, true, currentContext, newDst)
                         )
-                        if (isKeyedTop) {
-                            extendNks(keyedInfo[0].nks, nki)
-                        }
                     })
                 }
-                currentIsPending = index === 0
+                pendingBlockIsActivity = index === 0
             }
 
             const awaitPromiseOutcome = (stuIndex: number, pctx: any) => {
                 invokeIndexedHooks(instance, 2)
                 if (hasPendingBlock) {
-                    if (isKeyedTop) {
-                        keyedInfo.shift()
-                    }
-                    destroyBlock(dsta.pop()!)
+                    topNodes.pop()
+                    destroyBlock(dst.c.pop()!)
                 }
                 waitRes[0][0] = pctx
                 ch(stuIndex)
@@ -447,7 +519,7 @@ export function awaitModule(dep: any, ...toms: ValueOrValueArr<TemplateStuOrModu
             }
 
             const mountPromise = (v: Promise<any>) => {
-                cp && currentIsPending && cp.cancel()
+                cp && pendingBlockIsActivity && cp.cancel()
                 cp = new CancelablePromise(v)
                 cp.then(
                     res => awaitPromiseOutcome(1, res),
@@ -456,61 +528,86 @@ export function awaitModule(dep: any, ...toms: ValueOrValueArr<TemplateStuOrModu
             }
 
             const updateAwaitModule = () => {
-                const hasDomOperation = !currentIsPending && hasPendingBlock
-                if (hasDomOperation) {
-                    destroyBlock(dsta.pop()!)
-                    if (isKeyedTop) {
-                        keyedInfo.shift()
-                    }
+                if (!pendingBlockIsActivity) {
+                    destroyBlock(dst.c.pop()!)
+                    topNodes.pop()
                     ch(0)
                 }
                 value = dep(ctx)
                 mountPromise(value)
-                return hasDomOperation
+                return !pendingBlockIsActivity
             }
 
-            mountPromise(value)
-
-            return depIsGetter ? updateAwaitModule : null
+            return mountPromise(value), depIsGetter ? updateAwaitModule : null
         }
 
-        return toRenderStructure(toms2d[0], [], {
-            t: 0,
-            e: effectList,
-            v: [hasPendingBlock ? 1 : 0, waitRes, updateGen]
-        })
+        return {
+            toms: toms2d[0],
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [hasPendingBlock ? 1 : 0, waitRes, updateGen]
+            }
+        }
     })
-    return attachMarkForModuleFunc(awaitModuleFunc)
+    return markupModuleFunc(awaitModuleFunc)
 }
 
 // 为ModuleFunc添加标记
-function attachMarkForModuleFunc(fn: ModuleFunc) {
-    return (fn[IsModuleFunc] = true), fn
+function markupModuleFunc(fn: ModuleFunc) {
+    return (fn[IS_MODULE_FUNC] = true), fn
 }
 
 // toms means TemplateStructures Or ModuleFuncs
 // 将一维或二维的TemplateStuOrModuleFunc|null转换为固定二维结构
-function toTwoDemensionalToms(toms: ValueOrValueArr<TemplateStuOrModuleFunc | null>[]) {
-    return toms.map(tom => {
+function toTwoDemensionalToms(
+    toms: (ValueOrValueArr<TemplateStuOrModuleFunc> | null)[]
+): TemplateStuOrModuleFunc[][] {
+    return toms.map<any>(tom => {
         if (isNull(tom)) {
             return []
         }
-        if (!isArray(tom)) {
-            return [tom]
-        }
-        return tom
-    }) as TemplateStuOrModuleFunc[][]
+        return isArray(tom) && (isArray(tom[0]) || isModuleFunc(tom[0])) ? tom : [tom]
+    })
+}
+
+// unescapeModule: 通过html内容字符串创建DOM节点
+function createUnescapeNodes(html: string, options: UnescapeOptions) {
+    const escapeTags: string[] = options.escapeTags || []
+    if (options.escapeStyle) {
+        escapeTags.push("style")
+    }
+    if (options.escapeScript) {
+        escapeTags.push("script")
+    }
+
+    const reSources: string[] = []
+    if (escapeTags.length) {
+        reSources.push(`</?(?:${escapeTags.join("|")})`)
+    }
+    if (options.escapeEntities) {
+        reSources.push("&(?:[a-zA-Z]+|#d+|#x[a-fA-F0-9]+)")
+    }
+    if (reSources.length) {
+        html = html.replaceAll(new RegExp(`(?:${reSources.join("|")})`, "g"), s => {
+            if (s[0] !== "<" && s[0] !== "&") {
+                return s
+            }
+            return (s[0] === "<" ? "&lt;" : "&amp;") + s.slice(1)
+        })
+    }
+    return Array.from(document.createRange().createContextualFragment(html).childNodes)
 }
 
 // keyedForModule: 检查是否具有重复的key值
 function checkDuplicateKey(arr: any[]): void
-function checkDuplicateKey(dep: any, kvPair: any[], context: RenderContext[]): void
-function checkDuplicateKey(depOrArr: any, kvPair?: any[], context?: RenderContext[]) {
-    const usedDep = kvPair && context
+function checkDuplicateKey(dep: any, kvPairs: any[], context: RenderContext[]): void
+function checkDuplicateKey(depOrArr: any, kvPairs?: any[], context?: RenderContext[]) {
+    const usedDep = kvPairs && context
     const existKeys = new Set<string>()
-    const times = len(usedDep ? kvPair : depOrArr)
+    const times = len(usedDep ? kvPairs : depOrArr)
     for (let i = 0; i < times; i++) {
-        const key = usedDep ? getKey(depOrArr, kvPair, context, i) : depOrArr[i]
+        const key = usedDep ? getKey(depOrArr, kvPairs, context, i) : depOrArr[i]
         if (existKeys.has(key)) {
             DuplicateKey(key)
         } else {
@@ -528,7 +625,7 @@ function findTrueIndex(ctx: GetContextFunc, deps: any) {
 }
 
 // (keyed)forModule: 获取不同类型值的键值对迭代器
-function getKeyValuePairIterator(value: any): [any, any][] {
+function getKeyValuePairIterator(value: any): FixedArray<any, 2>[] {
     const tps = optc(value)
     if (/Object|Array|String/.test(tps)) {
         return Object.entries(value)
@@ -546,26 +643,26 @@ function getKeyValuePairIterator(value: any): [any, any][] {
             return [index, index + 1]
         })
     }
-    NonTraverse()
+    return NonTraverse()
 }
 
 // (keyed)forModule: 更新键值对
-function updateKeyValuePair(kvPair: any[][], newPair: any[][], startIndex = 0) {
+function updateKeyValuePair(kvPairs: any[][], newPair: any[][], startIndex = 0) {
     const newPairLength = len(newPair)
     for (let i = startIndex; i < newPairLength; i++) {
-        if (!kvPair[i]) {
-            kvPair[i] = [] as any
+        if (!kvPairs[i]) {
+            kvPairs[i] = [] as any
         }
-        replaceEachItems(kvPair[i], newPair[i])
+        replaceEachItems(kvPairs[i], newPair[i])
     }
-    return setArrLength(kvPair, newPairLength)
+    return setArrLength(kvPairs, newPairLength)
 }
 
-// keyedForModule: 获取KeyedInfo中的首个节点（作为参考节点）
-function getFirstNode(keyedInfoItem: KeyedInfoItem | undefined): PartialNode {
-    const fst = keyedInfoItem?.nks[0]
+// keyedForModule: 获取TopNodesItem中的首个节点（作为参考节点）
+function getFirstNode(topNodesItem: TopNodesItem | undefined): PartialNode {
+    const fst = topNodesItem?.[0]
     if (!fst) {
-        return nil
+        return NIL
     }
     if (isNode(fst)) {
         return fst
@@ -573,44 +670,26 @@ function getFirstNode(keyedInfoItem: KeyedInfoItem | undefined): PartialNode {
     return getFirstNode(fst[0])
 }
 
-// keyedForModule: 移动当前KeyedInfoItem中的节点到正确的位置
-function reposition(keyedInfoItem: KeyedInfoItem, reference: PartialNode) {
-    keyedInfoItem.nks.forEach(nk => {
-        if (isNode(nk)) {
-            insert(nk.parentNode!, nk, reference)
+// keyedForModule: 移动当前TopNodes中的节点到正确的位置
+function reposition(topNodesItem: TopNodesItem, reference: PartialNode) {
+    topNodesItem.forEach(item => {
+        if (isNode(item)) {
+            insert(item.parentNode!, item, reference)
         } else {
-            nk.forEach(ki => {
-                reposition(ki, reference)
-            })
+            item.forEach(c => reposition(c, reference))
         }
     })
 }
 
 // keyedForModule: 获取key
-function getKey(dep: any, pair: any[] | undefined, context: RenderContext[], index: number) {
-    if (!dep || !pair) {
-        return "" + index
-    }
+function getKey(dep: any, pairs: any[], context: RenderContext[], index: number) {
     if (!isFunction(dep)) {
         return "" + dep
     }
 
-    const md = mockDirective(pair, context[index]?.e as EffectListItem[])
+    const md = mockDirective(pairs, context[index]?.e as EffectListItem[])
     const currentContext = combineContext(md, context, index)
     return "" + dep(getContextFuncGen(currentContext))
-}
-
-// ifModule、awaitModule: 渲染前重置KeyedInfo的第一个项目
-function resetFirstKeyedInfoItem(keyedInfo: KeyedInfo) {
-    const keyedInfoLen = len(keyedInfo)
-    if (keyedInfoLen === 2) {
-        keyedInfo[0].nks = []
-    } else if (keyedInfoLen === 1) {
-        keyedInfo.unshift({
-            nks: [],
-            dst: nil
-        })
-    }
 }
 
 export { getKeyValuePairIterator }

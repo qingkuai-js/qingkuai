@@ -13,24 +13,28 @@ export interface ASTLocation {
     end: ASTPosition
 }
 
-export interface CompileOptions {
-    componentName?: string
-    check?: boolean
-    debug?: boolean
-    sourcemap?: boolean
-    typeRefStatement?: string
-    reserveTemplateComment?: boolean
-    convenientDerivedDeclaration?: boolean
-}
+export type CompileOptions = Partial<{
+    componentName: string
+    hashId: string
+    check: boolean
+    debug: boolean
+    comment: boolean
+    sourcemap: boolean
+    typeRefStatement: string
+    reserveTemplateComment: boolean
+    convenientDerivedDeclaration: boolean
+}>
 
 export interface CompileResult {
     code: string
+    hashId: string
     mappings: string
     interIndexMap: {
         itos: number[]
         stoi: number[]
     }
     messages: MessageItem[]
+    typeDeclarationLen: number
     templateNodes: TemplateNode[]
     inputDescriptor: InputDescriptor
 }
@@ -53,6 +57,7 @@ export interface SourceMapInfo {
     positionShouldNotBeMapped: (boolean | undefined)[]
 }
 export interface StringConstant {
+    n: number
     value: string
     count: number
     using: boolean
@@ -95,12 +100,19 @@ export interface ScriptDescriptor {
     generatedOffset: NumNum
     startTagNameRange: NumNum
 }
+export interface StyleDescriptor {
+    code: string
+    lang: string
+    loc: ASTLocation
+    startTagNameRange: NumNum
+}
 export interface InputDescriptor {
     options: Required<CompileOptions>
     source: string
     slotInfo: SlotInfo
     indentSpaceCount: number
     script: ScriptDescriptor
+    styles: StyleDescriptor[]
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
 }
@@ -128,6 +140,7 @@ export interface TemplateAttribute {
 export interface TemplateNode {
     tag: string
     range: NumNum
+    pure: boolean
     content: string
     loc: ASTLocation
     isEmbedded: boolean
@@ -145,11 +158,13 @@ export interface TemplateNode {
 export type PreprocessedTemplateAttribute = TemplateAttribute & {
     inferredValue: string
     positionMap?: number[]
+    normalClassRange?: NumNum
 }
 
 export interface TemplateAnalysisRet {
     tag: string
-    isTemplate: boolean
+    cacheId: number
+    isSpread: boolean
     content: TransformInterpolationRet
     children: {
         useBracket: boolean
@@ -183,22 +198,26 @@ export interface AttributeAnalysisRet {
     slotOfAnyTag?: string
     nameOfSlotTag?: string
     insertNullNum?: number
-    createTemplate?: boolean
+    createSpread?: boolean
     contextBlockCount?: number
     componentCombinedArgs?: string[]
     awaitExpression?: [number, string]
 }
 
-export interface TransformInterpolationOptionalParam {
-    eventWrapper?: {
+export type TransformInterpolationOptionalOptions = Partial<{
+    eventWrapper: {
         flag: number
         modifiers: string[]
     }
-    positionMap?: number[]
-    usedAsSetter?: boolean
-    isKeyDirective?: boolean
-    isComponentEvent?: boolean
-    attributeWithNoValue?: boolean
+    positionMap: number[]
+    usedAsSetter: boolean
+    isKeyDirective: boolean
+    normalClassRange: NumNum
+    isComponentEvent: boolean
+    attributeWithNoValue: boolean
+}>
+export type TransformInterpolationOptions = TransformInterpolationOptionalOptions & {
+    type: "directive" | "attribute" | "event" | "content"
 }
 
 export type TransformInterpolationRet =

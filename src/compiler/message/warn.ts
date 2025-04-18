@@ -12,7 +12,7 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * last-warn-code: 9009
+ * last-warn-code: 9010
  *
  * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
  * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning
@@ -40,6 +40,10 @@ export const IdentifierMaybeOverwritten = withLocation(
 export const RedundantArgsForCompilerFunc = withLocation(
     ...commonMessage.RedundantArgsForCompilerFunc
 )
+
+export const DirectiveValueIsIgnored = withLocation(9010, (d: string) => {
+    return `The ${d} directive does not need a value, and the value has been ignored.`
+})
 
 export const InvalidEventFlag = withLocation(9004, (flagName: string, eventName: string) => {
     return `Invalid flag(${flagName}) for event(@${eventName}) and it has been ignored.`

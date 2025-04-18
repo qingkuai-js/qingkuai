@@ -5,7 +5,14 @@ import type {
     TemplateAttribute,
     AttributeQuoteKinds
 } from "../types"
+import type { NumNum } from "../../util/types"
 
+import {
+    kebab2Camel,
+    findEndBracket,
+    findOutOfComment,
+    findOutOfStringComment
+} from "../../util/compiler/strings"
 import {
     tagIsComponentRE,
     templateCloseCharsRE,
@@ -21,28 +28,30 @@ import {
     NoEndTagMatched,
     UnexpectedToken,
     TagIsNotClosing,
-    EmbeddedLangNotInTopScope,
     TagCanNotBeSelfClosing,
-    EmptyInterpolationAttrName,
     TemplateStartsWithEndTag,
-    UnclosedNormalAttributeValue,
+    EmbeddedLangNotInTopScope,
     AttributeValueIsNotQuoted,
+    EmptyInterpolationAttrName,
     EmptyInterpolationExpression,
+    UnclosedNormalAttributeValue,
     EmbeddedScriptBlockOutOfLimit,
     UnclosedInterpolationExpression,
     NoBracketForAttributeInterpolation
 } from "../message/error"
 import { replaceEachItems } from "../../util/shared/sundry"
-import { SELF_CLOSING_TAGS, SPECIAL_TAGS } from "../constants"
-import { inputDescriptor, newScriptDescriptor } from "../state"
+import { inputDescriptor, resetCompilerState } from "../state"
 import { isEmptyString, isNull } from "../../util/shared/assert"
 import { getLocationMethodsGen } from "../../util/compiler/locations"
+import { SELF_CLOSING_TAGS, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { newASTLocation, newASTPosition } from "../../util/compiler/structure"
 import { getPositionOfEachChar, markPositionFlag } from "../../util/compiler/sundry"
-import { findEndBracket, findOutOfSC, kebab2Camel } from "../../util/compiler/strings"
 
 // 独立调用的parseTemplate方法，compiler包会导出此方法
-export function parseTemplateStandalone(source: string) {
+export function parseTemplateStandalone(source: string, recover = false) {
+    resetCompilerState({
+        check: recover
+    })
     return parseTemplate(source, true)
 }
 
@@ -51,10 +60,11 @@ export function parseTemplateStandalone(source: string) {
 export function parseTemplate(source: string, standalone = false) {
     let index = 0
     let dps = source // dynamic programming source
+    let fdsn: TemplateNode | undefined = undefined // for directive start node
 
     const astList: TemplateNode[] = []
-    const scriptDescriptor = newScriptDescriptor()
     const positions = getPositionOfEachChar(dps)
+    const scriptDescriptor = inputDescriptor.script
     const reserveAllComment = standalone || inputDescriptor.options.reserveTemplateComment
 
     // 由于此方法可能被独立调用，所以需要单独声明获取位置的相关方法（基于本地的positions而不是inputDescriptor.positions）
@@ -63,7 +73,6 @@ export function parseTemplate(source: string, standalone = false) {
     // 独立调用时不要修改编译器内部状态
     if (!standalone) {
         inputDescriptor.positions = positions
-        inputDescriptor.script = scriptDescriptor
     }
 
     // 收缩source并修改index，并返回下次开始的位置
@@ -108,6 +117,9 @@ export function parseTemplate(source: string, standalone = false) {
                     preWhiteSpace,
                     range: [index - contentLen, index]
                 })
+                if (content.includes("{")) {
+                    markupNodeAndAncestorIsNotPure(ret)
+                }
                 return prev && (prev.next = ret), ret
             }
         }
@@ -123,6 +135,7 @@ export function parseTemplate(source: string, standalone = false) {
                 tag: "!",
                 prev,
                 parent,
+                pure: !fdsn,
                 range: [index, -1],
                 content: dps.slice(4, contentEndIndex)
             })
@@ -156,6 +169,7 @@ export function parseTemplate(source: string, standalone = false) {
             tag,
             prev,
             parent,
+            pure: !fdsn,
             range: [index, -1],
             componentTag: isComponent ? kebab2Camel(tag, true) : "",
             preWhiteSpace: parent?.tag === "pre" || isPrevNodeWithPreWhiteSpace(prev)
@@ -190,10 +204,16 @@ export function parseTemplate(source: string, standalone = false) {
                 continue
             }
 
-            // 插值属性长度为1时表示没有指定属性名称
+            // 标记使用插值属性的节点不是静态html节点
             const isInterpolationAttr = /^[!@#&]/.test(attrName)
-            if (isInterpolationAttr && attrName.length === 1) {
-                EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
+            if (isInterpolationAttr) {
+                markupNodeAndAncestorIsNotPure(ast)
+                attrName === "#for" && (fdsn = ast)
+
+                // 插值属性长度为1时表示没有指定属性名称
+                if (attrName.length === 1) {
+                    EmptyInterpolationAttrName(attrName[0], getLocByIndex(nameStartIndex))
+                }
             }
 
             // check whether attribute value exists
@@ -238,7 +258,7 @@ export function parseTemplate(source: string, standalone = false) {
                     if (quoteKind === "curly") {
                         if ((endCharIndex = findEndBracket(dps, 1)) === -1) {
                             UnclosedInterpolationExpression(wrapValueStartLoc)
-                        } else if (findOutOfSC(dps.slice(1, endCharIndex), /\S/) === -1) {
+                        } else if (findOutOfComment(dps.slice(1, endCharIndex), /\S/) === -1) {
                             EmptyInterpolationExpression(
                                 wrapValueStartIndex,
                                 index + endCharIndex + 1
@@ -310,7 +330,7 @@ export function parseTemplate(source: string, standalone = false) {
         // script或style标签直接快进到闭合标签处
         const embeddedLang = langMatched?.[1] || ""
         if (SPECIAL_TAGS.has(tag) || embeddedLang) {
-            const endTagIndex = findOutOfSC(dps, "</" + tag)
+            const endTagIndex = findOutOfStringComment(dps, "</" + tag)
             const neverOver = endTagIndex === -1
             const contentStartIndex = index
             if (neverOver) {
@@ -343,6 +363,22 @@ export function parseTemplate(source: string, standalone = false) {
                 EmbeddedLangNotInTopScope(tag, tagStructureLoc)
             }
 
+            const loc = getLocByIndex(contentStartIndex, index)
+            const startTagNameRange: NumNum = [ast.range[0], ast.range[0] + ast.tag.length + 1]
+
+            // embedded style block
+            if (/css|s[ca]ss|less|stylus|postcss/.test(embeddedLang)) {
+                inputDescriptor.styles.push({
+                    loc,
+                    code: content,
+                    startTagNameRange,
+                    lang: embeddedLang
+                })
+                for (let i = 0; !standalone && i < content.length; i++) {
+                    markPositionFlag(contentStartIndex + i, "inStyle")
+                }
+            }
+
             // embedded script block
             if (/js|ts/.test(embeddedLang)) {
                 if (scriptDescriptor.existing) {
@@ -356,29 +392,22 @@ export function parseTemplate(source: string, standalone = false) {
                 }
 
                 // 将嵌入script代码部分都标记为处的索引标记为处于脚本
-                for (let i = 0; i <= content.length; i++) {
+                for (let i = 0; !standalone && i <= content.length; i++) {
                     markPositionFlag(contentStartIndex + i, "inScript")
                 }
 
                 // 记录嵌入script块的内容、是否ts、开始标签名范围、是否已存在以及源码位置信息
-                scriptDescriptor.loc = getLocByIndex(contentStartIndex, index)
+                scriptDescriptor.startTagNameRange = startTagNameRange
                 scriptDescriptor.isTS = embeddedLang === "ts"
-                scriptDescriptor.startTagNameRange = [
-                    ast.range[0],
-                    ast.range[0] + ast.tag.length + 1
-                ]
                 scriptDescriptor.existing = true
                 scriptDescriptor.code = content
+                scriptDescriptor.loc = loc
 
                 // 记录生成代码中script部分的行数，4是两个换行符、一行注释、
                 // 以及结束行号和开始行号相减少时导致结构少一行的固定量
                 const startLine = scriptDescriptor.loc.start.line
                 const endLine = scriptDescriptor.loc.end.line
                 scriptDescriptor.lineCount = endLine - startLine + 1
-            }
-
-            // embedded style block
-            if (/css|s[ca]|less|stylus|postcss/.test(embeddedLang)) {
             }
 
             return ast
@@ -436,7 +465,7 @@ export function parseTemplate(source: string, standalone = false) {
         } else {
             TagCanNotBeSelfClosing(tag, index - 2, index)
         }
-        return ast
+        return ast === fdsn && (fdsn = undefined), ast
     }
 
     for (let cur: TemplateNode | undefined = undefined; dps.length; ) {
@@ -455,7 +484,7 @@ export function parseTemplate(source: string, standalone = false) {
         return list.filter(({ tag, content, children }) => {
             let shouldReserve = true
 
-            if (tag === "template") {
+            if (tag === SPREAD_TAG) {
                 shouldReserve = children.length > 0
             } else if (tag === "!") {
                 if (reserveAllComment) {
@@ -502,6 +531,7 @@ function initTemplateNode(
         tag: options.tag || "",
         isEmbedded: false,
         isSelfClosing: false,
+        pure: options.pure ?? true,
         preWhiteSpace: !!options.preWhiteSpace,
         content: options.content || "",
         range: options.range || [-1, -1],
@@ -511,6 +541,14 @@ function initTemplateNode(
         loc: options.loc || newASTLocation(),
         componentTag: options.componentTag || "",
         children: options.children || []
+    }
+}
+
+// 标记节点及其祖先节点的pure为false
+function markupNodeAndAncestorIsNotPure(node: TemplateNode) {
+    if (node.pure) {
+        node.pure = false
+        node.parent && markupNodeAndAncestorIsNotPure(node.parent)
     }
 }
 

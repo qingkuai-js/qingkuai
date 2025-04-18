@@ -1,18 +1,41 @@
 import type {
     ASTLocation,
+    TemplateNode,
     EliminateRanges,
     TemplateAttribute,
     ASTPositionWithFlag
 } from "../../compiler/types"
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
+import {
+    SELF_CLOSING_TAGS,
+    IntercodeSnippetKind,
+    MUST_PASS_VALUE_DIRECTIVES
+} from "../../compiler/constants"
+import {
+    debuggingInfo,
+    inputDescriptor,
+    interCodeSnippets,
+    templateNodeToContextIdentifiers
+} from "../../compiler/state"
 import { PositionFlag } from "../shared/flag"
-import { templateEmbeddedLangTagRE } from "../../compiler/regular"
 import { isEmptyString, isString, isUndefined } from "../shared/assert"
-import { debuggingInfo, inputDescriptor, interCodeSnippets } from "../../compiler/state"
+import { bannedIdentifierFormatRE, templateEmbeddedLangTagRE } from "../../compiler/regular"
+
+export function isSelfClosingTag(tag: string) {
+    return SELF_CLOSING_TAGS.has(tag)
+}
+
+export function isBannedIdentifier(name: string) {
+    return bannedIdentifierFormatRE.test(name)
+}
 
 export function isEmbededLanguageTag(tag: string) {
     return templateEmbeddedLangTagRE.test(tag)
+}
+
+export function mustDirectiveHasValue(name: string) {
+    return MUST_PASS_VALUE_DIRECTIVES.has(name)
 }
 
 // 通过ASTLocation获取[number,number]类型的索引范围表示
@@ -95,6 +118,21 @@ export function findSpecificAttr<T extends TemplateAttribute>(
     return undefined
 }
 
+// 生成指定长度的随机哈希字符串
+export const createHashId = (function () {
+    const existing = new Set<string>()
+    const max = parseInt(`0x${"f".repeat(8)}`)
+    return () => {
+        while (true) {
+            const hash = Math.floor(Math.random() * max).toString(16)
+            if (existing.has(hash)) {
+                continue
+            }
+            return existing.add(hash), hash
+        }
+    }
+})()
+
 // 判断某个索引是否被er包围，er的情况同getPieceOfStrOutOfER相同
 export function isIndexEliminated(index: number, ranges: EliminateRanges) {
     for (const range of ranges) {
@@ -110,6 +148,18 @@ export function isIndexEliminated(index: number, ranges: EliminateRanges) {
     return false
 }
 
+// 获取节点可用的上下文标识符
+export function getContextIdentifiers(node: TemplateNode) {
+    const result = new Set<string>()
+    while (node) {
+        templateNodeToContextIdentifiers.get(node)?.forEach(identifier => {
+            result.add(identifier)
+        })
+        node = node.parent as any
+    }
+    return Array.from(result)
+}
+
 // 为inputDescript.positions中某个索引的位置添加指定的flag标记
 export function markPositionFlag(index: number, flagName: PositionFlagKeys) {
     inputDescriptor.positions[index].flag |= PositionFlag[flagName]
@@ -122,7 +172,7 @@ export function recordInterExpression(exp: string, range: [number, number?]) {
         return
     }
 
-    interCodeSnippets.push([-3, "__c__.Receiver="])
+    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "__c__.Receiver="])
 
     // range[1]存在时需要调用recordInterWithSpecificRange方法记录中间代码片段
     if (isUndefined(range[1])) {
@@ -131,7 +181,7 @@ export function recordInterExpression(exp: string, range: [number, number?]) {
         recordInterSnippetWithSpecificRange(exp, ...(range as NumNum))
     }
 
-    interCodeSnippets.push([-2, ";"])
+    interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ";"])
 }
 
 // 将数组按size划分为二维数组

@@ -7,6 +7,7 @@ import { recordMapping } from "../sourcemap"
 import { indent } from "../../util/compiler/sundry"
 import { isArray, isNull, isString } from "../../util/shared/assert"
 import { lastElem, replaceEachItems } from "../../util/shared/sundry"
+import { inputDescriptor } from "../state"
 
 const transformTemplateFlag = {
     useBracketWrap: 1 << 0,
@@ -74,13 +75,14 @@ export function transformTemplate(
             n++
         }
         if (isNull(item)) {
-            pushTransformedArr(getAlias("nil"), ",", "\n", indent(n))
+            pushTransformedArr(getAlias("NIL"), ",", "\n", indent(n))
             return
         }
 
-        const { isTemplate } = item
+        const { isSpread } = item
         const hasAar = !isNull(item.aar)
-        const hasChild = childrenLen! > 0
+        const cacheIdIsFirstChild = item.cacheId !== -1
+        const hasChild = childrenLen! > 0 || cacheIdIsFirstChild
         const withEventStu = hasAar && item.aar!.eventStu.length > 0
         const elementUseLineBreak = shouldUseLineBreak(item, hasChild)
         const isContinued = hasAar && Boolean(item.aar!.continueInfo?.re)
@@ -105,7 +107,7 @@ export function transformTemplate(
         const addAttributeOrEventStu = (tirs: TransformInterpolationRet[]) => {
             const tirsLen = tirs.length
             if (tirsLen === 0) {
-                return pushTransformedArr(getAlias("nil"))
+                return pushTransformedArr(getAlias("NIL"))
             }
 
             let charCount = 0
@@ -174,7 +176,7 @@ export function transformTemplate(
         if (elementUseIndent) {
             pushTransformedArr(indent(n))
         }
-        if (!isTemplate) {
+        if (!isSpread) {
             pushTransformedArr("[")
             if (elementUseLineBreak) {
                 pushTransformedArr("\n", indent(n + 1))
@@ -182,7 +184,7 @@ export function transformTemplate(
         }
 
         // 添加tag、content、attribute和event结构
-        if (!isTemplate) {
+        if (!isSpread) {
             pushTransformedArr(item.tag)
             addTemplateStuJoinStr(true)
 
@@ -205,8 +207,22 @@ export function transformTemplate(
             }
         }
 
+        if (cacheIdIsFirstChild) {
+            if (inputDescriptor.options.comment) {
+                pushTransformedArr("/* cache id */ ")
+            }
+            pushTransformedArr(item.cacheId.toString())
+
+            if (item.children.length) {
+                pushTransformedArr(", ")
+            }
+            if (elementUseLineBreak) {
+                pushTransformedArr("\n", indent(n + 1))
+            }
+        }
+
         // 添加children调用结构
-        if (childrenLen) {
+        if (hasChild) {
             const test = chunkChildren(item.children)
             test.forEach(chunk => {
                 if (chunk.useBracket) {
@@ -225,7 +241,7 @@ export function transformTemplate(
                     flag &= ~transformTemplateFlag.parentUseLineBreak
                 }
 
-                const childIndentN = +(useLineBreak && !isTemplate) + n
+                const childIndentN = +(useLineBreak && !isSpread) + n
                 const transformedChild = transformTemplate(
                     chunk.tars,
                     generatingPosition,
@@ -243,7 +259,7 @@ export function transformTemplate(
         }
 
         // 添加当前TemplateStructure的结束字符
-        if (!isTemplate) {
+        if (!isSpread) {
             if (elementUseLineBreak) {
                 pushTransformedArr("\n", indent(n))
             }

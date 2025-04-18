@@ -1,11 +1,11 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { RawValue } from "./constants"
+import { RAW_VALUE } from "./constants"
 import { velf } from "../util/runtime/sundry"
 import { isReactive } from "../util/runtime/assert"
 import { AssignmentToDOMGetterProp } from "./message/warn"
-import { isArray, isBoolean, isObject, isString } from "../util/shared/assert"
+import { isArray, isBoolean, isObject } from "../util/shared/assert"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -53,10 +53,13 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
 
-    // 如果value是一个响应式值，需要将其修改为其原始值，因为响应式值的每次获取
-    // 都是一个新的Proxy包装值，参考：src/runtime/reactivity/value.ts
+    // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值，每次访问响应式值都会得到一个新的Proxy包装值
     if (isReactive(value)) {
-        value = value[RawValue]
+        value = value[RAW_VALUE]
+    }
+
+    if (key === "#show") {
+        return (elem.style.display = value ? "" : "none"), true
     }
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串
@@ -157,12 +160,6 @@ export function transformClassName(value: any) {
     return valueArr.join(" ").replace(/\s+/g, " ")
 }
 
-// 获取节点内容，QingKuai只会将textContent位置编译为字符串（调试模式）或数组（非调试模式）
-// 两种类型，如果是字符串类型直接返回，如果是数组类型则使用join方法拼接为字符串后返回
 function textContenValuet2Str(content: string | any[]) {
-    if (isArray(content)) {
-        return content.join("")
-    } else {
-        return "" + content
-    }
+    return isArray(content) ? content.join("") : content
 }

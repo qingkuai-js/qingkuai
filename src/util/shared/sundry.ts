@@ -15,6 +15,11 @@ export function notEqual(v1: any, v2: any) {
     return v1 !== v1 ? v2 === v2 : v1 !== v2
 }
 
+// 清空数组
+export function emptyArr(...arrs: any[][]) {
+    arrs.forEach(arr => setArrLength(arr, 0))
+}
+
 // 将类数组值转换为数组
 export function toArray<T>(iter: Iterable<T>) {
     return Array.from(iter)
@@ -23,6 +28,18 @@ export function toArray<T>(iter: Iterable<T>) {
 // 获取Map的entries数组
 export function entries<K, V>(target: Map<K, V>) {
     return toArray(target.entries())
+}
+
+export function escapeRegExpSource(s: string) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+// 通过指定元素删除数组中对应的元素（只会删除第一个匹配项）
+export function spliceByElem<T>(arr: T[], elem: T) {
+    const index = arr.findIndex(item => item === elem)
+    if (index !== -1) {
+        arr.splice(index, 1)
+    }
 }
 
 // 执行数组中的所有函数

@@ -1,24 +1,27 @@
 import type { AnyObject } from "../types"
 import type { ModuleFunc } from "../../runtime/types"
 
-import { isNumber } from "../shared/assert"
-import { IsModuleFunc, IsProxy, RawValue } from "../../runtime/constants"
+import { QingKuaiComponent } from "../../runtime/instance"
+import { IS_MODULE_FUNC, IS_PROXY, RAW_VALUE } from "../../runtime/constants"
 
-// 判断是否DOM节点
-export function isNode(v: any): v is Node {
-    return isNumber(v.nodeType)
+export function isNode(v: any) {
+    return v instanceof Node
 }
 
 // 判断值是否为响应式值
 export function isReactive<T extends AnyObject>(
     v: any
 ): v is T & {
-    [RawValue]: T
+    [RAW_VALUE]: T
 } {
-    return v?.[IsProxy] === true
+    return v?.[IS_PROXY] === true
 }
 
 // 判断是否是ModuleFunc类型
 export function isModuleFunc(v: any): v is ModuleFunc {
-    return !!v?.[IsModuleFunc]
+    return !!v?.[IS_MODULE_FUNC]
+}
+
+export function isComponent(v: any) {
+    return Object.getPrototypeOf(v) === QingKuaiComponent
 }

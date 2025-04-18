@@ -1,8 +1,16 @@
+export {
+    ifModule,
+    forModule,
+    aliasModule,
+    awaitModule,
+    targetModule,
+    unescapeModule,
+    keyedForModule
+} from "./module"
 export { init } from "./init"
-export { nil, noop } from "./constants"
+export { NIL, NOOP } from "./constants"
 export { QingKuaiComponent } from "./instance"
 export { eventWrapper, withReference } from "./event"
 export { syncWatch, preWatch, watch } from "./reactivity/effect"
 export { derived, destructuringDerived } from "./reactivity/derived"
-export { aliasModule, forModule, ifModule, awaitModule, keyedForModule } from "./module"
 export { react, constReact, destructuringReact, constDestructuringReact } from "./reactivity/value"

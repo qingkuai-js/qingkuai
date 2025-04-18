@@ -8,6 +8,7 @@ import {
     replacementInfo,
     eliminateRanges,
     inputDescriptor,
+    importedIdentifiers,
     tempStoredImportInfos,
     allExistingIdentifiers
 } from "../state"
@@ -16,12 +17,6 @@ import {
     IdentifierMaybeOverwritten,
     RedundantArgsForCompilerFunc
 } from "../message/warn"
-import {
-    reactCompilerFuncRE,
-    watchCompilerFuncRE,
-    bannedIdentifierFormatRE,
-    scriptSourceIndentSpaceCount
-} from "../regular"
 import {
     parse,
     getEsNode,
@@ -52,10 +47,11 @@ import { walk } from "../estree/walk"
 import { COMPILER_FUNCS } from "../constants"
 import { lastElem } from "../../util/shared/sundry"
 import { recordMappingWithNoOffset } from "../sourcemap"
-import { findOutOfSC } from "../../util/compiler/strings"
-import { getSetterIdentifier } from "../../util/compiler/sundry"
+import { findOutOfStringComment } from "../../util/compiler/strings"
 import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
 import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
+import { getSetterIdentifier, isBannedIdentifier } from "../../util/compiler/sundry"
+import { reactCompilerFuncRE, watchCompilerFuncRE, scriptSourceIndentSpaceCount } from "../regular"
 
 const visitor: ASTVisitor = {
     VariableDeclaration(node, parent) {
@@ -149,7 +145,7 @@ const visitor: ASTVisitor = {
         const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
 
         // 检查是否是被禁止的标识符格式
-        if (bannedIdentifierFormatRE.test(name)) {
+        if (isBannedIdentifier(name)) {
             IdentifierFormatIsNotAllowed(name, getSourceLocByScriptLoc(node.loc))
         }
 
@@ -200,6 +196,9 @@ const visitor: ASTVisitor = {
             mappingLine: [],
             startColumn: node.loc.start.column,
             code: scriptSource.slice(start, end)
+        })
+        node.specifiers.forEach(specifier => {
+            importedIdentifiers.add(specifier.local.name)
         })
         if (isInTopScope(node, parent)) {
             node.specifiers.forEach(specifier => {
@@ -265,7 +264,7 @@ export function analyzeScript(source: string) {
         items: []
     })
 
-    walk(parse(source), visitor)
+    walk(parse(source, 0, getSourceIndexByScriptIndex(0)), visitor)
     confirmQingKuaiIdentifierAliases()
 }
 
@@ -445,68 +444,66 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         // 当变量声明语句需要转换为响应性声明时标记文本替换，这里需要区分是否解构语法
         // 调试模式时，为非const声明的标识符添加__w__前缀，并记录所有原始标识符名称，这些原始标识符
         // 名称会在生成代码的底部被声明，并由响应性声明方法接受的setter参数进行赋值
-        if (!isDerived && internalReactFunc) {
-            if (!isDestructuring) {
-                const getSetterArg = (ret = "") => {
-                    if (isDebug) {
-                        if (isConst) {
-                            ret = getAlias("noop")
-                        } else {
-                            ret = getSetterIdentifier(names[0])
-                        }
+        if (!isDerived && internalReactFunc && !isDestructuring) {
+            const getSetterArg = (ret = "") => {
+                if (isDebug) {
+                    if (isConst) {
+                        ret = getAlias("NOOP")
+                    } else {
+                        ret = getSetterIdentifier(names[0])
                     }
-                    return ret ? ", " + ret : ret
                 }
+                return ret ? ", " + ret : ret
+            }
 
+            if (isDebug) {
+                replacementItems.push(
+                    initReplacementItem({
+                        index: idRange[0],
+                        text: "[__w__"
+                    }),
+                    initReplacementItem({
+                        index: idRange[1],
+                        text: () => `, ${names[0]}]`
+                    })
+                )
+            }
+            if (noInitOrNoArg) {
+                const equalToken = hasFnCall ? "" : " = "
+                replacementItems.push(
+                    initReplacementItem({
+                        index: hasFnCall ? initRange[1] : idRange[1],
+                        text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
+                    })
+                )
+            } else {
+                replacementItems.push(
+                    initReplacementItem({
+                        index: initRange[0],
+                        text: () => getReactFunc()
+                    })
+                )
                 if (isDebug) {
                     replacementItems.push(
                         initReplacementItem({
-                            index: idRange[0],
-                            text: "[__w__"
-                        }),
-                        initReplacementItem({
-                            index: idRange[1],
-                            text: () => `, ${names[0]}]`
+                            index: valueRange[1],
+                            text: () => getSetterArg()
                         })
                     )
                 }
-                if (noInitOrNoArg) {
-                    const equalToken = hasFnCall ? "" : " = "
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: hasFnCall ? initRange[1] : idRange[1],
-                            text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
-                        })
-                    )
-                } else {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: initRange[0],
-                            text: () => getReactFunc()
-                        })
-                    )
-                    if (isDebug) {
-                        replacementItems.push(
-                            initReplacementItem({
-                                index: valueRange[1],
-                                text: () => getSetterArg()
-                            })
-                        )
-                    }
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: initRange[1],
-                            text: ")"
-                        })
-                    )
-                }
+                replacementItems.push(
+                    initReplacementItem({
+                        index: initRange[1],
+                        text: ")"
+                    })
+                )
             }
         }
 
         if (isDestructuring && reactFunc !== "stc") {
             const id = `[${destructuringIdentifierArr.join(", ")}]`
-            const equalTokenIndex = findOutOfSC(scriptSource, "=", idRange[1])[0]
-            const lengthArg = `, ${isDerived ? destructuringIdentifierArr.length : ""}`
+            const equalTokenIndex = findOutOfStringComment(scriptSource, "=", idRange[1])[0]
+            const lengthArg = isDerived ? `, ${destructuringIdentifierArr.length}` : ""
             const markReplacementCommon = (idStr: string) => {
                 replacementItems.push(
                     initReplacementItem({
@@ -542,7 +539,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
                         text: () => {
                             const setters = destructuringIdentifierArr.map(identifier => {
                                 if (isConst && !isDerived) {
-                                    return getAlias("noop")
+                                    return getAlias("NOOP")
                                 } else {
                                     return getSetterIdentifier(identifier)
                                 }
@@ -632,7 +629,7 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
                 // 函数调用开始括号的索引
                 // end index of callee start parentheses
-                const ps = findOutOfSC(scriptSource, "(", init!.start!)[0] + 1
+                const ps = findOutOfStringComment(scriptSource, "(", init!.start!)[0] + 1
 
                 // 解构时，将id的开始位置至第一个参数开始的位置标记为无需映射
                 if (isDestructuring) {

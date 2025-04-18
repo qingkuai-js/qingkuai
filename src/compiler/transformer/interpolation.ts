@@ -3,92 +3,73 @@ import type {
     TemplateContext,
     StringOrStringGetter,
     TransformInterpolationRet,
-    TransformInterpolationOptionalParam
+    TransformInterpolationOptions
 } from "../types"
 import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
 import {
+    inputDescriptor,
+    replacementInfo,
+    importedIdentifiers,
+    allExistingIdentifiers
+} from "../state"
+import {
     BadValueToRefAttr,
-    InterpolationExpOutOfLimit,
     IdentifierFormatIsNotAllowed,
-    ContextIdentifierUsedAsReferenceTarget,
-    SequenceExpreesionInInterpolationBlock
+    ContextIdentifierUsedAsReferenceTarget
 } from "../message/error"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
-import { is, isFunctionNode } from "../estree/assert"
+import { StringLiteralLeftPad } from "../constants"
 import { stringify } from "../../util/compiler/strings"
 import { identifierIsReference } from "../estree/assert"
+import { is, isInlineEventHandler } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { confirmAlias, isIndexEliminated } from "../../util/compiler/sundry"
-import { getEsNode, getEsNodeOfParent, parse } from "../../util/compiler/estree"
+import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
-import { bannedIdentifierFormatRE, expressionReplaceWithSpaceRE } from "../regular"
-import { inputDescriptor, replacementInfo, allExistingIdentifiers } from "../state"
+import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
 
 export function transformInterpolation(
     expression: string,
     startSourceIndex: number,
     context: TemplateContext,
-    type: "directive" | "attribute" | "event" | "content",
-    optionalParams: TransformInterpolationOptionalParam = {}
+    options: TransformInterpolationOptions
 ): TransformInterpolationRet {
-    if (isEmptyString(expression)) {
+    if (inputDescriptor.options.check || isEmptyString(expression)) {
         return ""
     }
 
-    const bodyAst = parse("_=" + expression)?.body
-    const expressionAst = (bodyAst as any)?.[0].expression
-    const endSourceIndex = startSourceIndex + expression.length
-
-    // 检查模式下遇到解析错误时返回原表达式
-    if (isUndefined(bodyAst)) {
-        return expression
-    }
-
-    // 插值块中最多允许出现一个表达式
-    if (bodyAst!.length > 1) {
-        return InterpolationExpOutOfLimit(startSourceIndex, endSourceIndex), ""
-    }
-
-    // 未被括号包裹的序列表达式在插值块中是不被允许的
-    if (is(expressionAst, "SequenceExpression")) {
-        return SequenceExpreesionInInterpolationBlock(startSourceIndex, endSourceIndex), ""
-    }
-
-    // 检查模式下语法检查完成后无需执行后续的转换操作
-    if (inputDescriptor.options.check) {
-        return expression
-    }
+    const { eventWrapper, positionMap, normalClassRange } = options
+    const isEvent = options.isComponentEvent || !isUndefined(eventWrapper)
+    const bodyAst = parse("_=" + expression, 2, startSourceIndex, positionMap)?.body[0]
 
     let vParam = "v"
     let ctxParam = "ctx"
-    let useGetter = false
+    let firstMappingAt = 0
     let useContext = false
+    let useGetter = isEvent
     let underlineParam = "_"
-    let firstMappingOffsetLeft = 0
 
     const indexMap: number[] = []
     const transformedArr: string[] = []
-    const sourcemapIndexes: number[] = []
     const afterWalkFuncs: GeneralFunc[] = []
     const mappings: FixedArray<number, 4>[] = []
     const contextVariables: [string, number][] = []
+
+    const sourcemapIndexes = new Set<number>()
     const expEliminateRanges: EliminateRanges = new Set()
     const allIndentifiersInExpression = new Set<string>()
     const transformInfos: Map<number, StringOrStringGetter[]> = new Map()
 
-    const ast = expressionAst.right
+    const ast = (bodyAst as any).expression.right
     const isDebug = inputDescriptor.options.debug
-    const eventWrapper = optionalParams.eventWrapper
-    const usedAsSetter = optionalParams.usedAsSetter || false
-    const noPositionMap = isUndefined(optionalParams.positionMap)
-    const isKeyDirective = optionalParams.isKeyDirective || false
+    const noPositionMap = isUndefined(positionMap)
+    const usedAsSetter = options.usedAsSetter || false
+    const isKeyDirective = options.isKeyDirective || false
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
-    const isEvent = optionalParams.isComponentEvent || !isUndefined(eventWrapper)
 
     // 扩展转换信息数组
     const extendTransformInfo = (index: number, str: StringOrStringGetter) => {
@@ -103,7 +84,7 @@ export function transformInterpolation(
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
     // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
-    if (optionalParams.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+    if (options.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
         const expressionEndSourceIndex = startSourceIndex + expression.length
         BadValueToRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
     }
@@ -119,7 +100,7 @@ export function transformInterpolation(
             allIndentifiersInExpression.add(name)
 
             // 检查插值表达式中是否使用了禁止使用的标识符
-            if (bannedIdentifierFormatRE.test(name)) {
+            if (isBannedIdentifier(name)) {
                 IdentifierFormatIsNotAllowed(name, nodeLoc)
             }
 
@@ -130,6 +111,10 @@ export function transformInterpolation(
             const ctx = context.map.get(name)
             const dep = replacementInfo.map.get(name)
             const esParent = getEsNodeOfParent(parent)
+
+            if (importedIdentifiers.has(node.name)) {
+                useGetter = true
+            }
 
             // 如果表达式访问了props或refs，就要使用getter包装
             if (!dep && /^(?:prop|ref)s$/.test(name)) {
@@ -144,7 +129,7 @@ export function transformInterpolation(
             }
 
             if (ctx) {
-                if (isDebug && !usedAsSetter && type !== "directive") {
+                if (isDebug && !usedAsSetter && options.type !== "directive") {
                     contextVariables.push([name, ctx.num])
                 } else {
                     if (!isKeyDirective) {
@@ -182,19 +167,31 @@ export function transformInterpolation(
             }
         },
         StringLiteral(node) {
+            const [ns, ne] = normalClassRange ?? [-1, -1]
+            const [os, oe] = [node.start - 2, node.end - 2]
             expEliminateRanges.add([node.start, node.end])
-            extendTransformInfo(node.end, stringify(node.value))
+            if (os >= ns && os <= ne && oe >= ns && oe <= ne) {
+                extendTransformInfo(
+                    node.end,
+                    stringify(node.value, StringLiteralLeftPad.normalClass)
+                )
+            } else {
+                extendTransformInfo(node.end, stringify(node.value))
+            }
         },
         TemplateElement(node) {
             expEliminateRanges.add([node.start, node.end])
-            extendTransformInfo(node.end, `$\{${stringify(node.value.raw)}}`)
+            if (node.value.raw) {
+                extendTransformInfo(node.end, `$\{${stringify(node.value.raw)}}`)
+            }
         },
 
         // 标记需要记录sourcemap信息的索引（表达式转换前的索引）转换完成后，可以通过访问
         // indexMap[转换前的索引]来换取它对应的转换后的表达式位置索引
         AnyNode(node) {
             if (startSourceIndex !== -1) {
-                sourcemapIndexes.push(node.start - 2, node.end - 2)
+                sourcemapIndexes.add(node.end - 2)
+                sourcemapIndexes.add(node.start - 2)
             }
         }
     })
@@ -203,12 +200,6 @@ export function transformInterpolation(
     // 以绑定当前节点的CallExpression转换信息就需要在Identifier捕获组之后被添加，
     // 这种情况在walk中Identifer捕获组先于CallExpression
     runAll(afterWalkFuncs)
-
-    // 如果当前表达式未使用getter包装，则判断其本身是否有可能是函数，如果有可能的话，
-    // 需要标记其需要使用getter包装，不然运行时可能错误地将其认为是getter进行调用
-    if (!useGetter) {
-        useGetter = isEvent || expressionMaybeFunction(ast)
-    }
 
     // 如果当前用作setter（引用传递）的目标是上下文标识符则报错（它是常量）
     if (usedAsSetter && useContext && is(ast, "Identifier")) {
@@ -224,11 +215,11 @@ export function transformInterpolation(
     ctxParam = confirmAlias(ctxParam, allExistingIdentifiers)
     underlineParam = confirmAlias(underlineParam, allExistingIdentifiers)
 
+    // rsc: Replaced Space Count
     // 根据标记的trasformInfos和expEliminateRanges转换表达式，并生成转换前后每个字符的索引映射，
     // 索引映射记录在indexMpa中，每个下标为转换前的字符索引，访问下标对应的元素即为转换后的字符索引
     // 另外，当遇到连续空字符或换行符时会被替换为一个空格以保证转换后的表达式是单行的
-    // rsc: Replaced Space Count    pie: Pre(position) Is Eliminated
-    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0, pie = false; i <= expression.length; i++) {
+    for (let i = 0, offset = 0, nextOffset = 0, rsc = 0; i <= expression.length; i++) {
         transformInfos.get(i)?.forEach(item => {
             const str = isFunction(item) ? item() : item
             transformedArr.push(str)
@@ -239,32 +230,26 @@ export function transformInterpolation(
             }
         })
         if (i < expression.length) {
-            if (isIndexEliminated(i + 2, expEliminateRanges) || rsc > 0) {
-                rsc > 0 && rsc--
-                pie && offset--
-                pie = true
+            if (rsc > 0 || isIndexEliminated(i + 2, expEliminateRanges)) {
+                nextOffset--
+                rsc && rsc--
             } else {
-                const matched = expressionReplaceWithSpaceRE.exec(expression)
+                const matched = /^\s+/.exec(expression.slice(i))
                 if (matched) {
                     transformedArr.push(" ")
                     rsc = matched[0].length - 1
                 } else {
                     transformedArr.push(expression[i])
                 }
-                if (pie) {
-                    offset--
-                }
-                pie = false
             }
         }
         shouldGenerateSourcemap && indexMap.push(i + offset)
-        expressionReplaceWithSpaceRE.lastIndex = i + 1
-        offset += nextOffset
-        nextOffset = 0
+        ;(offset += nextOffset), (nextOffset = 0)
     }
 
     // 生成转换结果
     let addedPrefixLen = 0
+    let useReturnKeyword = false
     let transformedExp = transformedArr.join("")
     const useParenthesesWrap = /^ *{/.test(transformedExp)
     const hasContextVariable = contextVariables.length > 0
@@ -279,27 +264,25 @@ export function transformInterpolation(
         const contextVariableDeclaration = `const ${contextVariableValues.join(", ")};`
         transformedExp = `{ ${contextVariableDeclaration} return ${transformedExp} }`
         addedPrefixLen += contextVariableDeclaration.length + 10
-        firstMappingOffsetLeft += 7
+        useReturnKeyword = true
     }
 
     // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
-        if (!isDebug || firstMappingOffsetLeft) {
+        if (!isDebug && !useReturnKeyword) {
             transformedExp = `$arg => ${transformedExp}`
         } else {
             addedPrefixLen += 17
-            firstMappingOffsetLeft += 7
+            useReturnKeyword = true
             transformedExp = `$arg => { return ${transformedExp} }`
         }
     }
 
     // 如果使用了EventWrapperFlag，则调用eventWrapper方法将包裹事件，并传入flag参数
     if (!isUndefined(eventWrapper)) {
+        const insertComment = inputDescriptor.options.comment
         const eventWrapperFuncName = getAlias("eventWrapper")
-        const comment = `/* ${eventWrapper.modifiers.join(", ")} */`
-        if (!useInlineEventHandler) {
-            firstMappingOffsetLeft += eventWrapperFuncName.length + 1
-        }
+        const comment = insertComment ? `/* ${eventWrapper.modifiers.join(", ")} */` : ""
         addedPrefixLen += eventWrapperFuncName.length + 1
         transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${comment} ${eventWrapper.flag})`
     }
@@ -316,11 +299,11 @@ export function transformInterpolation(
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
         }
-        if (!isDebug || firstMappingOffsetLeft) {
-            addedPrefixLen += paramStr.length + 4
+        if (!isDebug || useReturnKeyword) {
             transformedExp = `${paramStr} => ${transformedExp}`
+            firstMappingAt = addedPrefixLen += paramStr.length + 4
         } else {
-            firstMappingOffsetLeft += 7
+            firstMappingAt = paramStr.length + 6
             addedPrefixLen += paramStr.length + 13
             transformedExp = `${paramStr} => { return ${transformedExp} }`
         }
@@ -330,18 +313,15 @@ export function transformInterpolation(
     // 分别代表：源码索引、转换后的表达式列、源码行、源码列（转换后的表达式行都为1，无需记录）
     // 在调用transformTemplate时会根据这个mappings来转换生成sourcemap需要的mappings格式
     if (shouldGenerateSourcemap && useGetter) {
-        sourcemapIndexes.sort((a, b) => {
+        const sortedSourceMapIndexes = Array.from(sourcemapIndexes).sort((a, b) => {
             return a - b
         })
-        sourcemapIndexes.forEach(index => {
-            const sourceIndex = noPositionMap
-                ? index + startSourceIndex
-                : optionalParams.positionMap![index]
-            const generateIndex = indexMap[index] + addedPrefixLen
+        sortedSourceMapIndexes.forEach(index => {
+            const sourceIndex = noPositionMap ? index + startSourceIndex : positionMap![index]
             if (!isUndefined(sourceIndex)) {
                 mappings.push([
                     sourceIndex,
-                    generateIndex,
+                    indexMap[index] + addedPrefixLen,
                     inputDescriptor.positions[sourceIndex].line,
                     inputDescriptor.positions[sourceIndex].column
                 ])
@@ -351,46 +331,14 @@ export function transformInterpolation(
         // firstMappingOffsetLeft记录了首个映射位置需要向左偏移的量，当为转换结果
         // 添加了return关键字时，需要将首个映射位置修改为return关键字开始的位置，
         // 这样处理调试时可以保持在插值表达式的开始和结尾处设置断点的一致性
-        if (firstMappingOffsetLeft && mappings[0]) {
-            mappings[0][1] -= firstMappingOffsetLeft
-        }
+        mappings[0] && (mappings[0][1] = firstMappingAt)
     }
 
     // 没有属性值时将mappings首个记录的源码索引向左偏移1
-    if (optionalParams.attributeWithNoValue && mappings.length) {
+    if (options.attributeWithNoValue && mappings.length) {
         mappings[0][0]--, mappings[0][3]--
     }
 
     // 未转换成getter时不需要源码映射
     return mappings.length ? { mappings, transformedExp } : transformedExp
-}
-
-// 判断表达式是否是内联事件处理器
-function isInlineEventHandler(node: AnyNode) {
-    return !(
-        isFunctionNode(node) ||
-        is(node, "Identifier") ||
-        is(node, "MemberExpression") ||
-        is(node, "OptionalMemberExpression")
-    )
-}
-
-// 判断表达式是否有可能是函数
-function expressionMaybeFunction(exp: AnyNode) {
-    const esExp = getEsNode(exp)
-    return !(
-        is(esExp, "NullLiteral") ||
-        is(esExp, "RegexLiteral") ||
-        is(esExp, "BigIntLiteral") ||
-        is(esExp, "StringLiteral") ||
-        is(esExp, "BooleanLiteral") ||
-        is(esExp, "DecimalLiteral") ||
-        is(esExp, "NumericLiteral") ||
-        is(esExp, "TemplateLiteral") ||
-        is(esExp, "UnaryExpression") ||
-        is(esExp, "ArrayExpression") ||
-        is(esExp, "ObjectExpression") ||
-        is(esExp, "BinaryExpression") ||
-        is(esExp, "UpdateExpression")
-    )
 }

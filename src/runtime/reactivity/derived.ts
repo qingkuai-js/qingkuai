@@ -8,9 +8,9 @@ import type {
 import type { GeneralFunc } from "../../util/types"
 
 import { internalSyncEffect } from "./effect"
-import { IsProxy, reflect, undef } from "../constants"
 import { len, values } from "../../util/shared/sundry"
 import { isUndefined } from "../../util/shared/assert"
+import { IS_PROXY, REFLECT, UNDEF } from "../constants"
 import { setUsedEffectList, usedEffectList, withCleanUsedEffectList } from "./state"
 import { AssignmentToDerived, DerivedDependenNoReactiveValue } from "../message/warn"
 
@@ -29,8 +29,7 @@ export const derived = withCleanUsedEffectList((fn: Getter, setter?: Setter) => 
         target.$ = value
     }
     const proxy = newDerivedProxy(target, state, update)
-
-    return isDebug ? [proxy, proxy.$] : proxy
+    return isDebug ? [proxy, UNDEF] : proxy
 })
 
 // 解构注册衍生响应性状态：将解构的每个标识符单独声明为一个衍生响应性状态，被解构
@@ -64,7 +63,7 @@ export const destructuringDerived = withCleanUsedEffectList(
 )
 
 function newDerivedTarget(): DerivedTarget {
-    return { $: undef as any }
+    return { $: UNDEF as any }
 }
 
 function newDerivedState(): DerivedInternalState {
@@ -77,8 +76,8 @@ function newDerivedState(): DerivedInternalState {
 
 function newDerivedProxy(target: DerivedTarget, state: DerivedInternalState, udpate: GeneralFunc) {
     return new Proxy<any>(target, {
-        get(target, property) {
-            if (property === IsProxy) {
+        get(target, property, receiver) {
+            if (property === IS_PROXY) {
                 return true
             }
             if (state.dirty) {
@@ -96,7 +95,7 @@ function newDerivedProxy(target: DerivedTarget, state: DerivedInternalState, udp
                 }, state.effectList)
             }
             setUsedEffectList(state.effectList)
-            return reflect.get(target, property)
+            return REFLECT.get(target, property, receiver)
         },
 
         set() {

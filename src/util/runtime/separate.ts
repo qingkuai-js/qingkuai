@@ -5,27 +5,19 @@
  */
 
 import type {
+    TopNodes,
     Directive,
-    KeyedInfo,
     PartialNode,
-    KeyedInfoItem,
+    TopNodesItem,
     RenderContext,
     EffectListItem,
     DestructionStruct
 } from "../../runtime/types"
 
-import { len, runAll } from "../shared/sundry"
-import { nil, noop } from "../../runtime/constants"
-import { isFunction, isNumber } from "../shared/assert"
+import { NIL, NOOP } from "../../runtime/constants"
 import { setUsedEffectList } from "../../runtime/reactivity/state"
-
-// 返回新创建的DestructStruct
-export function newDestruction(): DestructionStruct {
-    return {
-        v: [],
-        c: new Set()
-    }
-}
+import { emptyArr, lastElem, len, runAll, spliceByElem } from "../shared/sundry"
+import { isArray, isFunction, isNull, isNumber } from "../shared/assert"
 
 // 根据contextValues模拟一个Directive
 export function mockDirective(
@@ -35,29 +27,15 @@ export function mockDirective(
     return {
         t: 0,
         e: effectList || [],
-        v: [0, contextValues, noop]
-    }
-}
-
-// 扩展KeyedInfoItem.nks
-export function extendNks(nks: KeyedInfoItem["nks"], nki: KeyedInfo) {
-    if (len(nki) !== 1) {
-        nks.push(nki)
-    } else {
-        nki[0].nks.forEach(nk => {
-            nks.push(nk)
-        })
+        v: [0, contextValues, NOOP]
     }
 }
 
 // 卸载block
 export function destroyBlock(destruction: DestructionStruct) {
     runAll(destruction.v)
-    destruction.c.forEach(child => {
-        child.forEach(dst => {
-            destroyBlock(dst)
-        })
-    })
+    destruction.c.forEach(destroyBlock)
+    emptyArr(destruction.v, destruction.c)
 }
 
 // 组合嵌套module的context
@@ -76,8 +54,43 @@ export function combineContext(
     })
 }
 
+// 扩展TopNodes并返回新创建的元素
+export function extendTopNodes(topNodes: TopNodes) {
+    const ret: TopNodesItem = []
+    topNodes.push(ret)
+    return ret
+}
+
+// 返回新创建的DestructStruct
+export function newDestruction(): DestructionStruct {
+    return { v: [], c: [] }
+}
+
+// 扩展TopNodes（在dref之前）并返回新创建的元素（Module中的dref始终应保持在最后）
+export function extendTopNodesBeforeDref(topNodes: TopNodes, dref: Text) {
+    const ret: TopNodesItem = []
+    if (lastElem(topNodes)?.[0] !== dref) {
+        topNodes.push(ret)
+    } else {
+        topNodes.pop()
+        topNodes.push(ret, [dref])
+    }
+    return ret
+}
+
+// 扩展destruction子元素并返回新创建的DestructionStruct
+export function appendChildForDestruction(destruction: DestructionStruct) {
+    const ret = newDestruction()
+    destruction.c.push(ret)
+    return ret
+}
+
+export function putTopNodesIntoItem(item: TopNodesItem, topNodes: TopNodes) {
+    topNodes.forEach(tn => item.push(...tn))
+}
+
 // 生成获取context的方法
-export function getContextFuncGen(context: RenderContext[], node: PartialNode = nil) {
+export function getContextFuncGen(context: RenderContext[], node: PartialNode = NIL) {
     return (p: any) => {
         if (isNumber(p)) {
             for (let i = 0; true; i++) {
@@ -94,4 +107,15 @@ export function getContextFuncGen(context: RenderContext[], node: PartialNode = 
             return p.bind(node)
         }
     }
+}
+
+// 遍历TopNodes中的DOM节点
+export function traverseTopNodes(topNodes: TopNodes | TopNodesItem, cb: (node: Node) => void) {
+    topNodes.forEach(item => {
+        if (!isArray(item)) {
+            cb(item)
+        } else {
+            traverseTopNodes(item, cb)
+        }
+    })
 }

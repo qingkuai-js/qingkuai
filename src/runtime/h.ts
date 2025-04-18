@@ -1,12 +1,12 @@
 import type {
-    Directive,
-    KeyedInfo,
+    TopNodes,
     UpdateFunc,
+    TopNodesItem,
     PartialNode,
     RenderContext,
+    Constructible,
     EventStructure,
     RenderStructure,
-    ValueOrValueArr,
     DestructionStruct,
     QingKuaiNodeStruct,
     ComponentStructure,
@@ -16,121 +16,129 @@ import type {
 import type { AnyObject, GeneralFunc } from "../util/types"
 
 import {
-    createComponent,
+    NIL,
+    UNDEF,
+    INSTANTIATE_BY_H,
+    ALIAS_MODULE_KIND,
+    IS_WITH_REFERENCE_RET,
+    BAD_TARGET_MOUNT_KIND
+} from "./constants"
+import {
     QingKuaiComponent,
     getCurrentInstance,
     invokeIndexedHooks,
     setCurrentInstance
 } from "./instance"
 import {
-    extendNks,
-    mockDirective,
-    combineContext,
-    newDestruction,
-    getContextFuncGen
-} from "../util/runtime/separate"
-import {
     usedEffectList,
     setUsedEffectList,
-    clearUsedEffectList,
+    cleanUsedEffectList,
     withCleanUsedEffectList
 } from "./reactivity/state"
+import {
+    mockDirective,
+    combineContext,
+    extendTopNodes,
+    newDestruction,
+    getContextFuncGen,
+    putTopNodesIntoItem,
+    appendChildForDestruction
+} from "../util/runtime/separate"
+import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
-import { InvalidMountNode } from "./message/error"
-import { isModuleFunc } from "../util/runtime/assert"
-import { IsWithReferenceRet, nil } from "./constants"
 import { internalPreEffect } from "./reactivity/effect"
-import { lastElem, len, values } from "../util/shared/sundry"
-import { isArray, isFunction, isNull } from "../util/shared/assert"
+import { len, spliceByElem, values } from "../util/shared/sundry"
+import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
+import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
 export function render(
     instance: QingKuaiComponent,
     target: Node,
-    reference: PartialNode = nil,
+    reference: PartialNode = NIL,
     context: RenderContext[] = [],
-    isKeyedTop: boolean = false
+    destruction: DestructionStruct | null = NIL
 ) {
-    let dst: DestructionStruct
     const properties = instance.__
-    // if (!conf.exposeDsts) {
-    //     dst = newDestruction()
-    // }
-    dst = properties.dst
-    properties.context = context
+    const topNodesItem: TopNodesItem = []
+    if (isNull(destruction)) {
+        if (__qk_expose_destructions__) {
+            destruction = properties.dst
+        } else {
+            destruction = newDestruction()
+        }
+    }
     properties.ctx = getContextFuncGen(context)
+    properties.dst = destruction
+    properties.context = context
     setCurrentInstance(instance)
 
-    const ts = properties.ts
-    const preInstance = getCurrentInstance()
-    const keyedInfo: KeyedInfo = [{ nks: [], dst }]
-    const renderEachTopBlock = (stu: TemplateStuOrModuleFunc) => {
-        // prettier-ignore
-        const nki = h(
-            instance,
-            stu,
-            target,
-            reference,
-            true,
-            context,
-            dst,
-            isKeyedTop
-        )
-        extendNks(keyedInfo[0].nks, nki)
+    destruction.v.unshift(() => {
+        invokeIndexedHooks(instance, 4)
+    })
+    destruction.v.push(() => {
+        invokeIndexedHooks(instance, 5)
+        instance.__ = null as any
+    })
+
+    const renderEachTopBlock = (tom: TemplateStuOrModuleFunc) => {
+        topNodesItem.push(h(instance, tom, target, reference, true, context, destruction))
     }
     invokeIndexedHooks(instance, 0)
-    ts.forEach(renderEachTopBlock)
-    invokeIndexedHooks(instance, 1)
-    setCurrentInstance(preInstance!)
-    return [keyedInfo, dst] as const
+    properties.ts.forEach(renderEachTopBlock)
+    return invokeIndexedHooks(instance, 1), [topNodesItem]
 }
 
 export const h = withCleanUsedEffectList(function (
     instance: QingKuaiComponent,
-    stu: TemplateStuOrModuleFunc,
+    stu: Node | TemplateStuOrModuleFunc,
     target: Node,
     reference: PartialNode,
     shouldDestroy: boolean,
     context: RenderContext[],
-    destruction: DestructionStruct,
-    isKeyedTop: boolean = false
+    destruction: DestructionStruct
 ) {
-    let dref: Text
+    let rstu: RenderStructure
     let isInputOrOption = false
     let isInputOrTextarea = false
+    let dref: Text | undefined = UNDEF
 
-    const { directive, toms } = toRenderStructure(stu, context)
-    const isKeyedForModule = directive && directive.t === 1
-    const isAliasModule = directive && directive.t === 2
-    const destructionArr: DestructionStruct[] = []
-    const isDirectiveModule = !isNull(directive)
+    if (!isModuleFunc(stu)) {
+        rstu = {
+            toms: [stu],
+            directive: NIL
+        }
+    } else {
+        rstu = stu(getContextFuncGen(context))
+    }
+
+    const topNodes: TopNodes = []
+    const { directive, toms } = rstu
     const times = directive?.v[0] ?? 1
-    const keyedInfo: KeyedInfo = []
+    const parentDestruction = destruction
+    const cachedPureNodes = instance.__.cn
+    const isDirectiveModule = !isNull(directive)
+    const isAliasModule = directive?.t === ALIAS_MODULE_KIND
 
-    const selfAttachUpdate = (fn: UpdateFunc) => {
+    const attachUpdateLocal = (fn: UpdateFunc) => {
         attachUpdate(fn, instance, destruction)
     }
 
-    const selfAttachDestroy = (fn: GeneralFunc) => {
+    const attachDestroyLocal = (fn: GeneralFunc) => {
         attachDestroy(fn, destruction)
     }
 
     // 开始指令模块前的处理
     if (isDirectiveModule) {
-        // const t = `--- ${
-        //     directive.t === 1 ? "keyed-for" : directive?.v[1].length ? "for" : "if"
-        // } ---`
         if (!isAliasModule) {
             dref = textNode("")
-            insert(target, dref, reference)
-            isKeyedTop ||= directive.t === 1
-            selfAttachDestroy(() => destroy(dref!))
+            attachDestroyLocal(() => destroy(dref!))
+            insert(target, dref, reference), (reference = dref)
         }
 
         for (let i = 0; i < times; i++) {
-            extendDsts(destructionArr)
+            appendChildForDestruction(destruction)
         }
-        destruction.c.add(destructionArr)
 
         const moduleUpdateFn = directive.v[2](
             instance,
@@ -139,31 +147,50 @@ export const h = withCleanUsedEffectList(function (
             dref!,
             context,
             destruction,
-            destructionArr!,
-            isKeyedTop,
-            keyedInfo
+            topNodes
         )
         if (moduleUpdateFn && !isAliasModule) {
             setUsedEffectList(directive.e)
-            selfAttachUpdate(moduleUpdateFn)
-            clearUsedEffectList()
+            attachUpdateLocal(moduleUpdateFn)
+            cleanUsedEffectList()
         }
     }
 
     for (let i = 0; i < times; i++) {
         if (isDirectiveModule) {
-            destruction = destructionArr[i]
+            destruction = parentDestruction.c[i]
         }
-        keyedInfo.push({
-            nks: [],
-            dst: isKeyedForModule ? destruction || nil : nil
+
+        const topNodesItem = extendTopNodes(topNodes)
+        attachDestroyLocal(() => {
+            spliceByElem(topNodes, topNodesItem)
         })
-        toms.forEach((tom: RenderStructure["toms"][number]) => {
-            const qkNode: QingKuaiNodeStruct = { n: nil, text: "", attrs: {} }
-            const [tag, content, attrs, events, ...children] = tom.template
+
+        const extendTopNodesItemLocal = (topNodes: TopNodes) => {
+            putTopNodesIntoItem(topNodesItem, topNodes)
+        }
+
+        toms.forEach(tom => {
             const currentContext = combineContext(directive, context, i)
-            const currentKeyedInfo = lastElem(keyedInfo)
+            if (isNode(tom)) {
+                topNodesItem.push(tom)
+                insert(target, tom, reference)
+                attachDestroyLocal(() => destroy(tom))
+                return
+            }
+
+            // rstu是子指令模块
+            if (isModuleFunc(tom)) {
+                return extendTopNodesItemLocal(
+                    h(instance, tom, target, reference, shouldDestroy, currentContext, destruction)
+                )
+            }
+
+            const [tag, content, attrs, events, ...children] = tom
             const cif = isFunction(content)
+            const tagIsNumber = isNumber(tag)
+            const qkNode: QingKuaiNodeStruct = { n: NIL, text: "", attrs: {} }
+            const cacheId = isNumber(children[0]) ? children[0] : tagIsNumber ? tag : -1
 
             // 调用获取内容的函数
             const invokeGetter = (getter: Function) => {
@@ -178,56 +205,33 @@ export const h = withCleanUsedEffectList(function (
                 return invokeGetter(getter)
             }
 
-            // 子组件，此时tag是组件实例
+            // 子组件，此时tag是组件标识符（或组件getter）
             if (isFunction(tag)) {
-                const componentStu = tom.template as ComponentStructure
-                const component = createComponent(componentStu)
+                const componentStu = tom as ComponentStructure
+                const component = isComponent(tag) ? tag : getValue(tag)
 
-                // prettier-ignore
-                const [nki, dst] = render(
-                    component,
-                    target,
-                    reference,
-                    context,
-                    isKeyedTop
+                // @ts-ignore
+                const componentInstance = createComponent([component, ...componentStu.slice(1)])
+                return extendTopNodesItemLocal(
+                    render(componentInstance, target, reference, context, destruction)
                 )
-                shouldDestroy && destruction.c.add([dst])
-                extendNks(currentKeyedInfo.nks, nki)
-                return
             }
 
-            // rstu是子命令模块
-            if (tom.module) {
-                const cki = h(
-                    instance,
-                    tom.module,
-                    target,
-                    dref || reference,
-                    shouldDestroy,
-                    currentContext,
-                    destruction,
-                    isKeyedTop
-                )
-                if (isKeyedTop) {
-                    extendNks(currentKeyedInfo.nks, cki)
-                }
-                return
-            }
-
-            // 组件slot，此时content是插槽名称，attrs是参数列表，children是默认内容
-            if (tag === "slot") {
+            // 组件slot，此时content是插槽名称，attrs是参数列表，children是默认模板结构
+            if ((cleanUsedEffectList(), tag === "slot")) {
                 let slot = instance.__.slots[content as string]
 
                 const attrsLen = len(attrs)
                 const slotArgs: AnyObject = {}
 
-                // 获取slot从子组件传递的参数
+                // 获取slot传递的参数
                 const updateSlotContext = () => {
                     for (let i = 0; i < attrsLen; i += 2) {
                         slotArgs[attrs![i]] = getValue(attrs![i + 1])
                     }
                 }
 
+                // 编译器不会为组件和slot标签添加cache id，此处可以正常处理children
                 if (!slot) {
                     if (!children.length) {
                         return
@@ -243,41 +247,34 @@ export const h = withCleanUsedEffectList(function (
                 const effectList = values(usedEffectList)
                 const md = mockDirective([[slotArgs]], effectList)
                 const slotContext = combineContext(md, context, 0)
-                const unsetEffect = internalPreEffect(updateSlotContext, effectList)
-                attachDestroy(unsetEffect, destruction)
+                attachDestroyLocal(internalPreEffect(updateSlotContext, effectList))
 
                 // 渲染slot中的内容
-                slot.forEach(tom => {
-                    const nki = h(
-                        instance,
-                        tom,
-                        target,
-                        reference,
-                        shouldDestroy,
-                        slotContext,
-                        destruction,
-                        isKeyedTop
+                return slot.forEach(tom => {
+                    extendTopNodesItemLocal(
+                        h(instance, tom, target, reference, shouldDestroy, slotContext, destruction)
                     )
-                    if (isKeyedTop) {
-                        extendNks(currentKeyedInfo.nks, nki)
-                    }
                 })
-                return
             }
 
             // 创建节点及处理textContent
-            if (!tag) {
-                text(qkNode, getValue(content), cif)
+            if (cachedPureNodes[cacheId]) {
+                qkNode.n = cachedPureNodes[cacheId]
             } else {
-                element(qkNode, tag)
-                setText(qkNode, getValue(content), cif)
+                if (!tag || tagIsNumber) {
+                    text(qkNode, getValue(content), cif)
+                } else {
+                    element(qkNode, tag)
+                    setText(qkNode, getValue(content), cif)
 
-                // 判断元素是否为input、textarea或option，它们需要特殊处理：
-                // 1. input和textarea元素的input事件需要避免在输入法合成阶段触发
-                // 2. input和option元素的value属性无论是否是getter都需要被记录
-                const isInput = tag === "input"
-                isInputOrOption = isInput || tag === "option"
-                isInputOrTextarea = isInput || tag === "textarea"
+                    // 判断元素是否为input、textarea或option，它们需要特殊处理：
+                    // 1. input和textarea元素的input事件需要避免在输入法合成阶段触发
+                    // 2. input和option元素的value属性无论是否是getter都需要被记录
+                    const isInput = tag === "input"
+                    isInputOrOption = isInput || tag === "option"
+                    isInputOrTextarea = isInput || tag === "textarea"
+                }
+                cacheId !== -1 && (cachedPureNodes[cacheId] = qkNode.n!)
             }
 
             // 如果是option元素，把qkNode添加到DOM属性中，在处理select的引用
@@ -286,107 +283,102 @@ export const h = withCleanUsedEffectList(function (
                 ;(qkNode.n as any)["_qkNode"] = qkNode
             }
 
-            if (isKeyedTop) {
-                currentKeyedInfo.nks.push(qkNode.n!)
-            }
             if (shouldDestroy || isDirectiveModule) {
-                selfAttachDestroy(() => destroy(qkNode.n!))
+                attachDestroyLocal(() => destroy(qkNode.n!))
             }
             if (cif) {
-                selfAttachUpdate(() => {
+                attachUpdateLocal(() => {
                     return setText(qkNode, invokeGetter(content), true)
                 })
             }
-            insert(target, qkNode.n!, dref || reference)
+            insert(target, qkNode.n!, reference)
+            topNodesItem.push(qkNode.n!)
+
+            // 添加scope attribute
+            if (tag && !tagIsNumber && tag !== "!") {
+                attribute(qkNode, "qk-" + instance.__.id, "", false)
+            }
 
             // 处理attributes
-            if (attrs) {
-                for (let i = 0; i < len(attrs); i += 2) {
-                    let [key, value] = [attrs[i], attrs[i + 1]]
-                    const attrValueIsFunction = isFunction(value)
+            for (let i = 0; i < len(attrs); i += 2) {
+                let [key, value] = [attrs![i], attrs![i + 1]]
+                if (key === "&dom") {
+                    value(qkNode.n)
+                    continue
+                }
 
-                    // 设置节点属性值，最后一个参数代表是否需要记录旧属性值，它取决于下面的条件：
-                    // 值非getter且非input、option元素的value属性（引用属性需要用到）时无需记录
-                    attribute(
-                        qkNode,
-                        key,
-                        getValue(value),
-                        attrValueIsFunction || (isInputOrOption && key === "value")
-                    )
+                const attrValueIsFunction = isFunction(value)
 
-                    // 如果属性值是一个getter，将修改属性的方法记录到响应性变量的effect列表中
-                    // 记录完成后，当前attribue所依赖的响应性变量改变时，attribute将会被重新调用
-                    if (attrValueIsFunction) {
-                        selfAttachUpdate(() => {
-                            return attribute(qkNode, key, invokeGetter(value), true)
-                        })
-                    }
+                // 设置节点属性值，最后一个参数代表是否需要记录旧属性值，它取决于下面的条件：
+                // 值非getter且非input、option元素的value属性（引用属性需要用到）时无需记录
+                attribute(
+                    qkNode,
+                    key,
+                    getValue(value),
+                    attrValueIsFunction || (isInputOrOption && key === "value")
+                )
+
+                // 如果属性值是一个getter，将修改属性的方法记录到响应性变量的effect列表中
+                // 记录完成后，当前attribue所依赖的响应性变量改变时，attribute将会被重新调用
+                if (attrValueIsFunction) {
+                    attachUpdateLocal(() => {
+                        return attribute(qkNode, key, invokeGetter(value), true)
+                    })
                 }
             }
 
             // 处理events
-            if (events) {
-                for (let i = 0; i < len(events); i += 3) {
-                    let eventHandler: EventListener
-                    const stu = events.slice(i, i + 3) as EventStructure
-                    const [eventName, eventHandlerGetter, eventFlag] = stu
+            for (let i = 0; i < len(events); i += 3) {
+                let eventHandler: EventListener
+                const stu = events!.slice(i, i + 3) as EventStructure
+                const [eventName, eventHandlerGetter, eventFlag] = stu
 
-                    // 判断是否是withReference方法的返回值，如果是的话则需要先调用它，它会返回真正的
-                    // NormalEventHandlerGetter，调用时它会设置属性的初始值并将修改属性值的方法记录到
-                    // 依赖的响应性变量的effect中（这一操作同上attribute处理部分，但这样做可以有效压缩生成代码体积）
-                    if (!eventHandlerGetter[IsWithReferenceRet]) {
-                        eventHandler = invokeGetter(eventHandlerGetter)
-                    } else {
-                        eventHandler = eventHandlerGetter(qkNode, invokeGetter, selfAttachUpdate)
-                    }
+                // 判断是否是withReference方法的返回值，如果是的话则需要先调用它，它会返回真正的
+                // NormalEventHandlerGetter，调用时它会设置属性的初始值并将修改属性值的方法记录到
+                // 依赖的响应性变量的effect中（这一操作同上attribute处理部分，但这样做可以有效压缩生成代码体积）
+                if (!eventHandlerGetter[IS_WITH_REFERENCE_RET]) {
+                    eventHandler = invokeGetter(eventHandlerGetter)
+                } else {
+                    eventHandler = eventHandlerGetter(qkNode, invokeGetter, attachUpdateLocal)
+                }
 
-                    // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器
-                    const selfListen = (eventName: string, eventHandler: EventListener) => {
-                        selfAttachDestroy(listen(qkNode.n!, eventName, eventHandler, eventFlag))
-                    }
+                // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器
+                const listenLocal = (eventName: string, eventHandler: EventListener) => {
+                    attachDestroyLocal(listen(qkNode.n!, eventName, eventHandler, eventFlag))
+                }
 
-                    // 默认情况下输入合成阶段（如汉语拼音输入法合成过程中，即未选定输入前）不会触发input事件
-                    // 如果为input事件传入了compose修饰符，则会在合成阶段触发input事件，下面的代码就针对这种
-                    // 情况进行了处理。需要注意的是：在compositionend事件中调用了一次原始的input事件处理器，
-                    // 因为在浏览器的默认行为中，选定输入的那一刻(通常为按下上方主键盘数字键或空格键选定)也被
-                    // 算在合成过程中，而这里的处理将选定输入的操作排除在合成过程之外
-                    if (!isInputOrTextarea || eventName !== "input" || velf(eventFlag, "compose")) {
-                        selfListen(eventName, eventHandler)
-                    } else {
-                        selfListen("compositionend", eventHandler)
-                        selfListen(eventName, event => {
-                            if (!(event as InputEvent).isComposing) {
-                                eventHandler(event)
-                            }
-                        })
-                    }
+                // 默认情况下输入合成阶段（如汉语拼音输入法合成过程中，即未选定输入前）不会触发input事件
+                // 如果为input事件传入了compose修饰符，则会在合成阶段触发input事件，下面的代码就针对这种
+                // 情况进行了处理。需要注意的是：在compositionend事件中调用了一次原始的input事件处理器，
+                // 因为在浏览器的默认行为中，选定输入的那一刻(通常为按下上方主键盘数字键或空格键选定)也被
+                // 算在合成过程中，而这里的处理将选定输入的操作排除在合成过程之外
+                if (!isInputOrTextarea || eventName !== "input" || velf(eventFlag, "compose")) {
+                    listenLocal(eventName, eventHandler)
+                } else {
+                    listenLocal("compositionend", eventHandler)
+                    listenLocal(eventName, event => {
+                        if (!(event as InputEvent).isComposing) {
+                            eventHandler(event)
+                        }
+                    })
                 }
             }
 
             // 处理子节点
-            for (const child of children) {
+            for (const child of children.slice(+(cacheId !== -1))) {
                 const assertedChild = child as TemplateStuOrModuleFunc
-                h(instance, assertedChild, qkNode.n!, nil, false, currentContext, destruction)
+                h(instance, assertedChild, qkNode.n!, NIL, false, currentContext, destruction)
             }
         })
     }
 
-    // 将空文本参考节点放至keyedInfo最后
-    if (isDirectiveModule && isKeyedTop && !isAliasModule) {
-        keyedInfo.push({ nks: [dref!], dst: nil })
-    }
-
-    // if (directive && directive.t === 1) {
-    //     console.log(keyedInfo)
-    // }
-
-    return keyedInfo
+    return dref && topNodes.push([dref]), topNodes
 })
 
 // 创建应用
 export function createApp(
     selector: string,
-    Component: typeof QingKuaiComponent,
+    Component: Constructible,
     options: Partial<QingKuaiComponentConstructonParam> = {}
 ) {
     const target = document.querySelector(selector)
@@ -395,55 +387,16 @@ export function createApp(
             options[key] = {}
         }
     })
-    if (!target) {
-        InvalidMountNode(selector)
+    if (target) {
+        // @ts-ignore
+        const app = new Component({
+            ...options,
+            sign: INSTANTIATE_BY_H
+        })
+        return render(app, target), app
     } else {
-        const app = new Component(options as any)
-        render(app, target)
-        return app
+        BadTarget(selector, BAD_TARGET_MOUNT_KIND)
     }
-}
-
-// 扩展dsts并返回新元素
-export function extendDsts(dsts: DestructionStruct[]) {
-    const ret = newDestruction()
-    dsts.push(ret)
-    return ret
-}
-
-// 将TemplateStructure或ModuelFunc转换为RenderStructure
-export function toRenderStructure(
-    stus: ValueOrValueArr<TemplateStuOrModuleFunc>,
-    context: RenderContext[] = [],
-    directive: Directive = nil
-) {
-    let ret: RenderStructure = {
-        toms: [],
-        directive: nil
-    }
-    if (!isArray(stus) || (!isModuleFunc(stus[0]) && !isArray(stus[0]))) {
-        stus = [stus] as TemplateStuOrModuleFunc[]
-    }
-    ;(stus as TemplateStuOrModuleFunc[]).forEach(stu => {
-        const stuIsModuleFunc = isModuleFunc(stu)
-        if (isNull(directive) && stuIsModuleFunc) {
-            ret = stu(getContextFuncGen(context), context)
-        } else {
-            ret.directive = directive
-            if (stuIsModuleFunc) {
-                ret.toms.push({
-                    module: stu,
-                    template: []
-                })
-            } else {
-                ret.toms.push({
-                    module: nil,
-                    template: stu
-                })
-            }
-        }
-    })
-    return ret
 }
 
 // 添加更新函数
@@ -457,10 +410,36 @@ export function attachUpdate(
         list.add(fn)
         attachDestroy(() => list.delete(fn), destrcution)
     })
-    clearUsedEffectList()
+    cleanUsedEffectList()
 }
 
 // 添加销毁函数
 export function attachDestroy(fn: GeneralFunc, destruction: DestructionStruct) {
     destruction.v.push(fn)
+}
+
+function createComponent(stu: ComponentStructure) {
+    const [Component, _, props, refs, ...slots] = stu
+    const constructorArg: QingKuaiComponentConstructonParam = {
+        props: {},
+        refs: {},
+        slots: {}
+    }
+    if (props) {
+        for (let i = 0; i < len(props); i += 2) {
+            constructorArg.props[props[i]] = props[i + 1]
+        }
+    }
+    if (refs) {
+        for (let i = 0; i < len(refs); i += 2) {
+            constructorArg.refs[refs[i]] = [refs[i + 1][0], refs[i + 1][1]]
+        }
+    }
+    if (slots) {
+        for (let i = 0; i < len(slots); i++) {
+            const stus = slots[i].slice(1) as TemplateStuOrModuleFunc[]
+            constructorArg.slots[slots[i][0]] = stus
+        }
+    }
+    return new Component({ ...constructorArg, sign: INSTANTIATE_BY_H })
 }

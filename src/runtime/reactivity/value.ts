@@ -2,21 +2,28 @@ import type {
     Setter,
     PGetHandler,
     PSetHandler,
+    ReactiveTarget,
     EffectListItem,
     PDeleteHandler,
     DestructuringFunc
 } from "../types"
-import type { AnyObject } from "../../util/types"
 
+import {
+    isNull,
+    isArray,
+    isNumber,
+    isThenable,
+    isFunction,
+    isUndefined
+} from "../../util/shared/assert"
 import { usedEffectList } from "./state"
 import { runSyncEffect } from "./effect"
 import { scheduleUpdate } from "../schedule"
 import { getCurrentInstance } from "../instance"
-import { BadReactivityLevel } from "../message/error"
 import { isReactive } from "../../util/runtime/assert"
 import { notEqual, optc } from "../../util/shared/sundry"
-import { reflect, undef, RawValue, nil, IsProxy, Wrapper, noop } from "../constants"
-import { isNull, isArray, isNumber, isFunction, isUndefined } from "../../util/shared/assert"
+import { AssignToConstant, BadReactivityLevel } from "../message/error"
+import { NIL, UNDEF, NOOP, REFLECT, WRAPPER, IS_PROXY, RAW_VALUE } from "../constants"
 
 const react = reactGen()
 const constReact = reactGen(1)
@@ -25,33 +32,32 @@ const constDestructuringReact = destructuringReactGen(true)
 
 export class ReactivityWrapper {
     declare proxy: any
-    declare effect: EffectListItem
 
     constructor(
         public raw: any,
         public level: number,
         public typeFlag: number,
         public debugSetter: Setter,
-        initEffect?: EffectListItem
+        public effect: EffectListItem,
+        public isConstDeclaration: boolean
     ) {
         this.proxy = new Proxy(raw, this)
-        this.effect = initEffect || [new Set(), nil]
     }
 
     get: PGetHandler = (target, property, receiver) => {
         // 特殊属性读取
-        if (property === IsProxy) {
+        if (property === IS_PROXY) {
             return true
         }
-        if (property === Wrapper) {
+        if (property === WRAPPER) {
             return this
         }
-        if (property === RawValue) {
+        if (property === RAW_VALUE) {
             return this.raw
         }
 
         const { effect, typeFlag, level } = this
-        const propValue = reflect.get(target, property, receiver)
+        const propValue = REFLECT.get(target, property, receiver)
 
         // 再次将某个子属性值包装为代理值，层级-1，共享副作用列表
         const reactAgain = (nextTarget: any) => {
@@ -97,7 +103,7 @@ export class ReactivityWrapper {
                 const isSet = !(typeFlag & 4)
                 const result = getResultOfMethodCall()
                 const isMapSet = !isSet && property === "set"
-                const preValue = isMapSet ? target.get(key) : undef
+                const preValue = isMapSet ? target.get(key) : UNDEF
                 const valueChanged = isMapSet && notEqual(preValue, value)
                 if (
                     property === "clear" ||
@@ -115,18 +121,15 @@ export class ReactivityWrapper {
     }
 
     set: PSetHandler = (target, property, value, receiver) => {
-        const { debugSetter, effect } = this
+        const { debugSetter, effect, isConstDeclaration } = this
         if (notEqual(target[property], value)) {
-            if (debugSetter !== noop) {
+            if (isConstDeclaration) {
+                AssignToConstant()
+            }
+            if (debugSetter !== NOOP) {
                 debugSetter(value)
             }
-            // prettier-ignore
-            const ret = reflect.set(
-                target,
-                property,
-                value,
-                receiver
-            )
+            const ret = REFLECT.set(target, property, value, receiver)
             return processEffect(effect), ret
         }
         return true
@@ -134,13 +137,29 @@ export class ReactivityWrapper {
 
     deleteProperty: PDeleteHandler = (target, property) => {
         processEffect(this.effect)
-        return reflect.deleteProperty(target, property)
+        return REFLECT.deleteProperty(target, property)
     }
 }
 
 // 获取代理值的原始值
-export function raw<T extends AnyObject>(v: T): T {
-    return (isReactive(v) ? v[RawValue] : v) as any
+export function raw<T>(v: T): T {
+    return (isReactive(v) ? v[RAW_VALUE] : v) as any
+}
+
+export function createStore<T extends ReactiveTarget>(value: T): T {
+    return constReact(value).$
+}
+
+// 使用原始值更新：当需要频繁更新响应式值时，可在此方法回调中操作原始值，回调结束后
+// 响应式值的副作用列表会被调用，避免频繁更新时频繁运算ReactivityWrapper中的逻辑
+export function updateWithRaw<T>(value: T, cb: (raw: T) => Promise<any> | void) {
+    if (!isReactive(value)) {
+        return cb(value)
+    }
+
+    const ret = cb(raw(value))
+    const process = () => processEffect(value.effect)
+    isThenable(ret) ? ret.then(process) : process()
 }
 
 // 生成reactivity和constReact的方法
@@ -157,8 +176,8 @@ export function raw<T extends AnyObject>(v: T): T {
 function reactGen(levelDown = 0) {
     return (target?: any, los?: number | Setter, eol?: EffectListItem | number) => {
         let level = Infinity
-        let debugSetter: Setter = noop
-        let effect: EffectListItem | undefined = undef
+        let debugSetter: Setter = NOOP
+        let effect: EffectListItem | undefined = UNDEF
 
         const isDebug = isFunction(los)
         const eolIsNumber = isNumber(eol)
@@ -182,7 +201,8 @@ function reactGen(levelDown = 0) {
             level -= levelDown
 
             if (isReactive(target)) {
-                target = target[RawValue]
+                effect = target[WRAPPER].effect
+                target = target[RAW_VALUE]
             }
 
             // 声明响应式变量时需要将其作为对象的$属性
@@ -199,21 +219,18 @@ function reactGen(levelDown = 0) {
             return target
         }
 
-        // prettier-ignore
         const ret = new ReactivityWrapper(
             target,
             level,
             typeFlag,
             debugSetter,
-            effect
+            effect || [new Set(), NIL],
+            isDeclaration && levelDown === 1
         )
         if (isDeclaration) {
-            const component = getCurrentInstance()
-            if (component) {
-                const { deps } = component.__
-                // if (conf.exposeDeps) {
-                //     deps.push(ret)
-                // }
+            if (__qk_expose_dependencies__) {
+                const component = getCurrentInstance()
+                component && component.__.deps.push(ret)
             }
         }
 
@@ -223,7 +240,7 @@ function reactGen(levelDown = 0) {
 }
 
 // 解构语法响应性声明，将解构出的每一个标识符都声明为响应性变量，生成方法
-// 的第二个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个解构
+// 的第一个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个解构
 // 出来的标识符setter（调试模式下修改调试标识符时调用以修改原始标识符的值）
 export function destructuringReactGen(isConst = false) {
     const reactFn = isConst ? constReact : react

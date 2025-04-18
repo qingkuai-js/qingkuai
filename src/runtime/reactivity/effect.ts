@@ -10,11 +10,11 @@ import type {
 import { GeneralFunc } from "../../util/types"
 
 import { isNull } from "../../util/shared/assert"
-import { opportunities, nil } from "../constants"
+import { OPPORTUNITIES, NIL } from "../constants"
 import { len, values } from "../../util/shared/sundry"
 import { getRawValue } from "../../util/runtime/sundry"
 import { asyncWatchEffectList, usedEffectList } from "./state"
-import { WatchEffectDependenNoReactiveValue } from "../message/warn"
+import { WatchEffectDependentNoReactiveValue } from "../message/warn"
 
 // 执行同步的effect，并将异步effect放入执行队列
 export function runSyncEffect(list: EffectListItem[1]) {
@@ -65,7 +65,7 @@ function createWatchEffect(effectList: EffectListItem[], stu: WatchEffectStruct)
         effectList.forEach(item => {
             item[1]!.delete(stu)
             if (item[1]!.size === 0) {
-                item[1] = nil
+                item[1] = NIL
             }
         })
     }
@@ -84,7 +84,7 @@ function initWatch(getter: Getter, fn: WatchStruct["fn"], type: Opportunity) {
     }
     if (len(effectList) === 0) {
         const funcName = type === "post" ? "watch" : type + "Watch"
-        WatchEffectDependenNoReactiveValue(funcName, false)
+        WatchEffectDependentNoReactiveValue(funcName, false)
     }
     return createWatchEffect(effectList, watchStruct)
 }
@@ -105,7 +105,7 @@ function initEffect(fn: GeneralFunc, type: Opportunity, initEffectList?: EffectL
     }
     if (isRuntime && len(effectList) === 0) {
         const funcName = type === "post" ? "effect" : type + "Effect"
-        WatchEffectDependenNoReactiveValue(funcName, true)
+        WatchEffectDependentNoReactiveValue(funcName, true)
     }
     return createWatchEffect(effectList, reactiveRunStruct)
 }
@@ -120,7 +120,7 @@ function watchFuncGen(type: Opportunity): RuntimeWatchFunc {
 // 产生effect相关运行时函数的方法，它返回的方法不接受初始副作用列表
 function runtimeEffectFuncGen(type: Opportunity) {
     return (callback: () => void) => {
-        return initEffect(callback, type, nil)
+        return initEffect(callback, type, NIL)
     }
 }
 
@@ -137,5 +137,5 @@ export const [
     [syncEffect, preEffect, effect],
     [internalSyncEffect, internalPreEffect, internalEffect]
 ] = [watchFuncGen, runtimeEffectFuncGen, internalEffectFuncGen].map<any>(generator => {
-    return opportunities.map(opportunity => generator(opportunity))
+    return OPPORTUNITIES.map(opportunity => generator(opportunity))
 }) as [RuntimeWatchFunc[], ReturnType<typeof runtimeEffectFuncGen>[], ReturnType<typeof internalEffectFuncGen>[]]

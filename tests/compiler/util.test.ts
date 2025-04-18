@@ -1,46 +1,46 @@
 import { expect, test, describe, it } from "vitest"
-import { findOutOfSC } from "../../src/util/compiler/strings"
 import { getPieceOfStrOutOfER } from "../../src/util/compiler/sundry"
+import { findOutOfStringComment } from "../../src/util/compiler/strings"
 
-describe("util/compiler: findOutOfSC", () => {
+describe.only("util/compiler: findOutOfSC", () => {
     it("should match the pattern out of string ranges", () => {
-        expect(findOutOfSC("1'2'3", "2")).toBe(-1)
-        expect(findOutOfSC('1"23', "2")).toBe(-1)
-        expect(findOutOfSC("1'23", "2")).toBe(-1)
-        expect(findOutOfSC("1'22'3", /22/)).toBe(-1)
-        expect(findOutOfSC("1\\'23", "2")).toBe(-1)
-        expect(findOutOfSC("1\\\\'23", "2")).toBe(-1)
-        expect(findOutOfSC("1`\\`23", "2")).toBe(-1)
-        expect(findOutOfSC("\"1\"2`3''", "2")).toBe(3)
-        expect(findOutOfSC("'\\'123", "2")).toBe(-1)
+        expect(findOutOfStringComment("1'2'3", "2")).toBe(-1)
+        expect(findOutOfStringComment('1"23', "2")).toBe(-1)
+        expect(findOutOfStringComment("1'23", "2")).toBe(-1)
+        expect(findOutOfStringComment("1'22'3", /22/)).toBe(-1)
+        expect(findOutOfStringComment("1\\'23", "2")).toBe(-1)
+        expect(findOutOfStringComment("1\\\\'23", "2")).toBe(-1)
+        expect(findOutOfStringComment("1`\\`23", "2")).toBe(-1)
+        expect(findOutOfStringComment("\"1\"2`3''", "2")).toBe(3)
+        expect(findOutOfStringComment("'\\'123", "2")).toBe(-1)
     })
 
     it("should match the pattern out of the comment ranges", () => {
-        expect(findOutOfSC("1//2\n3", "2")).toBe(-1)
-        expect(findOutOfSC("1/*2*/3", "2")).toBe(-1)
-        expect(findOutOfSC("1//2//3", "2")).toBe(-1)
-        expect(findOutOfSC("1/** 2 */*/3", "2")).toBe(-1)
-        expect(findOutOfSC("1//''2\n3", "2")).toBe(-1)
-        expect(findOutOfSC("1//''2\n3", "3")).toBe(7)
-        expect(findOutOfSC("1\\//2\n3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1//2\n3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1/*2*/3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1//2//3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1/** 2 */*/3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1//''2\n3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1//''2\n3", "3")).toBe(7)
+        expect(findOutOfStringComment("1\\//2\n3", "2")).toBe(-1)
     })
 
     it("should match the pattern out the the string and comment ranges", () => {
-        expect(findOutOfSC("1'/**/2'3", "2")).toBe(-1)
-        expect(findOutOfSC("1''/**/23", "2")).toBe(7)
-        expect(findOutOfSC("1''//\n/**/23", "2")).toBe(10)
-        expect(findOutOfSC("1'2'/**/3", "2")).toBe(-1)
-        expect(findOutOfSC("1/*''2*/3", "2")).toBe(-1)
-        expect(findOutOfSC("1'/*'*/23", "2")).toBe(7)
-        expect(findOutOfSC("1/*`*/2`3", "2")).toBe(6)
-        expect(findOutOfSC("1`//xxx/*`234", /2\d+/)).toBe(10)
+        expect(findOutOfStringComment("1'/**/2'3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1''/**/23", "2")).toBe(7)
+        expect(findOutOfStringComment("1''//\n/**/23", "2")).toBe(10)
+        expect(findOutOfStringComment("1'2'/**/3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1/*''2*/3", "2")).toBe(-1)
+        expect(findOutOfStringComment("1'/*'*/23", "2")).toBe(7)
+        expect(findOutOfStringComment("1/*`*/2`3", "2")).toBe(6)
+        expect(findOutOfStringComment("1`//xxx/*`234", /2\d+/)).toBe(10)
     })
 
     test("whether findOutOfSC function works for mornal target without string and comment", () => {
-        expect(findOutOfSC("123", "2")).toBe(1)
-        expect(findOutOfSC("1223", /22/)).toBe(1)
-        expect(findOutOfSC("123444", /4{3}/)).toBe(3)
-        expect(findOutOfSC("s123456xxx", /^s\d{6}/)).toBe(0)
+        expect(findOutOfStringComment("123", "2")).toBe(1)
+        expect(findOutOfStringComment("1223", /22/)).toBe(1)
+        expect(findOutOfStringComment("123444", /4{3}/)).toBe(3)
+        expect(findOutOfStringComment("s123456xxx", /^s\d{6}/)).toBe(0)
     })
 })
 

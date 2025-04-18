@@ -14,6 +14,7 @@ import { getAlias } from "./analyzer/alias"
 import { offsetSourcemap } from "./sourcemap"
 import { indent } from "../util/compiler/sundry"
 import { lastElem } from "../util/shared/sundry"
+import { IntercodeSnippetKind } from "./constants"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { isEmptyString } from "../util/shared/assert"
 
@@ -28,7 +29,7 @@ export function generateImportStatements() {
         itemArr.push(item)
         charCount += item.length
     })
-    itemArr.sort((a, b) => a.length - b.length)
+    itemArr.sort((a, b) => a.length - b.length || (a < b ? -1 : 1))
 
     const itemStr = () => {
         return itemArr.join(joinStr)
@@ -55,26 +56,28 @@ export function generateImportStatements() {
 }
 
 // 生成init方法的调用及解构语句
-export function generateInitCallStatement() {
+export function generateInitCallStatement(hashId: string) {
     const itemArr: string[] = []
     usedInitItems.forEach(item => {
         itemArr.push(item)
     })
     itemArr.push("props", "refs")
-    return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this)`
+    return `const { ${itemArr.join(", ")} } = ${getAlias("init")}(this, "${hashId}")`
 }
 
 // 生成最终编译结果
 export function generateCompileResult(
+    hashId: string,
     componentName: string,
-    importStatements: string,
-    initCallStatement: string,
     scriptTranformedRet: string,
     templateTransformedRet: string
 ) {
     let mappings = ""
     let debuggingStatementArr: string[] = []
+
     const setTemplateStructureFuncName = getAlias("scts")
+    const importStatements = generateImportStatements()
+    const initCallStatement = generateInitCallStatement(hashId)
     const withScriptSourceCode = !isEmptyString(scriptTranformedRet)
     sourceMapInfo.columnOffsetOfFirstTemplateLine += inputDescriptor.indentSpaceCount * 2
     sourceMapInfo.columnOffsetOfFirstTemplateLine += setTemplateStructureFuncName.length + 2
@@ -92,6 +95,7 @@ export function generateCompileResult(
             stringConstantArr.push([variable, literal])
         }
     })
+    stringConstantArr.sort((a, b) => (a >= b ? 1 : -1))
 
     const stringConstantStr = stringConstantArr.reduce((pre, [k, v], i) => {
         sourceMapInfo.preaddedLineCount += i === 0 ? 3 : 1
@@ -109,11 +113,11 @@ export function generateCompileResult(
     const stringConstantsPostfix = withStringConstant ? postfix : ""
     const hasNonBeCalledSetter = debuggingInfo.constIdentifiers.size > 0
     const scriptTransformedRetPostfix = withScriptSourceCode ? postfix : ""
-    const stringLiteralComment = withStringConstant ? "// string literals area" : ""
-    const scriptSourceComment = withScriptSourceCode ? "// javascript source code area\n" : ""
+    const stringLiteralComment = withStringConstant ? "// string literals" : ""
+    const scriptSourceComment = withScriptSourceCode ? "// script source code\n" : ""
 
     if (hasDebuggingSetter || hasNonBeCalledSetter) {
-        debuggingStatementArr.push(postfix, "// debugging setters area")
+        debuggingStatementArr.push(postfix, "// debugging setters")
         debuggingInfo.setters.forEach((id, identifier) => {
             const setterFuncDeclaration = `function __d${id}__(v){ ${identifier} = v }`
             debuggingStatementArr.push(`\n${indent(2)}${setterFuncDeclaration}`)
@@ -133,7 +137,7 @@ export function generateCompileResult(
         `{\n${indent(2)}super(${argsIdentifier})${postfix}${initCallStatement}${postfix}` +
         `${stringLiteralComment}${stringConstantStr}${stringConstantsPostfix}` +
         `${scriptSourceComment}${scriptTranformedRet}${scriptTransformedRetPostfix}` +
-        `// template structure area\n${indent(2)}${setTemplateStructureFuncName}` +
+        `// template structure\n${indent(2)}${setTemplateStructureFuncName}` +
         `(${templateTransformedRet || "[]"})${debuggingStatementArr.join("")}` +
         `\n${indent(1)}}\n}`
 
@@ -144,10 +148,10 @@ export function generateCompileResult(
 export function generateInterResult(source: string, typeRefStatement: string) {
     let typeDefStatement: string
     if (!inputDescriptor.script.isTS) {
-        typeDefStatement = `/**@typedef {{}}Props @typedef {{}}Refs*/\n`
+        typeDefStatement = `/**@typedef {__c__.EmptyObject}Props @typedef {__c__.EmptyObject}Refs*/\n`
         typeDefStatement += `/**@type{Refs}*/const refs=0;\n/**@type{Readonly<Props>}*/const props=0;\n`
     } else {
-        typeDefStatement = `type Props={};type Refs={};\n`
+        typeDefStatement = `type Props=__c__.EmptyObject;type Refs=__c__.EmptyObject;\n`
         typeDefStatement += `const refs=__c__.GetTypedValue<Refs>();const props=__c__.GetTypedValue<Readonly<Props>>();\n`
     }
 
@@ -182,11 +186,11 @@ export function generateInterResult(source: string, typeRefStatement: string) {
 
         let asasi = -1 // Added Snippet Applied Source Index
 
-        // 中间代码片段的第一个元素小于0时有三种情况：-3、-2、-1，它们对应的含义如下：
-        // -3：当前片段的所有位置对应的源码索引都为-1（没有与之对应的源码索引）
-        // -2：向前查找其他片段的第一个有效源码索引（不为-1），此片段的所有位置对应的源码索引都与找到的源码索引一致
-        // -1：向后查找其他片段的第一个有效源码索引（不为-1），此片段中的所有位置对应的源码索引都为这个找到的有效源码索引+1
-        if (toi === -1) {
+        // 中间代码片段的第一个元素小于0时有三种情况，它们对应的含义如下：
+        // VoidSource：当前片段的所有位置对应的源码索引都为-1（没有与之对应的源码索引）
+        // SearchBackward：向后查找其他片段的第一个有效源码索引（不为-1），此片段的所有位置对应的源码索引都与找到的源码索引一致
+        // SearchForward：向前查找其他片段的第一个有效源码索引（不为-1），此片段中的所有位置对应的源码索引都为这个找到的有效源码索引+1
+        if (toi === IntercodeSnippetKind.SearchBackward) {
             for (let i = index + 1; i < snippetLen; i++) {
                 const si = interCodeSnippets[i]?.[0]
                 if (si >= 0) {
@@ -194,7 +198,7 @@ export function generateInterResult(source: string, typeRefStatement: string) {
                     break
                 }
             }
-        } else if (toi === -2) {
+        } else if (toi === IntercodeSnippetKind.SearchForward) {
             asasi = itos.findLast(n => n >= 0) ?? -1
             asasi !== -1 && asasi++
         }
@@ -208,9 +212,10 @@ export function generateInterResult(source: string, typeRefStatement: string) {
         interIndexMap: {
             // 文件结束位置也需要记录双向索引映射
             // typescript语言服务会使用结束索引后2位
-            stoi: [...stoi, lastElem(stoi)],
-            itos: [...itos, lastElem(itos)]
+            stoi: stoi.concat(lastElem(stoi)),
+            itos: itos.concat(lastElem(itos))
         },
+        typeDeclarationLen: tdl,
         code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};${joinedSnippets}`
     }
 }

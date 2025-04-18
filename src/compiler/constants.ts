@@ -12,7 +12,10 @@ export const SELF_CLOSING_TAGS = new Set([
     "param",
     "source",
     "track",
-    "wbr"
+    "wbr",
+    "frame",
+    "isindex",
+    "basefont"
 ])
 
 export const MUST_PASS_VALUE_DIRECTIVES = new Set([
@@ -22,7 +25,9 @@ export const MUST_PASS_VALUE_DIRECTIVES = new Set([
     "await",
     "for",
     "key",
-    "slot"
+    "slot",
+    "show",
+    "target"
 ])
 
 export const KEY_RELATED_EVENT_MODIFIERS = new Set([
@@ -40,8 +45,8 @@ export const KEY_RELATED_EVENT_MODIFIERS = new Set([
 
 export const FULL_RUNTIME_ITEMS = new Set([
     "QingKuaiComponent",
-    "noop",
-    "nil",
+    "NOOP",
+    "NIL",
     "raw",
     "init",
     "nextTick",
@@ -56,17 +61,31 @@ export const FULL_RUNTIME_ITEMS = new Set([
     "keyedForModule",
     "aliasModule",
     "awaitModule",
+    "targetModule",
     "eventWrapper",
     "withReference",
+    "unescapeModule",
     "destructuringReact",
     "destructuringDerived",
     "constDestructuringReact"
 ])
 
+export enum IntercodeSnippetKind {
+    VoidSource = -3,
+    SearchForward = -2,
+    SearchBackward = -1
+}
+
+export enum StringLiteralLeftPad {
+    normalClass = 0
+}
+
+export const SPREAD_TAG = "spread"
+
+export const TS_TYPE_DECLARATION_LEN = 149
+export const JS_TYPE_DECLARATION_LEN = 144
+
 export const SPECIAL_TAGS = new Set(["!", "script", "style"])
-
 export const FULL_INIT_ITEMS = new Set(["args", "scts", "props"])
-
 export const COULD_USE_REF_TAGS = new Set(["input", "select", "textarea"])
-
 export const COMPILER_FUNCS = new Set(["rea", "stc", "der", "wat", "Wat", "waT"])

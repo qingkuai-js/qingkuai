@@ -1,4 +1,5 @@
 import type {
+    TemplateNode,
     MessageItem,
     DebuggingInfo,
     SourceMapInfo,
@@ -12,66 +13,63 @@ import type {
 } from "./types"
 
 import { isUndefined } from "../util/shared/assert"
-import { setArrLength } from "../util/shared/sundry"
 import { newASTLocation } from "../util/compiler/structure"
 
-// 在编译结果中返回的编译器内布值要打断其引用状态
+export let cacheId = 0
+export const getCacheId = () => cacheId++
+
 export let messages: MessageItem[] = []
 export let sourceMapInfo = newSourceMapInfo()
 export let inputDescriptor = newInputDescriptor()
 
-export const debuggingInfo = newDebuggingInfo()
-export const replacementInfo = newReplacementInfo()
+export let debuggingInfo = newDebuggingInfo()
+export let replacementInfo = newReplacementInfo()
 
-export const interCodeSnippets: [number, string][] = []
-export const tempStoredImportInfos: TempStoredImportInfo[] = []
+export let interCodeSnippets: [number, string][] = []
+export let tempStoredImportInfos: TempStoredImportInfo[] = []
 
-export const usedInitItems = new Set<string>()
-export const usedRuntimeItems = new Set<string>()
-export const allExistingIdentifiers = new Set<string>()
-export const eliminateRanges: EliminateRanges = new Set()
+export let usedInitItems = new Set<string>()
+export let usedRuntimeItems = new Set<string>()
+export let importedIdentifiers = new Set<string>()
+export let allExistingIdentifiers = new Set<string>()
+export let eliminateRanges: EliminateRanges = new Set()
 
-export const stringConstants = new Map<string, StringConstant>()
-export const stringConstantsSourceMap = new Map<string, string>()
+export let aliases = new Map<string, string>()
+export let stringConstants = new Map<string, StringConstant>()
+export let stringConstantsSourceMap = new Map<string, string>()
+export let templateNodeToContextIdentifiers = new WeakMap<TemplateNode, Set<string>>()
 
 // 重置编译器状态
 export function resetCompilerState(options: CompileOptions) {
-    usedInitItems.clear()
-    eliminateRanges.clear()
-    stringConstants.clear()
-    usedRuntimeItems.clear()
-    allExistingIdentifiers.clear()
-    stringConstantsSourceMap.clear()
-    setArrLength(interCodeSnippets, 0)
-    setArrLength(tempStoredImportInfos, 0)
-    Object.assign(debuggingInfo, newDebuggingInfo())
-    Object.assign(replacementInfo, newReplacementInfo())
-
+    cacheId = 0
     messages = []
+    interCodeSnippets = []
+    tempStoredImportInfos = []
+    debuggingInfo = newDebuggingInfo()
     sourceMapInfo = newSourceMapInfo()
     inputDescriptor = newInputDescriptor()
+    replacementInfo = newReplacementInfo()
 
-    // 调试模式下一定会生成sourcemap
-    if (options.debug === true) {
+    aliases = new Map()
+    usedInitItems = new Set()
+    stringConstants = new Map()
+    eliminateRanges = new Set()
+    usedRuntimeItems = new Set()
+    importedIdentifiers = new Set()
+    allExistingIdentifiers = new Set()
+    stringConstantsSourceMap = new Map()
+    templateNodeToContextIdentifiers = new Map()
+
+    // 调试模式下未指定是否生成sourcemap时默认生成sourcemap
+    if (options.debug && isUndefined(options.sourcemap)) {
         options.sourcemap = true
     }
+
     // 检查模式下需要保留所有注释节点
-    if (options.check === true) {
+    if (options.check) {
         options.reserveTemplateComment = true
     }
     Object.assign(inputDescriptor.options, options)
-}
-
-export function newScriptDescriptor(): ScriptDescriptor {
-    return {
-        code: "",
-        isTS: false,
-        lineCount: 0,
-        existing: false,
-        loc: newASTLocation(),
-        generatedOffset: [0, 0],
-        startTagNameRange: [-1, -1]
-    }
 }
 
 // 生成新的sourcemap信息结构
@@ -104,23 +102,38 @@ function newReplacementInfo(): ReplacementInfo {
     }
 }
 
+function newScriptDescriptor(): ScriptDescriptor {
+    return {
+        code: "",
+        isTS: false,
+        lineCount: 0,
+        existing: false,
+        loc: newASTLocation(),
+        generatedOffset: [0, 0],
+        startTagNameRange: [-1, -1]
+    }
+}
+
 // 生成一个新的输入源状态描述符
 function newInputDescriptor(): InputDescriptor {
     return {
         source: "",
+        styles: [],
         slotInfo: {},
         positions: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
+        script: newScriptDescriptor(),
         options: {
             componentName: "",
+            hashId: "",
             debug: false,
             check: false,
+            comment: true,
             sourcemap: false,
             typeRefStatement: "",
             reserveTemplateComment: false,
             convenientDerivedDeclaration: true
-        },
-        script: newScriptDescriptor()
+        }
     }
 }

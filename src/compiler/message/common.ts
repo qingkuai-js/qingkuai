@@ -18,7 +18,7 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
         }
     ],
     BadExportRelatedStatement: [
-        1044,
+        1042,
         () => {
             return `Export related statements can not appear in embedded script language block.`
         }
@@ -36,7 +36,7 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
         }
     ],
     WatchCompilerFuncMissingArg: [
-        1042,
+        1040,
         (funcName: string, received: number) => {
             return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
         }
@@ -48,7 +48,7 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
         }
     ],
     ConvenientDerivedWithOtherReactFunc: [
-        1041,
+        1039,
         (funcName: string) => {
             return `Using both short hand derived state declaration(using $ prefix) and reactivity realted compiler helper function(${funcName}) is ambiguous.`
         }

@@ -1,23 +1,18 @@
-import type {
-    ComponentStructure,
-    QingKuaiProperties,
-    TemplateStuOrModuleFunc,
-    QingKuaiComponentConstructonParam
-} from "./types"
-import { GeneralFunc } from "../util/types"
+import type { GeneralFunc } from "../util/types"
+import type { QingKuaiProperties, QingKuaiComponentConstructonParam } from "./types"
 
-import { isUndefined } from "../util/shared/assert"
-import { IntantiatedByH, nil, noop } from "./constants"
-import { arrayFill, len, runAll } from "../util/shared/sundry"
+import { INSTANTIATE_BY_H, NIL, NOOP } from "./constants"
+import { InstantiateComponentManually } from "./message/error"
+import { arrayFill, emptyArr, runAll } from "../util/shared/sundry"
 import { destroyBlock, newDestruction } from "../util/runtime/separate"
-import { IntantiateComponentManually } from "./message/error"
 
 // 用于存储当前操作的组件实例
-let currentInstance: QingKuaiComponent | null = nil
+let currentInstance: QingKuaiComponent | null = NIL
 
 export class QingKuaiComponent {
     /**
      * - ts means Template Structure
+     * - cn means Cached pure(static) Nodes
      * - deps means all Dependencies of component
      * - dst means Destruction Methods of component
      * - hooks in order: onBeforeMount, onAfterMount,
@@ -25,24 +20,24 @@ export class QingKuaiComponent {
      */
     __: QingKuaiProperties = {
         updating: false,
+        id: "",
+        cn: [],
         ts: [],
         deps: [],
         hooks: [],
         refs: {},
         slots: {},
         props: {},
-        ctx: noop,
+        ctx: NOOP,
         context: [],
         dst: newDestruction()
     }
 
-    constructor(args?: QingKuaiComponentConstructonParam, sign?: Symbol) {
-        if (sign !== IntantiatedByH) {
-            IntantiateComponentManually()
+    constructor(args: QingKuaiComponentConstructonParam) {
+        if (args.sign !== INSTANTIATE_BY_H) {
+            InstantiateComponentManually()
         }
-        if (isUndefined(args)) {
-            return
-        }
+        delete args.sign
         Object.assign(this.__, args)
         setCurrentInstance(this)
     }
@@ -53,56 +48,23 @@ export function getCurrentInstance() {
     return currentInstance
 }
 
-// 设置当前组件实例（到currentInstance）
+// 设置当前组件实例到currentInstance
 export function setCurrentInstance(ins: QingKuaiComponent) {
     currentInstance = ins
 }
 
-// 通过TemplateStructure实例化组件
-export function createComponent(stu: ComponentStructure) {
-    const [Component, _, props, refs, ...slots] = stu
-    const constructorArg = initComponentConstrctorParam()
-    if (props) {
-        for (let i = 0; i < len(props); i += 2) {
-            constructorArg.props[props[i]] = props[i + 1]
-        }
-    }
-    if (refs) {
-        for (let i = 0; i < len(refs); i += 2) {
-            constructorArg.refs[refs[i]] = [refs[i + 1][0], refs[i + 1][1]]
-        }
-    }
-    if (slots) {
-        for (let i = 0; i < len(slots); i++) {
-            const stus = slots[i].slice(1) as TemplateStuOrModuleFunc[]
-            constructorArg.slots[slots[i][0]] = stus
-        }
-    }
-    return new Component(constructorArg, IntantiatedByH)
-}
-
-// 销毁组件
-export function destroyComponent(instance: QingKuaiComponent) {
-    invokeIndexedHooks(instance, 4)
-    destroyBlock(instance.__.dst)
-    instance.__ = null as any
-    invokeIndexedHooks(instance, 5)
-}
-
-// 调用某个组件对应索引下的所有钩子函数，index对应的钩子参见当前文件17-18行
+// 调用某个组件对应索引下的所有钩子函数，索引对应的钩子参见当前文件17-18行
 export function invokeIndexedHooks(instance: QingKuaiComponent, index: number) {
     const container = instance.__.hooks[index]
-    container && runAll(container)
-}
-
-// 初始化一个QingKuaiComponentConstructorParam
-function initComponentConstrctorParam(): QingKuaiComponentConstructonParam {
-    return { props: {}, refs: {}, slots: {} }
+    if (container) {
+        runAll(container)
+        index <= 1 && emptyArr(container)
+    }
 }
 
 // 由于所有声明周期钩子挂载方法相同，此函数批量注册这些方法
 function hooksHandlerGen() {
-    const ret = arrayFill(6, noop as (fn: GeneralFunc) => void)
+    const ret = arrayFill(6, NOOP as (fn: GeneralFunc) => void)
     for (let i = 0; i < 6; i++) {
         ret[i] = (fn: GeneralFunc) => {
             const { hooks } = currentInstance!.__

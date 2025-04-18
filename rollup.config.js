@@ -3,9 +3,11 @@ import dts from "rollup-plugin-dts"
 import esbuild from "rollup-plugin-esbuild"
 
 export default rollup.defineConfig(commentLineArgs => {
+    const result = []
     const isWatchMode = commentLineArgs.watch
+
     const inputOptions = {
-        external: ["@babel/parser", "@jridgewell/sourcemap-codec"],
+        external: ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto"],
         input: {
             "runtime/index": "./src/runtime/index.ts",
             "compiler/index": "./src/compiler/index.ts",
@@ -16,14 +18,10 @@ export default rollup.defineConfig(commentLineArgs => {
             format: "es",
             chunkFileNames: "chunks/[name].js"
         },
-        plugins: [
-            esbuild({
-                target: "esNext"
-            })
-        ]
+        plugins: [esbuild()]
     }
 
-    const ret = [
+    result.push(
         inputOptions,
         Object.assign({}, inputOptions, {
             output: {
@@ -33,23 +31,21 @@ export default rollup.defineConfig(commentLineArgs => {
                 chunkFileNames: "chunks/[name].cjs"
             }
         })
-    ]
+    )
 
     if (!isWatchMode) {
-        ret.push({
-            input: {
-                "runtime/index": "./dist/temp-types/runtime/index.d.ts",
-                "compiler/index": "./dist/temp-types/compiler/index.d.ts",
-                "runtime/internal": "./dist/temp-types/runtime/internal.d.ts"
-            },
-            output: {
-                dir: "dist/types",
-                format: "es",
-                chunkFileNames: "chunks/type.d.ts"
-            },
-            plugins: [dts()]
+        ;["runtime/index", "compiler/index", "runtime/internal"].forEach(folder => {
+            result.push({
+                input: `./dist/temp-types/${folder}.d.ts`,
+                output: {
+                    format: "es",
+                    inlineDynamicImports: true,
+                    file: `dist/types/${folder}.d.ts`
+                },
+                plugins: [dts()]
+            })
         })
     }
 
-    return ret
+    return result
 })
