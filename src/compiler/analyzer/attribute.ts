@@ -244,7 +244,7 @@ export function analyzeAttribute(
 
             // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
             if (isCheckMode) {
-                if (isEvent) {
+                if (isEvent && pureKey) {
                     const ast = parse(`_=${exp}`, 0, 0)?.body[0] as any
                     if (isInlineEventHandler(ast?.expression.right)) {
                         inlineEventItems.add(attr)
@@ -260,7 +260,8 @@ export function analyzeAttribute(
                         }
                         interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ");"])
                     }
-                } else {
+                }
+                if (!isEvent || (isComponent && inlineEventItems.has(attr))) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
                 }
                 return ""
@@ -1062,24 +1063,23 @@ export function analyzeAttribute(
             const [rk, rv, iv] = [attr.key.raw, attr.value.raw, attr.inferredValue]
             const keyRange: NumNum = [attr.key.loc.start.index, attr.key.loc.end.index]
             const valueRange: NumNum = [attr.value.loc.start.index, attr.value.loc.end.index]
-            if (rk.startsWith("#")) {
+
+            // 跳过指令和未指定名称的插值属性处理
+            const isSpecial = /^[!@&]/.test(rk)
+            const camelPureKey = kebab2Camel(rk.slice(+isSpecial))
+            if (rk.startsWith("#") || !camelPureKey) {
                 return
             }
 
-            const isSpecial = /^[!@&]/.test(rk)
             const target = attrRecords[+rk.startsWith("&")]
             const noEqualSign = keyRange[1] === attr.loc.end.index
-            if (!noEqualSign || iv) {
-                const camelPureKey = kebab2Camel(rk.slice(+isSpecial))
-                const isValidIdentifier = validIdentifierNameRE.test(camelPureKey)
-                target.push({
-                    type: "key",
-                    range: keyRange,
-                    specificRange: true,
-                    value: isValidIdentifier ? camelPureKey : normalStringify(camelPureKey)
-                })
-            }
-
+            const isValidIdentifier = validIdentifierNameRE.test(camelPureKey)
+            target.push({
+                type: "key",
+                range: keyRange,
+                specificRange: true,
+                value: isValidIdentifier ? camelPureKey : normalStringify(camelPureKey)
+            })
             target.push({
                 type: "value",
                 specificRange: !rv,

@@ -9,13 +9,13 @@ import { IS_PROXY, RAW_VALUE, UNDEF } from "./constants"
 // 获取已绑定组件实例的相关方法
 export function init(instance: QingKuaiComponent, hashId: string) {
     const properties = instance.__
-    const { props, refs, ctx } = properties as any
+    const { props, refs }: any = properties
     properties.id = hashId
 
     // 获取refs的原始值表示（可阅读形式）
     const getRawRefs = () => {
         return Object.keys(refs).reduce((p, c) => {
-            return { ...p, [c]: refs[c][0](ctx) }
+            return { ...p, [c]: refs[c][0](properties.ctx) }
         }, {} as AnyObject)
     }
 
@@ -24,7 +24,7 @@ export function init(instance: QingKuaiComponent, hashId: string) {
         return Object.keys(props).reduce((p, c) => {
             const v = props[c]
             const vf = isFunction(v) // whether Value is Function
-            return { ...p, [c]: vf ? v(ctx) : v }
+            return { ...p, [c]: vf ? v(properties.ctx) : v }
         }, {} as AnyObject)
     }
 
@@ -47,7 +47,7 @@ export function init(instance: QingKuaiComponent, hashId: string) {
                     }
 
                     const v = props[property]
-                    return isFunction(v) ? v(ctx) : v
+                    return isFunction(v) ? v(properties.ctx) : v
                 },
                 set() {
                     return AssignmentToProps(), true
@@ -68,11 +68,11 @@ export function init(instance: QingKuaiComponent, hashId: string) {
                     if (!(property in refs)) {
                         return UNDEF
                     }
-                    return refs[property][0](ctx)
+                    return refs[property][0](properties.ctx)
                 },
                 set(_, property, value) {
                     if (property in refs) {
-                        refs[property][1](value, ctx)
+                        refs[property][1](value, properties.ctx)
                     }
                     return true
                 }
