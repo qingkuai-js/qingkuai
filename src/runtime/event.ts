@@ -1,4 +1,9 @@
-import type { Setter, EventStructure, RefEventHandlerGetterGen, QingKuaiNodeStruct } from "./types"
+import type {
+    EventStructure,
+    SetterWithContext,
+    QingKuaiNodeStruct,
+    RefEventHandlerGetterGen
+} from "./types"
 
 import { attribute } from "./dom"
 import { raw } from "./reactivity/value"
@@ -66,10 +71,10 @@ export function withReference(
     eventName: string,
     attrName: string,
     value: any,
-    setter: Setter | null,
+    setter: SetterWithContext | null,
     isInitCall = true
 ): EventStructure {
-    const handlerGen: RefEventHandlerGetterGen = (qkNode, invokeGetter, attachUpdate) => {
+    const handlerGen: RefEventHandlerGetterGen = (ctx, qkNode, invokeGetter, attachUpdate) => {
         const target = qkNode.n as HTMLElement
         const targetAny = target as any
         const isInput = target.tagName === "INPUT"
@@ -154,9 +159,9 @@ export function withReference(
             // input[value/checked]、select[value]（单选），其他情况setter都为undefined
             if (setter) {
                 if (!isSelect) {
-                    setter(target[attrKey])
+                    setter(target[attrKey], ctx)
                 } else {
-                    setter(targetAny.selectedOptions[0]["_qkNode"].attrs.value)
+                    setter(targetAny.selectedOptions[0]["_qkNode"].attrs.value, ctx)
                 }
             } else {
                 const gotValue = raw(invokeGetter(value))

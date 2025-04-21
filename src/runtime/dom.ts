@@ -4,8 +4,7 @@ import type { PartialNode, QingKuaiNodeStruct } from "./types"
 import { RAW_VALUE } from "./constants"
 import { velf } from "../util/runtime/sundry"
 import { isReactive } from "../util/runtime/assert"
-import { AssignmentToDOMGetterProp } from "./message/warn"
-import { isArray, isBoolean, isObject } from "../util/shared/assert"
+import { isArray, isBoolean, isEmptyString, isObject } from "../util/shared/assert"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -52,6 +51,7 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
+    const [setAttr, removeAttr] = [elem.setAttribute.bind(elem), elem.removeAttribute.bind(elem)]
 
     // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值，每次访问响应式值都会得到一个新的Proxy包装值
     if (isReactive(value)) {
@@ -73,14 +73,13 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     if (key in elem) {
         try {
             const elemAny = elem as any
-            const isBool = isBoolean(elemAny[key])
-            if (isBool && value === "") {
-                elemAny[key] = true
+            if (isBoolean(elemAny[key]) && (isEmptyString(value) || value === "false")) {
+                elemAny[key] = isEmptyString(value)
             } else {
                 elemAny[key] = value
             }
-        } catch (e) {
-            return AssignmentToDOMGetterProp(e), false
+        } catch {
+            setAttr(key, value)
         }
     } else {
         // 新值与旧值字符串表达相同，结束调用，返回fasle表示此方法未导致组件更新
@@ -89,12 +88,12 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
         }
         if (isBoolean(value)) {
             if (value) {
-                elem.setAttribute(key, "")
+                setAttr(key, "")
             } else {
-                elem.removeAttribute(key)
+                removeAttr(key)
             }
         } else {
-            elem.setAttribute(key, value)
+            setAttr(key, value)
         }
     }
 

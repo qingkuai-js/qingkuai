@@ -192,7 +192,7 @@ export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
                     return false
                 }
 
-                if ((destroyBlock(dst.c[0]), newHtml)) {
+                if ((destroyBlock(dst.c.pop()!), newHtml)) {
                     const newDst = appendChildForDestruction(dst)
                     const nodes = createUnescapeNodes(newHtml, options)
                     nodes.forEach(node => {
@@ -241,7 +241,7 @@ export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModu
                 const shouleCreateBlock = newBlockIndex !== -1
                 const shouldDestroyOldBlock = oldBlockIndex !== -1
                 if (shouldDestroyOldBlock) {
-                    destroyBlock(dst.c[0]!)
+                    destroyBlock(dst.c.pop()!)
                 }
                 if (shouleCreateBlock) {
                     const newTopNodesItem = extendTopNodesBeforeDref(topNodes, dref)
@@ -626,21 +626,23 @@ function findTrueIndex(ctx: GetContextFunc, deps: any) {
 
 // (keyed)forModule: 获取不同类型值的键值对迭代器
 function getKeyValuePairIterator(value: any): FixedArray<any, 2>[] {
+    if (isNumber(value)) {
+        return Array.from({ length: value }, (_, i) => [i + 1, i])
+    }
+    if (isArray(value) || isString(value)) {
+        return Object.entries(value).map(([k, v]) => [Number(k), v])
+    }
+
     const tps = optc(value)
-    if (/Object|Array|String/.test(tps)) {
+    if (tps == "Object") {
         return Object.entries(value)
     }
-    if (tps === "Set") {
-        return values(value).map((v, i) => {
-            return [i, v]
-        })
-    }
-    if (tps === "Map") {
+    if (tps == "Map") {
         return entries(value)
     }
-    if (isNumber(value)) {
-        return arrayFill(value || 0, 0).map((_, index) => {
-            return [index, index + 1]
+    if (tps == "Set") {
+        return values(value).map((v, i) => {
+            return [i, v]
         })
     }
     return NonTraverse()

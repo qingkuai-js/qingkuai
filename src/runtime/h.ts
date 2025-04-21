@@ -193,9 +193,7 @@ export const h = withCleanUsedEffectList(function (
             const cacheId = isNumber(children[0]) ? children[0] : tagIsNumber ? tag : -1
 
             // 调用获取内容的函数
-            const invokeGetter = (getter: Function) => {
-                return getter(getContextFuncGen(currentContext, qkNode.n))
-            }
+            const invokeGetter = (getter: Function) => getter(ctx)
 
             // 获取内容，函数则调用，否则直接返回
             const getValue = (getter: any) => {
@@ -300,6 +298,7 @@ export const h = withCleanUsedEffectList(function (
             }
 
             // 处理attributes
+            const ctx = getContextFuncGen(currentContext, qkNode.n)
             for (let i = 0; i < len(attrs); i += 2) {
                 let [key, value] = [attrs![i], attrs![i + 1]]
                 if (key === "&dom") {
@@ -339,7 +338,7 @@ export const h = withCleanUsedEffectList(function (
                 if (!eventHandlerGetter[IS_WITH_REFERENCE_RET]) {
                     eventHandler = invokeGetter(eventHandlerGetter)
                 } else {
-                    eventHandler = eventHandlerGetter(qkNode, invokeGetter, attachUpdateLocal)
+                    eventHandler = eventHandlerGetter(ctx, qkNode, invokeGetter, attachUpdateLocal)
                 }
 
                 // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器

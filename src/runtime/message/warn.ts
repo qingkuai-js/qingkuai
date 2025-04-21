@@ -12,7 +12,7 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * last-warn-code: 8006
+ * last-warn-code: 8005
  *
  * 警告代码解释：以数字9开头的代码表示这是一个运行时警告
  * Warning Code Explanation: Code beginning with the number 8 indicates that this is a runtime warning
@@ -20,24 +20,20 @@
 
 import type { GeneralFunc } from "../../util/types"
 
-export const InvalidTargetForTargetDirective = withCode(8006, () => {
+export const InvalidTargetForTargetDirective = withCode(8005, () => {
     return `The given value of #target directive is not a valid DOM Node.`
 })
 
-export function AssignmentToDOMGetterProp(error: any) {
-    console.warn(`[QingKuai Warnning](${8001}):`, "Operation is invalid." + error)
-}
-
-export const AssignmentToProps = withCode(8002, () => {
+export const AssignmentToProps = withCode(8001, () => {
     return "An assignment to a unbound component prop is invalid, this operation has been ignored."
 })
 
-export const AssignmentToDerived = withCode(8003, () => {
+export const AssignmentToDerived = withCode(8002, () => {
     return "An assignment to derived reacativity state is invalid, this operation has been ignored."
 })
 
 export const WatchEffectDependentNoReactiveValue = withCode(
-    8004,
+    8003,
     (funcName: string, isEffect = false) => {
         const postfix = isEffect ? " again" : ""
         const desc = isEffect ? "callback" : "watch target"
@@ -45,7 +41,7 @@ export const WatchEffectDependentNoReactiveValue = withCode(
     }
 )
 
-export const DerivedDependenNoReactiveValue = withCode(8005, () => {
+export const DerivedDependenNoReactiveValue = withCode(8004, () => {
     return "The derived reactivity state declaration does not dependen any reactive value, consider replacing it to a normal declaration statement."
 })
 

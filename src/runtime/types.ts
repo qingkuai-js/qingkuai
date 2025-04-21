@@ -18,6 +18,7 @@ export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
 export type Constructible = new (...args: any[]) => any
 export type ReactiveTarget = AnyObject | AnyMap | AnySet
+export type SetterWithContext = (v: any, ctx: GetContextFunc) => void
 
 export type Opportunity = "sync" | "pre" | "post"
 
@@ -80,10 +81,11 @@ export interface ModuleFunc {
 // 否则会导致ts类型推导失败，这样写使得此类型该属性恒为undefined，否则排除此类型
 export interface NormalEventHandlerGetter {
     (): EventListener
-    [IS_WITH_REFERENCE_RET]?: undefined
+    [IS_WITH_REFERENCE_RET]: undefined
 }
 export interface RefEventHandlerGetterGen {
     (
+        ctx: GetContextFunc,
         qkNode: QingKuaiNodeStruct,
         invokeGetter: (getter: Function) => any,
         attachUpdate: (fn: UpdateFunc) => void

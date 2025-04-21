@@ -124,6 +124,7 @@ export function analyzeAttribute(
     const nodeStartIndex = node.loc.start.index
     const interAnyValue = `0${isTS ? " as any" : ""}`
     const isCheckMode = inputDescriptor.options.check
+    const insertComment = inputDescriptor.options.comment
     const eventStu: TransformInterpolationRet[] = []
     const aliasArgs: TransformInterpolationRet[] = []
     const attributeStu: TransformInterpolationRet[] = []
@@ -261,7 +262,7 @@ export function analyzeAttribute(
                         interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ");"])
                     }
                 }
-                if (!isEvent || (isComponent && inlineEventItems.has(attr))) {
+                if (!isEvent || inlineEventItems.has(attr)) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
                 }
                 return ""
@@ -432,7 +433,7 @@ export function analyzeAttribute(
                     }
 
                     if (setter) {
-                        setter = ", " + setter
+                        setter = `, ${setter})`
                     }
 
                     const spk = stringify(pureKey)
@@ -952,6 +953,7 @@ export function analyzeAttribute(
                                 duplicateModifiers.add(modifier)
                             } else {
                                 existringModifiers.add(modifier)
+                                eventWrapperModifierArr.push(modifier)
                                 eventWrapperFlag |= currentWrapperFlagNum || 0
                             }
                         }
@@ -975,11 +977,6 @@ export function analyzeAttribute(
                             key.loc.end.index
                         )
                     }
-
-                    // 将最后一个普通按键修饰符记录到eventWrapperModifierArr
-                    if (existingKeyRelatedModifiers.length > 0) {
-                        eventWrapperModifierArr.push(lastElem(existingKeyRelatedModifiers))
-                    }
                 }
             }
 
@@ -993,14 +990,17 @@ export function analyzeAttribute(
                 if (!tir) {
                     return
                 }
-                if (eventFlag === 0) {
-                    flagComment = "no flag"
-                } else {
-                    flagComment = eventModifierArr.join(", ")
+                if (insertComment) {
+                    if (eventFlag === 0) {
+                        flagComment = "no flag"
+                    } else {
+                        flagComment = eventModifierArr.join(", ")
+                    }
+                    flagComment = `/* ${flagComment} */ `
                 }
 
                 const prefix = `${stringify(eventName)}, `
-                const postfix = `, /* ${flagComment} */ ${eventFlag}`
+                const postfix = `, ${flagComment}${eventFlag}`
                 eventStu.push(concatStrAndTIR(prefix, tir, postfix))
             } else {
                 const tir = transAttrValue({ isComponentEvent: true })
