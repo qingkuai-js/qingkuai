@@ -7,17 +7,17 @@
 import type {
     TopNodes,
     Directive,
-    PartialNode,
     TopNodesItem,
     RenderContext,
     EffectListItem,
-    DestructionStruct
+    DestructionStruct,
+    QingKuaiNodeStruct
 } from "../../runtime/types"
 
-import { NIL, NOOP } from "../../runtime/constants"
+import { NOOP } from "../../runtime/constants"
+import { isArray, isFunction, isNumber } from "../shared/assert"
 import { setUsedEffectList } from "../../runtime/reactivity/state"
-import { emptyArr, lastElem, len, runAll, spliceByElem } from "../shared/sundry"
-import { isArray, isFunction, isNull, isNumber } from "../shared/assert"
+import { emptyArr, lastElem, len, runAll } from "../shared/sundry"
 
 // 根据contextValues模拟一个Directive
 export function mockDirective(
@@ -66,6 +66,29 @@ export function newDestruction(): DestructionStruct {
     return { v: [], c: [] }
 }
 
+// 生成获取context的方法
+export function getContextFuncGen(
+    context: RenderContext[],
+    qknode: QingKuaiNodeStruct | null = null
+) {
+    return (p: any) => {
+        if (isNumber(p)) {
+            for (let i = 0; true; i++) {
+                const cur = context[i]
+                const curvLen = len(cur.v)
+                if (p < curvLen) {
+                    setUsedEffectList(cur.e)
+                    return cur.v[p]
+                } else {
+                    p = p - curvLen
+                }
+            }
+        } else if (isFunction(p)) {
+            return qknode ? p.bind(qknode.n) : p
+        }
+    }
+}
+
 // 扩展TopNodes（在dref之前）并返回新创建的元素（Module中的dref始终应保持在最后）
 export function extendTopNodesBeforeDref(topNodes: TopNodes, dref: Text) {
     const ret: TopNodesItem = []
@@ -87,26 +110,6 @@ export function appendChildForDestruction(destruction: DestructionStruct) {
 
 export function putTopNodesIntoItem(item: TopNodesItem, topNodes: TopNodes) {
     topNodes.forEach(tn => item.push(...tn))
-}
-
-// 生成获取context的方法
-export function getContextFuncGen(context: RenderContext[], node: PartialNode = NIL) {
-    return (p: any) => {
-        if (isNumber(p)) {
-            for (let i = 0; true; i++) {
-                const cur = context[i]
-                const curvLen = len(cur.v)
-                if (p < curvLen) {
-                    setUsedEffectList(cur.e)
-                    return cur.v[p]
-                } else {
-                    p = p - curvLen
-                }
-            }
-        } else if (isFunction(p)) {
-            return p.bind(node)
-        }
-    }
 }
 
 // 遍历TopNodes中的DOM节点

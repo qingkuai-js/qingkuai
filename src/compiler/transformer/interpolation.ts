@@ -5,7 +5,6 @@ import type {
     TransformInterpolationRet,
     TransformInterpolationOptions
 } from "../types"
-import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
@@ -20,6 +19,12 @@ import {
     IdentifierFormatIsNotAllowed,
     ContextIdentifierUsedAsReferenceTarget
 } from "../message/error"
+import {
+    confirmAlias,
+    markPositionFlag,
+    isIndexEliminated,
+    isBannedIdentifier
+} from "../../util/compiler/sundry"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
@@ -30,7 +35,6 @@ import { is, isInlineEventHandler } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
 import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
-import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
 
 export function transformInterpolation(
     expression: string,
@@ -157,7 +161,7 @@ export function transformInterpolation(
         },
         CallExpression(node) {
             useGetter = true
-            if (isEvent) {
+            if (isEvent && options.withInNormalTag) {
                 const callee = node.callee
                 useContext = true
                 extendTransformInfo(callee.start!, () => `${ctxParam}(`)
@@ -275,6 +279,11 @@ export function transformInterpolation(
             addedPrefixLen += 17
             withReturnKeyword = true
             transformedExp = `$arg => { return ${transformedExp} }`
+        }
+        if (options.withInNormalTag) {
+            for (let i = 0; i < expression.length; i++) {
+                markPositionFlag(startSourceIndex + i, "inNormalTagInlineEvent")
+            }
         }
     }
 

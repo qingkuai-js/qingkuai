@@ -212,6 +212,7 @@ export type TransformInterpolationOptionalOptions = Partial<{
     positionMap: number[]
     usedAsSetter: boolean
     isKeyDirective: boolean
+    withInNormalTag: boolean
     normalClassRange: NumNum
     isComponentEvent: boolean
     attributeWithNoValue: boolean

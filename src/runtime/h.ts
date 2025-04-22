@@ -193,6 +193,7 @@ export const h = withCleanUsedEffectList(function (
             const cacheId = isNumber(children[0]) ? children[0] : tagIsNumber ? tag : -1
 
             // 调用获取内容的函数
+            const ctx = getContextFuncGen(currentContext, qkNode)
             const invokeGetter = (getter: Function) => getter(ctx)
 
             // 获取内容，函数则调用，否则直接返回
@@ -298,7 +299,6 @@ export const h = withCleanUsedEffectList(function (
             }
 
             // 处理attributes
-            const ctx = getContextFuncGen(currentContext, qkNode.n)
             for (let i = 0; i < len(attrs); i += 2) {
                 let [key, value] = [attrs![i], attrs![i + 1]]
                 if (key === "&dom") {

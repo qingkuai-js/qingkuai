@@ -1,6 +1,7 @@
-node_modules
-test-space
 dist
+test-space
+node_modules
 
 .history
 .DS_Store
+qingkuai-*.tgz

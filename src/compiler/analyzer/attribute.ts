@@ -72,9 +72,8 @@ import {
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
-import { is, isFunctionNode, isInlineEventHandler } from "../estree/assert"
 import { validIdentifierNameRE } from "../regular"
-import { lastElem } from "../../util/shared/sundry"
+import { is, isInlineEventHandler } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { transformInterpolation } from "../transformer/interpolation"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
@@ -117,6 +116,12 @@ export function analyzeAttribute(
     let nameOfSlotTag: string | undefined = undefined
     let continueArg: TransformInterpolationRet | undefined
 
+    const eventStu: TransformInterpolationRet[] = []
+    const aliasArgs: TransformInterpolationRet[] = []
+    const attributeStu: TransformInterpolationRet[] = []
+    const directiveStu: TransformInterpolationRet[][] = []
+    const inlineEventItems = new WeakSet<TemplateAttribute>()
+
     const { tag } = node
     const isSlot = tag === "slot"
     const isSpread = tag === SPREAD_TAG
@@ -125,11 +130,7 @@ export function analyzeAttribute(
     const interAnyValue = `0${isTS ? " as any" : ""}`
     const isCheckMode = inputDescriptor.options.check
     const insertComment = inputDescriptor.options.comment
-    const eventStu: TransformInterpolationRet[] = []
-    const aliasArgs: TransformInterpolationRet[] = []
-    const attributeStu: TransformInterpolationRet[] = []
-    const directiveStu: TransformInterpolationRet[][] = []
-    const inlineEventItems = new WeakSet<TemplateAttribute>()
+    const isNormal = !isComponent && !isSlot && !isSpread
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
     const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
@@ -235,7 +236,8 @@ export function analyzeAttribute(
 
             return transformInterpolation(exp, startSourceIndex, context, {
                 ...option,
-                type: "directive"
+                type: "directive",
+                withInNormalTag: isNormal
             })
         }
 
@@ -265,6 +267,12 @@ export function analyzeAttribute(
                 if (!isEvent || inlineEventItems.has(attr)) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
                 }
+                if (isNormal && inlineEventItems.has(attr)) {
+                    for (let i = 0; i < attr.value.raw.length; i++) {
+                        console.log(i + attr.value.loc.start.index)
+                        markPositionFlag(i + attr.value.loc.start.index, "inNormalTagInlineEvent")
+                    }
+                }
                 return ""
             }
 
@@ -277,6 +285,7 @@ export function analyzeAttribute(
             return transformInterpolation(exp, startSourceIndex, context, {
                 ...option,
                 type: "attribute",
+                withInNormalTag: isNormal,
                 normalClassRange: attr.normalClassRange
             })
         }
