@@ -46,8 +46,8 @@ import {
 } from "../util/runtime/separate"
 import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
+import { len, values } from "../util/shared/sundry"
 import { internalPreEffect } from "./reactivity/effect"
-import { len, spliceByElem, values } from "../util/shared/sundry"
 import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
@@ -102,6 +102,7 @@ export const h = withCleanUsedEffectList(function (
     let isInputOrOption = false
     let isInputOrTextarea = false
     let dref: Text | undefined = UNDEF
+    let directiveDestruction: DestructionStruct
 
     if (!isModuleFunc(stu)) {
         rstu = {
@@ -115,7 +116,6 @@ export const h = withCleanUsedEffectList(function (
     const topNodes: TopNodes = []
     const { directive, toms } = rstu
     const times = directive?.v[0] ?? 1
-    const parentDestruction = destruction
     const cachedPureNodes = instance.__.cn
     const isDirectiveModule = !isNull(directive)
     const isAliasModule = directive?.t === ALIAS_MODULE_KIND
@@ -130,14 +130,12 @@ export const h = withCleanUsedEffectList(function (
 
     // 开始指令模块前的处理
     if (isDirectiveModule) {
+        directiveDestruction = destruction = appendChildForDestruction(destruction)
+
         if (!isAliasModule) {
             dref = textNode("")
             attachDestroyLocal(() => destroy(dref!))
             insert(target, dref, reference), (reference = dref)
-        }
-
-        for (let i = 0; i < times; i++) {
-            appendChildForDestruction(destruction)
         }
 
         const moduleUpdateFn = directive.v[2](
@@ -157,14 +155,10 @@ export const h = withCleanUsedEffectList(function (
     }
 
     for (let i = 0; i < times; i++) {
-        if (isDirectiveModule) {
-            destruction = parentDestruction.c[i]
-        }
-
         const topNodesItem = extendTopNodes(topNodes)
-        attachDestroyLocal(() => {
-            spliceByElem(topNodes, topNodesItem)
-        })
+        if (isDirectiveModule) {
+            destruction = appendChildForDestruction(directiveDestruction!)
+        }
 
         const extendTopNodesItemLocal = (topNodes: TopNodes) => {
             putTopNodesIntoItem(topNodesItem, topNodes)
