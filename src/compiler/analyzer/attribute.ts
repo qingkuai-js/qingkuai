@@ -1051,7 +1051,7 @@ export function analyzeAttribute(
                 ? transAttrValue()
                 : isEmptyString(rv)
                 ? "!0"
-                : stringify(rv)
+                : stringify(rv, true)
             tir && attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
         }
     })

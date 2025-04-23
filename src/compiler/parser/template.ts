@@ -16,7 +16,7 @@ import {
 import {
     tagIsComponentRE,
     templateCloseCharsRE,
-    preWhiteSpaceCommentRE,
+    preWithSpaceRuleRE,
     templateTagStructureRE,
     templateAttributeNameRE,
     startWithTagStructureRE,
@@ -106,15 +106,15 @@ export function parseTemplate(source: string, standalone = false) {
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | undefined) {
         const contentEndIndex = findOutOfTextContentInterpolation(dps, templateTagStructureRE)
         const content = dps.slice(0, contentEndIndex === -1 ? dps.length : contentEndIndex)
-        const preWhiteSpace = parent?.tag === "pre" || parent?.preWhiteSpace
+        const preWhiteSpace = parent?.pref
         const contentLen = content.length
         if ((reduceSource(contentLen), contentLen)) {
-            if (content.trim() || preWhiteSpace) {
+            if (preWhiteSpace || content.trim()) {
                 const ret = initTemplateNode(positions, {
                     prev,
                     content,
                     parent,
-                    preWhiteSpace,
+                    pref: preWhiteSpace,
                     range: [index - contentLen, index]
                 })
                 if (content.includes("{")) {
@@ -172,7 +172,7 @@ export function parseTemplate(source: string, standalone = false) {
             pure: !fdsn,
             range: [index, -1],
             componentTag: isComponent ? kebab2Camel(tag, true) : "",
-            preWhiteSpace: parent?.tag === "pre" || isPrevNodeWithPreWhiteSpace(prev)
+            pref: tag === "pre" || isPrevNodeWithPreWhiteSpaceComment(prev)
         })
         reduceSource(tag.length + 1)
 
@@ -299,6 +299,9 @@ export function parseTemplate(source: string, standalone = false) {
             }
             if (isNull(equalTokenMatched)) {
                 attrLoc.end = getPosByIndex(nameEndIndex)
+            }
+            if (attrName === "style") {
+                ast.pref = preWithSpaceRuleRE.test(attrValue)
             }
             if (isEnd) {
                 valueLoc.end = getPosByIndex(valueEndIndex)
@@ -522,8 +525,6 @@ function initTemplateNode(
         }
     }
 
-    options.preWhiteSpace ||= options.parent?.preWhiteSpace
-
     return {
         parent: options.parent || null,
         prev: options.prev,
@@ -532,7 +533,7 @@ function initTemplateNode(
         isEmbedded: false,
         isSelfClosing: false,
         pure: options.pure ?? true,
-        preWhiteSpace: !!options.preWhiteSpace,
+        pref: !!options.pref,
         content: options.content || "",
         range: options.range || [-1, -1],
         startTagEndPos: newASTPosition(),
@@ -553,11 +554,11 @@ function markupNodeAndAncestorIsNotPure(node: TemplateNode) {
 }
 
 // 检查节点是否为设置white-space属性为pre相关的注释节点
-function isPrevNodeWithPreWhiteSpace(node: TemplateNode | undefined) {
+function isPrevNodeWithPreWhiteSpaceComment(node: TemplateNode | undefined) {
     if (node?.tag !== "!") {
         return false
     }
-    return preWhiteSpaceCommentRE.test(node.content)
+    return preWithSpaceRuleRE.test(node.content)
 }
 
 // 在textContent范围内脱离插值表达式范围查找字符位置

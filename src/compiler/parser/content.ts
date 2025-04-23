@@ -2,11 +2,11 @@ import { inputDescriptor } from "../state"
 import { isNumber } from "../../util/shared/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { markPositionFlag, recordInterExpression } from "../../util/compiler/sundry"
-import { findEndBracket, findOutOfComment, normalStringify } from "../../util/compiler/strings"
+import { findEndBracket, normalStringify, findOutOfComment } from "../../util/compiler/strings"
 import { EmptyInterpolationExpression, UnclosedInterpolationExpression } from "../message/error"
 
 // 将模板中的插值表达式转换成javascript表达式，此外该方法还会返回源码中每个位置的偏移量
-export function content2script(content: string, startSourceIndex: number) {
+export function content2script(content: string, startSourceIndex: number, pref: boolean) {
     const isDebug = inputDescriptor.options.debug
     const transformedStrInitLen = isDebug ? 5 : 1
     const shouldGenerateSourcemap = inputDescriptor.options.sourcemap
@@ -42,7 +42,7 @@ export function content2script(content: string, startSourceIndex: number) {
         // useStringify为true时表示当前处于普通字符串范围，此时只需记录字符串开头和结尾处
         // 对应的源码索引，否则则代表当前处于插值表达式范围，需要逐一记录每个字符对应的源码索引
         if (useStringify) {
-            const stringified = normalStringify(str)
+            const stringified = normalStringify(pref ? str : str.replace(/\s+/g, " "), true)
             if (shouldGenerateSourcemap) {
                 const stringifiedLen = stringified.length
                 const endIndex = transformedStrLen + stringifiedLen

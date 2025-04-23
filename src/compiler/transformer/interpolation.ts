@@ -177,7 +177,7 @@ export function transformInterpolation(
             if (os >= ns && os <= ne && oe >= ns && oe <= ne) {
                 extendTransformInfo(
                     node.end,
-                    stringify(node.value, StringLiteralLeftPad.normalClass)
+                    stringify(node.value, true, StringLiteralLeftPad.normalClass)
                 )
             } else {
                 extendTransformInfo(node.end, stringify(node.value))

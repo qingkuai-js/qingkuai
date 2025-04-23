@@ -5,6 +5,7 @@ import {
     stringLiteralConstantRE,
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
+import { decodeHTML } from "entities"
 import { escapeRegExpSource } from "../shared/sundry"
 import { isString, isUndefined } from "../shared/assert"
 import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../../compiler/state"
@@ -12,11 +13,6 @@ import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../.
 export const findOutOfString = findOutOfGen(true, false)
 export const findOutOfComment = findOutOfGen(false, true)
 export const findOutOfStringComment = findOutOfGen(true, true)
-
-// JSON.stringify别名
-export function normalStringify(v: any) {
-    return JSON.stringify(v)
-}
 
 // 转义空白字符为实体化字符（\n、\r、\t）
 export function escapeWhiteSpace(s: string) {
@@ -32,9 +28,13 @@ export function escapeWhiteSpace(s: string) {
     })
 }
 
+export function normalStringify(v: any, decodeEntities = false) {
+    return JSON.stringify(decodeEntities ? decodeHTML(v) : v)
+}
+
 // 此方法会记录字符串的访问次数，并生成一个变量（值为字符串字面量），最后返回生成的变量标识符
-export function stringify(v: any, padLeft = -1) {
-    const s = normalStringify(v)
+export function stringify(v: any, decodeEntities = false, padLeft = -1) {
+    const s = normalStringify(v, decodeEntities)
     if (inputDescriptor.options.check) {
         return s
     }

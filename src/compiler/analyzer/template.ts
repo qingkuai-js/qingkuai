@@ -207,7 +207,7 @@ export function analyzeTemplate(
         }
 
         // 注释以及pre、textarea节点的内容不去除开头和结尾的空白字符
-        if (!isTextarea && tag !== "!" && !node.preWhiteSpace) {
+        if (!isTextarea && tag !== "!" && !node.pref) {
             const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
             content = content.slice(preSpaceCount).trimEnd()
             trimedContentStartIndex += preSpaceCount
@@ -218,7 +218,7 @@ export function analyzeTemplate(
         } else if (curRetItem.aar?.nameOfSlotTag) {
             curRetItem.content = curRetItem.aar.nameOfSlotTag
         } else {
-            const parseRet = content2script(content, trimedContentStartIndex)
+            const parseRet = content2script(content, trimedContentStartIndex, node.pref)
             const optionalParam = { positionMap: parseRet.positionMap }
             if (!inputDescriptor.options.check) {
                 curRetItem.content = transformInterpolation(

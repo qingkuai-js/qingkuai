@@ -29,7 +29,8 @@
   },
   "dependencies": {
     "@babel/parser": "^7.27.0",
-    "@jridgewell/sourcemap-codec": "^1.5.0"
+    "@jridgewell/sourcemap-codec": "^1.5.0",
+    "entities": "^6.0.0"
   },
   "devDependencies": {
     "@babel/types": "^7.27.0",
