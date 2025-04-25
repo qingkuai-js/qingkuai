@@ -5,15 +5,6 @@ import { isNumber } from "../../util/shared/assert"
 export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(obj: T): T => {
     return obj
 })({
-    DuplicateScopePseudo: [1047, () => "Duplicate scope pseudo class selectors."],
-    NoParameterForScopePseudo: [
-        1048,
-        () => "Must pass paramter for the scope pseudo class selector."
-    ],
-    TooManyParamaterForScopePseudo: [
-        1049,
-        () => "The scope pseudo class selector can accept at most one parameter."
-    ],
     IdentifierFormatIsNotAllowed: [
         1029,
         (identifierName: string) => {
