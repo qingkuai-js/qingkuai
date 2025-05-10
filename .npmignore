@@ -9,6 +9,7 @@ node_modules
 .gitignore
 .prettierrc
 
+qingkuai-*.tgz
 pnpm-lock.yaml
 tsconfig.json
 conf.env.d.ts

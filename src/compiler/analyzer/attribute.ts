@@ -269,7 +269,6 @@ export function analyzeAttribute(
                 }
                 if (isNormal && inlineEventItems.has(attr)) {
                     for (let i = 0; i < attr.value.raw.length; i++) {
-                        console.log(i + attr.value.loc.start.index)
                         markPositionFlag(i + attr.value.loc.start.index, "inNormalTagInlineEvent")
                     }
                 }

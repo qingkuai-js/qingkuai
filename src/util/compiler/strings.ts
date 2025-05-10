@@ -89,19 +89,20 @@ export function getResotedStringLiteral(identifier: string) {
 
 // 在表达式中找到关闭括号的位置， 使用此方法时，startIndex应为开始括号的下一个位置
 export function findEndBracket(str: string, startIndex: number, char: StartBracket = "{") {
+    let searchStr = str.slice(startIndex)
     const pairMap = { "{": "}", "[": "]", "(": ")" }
-
-    while (true) {
-        const [startBracketIndex] = findOutOfStringComment(str, char, startIndex)
-        const [endBracketIndex] = findOutOfStringComment(str, pairMap[char], startIndex)
+    while ((searchStr = str.slice(startIndex))) {
+        const startBracketIndex = findOutOfStringComment(searchStr, char)
+        const endBracketIndex = findOutOfStringComment(searchStr, pairMap[char])
         if (endBracketIndex === -1) {
             return -1
         }
         if (startBracketIndex === -1 || endBracketIndex < startBracketIndex) {
-            return endBracketIndex
+            return endBracketIndex + startIndex
         }
-        startIndex = endBracketIndex + 1
+        startIndex += endBracketIndex + 1
     }
+    return -1
 }
 
 function findOutOfGen(outString: boolean, outComment: boolean) {
