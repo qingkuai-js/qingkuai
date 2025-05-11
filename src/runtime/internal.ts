@@ -1,6 +1,7 @@
 export {
     ifModule,
     forModule,
+    showModule,
     aliasModule,
     awaitModule,
     targetModule,

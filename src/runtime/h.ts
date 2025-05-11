@@ -24,12 +24,6 @@ import {
     BAD_TARGET_MOUNT_KIND
 } from "./constants"
 import {
-    QingKuaiComponent,
-    getCurrentInstance,
-    invokeIndexedHooks,
-    setCurrentInstance
-} from "./instance"
-import {
     usedEffectList,
     setUsedEffectList,
     cleanUsedEffectList,
@@ -50,6 +44,7 @@ import { len, values } from "../util/shared/sundry"
 import { internalPreEffect } from "./reactivity/effect"
 import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
+import { QingKuaiComponent, invokeIndexedHooks, setCurrentInstance } from "./instance"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
 export function render(

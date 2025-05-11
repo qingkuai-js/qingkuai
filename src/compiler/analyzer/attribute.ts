@@ -851,7 +851,7 @@ export function analyzeAttribute(
                     break
 
                 case "show":
-                    attributeStu.push(stringify("#show"), transAttrValue())
+                    directiveStu.push([getAlias("showModule"), transAttrValue()])
                     break
 
                 default:

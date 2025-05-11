@@ -13,11 +13,11 @@ export type ValueOrValueArr<T> = T | T[]
 export type ObjectKeys = keyof AnyObject
 export type TopNodesItem = TopNodes[number]
 export type Noop = (...params: any[]) => any
-export type TopNodes = (Node | TopNodes)[][]
 export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
 export type Constructible = new (...args: any[]) => any
 export type ReactiveTarget = AnyObject | AnyMap | AnySet
+export type TopNodes = (Node | HTMLElement | TopNodes)[][]
 export type SetterWithContext = (v: any, ctx: GetContextFunc) => void
 
 export type Opportunity = "sync" | "pre" | "post"

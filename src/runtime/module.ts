@@ -16,7 +16,6 @@ import type {
 import type { FixedArray } from "../util/types"
 
 import {
-    arrayFill,
     len,
     optc,
     values,
@@ -40,7 +39,7 @@ import {
 import { insert } from "./dom"
 import { h, attachDestroy } from "./h"
 import { CancelablePromise } from "./promise"
-import { invokeIndexedHooks } from "./instance"
+import { invokeIndexedHooks, onAfterMount } from "./instance"
 import { isModuleFunc, isNode } from "../util/runtime/assert"
 import { InvalidTargetForTargetDirective } from "./message/warn"
 import { BadTarget, DuplicateKey, NonTraverse } from "./message/error"
@@ -216,6 +215,47 @@ export function unescapeModule(optionsDep: any, stu: NormalTemplateStructure) {
     return markupModuleFunc(escapeModuleFunc)
 }
 
+export function showModule(dep: any, ...toms: TemplateStuOrModuleFunc[]) {
+    const showModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
+        const depIsGetter = isFunction(dep)
+        const effectList = values(usedEffectList)
+
+        let oldValue = !!(depIsGetter ? dep(ctx) : dep)
+
+        const updateGen: DirectiveUpdateFuncGen = (...args) => {
+            const setDisplay = (value: boolean) => {
+                for (const item of args[6]) {
+                    walkTopNodes(item, node => {
+                        if ("style" in node) {
+                            node.style.display = value ? "" : "none"
+                        }
+                    })
+                }
+            }
+
+            const updateShowModule = () => {
+                const newValue = !!dep(ctx)
+                if (oldValue === newValue) {
+                    return false
+                }
+                return setDisplay(newValue), (oldValue = newValue), true
+            }
+
+            return onAfterMount(setDisplay), depIsGetter ? updateShowModule : NIL
+        }
+
+        return {
+            toms,
+            directive: {
+                t: 0,
+                e: effectList,
+                v: [1, [], updateGen]
+            }
+        }
+    })
+    return markupModuleFunc(showModuleFunc)
+}
+
 export function ifModule(deps: any[], ...toms: ValueOrValueArr<TemplateStuOrModuleFunc>[]) {
     const toms2d = toTwoDemensionalToms(toms)
     const ifModuleFunc = withCleanUsedEffectList<ModuleFunc>(ctx => {
@@ -383,7 +423,9 @@ export function keyedForModule(dep1: any, dep2: any, ...toms: TemplateStuOrModul
                     } else {
                         if (refKey !== willKey) {
                             hasDomOperation = true
-                            reposition(topNodes[willKeyIndexOfTopNodes], reference)
+                            walkTopNodes(topNodes[willKeyIndexOfTopNodes], node => {
+                                insert(node.parentNode!, node, reference)
+                            })
                         } else {
                             while (
                                 topNodes[++refIndex] &&
@@ -672,17 +714,6 @@ function getFirstNode(topNodesItem: TopNodesItem | undefined): PartialNode {
     return getFirstNode(fst[0])
 }
 
-// keyedForModule: 移动当前TopNodes中的节点到正确的位置
-function reposition(topNodesItem: TopNodesItem, reference: PartialNode) {
-    topNodesItem.forEach(item => {
-        if (isNode(item)) {
-            insert(item.parentNode!, item, reference)
-        } else {
-            item.forEach(c => reposition(c, reference))
-        }
-    })
-}
-
 // keyedForModule: 获取key
 function getKey(dep: any, pairs: any[], context: RenderContext[], index: number) {
     if (!isFunction(dep)) {
@@ -692,6 +723,19 @@ function getKey(dep: any, pairs: any[], context: RenderContext[], index: number)
     const md = mockDirective(pairs, context[index]?.e as EffectListItem[])
     const currentContext = combineContext(md, context, index)
     return "" + dep(getContextFuncGen(currentContext))
+}
+
+// showModule, keyedForModule: 遍历TopNodes
+function walkTopNodes(topNodesItem: TopNodesItem, cb: (node: Node | HTMLElement) => void) {
+    for (const item of topNodesItem) {
+        if (isNode(item)) {
+            cb(item)
+        } else {
+            for (const child of item) {
+                walkTopNodes(child, cb)
+            }
+        }
+    }
 }
 
 export { getKeyValuePairIterator }

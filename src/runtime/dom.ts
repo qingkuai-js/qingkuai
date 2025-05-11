@@ -1,9 +1,7 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { RAW_VALUE } from "./constants"
 import { velf } from "../util/runtime/sundry"
-import { isReactive } from "../util/runtime/assert"
 import { isArray, isBoolean, isEmptyString, isObject } from "../util/shared/assert"
 
 export function destroy(node: Node) {
@@ -52,15 +50,6 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
     const [setAttr, removeAttr] = [elem.setAttribute.bind(elem), elem.removeAttribute.bind(elem)]
-
-    // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值，每次访问响应式值都会得到一个新的Proxy包装值
-    if (isReactive(value)) {
-        value = value[RAW_VALUE]
-    }
-
-    if (key === "#show") {
-        return (elem.style.display = value ? "" : "none"), true
-    }
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串
     if (key === "class") {

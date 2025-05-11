@@ -58,6 +58,7 @@ export const FULL_RUNTIME_ITEMS = new Set([
     "ifModule",
     "forModule",
     "constReact",
+    "showModule",
     "keyedForModule",
     "aliasModule",
     "awaitModule",
