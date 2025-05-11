@@ -44,7 +44,9 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
                 estu[i] = singleTerConfirm(estu[i])
             }
             if (!isUndefined(dstu?.[i])) {
-                dstu[i][1] = singleTerConfirm(dstu[i][1])
+                for (let j = 1; j < dstu[i].length; j++) {
+                    dstu[i][j] = singleTerConfirm(dstu[i][j])
+                }
             }
         }
         if (tar.children.length) {
