@@ -243,7 +243,7 @@ export function analyzeAttribute(
 
         // 转换标签属性值
         const transAttrValue = (option?: TransformInterpolationOptionalOptions) => {
-            const exp = rv ? trimedValue : iv
+            let exp = rv ? trimedValue : iv
 
             // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
             if (isCheckMode) {
@@ -264,8 +264,17 @@ export function analyzeAttribute(
                         interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ");"])
                     }
                 }
+                if (inlineEventItems.has(attr)) {
+                    interCodeSnippets.push([
+                        IntercodeSnippetKind.VoidSource,
+                        `{const $arg=__c__.GetEventHandler<"${pureKey}">();`
+                    ])
+                }
                 if (!isEvent || inlineEventItems.has(attr)) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
+                }
+                if (inlineEventItems.has(attr)) {
+                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "};"])
                 }
                 if (isNormal && inlineEventItems.has(attr)) {
                     for (let i = 0; i < attr.value.raw.length; i++) {
@@ -645,6 +654,7 @@ export function analyzeAttribute(
                                 indexPart,
                                 startSourceIndex
                             )
+                            context.count++
                             recordDestructuringIdentifiers(
                                 node,
                                 tir,
@@ -667,6 +677,7 @@ export function analyzeAttribute(
                                 itemPart,
                                 startSourceIndex
                             )
+                            context.count++
                             recordDestructuringIdentifiers(
                                 node,
                                 tir,
