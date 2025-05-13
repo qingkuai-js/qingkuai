@@ -49,32 +49,26 @@ export const InvalidEventFlag = withLocation(9004, (flagName: string, eventName:
     return `Invalid flag(${flagName}) for event(@${eventName}) and it has been ignored.`
 })
 
-export const DuplicateEventModifiers = withLocation(
-    9009,
-    (modifiers: string[], eventName: string) => {
-        return `There are some duplicate modifiers(${modifiers.join(", ")}) on ${eventName} event.`
-    }
-)
+export const DuplicateEventFlags = withLocation(9009, (flags: string[], eventName: string) => {
+    return `There are some duplicate flags(${flags.join(", ")}) on ${eventName} event.`
+})
 
-export const InvalidComposeModifier = withLocation(9006, (eventName: string) => {
-    return `The event modifier(compose) is not valid for ${eventName} even, it can only be used for input event.`
+export const InvalidComposeFlag = withLocation(9006, (eventName: string) => {
+    return `The event flag(compose) is not valid for ${eventName} even, it can only be used for input event.`
 })
 
 export const InvalidEventFlagForComponent = withLocation(9005, (flagDescription: string) => {
     return `The event parameter for component can not accept any flag(${flagDescription}), and they has been ignored.`
 })
 
-export const ConflictNormalKeyEventModifier = withLocation(9008, (modifiers: string[]) => {
-    const [joined, last] = [modifiers.join(", "), lastElem(modifiers)]
-    return `The normal key event modifiers(${joined}) is conflict, and the last one(${last}) will be applied according to the priority.`
+export const ConflictNormalKeyEventFlag = withLocation(9008, (flags: string[]) => {
+    const [joined, last] = [flags.join(", "), lastElem(flags)]
+    return `The normal key event flags(${joined}) is conflict, and the last one(${last}) will be applied according to the priority.`
 })
 
-export const InvalidKeyRelatedModifier = withLocation(
-    9007,
-    (modifier: string, eventName: string) => {
-        return `The event modifier(${modifier}) is not valid for ${eventName} even, it can only be used for these events: keyup, keydown, keypress.`
-    }
-)
+export const InvalidKeyRelatedFlag = withLocation(9007, (flag: string, eventName: string) => {
+    return `The event flag(${flag}) is not valid for ${eventName} even, it can only be used for these events: keyup, keydown, keypress.`
+})
 
 // 检查参数是否是QingKuai编译器警告
 export function isCompileWarning(v: any): v is CompileWarning {

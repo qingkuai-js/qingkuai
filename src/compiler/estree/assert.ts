@@ -21,7 +21,8 @@ export function isInlineEventHandler(node: AnyNode) {
         isFunctionNode(node) ||
         is(node, "Identifier") ||
         is(node, "MemberExpression") ||
-        is(node, "OptionalMemberExpression")
+        is(node, "OptionalMemberExpression") ||
+        is(node, "OptionalIndexedAccessType")
     )
 }
 

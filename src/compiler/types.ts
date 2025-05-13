@@ -207,7 +207,7 @@ export interface AttributeAnalysisRet {
 export type TransformInterpolationOptionalOptions = Partial<{
     eventWrapper: {
         flag: number
-        modifiers: string[]
+        flagDescription: string
     }
     positionMap: number[]
     usedAsSetter: boolean

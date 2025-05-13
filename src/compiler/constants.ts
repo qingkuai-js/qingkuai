@@ -30,7 +30,7 @@ export const MUST_PASS_VALUE_DIRECTIVES = new Set([
     "target"
 ])
 
-export const KEY_RELATED_EVENT_MODIFIERS = new Set([
+export const KEY_RELATED_EVENT_FLAGS = new Set([
     "enter",
     "tab",
     "del",

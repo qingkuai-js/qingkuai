@@ -19,8 +19,8 @@ import { emptyArr, notEqual, optc } from "../util/shared/sundry"
 const Arrow = "Arrow"
 const keyTypes = ["keydown", "keyup", "keypress"]
 
-// 事件处理器包装器，用以支持按键修饰符与按键别名
-// Wrapper of Event Handler, to support key modifiers and key aliases.
+// 事件处理器包装器，用以支持按键标志
+// Wrapper of Event Handler, to support key related flags
 export function eventWrapper(
     fn: EventListener,
     flag: number = 0,

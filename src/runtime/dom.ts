@@ -100,11 +100,11 @@ export function listen(node: Node, key: string, handler: EventListener, flag: nu
     const useSelf = velf(flag, "self")
     const usePrevent = velf(flag, "prevent")
     const useWrapper = useStop || usePrevent || useSelf
-    const wrapper: EventListener = function (this: any, evt) {
-        if (!useSelf || evt.target === this) {
-            handler.call(this, evt)
-            useStop && evt.stopPropagation()
-            usePrevent && evt.preventDefault()
+    const wrapper: EventListener = function (this: any, event) {
+        if (!useSelf || event.target === this) {
+            handler.call(this, event)
+            useStop && event.stopPropagation()
+            usePrevent && event.preventDefault()
         }
     }
     node.addEventListener(key, useWrapper ? wrapper : handler, {

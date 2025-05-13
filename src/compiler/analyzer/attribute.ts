@@ -23,19 +23,19 @@ import {
 } from "../../util/compiler/sundry"
 import {
     InvalidEventFlag,
-    InvalidComposeModifier,
+    InvalidComposeFlag,
+    DuplicateEventFlags,
+    InvalidKeyRelatedFlag,
     DirectiveValueIsIgnored,
-    DuplicateEventModifiers,
-    InvalidKeyRelatedModifier,
-    InvalidEventFlagForComponent,
-    ConflictNormalKeyEventModifier
+    ConflictNormalKeyEventFlag,
+    InvalidEventFlagForComponent
 } from "../message/warn"
 import {
     SPREAD_TAG,
     COULD_USE_REF_TAGS,
     IntercodeSnippetKind,
     MUST_PASS_VALUE_DIRECTIVES,
-    KEY_RELATED_EVENT_MODIFIERS
+    KEY_RELATED_EVENT_FLAGS
 } from "../constants"
 import {
     parse,
@@ -251,7 +251,7 @@ export function analyzeAttribute(
                     const ast = parse(`_=${exp}`, 0, 0)?.body[0] as any
                     if (isInlineEventHandler(ast?.expression.right)) {
                         inlineEventItems.add(attr)
-                    } else if (!isComponent) {
+                    } else if (!isComponent && isTS) {
                         interCodeSnippets.push([
                             IntercodeSnippetKind.VoidSource,
                             `__c__.SatisfyEventHandler<"${pureKey}">(`
@@ -267,7 +267,7 @@ export function analyzeAttribute(
                 if (inlineEventItems.has(attr)) {
                     interCodeSnippets.push([
                         IntercodeSnippetKind.VoidSource,
-                        `{const $arg=__c__.GetEventHandler<"${pureKey}">();`
+                        `{const $arg=__c__.GetEventHandler("${pureKey}");`
                     ])
                 }
                 if (!isEvent || inlineEventItems.has(attr)) {
@@ -549,7 +549,7 @@ export function analyzeAttribute(
             }
         } else if (isDirective) {
             outter: switch (pureKey) {
-                case "for":
+                case "for": {
                     let itemPart = ""
                     let indexPart = ""
                     let baseValue = ""
@@ -730,8 +730,8 @@ export function analyzeAttribute(
                         }
                     }
                     break
-
-                case "key":
+                }
+                case "key": {
                     if (forModuleFuncIndex === -1) {
                         UseKeyDirectiveWithoutForDirective(attr.loc)
                     } else {
@@ -740,10 +740,10 @@ export function analyzeAttribute(
                         directiveStu[forModuleFuncIndex].push(transRet)
                     }
                     break
-
+                }
                 case "if":
                 case "elif":
-                case "else":
+                case "else": {
                     // 使用elif或else指令的节点的前一个兄弟节点必须使用了if或elif指令
                     if (
                         /^el(?:if|se)$/.test(pureKey) &&
@@ -770,10 +770,10 @@ export function analyzeAttribute(
                         setContinueInfo(/^#(?:elif|else)$/)
                     }
                     break
-
+                }
                 case "then":
                 case "catch":
-                case "await":
+                case "await": {
                     if (pureKey === "await") {
                         if (isCheckMode) {
                             interCodeSnippets.push(
@@ -821,8 +821,8 @@ export function analyzeAttribute(
                         insertNullNum = 1
                     }
                     break
-
-                case "slot":
+                }
+                case "slot": {
                     // 父元素非组件，不能使用slot指令
                     if (parentIsComponent) {
                         hasSlotDirective = true
@@ -831,9 +831,9 @@ export function analyzeAttribute(
                         BasSlotDirectiveCarrier(key.loc)
                     }
                     break
-
-                case "target":
-                    if (isCheckMode) {
+                }
+                case "target": {
+                    if (isTS && isCheckMode) {
                         interCodeSnippets.push(
                             [IntercodeSnippetKind.VoidSource, "__c__.SatisfyTargetDirective("],
                             [trimedValueStartSourceIndex, trimedValue],
@@ -843,8 +843,8 @@ export function analyzeAttribute(
                         directiveStu.push([getAlias("targetModule"), transAttrValue()])
                     }
                     break
-
-                case "html":
+                }
+                case "html": {
                     if (!isCheckMode) {
                         if (isEmptyString(tag) || isSpread) {
                             directiveStu.push([
@@ -860,16 +860,14 @@ export function analyzeAttribute(
                         )
                     }
                     break
-
-                case "show":
+                }
+                case "show": {
                     directiveStu.push([getAlias("showModule"), transAttrValue()])
                     break
-
-                default:
+                }
+                default: {
                     UnkonwDirective(rk, key.loc)
-                //
-                // switch code block end here
-                //
+                }
             }
         } else if (isEvent) {
             if (isSlot) {
@@ -881,118 +879,114 @@ export function analyzeAttribute(
             let eventName = pureKey
             let eventWrapperFlag = 0
 
-            const existringModifiers = new Set<string>()
-            const duplicateModifiers = new Set<string>()
+            const existingFlags = new Set<string>()
+            const duplicateFlags = new Set<string>()
 
-            const eventModifierArr: string[] = []
-            const eventWrapperModifierArr: string[] = []
-            const existingKeyRelatedModifiers: string[] = []
-            const modifierArrWithIndex: [string, number, number][] = []
+            const eventFlagArr: string[] = []
+            const eventWrapperFlagArr: string[] = []
+            const existingKeyRelatedFlags: string[] = []
+            const flagArrWithIndex: [string, number, number][] = []
 
-            const modifierStartIndex = pureKey.indexOf("|")
-            const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
-            const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
-            modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
+            const flagStartIndex = pureKey.indexOf("|")
+            const flagArr = pureKey.slice(flagStartIndex + 1).split("|")
+            const flagStartSourceIndex = pureKeyStartSourceIndex + flagStartIndex + 1
+            flagStartIndex !== -1 && (eventName = eventName.slice(0, flagStartIndex))
 
             // flagArrWithIndex记录了每个flag的名称及开始结束索引
-            for (let i = 0; i < modifierArr.length; i++) {
-                const preLen = modifierArr[i - 1]?.length || 0
-                const preIndex = modifierArrWithIndex[i - 1]?.[1] || 0
-                modifierArrWithIndex.push([
-                    modifierArr[i],
+            for (let i = 0; i < flagArr.length; i++) {
+                const preLen = flagArr[i - 1]?.length || 0
+                const preIndex = flagArrWithIndex[i - 1]?.[1] || 0
+                flagArrWithIndex.push([
+                    flagArr[i],
                     preIndex + preLen + 1,
-                    preIndex + preLen + modifierArr[i].length + 1
+                    preIndex + preLen + flagArr[i].length + 1
                 ])
             }
 
-            if (modifierStartIndex !== -1) {
-                eventName = eventName.slice(0, modifierStartIndex)
+            if (flagStartIndex !== -1) {
+                eventName = eventName.slice(0, flagStartIndex)
                 if (isComponent) {
                     InvalidEventFlagForComponent(
-                        modifierArr.map(item => item.trim()).join(", "),
-                        modifierStartSourceIndex,
+                        flagArr.map(item => item.trim()).join(", "),
+                        flagStartSourceIndex,
                         key.loc.end.index
                     )
                 } else {
-                    modifierArrWithIndex.forEach(item => {
-                        const [modifier, startIndex, endIndex] = item
-                        const endSourceIndex = modifierStartSourceIndex + endIndex
-                        const startSourceIndex = modifierStartSourceIndex + startIndex
-                        const currentFlagNum = (EventListenerFlag as any)[modifier]
-                        const currentWrapperFlagNum = (EventWrapperFlag as any)[modifier]
+                    flagArrWithIndex.forEach(item => {
+                        const [flag, startIndex, endIndex] = item
+                        const endSourceIndex = flagStartSourceIndex + endIndex
+                        const startSourceIndex = flagStartSourceIndex + startIndex
+                        const currentFlagNum = (EventListenerFlag as any)[flag]
+                        const currentWrapperFlagNum = (EventWrapperFlag as any)[flag]
                         if (!currentFlagNum && !currentWrapperFlagNum) {
-                            InvalidEventFlag(modifier, eventName, startSourceIndex, endSourceIndex)
+                            InvalidEventFlag(flag, eventName, startSourceIndex, endSourceIndex)
                         }
                         if (currentFlagNum) {
                             // 只有input事件可以使用compose修饰符
-                            if (modifier === "compose" && eventName !== "@input") {
-                                InvalidComposeModifier(
-                                    eventName.slice(1),
-                                    startSourceIndex,
-                                    endSourceIndex
-                                )
+                            if (flag === "compose" && eventName !== "input") {
+                                InvalidComposeFlag(eventName, startSourceIndex, endSourceIndex)
                             }
 
-                            // 重复出现的修饰符记录到duplicateModifiers
-                            if (existringModifiers.has(modifier)) {
-                                duplicateModifiers.add(modifier)
+                            // 重复出现的修饰符记录到duplicateFlags
+                            if (existingFlags.has(flag)) {
+                                duplicateFlags.add(flag)
                             } else {
-                                eventModifierArr.push(modifier)
-                                existringModifiers.add(modifier)
+                                eventFlagArr.push(flag)
+                                existingFlags.add(flag)
                                 eventFlag |= currentFlagNum || 0
                             }
                         } else if (currentWrapperFlagNum) {
                             // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
                             if (
-                                KEY_RELATED_EVENT_MODIFIERS.has(modifier) &&
+                                KEY_RELATED_EVENT_FLAGS.has(flag) &&
                                 !/^key(?:up|down|press)$/.test(eventName)
                             ) {
-                                InvalidKeyRelatedModifier(
-                                    modifier,
+                                InvalidKeyRelatedFlag(
+                                    flag,
                                     eventName,
                                     startSourceIndex,
                                     endSourceIndex
                                 )
-                            } else if (KEY_RELATED_EVENT_MODIFIERS.has(modifier)) {
+                            } else if (KEY_RELATED_EVENT_FLAGS.has(flag)) {
                                 // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
                                 // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
                                 //
                                 // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
                                 // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
-                                if (existingKeyRelatedModifiers.length > 0) {
+                                if (existingKeyRelatedFlags.length > 0) {
                                     eventWrapperFlag &= ~((1 << 9) - 1)
                                 }
-                                if (!existringModifiers.has(modifier)) {
-                                    existingKeyRelatedModifiers.push(modifier)
+                                if (!existingFlags.has(flag)) {
+                                    existingKeyRelatedFlags.push(flag)
                                 }
                             }
 
-                            // 重复出现的修饰符记录到duplicateModifiers
-                            if (existringModifiers.has(modifier)) {
-                                duplicateModifiers.add(modifier)
+                            // 重复出现的修饰符记录到duplicateFlags
+                            if (existingFlags.has(flag)) {
+                                duplicateFlags.add(flag)
                             } else {
-                                existringModifiers.add(modifier)
-                                eventWrapperModifierArr.push(modifier)
+                                existingFlags.add(flag)
+                                eventWrapperFlagArr.push(flag)
                                 eventWrapperFlag |= currentWrapperFlagNum || 0
                             }
                         }
                     })
 
                     // 普通按键修饰符存在多个时发出警告
-                    if (existingKeyRelatedModifiers.length > 1) {
-                        ConflictNormalKeyEventModifier(
-                            existingKeyRelatedModifiers,
-                            modifierStartSourceIndex,
+                    if (existingKeyRelatedFlags.length > 1) {
+                        ConflictNormalKeyEventFlag(
+                            existingKeyRelatedFlags,
+                            flagStartSourceIndex,
                             key.loc.end.index
                         )
                     }
 
                     // 存在重复的修饰符时发出警告
-                    if (duplicateModifiers.size > 0) {
-                        DuplicateEventModifiers(
-                            Array.from(duplicateModifiers),
+                    if (duplicateFlags.size > 0) {
+                        DuplicateEventFlags(
+                            Array.from(duplicateFlags),
                             eventName,
-                            modifierStartSourceIndex,
+                            flagStartSourceIndex,
                             key.loc.end.index
                         )
                     }
@@ -1003,7 +997,7 @@ export function analyzeAttribute(
                 const tir = transAttrValue({
                     eventWrapper: {
                         flag: eventWrapperFlag,
-                        modifiers: eventWrapperModifierArr
+                        flagDescription: eventWrapperFlagArr.join(", ") || "no flag"
                     }
                 })
                 if (!tir) {
@@ -1013,7 +1007,7 @@ export function analyzeAttribute(
                     if (eventFlag === 0) {
                         flagComment = "no flag"
                     } else {
-                        flagComment = eventModifierArr.join(", ")
+                        flagComment = eventFlagArr.join(", ")
                     }
                     flagComment = `/* ${flagComment} */ `
                 }
