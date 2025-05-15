@@ -1,5 +1,7 @@
 import type { AnyObject, FixedArray } from "../types"
 
+import { isArray, isSet } from "./assert"
+
 // 获取length属性
 export function len(v: any): number {
     return v?.length || 0
@@ -61,14 +63,14 @@ export function replaceEachItems<T>(oa: T[], na: T[]) {
     setArrLength(oa, naLen)
 }
 
-// Object.prototype.toString.call别名，返回类型字符串，去掉[object ]
-export function optc(v: any) {
-    return Object.prototype.toString.call(v).slice(8, -1)
-}
-
 // 获取Set、Map的values数组
 export function values<T>(target: Set<T> | Map<any, T>) {
     return toArray(target.values())
+}
+
+// Object.prototype.toString.call别名，返回类型字符串，去掉[object ]
+export function optc(v: any) {
+    return Object.prototype.toString.call(v).slice(8, -1)
 }
 
 // Object.keys别名，返回带有类型的键数组

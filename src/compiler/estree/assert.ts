@@ -51,6 +51,11 @@ export function findAncestorUntil<T extends AnyNode["type"]>(
     return findAncestorUntil(tp.parent, type)
 }
 
+// 判断节点是否为可赋值目标（左值）
+export function isAssignable(node: AnyNode) {
+    return is(node, "Identifier") || is(node, "MemberExpression")
+}
+
 // 判断是否estree pattern，用来过滤一些ts节点类型
 export function isEsPattern(node: AnyNode): node is EsPattern {
     return (

@@ -38,6 +38,10 @@ export const WatchCompilerFuncMissingArg = withLocation(
     ...commonMessage.WatchCompilerFuncMissingArg
 )
 
+export const BadValueToReferenceAttribute = withLocation(
+    ...commonMessage.BadValueToReferenceAttribute
+)
+
 export const IdentifierFormatIsNotAllowed = withLocation(
     ...commonMessage.IdentifierFormatIsNotAllowed
 )
@@ -215,10 +219,6 @@ export const UnkonwDirective = withLocation(1028, (name: string) => {
 
 export const BadTargetForReferenceDom = withLocation(1046, () => {
     return `The &dom reference attribute can not be used on slot and ${SPREAD_TAG} tag, as they have no corresponding DOM Node.`
-})
-
-export const BadValueToRefAttr = withLocation(1031, (exp: string) => {
-    return `Only assignable expression(lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
 })
 
 export const BadValueToContextGenDirective = withLocation(1043, (directive: string) => {

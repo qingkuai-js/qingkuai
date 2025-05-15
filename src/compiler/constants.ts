@@ -83,10 +83,7 @@ export enum StringLiteralLeftPad {
 
 export const SPREAD_TAG = "spread"
 
-export const TS_TYPE_DECLARATION_LEN = 149
-export const JS_TYPE_DECLARATION_LEN = 144
-
 export const SPECIAL_TAGS = new Set(["!", "script", "style"])
 export const FULL_INIT_ITEMS = new Set(["args", "scts", "props"])
-export const COULD_USE_REF_TAGS = new Set(["input", "select", "textarea"])
+export const COULD_USE_REF_TAGS = new Set(["input", "textarea", "select"])
 export const COMPILER_FUNCS = new Set(["rea", "stc", "der", "wat", "Wat", "waT"])

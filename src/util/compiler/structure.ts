@@ -1,4 +1,9 @@
-import type { ASTLocation, ASTPosition, TemplateContext } from "../../compiler/types"
+import type {
+    ASTLocation,
+    ASTPosition,
+    TemplateContext,
+    AttributeAnalysisRet
+} from "../../compiler/types"
 
 import { isUndefined } from "../shared/assert"
 
@@ -34,4 +39,19 @@ export function newValueWithLoc<T>(value: T, loc?: ASTLocation) {
         loc = newASTLocation()
     }
     return { value, loc }
+}
+
+export function newAttributeAnalysisRet(dft: Partial<AttributeAnalysisRet>): AttributeAnalysisRet {
+    const stu: AttributeAnalysisRet = {
+        eventStu: [],
+        directiveStu: [],
+        attributeStu: [],
+        continueInfo: {},
+        insertNullNum: 0,
+        createSpread: false,
+        contextBlockCount: 0,
+        selectRefValue: undefined,
+        awaitExpression: undefined
+    }
+    return Object.assign(stu, dft)
 }

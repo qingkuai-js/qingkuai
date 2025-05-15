@@ -115,6 +115,7 @@ export interface InputDescriptor {
     styles: StyleDescriptor[]
     stringConstantCount: number
     positions: ASTPositionWithFlag[]
+    refAttrValueStartIndexes: number[]
 }
 
 export type MessageItem =
@@ -155,6 +156,7 @@ export interface TemplateNode {
     next: TemplateNode | undefined
     attributes: TemplateAttribute[]
 }
+
 export type PreprocessedTemplateAttribute = TemplateAttribute & {
     inferredValue: string
     positionMap?: number[]
@@ -190,18 +192,22 @@ export interface AttributeAnalysisRet {
     directiveStu: TransformInterpolationRet[][]
     eventStu: TransformInterpolationRet[]
     attributeStu: TransformInterpolationRet[]
-    continueInfo?: {
-        re?: RegExp | null
-        by?: string | undefined
-        arg?: TransformInterpolationRet
-    }
+    continueInfo: Partial<{
+        re: RegExp | null
+        by: string | undefined
+        arg: TransformInterpolationRet
+    }>
     slotOfAnyTag?: string
     nameOfSlotTag?: string
-    insertNullNum?: number
-    createSpread?: boolean
-    contextBlockCount?: number
-    componentCombinedArgs?: string[]
-    awaitExpression?: [number, string]
+    insertNullNum: number
+    createSpread: boolean
+    contextBlockCount: number
+    selectRefValue: [string, boolean] | undefined
+    awaitExpression: [number, string] | undefined
+}
+
+export type InterCodeSnippets = InterCodeSnippetItem[] & {
+    charCount: number
 }
 
 export type TransformInterpolationOptionalOptions = Partial<{
@@ -254,6 +260,7 @@ export type SlotInfo = Record<
 >
 
 export type EliminateRanges = Set<NumNum>
+export type InterCodeSnippetItem = [number, string]
 export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type ReplacementStatus = "stc" | "pending" | "rea"
 export type StringOrStringGetter = string | (() => string)

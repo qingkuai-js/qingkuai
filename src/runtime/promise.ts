@@ -1,5 +1,5 @@
-import { optc } from "../util/shared/sundry"
 import { NotPromise } from "./message/error"
+import { isPromise } from "../util/shared/assert"
 
 const resolvedPromise = Promise.resolve()
 
@@ -13,7 +13,7 @@ export class CancelablePromise<T> {
 
     constructor(v: any) {
         const self = this
-        if (optc(v) !== "Promise") {
+        if (!isPromise(v)) {
             NotPromise()
         }
 

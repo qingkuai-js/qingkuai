@@ -3,7 +3,8 @@ import type {
     TemplateNode,
     EliminateRanges,
     TemplateAttribute,
-    ASTPositionWithFlag
+    ASTPositionWithFlag,
+    InterCodeSnippetItem
 } from "../../compiler/types"
 import type { FixedArray, NumNum, PositionFlagKeys } from "../types"
 
@@ -81,6 +82,15 @@ export function getPieceOfStrOutOfER(
     }
     ret.push(source.slice(start, end))
     return ret.join("")
+}
+
+// 获取已记录的中间代码长度
+export function getRecordedInterCodeLen() {
+    return (
+        interCodeSnippets.charCount +
+        inputDescriptor.script.code.length +
+        (inputDescriptor.script.isTS ? 292 : 287)
+    )
 }
 
 // 获取每一个字符的位置信息（行列及索引）
@@ -172,16 +182,23 @@ export function recordInterExpression(exp: string, range: [number, number?]) {
         return
     }
 
-    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "__c__.Receiver="])
+    recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, "__c__.Receiver="])
 
     // range[1]存在时需要调用recordInterWithSpecificRange方法记录中间代码片段
     if (isUndefined(range[1])) {
-        interCodeSnippets.push([range[0], exp])
+        recordInterCodeSnippets([range[0], exp])
+        recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, ";"])
     } else {
-        recordInterSnippetWithSpecificRange(exp, ...(range as NumNum))
+        recordInterSnippetWithSpecificRange(exp + ";", ...(range as NumNum))
     }
+}
 
-    interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ";"])
+// 记录需要生成的中间代码片段，并更新 intercodeSnippets.charCount
+export function recordInterCodeSnippets(...items: InterCodeSnippetItem[]) {
+    for (const item of items) {
+        interCodeSnippets.push(item)
+        interCodeSnippets.charCount += item[1].length
+    }
 }
 
 // 将数组按size划分为二维数组
@@ -202,9 +219,9 @@ export function recordInterSnippetWithSpecificRange(snippet: string, start: numb
         case 0:
             return
         case 1:
-            interCodeSnippets.push([start, snippet])
+            recordInterCodeSnippets([start, snippet])
             break
         default:
-            interCodeSnippets.push([start, snippet.slice(0, -1)], [end, snippet.slice(-1)])
+            recordInterCodeSnippets([start, snippet.slice(0, -1)], [end, snippet.slice(-1)])
     }
 }

@@ -29,16 +29,22 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
             return "Reactivity related compiler helper functions(rea, stc, der) must be used in the top scope."
         }
     ],
+    WatchCompilerFuncMissingArg: [
+        1040,
+        (funcName: string, received: number) => {
+            return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
+        }
+    ],
     ReactCompilerFuncWithoutVariableDeclaration: [
         1027,
         () => {
             return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
         }
     ],
-    WatchCompilerFuncMissingArg: [
-        1040,
-        (funcName: string, received: number) => {
-            return `The wathc related compiler helper function(${funcName}) required 2 arguments, but got ${received}.`
+    BadValueToReferenceAttribute: [
+        1031,
+        (exp: string) => {
+            return `Only assignable expression(non-const lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
         }
     ],
     DestructureReactFuncWithNoArg: [

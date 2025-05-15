@@ -9,6 +9,7 @@ import type {
     ReplacementInfo,
     InputDescriptor,
     ScriptDescriptor,
+    InterCodeSnippets,
     TempStoredImportInfo
 } from "./types"
 
@@ -18,14 +19,14 @@ import { newASTLocation } from "../util/compiler/structure"
 export let cacheId = 0
 export const getCacheId = () => cacheId++
 
-export let messages: MessageItem[] = []
 export let sourceMapInfo = newSourceMapInfo()
 export let inputDescriptor = newInputDescriptor()
 
 export let debuggingInfo = newDebuggingInfo()
 export let replacementInfo = newReplacementInfo()
+export let interCodeSnippets = newInterCodeSnippets()
 
-export let interCodeSnippets: [number, string][] = []
+export let messages: MessageItem[] = []
 export let tempStoredImportInfos: TempStoredImportInfo[] = []
 
 export let usedInitItems = new Set<string>()
@@ -43,12 +44,12 @@ export let templateNodeToContextIdentifiers = new WeakMap<TemplateNode, Set<stri
 export function resetCompilerState(options: CompileOptions) {
     cacheId = 0
     messages = []
-    interCodeSnippets = []
     tempStoredImportInfos = []
     debuggingInfo = newDebuggingInfo()
     sourceMapInfo = newSourceMapInfo()
     inputDescriptor = newInputDescriptor()
     replacementInfo = newReplacementInfo()
+    interCodeSnippets = newInterCodeSnippets()
 
     aliases = new Map()
     usedInitItems = new Set()
@@ -123,6 +124,7 @@ function newInputDescriptor(): InputDescriptor {
         positions: [],
         indentSpaceCount: 0,
         stringConstantCount: 0,
+        refAttrValueStartIndexes: [],
         script: newScriptDescriptor(),
         options: {
             componentName: "",
@@ -136,4 +138,9 @@ function newInputDescriptor(): InputDescriptor {
             convenientDerivedDeclaration: true
         }
     }
+}
+
+function newInterCodeSnippets(): InterCodeSnippets {
+    const ret: InterCodeSnippets = [] as any
+    return (ret.charCount = 0), ret
 }

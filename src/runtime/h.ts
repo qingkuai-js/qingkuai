@@ -268,7 +268,7 @@ export const h = withCleanUsedEffectList(function (
             // 如果是option元素，把qkNode添加到DOM属性中，在处理select的引用
             // value属性值时，需要用到option元素的qkNode来调用attribute方法
             if (tag === "option") {
-                ;(qkNode.n as any)["_qkNode"] = qkNode
+                ;(qkNode.n as any)._qkNode = qkNode
             }
 
             if (shouldDestroy || isDirectiveModule) {
@@ -279,7 +279,6 @@ export const h = withCleanUsedEffectList(function (
                     return setText(qkNode, invokeGetter(content), true)
                 })
             }
-            insert(target, qkNode.n!, reference)
             topNodesItem.push(qkNode.n!)
 
             // 添加scope attribute
@@ -357,6 +356,9 @@ export const h = withCleanUsedEffectList(function (
                 const assertedChild = child as TemplateStuOrModuleFunc
                 h(instance, assertedChild, qkNode.n!, NIL, false, currentContext, destruction)
             }
+
+            // 挂载节点
+            insert(target, qkNode.n!, reference)
         })
     }
 

@@ -15,7 +15,7 @@ import {
     allExistingIdentifiers
 } from "../state"
 import {
-    BadValueToRefAttr,
+    BadValueToReferenceAttribute,
     IdentifierFormatIsNotAllowed,
     ContextIdentifierUsedAsReferenceTarget
 } from "../message/error"
@@ -30,11 +30,11 @@ import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
 import { StringLiteralLeftPad } from "../constants"
 import { stringify } from "../../util/compiler/strings"
-import { identifierIsReference } from "../estree/assert"
 import { is, isInlineEventHandler } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { isFunction, isUndefined } from "../../util/shared/assert"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
+import { identifierIsReference, isAssignable } from "../estree/assert"
 
 export function transformInterpolation(
     expression: string,
@@ -42,10 +42,6 @@ export function transformInterpolation(
     context: TemplateContext,
     options: TransformInterpolationOptions
 ): TransformInterpolationRet {
-    if (inputDescriptor.options.check || isEmptyString(expression)) {
-        return ""
-    }
-
     const { eventWrapper, positionMap, normalClassRange } = options
     const isEvent = options.isComponentEvent || !isUndefined(eventWrapper)
     const bodyAst = parse("_=" + expression, 2, startSourceIndex, positionMap)?.body[0]
@@ -88,9 +84,12 @@ export function transformInterpolation(
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
     // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
-    if (options.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+    if (options.usedAsSetter && !isAssignable(ast)) {
         const expressionEndSourceIndex = startSourceIndex + expression.length
-        BadValueToRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
+        BadValueToReferenceAttribute(
+            expression,
+            getLocByIndex(startSourceIndex, expressionEndSourceIndex)
+        )
     }
 
     walk(ast, {

@@ -5,16 +5,21 @@ import type {
     AttributeAnalysisRet
 } from "../types"
 
+import {
+    isSelfClosingTag,
+    markPositionFlag,
+    recordInterCodeSnippets
+} from "../../util/compiler/sundry"
 import { getAlias } from "./alias"
 import { analyzeAttribute } from "./attribute"
 import { content2script } from "../parser/content"
+import { getCacheId, inputDescriptor } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
-import { getCacheId, inputDescriptor, interCodeSnippets } from "../state"
+import { newAttributeAnalysisRet } from "../../util/compiler/structure"
 import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
-import { isSelfClosingTag, markPositionFlag } from "../../util/compiler/sundry"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
 import { BadTargetForHtmlDirective, HtmlDirectiveWithChildElement } from "../message/error"
 
@@ -24,6 +29,7 @@ export function analyzeTemplate(
     context?: TemplateContext,
     continueByDirective?: string,
     awaitExpression?: [number, string],
+    selectRefValue?: [string, boolean],
     existingSlotOfAnyTag = new Set<string>()
 ) {
     const result: TemplateAnalysisRet[] = []
@@ -127,7 +133,8 @@ export function analyzeTemplate(
             currentContext,
             existingSlotOfAnyTag,
             continueByDirective,
-            awaitExpression
+            awaitExpression,
+            selectRefValue
         )
         curRetItem.aar = aar
         result.push(curRetItem)
@@ -144,18 +151,16 @@ export function analyzeTemplate(
                 content: "",
                 cacheId: -1,
                 isSpread: true,
-                aar: {
-                    eventStu: [],
-                    attributeStu: [],
-                    slotOfAnyTag: aar.slotOfAnyTag,
-                    directiveStu: [aar.directiveStu[0]]
-                },
                 children: [
                     {
                         tar: curRetItem,
                         useBracket: useBracketWrap
                     }
-                ]
+                ],
+                aar: newAttributeAnalysisRet({
+                    slotOfAnyTag: aar.slotOfAnyTag,
+                    directiveStu: [aar.directiveStu[0]]
+                })
             }
             result.pop()
             result.push(mockSpreadRet)
@@ -178,6 +183,7 @@ export function analyzeTemplate(
                     cotinueContext,
                     shouldContinueDirective,
                     aar.awaitExpression,
+                    undefined,
                     existingSlotOfAnyTag
                 )
                 const useBracketWrap = shouldUseBracketWrap(node.tag, childTemplateAnalysisRet.aar!)
@@ -238,6 +244,7 @@ export function analyzeTemplate(
                 currentContext,
                 undefined,
                 undefined,
+                aar.selectRefValue,
                 new Set()
             ).forEach(childRet => {
                 curRetItem.children.push({
@@ -252,7 +259,7 @@ export function analyzeTemplate(
         if (inputDescriptor.options.check) {
             const contextBlockCount = curRetItem.aar?.contextBlockCount || 0
             if (contextBlockCount) {
-                interCodeSnippets.push([
+                recordInterCodeSnippets([
                     IntercodeSnippetKind.SearchForward,
                     "}".repeat(contextBlockCount)
                 ])

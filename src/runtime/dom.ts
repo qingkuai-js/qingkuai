@@ -1,8 +1,10 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { velf } from "../util/runtime/sundry"
+import { raw } from "./reactivity/value"
+import { getValueFallback, groupCheckerGen, velf } from "../util/runtime/sundry"
 import { isArray, isBoolean, isEmptyString, isObject } from "../util/shared/assert"
+import { nextTick } from "./schedule"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -55,6 +57,9 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     if (key === "class") {
         value = transformClassName(value)
     }
+    if (elem.tagName === "SELECT" && key === "value") {
+        return selectOptions(elem as any, value)
+    }
 
     // 1. 如果属性存在于DOM中，则修改DOM属性值，若修改后属性值无变化，表示该属性为getter
     // 2. 如果属性值是否是布尔值，则要在值为true和false时分别设置属性为空字符串和移除属性
@@ -90,9 +95,27 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     // 此时需要将当前属性值记录在attrs中，这个记录的作用有两个：
     // 1. radio/checkbox控件的group或select元素的value引用属性事件中获取选项的原始值
     // 2. 在调用setAttribute方法之前与旧值的字符串表达做对比，去除无意义DOM操作的开销
-    record && (attrs[key] = value)
+    record && (attrs[key] = raw(value))
 
     return true
+}
+
+export function selectOptions(elem: HTMLSelectElement, selected: any) {
+    let hasUpdated = false
+    const checker = groupCheckerGen(selected)
+    const select = () => {
+        for (const option of elem.options) {
+            const selected = checker(getValueFallback((option as any)._qkNode))
+            hasUpdated ||= selected !== option.selected
+            option.selected = selected
+        }
+    }
+    if (!elem.childElementCount) {
+        nextTick(select)
+    } else {
+        select()
+    }
+    return hasUpdated
 }
 
 export function listen(node: Node, key: string, handler: EventListener, flag: number) {
