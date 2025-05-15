@@ -21,7 +21,7 @@ import {
     recordInterExpression,
     recordInterCodeSnippets,
     getRecordedInterCodeLen,
-    recordInterSnippetWithSpecificRange,
+    recordInterSnippetWithSpecificRange
 } from "../../util/compiler/sundry"
 import {
     InvalidEventFlag,
@@ -534,10 +534,17 @@ export function analyzeAttribute(
                     recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, ";"])
                 }
 
-                // 组件标签或普通标签的非group引用属性时，检查给定值是否是左值（可赋值的目标）
-                if (isComponent || (pureKey !== "group" && !ret.selectRefValue?.[1] && iv)) {
-                    inputDescriptor.refAttrValueStartIndexes.push(getRecordedInterCodeLen())
-                    recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, "("])
+                // 将引用属性的值记录为一个括号表达式（表达式前一个位置为空格时表示此处禁止常量）
+                // 它在中间代码中的开始索引被记录在inputDescriptor.refAttrValueStartIndexes中
+                if (rv) {
+                    const allowConst = ret.selectRefValue?.[1] || pureKey === "group"
+                    inputDescriptor.refAttrValueStartIndexes.push(
+                        getRecordedInterCodeLen() + Number(!allowConst)
+                    )
+                    recordInterCodeSnippets([
+                        IntercodeSnippetKind.VoidSource,
+                        `${allowConst ? "" : " "}(`
+                    ])
                     if (rv) {
                         recordInterCodeSnippets(
                             [value.loc.start.index, rv],

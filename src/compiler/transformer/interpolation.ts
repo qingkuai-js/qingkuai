@@ -88,6 +88,7 @@ export function transformInterpolation(
         const expressionEndSourceIndex = startSourceIndex + expression.length
         BadValueToReferenceAttribute(
             expression,
+            true,
             getLocByIndex(startSourceIndex, expressionEndSourceIndex)
         )
     }

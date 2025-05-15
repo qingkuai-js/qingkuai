@@ -23,6 +23,14 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
             return `Export related statements can not appear in embedded script language block.`
         }
     ],
+    BadValueToReferenceAttribute: [
+        1031,
+        (exp: string, allowConst: boolean) => {
+            return `Only assignable expression(${
+                allowConst ? "" : "non-const "
+            }lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
+        }
+    ],
     ReactCompilerFuncNotInTopScope: [
         1025,
         () => {
@@ -39,12 +47,6 @@ export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(
         1027,
         () => {
             return "Reactivity related compiler helper functions(rea, stc, der) must be used for a variable declaration statement."
-        }
-    ],
-    BadValueToReferenceAttribute: [
-        1031,
-        (exp: string) => {
-            return `Only assignable expression(non-const lvalue) can be passed to reference attribute, the given expression(${exp}) is not allowed.`
         }
     ],
     DestructureReactFuncWithNoArg: [
