@@ -18,15 +18,15 @@ import { getLocByIndex } from "../../util/compiler/locations"
 import { lastElem, spliceByElem } from "../../util/shared/sundry"
 import { transformInterpolation } from "../transformer/interpolation"
 import { isEmptyString, isUndefined } from "../../util/shared/assert"
-import { newAttributeAnalysisRet } from "../../util/compiler/structure"
 import { IntercodeSnippetKind, SPECIAL_TAGS, SPREAD_TAG } from "../constants"
 import { kebab2Camel, normalStringify, stringify } from "../../util/compiler/strings"
+import { newAttributeAnalysisRet, newTemplateContext } from "../../util/compiler/structure"
 import { BadTargetForHtmlDirective, HtmlDirectiveWithChildElement } from "../message/error"
 
 export function analyzeTemplate(
     nodes: TemplateNode[],
     parentIsComponent = false,
-    context?: TemplateContext,
+    context = newTemplateContext(),
     continueByDirective?: string,
     awaitExpression?: [number, string],
     selectRefValue?: [string, boolean],
@@ -42,7 +42,6 @@ export function analyzeTemplate(
 
         let shouldHoistContent = false
         let trimedContentStartIndex: number
-        let currentContext: TemplateContext
         let continueRE: RegExp | undefined | null
         let shouldContinueDirective: string | undefined
         let htmlDirective = attributes.find(({ key }) => key.raw === "#html")
@@ -50,6 +49,7 @@ export function analyzeTemplate(
         const isSlot = tag === "slot"
         const isText = isEmptyString(tag)
         const isTextarea = tag === "textarea"
+        const currentContext = cloneContext(context)
         const isComponent = !isEmptyString(componentTag)
         const shouldCache = pure && !parent?.pure && !isSlot && !isComponent
 
@@ -112,15 +112,6 @@ export function analyzeTemplate(
                 const insertCommment = inputDescriptor.options.comment
                 curRetItem.tag = (insertCommment ? "/* cache id */ " : "") + getCacheId()
             }
-        }
-
-        if (isUndefined(context)) {
-            currentContext = context = {
-                count: 0,
-                map: new Map()
-            }
-        } else {
-            currentContext = cloneContext(context)
         }
 
         // 分析属性列表

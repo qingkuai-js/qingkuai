@@ -225,9 +225,8 @@ export const BadValueToContextGenDirective = withLocation(1043, (directive: stri
     return `Bad value for ${directive} directive, it expectes the following three node types: Identifier, ArrayExpression or ObjectExpression.`
 })
 
-export const InvalidRefAttr = withLocation(1032, (tag: string, attr: string[], given: string) => {
-    const allowedAttrDescription = [...attr, "dom"].map(item => "&" + item).join(", ")
-    return `Normal tag(${tag}) can only accept specific reference attribute(${allowedAttrDescription}), and the given item(&${given}) is not allowed.`
+export const InvalidRefAttr = withLocation(1032, (tag: string, attr: string, given: string) => {
+    return `Normal tag(${tag}) can only accept specific reference attribute(${attr}), and the given item(&${given}) is not allowed.`
 })
 
 // 判断错误类型是会否是QingKuai编译错误

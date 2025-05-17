@@ -82,39 +82,26 @@ export function withReference(
             if (isSelect) {
                 return selectOptions(targetAny, gotValue)
             }
-
-            // 引用属性为&group时setter不存在
-            const checker = groupCheckerGen(gotValue)
-            if (setter) {
-                return attribute(qkNode, attrKey, gotValue, true)
-            } else {
-                return attribute(qkNode, "checked", checker(getValueFallback(qkNode)), true)
-            }
+            return attribute(qkNode, attrKey, gotValue, true)
         }
 
         // 初始化属性值并将更新属性值的方法添加到响应式值的effect中
         updateAttribute(), attachUpdate(updateAttribute)
 
         return () => {
-            const targetValue = getValueFallback(qkNode)
             if (setter) {
-                return setter(targetValue, ctx)
+                if (!isSelect) {
+                    return setter(targetAny[attrKey], ctx)
+                }
+                return setter(getValueFallback(targetAny.selectedOptions[0]._qkNode), ctx)
             }
 
             const gotValue = invokeGetter(value)
             const gotValueIsArray = isArray(gotValue)
-            if (!isSelect) {
-                if (!gotValueIsArray) {
-                    gotValue.add(targetValue)
-                } else if (!gotValue.includes(targetValue)) {
-                    gotValue.push(targetValue)
-                }
-            } else {
-                gotValueIsArray ? emptyArr(gotValue) : gotValue.clear()
-                for (const option of (targetAny as HTMLSelectElement).selectedOptions) {
-                    const optionValue = getValueFallback((option as any)._qkNode)
-                    gotValueIsArray ? gotValue.push(optionValue) : gotValue.add(optionValue)
-                }
+            gotValueIsArray ? emptyArr(gotValue) : gotValue.clear()
+            for (const option of (targetAny as HTMLSelectElement).selectedOptions) {
+                const optionValue = getValueFallback((option as any)._qkNode)
+                gotValueIsArray ? gotValue.push(optionValue) : gotValue.add(optionValue)
             }
         }
     }

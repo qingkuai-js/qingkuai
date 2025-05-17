@@ -267,7 +267,7 @@ export function analyzeAttribute(
                         `{const $arg=__c__.GetEventHandler("${pureKey}");`
                     ])
                 }
-                if (!isEvent || inlineEventItems.has(attr)) {
+                if (!isEvent || inlineEventItems.has(attr) || isComponent || !isTS) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
                 }
                 if (inlineEventItems.has(attr)) {
@@ -366,13 +366,13 @@ export function analyzeAttribute(
             let eventName = tag === "textarea" ? "input" : "change"
 
             // 检查普通标签上的引用属性是否合法，不同的元素可接受的引用属性不同：
-            // 1. input（radio/checkbox)：&checked、&group
-            // 2. input（非radio/checkbox）或textarea标签：&value
+            // 1. input（radio/checkbox)：&checked
+            // 2. input（text）、select或textarea标签：&value
             // 注意：若input元素的type属性为插值属性，它将不能接受任何引用属性
             if (!isComponent && pureKey !== "dom") {
                 let tagForErr = tag
+                let attrForError = ""
                 let attrIsNotAllowed = false
-                let attrsForErr: string[] = []
 
                 if (!COULD_USE_REF_TAGS.has(tag) && pureKey !== "dom") {
                     return CanNotAcceptRefAttribute(pureKey, tag, attr.loc)
@@ -380,17 +380,15 @@ export function analyzeAttribute(
 
                 switch (tag) {
                     case "textarea": {
-                        attrsForErr = ["value"]
-                        attrIsNotAllowed = pureKey !== "value"
+                        attrIsNotAllowed = pureKey !== (attrForError = "value")
                     }
                     case "select": {
                         const multipleAttr = findSpecificAttr(preProcessedAttr, /^!?multiple$/)
                         if (multipleAttr?.key.raw.startsWith("!")) {
                             RefuseReferenceAttribute("select", "multiple", attr.loc)
                         }
-                        attrsForErr = ["value"]
                         needSetter = !multipleAttr
-                        attrIsNotAllowed = pureKey !== "value"
+                        attrIsNotAllowed = pureKey !== (attrForError = "value")
                         !attrIsNotAllowed && (ret.selectRefValue = [iv, !!multipleAttr])
                     }
                     default: {
@@ -400,22 +398,19 @@ export function analyzeAttribute(
                         }
 
                         const typeValueRaw = typeAttr?.value.raw ?? ""
-                        if (/^(?:radio|checkbox)$/.test(typeValueRaw)) {
-                            needSetter = pureKey !== "group"
-                            attrsForErr = ["checked", "group"]
-                            tagForErr = `${tag}[type="${typeValueRaw}"]`
-                            attrIsNotAllowed = !/^(?:checked|group)$/.test(pureKey)
-                        } else {
+                        if (!/^(?:radio|checkbox)$/.test(typeValueRaw)) {
                             eventName = "input"
-                            attrsForErr = ["value"]
-                            attrIsNotAllowed = pureKey !== "value"
-                            tagForErr = `${tag}[type="${typeAttr?.value.raw || "text"}"]`
+                            tagForErr = `${tag}[type="${typeValueRaw || "text"}"]`
+                            attrIsNotAllowed = pureKey !== (attrForError = "value")
+                        } else {
+                            tagForErr = `${tag}[type="${typeValueRaw}"]`
+                            attrIsNotAllowed = pureKey !== (attrForError = "checked")
                         }
                     }
                 }
 
                 if (attrIsNotAllowed) {
-                    return InvalidRefAttr(tagForErr, attrsForErr, pureKey, attr.loc)
+                    return InvalidRefAttr(tagForErr, attrForError, pureKey, attr.loc)
                 }
             }
 
@@ -452,7 +447,7 @@ export function analyzeAttribute(
                     const funcName = getAlias("withReference")
                     const prefix = `...${funcName}(${sev}, ${spk}, `
 
-                    // 在input元素上使用&group引用属性时无setter
+                    // select[multiple]元素上的&value引用属性无setter
                     ret.eventStu.push(
                         concatStrAndTIR(prefix, tiGetter, `${needSetter ? `, ${setter}` : ""})`)
                     )
@@ -476,56 +471,21 @@ export function analyzeAttribute(
                         }
                     }
                     switch (pureKey) {
-                        case "checked":
+                        case "checked": {
                             recordValueCheckSnippet("Boolean")
                             break
-                        case "group":
-                            recordValueCheckSnippet("RefGroup", ",")
-                            break
-                        case "value":
+                        }
+                        case "value": {
                             if (tag !== "select") {
                                 recordValueCheckSnippet("String")
                             } else if (ret.selectRefValue?.[1]) {
-                                recordValueCheckSnippet("RefGroup", ",")
+                                recordValueCheckSnippet("MultipleSelect", ",")
                             }
                             break
-                        case "dom":
+                        }
+                        case "dom": {
                             recordValueCheckSnippet(`Element<${normalStringify(tag)}>`, "!)")
                             break
-                    }
-
-                    if (pureKey === "group") {
-                        const valueAttr = findSpecificAttr(preProcessedAttr, /^!?value/)
-                        if (isUndefined(valueAttr)) {
-                            recordInterSnippetWithSpecificRange(
-                                '"")',
-                                trimedValueLoc.start.index,
-                                trimedValueLoc.end.index
-                            )
-                        } else {
-                            const isDynamicValue = valueAttr.key.raw[0] === "!"
-                            const quote = valueAttr.quote === "single" ? "'" : '"'
-                            if (!isDynamicValue) {
-                                recordInterCodeSnippets([valueAttr.loc.start.index, quote])
-                            }
-                            if (valueAttr.value.raw) {
-                                recordInterCodeSnippets([
-                                    valueAttr.value.loc.start.index,
-                                    valueAttr.value.raw
-                                ])
-                            } else if (valueAttr.inferredValue) {
-                                recordInterSnippetWithSpecificRange(
-                                    valueAttr.inferredValue + ")",
-                                    valueAttr.key.loc.start.index,
-                                    valueAttr.key.loc.end.index
-                                )
-                            }
-                            if (!isDynamicValue) {
-                                recordInterCodeSnippets([valueAttr.loc.end.index, quote])
-                            }
-                            if (valueAttr.value.raw || !valueAttr.inferredValue) {
-                                recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, ")"])
-                            }
                         }
                     }
                     if (isTS && ret.selectRefValue?.[1]) {
@@ -537,7 +497,7 @@ export function analyzeAttribute(
                 // 将引用属性的值记录为一个括号表达式（表达式前一个位置为空格时表示此处禁止常量）
                 // 它在中间代码中的开始索引被记录在inputDescriptor.refAttrValueStartIndexes中
                 if (rv) {
-                    const allowConst = ret.selectRefValue?.[1] || pureKey === "group"
+                    const allowConst = ret.selectRefValue?.[1]
                     inputDescriptor.refAttrValueStartIndexes.push(
                         getRecordedInterCodeLen() + Number(!allowConst)
                     )
@@ -1102,7 +1062,7 @@ export function analyzeAttribute(
         } else {
             recordInterCodeSnippets([
                 IntercodeSnippetKind.VoidSource,
-                `__c__.SatisfyRefGroup(${target},`
+                `__c__.SatisfyMultipleSelect(${target},`
             ])
             if (valueAttr && !valueAttr.value.raw && valueAttr.quote !== "none") {
                 recordInterSnippetWithSpecificRange(
