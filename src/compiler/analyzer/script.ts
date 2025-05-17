@@ -567,7 +567,8 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
-        const shortHandDerived = is(id, "Identifier") && id.name.startsWith("$")
+        const { convenientDerivedDeclaration: cdd } = inputDescriptor.options
+        const shortHandDerived = cdd && is(id, "Identifier") && id.name.startsWith("$")
         const esCallee = is(esInit, "CallExpression") ? getEsNode(esInit.callee) : null
         const esIdentifierCalleeName = is(esCallee, "Identifier") ? esCallee.name : ""
         const declarationSourceLoc = getSourceLocByScriptLoc(node.declarations[index].loc!)
@@ -585,6 +586,13 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             eliminateRanges.add([start!, end!])
         }
 
+        // 去除非空断言
+        if (is(id, "Identifier") && inputDescriptor.script.isTS) {
+            const nameEndIndex = id.start! + id.name.length
+            const m = /^\s*\!/.exec(inputDescriptor.script.code.slice(nameEndIndex))
+            m && eliminateRanges.add([nameEndIndex, nameEndIndex + m[0].length])
+        }
+
         // 状态标记
         hasInit = Boolean(init)
         idRange = [id.start!, id.end!]
@@ -594,11 +602,9 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         hasFnArg = hasFnCall && assertedCalleeInit.arguments.length > 0
         isDerived = shortHandDerived || (hasFnCall && esIdentifierCalleeName === "der")
 
-        // TODO: 可选择性关闭$前缀声明响应性状态
-
         // 检查是否混用了der和$前缀两种衍生响应性状态声明方式（警告）
         // 检查是否使用了$前缀搭配了其他响应性声明编译助手函数（rea、stc）（报错）
-        if (inputDescriptor.options.convenientDerivedDeclaration && shortHandDerived && hasFnCall) {
+        if (shortHandDerived && hasFnCall) {
             if (esIdentifierCalleeName === "der") {
                 MixTwoSyntaxOfDerived(declarationSourceLoc)
             } else {
