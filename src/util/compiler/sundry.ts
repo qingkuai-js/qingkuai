@@ -84,12 +84,12 @@ export function getPieceOfStrOutOfER(
     return ret.join("")
 }
 
-// 获取已记录的中间代码长度
+// 获取已记录的中间代码长度（仅可用于tempalte部分的中间代码）
 export function getRecordedInterCodeLen() {
     return (
         interCodeSnippets.charCount +
         inputDescriptor.script.code.length +
-        (inputDescriptor.script.isTS ? 292 : 287)
+        (inputDescriptor.script.isTS ? 298 : 293)
     )
 }
 

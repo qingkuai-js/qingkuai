@@ -729,7 +729,18 @@ export function analyzeAttribute(
                         setContinueInfo(null)
                         rv && DirectiveValueIsIgnored(rk, attr.loc)
                     } else {
-                        const transRet = transDirective(rv, trimedValueStartSourceIndex)
+                        let transRet: TransformInterpolationRet
+                        if (isCheckMode) {
+                            transRet = ""
+                            ret.contextBlockCount++
+                            recordInterCodeSnippets(
+                                [IntercodeSnippetKind.VoidSource, `if(`],
+                                [trimedValueStartSourceIndex, rv],
+                                [IntercodeSnippetKind.SearchForward, "){"]
+                            )
+                        } else {
+                            transRet = transDirective(rv, trimedValueStartSourceIndex)
+                        }
                         if (pureKey === "elif") {
                             ret.continueInfo.arg = transRet
                         } else {
