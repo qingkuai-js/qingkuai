@@ -1240,9 +1240,8 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             }
         }
 
-        // 特殊情况：非组件标签上的class属性，动态和非动态class均可出现一次，rk相同且重复出现才会报错
-        // 注意：这里需要单独检测是否是引用传递的class属性，若是则报错，因为多个class会被合并成一个动态
-        // class属性（!class)，合并之后的属性名并不会导致分析属性时检测到普通标签上使用引用属性的错误
+        // 特殊情况：对于非组件标签上的class属性：动态和非动态class均可出现一次，rk相同且重复出现才会报错
+        // 注意：这里需要单独检测是否是引用传递的class属性，因为多个class相关属性被合并为一个!class后分析属性时检查不出是否使用了&class
         if (isClass && !isComponentOrSlot) {
             if (!existingItem.has("!class")) {
                 existingItem.set("!class", [])
@@ -1286,19 +1285,22 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             continue
         }
 
-        // 根据传入的chars数组检查是否存在重复属性名，当char+pureKey===rk时表示这是当前rk
-        // 第一次出现，无需检查，其他情况则只要char+pureKey在existingItem中存在则视为重复
+        // 根据传入的chars数组检查是否存在重复属性名
         const checkDuplicateWithChars = (chars: string[]) => {
-            return chars.some(char => {
-                if (char + pureKey === rk || !existingItem.has(char + pureKey)) {
-                    return false
+            for (let existing = false, i = 0; i < chars.length; i++) {
+                const combinedKey = chars[i] + pureKey
+                if (!existingItem.has(combinedKey)) {
+                    continue
                 }
-                return DuplicateAttributeKey(tag, char + pureKey, rk, loc), true
-            })
+                if (!existing) {
+                    existing = true
+                }
+                return DuplicateAttributeKey(tag, combinedKey, rk, loc), true
+            }
         }
 
         // 组件上的普通属性、动态属性、事件名三者之间的任意两两组合视为重复
-        if (isComponent && checkDuplicateWithChars(["", "!", "&"])) continue
+        if (isComponent && checkDuplicateWithChars(["", "!", "@"])) continue
 
         // textarea标签的value或input标签的value/checked属性：
         // 普通属性、动态属性、引用属性三者之间的任意两两组合视为重复
