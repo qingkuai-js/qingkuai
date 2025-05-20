@@ -175,6 +175,7 @@ export function parseTemplate(source: string, standalone = false) {
             pref: tag === "pre" || isPrevNodeWithPreWhiteSpaceComment(prev)
         })
         reduceSource(tag.length + 1)
+        tag === "slot" && markupNodeAndAncestorIsNotPure(ast)
 
         // 解析属性
         // parse attributes

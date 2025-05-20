@@ -226,9 +226,6 @@ export const h = withCleanUsedEffectList(function (
                     }
                     slot = children as TemplateStuOrModuleFunc[]
                 }
-                if (!isArray(slot[0])) {
-                    slot = [slot as TemplateStuOrModuleFunc]
-                }
                 updateSlotContext()
 
                 // 添加修改slot参数的副作用

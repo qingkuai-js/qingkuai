@@ -53,13 +53,6 @@ export function analyzeTemplate(
         const isComponent = !isEmptyString(componentTag)
         const shouldCache = pure && !parent?.pure && !isSlot && !isComponent
 
-        const unsetHtmlDirective = () => {
-            if (htmlDirective) {
-                htmlDirective = undefined
-                spliceByElem(attributes, htmlDirective)
-            }
-        }
-
         const curRetItem: TemplateAnalysisRet = {
             aar: null,
             tag: "",
@@ -83,8 +76,9 @@ export function analyzeTemplate(
         if (htmlDirective && !isText) {
             // 组件、slot以及自闭合标签上不能使用#html指令
             if (isComponent || isSlot || isSelfClosingTag(tag)) {
-                unsetHtmlDirective()
                 BadTargetForHtmlDirective(htmlDirective.loc)
+                spliceByElem(attributes, htmlDirective)
+                htmlDirective = undefined
             }
 
             // 使用了#html指令的节点只能接受一个text节点
@@ -227,7 +221,7 @@ export function analyzeTemplate(
             }
         }
 
-        // 递归处理当前节点的所有子节点，在这里判断组件中多个子标签上的slot属性是否重复
+        // 递归处理当前节点的所有子节点
         if (!shouldHoistContent && !isTextarea) {
             analyzeTemplate(
                 children,
@@ -240,7 +234,7 @@ export function analyzeTemplate(
             ).forEach(childRet => {
                 curRetItem.children.push({
                     tar: childRet,
-                    useBracket: Boolean(childRet.aar?.slotOfAnyTag)
+                    useBracket: !!childRet.aar?.slotOfAnyTag
                 })
             })
         }

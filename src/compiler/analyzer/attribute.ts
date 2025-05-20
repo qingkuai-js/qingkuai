@@ -144,7 +144,16 @@ export function analyzeAttribute(
                 landingRange: getRangeByLoc(loc)
             }
         }
-        ret.nameOfSlotTag = name
+        ret.nameOfSlotTag = stringify(name)
+    }
+
+    // 记录组件一级子节点的slot属性信息
+    const recordSlotAttributeInfo = (value: string, loc: ASTLocation) => {
+        if (existingSlotOfAnyTag.has(value)) {
+            DuplicateSlotAttr(value, node.parent!.tag, loc)
+        }
+        existingSlotOfAnyTag.add(value)
+        ret.slotOfAnyTag = stringify(value)
     }
 
     /**
@@ -167,39 +176,41 @@ export function analyzeAttribute(
 
     // 记录组件一级子节点的slot属性的中间代码片段
     const recordSlotAttributeInterSnippet = () => {
+        let [startSourceIndex, endSourceIndex] = [0, 0]
         const slotAttr = getNameOrSlotAttribute("slot")
         const slotName = slotAttr?.value.raw || "default"
-        if (!existingSlotOfAnyTag.has(slotName)) {
-            existingSlotOfAnyTag.add(slotName)
+        if (slotAttr) {
+            endSourceIndex = slotAttr.value.loc.end.index
+            startSourceIndex = slotAttr.value.loc.start.index
         } else {
-            DuplicateSlotAttr(
-                slotName,
-                node.parent!.tag,
-                slotAttr?.value.loc || getLocByIndex(...stnr)
-            )
+            ;[startSourceIndex, endSourceIndex] = [nodeStartIndex, stnr[1]]
         }
-        if (isCheckMode) {
-            let [startSourceIndex, endSourceIndex] = [0, 0]
-            if (slotAttr) {
-                endSourceIndex = slotAttr.value.loc.end.index
-                startSourceIndex = slotAttr.value.loc.start.index
-            } else {
-                ;[startSourceIndex, endSourceIndex] = [nodeStartIndex, stnr[1]]
-            }
-            recordInterCodeSnippets([
-                IntercodeSnippetKind.VoidSource,
-                `__c__.GetSlotProp(${node.parent!.componentTag},`
-            ])
-            recordInterSnippetWithSpecificRange(
-                normalStringify(slotName) + ")",
-                startSourceIndex,
-                endSourceIndex
-            )
-            recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, ";"])
+        recordInterCodeSnippets([
+            IntercodeSnippetKind.VoidSource,
+            `__c__.GetSlotProp(${node.parent!.componentTag},`
+        ])
+        recordInterSnippetWithSpecificRange(
+            normalStringify(slotName) + ")",
+            startSourceIndex,
+            endSourceIndex
+        )
+        recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, ";"])
+    }
+
+    // 组件一级子元素（slot内容）
+    if (parentIsComponent) {
+        // 未使用#slot指令时先将context.count加1（context固定存在）
+        if (!findSpecificAttr(preProcessedAttr, /#slot/)) {
+            context.count++
+        }
+
+        // 未使用slot属性时默认为default，报错位置与开始标签名称一致
+        if (isUndefined(ret.slotOfAnyTag)) {
+            recordSlotAttributeInfo("default", getLocByIndex(...stnr))
         }
     }
 
-    // slot标签无name属性或name属性为空时默认使用default，报错/跳转位置与开始标签名称一致
+    // slot标签无name属性时默认使用default，报错/跳转位置与开始标签名称一致
     if (isSlot && !getNameOrSlotAttribute("name")?.value.raw) {
         recordSlotInfo("default", getLocByIndex(...stnr))
     }
@@ -1016,10 +1027,10 @@ export function analyzeAttribute(
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
             } else {
-                if (isSlotAttribute) {
-                    ret.slotOfAnyTag = rv
-                } else {
+                if (!isSlotAttribute) {
                     recordSlotInfo(rv, attr.loc)
+                } else {
+                    recordSlotAttributeInfo(rv, value.loc)
                 }
             }
         } else {
@@ -1167,9 +1178,7 @@ export function analyzeAttribute(
     if (isCheckMode && parentIsComponent && !hasSlotDirective) {
         recordSlotAttributeInterSnippet()
     }
-
-    const stringfyKeys = ["slotOfAnyTag", "nameOfSlotTag"] as const
-    return stringfyKeys.forEach(k => (ret[k] = normalStringify(ret[k]))), ret
+    return ret
 }
 
 // 该方法的主要用途是过滤重复的属性，此外方法还有以下功能：
