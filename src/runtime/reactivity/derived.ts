@@ -1,8 +1,8 @@
 import type {
     Setter,
-    Getter,
     DerivedTarget,
     DestructuringFunc,
+    DerivedStateGetter,
     DerivedInternalState
 } from "../types"
 import type { GeneralFunc } from "../../util/types"
@@ -15,14 +15,14 @@ import { setUsedEffectList, usedEffectList, withCleanUsedEffectList } from "./st
 import { AssignmentToDerived, DerivedDependenNoReactiveValue } from "../message/warn"
 
 // 注册衍生响应性状态
-export const derived = withCleanUsedEffectList((fn: Getter, setter?: Setter) => {
+export const derived = withCleanUsedEffectList((fn: DerivedStateGetter, setter?: Setter) => {
     const state = newDerivedState()
     const target = newDerivedTarget()
     const isDebug = !isUndefined(setter)
 
     // 更新衍生响应性状态值
     const update = () => {
-        const value = fn()
+        const value = fn(target.$)
         if (isDebug) {
             setter(value)
         }
@@ -35,26 +35,28 @@ export const derived = withCleanUsedEffectList((fn: Getter, setter?: Setter) => 
 // 解构注册衍生响应性状态：将解构的每个标识符单独声明为一个衍生响应性状态，被解构
 // 出来的多个衍生响应性状态共享同一个副作用，会避免在访问不同值时重复调用getter
 export const destructuringDerived = withCleanUsedEffectList(
-    (dfnAndSetters: [DestructuringFunc, number, ...Setter[]], fn: Getter) => {
+    (dfnAndSetters: [DestructuringFunc, number, ...Setter[]], fn: DerivedStateGetter) => {
         const ret: any[] = []
         const state = newDerivedState()
+        const target = newDerivedTarget()
         const isDebug = !isUndefined(dfnAndSetters[2])
         const [destructuringFunc, valuesLen, ...setters] = dfnAndSetters
-        const targets = Array.from({ length: valuesLen }, newDerivedTarget)
+        const destructingTargets = Array.from({ length: valuesLen }, newDerivedTarget)
 
         // 更新衍生响应性状态值
         const update = () => {
-            const values = destructuringFunc(fn())
+            const value = fn(target.$)
+            const values = destructuringFunc(value)
             for (let i = 0; i < valuesLen; i++) {
                 if (isDebug) {
                     setters[i](values[i])
                 }
-                targets[i].$ = values[i]
+                destructingTargets[i].$ = values[i]
             }
         }
 
         for (let i = 0; i < valuesLen; i++) {
-            const proxy = newDerivedProxy(targets[i], state, update)
+            const proxy = newDerivedProxy(destructingTargets[i], state, update)
             ret.push(isDebug ? [proxy, proxy.$] : proxy)
         }
 
@@ -63,7 +65,7 @@ export const destructuringDerived = withCleanUsedEffectList(
 )
 
 function newDerivedTarget(): DerivedTarget {
-    return { $: UNDEF as any }
+    return { $: UNDEF }
 }
 
 function newDerivedState(): DerivedInternalState {
