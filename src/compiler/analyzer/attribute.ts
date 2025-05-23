@@ -321,7 +321,7 @@ export function analyzeAttribute(
                 )
                 if (pureKey === "slot") {
                     recordSlotAttributeInterSnippet()
-                } else if (!awaitExpression || pureKey !== "slot") {
+                } else if (!awaitExpression) {
                     recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, interAnyValue + ";"])
                 } else {
                     recordInterCodeSnippets(

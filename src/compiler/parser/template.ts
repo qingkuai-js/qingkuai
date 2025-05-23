@@ -487,21 +487,18 @@ export function parseTemplate(source: string, standalone = false) {
     return (function filter(list: TemplateNode[]) {
         return list.filter(({ tag, content, children }) => {
             let shouldReserve = true
-
-            if (tag === SPREAD_TAG) {
-                shouldReserve = children.length > 0
-            } else if (tag === "!") {
+            if (tag !== SPREAD_TAG) {
                 if (reserveAllComment) {
                     shouldReserve = true
                 } else {
                     shouldReserve = templateConditionalCommentRE.test(content)
                 }
+            } else {
+                shouldReserve = inputDescriptor.options.check || children.length > 0
             }
-
             if (shouldReserve) {
                 replaceEachItems(children, filter(children))
             }
-
             return shouldReserve
         })
     })(astList)

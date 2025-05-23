@@ -22,6 +22,7 @@ import {
     getEsNode,
     markExcludes,
     isInTopScope,
+    hasTopLevelAwait,
     getEsNodeOfParent,
     extendReplacement,
     initReplacementItem,
@@ -36,7 +37,8 @@ import {
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
     ConvenientDerivedWithOtherReactFunc,
-    ReactCompilerFuncWithoutVariableDeclaration
+    ReactCompilerFuncWithoutVariableDeclaration,
+    TopLevelAwaitNotBeSupported
 } from "../message/error"
 import {
     getGeneratedScriptLine,
@@ -59,19 +61,19 @@ const visitor: ASTVisitor = {
     },
 
     TSEnumDeclaration(node, parent) {
-        if (isInTopScope(node, parent)) {
+        if (isInTopScope(parent)) {
             checkTopScopeIdentifier(node.id.name, node.id.loc!)
         }
     },
 
     TSModuleDeclaration(node, parent) {
-        if (is(node.id, "Identifier") && isInTopScope(node, parent)) {
+        if (is(node.id, "Identifier") && isInTopScope(parent)) {
             checkTopScopeIdentifier(node.id.name, node.id.loc!)
         }
     },
 
     FunctionDeclaration(node, parent) {
-        if (node.id && isInTopScope(node, parent)) {
+        if (node.id && isInTopScope(parent)) {
             checkTopScopeIdentifier(node.id.name, node.id.loc!)
         }
         functionMarkExcludes(node, parent.excludes)
@@ -94,7 +96,7 @@ const visitor: ASTVisitor = {
             return isDebug ? ", " + getSetterIdentifier(name) : name
         }
 
-        if (isInTopScope(node, parent)) {
+        if (isInTopScope(parent)) {
             checkTopScopeIdentifier(name, node.id.loc!)
         }
 
@@ -126,7 +128,7 @@ const visitor: ASTVisitor = {
             if (watchCompilerFuncRE.test(callee.name)) {
                 analyzeWatchCompilerFuncCall(node)
             } else if (reactCompilerFuncRE.test(callee.name)) {
-                if (!isInTopScope(callee, parent)) {
+                if (!isInTopScope(parent)) {
                     ReactCompilerFuncNotInTopScope(nodeSourceLoc)
                 }
                 if (!is(esParent, "VariableDeclarator")) {
@@ -200,7 +202,7 @@ const visitor: ASTVisitor = {
         node.specifiers.forEach(specifier => {
             importedIdentifiers.add(specifier.local.name)
         })
-        if (isInTopScope(node, parent)) {
+        if (isInTopScope(parent)) {
             node.specifiers.forEach(specifier => {
                 checkTopScopeIdentifier(specifier.local.name, specifier.loc!)
             })
@@ -215,6 +217,12 @@ const visitor: ASTVisitor = {
         markExcludes(parent.excludes, getIdentifiersFromPattern(node.id))
     },
 
+    AwaitExpression(node, parent) {
+        if (hasTopLevelAwait(parent)) {
+            TopLevelAwaitNotBeSupported(getSourceLocByScriptLoc(node.loc))
+        }
+    },
+
     // 任意节点都将被捕获进入，此捕获组主要用来记录sourcemap信息，具体分为下面几种情况：
     // 1. 非import语句（且不是Program）节点时，统一记录sourcemap信息
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
@@ -225,7 +233,7 @@ const visitor: ASTVisitor = {
             is(node, "ExportDefaultDeclaration") ||
             is(node, "ExportNamedDeclaration")
         ) {
-            BadExportRelatedStatement(node.loc)
+            BadExportRelatedStatement(getSourceLocByScriptLoc(node.loc))
         } else if (inputDescriptor.options.sourcemap) {
             if (
                 is(node, "ImportDeclaration") ||
@@ -736,7 +744,7 @@ function analyzeWatchCompilerFuncCall(node: CallExpression & RequiredPosition) {
 
     // 检查参数数量
     if (argsLen < 2) {
-        WatchCompilerFuncMissingArg(calleeName, argsLen, node.loc)
+        WatchCompilerFuncMissingArg(calleeName, argsLen, getSourceLocByScriptLoc(node.loc))
     } else if (argsLen > 2) {
         RedundantArgsForCompilerFunc(calleeName, 2, node.arguments[1].end!, node.end - 1)
     }

@@ -5,6 +5,12 @@ import { isNumber } from "../../util/shared/assert"
 export const commonMessage = (<T extends Record<string, [number, GeneralFunc]>>(obj: T): T => {
     return obj
 })({
+    TopLevelAwaitNotBeSupported: [
+        1047,
+        () => {
+            return "Top-level await expression is not be supported."
+        }
+    ],
     IdentifierFormatIsNotAllowed: [
         1029,
         (identifierName: string) => {

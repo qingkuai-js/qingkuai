@@ -147,6 +147,40 @@ export function extendReplacement(
     })
 }
 
+// 判断节点是否处于顶部作用域
+export function isInTopScope(parent: TraverseParent | PartialBase) {
+    while (parent && !is(parent.v, "Program")) {
+        if (
+            is(parent.v, "ClassBody") ||
+            is(parent.v, "StaticBlock") ||
+            is(parent.v, "TSModuleBlock") ||
+            is(parent.v, "BlockStatement")
+        ) {
+            return false
+        }
+        parent = parent.parent
+    }
+    return true
+}
+
+// 判断TraverseParent中含有的AwaitExpression是否是顶层await表达式
+export function hasTopLevelAwait(parent: TraverseParent | PartialBase) {
+    while (parent && !is(parent.v, "Program")) {
+        if (
+            is(parent.v, "ClassMethod") ||
+            is(parent.v, "ObjectMethod") ||
+            is(parent.v, "ClassPrivateMethod") ||
+            is(parent.v, "FunctionExpression") ||
+            is(parent.v, "FunctionDeclaration") ||
+            is(parent.v, "ArrowFunctionExpression")
+        ) {
+            return false
+        }
+        parent = parent.parent
+    }
+    return true
+}
+
 // 提取parent对应的EsTree节点，遇到ts类型操作相关语法时继续向上查找
 export function getEsNodeOfParent(cur: TraverseParent | PartialBase) {
     while (isTypeOperationExpression(cur?.v)) {
@@ -186,23 +220,6 @@ export function getIdentifiersFromPattern(nodes: ValueOrValueArr<PartialPattern>
         })
     })
     return identifiers
-}
-
-// 判断节点是否处于顶部作用域
-export function isInTopScope(node: PartialAnyNode, parent: TraverseParent | PartialBase) {
-    while (node && !is(node, "Program")) {
-        if (
-            is(node, "ClassBody") ||
-            is(node, "StaticBlock") ||
-            is(node, "TSModuleBlock") ||
-            is(node, "BlockStatement")
-        ) {
-            return false
-        }
-        node = parent?.v
-        parent = parent?.parent
-    }
-    return true
 }
 
 // 递归遍历EsPattern节点，当遇到Identifier节点时就会执行传入的回调函数

@@ -15,6 +15,7 @@ export type TopNodesItem = TopNodes[number]
 export type Noop = (...params: any[]) => any
 export type DestructuringFunc = (v: any) => any[]
 export type PartialGeneralFunc = GeneralFunc | null
+export type DerivedStateGetter = <T>(value: T) => T
 export type Constructible = new (...args: any[]) => any
 export type ReactiveTarget = AnyObject | AnyMap | AnySet
 export type TopNodes = (Node | HTMLElement | TopNodes)[][]
