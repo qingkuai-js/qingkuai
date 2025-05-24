@@ -154,11 +154,15 @@ export function createStore<T extends ReactiveTarget>(value: T): T {
 // 响应式值的副作用列表会被调用，避免频繁更新时频繁运算ReactivityWrapper中的逻辑
 export function updateWithRaw<T>(value: T, cb: (raw: T) => Promise<any> | void) {
     if (!isReactive(value)) {
-        return cb(value)
+        cb(value)
+        return
+    }
+
+    const process = () => {
+        processEffect(value[WRAPPER].effect)
     }
 
     const ret = cb(raw(value))
-    const process = () => processEffect(value.effect)
     isThenable(ret) ? ret.then(process) : process()
 }
 
