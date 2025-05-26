@@ -24,12 +24,13 @@ import {
     recordInterSnippetWithSpecificRange
 } from "../../util/compiler/sundry"
 import {
+    SlotAttrIsEmpty,
     InvalidEventFlag,
     InvalidComposeFlag,
     DuplicateEventFlags,
     InvalidKeyRelatedFlag,
+    NameAttrForSlotIsEmpty,
     DirectiveValueIsIgnored,
-    ConflictNormalKeyEventFlag,
     InvalidEventFlagForComponent
 } from "../message/warn"
 import {
@@ -54,7 +55,6 @@ import {
 import {
     InvalidSlotAttr,
     InvalidRefAttr,
-    SlotAttrIsEmpty,
     UnkonwDirective,
     DuplicateSlotAttr,
     DirectivesCantCoexist,
@@ -62,15 +62,14 @@ import {
     DuplicateAttributeKey,
     BadValueToForDirective,
     DynamicNameAttrForSlot,
-    NameAttrForSlotIsEmpty,
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
     CanNotAcceptRefAttribute,
     DuplicateNameAttrForSlot,
     BadTargetForReferenceDom,
+    MustPassValueForDirective,
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
-    NoValueForRequiredValueAttribute,
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
@@ -875,7 +874,6 @@ export function analyzeAttribute(
 
             const eventFlagArr: string[] = []
             const eventWrapperFlagArr: string[] = []
-            const existingKeyRelatedFlags: string[] = []
             const flagArrWithIndex: [string, number, number][] = []
 
             const flagStartIndex = pureKey.indexOf("|")
@@ -938,18 +936,6 @@ export function analyzeAttribute(
                                     startSourceIndex,
                                     endSourceIndex
                                 )
-                            } else if (KEY_RELATED_EVENT_FLAGS.has(flag)) {
-                                // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
-                                // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
-                                //
-                                // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
-                                // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
-                                if (existingKeyRelatedFlags.length > 0) {
-                                    eventWrapperFlag &= ~((1 << 9) - 1)
-                                }
-                                if (!existingFlags.has(flag)) {
-                                    existingKeyRelatedFlags.push(flag)
-                                }
                             }
 
                             // 重复出现的修饰符记录到duplicateFlags
@@ -962,15 +948,6 @@ export function analyzeAttribute(
                             }
                         }
                     })
-
-                    // 普通按键修饰符存在多个时发出警告
-                    if (existingKeyRelatedFlags.length > 1) {
-                        ConflictNormalKeyEventFlag(
-                            existingKeyRelatedFlags,
-                            flagStartSourceIndex,
-                            key.loc.end.index
-                        )
-                    }
 
                     // 存在重复的修饰符时发出警告
                     if (duplicateFlags.size > 0) {
@@ -1233,9 +1210,9 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                     DirectivesCantCoexist([awiatRelatedDirectivesCoexistState, rk], loc)
                 }
             }
-            // 检查必须传递属性值的属性是否有值
+            // 检查必须传递属性值的指令是否有值
             if (MUST_PASS_VALUE_DIRECTIVES.has(pureKey) && !rv) {
-                NoValueForRequiredValueAttribute(rk, loc)
+                MustPassValueForDirective(pureKey, loc)
                 continue
             }
         }

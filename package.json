@@ -3,7 +3,8 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.43",
+  "version": "1.0.44",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/types/runtime/index.d.ts",

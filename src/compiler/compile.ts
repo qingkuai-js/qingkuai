@@ -44,11 +44,13 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         typeDeclarationLen: 0
     }
     if (options.check) {
-        return exchangeInterIndexOfSlotInfo({
+        const ret = exchangeInterIndexOfSlotInfo({
             mappings: "",
             ...basicResult,
             ...generateInterResult(source, typeRefStatement)
         })
+        console.log(ret)
+        return ret
     }
 
     // 转换脚本代码并确定编译结果中可压缩代码体积的地方（相同字符串、冗余字符等）

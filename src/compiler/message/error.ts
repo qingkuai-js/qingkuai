@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 1047
+ * last-error-code: 1045
  *
  * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
  * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
@@ -70,114 +70,105 @@ export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(
     ...commonMessage.ReactCompilerFuncWithoutVariableDeclaration
 )
 
-export const UnexpectedToken = withLocation(1001, (char: string) => {
+export const UnexpectedToken = withLocation(1002, (char: string) => {
     return `Unexpected token: ${char}`
 })
 
-export const SlotAttrIsEmpty = withLocation(1022, () => {
-    return "Must set a value for slot attribute."
-})
-
-export const BadValueToForDirective = withLocation(1038, () => {
+export const BadValueToForDirective = withLocation(1036, () => {
     return `Bad value to the #for directive.`
 })
 
-export const UnclosedNormalAttributeValue = withLocation(1003, () => {
+export const UnclosedNormalAttributeValue = withLocation(1005, () => {
     return "Unclosed attribute value."
 })
 
-export const DynamicNameAttrForSlot = withLocation(1020, () => {
+export const DynamicNameAttrForSlot = withLocation(1019, () => {
     return `Dynamic name attribute(!name) for slot tag is not allowed.`
 })
 
-export const UnclosedInterpolationExpression = withLocation(1004, () => {
+export const UnclosedInterpolationExpression = withLocation(1003, () => {
     return "Unclosed interpolation expression."
 })
 
-export const InvalidSlotAttr = withLocation(1033, (typeChar: string) => {
+export const InvalidSlotAttr = withLocation(1031, (typeChar: string) => {
     const description = typeChar === "!" ? "Dynamic" : "Reference"
     return `${description} slot attribute(${typeChar}slot) is not allowed.`
 })
 
-export const InvalidIdentifierName = withLocation(1005, (name: string) => {
+export const InvalidIdentifierName = withLocation(1004, (name: string) => {
     return `The identifier name(${name}) is invalid.`
 })
 
-export const NoEndTagMatched = withLocation(1036, (tag: string) => {
+export const NoEndTagMatched = withLocation(1034, (tag: string) => {
     return `The <${tag}> tag does not have a matched end tag(</${tag}>)`
 })
 
-export const TemplateStartsWithEndTag = withLocation(1006, (text: string) => {
+export const EmptyInterpolationExpression = withLocation(1001, () => {
+    return "Empty interpolation expression block is not allowed."
+})
+
+export const EmbeddedScriptBlockOutOfLimit = withLocation(1009, () => {
+    return `The embedded script block is out of limit(only one is allowed)`
+})
+
+export const TagCanNotBeSelfClosing = withLocation(1010, (tag: string) => {
+    return `The tag(${tag}) can not be used as self closing tag.`
+})
+
+export const HtmlDirectiveWithChildElement = withLocation(1042, () => {
+    return "The tag with #html directive must accept one text node as child."
+})
+
+export const UseKeyDirectiveWithoutForDirective = withLocation(1011, () => {
+    return "Key directive could not be used without #for directive."
+})
+
+export const TemplateStartsWithEndTag = withLocation(1007, (text: string) => {
     return `Starts with an end tag: ${text}`
 })
 
-export const EmptyInterpolationAttrName = withLocation(1007, (char: string) => {
+export const MustPassValueForDirective = withLocation(1015, (name: string) => {
+    return `The directive(${name}) must have a value.`
+})
+
+export const EmptyInterpolationAttrName = withLocation(1008, (char: string) => {
     const itemDescription = getSpecialAttrDescription(char)
     return `The ${itemDescription!} must be specified a name.`
 })
 
-export const NameAttrForSlotIsEmpty = withLocation(1008, () => {
-    return "Must set a value for name attribute of slot tag."
-})
-
-export const EmptyInterpolationExpression = withLocation(1009, () => {
-    return "Empty interpolation expression block is not allowed."
-})
-
-export const EmbeddedScriptBlockOutOfLimit = withLocation(1010, () => {
-    return `The embedded script block is out of limit(only one is allowed)`
-})
-
-export const TagCanNotBeSelfClosing = withLocation(1011, (tag: string) => {
-    return `The tag(${tag}) can not be used as self closing tag.`
-})
-
-export const HtmlDirectiveWithChildElement = withLocation(1044, () => {
-    return "The tag with #html directive must accept one text node as child."
-})
-
-export const UseKeyDirectiveWithoutForDirective = withLocation(1012, () => {
-    return "Key directive could not be used without #for directive."
-})
-
-export const NoBracketForAttributeInterpolation = withLocation(1017, () => {
+export const NoBracketForAttributeInterpolation = withLocation(1016, () => {
     return "The interpolation attribute value must be wrapped with curly bracket."
 })
 
-export const EmbeddedLangNotInTopScope = withLocation(1037, (tag: string) => {
+export const EmbeddedLangNotInTopScope = withLocation(1035, (tag: string) => {
     return `The embedded language block(${tag}) can only be used in the top scope.`
 })
 
-export const AttributeValueIsNotQuoted = withLocation(1018, () => {
+export const AttributeValueIsNotQuoted = withLocation(1017, () => {
     return "The normal attribute value must be quoted with single or double quote."
 })
 
-export const DirectivesCantCoexist = withLocation(1019, (directives: string[]) => {
+export const DirectivesCantCoexist = withLocation(1018, (directives: string[]) => {
     return `Directives(${directives.join(", ")}) can not be used simultaneously.`
 })
 
-export const MissingStartDirective = withLocation(1024, (d: string, pd: string) => {
+export const MissingStartDirective = withLocation(1022, (d: string, pd: string) => {
     return `The ${d} directive must be used after ${pd} directive.`
 })
 
-export const NoValueForRequiredValueAttribute = withLocation(1016, (key: string) => {
-    const itemDescription = getSpecialAttrDescription(key[0])
-    return `The ${itemDescription}(${key}) must have a value.`
-})
-
-export const TagIsNotClosing = withLocation(1002, (tag: string, isEndTag: boolean) => {
+export const TagIsNotClosing = withLocation(1006, (tag: string, isEndTag: boolean) => {
     return `The ${isEndTag ? "end" : "start"} tag(${tag}) is not closing.`
 })
 
-export const BasSlotDirectiveCarrier = withLocation(1013, () => {
+export const BasSlotDirectiveCarrier = withLocation(1012, () => {
     return `Slot directive(#slot) can only be used on the direct child element(first-level)`
 })
 
-export const CanNotAcceptRefAttribute = withLocation(1015, (key: string, tag: string) => {
+export const CanNotAcceptRefAttribute = withLocation(1014, (key: string, tag: string) => {
     return `The normal tag(${tag}) can only accept &dom reference attribute, but got &${key}.`
 })
 
-export const DuplicateAttributeKey = withLocation(1023, (tag: string, a: string, b: string) => {
+export const DuplicateAttributeKey = withLocation(1021, (tag: string, a: string, b: string) => {
     let description = ""
     const isComponent = tagIsComponentRE.test(tag)
     if (a[0] === "#") {
@@ -193,43 +184,43 @@ export const DuplicateAttributeKey = withLocation(1023, (tag: string, a: string,
     return `The name for ${description} of ${tag} is duplicate.`
 })
 
-export const DuplicateNameAttrForSlot = withLocation(1034, (value: string) => {
+export const DuplicateNameAttrForSlot = withLocation(1032, (value: string) => {
     return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
 })
 
-export const DuplicateSlotAttr = withLocation(1014, (name: string, component: string) => {
+export const DuplicateSlotAttr = withLocation(1013, (name: string, component: string) => {
     return `Multiple elements used as slot in component(${component}) have the same name(${name})`
 })
 
-export const BadEventListenerForSlotTag = withLocation(1041, (attr: string) => {
+export const BadEventListenerForSlotTag = withLocation(1039, (attr: string) => {
     return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
 })
 
-export const BadTargetForHtmlDirective = withLocation(1045, () => {
+export const BadTargetForHtmlDirective = withLocation(1043, () => {
     return `Bad target for #html directive: it can not be used with in component, slot and self-closing tag.`
 })
 
-export const RefuseReferenceAttribute = withLocation(1026, (tag: string, attr: string) => {
-    return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can not accept any reference attribute.`
+export const RefuseReferenceAttribute = withLocation(1024, (tag: string, attr: string) => {
+    return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can only accept &dom as reference attribute.`
 })
 
-export const ContextIdentifierUsedAsReferenceTarget = withLocation(1035, (name: string) => {
+export const ContextIdentifierUsedAsReferenceTarget = withLocation(1033, (name: string) => {
     return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
 })
 
-export const UnkonwDirective = withLocation(1028, (name: string) => {
+export const UnkonwDirective = withLocation(1026, (name: string) => {
     return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
 })
 
-export const BadTargetForReferenceDom = withLocation(1046, () => {
+export const BadTargetForReferenceDom = withLocation(1044, () => {
     return `The &dom reference attribute can not be used on slot and ${SPREAD_TAG} tag, as they have no corresponding DOM Node.`
 })
 
-export const BadValueToContextGenDirective = withLocation(1043, (directive: string) => {
+export const BadValueToContextGenDirective = withLocation(1041, (directive: string) => {
     return `Bad value for ${directive} directive, it expectes the following three node types: Identifier, ArrayExpression or ObjectExpression.`
 })
 
-export const InvalidRefAttr = withLocation(1032, (tag: string, attr: string, given: string) => {
+export const InvalidRefAttr = withLocation(1030, (tag: string, attr: string, given: string) => {
     return `Normal tag(${tag}) can only accept specific reference attribute(${attr}), and the given item(&${given}) is not allowed.`
 })
 

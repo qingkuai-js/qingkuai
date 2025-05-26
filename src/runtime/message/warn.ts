@@ -18,8 +18,6 @@
  * Warning Code Explanation: Code beginning with the number 8 indicates that this is a runtime warning
  */
 
-import type { GeneralFunc } from "../../util/types"
-
 export const InvalidTargetForTargetDirective = withCode(8005, () => {
     return `The given value of #target directive is not a valid DOM Node.`
 })

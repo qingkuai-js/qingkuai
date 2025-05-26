@@ -12,7 +12,7 @@
  * new warn code, you need update the warn code you used this time to the header
  * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
  *
- * last-warn-code: 9010
+ * last-warn-code: 9011
  *
  * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
  * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning
@@ -41,7 +41,11 @@ export const RedundantArgsForCompilerFunc = withLocation(
     ...commonMessage.RedundantArgsForCompilerFunc
 )
 
-export const DirectiveValueIsIgnored = withLocation(9010, (d: string) => {
+export const SlotAttrIsEmpty = withLocation(9011, () => {
+    return "The slot attribute is empty, and the default value(default) is adopted."
+})
+
+export const DirectiveValueIsIgnored = withLocation(9009, (d: string) => {
     return `The ${d} directive does not need a value, and the value has been ignored.`
 })
 
@@ -49,8 +53,12 @@ export const InvalidEventFlag = withLocation(9004, (flagName: string, eventName:
     return `Invalid flag(${flagName}) for event(@${eventName}) and it has been ignored.`
 })
 
-export const DuplicateEventFlags = withLocation(9009, (flags: string[], eventName: string) => {
+export const DuplicateEventFlags = withLocation(9008, (flags: string[], eventName: string) => {
     return `There are some duplicate flags(${flags.join(", ")}) on ${eventName} event.`
+})
+
+export const NameAttrForSlotIsEmpty = withLocation(9010, () => {
+    return "The name attribute of slot tag is empty, and the default value(default) is adopted."
 })
 
 export const InvalidComposeFlag = withLocation(9006, (eventName: string) => {
@@ -59,11 +67,6 @@ export const InvalidComposeFlag = withLocation(9006, (eventName: string) => {
 
 export const InvalidEventFlagForComponent = withLocation(9005, (flagDescription: string) => {
     return `The event parameter for component can not accept any flag(${flagDescription}), and they has been ignored.`
-})
-
-export const ConflictNormalKeyEventFlag = withLocation(9008, (flags: string[]) => {
-    const [joined, last] = [flags.join(", "), lastElem(flags)]
-    return `The normal key event flags(${joined}) is conflict, and the last one(${last}) will be applied according to the priority.`
 })
 
 export const InvalidKeyRelatedFlag = withLocation(9007, (flag: string, eventName: string) => {

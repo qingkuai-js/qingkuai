@@ -25,7 +25,7 @@ import { BAD_TARGET_MOUNT_KIND } from "../constants"
 
 export const InstantiateComponentManually = withCode(...commonMessage.InstantiateComponentManually)
 
-export const AssignToConstant = withCode(2007, () => {
+export const AssignToConstant = withCode(2005, () => {
     return "Assignment to constant variable."
 })
 
@@ -33,20 +33,20 @@ export const NonTraverse = withCode(2001, () => {
     return "The given value for for-directive is non-traversable."
 })
 
-export const NotPromise = withCode(2002, () => {
+export const NotPromise = withCode(2006, () => {
     return "The given value for await-directive is not a Promise."
 })
 
-export const DuplicateKey = withCode(2003, (key: string) => {
+export const DuplicateKey = withCode(2002, (key: string) => {
     return "Duplicate key for keyed-for-module, duplicate key: " + key
 })
 
-export const BadTarget = withCode(2006, (selector: string, kind: number) => {
+export const BadTarget = withCode(2007, (selector: string, kind: number) => {
     const kindStr = kind === BAD_TARGET_MOUNT_KIND ? "app mounting" : "#target directive"
-    return `The given document selector(${selector}) can not find corresponding node for ${kindStr}.`
+    return `The given document selector(${selector}) can not find corresponding element for ${kindStr}.`
 })
 
-export const BadReactivityLevel = withCode(2005, (level: number) => {
+export const BadReactivityLevel = withCode(2004, (level: number) => {
     return `Bad reactivity level(${level}), if you don't want the target to be reactive, mark it with stc compiler helper function instead of rea.`
 })
 
