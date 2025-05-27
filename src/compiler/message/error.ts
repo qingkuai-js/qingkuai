@@ -22,12 +22,12 @@ import type { ASTLocation } from "../types"
 import type { GeneralFunc, NumNum } from "../../util/types"
 
 import { commonMessage } from "./common"
+import { SPREAD_TAG } from "../constants"
 import { tagIsComponentRE } from "../regular"
 import { lastElem } from "../../util/shared/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
 import { getLocByIndex } from "../../util/compiler/locations"
-import { SPREAD_TAG } from "../constants"
 
 // prettier-ignore
 export const BadExportRelatedStatement = withLocation(

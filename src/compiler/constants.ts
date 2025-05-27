@@ -81,7 +81,7 @@ export enum StringLiteralLeftPad {
     normalClass = 0
 }
 
-export const SPREAD_TAG = "spread"
+export const SPREAD_TAG = "qk:spread"
 
 export const SPECIAL_TAGS = new Set(["!", "script", "style"])
 export const FULL_INIT_ITEMS = new Set(["args", "scts", "props"])

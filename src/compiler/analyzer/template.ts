@@ -48,25 +48,32 @@ export function analyzeTemplate(
 
         const isSlot = tag === "slot"
         const isText = isEmptyString(tag)
+        const isSpread = tag === SPREAD_TAG
         const isTextarea = tag === "textarea"
         const currentContext = cloneContext(context)
         const isComponent = !isEmptyString(componentTag)
-        const shouldCache = pure && !parent?.pure && !isSlot && !isComponent
+
+        const shouldCache =
+            pure &&
+            !isSlot &&
+            !isSpread &&
+            !isComponent &&
+            (!parent?.pure || parent.tag === SPREAD_TAG)
 
         const curRetItem: TemplateAnalysisRet = {
+            isSpread,
             aar: null,
             tag: "",
             content: "",
             children: [],
-            isSpread: tag === SPREAD_TAG,
             cacheId: shouldCache && !isText ? getCacheId() : -1
         }
 
         // 如果当前节点只有一个文本子节点，可以将子节点提升为自身的textContent
         if (
             !isSlot &&
+            !isSpread &&
             !isComponent &&
-            !curRetItem.isSpread &&
             children.length === 1 &&
             isEmptyString(children[0].tag)
         ) {
@@ -89,7 +96,7 @@ export function analyzeTemplate(
             }
 
             // 如果当前标签使用了#html指令且非SPREAD_TAG，则将#html指令转移到content上
-            if (htmlDirective && !curRetItem.isSpread) {
+            if (htmlDirective && !isSpread) {
                 shouldHoistContent = false
                 children[0]?.attributes.push(htmlDirective)
             }
@@ -100,7 +107,7 @@ export function analyzeTemplate(
             curRetItem.tag = kebab2Camel(tag, true)
             markPositionFlag(node.range[0], "isComponentStart")
         } else {
-            if (!isText || htmlDirective) {
+            if (!isText || !shouldCache || htmlDirective) {
                 curRetItem.tag = stringify(tag)
             } else {
                 const insertCommment = inputDescriptor.options.comment
