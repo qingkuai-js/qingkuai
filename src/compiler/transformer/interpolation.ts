@@ -273,12 +273,14 @@ export function transformInterpolation(
 
     // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
+        const paramStr = options.isComponentEvent ? "(...$args)" : "$args"
         if (!isDebug || withReturnKeyword) {
-            transformedExp = `$arg => ${transformedExp}`
+            addedPrefixLen += paramStr.length + 4
+            transformedExp = `${paramStr} => ${transformedExp}`
         } else {
-            addedPrefixLen += 17
             withReturnKeyword = true
-            transformedExp = `$arg => { return ${transformedExp} }`
+            addedPrefixLen += paramStr.length + 13
+            transformedExp = `${paramStr} => { return ${transformedExp} }`
         }
         if (options.withInNormalTag) {
             for (let i = 0; i < expression.length; i++) {

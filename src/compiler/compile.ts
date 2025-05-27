@@ -21,12 +21,11 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const scriptSourceCode = inputDescriptor.script.code
     const typeRefStatement = options.typeRefStatement ?? ""
 
-    // 关于检查模式：检查模式表示仅用来检查编译错误的情况，这种情况下遇到编译错误时不会
-    // 中断编译器的解析和执行，此时不会生成可运行的js代码，只会生成一种用来检查ts错误的
-    // typescript中间代码，目前只有qingkuai语言服务器会在调用compile方法时使用该模式
+    // 关于检查模式：检查模式表示仅用来检查编译错误的情况，这种情况下遇到编译错误时不会中断编译器的解析和执行
+    // 如果传入了typeRefStatement，那么编译器只会生成一种用于语法检查的typescript中间代码（不能正确运行）
     //
-    // 检查模式下无需分析script代码，这样可以避免@babel/parser解析script代码的性能损耗，若需要
-    // 诊断script部分的代码，typescript-qingkuai-plugin会复用vscode内置的typescript语言服务的
+    // 检查模式下无需分析script代码，这样可以避免@babel/parser解析script代码的性能损耗，
+    // 在需要诊断嵌入脚本时，typescript-qingkuai-plugin会复用vscode内置的typescript语言服务的
     // SourceFile AST进行诊断，诊断完成后会将诊断结果通过该插件独立启动的ipc服务器通知给qingkuai语言服务器
     if (!options.check) {
         analyzeScript(scriptSourceCode)
@@ -37,6 +36,10 @@ export function compile(source: string, options: CompileOptions): CompileResult 
 
     // 检查模式下仅生成用于js/ts语言服务的中间代码，无需执行正常编译模式的转换操作
     const basicResult = {
+        interIndexMap: {
+            stoi: [],
+            itos: []
+        },
         hashId,
         messages,
         templateNodes,
@@ -44,13 +47,18 @@ export function compile(source: string, options: CompileOptions): CompileResult 
         typeDeclarationLen: 0
     }
     if (options.check) {
-        const ret = exchangeInterIndexOfSlotInfo({
+        if (!options.typeRefStatement) {
+            return {
+                code: "",
+                mappings: "",
+                ...basicResult
+            }
+        }
+        return exchangeInterIndexOfSlotInfo({
             mappings: "",
             ...basicResult,
             ...generateInterResult(source, typeRefStatement)
         })
-        console.log(ret)
-        return ret
     }
 
     // 转换脚本代码并确定编译结果中可压缩代码体积的地方（相同字符串、冗余字符等）
@@ -58,10 +66,6 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     compressCompileSize(templateAnalysisRet)
 
     return {
-        interIndexMap: {
-            stoi: [],
-            itos: []
-        },
         ...basicResult,
         ...generateCompileResult(
             hashId,

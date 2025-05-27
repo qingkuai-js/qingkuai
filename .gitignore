@@ -1,7 +1,10 @@
+.history
+.DS_Store
+
 dist
 test-space
 node_modules
 
-.history
-.DS_Store
+backup.md
+
 qingkuai-*.tgz

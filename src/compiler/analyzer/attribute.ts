@@ -272,10 +272,17 @@ export function analyzeAttribute(
                     }
                 }
                 if (inlineEventItems.has(attr)) {
-                    recordInterCodeSnippets([
-                        IntercodeSnippetKind.VoidSource,
-                        `{const $arg=__c__.GetEventHandler("${pureKey}");`
-                    ])
+                    if (!isComponent) {
+                        recordInterCodeSnippets([
+                            IntercodeSnippetKind.VoidSource,
+                            `{const $arg=__c__.GetEventHandler("${pureKey}");`
+                        ])
+                    } else {
+                        recordInterCodeSnippets([
+                            IntercodeSnippetKind.VoidSource,
+                            `{const $arg=__c__.GetComponentEventParams(${node.componentTag}, "${pureKey}");`
+                        ])
+                    }
                 }
                 if (!isEvent || inlineEventItems.has(attr) || isComponent || !isTS) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
