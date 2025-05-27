@@ -363,7 +363,7 @@ export const h = withCleanUsedEffectList(function (
 })
 
 // 创建应用
-export function createApp(
+export function mountApp(
     selector: string,
     Component: Constructible,
     options: Partial<QingKuaiComponentConstructonParam> = {}
