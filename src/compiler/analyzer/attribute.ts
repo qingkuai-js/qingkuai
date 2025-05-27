@@ -361,12 +361,8 @@ export function analyzeAttribute(
             }
         }
 
-        // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
-        if ((pureKey = rk.slice(+isInterpolation)) && isComponent) {
-            pureKey = kebab2Camel(pureKey)
-        }
-
-        // 标记属性的开始位置
+        // 计算pureKey并标记属性的开始位置
+        pureKey = rk.slice(+isInterpolation)
         markPositionFlag(key.loc.start.index, "isAttributeStart")
         isInterpolation && markPositionFlag(key.loc.start.index, "isInterpolationAttributeStart")
 
@@ -1176,6 +1172,9 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     for (let i = 0; i < attributes.length; i++) {
         const currentAttribute = attributes[i]
         const { key, value, loc } = currentAttribute
+
+        // 如果是组件，统一将属性名修改为驼峰格式
+        isComponent && (key.raw = kebab2Camel(key.raw))
 
         const [rk, rv] = [key.raw, value.raw]
         const isClass = /^[!&]?class/.test(rk)
