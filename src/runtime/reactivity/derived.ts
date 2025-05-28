@@ -55,7 +55,7 @@ export const destructuringDerived = withCleanUsedEffectList(
 
         for (let i = 0; i < valuesLen; i++) {
             const proxy = newDerivedProxy(destructingTargets[i], state, update)
-            ret.push(isDebug ? [proxy, proxy.$] : proxy)
+            ret.push(isDebug ? [proxy, UNDEF] : proxy)
         }
 
         return ret
