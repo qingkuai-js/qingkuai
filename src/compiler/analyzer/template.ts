@@ -206,9 +206,14 @@ export function analyzeTemplate(
 
         // 注释以及pre、textarea节点的内容不去除开头和结尾的空白字符
         if (!isTextarea && tag !== "!" && !node.pref) {
-            const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
-            content = content.slice(preSpaceCount).trimEnd()
-            trimedContentStartIndex += preSpaceCount
+            if (!node.next) {
+                content = content.trimEnd()
+            }
+            if (!node.prev) {
+                const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
+                content = content.slice(preSpaceCount)
+                trimedContentStartIndex += preSpaceCount
+            }
         }
 
         if (SPECIAL_TAGS.has(tag)) {
