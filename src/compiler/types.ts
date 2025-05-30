@@ -144,7 +144,7 @@ export interface TemplateNode {
     pure: boolean
     content: string
     loc: ASTLocation
-    pref: boolean
+    preWhiteSpace: boolean
     isEmbedded: boolean
     isSelfClosing: boolean
     componentTag: string

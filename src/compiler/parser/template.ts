@@ -106,7 +106,7 @@ export function parseTemplate(source: string, standalone = false) {
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | undefined) {
         const contentEndIndex = findOutOfTextContentInterpolation(dps, templateTagStructureRE)
         const content = dps.slice(0, contentEndIndex === -1 ? dps.length : contentEndIndex)
-        const preWhiteSpace = parent?.pref
+        const preWhiteSpace = parent?.preWhiteSpace
         const contentLen = content.length
         if ((reduceSource(contentLen), contentLen)) {
             if (preWhiteSpace || content.trim()) {
@@ -114,7 +114,7 @@ export function parseTemplate(source: string, standalone = false) {
                     prev,
                     content,
                     parent,
-                    pref: preWhiteSpace,
+                    preWhiteSpace,
                     range: [index - contentLen, index]
                 })
                 if (content.includes("{")) {
@@ -172,7 +172,7 @@ export function parseTemplate(source: string, standalone = false) {
             pure: !fdsn,
             range: [index, -1],
             componentTag: isComponent ? kebab2Camel(tag, true) : "",
-            pref: tag === "pre" || isPrevNodeWithPreWhiteSpaceComment(prev)
+            preWhiteSpace: tag === "pre" || isPrevNodeWithPreWhiteSpaceComment(prev)
         })
         reduceSource(tag.length + 1)
         tag === "slot" && markupNodeAndAncestorIsNotPure(ast)
@@ -302,7 +302,7 @@ export function parseTemplate(source: string, standalone = false) {
                 attrLoc.end = getPosByIndex(nameEndIndex)
             }
             if (attrName === "style") {
-                ast.pref = preWithSpaceRuleRE.test(attrValue)
+                ast.preWhiteSpace = preWithSpaceRuleRE.test(attrValue)
             }
             if (isEnd) {
                 valueLoc.end = getPosByIndex(valueEndIndex)
@@ -487,18 +487,12 @@ export function parseTemplate(source: string, standalone = false) {
     return (function filter(list: TemplateNode[]) {
         return list.filter(({ tag, content, children }) => {
             let shouldReserve = true
-            if (tag !== SPREAD_TAG) {
-                if (reserveAllComment) {
-                    shouldReserve = true
-                } else {
-                    shouldReserve = templateConditionalCommentRE.test(content)
-                }
-            } else {
+            if (tag === SPREAD_TAG) {
                 shouldReserve = inputDescriptor.options.check || children.length > 0
+            } else if (tag === "!") {
+                shouldReserve = reserveAllComment || templateConditionalCommentRE.test(content)
             }
-            if (shouldReserve) {
-                replaceEachItems(children, filter(children))
-            }
+            shouldReserve && replaceEachItems(children, filter(children))
             return shouldReserve
         })
     })(astList)
@@ -531,13 +525,13 @@ function initTemplateNode(
         isEmbedded: false,
         isSelfClosing: false,
         pure: options.pure ?? true,
-        pref: !!options.pref,
         content: options.content || "",
         range: options.range || [-1, -1],
         startTagEndPos: newASTPosition(),
         endTagStartPos: newASTPosition(),
         attributes: options.attributes || [],
         loc: options.loc || newASTLocation(),
+        preWhiteSpace: !!options.preWhiteSpace,
         componentTag: options.componentTag || "",
         children: options.children || []
     }

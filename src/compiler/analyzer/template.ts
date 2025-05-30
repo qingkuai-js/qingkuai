@@ -50,6 +50,7 @@ export function analyzeTemplate(
         const isText = isEmptyString(tag)
         const isSpread = tag === SPREAD_TAG
         const isTextarea = tag === "textarea"
+        const preWhiteSpace = tag === "pre"
         const currentContext = cloneContext(context)
         const isComponent = !isEmptyString(componentTag)
 
@@ -204,12 +205,17 @@ export function analyzeTemplate(
             trimedContentStartIndex = isTextarea ? node.startTagEndPos.index : node.range[0]
         }
 
-        // 注释以及pre、textarea节点的内容不去除开头和结尾的空白字符
-        if (!isTextarea && tag !== "!" && !node.pref) {
-            if (!node.next) {
+        // 注释、textarea节点以及具有whiteSpace:pre属性的内容不去除开头和结尾的空白字符
+        if (
+            !isTextarea &&
+            !node.preWhiteSpace &&
+            tag !== "!" &&
+            (!node.prev || shouldHoistContent)
+        ) {
+            if (!node.next || shouldHoistContent) {
                 content = content.trimEnd()
             }
-            if (!node.prev) {
+            if (!node.prev || shouldHoistContent) {
                 const preSpaceCount = /^\s*/.exec(content)?.[0].length || 0
                 content = content.slice(preSpaceCount)
                 trimedContentStartIndex += preSpaceCount
@@ -221,7 +227,7 @@ export function analyzeTemplate(
         } else if (curRetItem.aar?.nameOfSlotTag) {
             curRetItem.content = curRetItem.aar.nameOfSlotTag
         } else {
-            const parseRet = content2script(content, trimedContentStartIndex, node.pref)
+            const parseRet = content2script(content, trimedContentStartIndex, node.preWhiteSpace)
             const optionalParam = { positionMap: parseRet.positionMap }
             if (!inputDescriptor.options.check) {
                 curRetItem.content = transformInterpolation(
