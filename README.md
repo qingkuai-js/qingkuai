@@ -4,7 +4,7 @@ Qingkuai is a lightweight, fast, and developer-friendly frontend framework desig
 
 [Documentation](https://qingkuai.dev) | [Playground](https://qingkuai.dev) | [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=qingkuai-tools.qingkuai-language-features) | [Issues](https://github.com/qingkuai-js/qingkuai/issues)
 
-## 📦 Packages
+## Packages
 
 | Package             | Description                                      |
 | ------------------- | ------------------------------------------------ |
