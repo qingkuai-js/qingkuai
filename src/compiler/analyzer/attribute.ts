@@ -19,23 +19,26 @@ import {
     findSpecificAttr,
     markPositionFlag,
     recordInterExpression,
+    recordInterCodeSnippets,
+    getRecordedInterCodeLen,
     recordInterSnippetWithSpecificRange
 } from "../../util/compiler/sundry"
 import {
+    SlotAttrIsEmpty,
     InvalidEventFlag,
-    InvalidComposeModifier,
+    InvalidComposeFlag,
+    DuplicateEventFlags,
+    InvalidKeyRelatedFlag,
+    NameAttrForSlotIsEmpty,
     DirectiveValueIsIgnored,
-    DuplicateEventModifiers,
-    InvalidKeyRelatedModifier,
-    InvalidEventFlagForComponent,
-    ConflictNormalKeyEventModifier
+    InvalidEventFlagForComponent
 } from "../message/warn"
 import {
     SPREAD_TAG,
     COULD_USE_REF_TAGS,
     IntercodeSnippetKind,
     MUST_PASS_VALUE_DIRECTIVES,
-    KEY_RELATED_EVENT_MODIFIERS
+    KEY_RELATED_EVENT_FLAGS
 } from "../constants"
 import {
     parse,
@@ -52,7 +55,6 @@ import {
 import {
     InvalidSlotAttr,
     InvalidRefAttr,
-    SlotAttrIsEmpty,
     UnkonwDirective,
     DuplicateSlotAttr,
     DirectivesCantCoexist,
@@ -60,26 +62,25 @@ import {
     DuplicateAttributeKey,
     BadValueToForDirective,
     DynamicNameAttrForSlot,
-    NameAttrForSlotIsEmpty,
     BasSlotDirectiveCarrier,
     RefuseReferenceAttribute,
     CanNotAcceptRefAttribute,
     DuplicateNameAttrForSlot,
     BadTargetForReferenceDom,
+    MustPassValueForDirective,
     BadEventListenerForSlotTag,
     BadValueToContextGenDirective,
-    NoValueForRequiredValueAttribute,
     UseKeyDirectiveWithoutForDirective
 } from "../message/error"
 import { getAlias } from "./alias"
-import { is, isFunctionNode, isInlineEventHandler } from "../estree/assert"
 import { validIdentifierNameRE } from "../regular"
-import { lastElem } from "../../util/shared/sundry"
 import { getLocByIndex } from "../../util/compiler/locations"
 import { transformInterpolation } from "../transformer/interpolation"
+import { newAttributeAnalysisRet } from "../../util/compiler/structure"
+import { is, isAssignable, isInlineEventHandler } from "../estree/assert"
 import { EventListenerFlag, EventWrapperFlag } from "../../util/shared/flag"
+import { inputDescriptor, templateNodeToContextIdentifiers } from "../state"
 import { isEmptyString, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { inputDescriptor, interCodeSnippets, templateNodeToContextIdentifiers } from "../state"
 
 // apm: Attributes Priority Map
 // apm是一个映射对象，它存储了一些指令名的优先等级（一个数字），数字越大，优先级越高，在调用preProcessAttr方法时，
@@ -102,20 +103,20 @@ export function analyzeAttribute(
     context: TemplateContext,
     existingSlotOfAnyTag: Set<string>,
     continueByDirective?: string,
-    awaitExpression?: [number, string]
+    awaitExpression?: [number, string],
+    selectRefValue?: [string, boolean]
 ): AttributeAnalysisRet {
     let pureKey: string
-    let insertNullNum = 0
     let withAwait = false
-    let createSpread = false
-    let contextBlockCount = 0
     let forModuleFuncIndex = -1
     let hasSlotDirective = false
-    let continueRE: RegExp | null = null
-    let shouldContinueDirective: string | undefined
-    let slotOfAnyTag: string | undefined = undefined
-    let nameOfSlotTag: string | undefined = undefined
-    let continueArg: TransformInterpolationRet | undefined
+
+    const aliasArgs: TransformInterpolationRet[] = []
+    const inlineEventItems = new WeakSet<TemplateAttribute>()
+    const ret: AttributeAnalysisRet = newAttributeAnalysisRet({
+        selectRefValue,
+        awaitExpression
+    })
 
     const { tag } = node
     const isSlot = tag === "slot"
@@ -124,11 +125,8 @@ export function analyzeAttribute(
     const nodeStartIndex = node.loc.start.index
     const interAnyValue = `0${isTS ? " as any" : ""}`
     const isCheckMode = inputDescriptor.options.check
-    const eventStu: TransformInterpolationRet[] = []
-    const aliasArgs: TransformInterpolationRet[] = []
-    const attributeStu: TransformInterpolationRet[] = []
-    const directiveStu: TransformInterpolationRet[][] = []
-    const inlineEventItems = new WeakSet<TemplateAttribute>()
+    const insertComment = inputDescriptor.options.comment
+    const isNormal = !isComponent && !isSlot && !isSpread
     const preProcessedAttr = preProcessAttr(attrs, tag, isComponent)
     const startTagNameEndIndex = nodeStartIndex + node.tag.length + 1
 
@@ -145,7 +143,16 @@ export function analyzeAttribute(
                 landingRange: getRangeByLoc(loc)
             }
         }
-        nameOfSlotTag = name
+        ret.nameOfSlotTag = stringify(name)
+    }
+
+    // 记录组件一级子节点的slot属性信息
+    const recordSlotAttributeInfo = (value: string, loc: ASTLocation) => {
+        if (existingSlotOfAnyTag.has(value)) {
+            DuplicateSlotAttr(value, node.parent!.tag, loc)
+        }
+        existingSlotOfAnyTag.add(value)
+        ret.slotOfAnyTag = stringify(value)
     }
 
     /**
@@ -163,44 +170,46 @@ export function analyzeAttribute(
     // 修改continueRE变量，这里需要检测此变量是否已经被赋值，若已被赋值则不能覆盖原来的值，避免
     // 低优先级的指令高优先级指令，例如await指令的后续指令正则表达式可能会被if/elif指令覆盖
     const setContinueInfo = (v: RegExp | null) => {
-        shouldContinueDirective = isNull((continueRE = v)) ? undefined : pureKey
+        ret.continueInfo.by = isNull((ret.continueInfo.re = v)) ? undefined : pureKey
     }
 
     // 记录组件一级子节点的slot属性的中间代码片段
     const recordSlotAttributeInterSnippet = () => {
+        let [startSourceIndex, endSourceIndex] = [0, 0]
         const slotAttr = getNameOrSlotAttribute("slot")
         const slotName = slotAttr?.value.raw || "default"
-        if (!existingSlotOfAnyTag.has(slotName)) {
-            existingSlotOfAnyTag.add(slotName)
+        if (slotAttr) {
+            endSourceIndex = slotAttr.value.loc.end.index
+            startSourceIndex = slotAttr.value.loc.start.index
         } else {
-            DuplicateSlotAttr(
-                slotName,
-                node.parent!.tag,
-                slotAttr?.value.loc || getLocByIndex(...stnr)
-            )
+            ;[startSourceIndex, endSourceIndex] = [nodeStartIndex, stnr[1]]
         }
-        if (isCheckMode) {
-            let [startSourceIndex, endSourceIndex] = [0, 0]
-            if (slotAttr) {
-                endSourceIndex = slotAttr.value.loc.end.index
-                startSourceIndex = slotAttr.value.loc.start.index
-            } else {
-                ;[startSourceIndex, endSourceIndex] = [nodeStartIndex, stnr[1]]
-            }
-            interCodeSnippets.push([
-                IntercodeSnippetKind.VoidSource,
-                `__c__.GetSlotProp(${node.parent!.componentTag},`
-            ])
-            recordInterSnippetWithSpecificRange(
-                normalStringify(slotName) + ")",
-                startSourceIndex,
-                endSourceIndex
-            )
-            interCodeSnippets.push([IntercodeSnippetKind.VoidSource, ";"])
+        recordInterCodeSnippets([
+            IntercodeSnippetKind.VoidSource,
+            `__c__.GetSlotProp(${node.parent!.componentTag},`
+        ])
+        recordInterSnippetWithSpecificRange(
+            normalStringify(slotName) + ")",
+            startSourceIndex,
+            endSourceIndex
+        )
+        recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, ";"])
+    }
+
+    // 组件一级子元素（slot内容）
+    if (parentIsComponent) {
+        // 未使用#slot指令时先将context.count加1（context固定存在）
+        if (!findSpecificAttr(preProcessedAttr, /#slot/)) {
+            context.count++
+        }
+
+        // 未使用slot属性时默认为default，报错位置与开始标签名称一致
+        if (isUndefined(ret.slotOfAnyTag)) {
+            recordSlotAttributeInfo("default", getLocByIndex(...stnr))
         }
     }
 
-    // slot标签无name属性或name属性为空时默认使用default，报错/跳转位置与开始标签名称一致
+    // slot标签无name属性时默认使用default，报错/跳转位置与开始标签名称一致
     if (isSlot && !getNameOrSlotAttribute("name")?.value.raw) {
         recordSlotInfo("default", getLocByIndex(...stnr))
     }
@@ -234,13 +243,14 @@ export function analyzeAttribute(
 
             return transformInterpolation(exp, startSourceIndex, context, {
                 ...option,
-                type: "directive"
+                type: "directive",
+                withInNormalTag: isNormal
             })
         }
 
         // 转换标签属性值
         const transAttrValue = (option?: TransformInterpolationOptionalOptions) => {
-            const exp = rv ? trimedValue : iv
+            let exp = rv ? trimedValue : iv
 
             // 当动态/引用属性或事件只存在key时，需要将中间代码中的值部分映射到属性名的位置
             if (isCheckMode) {
@@ -248,21 +258,42 @@ export function analyzeAttribute(
                     const ast = parse(`_=${exp}`, 0, 0)?.body[0] as any
                     if (isInlineEventHandler(ast?.expression.right)) {
                         inlineEventItems.add(attr)
-                    } else if (!isComponent) {
-                        interCodeSnippets.push([
+                    } else if (!isComponent && isTS) {
+                        recordInterCodeSnippets([
                             IntercodeSnippetKind.VoidSource,
                             `__c__.SatisfyEventHandler<"${pureKey}">(`
                         ])
                         if (rv) {
-                            interCodeSnippets.push([trimedValueStartSourceIndex, exp])
+                            recordInterCodeSnippets([trimedValueStartSourceIndex, exp])
                         } else {
                             recordInterSnippetWithSpecificRange(exp, ...keyRange)
                         }
-                        interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ");"])
+                        recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, ");"])
                     }
                 }
-                if (!isEvent || (isComponent && inlineEventItems.has(attr))) {
+                if (inlineEventItems.has(attr)) {
+                    if (!isComponent) {
+                        recordInterCodeSnippets([
+                            IntercodeSnippetKind.VoidSource,
+                            `{const $arg=__c__.GetEventHandler("${pureKey}");`
+                        ])
+                    } else {
+                        recordInterCodeSnippets([
+                            IntercodeSnippetKind.VoidSource,
+                            `{const $arg=__c__.GetComponentEventParams(${node.componentTag}, "${pureKey}");`
+                        ])
+                    }
+                }
+                if (!isEvent || inlineEventItems.has(attr) || isComponent || !isTS) {
                     recordInterExpression(exp, rv ? [trimedValueStartSourceIndex] : keyRange)
+                }
+                if (inlineEventItems.has(attr)) {
+                    recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, "};"])
+                }
+                if (isNormal && inlineEventItems.has(attr)) {
+                    for (let i = 0; i < attr.value.raw.length; i++) {
+                        markPositionFlag(i + attr.value.loc.start.index, "inNormalTagInlineEvent")
+                    }
                 }
                 return ""
             }
@@ -276,6 +307,7 @@ export function analyzeAttribute(
             return transformInterpolation(exp, startSourceIndex, context, {
                 ...option,
                 type: "attribute",
+                withInNormalTag: isNormal,
                 normalClassRange: attr.normalClassRange
             })
         }
@@ -287,22 +319,22 @@ export function analyzeAttribute(
                 return
             }
             if (isCheckMode) {
-                contextBlockCount++
-                interCodeSnippets.push(
+                ret.contextBlockCount++
+                recordInterCodeSnippets(
                     [IntercodeSnippetKind.SearchBackward, "{const "],
                     [trimedValueStartSourceIndex, trimedValue],
                     [IntercodeSnippetKind.SearchForward, "="]
                 )
                 if (pureKey === "slot") {
                     recordSlotAttributeInterSnippet()
-                } else if (!awaitExpression || pureKey !== "slot") {
-                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, interAnyValue + ";"])
+                } else if (!awaitExpression) {
+                    recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, interAnyValue + ";"])
                 } else {
-                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "__c__.GetResolve("])
-                    interCodeSnippets.push(awaitExpression!, [
-                        IntercodeSnippetKind.SearchForward,
-                        ");"
-                    ])
+                    recordInterCodeSnippets(
+                        [IntercodeSnippetKind.VoidSource, "__c__.GetResolve("],
+                        awaitExpression!,
+                        [IntercodeSnippetKind.SearchForward, ");"]
+                    )
                 }
                 return
             }
@@ -336,76 +368,76 @@ export function analyzeAttribute(
             }
         }
 
-        // pureKey为去掉!@#&前缀的属性名，如果是组件，还需将串型命名转换为驼峰命名
-        if ((pureKey = rk.slice(+isInterpolation)) && isComponent) {
-            pureKey = kebab2Camel(pureKey)
-        }
-
-        // 标记属性的开始位置
+        // 计算pureKey并标记属性的开始位置
+        pureKey = rk.slice(+isInterpolation)
         markPositionFlag(key.loc.start.index, "isAttributeStart")
         isInterpolation && markPositionFlag(key.loc.start.index, "isInterpolationAttributeStart")
 
         // 处理引用值，如果是组件，就把引用传递放在eventStu的位置
-        // 由于select的value属性与普通属性的处理逻辑并不相同（需要判断子option元素的选择情况，
-        // 初始化时要异步设置初始值）所以这里将select元素的value属性使用withReference进行处理
-        // 但这种情况下最后一个参数（setter)会被传入null，以打断选项改变时修改响应式值的渠道
-        if (isRef || (tag === "select" && pureKey === "value")) {
+        if (isRef) {
             let needSetter = true
             let eventName = tag === "textarea" ? "input" : "change"
 
-            // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
-            // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
-            // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
+            // 检查普通标签上的引用属性是否合法，不同的元素可接受的引用属性不同：
+            // 1. input（radio/checkbox)：&checked
+            // 2. input（text）、select或textarea标签：&value
+            // 注意：若input元素的type属性为插值属性，它将不能接受任何引用属性
             if (!isComponent && pureKey !== "dom") {
                 let tagForErr = tag
+                let attrForError = ""
                 let attrIsNotAllowed = false
-                let attrsForErr: string[] = []
 
                 if (!COULD_USE_REF_TAGS.has(tag) && pureKey !== "dom") {
                     return CanNotAcceptRefAttribute(pureKey, tag, attr.loc)
                 }
 
-                // 检查普通标签上的引用属性是否合法，对于input元素（非radio/checkbox）、textarea元素或
-                // select元素都只能接受&value，input（radio/checkbox）只能接受&checked，option元素
-                // 只能接受&selected。另外：若input元素的具有动态type属性，它将不能接受任何引用属性
-                if (tag === "input") {
-                    const typeAttr = findSpecificAttr(preProcessedAttr, /^!?type$/)
-                    if (typeAttr?.key.raw.startsWith("!")) {
-                        RefuseReferenceAttribute("input", "type", attr.loc)
+                switch (tag) {
+                    case "textarea": {
+                        attrIsNotAllowed = pureKey !== (attrForError = "value")
                     }
+                    case "select": {
+                        const multipleAttr = findSpecificAttr(preProcessedAttr, /^!?multiple$/)
+                        if (multipleAttr?.key.raw.startsWith("!")) {
+                            RefuseReferenceAttribute("select", "multiple", attr.loc)
+                        }
+                        needSetter = !multipleAttr
+                        attrIsNotAllowed = pureKey !== (attrForError = "value")
+                        !attrIsNotAllowed && (ret.selectRefValue = [iv, !!multipleAttr])
+                    }
+                    default: {
+                        const typeAttr = findSpecificAttr(preProcessedAttr, /^!?type$/)
+                        if (typeAttr?.key.raw.startsWith("!")) {
+                            RefuseReferenceAttribute("input", "type", attr.loc)
+                        }
 
-                    const typeValueRaw = typeAttr?.value.raw ?? ""
-                    if (/^(?:radio|checkbox)$/.test(typeValueRaw)) {
-                        needSetter = pureKey !== "group"
-                        attrsForErr = ["checked", "group"]
-                        tagForErr = `${tag}[type="${typeValueRaw}"]`
-                        attrIsNotAllowed = !/^(?:checked|group)$/.test(pureKey)
-                    } else {
-                        eventName = "input"
-                        attrsForErr = ["value"]
-                        attrIsNotAllowed = pureKey !== "value"
-                        tagForErr = `${tag}[type="${typeAttr?.value.raw || "text"}"]`
+                        const typeValueRaw = typeAttr?.value.raw ?? ""
+                        if (!/^(?:radio|checkbox)$/.test(typeValueRaw)) {
+                            eventName = "input"
+                            tagForErr = `${tag}[type="${typeValueRaw || "text"}"]`
+                            attrIsNotAllowed = pureKey !== (attrForError = "value")
+                        } else {
+                            tagForErr = `${tag}[type="${typeValueRaw}"]`
+                            attrIsNotAllowed = pureKey !== (attrForError = "checked")
+                        }
                     }
-                } else if (tag === "select") {
-                    const multipleAttr = findSpecificAttr(preProcessedAttr, /^!?multiple/)
-                    if (multipleAttr?.key.raw.startsWith("!")) {
-                        RefuseReferenceAttribute("select", "multiple", attr.loc)
-                    }
-                    attrsForErr = ["value"]
-                    needSetter = !multipleAttr
-                    attrIsNotAllowed = pureKey !== "value"
                 }
 
-                // 检查引用传递的属性是否合法，允许的属性：input/textarea -> value；
-                // radio/checkbox -> checked/group；select -> value（均除&dom外）
                 if (attrIsNotAllowed) {
-                    return InvalidRefAttr(tagForErr, attrsForErr, pureKey, attr.loc)
+                    return InvalidRefAttr(tagForErr, attrForError, pureKey, attr.loc)
                 }
             }
 
             // &dom不能用于SPREAD_TAG和slot标签
             if (pureKey === "dom" && (isSlot || isSpread)) {
                 return BadTargetForReferenceDom(attr.loc)
+            }
+
+            // 检查模式下select的&value属性不合法时将ret.selectRefValue置为undefined
+            if (isCheckMode && ret.selectRefValue && rv) {
+                const ast = parse(`_=${rv}`, 2, value.loc.start.index) as any
+                if (!ast || !isAssignable(ast.body[0].expression.right)) {
+                    ret.selectRefValue = undefined
+                }
             }
 
             // 非检查模式时正常编译，检查模式下记录中间代码片段
@@ -420,38 +452,30 @@ export function analyzeAttribute(
                     } else {
                         const postfix = `, ${setter}]`
                         const prefix = `${stringify(pureKey)}, [`
-                        eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
+                        ret.eventStu.push(concatStrAndTIR(prefix, tiGetter, postfix))
                     }
                 } else if (pureKey !== "dom") {
-                    // select的value属性（非引用）时setter为null
-                    // radio/checkbox(&group)或select[multiple](&value)时无setter
-                    if (!needSetter) {
-                        setter = ""
-                    } else if (!isRef) {
-                        setter = getAlias("NIL")
-                    }
-
-                    if (setter) {
-                        setter = ", " + setter
-                    }
-
                     const spk = stringify(pureKey)
                     const sev = stringify(eventName)
                     const funcName = getAlias("withReference")
                     const prefix = `...${funcName}(${sev}, ${spk}, `
-                    eventStu.push(concatStrAndTIR(prefix, tiGetter, setter))
+
+                    // select[multiple]元素上的&value引用属性无setter
+                    ret.eventStu.push(
+                        concatStrAndTIR(prefix, tiGetter, `${needSetter ? `, ${setter}` : ""})`)
+                    )
                 } else {
-                    attributeStu.push(stringify("&dom"), transAttrValue({ usedAsSetter: true }))
+                    ret.attributeStu.push(stringify("&dom"), transAttrValue({ usedAsSetter: true }))
                 }
             } else {
                 if (isTS && !isComponent) {
                     const recordValueCheckSnippet = (type: string, suffix = ")") => {
-                        interCodeSnippets.push([
+                        recordInterCodeSnippets([
                             IntercodeSnippetKind.VoidSource,
                             `__c__.Satisfy${type}(`
                         ])
                         if (rv) {
-                            interCodeSnippets.push(
+                            recordInterCodeSnippets(
                                 [trimedValueStartSourceIndex, trimedValue],
                                 [IntercodeSnippetKind.SearchForward, suffix]
                             )
@@ -460,78 +484,54 @@ export function analyzeAttribute(
                         }
                     }
                     switch (pureKey) {
-                        case "value":
-                            recordValueCheckSnippet("String")
-                            break
-                        case "checked":
+                        case "checked": {
                             recordValueCheckSnippet("Boolean")
                             break
-                        case "group":
-                            recordValueCheckSnippet("Group", ",")
+                        }
+                        case "value": {
+                            if (tag !== "select") {
+                                recordValueCheckSnippet("String")
+                            } else if (ret.selectRefValue?.[1]) {
+                                recordValueCheckSnippet("MultipleSelect", ",")
+                            }
                             break
-                        case "dom":
+                        }
+                        case "dom": {
                             recordValueCheckSnippet(`Element<${normalStringify(tag)}>`, "!)")
                             break
-                    }
-
-                    if (pureKey === "group") {
-                        const valueAttr = findSpecificAttr(preProcessedAttr, /^!?value/)
-                        if (isUndefined(valueAttr)) {
-                            recordInterSnippetWithSpecificRange(
-                                '"")',
-                                trimedValueLoc.start.index,
-                                trimedValueLoc.end.index
-                            )
-                        } else {
-                            const isDynamicValue = valueAttr.key.raw[0] === "!"
-                            const quote = valueAttr.quote === "single" ? "'" : '"'
-                            if (!isDynamicValue) {
-                                interCodeSnippets.push([valueAttr.loc.start.index, quote])
-                            }
-                            if (valueAttr.value.raw) {
-                                interCodeSnippets.push([
-                                    valueAttr.value.loc.start.index,
-                                    valueAttr.value.raw
-                                ])
-                            } else if (valueAttr.inferredValue) {
-                                recordInterSnippetWithSpecificRange(
-                                    valueAttr.inferredValue + ")",
-                                    valueAttr.key.loc.start.index,
-                                    valueAttr.key.loc.end.index
-                                )
-                            }
-                            if (!isDynamicValue) {
-                                interCodeSnippets.push([valueAttr.loc.end.index, quote])
-                            }
-                            if (valueAttr.value.raw || !valueAttr.inferredValue) {
-                                interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ")"])
-                            }
                         }
                     }
-
-                    interCodeSnippets.push([IntercodeSnippetKind.SearchForward, ";"])
+                    if (isTS && ret.selectRefValue?.[1]) {
+                        recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, "0 as any)"])
+                    }
+                    recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, ";"])
                 }
 
-                // 组件标签或普通标签的非group引用属性时，检查给定值是否是左值（可赋值的目标）
-                if (isComponent || (pureKey !== "group" && iv)) {
-                    interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "("])
-                    if (!rv) {
-                        recordInterSnippetWithSpecificRange(iv + ")", ...keyRange)
-                    } else {
-                        interCodeSnippets.push(
-                            [value.loc.start.index, rv],
-                            [IntercodeSnippetKind.SearchForward, ")"]
-                        )
-                    }
-                    interCodeSnippets.push([
-                        IntercodeSnippetKind.SearchForward,
-                        `=${interAnyValue};`
+                // 将引用属性的值记录为一个括号表达式（表达式前一个位置为空格时表示此处禁止常量）
+                // 它在中间代码中的开始索引被记录在inputDescriptor.refAttrValueStartIndexes中
+                if (rv) {
+                    const allowConst = ret.selectRefValue?.[1]
+                    inputDescriptor.refAttrValueStartIndexes.push(
+                        getRecordedInterCodeLen() + Number(!allowConst)
+                    )
+                    recordInterCodeSnippets([
+                        IntercodeSnippetKind.VoidSource,
+                        `${allowConst ? "" : " "}(`
                     ])
+                    if (rv) {
+                        recordInterCodeSnippets(
+                            [value.loc.start.index, rv],
+                            [IntercodeSnippetKind.SearchForward, ");"]
+                        )
+                    } else {
+                        recordInterSnippetWithSpecificRange(iv + ")", ...keyRange)
+                        recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, ";"])
+                    }
                 }
             }
         } else if (isDirective) {
             outter: switch (pureKey) {
-                case "for":
+                case "for": {
                     let itemPart = ""
                     let indexPart = ""
                     let baseValue = ""
@@ -616,7 +616,7 @@ export function analyzeAttribute(
                     }
 
                     const preContextCount = context.count
-                    contextBlockCount += Number(hasContextIdentifier)
+                    ret.contextBlockCount += Number(hasContextIdentifier)
 
                     // 转换for指令依赖的表达式部分（不含item及index标识符部分）
                     const transformedForBaseValue = transDirective(
@@ -636,6 +636,7 @@ export function analyzeAttribute(
                                 indexPart,
                                 startSourceIndex
                             )
+                            context.count++
                             recordDestructuringIdentifiers(
                                 node,
                                 tir,
@@ -658,6 +659,7 @@ export function analyzeAttribute(
                                 itemPart,
                                 startSourceIndex
                             )
+                            context.count++
                             recordDestructuringIdentifiers(
                                 node,
                                 tir,
@@ -673,35 +675,35 @@ export function analyzeAttribute(
                     }
 
                     // 记录forModule调用结构在directiveStu中的索引
-                    forModuleFuncIndex = directiveStu.length
+                    forModuleFuncIndex = ret.directiveStu.length
 
                     // 记录for指令结构（forModule方法调用结构，transformTemplate中使用）
-                    directiveStu.push([getAlias("forModule"), transformedForBaseValue])
+                    ret.directiveStu.push([getAlias("forModule"), transformedForBaseValue])
 
                     if (isCheckMode) {
                         if (!hasContextIdentifier) {
-                            interCodeSnippets.push(
+                            recordInterCodeSnippets(
                                 [IntercodeSnippetKind.VoidSource, "__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex, trimedValue],
                                 [IntercodeSnippetKind.SearchForward, ");"]
                             )
                         } else {
-                            interCodeSnippets.push([
+                            recordInterCodeSnippets([
                                 IntercodeSnippetKind.SearchBackward,
                                 "{const ["
                             ])
                             if (indexPart) {
-                                interCodeSnippets.push([
+                                recordInterCodeSnippets([
                                     trimedValueStartSourceIndex + itemPartRange![0],
                                     trimedValue.slice(itemPartRange![0], indexPartRange![1])
                                 ])
                             } else {
-                                interCodeSnippets.push([
+                                recordInterCodeSnippets([
                                     trimedValueStartSourceIndex + itemPartRange![0],
                                     itemPart
                                 ])
                             }
-                            interCodeSnippets.push(
+                            recordInterCodeSnippets(
                                 [IntercodeSnippetKind.SearchForward, "]"],
                                 [IntercodeSnippetKind.VoidSource, "=__c__.GetKVPair("],
                                 [trimedValueStartSourceIndex + baseValueRange![0], baseValue],
@@ -710,20 +712,20 @@ export function analyzeAttribute(
                         }
                     }
                     break
-
-                case "key":
+                }
+                case "key": {
                     if (forModuleFuncIndex === -1) {
                         UseKeyDirectiveWithoutForDirective(attr.loc)
                     } else {
                         const transRet = transDirective(rv, -1, { isKeyDirective: true })
-                        directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
-                        directiveStu[forModuleFuncIndex].push(transRet)
+                        ret.directiveStu[forModuleFuncIndex][0] = getAlias("keyedForModule")
+                        ret.directiveStu[forModuleFuncIndex].push(transRet)
                     }
                     break
-
+                }
                 case "if":
                 case "elif":
-                case "else":
+                case "else": {
                     // 使用elif或else指令的节点的前一个兄弟节点必须使用了if或elif指令
                     if (
                         /^el(?:if|se)$/.test(pureKey) &&
@@ -736,27 +738,38 @@ export function analyzeAttribute(
                     // ifModule方法调用中，而每个指令都会产生一条判断语句并需要传递给ifModule，但他们在不同的节点中，
                     // 所以这里通过将传递给analyzeTemplate方法，并analyzeTemplate方法中组合ifModule调用结构
                     if (pureKey === "else") {
-                        continueArg = "1"
+                        ret.continueInfo.arg = "1"
                         setContinueInfo(null)
                         rv && DirectiveValueIsIgnored(rk, attr.loc)
                     } else {
-                        const transRet = transDirective(rv, trimedValueStartSourceIndex)
-                        if (pureKey === "elif") {
-                            continueArg = transRet
+                        let transRet: TransformInterpolationRet
+                        if (isCheckMode) {
+                            transRet = ""
+                            ret.contextBlockCount++
+                            recordInterCodeSnippets(
+                                [IntercodeSnippetKind.VoidSource, `if(`],
+                                [trimedValueStartSourceIndex, rv],
+                                [IntercodeSnippetKind.SearchForward, "){"]
+                            )
                         } else {
-                            createSpread = true
-                            directiveStu.push([getAlias("ifModule"), transRet])
+                            transRet = transDirective(rv, trimedValueStartSourceIndex)
+                        }
+                        if (pureKey === "elif") {
+                            ret.continueInfo.arg = transRet
+                        } else {
+                            ret.createSpread = true
+                            ret.directiveStu.push([getAlias("ifModule"), transRet])
                         }
                         setContinueInfo(/^#(?:elif|else)$/)
                     }
                     break
-
+                }
                 case "then":
                 case "catch":
-                case "await":
+                case "await": {
                     if (pureKey === "await") {
                         if (isCheckMode) {
-                            interCodeSnippets.push(
+                            recordInterCodeSnippets(
                                 [IntercodeSnippetKind.VoidSource, "__c__.SatisfyPromise("],
                                 [trimedValueStartSourceIndex, trimedValue],
                                 [IntercodeSnippetKind.SearchForward, ");"]
@@ -764,9 +777,9 @@ export function analyzeAttribute(
                             awaitExpression = [trimedValueStartSourceIndex, trimedValue]
                         } else {
                             const transRet = transDirective(rv, trimedValueStartSourceIndex)
-                            directiveStu.push([getAlias("awaitModule"), transRet])
+                            ret.directiveStu.push([getAlias("awaitModule"), transRet])
                         }
-                        withAwait = createSpread = true
+                        withAwait = ret.createSpread = true
                         setContinueInfo(/^#(?:then|catch)$/)
                     } else {
                         // 使用了then指令的节点必须同时使用了await指令或前一个兄弟节点使用了await指令
@@ -794,15 +807,15 @@ export function analyzeAttribute(
                             setContinueInfo(null)
                         }
                         if (withAwait) {
-                            insertNullNum = pureKey === "then" ? 1 : 2
+                            ret.insertNullNum = pureKey === "then" ? 1 : 2
                         }
                     }
                     if (continueByDirective === "await" && pureKey === "catch") {
-                        insertNullNum = 1
+                        ret.insertNullNum = 1
                     }
                     break
-
-                case "slot":
+                }
+                case "slot": {
                     // 父元素非组件，不能使用slot指令
                     if (parentIsComponent) {
                         hasSlotDirective = true
@@ -811,45 +824,43 @@ export function analyzeAttribute(
                         BasSlotDirectiveCarrier(key.loc)
                     }
                     break
-
-                case "target":
-                    if (isCheckMode) {
-                        interCodeSnippets.push(
+                }
+                case "target": {
+                    if (isTS && isCheckMode) {
+                        recordInterCodeSnippets(
                             [IntercodeSnippetKind.VoidSource, "__c__.SatisfyTargetDirective("],
                             [trimedValueStartSourceIndex, trimedValue],
                             [IntercodeSnippetKind.SearchForward, ");"]
                         )
                     } else {
-                        directiveStu.push([getAlias("targetModule"), transAttrValue()])
+                        ret.directiveStu.push([getAlias("targetModule"), transAttrValue()])
                     }
                     break
-
-                case "html":
+                }
+                case "html": {
                     if (!isCheckMode) {
                         if (isEmptyString(tag) || isSpread) {
-                            directiveStu.push([
+                            ret.directiveStu.push([
                                 getAlias("unescapeModule"),
                                 rv ? transAttrValue() : "{}"
                             ])
                         }
                     } else {
-                        interCodeSnippets.push(
+                        recordInterCodeSnippets(
                             [IntercodeSnippetKind.VoidSource, "__c__.SatisfyHtmlDirective("],
                             [trimedValueStartSourceIndex, trimedValue],
                             [IntercodeSnippetKind.SearchForward, ");"]
                         )
                     }
                     break
-
-                case "show":
-                    attributeStu.push(stringify("#show"), transAttrValue())
+                }
+                case "show": {
+                    ret.directiveStu.push([getAlias("showModule"), transAttrValue()])
                     break
-
-                default:
+                }
+                default: {
                     UnkonwDirective(rk, key.loc)
-                //
-                // switch code block end here
-                //
+                }
             }
         } else if (isEvent) {
             if (isSlot) {
@@ -861,124 +872,94 @@ export function analyzeAttribute(
             let eventName = pureKey
             let eventWrapperFlag = 0
 
-            const existringModifiers = new Set<string>()
-            const duplicateModifiers = new Set<string>()
+            const existingFlags = new Set<string>()
+            const duplicateFlags = new Set<string>()
 
-            const eventModifierArr: string[] = []
-            const eventWrapperModifierArr: string[] = []
-            const existingKeyRelatedModifiers: string[] = []
-            const modifierArrWithIndex: [string, number, number][] = []
+            const eventFlagArr: string[] = []
+            const eventWrapperFlagArr: string[] = []
+            const flagArrWithIndex: [string, number, number][] = []
 
-            const modifierStartIndex = pureKey.indexOf("|")
-            const modifierArr = pureKey.slice(modifierStartIndex + 1).split("|")
-            const modifierStartSourceIndex = pureKeyStartSourceIndex + modifierStartIndex
-            modifierStartIndex !== -1 && (eventName = eventName.slice(0, modifierStartIndex))
+            const flagStartIndex = pureKey.indexOf("|")
+            const flagArr = pureKey.slice(flagStartIndex + 1).split("|")
+            const flagStartSourceIndex = pureKeyStartSourceIndex + flagStartIndex + 1
+            flagStartIndex !== -1 && (eventName = eventName.slice(0, flagStartIndex))
 
             // flagArrWithIndex记录了每个flag的名称及开始结束索引
-            for (let i = 0; i < modifierArr.length; i++) {
-                const preLen = modifierArr[i - 1]?.length || 0
-                const preIndex = modifierArrWithIndex[i - 1]?.[1] || 0
-                modifierArrWithIndex.push([
-                    modifierArr[i],
+            for (let i = 0; i < flagArr.length; i++) {
+                const preLen = flagArr[i - 1]?.length || 0
+                const preIndex = flagArrWithIndex[i - 1]?.[1] || 0
+                flagArrWithIndex.push([
+                    flagArr[i],
                     preIndex + preLen + 1,
-                    preIndex + preLen + modifierArr[i].length + 1
+                    preIndex + preLen + flagArr[i].length + 1
                 ])
             }
 
-            if (modifierStartIndex !== -1) {
-                eventName = eventName.slice(0, modifierStartIndex)
+            if (flagStartIndex !== -1) {
+                eventName = eventName.slice(0, flagStartIndex)
                 if (isComponent) {
                     InvalidEventFlagForComponent(
-                        modifierArr.map(item => item.trim()).join(", "),
-                        modifierStartSourceIndex,
+                        flagArr.map(item => item.trim()).join(", "),
+                        flagStartSourceIndex,
                         key.loc.end.index
                     )
                 } else {
-                    modifierArrWithIndex.forEach(item => {
-                        const [modifier, startIndex, endIndex] = item
-                        const endSourceIndex = modifierStartSourceIndex + endIndex
-                        const startSourceIndex = modifierStartSourceIndex + startIndex
-                        const currentFlagNum = (EventListenerFlag as any)[modifier]
-                        const currentWrapperFlagNum = (EventWrapperFlag as any)[modifier]
+                    flagArrWithIndex.forEach(item => {
+                        const [flag, startIndex, endIndex] = item
+                        const endSourceIndex = flagStartSourceIndex + endIndex
+                        const startSourceIndex = flagStartSourceIndex + startIndex
+                        const currentFlagNum = (EventListenerFlag as any)[flag]
+                        const currentWrapperFlagNum = (EventWrapperFlag as any)[flag]
                         if (!currentFlagNum && !currentWrapperFlagNum) {
-                            InvalidEventFlag(modifier, eventName, startSourceIndex, endSourceIndex)
+                            InvalidEventFlag(flag, eventName, startSourceIndex, endSourceIndex)
                         }
                         if (currentFlagNum) {
                             // 只有input事件可以使用compose修饰符
-                            if (modifier === "compose" && eventName !== "@input") {
-                                InvalidComposeModifier(
-                                    eventName.slice(1),
-                                    startSourceIndex,
-                                    endSourceIndex
-                                )
+                            if (flag === "compose" && eventName !== "input") {
+                                InvalidComposeFlag(eventName, startSourceIndex, endSourceIndex)
                             }
 
-                            // 重复出现的修饰符记录到duplicateModifiers
-                            if (existringModifiers.has(modifier)) {
-                                duplicateModifiers.add(modifier)
+                            // 重复出现的修饰符记录到duplicateFlags
+                            if (existingFlags.has(flag)) {
+                                duplicateFlags.add(flag)
                             } else {
-                                eventModifierArr.push(modifier)
-                                existringModifiers.add(modifier)
+                                eventFlagArr.push(flag)
+                                existingFlags.add(flag)
                                 eventFlag |= currentFlagNum || 0
                             }
                         } else if (currentWrapperFlagNum) {
                             // 只有keyup、keydown和keypress事件可以使用普通按键修饰符
                             if (
-                                KEY_RELATED_EVENT_MODIFIERS.has(modifier) &&
+                                KEY_RELATED_EVENT_FLAGS.has(flag) &&
                                 !/^key(?:up|down|press)$/.test(eventName)
                             ) {
-                                InvalidKeyRelatedModifier(
-                                    modifier,
+                                InvalidKeyRelatedFlag(
+                                    flag,
                                     eventName,
                                     startSourceIndex,
                                     endSourceIndex
                                 )
-                            } else if (KEY_RELATED_EVENT_MODIFIERS.has(modifier)) {
-                                // 如果已经存在了普通按键修饰符，则先清空它们，并在之后重新追加
-                                // 预期：多个普通按键修饰符时，最后一个优先级最高并应用最后一个修饰符
-                                //
-                                // 注意：此处代码的正确性依赖EventWrapperFlag中flag的声明顺序，
-                                // 即：(1 << 9) - 1 === (1 << 0) | (1 << 1) | ... | (1 << 8)
-                                if (existingKeyRelatedModifiers.length > 0) {
-                                    eventWrapperFlag &= ~((1 << 9) - 1)
-                                }
-                                if (!existringModifiers.has(modifier)) {
-                                    existingKeyRelatedModifiers.push(modifier)
-                                }
                             }
 
-                            // 重复出现的修饰符记录到duplicateModifiers
-                            if (existringModifiers.has(modifier)) {
-                                duplicateModifiers.add(modifier)
+                            // 重复出现的修饰符记录到duplicateFlags
+                            if (existingFlags.has(flag)) {
+                                duplicateFlags.add(flag)
                             } else {
-                                existringModifiers.add(modifier)
+                                existingFlags.add(flag)
+                                eventWrapperFlagArr.push(flag)
                                 eventWrapperFlag |= currentWrapperFlagNum || 0
                             }
                         }
                     })
 
-                    // 普通按键修饰符存在多个时发出警告
-                    if (existingKeyRelatedModifiers.length > 1) {
-                        ConflictNormalKeyEventModifier(
-                            existingKeyRelatedModifiers,
-                            modifierStartSourceIndex,
-                            key.loc.end.index
-                        )
-                    }
-
                     // 存在重复的修饰符时发出警告
-                    if (duplicateModifiers.size > 0) {
-                        DuplicateEventModifiers(
-                            Array.from(duplicateModifiers),
+                    if (duplicateFlags.size > 0) {
+                        DuplicateEventFlags(
+                            Array.from(duplicateFlags),
                             eventName,
-                            modifierStartSourceIndex,
+                            flagStartSourceIndex,
                             key.loc.end.index
                         )
-                    }
-
-                    // 将最后一个普通按键修饰符记录到eventWrapperModifierArr
-                    if (existingKeyRelatedModifiers.length > 0) {
-                        eventWrapperModifierArr.push(lastElem(existingKeyRelatedModifiers))
                     }
                 }
             }
@@ -987,24 +968,27 @@ export function analyzeAttribute(
                 const tir = transAttrValue({
                     eventWrapper: {
                         flag: eventWrapperFlag,
-                        modifiers: eventWrapperModifierArr
+                        flagDescription: eventWrapperFlagArr.join(", ") || "no flag"
                     }
                 })
                 if (!tir) {
                     return
                 }
-                if (eventFlag === 0) {
-                    flagComment = "no flag"
-                } else {
-                    flagComment = eventModifierArr.join(", ")
+                if (insertComment) {
+                    if (eventFlag === 0) {
+                        flagComment = "no flag"
+                    } else {
+                        flagComment = eventFlagArr.join(", ")
+                    }
+                    flagComment = `/* ${flagComment} */ `
                 }
 
                 const prefix = `${stringify(eventName)}, `
-                const postfix = `, /* ${flagComment} */ ${eventFlag}`
-                eventStu.push(concatStrAndTIR(prefix, tir, postfix))
+                const postfix = `, ${flagComment}${eventFlag}`
+                ret.eventStu.push(concatStrAndTIR(prefix, tir, postfix))
             } else {
                 const tir = transAttrValue({ isComponentEvent: true })
-                tir && attributeStu.push(concatStrAndTIR(stringify(eventName) + ", ", tir, ""))
+                tir && ret.attributeStu.push(concatStrAndTIR(stringify(eventName) + ", ", tir, ""))
             }
         } else if ((isSlot && pureKey === "name") || (parentIsComponent && pureKey === "slot")) {
             // slot标签的name属性（或组件的一级子元素的slot属性）不能是动态的，也不能是引用的，且不能为空
@@ -1023,15 +1007,15 @@ export function analyzeAttribute(
                     NameAttrForSlotIsEmpty(attr.loc)
                 }
             } else {
-                if (isSlotAttribute) {
-                    slotOfAnyTag = rv
-                } else {
+                if (!isSlotAttribute) {
                     recordSlotInfo(rv, attr.loc)
+                } else {
+                    recordSlotAttributeInfo(rv, value.loc)
                 }
             }
         } else {
             if (isCheckMode && isSlot && iv) {
-                inputDescriptor.slotInfo[nameOfSlotTag!].properties.push([
+                inputDescriptor.slotInfo[ret.nameOfSlotTag!].properties.push([
                     pureKey,
                     getRangeByLoc(key.loc),
                     isInterpolation ? (rv ? trimedValueStartSourceIndex : keyRange[0]) : rv
@@ -1042,14 +1026,65 @@ export function analyzeAttribute(
                 ? transAttrValue()
                 : isEmptyString(rv)
                 ? "!0"
-                : stringify(rv)
-            tir && attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
+                : stringify(rv, true)
+            tir && ret.attributeStu.push(concatStrAndTIR(`${stringify(pureKey)}, `, tir, ""))
         }
     })
 
+    // 中间代码：验证option标签的value是否可被父元素（select）的&value接受
+    if (isTS && isCheckMode && selectRefValue && tag === "option") {
+        const [target, isMultiple] = selectRefValue
+        const valueAttr = findSpecificAttr(preProcessedAttr, "!value")
+        if (!isMultiple) {
+            let assignValueAndSpecificRange: [string, number, number]
+            if (!valueAttr?.value.raw && valueAttr?.quote !== "none") {
+                assignValueAndSpecificRange = ['""', ...stnr]
+            } else if (valueAttr.quote === "none") {
+                assignValueAndSpecificRange = [
+                    "value",
+                    valueAttr.key.loc.start.index,
+                    valueAttr.key.loc.end.index
+                ]
+            } else {
+                assignValueAndSpecificRange = [
+                    valueAttr.value.raw,
+                    valueAttr.value.loc.start.index,
+                    valueAttr.value.loc.end.index
+                ]
+            }
+            recordInterSnippetWithSpecificRange(
+                target + "=",
+                assignValueAndSpecificRange[1],
+                assignValueAndSpecificRange[2]
+            )
+            recordInterCodeSnippets([
+                IntercodeSnippetKind.VoidSource,
+                assignValueAndSpecificRange[0]
+            ])
+        } else {
+            recordInterCodeSnippets([
+                IntercodeSnippetKind.VoidSource,
+                `__c__.SatisfyMultipleSelect(${target},`
+            ])
+            if (valueAttr && !valueAttr.value.raw && valueAttr.quote !== "none") {
+                recordInterSnippetWithSpecificRange(
+                    "value",
+                    valueAttr.key.loc.start.index,
+                    valueAttr.key.loc.end.index
+                )
+            } else if (!valueAttr?.value.raw) {
+                recordInterSnippetWithSpecificRange('""', ...stnr)
+            } else {
+                recordInterCodeSnippets([valueAttr.value.loc.start.index, valueAttr.value.raw])
+            }
+            recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, ")"])
+        }
+        recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, ";"])
+    }
+
     // 设置aliasModule调用结构
     if (aliasArgs.length) {
-        directiveStu.push([getAlias("aliasModule"), ...aliasArgs])
+        ret.directiveStu.push([getAlias("aliasModule"), ...aliasArgs])
     }
 
     // 检查模式时，需要为组件标签生成实例化的相关中间代码（指令的中间代码与其他标签处理一致），
@@ -1097,49 +1132,33 @@ export function analyzeAttribute(
         })
 
         // 记录组件实例化中间代码（new ComponentName）
-        interCodeSnippets.push([IntercodeSnippetKind.VoidSource, "new "])
+        recordInterCodeSnippets([IntercodeSnippetKind.VoidSource, "new "])
         recordInterSnippetWithSpecificRange(`${node.componentTag}(`, ...stnr)
 
         for (const target of attrRecords) {
-            interCodeSnippets.push([stnr[0], "{"])
+            recordInterCodeSnippets([stnr[0], "{"])
             target.forEach((item, index) => {
                 const isKey = item.type === "key"
                 const isLast = index === target.length - 1
                 const suffix = isKey ? ":" : isLast ? "" : ","
                 if (!item.specificRange) {
-                    interCodeSnippets.push([item.range[0], item.value])
-                    suffix && interCodeSnippets.push([IntercodeSnippetKind.SearchForward, suffix])
+                    recordInterCodeSnippets([item.range[0], item.value])
+                    suffix && recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, suffix])
                 } else {
                     const specificSnippet = item.value + (suffix || " ")
                     recordInterSnippetWithSpecificRange(specificSnippet, ...item.range)
                 }
             })
-            interCodeSnippets.push([IntercodeSnippetKind.SearchForward, "}"], [stnr[1], ","])
+            recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, "}"], [stnr[1], ","])
         }
-        interCodeSnippets.push([IntercodeSnippetKind.SearchForward, `${interAnyValue});`])
+        recordInterCodeSnippets([IntercodeSnippetKind.SearchForward, `${interAnyValue});`])
     }
 
     // slot节点未使用slot指令时记录slot属性相关的中间代码片段
     if (isCheckMode && parentIsComponent && !hasSlotDirective) {
         recordSlotAttributeInterSnippet()
     }
-
-    return {
-        eventStu,
-        directiveStu,
-        attributeStu,
-        createSpread,
-        insertNullNum,
-        awaitExpression,
-        contextBlockCount,
-        continueInfo: {
-            re: continueRE,
-            arg: continueArg,
-            by: shouldContinueDirective
-        },
-        slotOfAnyTag: normalStringify(slotOfAnyTag),
-        nameOfSlotTag: normalStringify(nameOfSlotTag)
-    }
+    return ret
 }
 
 // 该方法的主要用途是过滤重复的属性，此外方法还有以下功能：
@@ -1160,6 +1179,9 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
     for (let i = 0; i < attributes.length; i++) {
         const currentAttribute = attributes[i]
         const { key, value, loc } = currentAttribute
+
+        // 如果是组件，统一将属性名修改为驼峰格式
+        isComponent && (key.raw = kebab2Camel(key.raw))
 
         const [rk, rv] = [key.raw, value.raw]
         const isClass = /^[!&]?class/.test(rk)
@@ -1194,16 +1216,15 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
                     DirectivesCantCoexist([awiatRelatedDirectivesCoexistState, rk], loc)
                 }
             }
-            // 检查必须传递属性值的属性是否有值
+            // 检查必须传递属性值的指令是否有值
             if (MUST_PASS_VALUE_DIRECTIVES.has(pureKey) && !rv) {
-                NoValueForRequiredValueAttribute(rk, loc)
+                MustPassValueForDirective(pureKey, loc)
                 continue
             }
         }
 
-        // 特殊情况：非组件标签上的class属性，动态和非动态class均可出现一次，rk相同且重复出现才会报错
-        // 注意：这里需要单独检测是否是引用传递的class属性，若是则报错，因为多个class会被合并成一个动态
-        // class属性（!class)，合并之后的属性名并不会导致分析属性时检测到普通标签上使用引用属性的错误
+        // 特殊情况：对于非组件标签上的class属性：动态和非动态class均可出现一次，rk相同且重复出现才会报错
+        // 注意：这里需要单独检测是否是引用传递的class属性，因为多个class相关属性被合并为一个!class后分析属性时检查不出是否使用了&class
         if (isClass && !isComponentOrSlot) {
             if (!existingItem.has("!class")) {
                 existingItem.set("!class", [])
@@ -1247,19 +1268,22 @@ export function preProcessAttr(attributes: TemplateAttribute[], tag: string, isC
             continue
         }
 
-        // 根据传入的chars数组检查是否存在重复属性名，当char+pureKey===rk时表示这是当前rk
-        // 第一次出现，无需检查，其他情况则只要char+pureKey在existingItem中存在则视为重复
+        // 根据传入的chars数组检查是否存在重复属性名
         const checkDuplicateWithChars = (chars: string[]) => {
-            return chars.some(char => {
-                if (char + pureKey === rk || !existingItem.has(char + pureKey)) {
-                    return false
+            for (let existing = false, i = 0; i < chars.length; i++) {
+                const combinedKey = chars[i] + pureKey
+                if (!existingItem.has(combinedKey)) {
+                    continue
                 }
-                return DuplicateAttributeKey(tag, char + pureKey, rk, loc), true
-            })
+                if (!existing) {
+                    existing = true
+                }
+                return DuplicateAttributeKey(tag, combinedKey, rk, loc), true
+            }
         }
 
         // 组件上的普通属性、动态属性、事件名三者之间的任意两两组合视为重复
-        if (isComponent && checkDuplicateWithChars(["", "!", "&"])) continue
+        if (isComponent && checkDuplicateWithChars(["", "!", "@"])) continue
 
         // textarea标签的value或input标签的value/checked属性：
         // 普通属性、动态属性、引用属性三者之间的任意两两组合视为重复

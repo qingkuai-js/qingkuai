@@ -6,10 +6,10 @@ import {
     findOutOfStringComment,
     getResotedStringLiteral
 } from "../../util/compiler/strings"
+import { StringLiteralLeftPad } from "../constants"
+import { inputDescriptor, stringConstants } from "../state"
 import { stringLiteralConstantRE, tirNormalClassItemRE } from "../regular"
 import { isFunction, isNull, isString, isUndefined } from "../../util/shared/assert"
-import { inputDescriptor, stringConstants, stringConstantsSourceMap } from "../state"
-import { StringLiteralLeftPad } from "../constants"
 
 export function compressCompileSize(tars: (TemplateAnalysisRet | null)[]) {
     ;[confirmBracket, confirmStringConstants].forEach(fn => fn(tars))
@@ -44,7 +44,9 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
                 estu[i] = singleTerConfirm(estu[i])
             }
             if (!isUndefined(dstu?.[i])) {
-                dstu[i][1] = singleTerConfirm(dstu[i][1])
+                for (let j = 1; j < dstu[i].length; j++) {
+                    dstu[i][j] = singleTerConfirm(dstu[i][j])
+                }
             }
         }
         if (tar.children.length) {
@@ -57,8 +59,12 @@ function confirmStringConstants(tars: (TemplateAnalysisRet | null)[]) {
 function confirmBracket(tars: (TemplateAnalysisRet | null)[]) {
     tars.forEach(tar => {
         tar?.children.forEach(child => {
-            if (child.useBracket) {
-                child.useBracket = child.tar?.children.length !== 1
+            if (
+                child.useBracket &&
+                !child.tar?.aar?.slotOfAnyTag &&
+                child.tar?.children.length === 1
+            ) {
+                child.useBracket = false
             }
         })
         if (tar?.children?.length) {

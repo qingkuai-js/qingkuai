@@ -40,7 +40,7 @@ export const destructuringDerived = withCleanUsedEffectList(
         const state = newDerivedState()
         const isDebug = !isUndefined(dfnAndSetters[2])
         const [destructuringFunc, valuesLen, ...setters] = dfnAndSetters
-        const targets = Array.from({ length: valuesLen }, newDerivedTarget)
+        const destructingTargets = Array.from({ length: valuesLen }, newDerivedTarget)
 
         // 更新衍生响应性状态值
         const update = () => {
@@ -49,13 +49,13 @@ export const destructuringDerived = withCleanUsedEffectList(
                 if (isDebug) {
                     setters[i](values[i])
                 }
-                targets[i].$ = values[i]
+                destructingTargets[i].$ = values[i]
             }
         }
 
         for (let i = 0; i < valuesLen; i++) {
-            const proxy = newDerivedProxy(targets[i], state, update)
-            ret.push(isDebug ? [proxy, proxy.$] : proxy)
+            const proxy = newDerivedProxy(destructingTargets[i], state, update)
+            ret.push(isDebug ? [proxy, UNDEF] : proxy)
         }
 
         return ret
@@ -63,7 +63,7 @@ export const destructuringDerived = withCleanUsedEffectList(
 )
 
 function newDerivedTarget(): DerivedTarget {
-    return { $: UNDEF as any }
+    return { $: UNDEF }
 }
 
 function newDerivedState(): DerivedInternalState {

@@ -223,8 +223,8 @@ export function transformTemplate(
 
         // 添加children调用结构
         if (hasChild) {
-            const test = chunkChildren(item.children)
-            test.forEach(chunk => {
+            const chunks = chunkChildren(item.children)
+            chunks.forEach(chunk => {
                 if (chunk.useBracket) {
                     flag |= transformTemplateFlag.useBracketWrap
                 } else {
@@ -392,8 +392,8 @@ function shouldUseLineBreak(
     return state.count > 60
 }
 
-// 将TemplateAnalysisRet["children"]中的元素按照是否使用中括号包裹进行拆分：若需要使用
-// 中括号包裹（useBracket为true）则单独作为一个块，连续的无需使用中括号包裹的元素作为一个块
+// 将TemplateAnalysisRet["children"]中的元素按照是否使用中括号包裹进行拆分：
+// 若需要使用中括号包裹（useBracket为true）则单独作为一个块，连续的无需使用中括号包裹的元素作为一个块
 function chunkChildren(children: TemplateAnalysisRet["children"]) {
     const len = children.length
     const chunks: {

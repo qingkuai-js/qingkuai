@@ -12,7 +12,7 @@
  * new error code, you need update the error code you used this time to the header
  * comment of this file. (Convention: the new error code is: last-error-code + 1)
  *
- * last-error-code: 2008
+ * last-error-code: 2007
  *
  * 错误代码解释：以数字2开头的代码表示这是一个运行时致命错误
  * Error Code Explanation: code begining with the number 2 indicates that this is a runtime fatal error
@@ -25,7 +25,7 @@ import { BAD_TARGET_MOUNT_KIND } from "../constants"
 
 export const InstantiateComponentManually = withCode(...commonMessage.InstantiateComponentManually)
 
-export const AssignToConstant = withCode(2008, () => {
+export const AssignToConstant = withCode(2005, () => {
     return "Assignment to constant variable."
 })
 
@@ -33,24 +33,20 @@ export const NonTraverse = withCode(2001, () => {
     return "The given value for for-directive is non-traversable."
 })
 
-export const NotPromise = withCode(2002, () => {
+export const NotPromise = withCode(2006, () => {
     return "The given value for await-directive is not a Promise."
 })
 
-export const DuplicateKey = withCode(2003, (key: string) => {
+export const DuplicateKey = withCode(2002, (key: string) => {
     return "Duplicate key for keyed-for-module, duplicate key: " + key
-})
-
-export const ContainerTypeIsBad = withCode(2004, (attrName: string, tag: string) => {
-    return `The container for reference attribute(&${attrName}) of <${tag}> tag must be an Array or Set.`
 })
 
 export const BadTarget = withCode(2007, (selector: string, kind: number) => {
     const kindStr = kind === BAD_TARGET_MOUNT_KIND ? "app mounting" : "#target directive"
-    return `The given document selector(${selector}) can not find corresponding node for ${kindStr}.`
+    return `The given document selector(${selector}) can not find corresponding element for ${kindStr}.`
 })
 
-export const BadReactivityLevel = withCode(2006, (level: number) => {
+export const BadReactivityLevel = withCode(2004, (level: number) => {
     return `Bad reactivity level(${level}), if you don't want the target to be reactive, mark it with stc compiler helper function instead of rea.`
 })
 

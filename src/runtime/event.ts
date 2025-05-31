@@ -1,21 +1,24 @@
-import type { Setter, EventStructure, RefEventHandlerGetterGen, QingKuaiNodeStruct } from "./types"
+import type {
+    EventStructure,
+    SetterWithContext,
+    QingKuaiNodeStruct,
+    RefEventHandlerGetterGen
+} from "./types"
 
-import { attribute } from "./dom"
+import { attribute, selectOptions } from "./dom"
 import { raw } from "./reactivity/value"
-import { resolvedPromise } from "./promise"
-import { vewf } from "../util/runtime/sundry"
+import { getValueFallback, groupCheckerGen, vewf } from "../util/runtime/sundry"
 import { IS_WITH_REFERENCE_RET } from "./constants"
-import { ContainerTypeIsBad } from "./message/error"
 import { EventWrapperFlagKeys } from "../util/types"
-import { isArray, isNull } from "../util/shared/assert"
+import { isArray, isSet } from "../util/shared/assert"
 import { EventListenerFlag } from "../util/shared/flag"
-import { emptyArr, notEqual, optc } from "../util/shared/sundry"
+import { emptyArr, notEqual } from "../util/shared/sundry"
 
 const Arrow = "Arrow"
 const keyTypes = ["keydown", "keyup", "keypress"]
 
-// 事件处理器包装器，用以支持按键修饰符与按键别名
-// Wrapper of Event Handler, to support key modifiers and key aliases.
+// 事件处理器包装器，用以支持按键标志
+// Wrapper of Event Handler, to support key related flags
 export function eventWrapper(
     fn: EventListener,
     flag: number = 0,
@@ -66,129 +69,39 @@ export function withReference(
     eventName: string,
     attrName: string,
     value: any,
-    setter: Setter | null,
-    isInitCall = true
+    setter?: SetterWithContext
 ): EventStructure {
-    const handlerGen: RefEventHandlerGetterGen = (qkNode, invokeGetter, attachUpdate) => {
+    const handlerGen: RefEventHandlerGetterGen = (ctx, qkNode, invokeGetter, attachUpdate) => {
         const target = qkNode.n as HTMLElement
         const targetAny = target as any
-        const isInput = target.tagName === "INPUT"
         const isSelect = target.tagName === "SELECT"
         const attrKey = attrName as keyof typeof target
 
-        // 初始化属性值，并将修改属性值的方法添加到所依赖的响应性值的effect中
-        const setAttribute = () => {
+        const updateAttribute = () => {
             const gotValue = raw(invokeGetter(value))
-
-            // 提前声明非数组或集合的检测包含方法，如果isValueIncluded被设置为
-            // 这个方法则代表gotValue非Array也非Set（cct方法中如此操作）
-            const equalToGotValue = (rv: any) => {
-                return !notEqual(rv, gotValue)
+            if (isSelect) {
+                return selectOptions(targetAny, gotValue)
             }
-
-            // 如果容器类型不是数组或集合则抛出错误
-            // cct means Check Container Type
-            const cct = () => {
-                if (isValueIncluded === equalToGotValue) {
-                    ContainerTypeIsBad(
-                        isInput ? "group" : "value",
-                        isInput ? "input" : "select multiple"
-                    )
-                }
-                return true
-            }
-
-            // 判断选项值是否被包含的方法，这里针对容器为数组或集合的不同情况提前
-            // 声明了不同的判断方法，避免在检查多个option元素时的重复类型判断
-            const isValueIncluded: (rv: any) => void = isArray(gotValue)
-                ? rv => gotValue.includes(rv)
-                : optc(gotValue) === "Set"
-                ? rv => gotValue.has(rv)
-                : equalToGotValue
-
-            if (isInput && attrName === "group") {
-                // gotValue中是否含有qkNode的value属性值即表示当前input元素是否被选中
-                const checked = cct() && isValueIncluded(qkNode.attrs.value)
-                return attribute(qkNode, "checked", checked, true)
-            } else if (isSelect) {
-                let hasUpdated = false
-
-                // 多选时要检查容器类型（必须为Array或Set）
-                targetAny.multiple && cct()
-
-                // 在初始化select的选中项时，由于option元素还未被创建，所以不能正确地初始化，
-                // 这里通过isInitCall判断是否初始化调用，是初始化调用的话就在异步微任务中重新
-                // 调用一次setAttribute方法（此时HTML节点已挂载完毕）
-                if (isInitCall) {
-                    isInitCall = false
-                    resolvedPromise.then(setAttribute)
-                }
-
-                // 如果非初始化调用，则判断gotValue中是否含有oqn的value属性值（option元素是否被选中）
-                // 如果设置某个option元素的属性值（attribute调用）时返回true，则表示组件有更新
-                for (const option of targetAny.options) {
-                    const oqn = option["_qkNode"] as QingKuaiNodeStruct
-                    const selected = isValueIncluded(oqn.attrs.value)
-                    if (attribute(oqn, "selected", selected, true)) {
-                        hasUpdated = true
-                    }
-                }
-                return hasUpdated
-            } else {
-                // 如果是radio/checkbox控件的checked属性就正常处理属性变更
-                return attribute(qkNode, attrKey, gotValue, true)
-            }
+            return attribute(qkNode, attrKey, gotValue, true)
         }
 
         // 初始化属性值并将更新属性值的方法添加到响应式值的effect中
-        setAttribute(), attachUpdate(setAttribute)
+        updateAttribute(), attachUpdate(updateAttribute)
 
         return () => {
-            // select元素的value（非引用）属性，此时仅需绑定attribute部分的处理，在选项
-            // 修改时不应该影响到相关的响应式值，所以应该直接接受eventHandler的执行
-            if (isNull(setter)) {
-                return
-            }
-
-            // 当setter不为null时，setter存在时表示当前的引用属性为：textarea[value]、
-            // input[value/checked]、select[value]（单选），其他情况setter都为undefined
             if (setter) {
                 if (!isSelect) {
-                    setter(target[attrKey])
-                } else {
-                    setter(targetAny.selectedOptions[0]["_qkNode"].attrs.value)
+                    return setter(targetAny[attrKey], ctx)
                 }
-            } else {
-                const gotValue = raw(invokeGetter(value))
+                return setter(getValueFallback(targetAny.selectedOptions[0]._qkNode), ctx)
+            }
 
-                // 作用和setAttribute方法中的isValueIncluded声明类似，根据容器类型的不同提前声明
-                // 添加容器值的方法，避免后续代码多次判断选择容器方法导致代码冗余和重复容器类型判断
-                //
-                // 这里同步响应式值的逻辑是先将容器清空，后将所有选中的值添加进去，而不是逐一对比某个
-                // 选项是否选中再添加或删除选项值，因为对于数组操作来说，比对是否已经存在某个元素具有
-                // O(n)的时间复杂度，而整个同步过程就会具有O(n^2)的时间复杂度，如果选项数量很多，每次
-                // 修改选项都有较大的同步开销，而采用先清空后添加可以将同步过程的时间复杂度降低至O(n)
-                let add!: (rv: any) => void
-                if (isArray(gotValue)) {
-                    emptyArr(gotValue)
-                    add = rv => gotValue.push(rv)
-                } else if (optc(gotValue) === "Set") {
-                    gotValue.clear()
-                    add = rv => gotValue.add(rv)
-                }
-
-                // 下面的操作都是建立在gotValue类型只能为Array或Set的前提下进行的，此前提一定成立，原因如下：
-                // 经编译器处理后，只有非radio/checkbox控件的group属性或多选select元素才会传入setter，
-                // 并且在这里容器类型一定是数组或集合，不然在之前设置attribute的过程中会抛出错误
-                if (isInput) {
-                    if (targetAny.checked) {
-                        add(qkNode.attrs.value)
-                    }
-                } else {
-                    for (const option of targetAny.selectedOptions) {
-                        add(option["_qkNode"].attrs.value)
-                    }
-                }
+            const gotValue = invokeGetter(value)
+            const gotValueIsArray = isArray(gotValue)
+            gotValueIsArray ? emptyArr(gotValue) : gotValue.clear()
+            for (const option of (targetAny as HTMLSelectElement).selectedOptions) {
+                const optionValue = getValueFallback((option as any)._qkNode)
+                gotValueIsArray ? gotValue.push(optionValue) : gotValue.add(optionValue)
             }
         }
     }

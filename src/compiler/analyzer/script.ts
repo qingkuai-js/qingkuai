@@ -22,6 +22,7 @@ import {
     getEsNode,
     markExcludes,
     isInTopScope,
+    hasTopLevelAwait,
     getEsNodeOfParent,
     extendReplacement,
     initReplacementItem,
@@ -36,7 +37,8 @@ import {
     DestructureReactFuncWithNoArg,
     RegisterExsitingIdentifierName,
     ConvenientDerivedWithOtherReactFunc,
-    ReactCompilerFuncWithoutVariableDeclaration
+    ReactCompilerFuncWithoutVariableDeclaration,
+    TopLevelAwaitNotBeSupported
 } from "../message/error"
 import {
     getGeneratedScriptLine,
@@ -59,19 +61,19 @@ const visitor: ASTVisitor = {
     },
 
     TSEnumDeclaration(node, parent) {
-        if (isInTopScope(node, parent)) {
+        if (isInTopScope(parent)) {
             checkTopScopeIdentifier(node.id.name, node.id.loc!)
         }
     },
 
     TSModuleDeclaration(node, parent) {
-        if (is(node.id, "Identifier") && isInTopScope(node, parent)) {
+        if (is(node.id, "Identifier") && isInTopScope(parent)) {
             checkTopScopeIdentifier(node.id.name, node.id.loc!)
         }
     },
 
     FunctionDeclaration(node, parent) {
-        if (node.id && isInTopScope(node, parent)) {
+        if (node.id && isInTopScope(parent)) {
             checkTopScopeIdentifier(node.id.name, node.id.loc!)
         }
         functionMarkExcludes(node, parent.excludes)
@@ -94,7 +96,7 @@ const visitor: ASTVisitor = {
             return isDebug ? ", " + getSetterIdentifier(name) : name
         }
 
-        if (isInTopScope(node, parent)) {
+        if (isInTopScope(parent)) {
             checkTopScopeIdentifier(name, node.id.loc!)
         }
 
@@ -126,7 +128,7 @@ const visitor: ASTVisitor = {
             if (watchCompilerFuncRE.test(callee.name)) {
                 analyzeWatchCompilerFuncCall(node)
             } else if (reactCompilerFuncRE.test(callee.name)) {
-                if (!isInTopScope(callee, parent)) {
+                if (!isInTopScope(parent)) {
                     ReactCompilerFuncNotInTopScope(nodeSourceLoc)
                 }
                 if (!is(esParent, "VariableDeclarator")) {
@@ -200,7 +202,7 @@ const visitor: ASTVisitor = {
         node.specifiers.forEach(specifier => {
             importedIdentifiers.add(specifier.local.name)
         })
-        if (isInTopScope(node, parent)) {
+        if (isInTopScope(parent)) {
             node.specifiers.forEach(specifier => {
                 checkTopScopeIdentifier(specifier.local.name, specifier.loc!)
             })
@@ -215,6 +217,12 @@ const visitor: ASTVisitor = {
         markExcludes(parent.excludes, getIdentifiersFromPattern(node.id))
     },
 
+    AwaitExpression(node, parent) {
+        if (hasTopLevelAwait(parent)) {
+            TopLevelAwaitNotBeSupported(getSourceLocByScriptLoc(node.loc))
+        }
+    },
+
     // 任意节点都将被捕获进入，此捕获组主要用来记录sourcemap信息，具体分为下面几种情况：
     // 1. 非import语句（且不是Program）节点时，统一记录sourcemap信息
     // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
@@ -225,7 +233,7 @@ const visitor: ASTVisitor = {
             is(node, "ExportDefaultDeclaration") ||
             is(node, "ExportNamedDeclaration")
         ) {
-            BadExportRelatedStatement(node.loc)
+            BadExportRelatedStatement(getSourceLocByScriptLoc(node.loc))
         } else if (inputDescriptor.options.sourcemap) {
             if (
                 is(node, "ImportDeclaration") ||
@@ -567,7 +575,8 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
 
         const idTypeAnnotation = (id as Pattern).typeAnnotation
         const names = getIdentifiersFromPattern(id as EsPattern)
-        const shortHandDerived = is(id, "Identifier") && id.name.startsWith("$")
+        const { convenientDerivedDeclaration: cdd } = inputDescriptor.options
+        const shortHandDerived = cdd && is(id, "Identifier") && id.name.startsWith("$")
         const esCallee = is(esInit, "CallExpression") ? getEsNode(esInit.callee) : null
         const esIdentifierCalleeName = is(esCallee, "Identifier") ? esCallee.name : ""
         const declarationSourceLoc = getSourceLocByScriptLoc(node.declarations[index].loc!)
@@ -585,6 +594,13 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
             eliminateRanges.add([start!, end!])
         }
 
+        // 去除非空断言
+        if (is(id, "Identifier") && inputDescriptor.script.isTS) {
+            const nameEndIndex = id.start! + id.name.length
+            const m = /^\s*\!/.exec(inputDescriptor.script.code.slice(nameEndIndex))
+            m && eliminateRanges.add([nameEndIndex, nameEndIndex + m[0].length])
+        }
+
         // 状态标记
         hasInit = Boolean(init)
         idRange = [id.start!, id.end!]
@@ -594,11 +610,9 @@ function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent:
         hasFnArg = hasFnCall && assertedCalleeInit.arguments.length > 0
         isDerived = shortHandDerived || (hasFnCall && esIdentifierCalleeName === "der")
 
-        // TODO: 可选择性关闭$前缀声明响应性状态
-
         // 检查是否混用了der和$前缀两种衍生响应性状态声明方式（警告）
         // 检查是否使用了$前缀搭配了其他响应性声明编译助手函数（rea、stc）（报错）
-        if (inputDescriptor.options.convenientDerivedDeclaration && shortHandDerived && hasFnCall) {
+        if (shortHandDerived && hasFnCall) {
             if (esIdentifierCalleeName === "der") {
                 MixTwoSyntaxOfDerived(declarationSourceLoc)
             } else {
@@ -730,7 +744,7 @@ function analyzeWatchCompilerFuncCall(node: CallExpression & RequiredPosition) {
 
     // 检查参数数量
     if (argsLen < 2) {
-        WatchCompilerFuncMissingArg(calleeName, argsLen, node.loc)
+        WatchCompilerFuncMissingArg(calleeName, argsLen, getSourceLocByScriptLoc(node.loc))
     } else if (argsLen > 2) {
         RedundantArgsForCompilerFunc(calleeName, 2, node.arguments[1].end!, node.end - 1)
     }

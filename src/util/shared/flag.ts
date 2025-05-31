@@ -32,5 +32,6 @@ export const PositionFlag = {
     inStyle: 1 << 1,
     isAttributeStart: 1 << 2,
     isComponentStart: 1 << 3,
-    isInterpolationAttributeStart: 1 << 4
+    inNormalTagInlineEvent: 1 << 4,
+    isInterpolationAttributeStart: 1 << 5
 }

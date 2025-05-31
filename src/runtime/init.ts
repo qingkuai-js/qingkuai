@@ -2,9 +2,9 @@ import type { AnyObject } from "../util/types"
 import type { QingKuaiComponent } from "./instance"
 import type { TemplateStuOrModuleFunc } from "./types"
 
+import { IS_PROXY, RAW_VALUE } from "./constants"
 import { isFunction } from "../util/shared/assert"
-import { AssignmentToProps } from "./message/warn"
-import { IS_PROXY, RAW_VALUE, UNDEF } from "./constants"
+import { AssignmentToProps, PropertyNotInRefs } from "./message/warn"
 
 // 获取已绑定组件实例的相关方法
 export function init(instance: QingKuaiComponent, hashId: string) {
@@ -12,21 +12,22 @@ export function init(instance: QingKuaiComponent, hashId: string) {
     const { props, refs }: any = properties
     properties.id = hashId
 
-    // 获取refs的原始值表示（可阅读形式）
-    const getRawRefs = () => {
-        return Object.keys(refs).reduce((p, c) => {
-            return { ...p, [c]: refs[c][0](properties.ctx) }
-        }, {} as AnyObject)
-    }
+    // refs的原始值表示（可阅读形式）
+    const rawRefs = Object.keys(refs).reduce((p, c) => {
+        return {
+            ...p,
+            [c]: refs[c][0](properties.ctx)
+        }
+    }, {} as AnyObject)
 
-    // 获取props的原始值表示（可阅读形式）
-    const getRawProps = () => {
-        return Object.keys(props).reduce((p, c) => {
-            const v = props[c]
-            const vf = isFunction(v) // whether Value is Function
-            return { ...p, [c]: vf ? v(properties.ctx) : v }
-        }, {} as AnyObject)
-    }
+    // props的原始值表示（可阅读形式）
+    const rawProps = Object.keys(props).reduce((p, c) => {
+        const value = props[c]
+        return {
+            ...p,
+            [c]: isFunction(value) ? value(properties.ctx) : value
+        }
+    }, {} as AnyObject)
 
     return {
         // sts: Set Component Template Structure
@@ -43,7 +44,7 @@ export function init(instance: QingKuaiComponent, hashId: string) {
                         return true
                     }
                     if (property === RAW_VALUE) {
-                        return getRawProps()
+                        return rawProps
                     }
 
                     const v = props[property]
@@ -63,16 +64,15 @@ export function init(instance: QingKuaiComponent, hashId: string) {
                         return true
                     }
                     if (property === RAW_VALUE) {
-                        return getRawRefs()
+                        return rawRefs
                     }
-                    if (!(property in refs)) {
-                        return UNDEF
-                    }
-                    return refs[property][0](properties.ctx)
+                    return refs[property]?.[0](properties.ctx)
                 },
                 set(_, property, value) {
                     if (property in refs) {
                         refs[property][1](value, properties.ctx)
+                    } else {
+                        PropertyNotInRefs(property)
                     }
                     return true
                 }

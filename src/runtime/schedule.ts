@@ -7,18 +7,25 @@ import { isNull } from "../util/shared/assert"
 import { invokeIndexedHooks } from "./instance"
 import { flushWatchEffect } from "./reactivity/effect"
 
-let updateLock = false
+// 0: free, 1: waiting, 2: updating
+let updateSchedulingState = 0
 
 const updateList = new Set<EffectListItem[0]>()
 
 export function scheduleUpdate(item: Set<UpdateFunc>) {
-    updateList.add(item)
-
-    if (updateLock) {
+    if (updateSchedulingState == 2) {
         return
     }
+    updateList.add(item)
+
+    if (updateSchedulingState == 1) {
+        return
+    }
+    updateSchedulingState = 1
 
     resolvedPromise.then(function update() {
+        updateSchedulingState = 2
+
         const calledFuncs: UpdateFunc[] = []
         const updatingComponents = new Set<QingKuaiComponent>()
 
@@ -53,9 +60,8 @@ export function scheduleUpdate(item: Set<UpdateFunc>) {
             invokeIndexedHooks(component, 3)
             updatingComponents.delete(component)
         })
-        updateLock = false
+        updateSchedulingState = 0
     })
-    updateLock = true
 }
 
 // 新建事件循环微任务

@@ -24,4 +24,4 @@ export const scriptSourceIndentSpaceCount = /\n( +)\S/
 export const scriptSourceNeedIndentPlace = /(?<=^|\n)/g
 export const scriptSourceRedundantEmptyLine = /^(?: *\r?\n)+|(?:\r?\n *)+(?=\r?\n *\r?\n)|\s*$/g
 
-export const preWhiteSpaceCommentRE = /(?:^\s*|;)white-space:\s*pre(?:-(?:wrap|line))?(?:;|\s*$)/
+export const preWithSpaceRuleRE = /(?:^\s*|;)white-space:\s*pre(?:-(?:wrap|line))?(?:;|\s*$)/

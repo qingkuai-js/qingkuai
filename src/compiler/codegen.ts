@@ -170,8 +170,10 @@ export function generateInterResult(source: string, typeRefStatement: string) {
         stoi[scriptSourceStartIndex + i] = itos.push(scriptSourceStartIndex + i) - 1
     }
 
-    // 在script与template部分之间将补一个分号避免语法错误
-    itos.push(scriptSourceStartIndex + scriptSourceCodeLen)
+    // template部分的中间代码被包裹在一个箭头函数中
+    for (let i = 0; i < 7; i++) {
+        itos.push(-1)
+    }
 
     interCodeSnippets.forEach(([toi, tos], index) => {
         if (toi >= 0) {
@@ -216,6 +218,6 @@ export function generateInterResult(source: string, typeRefStatement: string) {
             itos: itos.concat(lastElem(itos))
         },
         typeDeclarationLen: tdl,
-        code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};${joinedSnippets}`
+        code: `${typeRefStatement}${typeDefStatement}${scriptSourceCode};(()=>{${joinedSnippets}})`
     }
 }

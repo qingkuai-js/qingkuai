@@ -1,6 +1,10 @@
-node_modules
-test-space
-dist
-
 .history
 .DS_Store
+
+dist
+test-space
+node_modules
+
+backup.md
+
+qingkuai-*.tgz

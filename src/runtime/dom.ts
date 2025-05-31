@@ -1,11 +1,10 @@
 import type { AnyObject } from "../util/types"
 import type { PartialNode, QingKuaiNodeStruct } from "./types"
 
-import { RAW_VALUE } from "./constants"
-import { velf } from "../util/runtime/sundry"
-import { isReactive } from "../util/runtime/assert"
-import { AssignmentToDOMGetterProp } from "./message/warn"
-import { isArray, isBoolean, isObject } from "../util/shared/assert"
+import { raw } from "./reactivity/value"
+import { getValueFallback, groupCheckerGen, velf } from "../util/runtime/sundry"
+import { isArray, isBoolean, isEmptyString, isObject } from "../util/shared/assert"
+import { nextTick } from "./schedule"
 
 export function destroy(node: Node) {
     node.parentNode!.removeChild(node)
@@ -52,19 +51,14 @@ export function setText(qknode: QingKuaiNodeStruct, content: any, record: boolea
 
 export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, record: boolean) {
     const [attrs, elem] = [qknode.attrs, qknode.n as HTMLElement]
-
-    // 如果value是一个响应式值，需要通过RawValue访问并使用其原始值，每次访问响应式值都会得到一个新的Proxy包装值
-    if (isReactive(value)) {
-        value = value[RAW_VALUE]
-    }
-
-    if (key === "#show") {
-        return (elem.style.display = value ? "" : "none"), true
-    }
+    const [setAttr, removeAttr] = [elem.setAttribute.bind(elem), elem.removeAttribute.bind(elem)]
 
     // 如果属性名为class，则需要调用transformClassName将其转换为字符串
     if (key === "class") {
         value = transformClassName(value)
+    }
+    if (elem.tagName === "SELECT" && key === "value") {
+        return selectOptions(elem as any, value)
     }
 
     // 1. 如果属性存在于DOM中，则修改DOM属性值，若修改后属性值无变化，表示该属性为getter
@@ -73,14 +67,13 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     if (key in elem) {
         try {
             const elemAny = elem as any
-            const isBool = isBoolean(elemAny[key])
-            if (isBool && value === "") {
-                elemAny[key] = true
+            if (isBoolean(elemAny[key]) && (isEmptyString(value) || value === "false")) {
+                elemAny[key] = isEmptyString(value)
             } else {
                 elemAny[key] = value
             }
-        } catch (e) {
-            return AssignmentToDOMGetterProp(e), false
+        } catch {
+            setAttr(key, value)
         }
     } else {
         // 新值与旧值字符串表达相同，结束调用，返回fasle表示此方法未导致组件更新
@@ -89,12 +82,12 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
         }
         if (isBoolean(value)) {
             if (value) {
-                elem.setAttribute(key, "")
+                setAttr(key, "")
             } else {
-                elem.removeAttribute(key)
+                removeAttr(key)
             }
         } else {
-            elem.setAttribute(key, value)
+            setAttr(key, value)
         }
     }
 
@@ -102,9 +95,27 @@ export function attribute(qknode: QingKuaiNodeStruct, key: string, value: any, r
     // 此时需要将当前属性值记录在attrs中，这个记录的作用有两个：
     // 1. radio/checkbox控件的group或select元素的value引用属性事件中获取选项的原始值
     // 2. 在调用setAttribute方法之前与旧值的字符串表达做对比，去除无意义DOM操作的开销
-    record && (attrs[key] = value)
+    record && (attrs[key] = raw(value))
 
     return true
+}
+
+export function selectOptions(elem: HTMLSelectElement, selected: any) {
+    let hasUpdated = false
+    const checker = groupCheckerGen(selected)
+    const select = () => {
+        for (const option of elem.options) {
+            const selected = checker(getValueFallback((option as any)._qkNode))
+            hasUpdated ||= selected !== option.selected
+            option.selected = selected
+        }
+    }
+    if (!elem.childElementCount) {
+        nextTick(select)
+    } else {
+        select()
+    }
+    return hasUpdated
 }
 
 export function listen(node: Node, key: string, handler: EventListener, flag: number) {
@@ -112,11 +123,11 @@ export function listen(node: Node, key: string, handler: EventListener, flag: nu
     const useSelf = velf(flag, "self")
     const usePrevent = velf(flag, "prevent")
     const useWrapper = useStop || usePrevent || useSelf
-    const wrapper: EventListener = function (this: any, evt) {
-        if (!useSelf || evt.target === this) {
-            handler.call(this, evt)
-            useStop && evt.stopPropagation()
-            usePrevent && evt.preventDefault()
+    const wrapper: EventListener = function (this: any, event) {
+        if (!useSelf || event.target === this) {
+            handler.call(this, event)
+            useStop && event.stopPropagation()
+            usePrevent && event.preventDefault()
         }
     }
     node.addEventListener(key, useWrapper ? wrapper : handler, {

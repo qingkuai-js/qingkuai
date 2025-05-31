@@ -3,11 +3,11 @@
     "strict": true,
     "target": "ESNext",
     "module": "ESNext",
-    "outDir": "dist/temp-types",
     "declaration": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "emitDeclarationOnly": true,
+    "outDir": "dist/temp-types",
     "moduleResolution": "Bundler",
     "forceConsistentCasingInFileNames": true
   },

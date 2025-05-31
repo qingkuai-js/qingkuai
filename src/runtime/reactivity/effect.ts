@@ -61,13 +61,14 @@ function createWatchEffect(effectList: EffectListItem[], stu: WatchEffectStruct)
         item[1].add(stu)
     })
 
-    return () => {
+    return (fn?: GeneralFunc) => {
         effectList.forEach(item => {
             item[1]!.delete(stu)
             if (item[1]!.size === 0) {
                 item[1] = NIL
             }
         })
+        fn?.()
     }
 }
 

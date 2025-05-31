@@ -1,6 +1,7 @@
 export {
     ifModule,
     forModule,
+    showModule,
     aliasModule,
     awaitModule,
     targetModule,
@@ -10,6 +11,7 @@ export {
 export { init } from "./init"
 export { NIL, NOOP } from "./constants"
 export { QingKuaiComponent } from "./instance"
+export { commonMessage } from "./message/common"
 export { eventWrapper, withReference } from "./event"
 export { syncWatch, preWatch, watch } from "./reactivity/effect"
 export { derived, destructuringDerived } from "./reactivity/derived"

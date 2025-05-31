@@ -7,7 +7,7 @@ export default rollup.defineConfig(commentLineArgs => {
     const isWatchMode = commentLineArgs.watch
 
     const inputOptions = {
-        external: ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto"],
+        external: ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto", "entities"],
         input: {
             "runtime/index": "./src/runtime/index.ts",
             "compiler/index": "./src/compiler/index.ts",

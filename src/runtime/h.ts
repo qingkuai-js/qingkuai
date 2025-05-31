@@ -24,12 +24,6 @@ import {
     BAD_TARGET_MOUNT_KIND
 } from "./constants"
 import {
-    QingKuaiComponent,
-    getCurrentInstance,
-    invokeIndexedHooks,
-    setCurrentInstance
-} from "./instance"
-import {
     usedEffectList,
     setUsedEffectList,
     cleanUsedEffectList,
@@ -46,10 +40,11 @@ import {
 } from "../util/runtime/separate"
 import { BadTarget } from "./message/error"
 import { velf } from "../util/runtime/sundry"
+import { len, values } from "../util/shared/sundry"
 import { internalPreEffect } from "./reactivity/effect"
-import { len, spliceByElem, values } from "../util/shared/sundry"
 import { isComponent, isModuleFunc, isNode } from "../util/runtime/assert"
 import { isArray, isFunction, isNull, isNumber } from "../util/shared/assert"
+import { QingKuaiComponent, invokeIndexedHooks, setCurrentInstance } from "./instance"
 import { text, listen, insert, element, destroy, setText, attribute, textNode } from "./dom"
 
 export function render(
@@ -102,6 +97,7 @@ export const h = withCleanUsedEffectList(function (
     let isInputOrOption = false
     let isInputOrTextarea = false
     let dref: Text | undefined = UNDEF
+    let directiveDestruction: DestructionStruct
 
     if (!isModuleFunc(stu)) {
         rstu = {
@@ -115,7 +111,6 @@ export const h = withCleanUsedEffectList(function (
     const topNodes: TopNodes = []
     const { directive, toms } = rstu
     const times = directive?.v[0] ?? 1
-    const parentDestruction = destruction
     const cachedPureNodes = instance.__.cn
     const isDirectiveModule = !isNull(directive)
     const isAliasModule = directive?.t === ALIAS_MODULE_KIND
@@ -130,14 +125,12 @@ export const h = withCleanUsedEffectList(function (
 
     // 开始指令模块前的处理
     if (isDirectiveModule) {
+        directiveDestruction = destruction = appendChildForDestruction(destruction)
+
         if (!isAliasModule) {
             dref = textNode("")
             attachDestroyLocal(() => destroy(dref!))
             insert(target, dref, reference), (reference = dref)
-        }
-
-        for (let i = 0; i < times; i++) {
-            appendChildForDestruction(destruction)
         }
 
         const moduleUpdateFn = directive.v[2](
@@ -157,14 +150,10 @@ export const h = withCleanUsedEffectList(function (
     }
 
     for (let i = 0; i < times; i++) {
-        if (isDirectiveModule) {
-            destruction = parentDestruction.c[i]
-        }
-
         const topNodesItem = extendTopNodes(topNodes)
-        attachDestroyLocal(() => {
-            spliceByElem(topNodes, topNodesItem)
-        })
+        if (isDirectiveModule) {
+            destruction = appendChildForDestruction(directiveDestruction!)
+        }
 
         const extendTopNodesItemLocal = (topNodes: TopNodes) => {
             putTopNodesIntoItem(topNodesItem, topNodes)
@@ -193,9 +182,8 @@ export const h = withCleanUsedEffectList(function (
             const cacheId = isNumber(children[0]) ? children[0] : tagIsNumber ? tag : -1
 
             // 调用获取内容的函数
-            const invokeGetter = (getter: Function) => {
-                return getter(getContextFuncGen(currentContext, qkNode.n))
-            }
+            const ctx = getContextFuncGen(currentContext, qkNode)
+            const invokeGetter = (getter: Function) => getter(ctx)
 
             // 获取内容，函数则调用，否则直接返回
             const getValue = (getter: any) => {
@@ -238,9 +226,6 @@ export const h = withCleanUsedEffectList(function (
                     }
                     slot = children as TemplateStuOrModuleFunc[]
                 }
-                if (!isArray(slot[0])) {
-                    slot = [slot as TemplateStuOrModuleFunc]
-                }
                 updateSlotContext()
 
                 // 添加修改slot参数的副作用
@@ -280,7 +265,7 @@ export const h = withCleanUsedEffectList(function (
             // 如果是option元素，把qkNode添加到DOM属性中，在处理select的引用
             // value属性值时，需要用到option元素的qkNode来调用attribute方法
             if (tag === "option") {
-                ;(qkNode.n as any)["_qkNode"] = qkNode
+                ;(qkNode.n as any)._qkNode = qkNode
             }
 
             if (shouldDestroy || isDirectiveModule) {
@@ -291,7 +276,6 @@ export const h = withCleanUsedEffectList(function (
                     return setText(qkNode, invokeGetter(content), true)
                 })
             }
-            insert(target, qkNode.n!, reference)
             topNodesItem.push(qkNode.n!)
 
             // 添加scope attribute
@@ -339,7 +323,7 @@ export const h = withCleanUsedEffectList(function (
                 if (!eventHandlerGetter[IS_WITH_REFERENCE_RET]) {
                     eventHandler = invokeGetter(eventHandlerGetter)
                 } else {
-                    eventHandler = eventHandlerGetter(qkNode, invokeGetter, attachUpdateLocal)
+                    eventHandler = eventHandlerGetter(ctx, qkNode, invokeGetter, attachUpdateLocal)
                 }
 
                 // 将事件监听的销毁方法添加到destruction：移除节点时销毁事件监听处理器
@@ -369,6 +353,9 @@ export const h = withCleanUsedEffectList(function (
                 const assertedChild = child as TemplateStuOrModuleFunc
                 h(instance, assertedChild, qkNode.n!, NIL, false, currentContext, destruction)
             }
+
+            // 挂载节点
+            insert(target, qkNode.n!, reference)
         })
     }
 
@@ -376,7 +363,7 @@ export const h = withCleanUsedEffectList(function (
 })
 
 // 创建应用
-export function createApp(
+export function mountApp(
     selector: string,
     Component: Constructible,
     options: Partial<QingKuaiComponentConstructonParam> = {}

@@ -17,7 +17,6 @@ export {
     syncEffect
 } from "./reactivity/effect"
 
-export { createApp } from "./h"
+export { mountApp } from "./h"
 export { nextTick } from "./schedule"
-export { commonMessage } from "./message/common"
 export { raw, createStore, updateWithRaw } from "./reactivity/value"

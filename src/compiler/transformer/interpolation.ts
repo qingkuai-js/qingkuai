@@ -5,7 +5,6 @@ import type {
     TransformInterpolationRet,
     TransformInterpolationOptions
 } from "../types"
-import type { AnyNode } from "../estree/types"
 import type { FixedArray } from "../../util/types"
 import type { GeneralFunc } from "../../util/types"
 
@@ -16,21 +15,26 @@ import {
     allExistingIdentifiers
 } from "../state"
 import {
-    BadValueToRefAttr,
+    BadValueToReferenceAttribute,
     IdentifierFormatIsNotAllowed,
     ContextIdentifierUsedAsReferenceTarget
 } from "../message/error"
+import {
+    confirmAlias,
+    markPositionFlag,
+    isIndexEliminated,
+    isBannedIdentifier
+} from "../../util/compiler/sundry"
 import { walk } from "../estree/walk"
 import { getAlias } from "../analyzer/alias"
 import { runAll } from "../../util/shared/sundry"
 import { StringLiteralLeftPad } from "../constants"
 import { stringify } from "../../util/compiler/strings"
-import { identifierIsReference } from "../estree/assert"
 import { is, isInlineEventHandler } from "../estree/assert"
 import { getLocByIndex } from "../../util/compiler/locations"
+import { isFunction, isUndefined } from "../../util/shared/assert"
 import { getEsNodeOfParent, parse } from "../../util/compiler/estree"
-import { isEmptyString, isFunction, isUndefined } from "../../util/shared/assert"
-import { confirmAlias, isBannedIdentifier, isIndexEliminated } from "../../util/compiler/sundry"
+import { identifierIsReference, isAssignable } from "../estree/assert"
 
 export function transformInterpolation(
     expression: string,
@@ -38,10 +42,6 @@ export function transformInterpolation(
     context: TemplateContext,
     options: TransformInterpolationOptions
 ): TransformInterpolationRet {
-    if (inputDescriptor.options.check || isEmptyString(expression)) {
-        return ""
-    }
-
     const { eventWrapper, positionMap, normalClassRange } = options
     const isEvent = options.isComponentEvent || !isUndefined(eventWrapper)
     const bodyAst = parse("_=" + expression, 2, startSourceIndex, positionMap)?.body[0]
@@ -84,9 +84,13 @@ export function transformInterpolation(
     // 当转换后的表达式要用作setter时，它必须是可赋值的（左值）
     // 注意：目前只有引用属性会将optionalParams.usedAsSetter设置为true，所以这里的报错方法就是引用属性相关的，
     // 如果后续其他地方也需要用到setter模式的转换，可以考虑传入不同的报错方法提前解析表达式等方案完善这里的兼容性
-    if (options.usedAsSetter && !(is(ast, "Identifier") || is(ast, "MemberExpression"))) {
+    if (options.usedAsSetter && !isAssignable(ast)) {
         const expressionEndSourceIndex = startSourceIndex + expression.length
-        BadValueToRefAttr(expression, getLocByIndex(startSourceIndex, expressionEndSourceIndex))
+        BadValueToReferenceAttribute(
+            expression,
+            true,
+            getLocByIndex(startSourceIndex, expressionEndSourceIndex)
+        )
     }
 
     walk(ast, {
@@ -157,7 +161,7 @@ export function transformInterpolation(
         },
         CallExpression(node) {
             useGetter = true
-            if (isEvent) {
+            if (isEvent && options.withInNormalTag) {
                 const callee = node.callee
                 useContext = true
                 extendTransformInfo(callee.start!, () => `${ctxParam}(`)
@@ -173,7 +177,7 @@ export function transformInterpolation(
             if (os >= ns && os <= ne && oe >= ns && oe <= ne) {
                 extendTransformInfo(
                     node.end,
-                    stringify(node.value, StringLiteralLeftPad.normalClass)
+                    stringify(node.value, true, StringLiteralLeftPad.normalClass)
                 )
             } else {
                 extendTransformInfo(node.end, stringify(node.value))
@@ -249,7 +253,7 @@ export function transformInterpolation(
 
     // 生成转换结果
     let addedPrefixLen = 0
-    let useReturnKeyword = false
+    let withReturnKeyword = false
     let transformedExp = transformedArr.join("")
     const useParenthesesWrap = /^ *{/.test(transformedExp)
     const hasContextVariable = contextVariables.length > 0
@@ -264,27 +268,35 @@ export function transformInterpolation(
         const contextVariableDeclaration = `const ${contextVariableValues.join(", ")};`
         transformedExp = `{ ${contextVariableDeclaration} return ${transformedExp} }`
         addedPrefixLen += contextVariableDeclaration.length + 10
-        useReturnKeyword = true
+        withReturnKeyword = true
     }
 
     // 调试模式下内联函数且useReturnKeyword为false时，也需要使用return关键字，不然返回值处的断点属于外层函数
     if (useInlineEventHandler) {
-        if (!isDebug && !useReturnKeyword) {
-            transformedExp = `$arg => ${transformedExp}`
+        const paramStr = options.isComponentEvent ? "(...$args)" : "$args"
+        if (!isDebug || withReturnKeyword) {
+            addedPrefixLen += paramStr.length + 4
+            transformedExp = `${paramStr} => ${transformedExp}`
         } else {
-            addedPrefixLen += 17
-            useReturnKeyword = true
-            transformedExp = `$arg => { return ${transformedExp} }`
+            withReturnKeyword = true
+            addedPrefixLen += paramStr.length + 13
+            transformedExp = `${paramStr} => { return ${transformedExp} }`
+        }
+        if (options.withInNormalTag) {
+            for (let i = 0; i < expression.length; i++) {
+                markPositionFlag(startSourceIndex + i, "inNormalTagInlineEvent")
+            }
         }
     }
 
     // 如果使用了EventWrapperFlag，则调用eventWrapper方法将包裹事件，并传入flag参数
     if (!isUndefined(eventWrapper)) {
-        const insertComment = inputDescriptor.options.comment
         const eventWrapperFuncName = getAlias("eventWrapper")
-        const comment = insertComment ? `/* ${eventWrapper.modifiers.join(", ")} */` : ""
+        const comment = inputDescriptor.options.comment
+            ? `/* ${eventWrapper.flagDescription} */ `
+            : ""
         addedPrefixLen += eventWrapperFuncName.length + 1
-        transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${comment} ${eventWrapper.flag})`
+        transformedExp = `${eventWrapperFuncName}(${transformedExp}, ${comment}${eventWrapper.flag})`
     }
 
     // 调试模式下未声明ctx变量、非内联函数且未使用eventWrapper方法时默认为转换结果添加return关键字
@@ -292,14 +304,15 @@ export function transformInterpolation(
     // 的情况，使用return关键字后可以让断点位置稳定设置在return关键字之前，这样可以保持断点位置的一致性，提高调试体验，
     // 此处理程序是为了绕过浏览器Devtools的相关BUG，如果之后Devtools修复了此BUG，可考虑移除相关处理的逻辑代码及注释
     if (usedAsSetter) {
-        transformedExp = `${vParam} => (${transformedExp} = ${vParam})`
+        const paramStr = `${useContext ? "(" : ""}${vParam}${useContext ? `, ${ctxParam})` : ""}`
+        transformedExp = `${paramStr} => (${transformedExp} = ${vParam})`
     } else if (useGetter) {
         const paramStr = useContext ? ctxParam : underlineParam
         if (useParenthesesWrap) {
             addedPrefixLen += 1
             transformedExp = `(${transformedExp})`
         }
-        if (!isDebug || useReturnKeyword) {
+        if (!isDebug || withReturnKeyword) {
             transformedExp = `${paramStr} => ${transformedExp}`
             firstMappingAt = addedPrefixLen += paramStr.length + 4
         } else {

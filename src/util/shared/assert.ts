@@ -1,6 +1,6 @@
 import type { AnyObject, GeneralFunc } from "../types"
 
-import { optc } from "../shared/sundry"
+import { optc } from "./sundry"
 
 export function isNull(v: any): v is null {
     return v === null

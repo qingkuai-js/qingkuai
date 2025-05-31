@@ -2,9 +2,9 @@ import type { GeneralFunc } from "../util/types"
 import type { QingKuaiProperties, QingKuaiComponentConstructonParam } from "./types"
 
 import { INSTANTIATE_BY_H, NIL, NOOP } from "./constants"
+import { newDestruction } from "../util/runtime/separate"
 import { InstantiateComponentManually } from "./message/error"
 import { arrayFill, emptyArr, runAll } from "../util/shared/sundry"
-import { destroyBlock, newDestruction } from "../util/runtime/separate"
 
 // 用于存储当前操作的组件实例
 let currentInstance: QingKuaiComponent | null = NIL
