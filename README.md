@@ -2,7 +2,7 @@
 
 Qingkuai is a lightweight, fast, and developer-friendly frontend framework designed for modern web applications. It features a template-first syntax and a minimal runtime, producing compiled output that’s only `20%` to `50%` the size of comparable mainstream frameworks—without compromising on power or expressiveness. Whether you’re building small components or full-featured apps, Qingkuai delivers a smooth and efficient development experience with minimal overhead.
 
-[Documentation](https://qingkuai.dev) | [Playground](https://qingkuai.dev) | [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=qingkuai-tools.qingkuai-language-features) | [Issues](https://github.com/qingkuai-js/qingkuai/issues)
+[Documentation](https://qingkuai.dev) | [Playground](https://try.qingkuai.dev) | [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=qingkuai-tools.qingkuai-language-features) | [Issues](https://github.com/qingkuai-js/qingkuai/issues)
 
 ## Packages
 
