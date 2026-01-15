@@ -1,0 +1,32 @@
+import type {
+    Node,
+    ClassDeclaration,
+    TSEnumDeclaration,
+    FunctionDeclaration,
+    TSModuleDeclaration,
+    VariableDeclaration
+} from "@babel/types"
+import type { RequiredNonNullableKeys } from "./tools"
+import type { WalkContext } from "../util/compiler/estree/walk"
+
+export type AnyNode = Node
+export type PartialAnyNode = Node | undefined | null
+
+export type TopLevelDeclarationNode =
+    | VariableDeclaration
+    | FunctionDeclaration
+    | ClassDeclaration
+    | TSEnumDeclaration
+    | TSModuleDeclaration
+
+export type WithLoc<T extends AnyNode> = RequiredNonNullableKeys<
+    T,
+    "start" | "end" | "loc" | "range"
+>
+export type Visitor = {
+    AnyNode?: VisitorTrapFunc<AnyNode>
+} & {
+    [K in AnyNode["type"]]?: VisitorTrapFunc<Extract<AnyNode, { type: K }>>
+}
+
+type VisitorTrapFunc<T extends AnyNode> = (node: WithLoc<T>, context: WalkContext<T>) => void

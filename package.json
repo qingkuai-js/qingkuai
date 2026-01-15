@@ -1,0 +1,25 @@
+{
+  "name": "qingkuai2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "rollup -c -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/parser": "^7.28.0",
+    "lodash-es": "^4.17.22"
+  },
+  "devDependencies": {
+    "@babel/types": "^7.28.1",
+    "@types/node": "^24.2.0",
+    "rollup": "^4.53.3",
+    "rollup-plugin-esbuild": "^6.2.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

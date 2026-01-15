@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "declaration": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist/temp-types",
+    "moduleResolution": "Bundler",
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "#type-declarations/*": ["./src/types/*"]
+    }
+  },
+  "exclude": ["node_modules/**/*", "dist"],
+  "include": ["src", "tests", "test-space", "env.d.ts"]
+}

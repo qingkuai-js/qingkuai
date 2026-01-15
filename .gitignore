@@ -1,0 +1,11 @@
+.history
+.DS_Store
+
+dist
+test-space
+node_modules
+
+memorandum.md
+.vscode/launch.json
+
+qingkuai-*.tgz
