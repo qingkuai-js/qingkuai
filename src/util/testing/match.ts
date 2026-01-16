@@ -101,15 +101,20 @@ export function matchTemplateNodeListAndMessages(
     expectedMessages: ExpectedCompileMessage[]
 ) {
     const [nodeList, ...expectedList] = parseAndGetExpectedList()
-    expect(messages.length).toBe(expectedMessages.length)
+    matchCompileMessages(expectedMessages)
+    matchTemplateNodeList(nodeList, ...expectedList)
+}
 
+// 匹配验证编译消息列表
+// Match and validate the compile message list
+export function matchCompileMessages(expectedMessages: ExpectedCompileMessage[]) {
     for (let i = 0; i < messages.length; i++) {
         const [item, expected] = [messages[i], expectedMessages[i]]
         expect(item.type).toBe(expected.type)
         expect(item.value.message).toBe(expected.value)
         expect([item.value.loc.start.index, item.value.loc.end.index]).toEqual(expected.range)
     }
-    matchTemplateNodeList(nodeList, ...expectedList)
+    expect(messages.length).toBe(expectedMessages.length)
 }
 
 // 通过数组创建双向链表

@@ -9,8 +9,8 @@ export const indentSpacesRE = /(?<=\n) +/
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
-export const bannedIdentifierRE = /^(?:__w__|__c__$)/
 export const intrinsicVariableRE = /^props|refs|slots$/
+export const forbiddenIdentifierRE = /^(?:__w__|__c__$)/
 export const intrinsicReactiveMethodsRE = /^raw|reactive|shallow|derived$/
 export const intrinsicMethodsRE = /^raw|reactive|shallow|derived|default(?:Props|Refs)$/
 

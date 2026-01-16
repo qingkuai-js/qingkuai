@@ -9,7 +9,7 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
     ExportRelatedNotBeSupported: [
         1019,
         () => {
-            return "Export statements are not yet supported."
+            return "Export statements are not supported."
         }
     ],
     UsedForbiddenIdentifierFormat: [
@@ -21,31 +21,41 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
     TopLevelAwaitNotBeSupported: [
         1018,
         () => {
-            return "Top-level await expressions are not yet supported."
+            return "Top-level await expressions are not supported."
         }
     ],
-    RegisterExsitingIdentifier: [
+    RedeclareDerivedReactiveValue: [
+        1022,
+        (name: string) => {
+            return `The derived reactive value "${name}" cannot be redeclared.`
+        }
+    ],
+    ShadowCompilerIntrinsicAtTopLevel: [
         1020,
         (name: string) => {
-            return `The identifier(${name}) to register already exists in top-level scope.`
+            return `Compiler intrinsic identifier "${name}" cannot be shadowed at the top level.`
         }
     ],
     InvalidUsageForIntrinsicMethods: [
         1021,
-        (name: string, purpose: string) => {
-            return `The compiler intrinsic method "${name}" can only be called at the top-level scope${purpose}.`
+        (name: string) => {
+            if (name.startsWith("default")) {
+                return `The compiler intrinsic "${name}" must be called as a standalone expression at the top level.`
+            }
+            return `The compiler intrinsic "${name}" must be called at the top-level to mark the variable initializer.`
+        }
+    ],
+    AmbiguousReactiveMarking: [
+        1023,
+        (name: string) => {
+            return `Using both the shorthand derived value declaration (with the $ prefix) and a different reactive-marking intrinsic (${name}) method is ambiguous.`
         }
     ]
 })
 
 // prettier-ignore
-export const UsedBannedIdentifierFormat = withLocation(
-    ...commonMessage.UsedForbiddenIdentifierFormat
-)
-
-// prettier-ignore
-export const RegisterExistingIdentifier = withLocation(
-    ...commonMessage.RegisterExsitingIdentifier
+export const AmbiguousReactiveMarking = withLocation(
+    ...commonMessage.AmbiguousReactiveMarking
 )
 
 export const TopLevelAwaitNotBeSupported = withLocation(
@@ -56,8 +66,20 @@ export const ExportRelatedNotBeSupported = withLocation(
     ...commonMessage.ExportRelatedNotBeSupported
 )
 
+export const UsedForbiddenIdentifierFormat = withLocation(
+    ...commonMessage.UsedForbiddenIdentifierFormat
+)
+
+export const RedeclareDerivedReactiveValue = withLocation(
+    ...commonMessage.RedeclareDerivedReactiveValue
+)
+
 export const InvalidUsageForIntrinsicMethods = withLocation(
     ...commonMessage.InvalidUsageForIntrinsicMethods
+)
+
+export const ShadowCompilerIntrinsicAtTopLevel = withLocation(
+    ...commonMessage.ShadowCompilerIntrinsicAtTopLevel
 )
 
 export const InvalidAttributeFormat = withLocation(1016, () => {

@@ -23,8 +23,6 @@ export function resetCompilerState(options: CompileOptions) {
 function newAnalyzeResult(): AnalyzeResult {
     return {
         script: {
-            topLevelEnums: [],
-            topLevelNamespaces: [],
             importDeclarations: [],
             fullIdentifiers: new Set(),
             topLevelReferences: new Map(),
@@ -59,7 +57,7 @@ function newInputDescriptor(options: CompileOptions) {
             typeImportStatement: "",
             reserveCommentNodes: false,
             checkTemplateStructure: true,
-            convenientWatcherDefinition: true
+            shorthandDerivedDeclaration: true
         }
     }
     if (options.debug) {

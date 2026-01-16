@@ -17,6 +17,20 @@ export function isTypeExpression(node: AnyNode) {
     )
 }
 
+export function isLiteral(node: AnyNode | undefined | null) {
+    return (
+        !node ||
+        isUndefinedLiteral(node) ||
+        node.type === "NullLiteral" ||
+        node.type === "StringLiteral" ||
+        node.type === "NumericLiteral"
+    )
+}
+
+export function isUndefinedLiteral(node: AnyNode) {
+    return node.type === "Identifier" && node.name === "undefined"
+}
+
 export function willModuleDeclarationEmitsJS(declaration: TSModuleDeclaration) {
     if (declaration.id.type === "StringLiteral" || declaration.declare) {
         return false

@@ -2,6 +2,7 @@ import type {
     LVal,
     Identifier,
     PatternLike,
+    TSModuleBlock,
     BlockStatement,
     VariableDeclaration
 } from "@babel/types"
@@ -9,7 +10,7 @@ import type { AnyNode, Visitor, WithLoc } from "#type-declarations/estree"
 
 import { any } from "../../shared/sundry"
 import { isArray, isObject } from "../../shared/assert"
-import { is, isTypeExpression, willModuleDeclarationEmitsJS } from "./assert"
+import { isTypeExpression, willModuleDeclarationEmitsJS } from "./assert"
 
 export class WalkContext<T extends AnyNode = AnyNode> {
     inTopLevel: boolean
@@ -20,9 +21,10 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         public parent: WalkContext | null = null,
         public blockIdentifiers: Set<string> = new Set()
     ) {
+        const blockTypes = ["BlockStatement", "TSModuleBlock"]
         this.isBindingReference = isBindingReference(this)
-        is(value, "BlockStatement") && recordBlockIdentifiers(any(this))
-        this.inTopLevel = !parent || (parent.inTopLevel && !is(parent.value, "BlockStatement"))
+        blockTypes.includes(value.type) && recordBlockIdentifiers(any(this))
+        this.inTopLevel = !parent || (parent.inTopLevel && !blockTypes.includes(parent.value.type))
     }
 
     get inHoistTopLevel() {
@@ -277,7 +279,7 @@ function isBindingReference(context: WalkContext) {
     return true
 }
 
-function recordBlockIdentifiers(context: WalkContext<BlockStatement>) {
+function recordBlockIdentifiers(context: WalkContext<BlockStatement | TSModuleBlock>) {
     const paramPatterns: PatternLike[] = []
     const declarations: VariableDeclaration[] = []
     const parentNode = context.striptTypeExpressionsParent!.value
@@ -332,7 +334,9 @@ function recordBlockIdentifiers(context: WalkContext<BlockStatement>) {
     for (const statement of context.value.body) {
         switch (statement.type) {
             case "VariableDeclaration": {
-                declarations.push(statement)
+                if (statement.kind !== "var" || !context.inHoistTopLevel) {
+                    declarations.push(statement)
+                }
                 break
             }
             case "TSModuleDeclaration": {
@@ -341,8 +345,13 @@ function recordBlockIdentifiers(context: WalkContext<BlockStatement>) {
                 }
                 // fallthrough
             }
+            case "TSEnumDeclaration": {
+                if (context.inHoistTopLevel) {
+                    break
+                }
+                // fallthrough
+            }
             case "ClassDeclaration":
-            case "TSEnumDeclaration":
             case "FunctionDeclaration": {
                 if (statement.id?.type === "Identifier") {
                     context.blockIdentifiers.add(statement.id.name)

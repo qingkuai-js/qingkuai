@@ -52,7 +52,8 @@ export function getErrorMessage(makeErr: GeneralFunc) {
 // Note: This method determines the indentation level based on the number of leading spaces in the first line,
 // and any blank lines at the beginning and end will be removed.
 export function formatSourceCode(code: string) {
-    code = code.replace(/\n?^\s*$\n?/gm, "")
+    code = code.trimEnd()
+    code = code.replace(/\n?[\s]*\n/, "")
 
     const uselessIndentStr = /^[ \t]*/.exec(code)![0]
     return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "")

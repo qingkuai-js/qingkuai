@@ -3,13 +3,7 @@ import type { TopLevelDeclarationNode } from "./estree"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
 import type { WalkContext } from "../util/compiler/estree/walk"
-import type {
-    Expression,
-    ImportDeclaration,
-    SpreadElement,
-    TSEnumDeclaration,
-    TSModuleDeclaration
-} from "@babel/types"
+import type { SpreadElement, Expression, ImportDeclaration } from "@babel/types"
 
 export interface ScriptDescriptor {
     code: string
@@ -100,15 +94,14 @@ export interface ScriptAnalyzeRet {
     topLevelIdentifiers: Map<
         string,
         {
+            range: Range
             hoist: boolean
             implicit: boolean
-            status: TopDeclarationStatus
-            context: WalkContext<TopLevelDeclarationNode>
+            status: TopLevelIdentifierStatus
+            contexts: WalkContext<TopLevelDeclarationNode>[]
         }
     >
     fullIdentifiers: Set<string>
-    topLevelEnums: WalkContext<TSEnumDeclaration>[]
-    topLevelNamespaces: WalkContext<TSModuleDeclaration>[]
     importDeclarations: WalkContext<ImportDeclaration>[]
     defaultRefs?: WalkContext<Expression | SpreadElement>
     defaultProps?: WalkContext<Expression | SpreadElement>
@@ -130,9 +123,9 @@ export type CompileOptions = Partial<{
     typeImportStatement: string
     reserveCommentNodes: boolean
     checkTemplateStructure: boolean
-    convenientWatcherDefinition: boolean
+    shorthandDerivedDeclaration: boolean
 }>
 
 export type Range = Pair<number>
 export type AttributeQuoteKind = "single" | "double" | "curly" | "none"
-export type TopDeclarationStatus = "reactive" | "raw" | "shallow" | "derived" | "pending"
+export type TopLevelIdentifierStatus = "reactive" | "raw" | "shallow" | "derived" | "pending"
