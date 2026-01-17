@@ -8,7 +8,7 @@ export function is<T extends AnyNode["type"]>(
     return node.type === type
 }
 
-export function isTypeExpression(node: AnyNode) {
+export function isTypeOperation(node: AnyNode) {
     return (
         node.type === "TSAsExpression" ||
         node.type === "TSTypeAssertion" ||
@@ -31,6 +31,7 @@ export function isUndefinedLiteral(node: AnyNode) {
     return node.type === "Identifier" && node.name === "undefined"
 }
 
+// TODO： 注释此函数的作用以及为什么需要它
 export function willModuleDeclarationEmitsJS(declaration: TSModuleDeclaration) {
     if (declaration.id.type === "StringLiteral" || declaration.declare) {
         return false

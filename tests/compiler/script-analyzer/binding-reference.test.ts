@@ -6,7 +6,7 @@ import { expect, test } from "vitest"
 import { any } from "../../../src/util/shared/sundry"
 import { walk } from "../../../src/util/compiler/estree/walk"
 
-const localParse = (source: string) => {
+function localParse(source: string) {
     return parse(source, {
         strictMode: false,
         sourceType: "module",

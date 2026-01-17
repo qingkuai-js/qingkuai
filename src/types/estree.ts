@@ -4,7 +4,10 @@ import type {
     TSEnumDeclaration,
     FunctionDeclaration,
     TSModuleDeclaration,
-    VariableDeclaration
+    VariableDeclaration,
+    BlockStatement,
+    TSModuleBlock,
+    Program
 } from "@babel/types"
 import type { RequiredNonNullableKeys } from "./tools"
 import type { WalkContext } from "../util/compiler/estree/walk"
@@ -18,6 +21,9 @@ export type TopLevelDeclarationNode =
     | ClassDeclaration
     | TSEnumDeclaration
     | TSModuleDeclaration
+
+export type ScopeContext = WalkContext<ScopeNode>
+export type ScopeNode = BlockStatement | TSModuleBlock | Program
 
 export type WithLoc<T extends AnyNode> = RequiredNonNullableKeys<
     T,

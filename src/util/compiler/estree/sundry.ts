@@ -1,9 +1,9 @@
 import type { AnyNode } from "#type-declarations/estree"
 
-import { isTypeExpression } from "./assert"
+import { isTypeOperation } from "./assert"
 
 export function stripTypeExpressions(node: AnyNode) {
-    if (isTypeExpression(node)) {
+    if (isTypeOperation(node)) {
         return stripTypeExpressions(node.expression)
     }
     return node

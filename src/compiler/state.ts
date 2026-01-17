@@ -23,6 +23,7 @@ export function resetCompilerState(options: CompileOptions) {
 function newAnalyzeResult(): AnalyzeResult {
     return {
         script: {
+            watchers: [],
             importDeclarations: [],
             fullIdentifiers: new Set(),
             topLevelReferences: new Map(),

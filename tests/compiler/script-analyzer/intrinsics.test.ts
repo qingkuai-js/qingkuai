@@ -134,6 +134,40 @@ describe("Invalid usages of intrinsic methods", () => {
             }
         ])
     })
+
+    test("Not be used as a function call", () => {
+        localAnalyze(`
+            watch
+            condition ? preWatch : postWatch
+            if(syncWatch){}
+
+            const handler = watch()
+            test(condition ? preWatch() : postWatch())
+            if(syncWatch()){}
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [0, 5],
+                value: getMsg("watch")
+            },
+            {
+                type: "error",
+                range: [18, 26],
+                value: getMsg("preWatch")
+            },
+            {
+                type: "error",
+                range: [29, 38],
+                value: getMsg("postWatch")
+            },
+            {
+                type: "error",
+                range: [42, 51],
+                value: getMsg("syncWatch")
+            }
+        ])
+    })
 })
 
 describe("Unnecessary reactive marking", () => {
@@ -268,7 +302,13 @@ test("Shadow compiler intrinsic identifiers", () => {
             var raw = 6
             using derived = 7
             const defaultProps = 8
-            const defaultRefs = 9
+            enum defaultRefs {}
+            namespace watch {
+                const props = 9
+            }
+            import preWatch from ""
+            import { postWatch } from ""
+            import { ___ as syncWatch } from ""
         `)
     localMatchCompileMessages([
         {
@@ -313,8 +353,28 @@ test("Shadow compiler intrinsic identifiers", () => {
         },
         {
             type: "error",
-            range: [215, 226],
+            range: [214, 225],
             value: getMsg("defaultRefs")
+        },
+        {
+            type: "error",
+            range: [239, 244],
+            value: getMsg("watch")
+        },
+        {
+            type: "error",
+            range: [276, 284],
+            value: getMsg("preWatch")
+        },
+        {
+            type: "error",
+            range: [302, 311],
+            value: getMsg("postWatch")
+        },
+        {
+            type: "error",
+            range: [338, 347],
+            value: getMsg("syncWatch")
         }
     ])
 })

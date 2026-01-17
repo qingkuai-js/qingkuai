@@ -39,8 +39,17 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
     InvalidUsageForIntrinsicMethods: [
         1021,
         (name: string) => {
-            if (name.startsWith("default")) {
-                return `The compiler intrinsic "${name}" must be called as a standalone expression at the top level.`
+            switch (name) {
+                case "watch":
+                case "preWatch":
+                case "postWatch":
+                case "syncWatch": {
+                    return `The compiler intrinsic "${name}" can only be used as a function call.`
+                }
+                case "defaultRefs":
+                case "defaultProps": {
+                    return `The compiler intrinsic "${name}" must be called as a standalone expression at the top level.`
+                }
             }
             return `The compiler intrinsic "${name}" must be called at the top-level to mark the variable initializer.`
         }

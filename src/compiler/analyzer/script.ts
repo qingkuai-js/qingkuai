@@ -7,7 +7,9 @@ import {
     indentSpacesRE,
     intrinsicMethodsRE,
     intrinsicVariableRE,
-    forbiddenIdentifierRE
+    forbiddenIdentifierRE,
+    intrinsicWatcherMethodsRE,
+    intrinsicReactiveMethodsRE
 } from "../regular"
 import {
     AmbiguousReactiveMarking,
@@ -68,7 +70,8 @@ const visitor: Visitor = {
         }
 
         // 记录所有引用顶部标识符的位置信息
-        if (!context.blockIdentifiers.has(node.name) && context.isBindingReference) {
+        // Record the source ranges of all references to top-level identifiers.
+        if (!context.scopeIdentifiers.has(node.name) && context.isBindingReference) {
             const { topLevelReferences, topLevelIdentifiers: topLevelDeclarations } =
                 analyzeResult.script
             if (!topLevelReferences.has(node.name)) {
@@ -97,7 +100,7 @@ const visitor: Visitor = {
     },
 
     TSEnumDeclaration(node, context) {
-        if (context.inHoistTopLevel) {
+        if (context.inTopLevel) {
             updateTopLevelIdentifiers(node.id, true, true, "pending", context)
         }
     },
@@ -109,27 +112,24 @@ const visitor: Visitor = {
         ) {
             return
         }
-        if (context.inHoistTopLevel && willModuleDeclarationEmitsJS(node)) {
+        if (context.inTopLevel && willModuleDeclarationEmitsJS(node)) {
             updateTopLevelIdentifiers(node.id, true, true, "pending", context)
         }
     },
 
     VariableDeclaration(node, context) {
-        if (node.kind === "var" ? !context.inHoistTopLevel : !context.inTopLevel) {
+        if (node.kind === "var" ? !context.inHoistableTopLevel : !context.inTopLevel) {
             return
         }
         for (const declarator of node.declarations) {
             walkDeclarationIdentifiers(declarator.id, identifier => {
-                const status = inferTopDeclarationStatus(
-                    declarator,
-                    node.kind === "const",
-                    declarator.id.type !== "Identifier"
-                )
                 const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers.get(
                     identifier.name
                 )!
+                const status = inferTopDeclarationStatus(declarator, node.kind === "const")
 
                 // 衍生响应式值不能重复声明（使用 var 关键字时可能导致此问题）
+                // Derived reactive values must not be declared more than once (this may occur when using the `var` keyword).
                 if (
                     topLevelIdentifier &&
                     (topLevelIdentifier.status === "derived" || status === "derived")
@@ -157,14 +157,20 @@ const visitor: Visitor = {
             checkTopLevelIdentifier(specifier.local.name, specifier.local.range!)
         }
         analyzeResult.script.importDeclarations.push(context)
+    },
+
+    CallExpression(node, context) {
+        if (node.callee.type === "Identifier" && intrinsicWatcherMethodsRE.test(node.callee.name)) {
+            analyzeResult.script.watchers.push(context)
+        }
     }
 }
 
 // 推断顶级作用域标识符的响应式状态
+// Infer the reactive status of top-level scope identifiers.
 function inferTopDeclarationStatus(
     declarator: VariableDeclarator,
-    isConst: boolean,
-    isDestructuring: boolean
+    isConst: boolean
 ): TopLevelIdentifierStatus {
     const isShorthandDerived =
         declarator.id.type === "Identifier" &&
@@ -187,7 +193,7 @@ function inferTopDeclarationStatus(
     if (
         callee.type !== "Identifier" ||
         callee.name.startsWith("default") ||
-        !intrinsicMethodsRE.test(callee.name)
+        !intrinsicReactiveMethodsRE.test(callee.name)
     ) {
         return "pending"
     }
@@ -195,6 +201,7 @@ function inferTopDeclarationStatus(
     const status = callee.name as TopLevelIdentifierStatus
 
     // 检查是否混用了简洁衍生响应式声明语法和标记响应式声明语法
+    // Check whether concise derived reactive declarations and marked reactive declarations are mixed.
     if (isShorthandDerived) {
         if (status === "derived") {
             DeclareDerivedMixedSyntaticForms(sourceLoc)
@@ -203,7 +210,8 @@ function inferTopDeclarationStatus(
         }
     }
 
-    // 通过标记字面量值声明的 衍生响应式值/常量 无响应式意义，使用原始值
+    // 通过标记字面量值声明的 衍生响应式值/常量 无响应式意义，退化为使用原始值
+    // Derived reactive values or constants declared from literal values have no reactive semantics and are downgraded to using their raw values.
     if (
         isLiteral(initNode.arguments[0]) &&
         (status === "derived" || (isConst && status !== "raw"))
@@ -214,6 +222,7 @@ function inferTopDeclarationStatus(
 }
 
 // 更新顶级作用域标识符信息
+// Update top-level scope identifier information.
 function updateTopLevelIdentifiers(
     id: Identifier,
     hoist: boolean,
@@ -241,6 +250,7 @@ function updateTopLevelIdentifiers(
 }
 
 // 检查顶级作用域标识符格式
+// Validate top-level scope identifier formatting.
 function checkTopLevelIdentifier(name: string, range: Range) {
     const sourceLoc = getScriptLocByRange(range)
     if (intrinsicMethodsRE.test(name) || intrinsicVariableRE.test(name)) {
@@ -252,36 +262,46 @@ function checkTopLevelIdentifier(name: string, range: Range) {
 }
 
 // 检查编译器内置方法的使用是否合法
+// Validate the usage of compiler intrinsic methods.
 function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Identifier>) {
     if (
         !context.isBindingReference ||
         !intrinsicMethodsRE.test(node.name) ||
-        context.blockIdentifiers.has(node.name)
+        context.scopeIdentifiers.has(node.name)
     ) {
         return
     }
 
-    const parent = context.striptTypeExpressionsParent!
-    const isReactiveRelated = !node.name.startsWith("default")
+    const parent = context.striptTypeOperationsParent!
     if (parent.value.type === "CallExpression") {
-        if (!isReactiveRelated) {
-            if (
-                parent.value.arguments.length &&
-                parent.value.arguments[0].type !== "ArgumentPlaceholder"
-            ) {
-                // @ts-ignore: node.name is defaultProps or defaultRefs
-                analyzeResult.script[node.name] = parent.value.arguments[0]
-            }
-            if (context.striptTypeExpressionsParent?.value.type === "Program") {
+        switch (node.name) {
+            case "watch":
+            case "preWatch":
+            case "postWatch":
+            case "syncWatch": {
                 return
             }
-        }
-        if (
-            isReactiveRelated &&
-            context.inTopLevel &&
-            parent.striptTypeExpressionsParent!.value.type === "VariableDeclarator"
-        ) {
-            return
+            case "defaultRefs":
+            case "defaultProps": {
+                if (context.striptTypeOperationsParent?.value.type === "Program") {
+                    if (
+                        parent.value.arguments.length &&
+                        parent.value.arguments[0].type !== "ArgumentPlaceholder"
+                    ) {
+                        // @ts-ignore: node.name is defaultProps or defaultRefs
+                        analyzeResult.script[node.name] = parent.value.arguments[0]
+                    }
+                    return
+                }
+            }
+            default: {
+                if (
+                    context.inTopLevel &&
+                    parent.striptTypeOperationsParent!.value.type === "VariableDeclarator"
+                ) {
+                    return
+                }
+            }
         }
     }
     InvalidUsageForIntrinsicMethods(getScriptLocByRange(node.range!), node.name)
