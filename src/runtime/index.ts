@@ -33,7 +33,7 @@ export {
     batchAndNoTracking
 } from "./reactivity/optimization"
 
-export { createApp } from "./component"
+export { mountApp } from "./component"
 export { toRaw } from "../util/runtime/sundry"
 export { nextTick } from "../util/runtime/sundry"
 export { createStore, toReactive, toShallowReactive } from "./reactivity/value"

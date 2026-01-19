@@ -9,13 +9,12 @@ import { isUndefined } from "../util/shared/assert"
 import { objectAssign } from "../util/shared/aliases"
 import { newASTLocation } from "../util/compiler/position"
 
-export let inputDescriptor: InputDescriptor
-
 export let messages: CompileMessage[] = []
+export let inputDescriptor: InputDescriptor
 export let analyzeResult = newAnalyzeResult()
 
 export function resetCompilerState(options: CompileOptions) {
-    messages = []
+    messages = []   
     analyzeResult = newAnalyzeResult()
     inputDescriptor = newInputDescriptor(options)
 }

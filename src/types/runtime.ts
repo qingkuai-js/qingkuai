@@ -132,5 +132,5 @@ export type ComponentOptions = Partial<{
     s: Record<string, ArbitraryFunc> // slots
 }>
 export type EventRegistration = FixedArray<string[] | undefined, 2>
-export type ComponentFunc = (anchor: Text, options?: ComponentOptions) => void
+export type ComponentFunc = (target: Element, options?: ComponentOptions) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

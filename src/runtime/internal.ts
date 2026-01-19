@@ -10,6 +10,7 @@ export {
 
 export {
     listen,
+    getChild,
     getSibling,
     setText,
     setAttribute,

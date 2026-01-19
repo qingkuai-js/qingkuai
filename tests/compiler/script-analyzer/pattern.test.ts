@@ -1,12 +1,37 @@
-import type { ArrayPattern, AssignmentPattern, ObjectPattern } from "@babel/types"
+import type { PatternLike } from "@babel/types"
+import type { WalkContext } from "../../../src/util/compiler/estree/walk"
 
 import { expect, test } from "vitest"
-import { parse } from "@babel/parser"
-import { arrayFrom } from "../../../src/util/shared/arrays"
-import { walk, walkDeclarationIdentifiers } from "../../../src/util/compiler/estree/walk"
+import { parse, parseExpression } from "@babel/parser"
+import { isLeftValue } from "../../../src/util/compiler/estree/assert"
+import { walk, walkPatternIdentifiers } from "../../../src/util/compiler/estree/walk"
+import { NOOP } from "../../../src/runtime/constants"
 
 function extractIdentifiers(source: string) {
-    const result = new Set<string>()
+    const result: string[][] = []
+
+    const extract = (node: PatternLike, context: WalkContext<PatternLike>) => {
+        switch (context.striptTypeOperationsParent?.value.type) {
+            case "ObjectMethod":
+            case "CatchClause":
+            case "ForStatement":
+            case "ForInStatement":
+            case "ForOfStatement":
+            case "ClassMethod":
+            case "ClassPrivateMethod":
+            case "TSParameterProperty":
+            case "VariableDeclarator":
+            case "AssignmentExpression":
+            case "FunctionExpression":
+            case "FunctionDeclaration":
+            case "ArrowFunctionExpression": {
+                walkPatternIdentifiers(node, ({ name }, path) => {
+                    result.push([name, path])
+                })
+            }
+        }
+    }
+
     walk(
         parse(source, {
             sourceType: "module",
@@ -18,14 +43,69 @@ function extractIdentifiers(source: string) {
             AssignmentPattern: extract
         }
     )
-    return arrayFrom(result)
-
-    function extract(node: ArrayPattern | ObjectPattern | AssignmentPattern) {
-        walkDeclarationIdentifiers(node, ({ name }) => {
-            result.add(name)
-        })
-    }
+    return result
 }
+
+test("Left value", () => {
+    function expectIsLeftValue(source: string, expected: boolean, key?: string) {
+        const node: any = parseExpression(source, {
+            plugins: ["typescript"]
+        })
+        expect(isLeftValue(key ? node[key] : node), `source: "${source}"`).toBe(expected)
+    }
+
+    expectIsLeftValue("a", true)
+    expectIsLeftValue("a.b", true)
+    expectIsLeftValue("a!.b!", true)
+    expectIsLeftValue("[a] = _", true, "left")
+    expectIsLeftValue("{ a } = _", true, "left")
+    expectIsLeftValue("[a, [b = c, [d = e] = f, ...g] = h, ...i] = _", true, "left")
+    expectIsLeftValue("{ a, b: c, d: e = f, g: { h = i } = j, ...k } = _", true, "left")
+
+    for (const expression of [
+        "a()",
+        "a++",
+        "a?.b",
+        "a & b",
+        "a + b",
+        "a += 1",
+        "a ? b : c",
+        "void(a)",
+        "undefined",
+        "null",
+        "()=>{}",
+        "''",
+        "1",
+        "class a{}",
+        "function(){}",
+        "function a(){}"
+    ]) {
+        expectIsLeftValue(expression, false)
+    }
+})
+
+test("Whether default value is specified", () => {
+    function expectedDefaultValueIsSpecified(source: string, expected: boolean) {
+        const node: any = parseExpression(`${source} = _`, {
+            plugins: ["typescript"]
+        })
+        expect(walkPatternIdentifiers(node.left, NOOP)).toBe(expected)
+    }
+
+    expectedDefaultValueIsSpecified("{ a }", false)
+    expectedDefaultValueIsSpecified("{ a, b }", false)
+    expectedDefaultValueIsSpecified("{ a, b: { c }, ...d }", false)
+    expectedDefaultValueIsSpecified("[a, [b, [c, [d]]], ...e]", false)
+
+    expectedDefaultValueIsSpecified("[a = b]", true)
+    expectedDefaultValueIsSpecified("{ a = b }", true)
+    expectedDefaultValueIsSpecified("[a, [b = c]]", true)
+    expectedDefaultValueIsSpecified("{ a, b = c }", true)
+    expectedDefaultValueIsSpecified("[a, [b, [c, [d = e]]]]", true)
+    expectedDefaultValueIsSpecified("{ a, b: { c: { d = e } } }", true)
+    expectedDefaultValueIsSpecified("[a, [b, [c, [d]]] = e, ...f]", true)
+    expectedDefaultValueIsSpecified("{ a: { b: { c } } = d, ...e}", true)
+})
 
 test("Variable declarations", () => {
     const identifiers = extractIdentifiers(`
@@ -46,23 +126,23 @@ test("Variable declarations", () => {
         const [v, [w, [x, [y = z] = A] = B] = C, ...D] = []
     `)
     expect(identifiers).toEqual([
-        "a",
-        "b",
-        "c",
-        "e",
-        "f",
-        "g",
-        "h",
-        "j",
-        "l",
-        "n",
-        "q",
-        "u",
-        "v",
-        "w",
-        "x",
-        "y",
-        "D"
+        ["a", ".a"],
+        ["b", ".b"],
+        ["c", ".c"],
+        ["e", ""],
+        ["f", "[0]"],
+        ["g", "[1]"],
+        ["h", "[2]"],
+        ["j", "[3]"],
+        ["l", ".k"],
+        ["n", ".m.n"],
+        ["q", ".o.p.q"],
+        ["u", ""],
+        ["v", "[0]"],
+        ["w", "[1][0]"],
+        ["x", "[1][1][0]"],
+        ["y", "[1][1][1][0]"],
+        ["D", "[2]"]
     ])
 })
 
@@ -91,26 +171,30 @@ test("Function parameters", () => {
             _([u = v, [w = x] = y, ...z]){}
 
             #_({
-                A: { B = C },
-                ...D
+                A: {
+                    B = C,
+                    ...D
+                },
+                ...E
             }){}
         }
     `)
     expect(identifiers).toEqual([
-        "b",
-        "e",
-        "g",
-        "h",
-        "j",
-        "m",
-        "o",
-        "q",
-        "s",
-        "u",
-        "w",
-        "z",
-        "B",
-        "D"
+        ["b", ".a"],
+        ["e", ".d.e"],
+        ["g", ""],
+        ["h", "[0]"],
+        ["j", "[1][0]"],
+        ["m", "[2]"],
+        ["o", ".n"],
+        ["q", ""],
+        ["s", ""],
+        ["u", "[0]"],
+        ["w", "[1][0]"],
+        ["z", "[2]"],
+        ["B", ".A.B"],
+        ["D", ".A"],
+        ["E", ""]
     ])
 })
 
@@ -120,12 +204,20 @@ test("Assignment expressions", () => {
         ;({
             k,
             l: {
-                n: n = o
+                m: n = o
             } = p,
             ...q
         } = {})
     `)
-    expect(identifiers).toEqual(["a", "c", "f", "h", "k", "n", "q"])
+    expect(identifiers).toEqual([
+        ["a", "[0]"],
+        ["c", "[1][0]"],
+        ["f", "[2][0]"],
+        ["h", "[2][1][0]"],
+        ["k", ".k"],
+        ["n", ".l.m"],
+        ["q", ""]
+    ])
 })
 
 test("Statements", () => {
@@ -141,7 +233,25 @@ test("Statements", () => {
 
         for([j, [k = l], ...[m = n, [o = p] = q]] in []){}
 
-        for({r, s: t = u, ...v} of {}){}
+        for({
+            r,
+            s: t = u,
+            v: v = w,
+            ...x
+        } of {}){}
     `)
-    expect(identifiers).toEqual(["a", "c", "g", "i", "j", "k", "m", "o", "r", "t", "v"])
+    expect(identifiers).toEqual([
+        ["a", ".a"],
+        ["c", ".b"],
+        ["g", ".e.f"],
+        ["i", ""],
+        ["j", "[0]"],
+        ["k", "[1][0]"],
+        ["m", "[2][0]"],
+        ["o", "[2][1][0]"],
+        ["r", ".r"],
+        ["t", ".s"],
+        ["v", ".v"],
+        ["x", ""]
+    ])
 })

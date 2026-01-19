@@ -36,6 +36,18 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
             return `Compiler intrinsic identifier "${name}" cannot be shadowed at the top level.`
         }
     ],
+    InvalidParameterForAliasIntrinsic: [
+        1024,
+        () => {
+            return `The compiler intrinsic "alias" can only accept a writable target (lvalue) as its argument.`
+        }
+    ],
+    InvalidAliasDestructuring: [
+        1025,
+        () => {
+            return "Invalid alias destructuring: default values are not allowed in destructuring alias bindings."
+        }
+    ],
     InvalidUsageForIntrinsicMethods: [
         1021,
         (name: string) => {
@@ -67,6 +79,11 @@ export const AmbiguousReactiveMarking = withLocation(
     ...commonMessage.AmbiguousReactiveMarking
 )
 
+// prettier-ignore
+export const InvalidAliasDestructuring = withLocation(
+    ...commonMessage.InvalidAliasDestructuring
+)
+
 export const TopLevelAwaitNotBeSupported = withLocation(
     ...commonMessage.TopLevelAwaitNotBeSupported
 )
@@ -85,6 +102,10 @@ export const RedeclareDerivedReactiveValue = withLocation(
 
 export const InvalidUsageForIntrinsicMethods = withLocation(
     ...commonMessage.InvalidUsageForIntrinsicMethods
+)
+
+export const InvalidParameterForAliasIntrinsic = withLocation(
+    ...commonMessage.InvalidParameterForAliasIntrinsic
 )
 
 export const ShadowCompilerIntrinsicAtTopLevel = withLocation(

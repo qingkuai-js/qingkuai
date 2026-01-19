@@ -25,6 +25,8 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
 
 describe("Invalid usages of intrinsic methods", () => {
     const getMsg = commonErrorMsg.InvalidUsageForIntrinsicMethods[1]
+    const invalidArgMsg = commonErrorMsg.InvalidParameterForAliasIntrinsic[1]()
+    const invalidAliasDestructuringMsg = commonErrorMsg.InvalidAliasDestructuring[1]()
 
     test("Not in the top level", () => {
         localAnalyze(`
@@ -35,6 +37,7 @@ describe("Invalid usages of intrinsic methods", () => {
                 shallow()
                 raw()
                 derived()
+                alias()
             }
         `)
         localMatchCompileMessages([
@@ -67,6 +70,16 @@ describe("Invalid usages of intrinsic methods", () => {
                 type: "error",
                 range: [82, 89],
                 value: getMsg("derived")
+            },
+            {
+                type: "error",
+                range: [96, 103],
+                value: invalidArgMsg
+            },
+            {
+                type: "error",
+                range: [96, 101],
+                value: getMsg("alias")
             }
         ])
     })
@@ -105,6 +118,7 @@ describe("Invalid usages of intrinsic methods", () => {
             shallow()
             test(raw(1))
             derived && derived(()=>{})
+            alias(_)
         `)
         localMatchCompileMessages([
             {
@@ -131,6 +145,11 @@ describe("Invalid usages of intrinsic methods", () => {
                 type: "error",
                 range: [53, 60],
                 value: getMsg("derived")
+            },
+            {
+                type: "error",
+                range: [69, 74],
+                value: getMsg("alias")
             }
         ])
     })
@@ -165,6 +184,66 @@ describe("Invalid usages of intrinsic methods", () => {
                 type: "error",
                 range: [42, 51],
                 value: getMsg("syncWatch")
+            }
+        ])
+    })
+
+    test("Argument is not left value", () => {
+        localAnalyze(`
+            let a = alias(1)
+            let { b } = alias({})
+            const [c, d] = alias(getObj(), a++)
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [14, 15],
+                value: invalidArgMsg
+            },
+            {
+                type: "error",
+                range: [35, 37],
+                value: invalidArgMsg
+            },
+            {
+                type: "error",
+                range: [60, 73],
+                value: invalidArgMsg
+            }
+        ])
+    })
+
+    test("Destructuring alias binding can not specific default values", () => {
+        localAnalyze(`
+            var { a = b } = alias(_)
+            let {
+                c: {
+                    d: { e = f }
+                }
+            } = alias(_)
+            const [g = h] = alias(_),
+                [i, [j, [k = l]]] = alias(_)
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [4, 24],
+                value: invalidAliasDestructuringMsg
+            },
+            {
+                type: "error",
+                range: [29, 79],
+                value: invalidAliasDestructuringMsg
+            },
+            {
+                type: "error",
+                range: [86, 104],
+                value: invalidAliasDestructuringMsg
+            },
+            {
+                type: "error",
+                range: [110, 138],
+                value: invalidAliasDestructuringMsg
             }
         ])
     })

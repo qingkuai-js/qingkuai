@@ -10,11 +10,11 @@ import { AFTER_MOUNT, NIL } from "./constants"
 import { createDestruction } from "./destroy"
 import { isString } from "../util/shared/assert"
 import { isElement } from "../util/runtime/assert"
+import { appendChild, selectElement } from "./dom"
 import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
 import { stripPrototype } from "../util/runtime/sundry"
 import { any, createProxy, len, runAll } from "../util/shared/sundry"
-import { appendChild, createTextNode, insertBefore, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
 export const [
@@ -76,24 +76,21 @@ export function runHooks(instance: ComponentInstance, index: number) {
     }
 }
 
-export function mount(reference: ChildNode, fragment: DocumentFragment) {
+export function mount(target: Element, fragment: DocumentFragment) {
     backToParentDestruction()
-    insertBefore(reference, fragment)
+    appendChild(target, fragment)
     setCurrentInstance(currentInstance!.p)
     runHooks(currentInstance!, AFTER_MOUNT)
 }
 
-export function createApp(render: ComponentFunc, target: Element | string) {
+export function mountApp(render: ComponentFunc, target: Element | string) {
     if (isString(target)) {
         target = selectElement(target) as Element
     }
     if (!isElement(target)) {
-        InvalidElementNode("createApp")
+        InvalidElementNode("mountApp")
     }
-
-    const anchor = createTextNode()
-    appendChild(target, anchor)
-    render(anchor)
+    render(target)
 }
 
 export function init(registration: EventRegistration) {

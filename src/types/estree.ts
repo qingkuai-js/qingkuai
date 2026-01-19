@@ -1,13 +1,20 @@
 import type {
     Node,
+    Identifier,
+    Expression,
+    Program,
+    ClassMethod,
+    TSModuleBlock,
+    ObjectMethod,
     ClassDeclaration,
+    BlockStatement,
+    ClassPrivateMethod,
     TSEnumDeclaration,
+    FunctionExpression,
     FunctionDeclaration,
     TSModuleDeclaration,
     VariableDeclaration,
-    BlockStatement,
-    TSModuleBlock,
-    Program
+    ArrowFunctionExpression
 } from "@babel/types"
 import type { RequiredNonNullableKeys } from "./tools"
 import type { WalkContext } from "../util/compiler/estree/walk"
@@ -22,6 +29,14 @@ export type TopLevelDeclarationNode =
     | TSEnumDeclaration
     | TSModuleDeclaration
 
+export type FunctionNode =
+    | ObjectMethod
+    | ClassMethod
+    | ClassPrivateMethod
+    | FunctionExpression
+    | FunctionDeclaration
+    | ArrowFunctionExpression
+
 export type ScopeContext = WalkContext<ScopeNode>
 export type ScopeNode = BlockStatement | TSModuleBlock | Program
 
@@ -34,5 +49,7 @@ export type Visitor = {
 } & {
     [K in AnyNode["type"]]?: VisitorTrapFunc<Extract<AnyNode, { type: K }>>
 }
+
+export type WalkPatternCallback = (identifier: WithLoc<Identifier>, path: string) => void
 
 type VisitorTrapFunc<T extends AnyNode> = (node: WithLoc<T>, context: WalkContext<T>) => void

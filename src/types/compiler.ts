@@ -95,9 +95,11 @@ export interface ScriptAnalyzeRet {
         string,
         {
             range: Range
+            path: string
             hoist: boolean
             implicit: boolean
-            status: TopLevelIdentifierStatus
+            accessor: boolean
+            status: IdentifierStatus
             contexts: WalkContext<TopLevelDeclarationNode>[]
         }
     >
@@ -129,4 +131,4 @@ export type CompileOptions = Partial<{
 
 export type Range = Pair<number>
 export type AttributeQuoteKind = "single" | "double" | "curly" | "none"
-export type TopLevelIdentifierStatus = "reactive" | "raw" | "shallow" | "derived" | "pending"
+export type IdentifierStatus = "reactive" | "raw" | "shallow" | "derived" | "pending" | "alias"

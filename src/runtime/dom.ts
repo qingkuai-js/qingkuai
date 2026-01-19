@@ -21,16 +21,12 @@ export function listen(
     elem.addEventListener(type, handler, options)
 }
 
-export function createTextNode() {
-    return DOCUMENT.createTextNode("")
-}
-
 export function selectElement(selector: string) {
     return DOCUMENT.querySelector(selector)
 }
 
 export function replaceWithText(comment: Comment) {
-    const textNode = createTextNode()
+    const textNode = DOCUMENT.createTextNode("")
     comment.replaceWith(textNode)
     return textNode
 }
@@ -43,6 +39,10 @@ export function setText(text: Text, content: any) {
     if ((!context || context.a.d) && text.nodeValue != content) {
         text.nodeValue = content
     }
+}
+
+export function getChild(node: Element, index = 0) {
+    return node.childNodes[index]
 }
 
 export function appendChild(target: Element, node: Node) {

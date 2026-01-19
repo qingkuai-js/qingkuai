@@ -1,6 +1,6 @@
 import type { Destruction } from "./runtime"
 import type { TemplateNode } from "./compiler"
-import type { Range, TopLevelIdentifierStatus } from "./compiler"
+import type { Range, IdentifierStatus } from "./compiler"
 
 export interface ExpectedEffect {
     cleaner: any
@@ -25,7 +25,7 @@ export interface ExpectedTopLevelIdentifier {
     name: string
     hoist: boolean
     implicit: boolean
-    status: TopLevelIdentifierStatus
+    status: IdentifierStatus
 }
 
 export type ExpectedTemplateNode = Omit<Partial<TemplateNode>, "children"> & {

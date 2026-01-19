@@ -5,9 +5,10 @@ import type {
     PatternLike,
     TSModuleBlock,
     BlockStatement,
-    VariableDeclaration
+    VariableDeclaration,
+    Expression
 } from "@babel/types"
-import type { AnyNode, Visitor, WithLoc } from "#type-declarations/estree"
+import type { AnyNode, Visitor, WalkPatternCallback, WithLoc } from "#type-declarations/estree"
 
 import { any } from "../../shared/sundry"
 import { isArray, isObject } from "../../shared/assert"
@@ -132,39 +133,6 @@ export class WalkContext<T extends AnyNode = AnyNode> {
     }
 }
 
-export function walkDeclarationIdentifiers(
-    pattern: LVal | PatternLike,
-    callback: (identifier: WithLoc<Identifier>) => void
-) {
-    switch (pattern.type) {
-        case "Identifier": {
-            return callback(pattern as WithLoc<Identifier>)
-        }
-        case "AssignmentPattern": {
-            return walkDeclarationIdentifiers(pattern.left, callback)
-        }
-        case "RestElement": {
-            return walkDeclarationIdentifiers(pattern.argument, callback)
-        }
-        case "ArrayPattern": {
-            for (const element of pattern.elements) {
-                element && walkDeclarationIdentifiers(element, callback)
-            }
-            break
-        }
-        case "ObjectPattern": {
-            for (const property of pattern.properties) {
-                if (property.type === "RestElement") {
-                    walkDeclarationIdentifiers(property, callback)
-                } else {
-                    walkDeclarationIdentifiers(property.value as PatternLike, callback)
-                }
-            }
-            break
-        }
-    }
-}
-
 export function walk(node: any, visitor: Visitor, context = new WalkContext(node)) {
     const recursive = (child: AnyNode) => {
         if (child.loc) {
@@ -188,6 +156,40 @@ export function walk(node: any, visitor: Visitor, context = new WalkContext(node
             recursive(any(child))
         }
     }
+}
+
+export function walkPatternIdentifiers(pattern: LVal | PatternLike, callback: WalkPatternCallback) {
+    return (function extract(from: LVal | PatternLike, path: string): void | boolean {
+        switch (from.type) {
+            case "Identifier": {
+                return callback(from as WithLoc<Identifier>, path)
+            }
+            case "AssignmentPattern": {
+                return extract(from.left, path), true
+            }
+            case "RestElement": {
+                return extract(from.argument, path)
+            }
+            case "ArrayPattern": {
+                return from.elements.reduce((ret, element, index) => {
+                    return (element && extract(element, path + `[${index}]`)) || ret
+                }, false)
+            }
+            case "ObjectPattern": {
+                return from.properties.reduce((ret, property) => {
+                    if (property.type === "RestElement") {
+                        return extract(property, path) || ret
+                    } else {
+                        let extra = ""
+                        if (property.key.type === "Identifier") {
+                            extra = `.${property.key.name}`
+                        }
+                        return extract(property.value as PatternLike, path + extra) || ret
+                    }
+                }, false)
+            }
+        }
+    })(pattern, "")
 }
 
 // 判断节点是否为作用域块的上下文
@@ -336,7 +338,7 @@ function isBindingReference(context: WalkContext) {
                 }
             })
             if (isAssignTargetPattern) {
-                walkDeclarationIdentifiers(patternContext!.value, identifier => {
+                walkPatternIdentifiers(patternContext!.value, identifier => {
                     ret ||= node === identifier
                 })
             }
@@ -397,7 +399,7 @@ function recordScopeIdentifiers(context: WalkContext<BlockStatement | TSModuleBl
         }
     }
     for (const pattern of paramPatterns) {
-        walkDeclarationIdentifiers(pattern, identifier => {
+        walkPatternIdentifiers(pattern, identifier => {
             context.scopeIdentifiers.add(identifier.name)
         })
     }
@@ -425,7 +427,7 @@ function recordScopeIdentifiers(context: WalkContext<BlockStatement | TSModuleBl
     }
     for (const declaration of declarations) {
         for (const declarator of declaration.declarations) {
-            walkDeclarationIdentifiers(declarator.id, identifier => {
+            walkPatternIdentifiers(declarator.id, identifier => {
                 let scope: WalkContext | null = context
                 if (declaration.kind === "var" && !isNonHoistableScopeContext(context)) {
                     scope = context.nonHoistableScope
