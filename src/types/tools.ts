@@ -13,8 +13,9 @@ export type SetValue<S> = S extends Set<infer U> ? U : never
 export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
 export type MapValueType<M> = M extends Map<any, infer U> ? U : never
 
-export type RequiredNonNullableKeys<T, K extends keyof T> = Omit<T, K> &
-    NonNullable<Required<Pick<T, K>>>
+export type RequiredNonNullableKeys<T, K extends keyof T> = Omit<T, K> & {
+    [P in K]-?: NonNullable<T[P]>
+}
 export type RequiredKeys<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 
 export type FixedArray<T, L extends number, R extends T[] = []> = R["length"] extends L

@@ -42,8 +42,7 @@ import { walk, walkPatternIdentifiers } from "../../util/compiler/estree/walk"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
-    const program = parseScript(sourceCode, inputDescriptor.script.loc.start.index)
-
+    const program = parseScript(sourceCode)
     program && walk(program, visitor)
     inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.length || 2
 }
@@ -57,6 +56,7 @@ const visitor: Visitor = {
 
     AnyNode(node, context) {
         switch (node.type) {
+            case "TSExportAssignment":
             case "ExportSpecifier":
             case "ExportAllDeclaration":
             case "ExportDefaultSpecifier":
@@ -67,6 +67,14 @@ const visitor: Visitor = {
                     ExportRelatedNotBeSupported(getScriptLocByRange(node.range))
                 }
             }
+        }
+        if (node.type !== "Program") {
+            ;(analyzeResult.script.locations[node.loc.start.line - 1] ??= new Set()).add(
+                node.loc.start.column
+            )
+            ;(analyzeResult.script.locations[node.loc.end.line - 1] ??= new Set()).add(
+                node.loc.end.column
+            )
         }
     },
 
@@ -175,10 +183,16 @@ const visitor: Visitor = {
         }
     },
 
+    TSImportEqualsDeclaration(node, context) {
+        checkTopLevelIdentifier(node.id.name, node.id.range!)
+        analyzeResult.script.importDeclarations.push(context)
+    },
+
     ImportDeclaration(node, context) {
-        for (const specifier of node.specifiers) {
-            analyzeResult.script.fullIdentifiers.add(specifier.local.name)
-            checkTopLevelIdentifier(specifier.local.name, specifier.local.range!)
+        if (!node.importKind || node.importKind === "value") {
+            for (const specifier of node.specifiers) {
+                checkTopLevelIdentifier(specifier.local.name, specifier.local.range!)
+            }
         }
         analyzeResult.script.importDeclarations.push(context)
     },

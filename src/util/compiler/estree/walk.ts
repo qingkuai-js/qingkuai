@@ -1,18 +1,9 @@
-import type {
-    LVal,
-    Program,
-    Identifier,
-    PatternLike,
-    TSModuleBlock,
-    BlockStatement,
-    VariableDeclaration,
-    Expression
-} from "@babel/types"
+import type { LVal, Identifier, PatternLike, VariableDeclaration } from "@babel/types"
 import type { AnyNode, Visitor, WalkPatternCallback, WithLoc } from "#type-declarations/estree"
 
 import { any } from "../../shared/sundry"
 import { isArray, isObject } from "../../shared/assert"
-import { isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
+import { isBlockNode, isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
 
 export class WalkContext<T extends AnyNode = AnyNode> {
     inTopLevel: boolean
@@ -23,10 +14,90 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         public parent: WalkContext | null = null,
         public scopeIdentifiers: Set<string> = new Set()
     ) {
-        const blockTypes = ["BlockStatement", "TSModuleBlock"]
+        if (value.type !== "Program" && this.isScopeBoundary) {
+            recordScopeIdentifiers(this)
+        }
         this.isBindingReference = isBindingReference(this)
-        blockTypes.includes(value.type) && recordScopeIdentifiers(any(this))
-        this.inTopLevel = !parent || (parent.inTopLevel && !blockTypes.includes(parent.value.type))
+        this.inTopLevel = !parent || (parent.inTopLevel && !isBlockNode(parent.value))
+    }
+
+    // 判断节点是否为作用域边界的上下文
+    // Determine whether the node is within a scope boundary context.
+    get isScopeBoundary() {
+        const node = this.value
+        const parentNode = this.parent?.value
+        switch (node.type) {
+            case "Program":
+            case "TSModuleBlock":
+            case "BlockStatement": {
+                return true
+            }
+        }
+        switch (parentNode?.type) {
+            case "ForInStatement":
+            case "ForOfStatement":
+            case "ArrowFunctionExpression": {
+                return node === parentNode.body
+            }
+            case "ForStatement": {
+                return (
+                    node === parentNode.body ||
+                    node === parentNode.test ||
+                    node === parentNode.update
+                )
+            }
+        }
+        return false
+    }
+
+    // 判断节点是否为不可提升作用域边界的上下文
+    // Determine whether the node is within a non-hoistable scope boundary context.
+    get isNonHoistableScopeBoundary() {
+        const node = this.value
+        const parentNode = this.parent?.value
+        switch (node.type) {
+            case "Program":
+            case "TSModuleBlock": {
+                return true
+            }
+            case "BlockStatement": {
+                switch (parentNode?.type) {
+                    case "ObjectMethod":
+                    case "ClassMethod":
+                    case "ClassPrivateMethod":
+                    case "FunctionExpression":
+                    case "FunctionDeclaration":
+                    case "ArrowFunctionExpression": {
+                        return true
+                    }
+                }
+            }
+        }
+        return parentNode?.type === "ArrowFunctionExpression" && node === parentNode.body
+    }
+
+    // 获取节点所属的作用域
+    // Get the scope that the node belongs to.
+    get scope(): WalkContext | null {
+        let ret: any = null
+        this.walkAncestors(current => {
+            if (current.isScopeBoundary) {
+                return (ret = current), true
+            }
+        })
+        return ret
+    }
+
+    // 获取节点所属的不可提升作用域
+    // Get the non-hoistable scope that the node belongs to.
+    get nonHoistableScope(): WalkContext | null {
+        let ret: any = null
+        this.walkAncestors(current => {
+            if (current.isNonHoistableScopeBoundary) {
+                return (ret = current), true
+            }
+        })
+        return ret
     }
 
     // 节点是否处于可提升的顶级作用域（含非函数块级作用域）
@@ -34,7 +105,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
     get inHoistableTopLevel() {
         let ret = true
         this.walkAncestors(current => {
-            if (isNonHoistableScopeContext(current)) {
+            if (current.isNonHoistableScopeBoundary) {
                 return (ret = current.value.type === "Program"), true
             }
         })
@@ -88,30 +159,6 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         return this.parent.striptTypeOperationsParent
     }
 
-    // 获取节点所属的作用域
-    // Get the scope that the node belongs to.
-    get scope(): WalkContext<BlockStatement | TSModuleBlock | Program> | null {
-        let ret: any = null
-        this.walkAncestors(current => {
-            if (isScopeContext(current)) {
-                return (ret = current), true
-            }
-        })
-        return ret
-    }
-
-    // 获取节点所属的不可提升作用域
-    // Get the non-hoistable scope that the node belongs to.
-    get nonHoistableScope(): WalkContext<BlockStatement | TSModuleBlock | Program> | null {
-        let ret: any = null
-        this.walkAncestors(current => {
-            if (isNonHoistableScopeContext(current)) {
-                return (ret = current), true
-            }
-        })
-        return ret
-    }
-
     findAncestorUntil<T extends AnyNode["type"]>(
         type: T
     ): WalkContext<AnyNode & { type: T }> | null {
@@ -151,13 +198,21 @@ export function walk(node: any, visitor: Visitor, context = new WalkContext(node
 
         const child = node[key]
         if (isArray(child)) {
-            child.forEach(recursive)
+            child.forEach(item => {
+                item && recursive(item)
+            })
         } else if (isObject(child)) {
-            recursive(any(child))
+            recursive(child as any)
         }
     }
 }
 
+// 递归遍历一个 Pattern 节点，当遇到绑定标识符时，调用传入的 callback，
+// 并传入当前标识符节点及其访问路径，该方法的返回值表示 Pattern 中是否指定了默认值
+//
+// Recursively traverse a Pattern node. When a binding identifier is encountered,
+// invoke the provided callback with the current identifier node and its access path.
+// The return value of this method indicates whether the Pattern specifies a default value.
 export function walkPatternIdentifiers(pattern: LVal | PatternLike, callback: WalkPatternCallback) {
     return (function extract(from: LVal | PatternLike, path: string): void | boolean {
         switch (from.type) {
@@ -190,43 +245,6 @@ export function walkPatternIdentifiers(pattern: LVal | PatternLike, callback: Wa
             }
         }
     })(pattern, "")
-}
-
-// 判断节点是否为作用域块的上下文
-// Determine whether the node is within a scope block context.
-function isScopeContext(context: WalkContext) {
-    switch (context.value.type) {
-        case "Program":
-        case "TSModuleBlock":
-        case "BlockStatement": {
-            return true
-        }
-    }
-    return false
-}
-
-// 判断节点是否为不可提升作用域块的上下文
-// Determine whether the node is within a non-hoistable scope block context.
-function isNonHoistableScopeContext(context: WalkContext) {
-    switch (context.value.type) {
-        case "Program":
-        case "TSModuleBlock": {
-            return true
-        }
-        case "BlockStatement": {
-            switch (context.parent?.value.type) {
-                case "ObjectMethod":
-                case "ClassMethod":
-                case "ClassPrivateMethod":
-                case "FunctionExpression":
-                case "FunctionDeclaration":
-                case "ArrowFunctionExpression": {
-                    return true
-                }
-            }
-        }
-    }
-    return false
 }
 
 // 判断是否为值标识符引用
@@ -299,7 +317,7 @@ function isBindingReference(context: WalkContext) {
             let isAssignTargetPattern = false
             let patternContext: WalkContext<PatternLike> | undefined
             if (parentNode.type !== "ObjectProperty" && parentNode.type !== "RestElement") {
-                patternContext = any(parent)
+                patternContext = parent as any
             } else {
                 parent.walkAncestors(current => {
                     switch (current.value.type) {
@@ -312,7 +330,7 @@ function isBindingReference(context: WalkContext) {
                         }
                         case "ArrayPattern":
                         case "ObjectPattern": {
-                            return (patternContext = any(current)), true
+                            return (patternContext = current as any), true
                         }
                     }
                 })
@@ -350,10 +368,11 @@ function isBindingReference(context: WalkContext) {
 
 // 记录上下文中含有的作用域标识符
 // Record the scope identifiers present in the context.
-function recordScopeIdentifiers(context: WalkContext<BlockStatement | TSModuleBlock>) {
+function recordScopeIdentifiers(context: WalkContext) {
     const node = context.value
     const paramPatterns: PatternLike[] = []
     const declarations: VariableDeclaration[] = []
+    const children = isBlockNode(node) ? node.body : [node]
     const parentNode = context.striptTypeOperationsParent!.value
     switch (parentNode.type) {
         case "CatchClause": {
@@ -403,14 +422,14 @@ function recordScopeIdentifiers(context: WalkContext<BlockStatement | TSModuleBl
             context.scopeIdentifiers.add(identifier.name)
         })
     }
-    for (const statement of node.body) {
-        switch (statement.type) {
+    for (const child of children) {
+        switch (child.type) {
             case "VariableDeclaration": {
-                declarations.push(statement)
+                declarations.push(child)
                 break
             }
             case "TSModuleDeclaration": {
-                if (!willModuleDeclarationEmitsJS(statement)) {
+                if (!willModuleDeclarationEmitsJS(child)) {
                     break
                 }
                 // fallthrough
@@ -418,8 +437,8 @@ function recordScopeIdentifiers(context: WalkContext<BlockStatement | TSModuleBl
             case "ClassDeclaration":
             case "TSEnumDeclaration":
             case "FunctionDeclaration": {
-                if (statement.id?.type === "Identifier") {
-                    context.scopeIdentifiers.add(statement.id.name)
+                if (child.id?.type === "Identifier") {
+                    context.scopeIdentifiers.add(child.id.name)
                 }
                 break
             }
@@ -429,10 +448,12 @@ function recordScopeIdentifiers(context: WalkContext<BlockStatement | TSModuleBl
         for (const declarator of declaration.declarations) {
             walkPatternIdentifiers(declarator.id, identifier => {
                 let scope: WalkContext | null = context
-                if (declaration.kind === "var" && !isNonHoistableScopeContext(context)) {
+                if (declaration.kind === "var" && !context.isNonHoistableScopeBoundary) {
                     scope = context.nonHoistableScope
                 }
-                scope?.scopeIdentifiers.add(identifier.name)
+                if (scope && !scope.inTopLevel) {
+                    scope.scopeIdentifiers.add(identifier.name)
+                }
             })
         }
     }

@@ -1,28 +1,26 @@
-import type { ArbitraryFunc, Getter, ZeroOrOne } from "#type-declarations/tools"
 import type { Destruction, TraverseInfo } from "#type-declarations/runtime"
+import type { ArbitraryFunc, Getter, ZeroOrOne } from "#type-declarations/tools"
 
 import {
-    TRAVERSE_KEY,
-    TRAVERSE_VALUE,
+    LIST_KEY,
+    LIST_VALUE,
     TRAVERSE_SET,
     TRAVERSE_NUMBER,
     TRAVERSE_OBJECT,
     TRAVERSE_ARRAYLIKE
 } from "./constants"
+import { destroy } from "../destroy"
 import { insertBefore } from "../dom"
-import { mutualLink } from "../reactivity/value"
 import { UNDEF, NIL, REFLECT } from "../constants"
-import { isReactive } from "../../util/runtime/assert"
-import { createDestruction, destroy } from "../destroy"
 import { objectAssign } from "../../util/shared/aliases"
-import { toRaw, walkNodes } from "../../util/runtime/sundry"
+import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { DuplicateKey, NonTraverse } from "../messages/error"
 import { len, notEqual, optc } from "../../util/shared/sundry"
 import { isArray, isNumber, isString } from "../../util/shared/assert"
 import { renderEffect, runAndUpdateEffect } from "../reactivity/effect"
-import { WRAPPER, ITERATOR_KEYS, EFFECT_SCHEDULING } from "../reactivity/constants"
+import { invokeRender, toRaw, walkNodes } from "../../util/runtime/sundry"
 
-export function keyedTraverseBlock(
+export function keyedListBlock(
     anchor: ChildNode,
     getValue: Getter,
     getKey: ArbitraryFunc,
@@ -45,30 +43,25 @@ export function keyedTraverseBlock(
         const oldLength = info.h
         const newLength = newInfo.h
         const newKeys: string[] = []
-        const checkLength = Math.max(info.h, newInfo.h)
         const newDestructions: Record<string, Destruction> = {}
-        if (isReactive(baseValue) && isArray(baseValue)) {
-            mutualLink(baseValue[WRAPPER], ITERATOR_KEYS)
-        }
-        for (let i = 0, destructionForNewKey: Destruction | undefined; i < checkLength; i++) {
+        for (let i = 0, reference = anchor; i < newLength; i++) {
             const oldKey = oldKeys[i]
-            if (i >= newLength) {
-                if (!newDestructions[oldKey]) {
-                    destroy(destructions[oldKey])
+            const contextGetter = makeContextGetter(info, i)
+            const newKey = getKey(contextGetter)
+            const destructionForNewKey = destructions[newKey]
+            for (let j = i; j < oldLength; j++) {
+                if (newDestructions[oldKeys[j]]) {
+                    continue
                 }
-                continue
+                reference = destructions[oldKeys[j]].n[0]!
             }
-
-            // 此时一定有 oldLength <= newLength
-            // At this point, it is guaranteed that oldLength <= newLength.
-            const reference = i < oldLength ? destructions[oldKey].n[0]! : anchor
-            const newKey = getKey(getContext(newInfo, i), getContext(newInfo, i, 0))
-            if (!(destructionForNewKey = destructions[newKey])) {
+            if ((newKeys.push(newKey), !destructionForNewKey)) {
                 if (newDestructions[newKey]) {
                     DuplicateKey(newKey)
                 }
-                newDestructions[newKey] = createDestruction()
-                render(reference, makeContextGetter(info, i))
+                newDestructions[newKey] = invokeRender(() => {
+                    render(reference, contextGetter)
+                })
             } else {
                 if (oldKey != newKey) {
                     walkNodes(destructionForNewKey, node => {
@@ -80,13 +73,19 @@ export function keyedTraverseBlock(
                 newDestructions[newKey] = destructionForNewKey
             }
         }
+        for (let i = 0; i < oldLength; i++) {
+            const oldKey = oldKeys[i]
+            if (!newDestructions[oldKey]) {
+                destroy(destructions[oldKey])
+            }
+        }
         oldKeys = newKeys
         objectAssign(info, newInfo)
         destructions = newDestructions
     })
 }
 
-export function traverseBlock(getValue: Getter, render: ArbitraryFunc) {
+export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     const info: TraverseInfo = {
         l: 0,
         h: 0,
@@ -108,8 +107,11 @@ export function traverseBlock(getValue: Getter, render: ArbitraryFunc) {
             destroy(destructions.pop()!)
         }
         for (let i = oldLength; i < newLength; i++) {
-            destructions.push(createDestruction())
-            render(makeContextGetter(info, i))
+            destructions.push(
+                invokeRender(() => {
+                    render(makeContextGetter(info, i))
+                })
+            )
         }
         objectAssign(info, newInfo)
     })
@@ -122,12 +124,20 @@ function updateBlock(
     destruction: Destruction
 ) {
     const effect = destruction.e![0]
-    if (!oldInfo.l || effect.l & EFFECT_SCHEDULING) {
+    if (effect.l & EFFECT_SCHEDULING) {
         return
     }
+
+    // prettier-ignore
     if (
-        notEqual(getContext(oldInfo, index), getContext(newInfo, index)) ||
-        notEqual(getContext(oldInfo, index, 0), getContext(newInfo, index, 0))
+        (
+            oldInfo.l & LIST_VALUE &&
+            notEqual(getContext(oldInfo, index), getContext(newInfo, index))
+        ) ||
+        (
+            oldInfo.l & LIST_KEY &&
+            notEqual(getContext(oldInfo, index, 0), getContext(newInfo, index, 0))
+        )
     ) {
         runAndUpdateEffect(effect)
     }
@@ -172,7 +182,7 @@ function getTraverseInfo(value: any): TraverseInfo {
 
 function makeContextGetter(info: TraverseInfo, index: number) {
     return (getItem: ZeroOrOne = 1) => {
-        info.l |= getItem ? TRAVERSE_VALUE : TRAVERSE_KEY
+        info.l |= getItem ? LIST_VALUE : LIST_KEY
         return getContext(info, index, getItem, true)
     }
 }

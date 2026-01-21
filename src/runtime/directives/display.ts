@@ -4,13 +4,11 @@ import { any } from "../../util/shared/sundry"
 import { createDestruction } from "../destroy"
 import { getNodeContext, setText } from "../dom"
 import { renderEffect } from "../reactivity/effect"
-import { walkNodes } from "../../util/runtime/sundry"
+import { invokeRender, walkNodes } from "../../util/runtime/sundry"
 
 export function displayBlock(getValue: Getter, render: ArbitraryFunc) {
     let oldShouldDisplay = true
-    const destruction = createDestruction()
-
-    render()
+    const destruction = invokeRender(render)
     renderEffect(() => {
         const newShouldDisplay = !!getValue()
         if (newShouldDisplay != oldShouldDisplay) {

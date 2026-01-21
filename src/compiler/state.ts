@@ -14,7 +14,7 @@ export let inputDescriptor: InputDescriptor
 export let analyzeResult = newAnalyzeResult()
 
 export function resetCompilerState(options: CompileOptions) {
-    messages = []   
+    messages = []
     analyzeResult = newAnalyzeResult()
     inputDescriptor = newInputDescriptor(options)
 }
@@ -23,6 +23,7 @@ function newAnalyzeResult(): AnalyzeResult {
     return {
         script: {
             watchers: [],
+            locations: [],
             importDeclarations: [],
             fullIdentifiers: new Set(),
             topLevelReferences: new Map(),

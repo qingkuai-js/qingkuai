@@ -18,10 +18,15 @@ function checkScopeIdentifiers(context: WalkContext<Identifier>, full: string[][
     }
 
     let size = 0
-    const prevScope = context.scope!.scope!
+    let parentScope: WalkContext
+    if (context.isScopeBoundary) {
+        parentScope = context.scope!
+    } else {
+        parentScope = context.scope!.scope!
+    }
     const current = full[parseInt(context.value.name.slice(5, -1)) - 1]
     for (const name of context.scopeIdentifiers) {
-        if (!prevScope.scopeIdentifiers.has(name)) {
+        if (!parentScope.scopeIdentifiers.has(name)) {
             expect(
                 current.includes(name),
                 `missing item for ${context.value.name}: "${name}"`
@@ -35,7 +40,7 @@ function checkScopeIdentifiers(context: WalkContext<Identifier>, full: string[][
             `block for ${context.value.name} does not has "${name}"`
         ).toBeTruthy()
     }
-    expect(current.length).toBe(size)
+    expect(current.length, `size for ${context.value.name}`).toBe(size)
 }
 
 test("Variable declarations", () => {
@@ -209,14 +214,13 @@ test("For statements", () => {
             _mark5_
         }
 
-        for(var v in {}){
+        for(var v in {}) {
             _mark6_
-        }
+        };
 
         for({w, x: y = z} of []){
             _mark7_
         }
-
     `)
     walk(ast, {
         Identifier(_, context) {
@@ -228,6 +232,52 @@ test("For statements", () => {
                 ["u"],
                 [],
                 []
+            ])
+        }
+    })
+})
+
+test("Functions without BlockStatement", () => {
+    const ast = localParse(`
+        {
+            _mark1_
+            const a = (b, c = d, ...e) => _mark2_
+            ;({ f: g = h, i: [j, k = l] }) => _mark3_
+
+            const m = ([n, o = p, ...q], ...r) => (_mark4_, (s: t = u, ...v) => _mark5_)
+        }
+    `)
+    walk(ast, {
+        Identifier(_, context) {
+            checkScopeIdentifiers(context, [
+                ["a", "m"],
+                ["b", "c", "e"],
+                ["g", "j", "k"],
+                ["n", "o", "q", "r"],
+                ["s", "v"]
+            ])
+        }
+    })
+})
+
+test("For realeated statements without BlockStatement", () => {
+    const ast = localParse(`
+        for (let a, b; _mark1_; ) _mark2_;
+        for (const { c, d: e = f, ...g } of _mark3_)
+            for (var [h, i = j] in _mark4_) _mark5_;
+        for(const {k = l, m : n = o} of {}) 
+            ((p = q, ...r: s) => (_mark6_, t))(_mark7_)
+    `)
+    walk(ast, {
+        Identifier(_, context) {
+            checkScopeIdentifiers(context, [
+                ["a", "b"],
+                ["a", "b"],
+                [],
+                ["c", "e", "g"],
+                [],
+                ["p", "r"],
+                ["k", "n"]
             ])
         }
     })

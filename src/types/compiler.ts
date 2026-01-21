@@ -3,7 +3,13 @@ import type { TopLevelDeclarationNode } from "./estree"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
 import type { WalkContext } from "../util/compiler/estree/walk"
-import type { SpreadElement, Expression, ImportDeclaration, CallExpression } from "@babel/types"
+import type {
+    SpreadElement,
+    Expression,
+    ImportDeclaration,
+    CallExpression,
+    TSImportEqualsDeclaration
+} from "@babel/types"
 
 export interface ScriptDescriptor {
     code: string
@@ -103,11 +109,12 @@ export interface ScriptAnalyzeRet {
             contexts: WalkContext<TopLevelDeclarationNode>[]
         }
     >
+    locations: Set<number>[]
     fullIdentifiers: Set<string>
     watchers: WalkContext<CallExpression>[]
-    importDeclarations: WalkContext<ImportDeclaration>[]
     defaultRefs?: WalkContext<Expression | SpreadElement>
     defaultProps?: WalkContext<Expression | SpreadElement>
+    importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
 }
 
 export type StandaloneParseOptions = Partial<{

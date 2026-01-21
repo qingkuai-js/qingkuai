@@ -1,5 +1,5 @@
 import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime"
-import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
+import type { AnyObject, ArbitraryFunc, GeneralFunc, ObjectKeys } from "#type-declarations/tools"
 
 import {
     WRAPPER,
@@ -14,6 +14,8 @@ import { any, notEqual } from "../shared/sundry"
 import { setPrototypeOf } from "../shared/aliases"
 import { constReact } from "../../runtime/internal"
 import { NIL, RESOLVED } from "../../runtime/constants"
+import { createDestruction } from "../../runtime/destroy"
+import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
 
 export function toRaw<T>(v: T): T {
@@ -61,6 +63,11 @@ export function nextTick(fn?: ArbitraryFunc) {
 
 export function getRawProperty(property: any) {
     return isRefProperty(property) ? property[1] : property
+}
+
+export function invokeRender(render: GeneralFunc) {
+    const destruction = createDestruction()
+    return render(), backToParentDestruction(), destruction
 }
 
 export function ensureGetRefProperty(property: ObjectKeys) {

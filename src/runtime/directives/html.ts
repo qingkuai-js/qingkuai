@@ -1,12 +1,17 @@
 import type { Getter } from "#type-declarations/tools"
 import type { Destruction, HTMLBlockOptions } from "#type-declarations/runtime"
 
+import { destroy } from "../destroy"
 import { len } from "../../util/shared/sundry"
-import { createFragmentGetter } from "../internal"
 import { renderEffect } from "../reactivity/effect"
-import { createDestruction, destroy } from "../destroy"
+import { invokeRender } from "../../util/runtime/sundry"
+import { createFragmentGetter, insertBefore } from "../internal"
 
-export function htmlBlock(getValue: Getter<string>, getOptions: Getter<HTMLBlockOptions>) {
+export function htmlBlock(
+    getValue: Getter<string>,
+    anchor: Text,
+    getOptions: Getter<HTMLBlockOptions>
+) {
     let html: string | undefined
     let destruction: Destruction | undefined
     let options: HTMLBlockOptions | undefined
@@ -31,11 +36,10 @@ export function htmlBlock(getValue: Getter<string>, getOptions: Getter<HTMLBlock
                 matchStr => "&lt;" + matchStr.slice(1)
             )
         }
-
-        const newDestruction = createDestruction()
         destruction && destroy(destruction)
-        createFragmentGetter(html)()
-        destruction = newDestruction
+        destruction = invokeRender(() => {
+            insertBefore(anchor, createFragmentGetter(html!)())
+        })
         options = newOptions
     })
 }

@@ -43,6 +43,10 @@ export function isLiteral(node: AnyNode | undefined | null) {
     )
 }
 
+export function isBlockNode(node: AnyNode) {
+    return is(node, "BlockStatement") || is(node, "TSModuleBlock")
+}
+
 export function isUndefinedLiteral(node: AnyNode) {
     return node.type === "Identifier" && node.name === "undefined"
 }

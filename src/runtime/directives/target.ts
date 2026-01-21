@@ -1,18 +1,15 @@
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
-import { createDestruction } from "../destroy"
 import { renderEffect } from "../reactivity/effect"
 import { isElement } from "../../util/runtime/assert"
-import { walkNodes } from "../../util/runtime/sundry"
 import { InvalidElementNode } from "../messages/error"
 import { isNull, isString } from "../../util/shared/assert"
 import { appendChild, insertBefore, selectElement } from "../dom"
+import { invokeRender, walkNodes } from "../../util/runtime/sundry"
 
 export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFunc) {
     let oldTarget: any = anchor
-    const destruction = createDestruction()
-
-    render()
+    const destruction = invokeRender(render)
     renderEffect(() => {
         let newTarget: any
         const value = getValue()

@@ -1,9 +1,10 @@
 import type { Destruction } from "#type-declarations/runtime"
 import type { ArbitraryFunc } from "#type-declarations/tools"
 
+import { destroy } from "../destroy"
 import { len } from "../../util/shared/sundry"
 import { renderEffect } from "../reactivity/effect"
-import { createDestruction, destroy } from "../destroy"
+import { invokeRender } from "../../util/runtime/sundry"
 
 // crs: Conditions and Renders
 export function conditionBlock(crs: ArbitraryFunc[]) {
@@ -15,10 +16,9 @@ export function conditionBlock(crs: ArbitraryFunc[]) {
                 continue
             }
             if (i != renderIndex) {
-                destruction && destroy(destruction)
-                destruction = createDestruction()
                 renderIndex = i
-                crs[i + 1]()
+                destruction && destroy(destruction)
+                destruction = invokeRender(crs[i + 1])
             }
             return
         }

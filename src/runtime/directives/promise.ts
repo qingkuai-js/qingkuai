@@ -2,11 +2,12 @@ import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { CancelablePromise, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "../constants"
+import { destroy } from "../destroy"
 import { NotPromise } from "../messages/error"
 import { renderEffect } from "../reactivity/effect"
 import { isPromise } from "../../util/shared/assert"
-import { createDestruction, destroy } from "../destroy"
 import { objectAssign } from "../../util/shared/aliases"
+import { invokeRender } from "../../util/runtime/sundry"
 import { CANCELABLE, PROMISE_PENDING, PROMISE_SETTLED } from "./constants"
 
 export function promiseBlock(
@@ -25,8 +26,9 @@ export function promiseBlock(
         state = newState
 
         if (render) {
-            destruction = createDestruction()
-            render(arg)
+            destruction = invokeRender(() => {
+                render(arg)
+            })
         }
     }
 
