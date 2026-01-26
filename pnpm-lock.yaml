@@ -11,9 +11,6 @@ importers:
       '@babel/parser':
         specifier: ^7.28.0
         version: 7.28.0
-      lodash-es:
-        specifier: ^4.17.22
-        version: 4.17.22
     devDependencies:
       '@babel/types':
         specifier: ^7.28.1
@@ -436,9 +433,6 @@ packages:
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
-
-  lodash-es@4.17.22:
-    resolution: {integrity: sha512-XEawp1t0gxSi9x01glktRZ5HDy0HXqrM0x5pXQM98EaI0NxO6jVM7omDOxsuEo5UIASAnm2bRp1Jt/e0a2XU8Q==}
 
   loupe@3.1.4:
     resolution: {integrity: sha512-wJzkKwJrheKtknCOKNEtDK4iqg/MxmZheEMtSTYvnzRdEYaZzmgH976nenp8WdJRdx5Vc1X/9MO0Oszl6ezeXg==}
@@ -904,8 +898,6 @@ snapshots:
       resolve-pkg-maps: 1.0.0
 
   js-tokens@9.0.1: {}
-
-  lodash-es@4.17.22: {}
 
   loupe@3.1.4: {}
 

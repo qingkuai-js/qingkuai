@@ -1,12 +1,20 @@
 export const templateCloseCharsRE = /^\/?>/
+export const templateAttributeEndRE = /\s|>|$/
 export const templateInvalidAttributeRE = /^[^\s>]+/
 export const templateAttributeNameRE = /^[^\s='"\{\}><\/]+/
 export const templateConditionalCommentRE = /(?:^\[if |<\!\[endif\]$)/
 export const templateTagStructureRE = /<(?:\/?[a-zA-z][a-zA-Z\d\-_.:]*|!--)/
 export const templateEmbeddedLangTagRE = /^lang-([jt]s|css|s[ca]ss|less|stylus|postcss)/
 
+export const whitespaceRE = /\s/
+export const whitespacesRE = /\s*/
+export const nonWhitespaceRE = /\S/
+export const equalTokenRE = /^\s*=/
+export const startCurlyRE = /^\s*\{/
+export const startQuoteRE = /^\s*['"]/
 export const indentSpacesRE = /(?<=\n) +/
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
+export const interpolatedAttrStartCharRE = /[!@#&]/
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
 export const intrinsicVariableRE = /^props|refs|slots$/

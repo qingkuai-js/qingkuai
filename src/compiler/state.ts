@@ -21,13 +21,17 @@ export function resetCompilerState(options: CompileOptions) {
 
 function newAnalyzeResult(): AnalyzeResult {
     return {
+        template: {
+            nodeInfos: new Map(),
+            parsedPatterns: new Map()
+        },
         script: {
             watchers: [],
             locations: [],
             importDeclarations: [],
-            fullIdentifiers: new Set(),
-            topLevelReferences: new Map(),
-            topLevelIdentifiers: new Map()
+            topLevelReferences: {},
+            topLevelIdentifiers: {},
+            fullIdentifiers: new Set()
         }
     }
 }
@@ -56,6 +60,7 @@ function newInputDescriptor(options: CompileOptions) {
             tipComment: false,
             componentName: "",
             typeImportStatement: "",
+            reactivityMode: "reactive",
             reserveCommentNodes: false,
             checkTemplateStructure: true,
             shorthandDerivedDeclaration: true

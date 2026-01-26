@@ -11,8 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@babel/parser": "^7.28.0",
-    "lodash-es": "^4.17.22"
+    "@babel/parser": "^7.28.0"
   },
   "devDependencies": {
     "@babel/types": "^7.28.1",

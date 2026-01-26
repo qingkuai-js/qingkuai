@@ -1,11 +1,12 @@
 import type {
     Node,
     Identifier,
-    Expression,
     Program,
     ClassMethod,
     TSModuleBlock,
     ObjectMethod,
+    ArrayPattern,
+    ObjectPattern,
     ClassDeclaration,
     BlockStatement,
     ClassPrivateMethod,
@@ -21,6 +22,7 @@ import type { WalkContext } from "../util/compiler/estree/walk"
 
 export type AnyNode = Node
 export type PartialAnyNode = Node | undefined | null
+export type ContextPattern = Identifier | ArrayPattern | ObjectPattern
 
 export type TopLevelDeclarationNode =
     | VariableDeclaration

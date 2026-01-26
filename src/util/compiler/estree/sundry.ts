@@ -1,4 +1,3 @@
-import type { TypeAnnotation } from "@babel/types"
 import type { AnyNode } from "#type-declarations/estree"
 import type { Range } from "#type-declarations/compiler"
 

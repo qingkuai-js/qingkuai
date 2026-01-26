@@ -1264,7 +1264,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
             {
                 type: "error",
                 range: [8, 10],
-                value: "The <p> tag can not be used as self-closing tag."
+                value: "The <p> tag cannot be used as self-closing tag."
             }
         ])
     })

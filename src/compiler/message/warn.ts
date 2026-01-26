@@ -1,5 +1,5 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ASTLocation } from "#type-declarations/compiler"
+import type { ASTLocation, IdentifierStatus } from "#type-declarations/compiler"
 
 import { messages } from "../state"
 
@@ -8,9 +8,9 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
 })({
     UnnecessaryReactiveMark: [
         9001,
-        (kind?: string) => {
+        (status: IdentifierStatus) => {
             return `This value will never change, so making it ${
-                kind ? kind + " " : ""
+                status === "reactive" ? "" : status + " "
             }reactive is unnecessary and it will be treated as a raw (non-reactive) value.`
         }
     ],
@@ -26,6 +26,12 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
             return "Mixing two syntactic forms to declare derived reactive value is not recommended."
         }
     ],
+    RedundantRawMark: [
+        9005,
+        () => {
+            return `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
+        }
+    ],
     UnnecessaryMutableDerivedDeclaration: [
         9004,
         () => {
@@ -33,6 +39,11 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
         }
     ]
 })
+
+// prettier-ignore
+export const RedundantRawMark = withLocation(
+    ...commonMessage.RedundantRawMark
+)
 
 // prettier-ignore
 export const UnnecessaryReactiveMark = withLocation(
@@ -51,6 +62,10 @@ export const DeclareDerivedMixedSyntaticForms = withLocation(
 export const UnnecessaryMutableDerivedDeclaration = withLocation(
     ...commonMessage.UnnecessaryMutableDerivedDeclaration
 )
+
+export const RedundantAttributeValue = withLocation(9006, (tag: string, attribute: string) => {
+    return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute and can be used without a value.`
+})
 
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {

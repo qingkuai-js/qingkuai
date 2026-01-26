@@ -33,7 +33,7 @@ test("Simple pasing", () => {
         ],
         attributes: [
             {
-                key: {
+                name: {
                     raw: "class",
                     loc: getLocByIndex(3, 8)
                 },
@@ -41,11 +41,12 @@ test("Simple pasing", () => {
                     raw: "link",
                     loc: getLocByIndex(10, 14)
                 },
-                quote: "double",
+                equalSign: true,
+                valueEnclosure: "double",
                 loc: getLocByIndex(3, 15)
             },
             {
-                key: {
+                name: {
                     raw: "href",
                     loc: getLocByIndex(16, 20)
                 },
@@ -53,7 +54,8 @@ test("Simple pasing", () => {
                     raw: "https://qingkuai.dev",
                     loc: getLocByIndex(22, 42)
                 },
-                quote: "double",
+                equalSign: true,
+                valueEnclosure: "double",
                 loc: getLocByIndex(16, 43)
             }
         ],
@@ -68,7 +70,7 @@ test("Within self-closing tag", () => {
         tag: "input",
         attributes: [
             {
-                key: {
+                name: {
                     raw: "type",
                     loc: getLocByIndex(7, 11)
                 },
@@ -76,11 +78,12 @@ test("Within self-closing tag", () => {
                     raw: "button",
                     loc: getLocByIndex(13, 19)
                 },
-                quote: "double",
+                equalSign: true,
+                valueEnclosure: "double",
                 loc: getLocByIndex(7, 20)
             },
             {
-                key: {
+                name: {
                     raw: "value",
                     loc: getLocByIndex(21, 26)
                 },
@@ -88,7 +91,8 @@ test("Within self-closing tag", () => {
                     raw: "Click Me",
                     loc: getLocByIndex(28, 36)
                 },
-                quote: "double",
+                equalSign: true,
+                valueEnclosure: "double",
                 loc: getLocByIndex(21, 37)
             }
         ],
@@ -126,7 +130,7 @@ test("With directives", () => {
                 parent: nodeList[0],
                 attributes: [
                     {
-                        key: {
+                        name: {
                             raw: "#for",
                             loc: getLocByIndex(13, 17)
                         },
@@ -134,7 +138,8 @@ test("With directives", () => {
                             raw: "item of 3",
                             loc: getLocByIndex(19, 28)
                         },
-                        quote: "curly",
+                        equalSign: true,
+                        valueEnclosure: "curly",
                         loc: getLocByIndex(13, 29)
                     }
                 ],
@@ -193,7 +198,7 @@ test("With dynamic attributes", () => {
             tag: "div",
             attributes: [
                 {
-                    key: {
+                    name: {
                         raw: "class",
                         loc: getLocByIndex(5, 10)
                     },
@@ -201,11 +206,12 @@ test("With dynamic attributes", () => {
                         raw: "container",
                         loc: getLocByIndex(12, 21)
                     },
-                    quote: "double",
+                    equalSign: true,
+                    valueEnclosure: "double",
                     loc: getLocByIndex(5, 22)
                 },
                 {
-                    key: {
+                    name: {
                         raw: "!id",
                         loc: getLocByIndex(23, 26)
                     },
@@ -213,7 +219,8 @@ test("With dynamic attributes", () => {
                         raw: "dynamicId",
                         loc: getLocByIndex(28, 37)
                     },
-                    quote: "curly",
+                    equalSign: true,
+                    valueEnclosure: "curly",
                     loc: getLocByIndex(23, 38)
                 }
             ],
@@ -238,7 +245,7 @@ test("With reference attributes", () => {
             tag: "span",
             attributes: [
                 {
-                    key: {
+                    name: {
                         raw: "!id",
                         loc: getLocByIndex(10, 13)
                     },
@@ -246,11 +253,12 @@ test("With reference attributes", () => {
                         raw: " dynamicId ",
                         loc: getLocByIndex(15, 26)
                     },
-                    quote: "curly",
+                    equalSign: true,
+                    valueEnclosure: "curly",
                     loc: getLocByIndex(10, 27)
                 },
                 {
-                    key: {
+                    name: {
                         raw: "&dom",
                         loc: getLocByIndex(32, 36)
                     },
@@ -258,7 +266,8 @@ test("With reference attributes", () => {
                         raw: "span",
                         loc: getLocByIndex(38, 42)
                     },
-                    quote: "curly",
+                    equalSign: true,
+                    valueEnclosure: "curly",
                     loc: getLocByIndex(32, 43)
                 }
             ],
@@ -301,7 +310,7 @@ test("With event listeners", () => {
         ],
         attributes: [
             {
-                key: {
+                name: {
                     raw: "@click",
                     loc: getLocByIndex(12, 18)
                 },
@@ -309,11 +318,12 @@ test("With event listeners", () => {
                     loc: getLocByIndex(20, 86),
                     raw: `\n        () => {\n            console.log("clicked")\n        }\n    `
                 },
-                quote: "curly",
+                equalSign: true,
+                valueEnclosure: "curly",
                 loc: getLocByIndex(12, 87)
             },
             {
-                key: {
+                name: {
                     raw: "style",
                     loc: getLocByIndex(92, 97)
                 },
@@ -321,7 +331,8 @@ test("With event listeners", () => {
                     raw: "background-color:red;",
                     loc: getLocByIndex(99, 120)
                 },
-                quote: "double",
+                equalSign: true,
+                valueEnclosure: "double",
                 loc: getLocByIndex(92, 121)
             }
         ],
@@ -363,7 +374,7 @@ test("Within nested structure", () => {
                 tag: "input",
                 attributes: [
                     {
-                        key: {
+                        name: {
                             raw: "#if",
                             loc: getLocByIndex(49, 52)
                         },
@@ -371,11 +382,12 @@ test("Within nested structure", () => {
                             raw: "showInput",
                             loc: getLocByIndex(54, 63)
                         },
-                        quote: "curly",
+                        equalSign: true,
+                        valueEnclosure: "curly",
                         loc: getLocByIndex(49, 64)
                     },
                     {
-                        key: {
+                        name: {
                             raw: "!id",
                             loc: getLocByIndex(73, 76)
                         },
@@ -383,11 +395,12 @@ test("Within nested structure", () => {
                             raw: "dynamicId",
                             loc: getLocByIndex(78, 87)
                         },
-                        quote: "curly",
+                        equalSign: true,
+                        valueEnclosure: "curly",
                         loc: getLocByIndex(73, 88)
                     },
                     {
-                        key: {
+                        name: {
                             raw: "&dom",
                             loc: getLocByIndex(97, 101)
                         },
@@ -395,11 +408,12 @@ test("Within nested structure", () => {
                             raw: "inputElem",
                             loc: getLocByIndex(103, 112)
                         },
-                        quote: "curly",
+                        equalSign: true,
+                        valueEnclosure: "curly",
                         loc: getLocByIndex(97, 113)
                     },
                     {
-                        key: {
+                        name: {
                             raw: "@input",
                             loc: getLocByIndex(122, 128)
                         },
@@ -407,7 +421,8 @@ test("Within nested structure", () => {
                             raw: "handleInput",
                             loc: getLocByIndex(130, 141)
                         },
-                        quote: "curly",
+                        equalSign: true,
+                        valueEnclosure: "curly",
                         loc: getLocByIndex(122, 142)
                     }
                 ],
@@ -433,7 +448,7 @@ test("Within nested structure", () => {
         ],
         attributes: [
             {
-                key: {
+                name: {
                     raw: "!class",
                     loc: getLocByIndex(5, 11)
                 },
@@ -441,7 +456,8 @@ test("Within nested structure", () => {
                     raw: " dynamicClass ",
                     loc: getLocByIndex(13, 27)
                 },
-                quote: "curly",
+                equalSign: true,
+                valueEnclosure: "curly",
                 loc: getLocByIndex(5, 28)
             }
         ],
@@ -504,7 +520,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "div",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "class",
                                 loc: getLocByIndex(5, 10)
                             },
@@ -512,7 +528,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "",
                                 loc: newASTLocation()
                             },
-                            quote: "none",
+                            equalSign: false,
+                            valueEnclosure: "none",
                             loc: getLocByIndex(5, 10)
                         }
                     ],
@@ -537,7 +554,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "div",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "cla",
                                 loc: getLocByIndex(5, 8)
                             },
@@ -545,7 +562,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "",
                                 loc: newASTLocation()
                             },
-                            quote: "none",
+                            equalSign: false,
+                            valueEnclosure: "none",
                             loc: getLocByIndex(5, 8)
                         }
                     ],
@@ -572,7 +590,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "div",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "id",
                                 loc: getLocByIndex(5, 7)
                             },
@@ -580,7 +598,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "container",
                                 loc: getLocByIndex(8, 17)
                             },
-                            quote: "none",
+                            equalSign: true,
+                            valueEnclosure: "none",
                             loc: getLocByIndex(5, 17)
                         }
                     ],
@@ -591,7 +610,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                 {
                     type: "error",
                     range: [8, 17],
-                    value: "The normal attribute value must be quoted with single or double quote."
+                    value: "The value for static attribute must be quoted with single or double quote."
                 },
                 {
                     type: "error",
@@ -608,7 +627,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "input",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "type",
                                 loc: getLocByIndex(7, 11)
                             },
@@ -616,11 +635,12 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "radio",
                                 loc: getLocByIndex(13, 18)
                             },
-                            quote: "double",
+                            equalSign: true,
+                            valueEnclosure: "double",
                             loc: getLocByIndex(7, 19)
                         },
                         {
-                            key: {
+                            name: {
                                 raw: "&checked",
                                 loc: getLocByIndex(20, 28)
                             },
@@ -628,7 +648,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "isChecked",
                                 loc: getLocByIndex(29, 38)
                             },
-                            quote: "none",
+                            equalSign: true,
+                            valueEnclosure: "none",
                             loc: getLocByIndex(20, 38)
                         }
                     ],
@@ -641,7 +662,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                 {
                     type: "error",
                     range: [29, 38],
-                    value: "The interpolation attribute value must be wrapped with curly bracket."
+                    value: "The value for reference attribute must be wrapped with curly bracket."
                 }
             ]
         )
@@ -692,7 +713,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             ],
                             attributes: [
                                 {
-                                    key: {
+                                    name: {
                                         raw: "class",
                                         loc: getLocByIndex(31, 36)
                                     },
@@ -700,7 +721,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         raw: "{paragraph}",
                                         loc: getLocByIndex(37, 48)
                                     },
-                                    quote: "none",
+                                    equalSign: true,
+                                    valueEnclosure: "none",
                                     loc: getLocByIndex(31, 48)
                                 }
                             ],
@@ -726,7 +748,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     ],
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "class",
                                 loc: getLocByIndex(5, 10)
                             },
@@ -734,7 +756,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "container",
                                 loc: getLocByIndex(12, 21)
                             },
-                            quote: "single",
+                            equalSign: true,
+                            valueEnclosure: "single",
                             loc: getLocByIndex(5, 22)
                         }
                     ],
@@ -747,7 +770,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
             {
                 type: "error",
                 range: [37, 48],
-                value: "The normal attribute value must be quoted with single or double quote."
+                value: "The value for static attribute must be quoted with single or double quote."
             }
         ])
 
@@ -758,7 +781,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "a",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "!href",
                                 loc: getLocByIndex(3, 8)
                             },
@@ -766,7 +789,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: '""',
                                 loc: getLocByIndex(9, 11)
                             },
-                            quote: "none",
+                            equalSign: true,
+                            valueEnclosure: "none",
                             loc: getLocByIndex(3, 11)
                         }
                     ],
@@ -779,7 +803,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                 {
                     type: "error",
                     range: [9, 11],
-                    value: "The interpolation attribute value must be wrapped with curly bracket."
+                    value: "The value for dynamic attribute must be wrapped with curly bracket."
                 }
             ]
         )
@@ -793,7 +817,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "input",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "type",
                                 loc: getLocByIndex(7, 11)
                             },
@@ -801,7 +825,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "radio />",
                                 loc: getLocWithDefaultEnd(13)
                             },
-                            quote: "double",
+                            equalSign: true,
+                            valueEnclosure: "double",
                             loc: getLocWithDefaultEnd(7)
                         }
                     ],
@@ -813,7 +838,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                 {
                     type: "error",
                     range: [12, 21],
-                    value: "Unclosed normal attribute value."
+                    value: "Unclosed static attribute value."
                 },
                 {
                     type: "error",
@@ -830,7 +855,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "div",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "!class",
                                 loc: getLocByIndex(5, 11)
                             },
@@ -838,7 +863,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: " dynamicClass ></div>",
                                 loc: getLocWithDefaultEnd(13)
                             },
-                            quote: "curly",
+                            equalSign: true,
+                            valueEnclosure: "curly",
                             loc: getLocWithDefaultEnd(5)
                         }
                     ],
@@ -868,7 +894,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "a",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "!href",
                                 loc: getLocByIndex(3, 8)
                             },
@@ -876,7 +902,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "",
                                 loc: getLocByIndex(10)
                             },
-                            quote: "curly",
+                            equalSign: true,
+                            valueEnclosure: "curly",
                             loc: getLocByIndex(3, 11)
                         }
                     ],
@@ -908,7 +935,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "div",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "class",
                                 loc: getLocByIndex(5, 10)
                             },
@@ -916,7 +943,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "container",
                                 loc: getLocByIndex(12, 21)
                             },
-                            quote: "double",
+                            equalSign: true,
+                            valueEnclosure: "double",
                             loc: getLocByIndex(5, 22)
                         }
                     ],
@@ -937,7 +965,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             tag: "input",
                             attributes: [
                                 {
-                                    key: {
+                                    name: {
                                         raw: "@input",
                                         loc: getLocByIndex(35, 41)
                                     },
@@ -945,7 +973,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         raw: " /* */ ",
                                         loc: getLocByIndex(45, 52)
                                     },
-                                    quote: "curly",
+                                    equalSign: true,
+                                    valueEnclosure: "curly",
                                     loc: getLocByIndex(35, 53)
                                 }
                             ],
@@ -991,7 +1020,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "Component",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "!",
                                 loc: getLocByIndex(11, 12)
                             },
@@ -999,7 +1028,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "variable",
                                 loc: getLocByIndex(14, 22)
                             },
-                            quote: "curly",
+                            equalSign: true,
+                            valueEnclosure: "curly",
                             loc: getLocByIndex(11, 23)
                         }
                     ],
@@ -1032,7 +1062,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "p",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "class",
                                 loc: getLocByIndex(3, 8)
                             },
@@ -1040,7 +1070,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 raw: "paragraph",
                                 loc: getLocByIndex(10, 19)
                             },
-                            quote: "single",
+                            equalSign: true,
+                            valueEnclosure: "single",
                             loc: getLocByIndex(3, 20)
                         }
                     ],
@@ -1061,7 +1092,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             tag: "span",
                             attributes: [
                                 {
-                                    key: {
+                                    name: {
                                         raw: "@",
                                         loc: getLocByIndex(38, 39)
                                     },
@@ -1069,7 +1100,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         raw: " handleClick ",
                                         loc: getLocByIndex(41, 54)
                                     },
-                                    quote: "curly",
+                                    equalSign: true,
+                                    valueEnclosure: "curly",
                                     loc: getLocByIndex(38, 55)
                                 }
                             ],

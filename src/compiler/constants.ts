@@ -1,5 +1,32 @@
 export const SPREAD_TAG = "qk:spread"
 
+export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
+    "#key",
+    "#for",
+    "#else",
+    "#elif",
+    "#if",
+    "#then",
+    "#catch",
+    "#await",
+    "#slot",
+    "slot",
+    "name"
+].reduce((ret, name, index) => {
+    return {
+        ...ret,
+        [name]: index + 1
+    }
+}, {})
+
+export const CONFLICT_DIRECTIVES_MAP: Record<string, string[]> = {
+    "#then": ["#catch"],
+    "#catch": ["#then"],
+    "#if": ["#elif", "#else"],
+    "#elif": ["#if", "#else"],
+    "#else": ["#if", "#elif"]
+}
+
 export const SELF_CLOSING_TAGS = new Set([
     "br",
     "img",
@@ -68,4 +95,29 @@ export const BLOCK_TAGS = new Set([
     "noframes"
 ])
 
+export const REQUIRED_VALUE_DIRECTIVES = new Set([
+    "#if",
+    "#elif",
+    "#for",
+    "#await",
+    "#for",
+    "#key",
+    "#slot",
+    "#show",
+    "#target"
+])
+export const DIRECTIVE_LIST = new Set([
+    "#if",
+    "#elif",
+    "#else",
+    "#for",
+    "#key",
+    "#await",
+    "#then",
+    "#catch",
+    "#slot",
+    "#show",
+    "#html",
+    "#target"
+])
 export const DISALLOWED_TAGS = new Set(["html", "head", "body", "frame", "frameset"])

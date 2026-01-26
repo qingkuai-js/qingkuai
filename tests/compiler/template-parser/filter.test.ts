@@ -34,7 +34,7 @@ test("Wheter comment nodes were removed from parse result", () => {
             tag: "div",
             attributes: [
                 {
-                    key: {
+                    name: {
                         raw: "class",
                         loc: getLocByIndex(18, 23)
                     },
@@ -42,7 +42,8 @@ test("Wheter comment nodes were removed from parse result", () => {
                         raw: "container",
                         loc: getLocByIndex(25, 34)
                     },
-                    quote: "double",
+                    equalSign: true,
+                    valueEnclosure: "double",
                     loc: getLocByIndex(18, 35)
                 }
             ],
@@ -183,7 +184,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                 {
                     type: "error",
                     range: [0, 5],
-                    value: "The <html> tag can not be used in components file, as it can not be embedded inside <body>, however you can define it in the entry HTML file."
+                    value: "The <html> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file."
                 }
             ]
         )
@@ -237,7 +238,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [12, 16],
-                value: "Invalid template structure: the <div> tag can not be nested in <table>."
+                value: "Invalid template structure: the <div> tag cannot be nested in <table>."
             }
         ])
     })
@@ -364,7 +365,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [45, 47],
-                value: "Invalid template structure: the <p> tag can not be nested in <tr>."
+                value: "Invalid template structure: the <p> tag cannot be nested in <tr>."
             }
         ])
     })
@@ -417,7 +418,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [10, 13],
-                value: "Invalid template structure: the <tr> tag can not be nested in <div>, it can only be nested in these tags: <thead>, <tbody> or <tfoot>."
+                value: "Invalid template structure: the <tr> tag cannot be nested in <div>, it can only be nested in these tags: <thead>, <tbody> or <tfoot>."
             }
         ])
     })
@@ -437,7 +438,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                 {
                     type: "error",
                     range: [4, 7],
-                    value: "Invalid template structure: the <li> tag can not be nested in <li>."
+                    value: "Invalid template structure: the <li> tag cannot be nested in <li>."
                 }
             ]
         )
@@ -468,7 +469,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [9, 11],
-                value: "Invalid template structure: the <a> tag can not be descendant of <a>."
+                value: "Invalid template structure: the <a> tag cannot be descendant of <a>."
             }
         ])
     })
@@ -558,7 +559,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [21, 24],
-                value: "Invalid template structure: the <dt> tag can not be descendant of <dt>."
+                value: "Invalid template structure: the <dt> tag cannot be descendant of <dt>."
             }
         ])
     })
@@ -611,7 +612,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [8, 12],
-                value: "Invalid template structure: the <div> tag can not be descendant of <p>."
+                value: "Invalid template structure: the <div> tag cannot be descendant of <p>."
             }
         ])
 
@@ -736,7 +737,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
             {
                 type: "error",
                 range: [41, 46],
-                value: "Invalid template structure: the <main> tag can not be descendant of <p>."
+                value: "Invalid template structure: the <main> tag cannot be descendant of <p>."
             }
         ])
     })

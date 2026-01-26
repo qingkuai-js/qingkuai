@@ -1,8 +1,3 @@
-import type { Pair } from "./tools"
-import type { TopLevelDeclarationNode } from "./estree"
-import type { CompileError } from "../compiler/message/error"
-import type { CompileWarning } from "../compiler/message/warn"
-import type { WalkContext } from "../util/compiler/estree/walk"
 import type {
     SpreadElement,
     Expression,
@@ -10,6 +5,11 @@ import type {
     CallExpression,
     TSImportEqualsDeclaration
 } from "@babel/types"
+import type { Pair } from "./tools"
+import type { CompileError } from "../compiler/message/error"
+import type { CompileWarning } from "../compiler/message/warn"
+import type { WalkContext } from "../util/compiler/estree/walk"
+import type { ContextPattern, TopLevelDeclarationNode } from "./estree"
 
 export interface ScriptDescriptor {
     code: string
@@ -39,15 +39,16 @@ export interface TextContentPart {
     loc: ASTLocation
     isInterpolated: boolean
 }
-export interface AttributeKeyValue {
+export interface AttributeNameValue {
     raw: string
     loc: ASTLocation
 }
 export interface TemplateAttribute {
     loc: ASTLocation
-    key: AttributeKeyValue
-    value: AttributeKeyValue
-    quote: AttributeQuoteKind
+    equalSign: boolean
+    name: AttributeNameValue
+    value: AttributeNameValue
+    valueEnclosure: AttributeValueEnclosure
 }
 export interface TemplateNode {
     tag: string
@@ -80,16 +81,16 @@ export interface ASTLocation {
     start: ASTPosition
     end: ASTPosition
 }
-export type ASTPositionWithFlag = ASTPosition & {
+export interface ASTPositionWithFlag extends ASTPosition {
     flag: number
 }
 
 export interface AnalyzeResult {
     script: ScriptAnalyzeRet
+    template: TemplateAnalyzeRet
 }
-
 export interface ScriptAnalyzeRet {
-    topLevelReferences: Map<
+    topLevelReferences: Record<
         string,
         {
             range: Range
@@ -97,7 +98,7 @@ export interface ScriptAnalyzeRet {
             shorthand: boolean
         }[]
     >
-    topLevelIdentifiers: Map<
+    topLevelIdentifiers: Record<
         string,
         {
             range: Range
@@ -116,6 +117,22 @@ export interface ScriptAnalyzeRet {
     defaultProps?: WalkContext<Expression | SpreadElement>
     importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
 }
+export interface TemplateAnalyzeRet {
+    nodeInfos: Map<
+        TemplateNode,
+        {
+            directives: string[]
+            contextIdentifiers: Set<string>
+            attributesMap: Record<string, AnalyzedTemplateAttribute>
+        }
+    >
+    parsedPatterns: Map<TemplateAttribute, ContextPattern>
+}
+export interface AnalyzedTemplateAttribute extends TemplateAttribute {
+    hasValue: "yes" | "no" | "unknown"
+}
+
+export type Range = Pair<number>
 
 export type StandaloneParseOptions = Partial<{
     recover: boolean
@@ -134,8 +151,16 @@ export type CompileOptions = Partial<{
     reserveCommentNodes: boolean
     checkTemplateStructure: boolean
     shorthandDerivedDeclaration: boolean
+    reactivityMode: "reactive" | "shallow"
 }>
 
-export type Range = Pair<number>
-export type AttributeQuoteKind = "single" | "double" | "curly" | "none"
-export type IdentifierStatus = "reactive" | "raw" | "shallow" | "derived" | "pending" | "alias"
+export type IdentifierStatus =
+    | "reactive"
+    | "raw"
+    | "shallow"
+    | "derived"
+    | "pending"
+    | "alias"
+    | "literal"
+export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"
+export type ReactiveIntrinsics = "reactive" | "raw" | "shallow" | "derived" | "alias"

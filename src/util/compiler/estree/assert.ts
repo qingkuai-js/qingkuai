@@ -1,5 +1,5 @@
 import type { TSModuleDeclaration } from "@babel/types"
-import type { AnyNode } from "#type-declarations/estree"
+import type { AnyNode, PartialAnyNode } from "#type-declarations/estree"
 
 import { stripTypeExpressions } from "./sundry"
 
@@ -18,10 +18,10 @@ export function isLeftValue(node: AnyNode) {
 }
 
 export function is<T extends AnyNode["type"]>(
-    node: AnyNode,
+    node: PartialAnyNode,
     type: T
 ): node is AnyNode & { type: T } {
-    return node.type === type
+    return node?.type === type
 }
 
 export function isTypeOperation(node: AnyNode) {
@@ -33,17 +33,28 @@ export function isTypeOperation(node: AnyNode) {
     )
 }
 
-export function isLiteral(node: AnyNode | undefined | null) {
-    return (
-        !node ||
-        isUndefinedLiteral(node) ||
-        node.type === "NullLiteral" ||
-        node.type === "StringLiteral" ||
-        node.type === "NumericLiteral"
-    )
+export function isLiteral(node: PartialAnyNode) {
+    switch (node?.type) {
+        case undefined:
+        case "NullLiteral":
+        case "RegexLiteral":
+        case "RegExpLiteral":
+        case "BigIntLiteral":
+        case "StringLiteral":
+        case "NumberLiteral":
+        case "NumericLiteral":
+        case "BooleanLiteral":
+        case "TemplateLiteral": {
+            return true
+        }
+        case "Identifier": {
+            return node.name === "undefined"
+        }
+    }
+    return false
 }
 
-export function isBlockNode(node: AnyNode) {
+export function isBlock(node: AnyNode) {
     return is(node, "BlockStatement") || is(node, "TSModuleBlock")
 }
 
@@ -78,4 +89,8 @@ export function willModuleDeclarationEmitsJS(declaration: TSModuleDeclaration) {
         }
         return false
     })
+}
+
+export function isFunctionLiteral(node: PartialAnyNode) {
+    return node && (node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression")
 }

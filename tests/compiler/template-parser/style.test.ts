@@ -60,7 +60,7 @@ describe("Top level", () => {
                 tag: "div",
                 attributes: [
                     {
-                        key: {
+                        name: {
                             raw: "style",
                             loc: getLocByIndex(9, 14)
                         },
@@ -68,7 +68,8 @@ describe("Top level", () => {
                             loc: getLocByIndex(16, 59),
                             raw: "box-sizing:border-box;white-space:pre-line;"
                         },
-                        quote: "double",
+                        equalSign: true,
+                        valueEnclosure: "double",
                         loc: getLocByIndex(9, 60)
                     }
                 ],
@@ -361,7 +362,7 @@ describe("Nesting structure", () => {
                     tag: "p",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "style",
                                 loc: getLocByIndex(13, 18)
                             },
@@ -369,7 +370,8 @@ describe("Nesting structure", () => {
                                 raw: "white-space: pre",
                                 loc: getLocByIndex(20, 36)
                             },
-                            quote: "double",
+                            equalSign: true,
+                            valueEnclosure: "double",
                             loc: getLocByIndex(13, 37)
                         }
                     ],

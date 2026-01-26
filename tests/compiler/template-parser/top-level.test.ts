@@ -514,7 +514,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                     tag: "div",
                     attributes: [
                         {
-                            key: {
+                            name: {
                                 raw: "class",
                                 loc: getLocByIndex(5, 10)
                             },
@@ -522,7 +522,8 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 raw: "box",
                                 loc: getLocByIndex(12, 15)
                             },
-                            quote: "double",
+                            equalSign: true,
+                            valueEnclosure: "double",
                             loc: getLocByIndex(5, 16)
                         }
                     ],
@@ -534,7 +535,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                 {
                     type: "error",
                     range: [17, 19],
-                    value: "The <div> tag can not be used as self-closing tag."
+                    value: "The <div> tag cannot be used as self-closing tag."
                 }
             ]
         )

@@ -171,8 +171,8 @@ function update() {
     nextTick(update)
 }
 
-// 排序规则：前置 > 普通 > 后置，effect.t 相同时按 id 升序排序
-// Sorting rules: pre > normal > post; if `effect.t` is the same, sort by id in ascending order
+// 排序规则：前置 > 未设置 > 后置，effect.t 相同时按 id 升序排序
+// Sorting rules: pre > unset > post; if `effect.t` is the same, sort by id in ascending order
 function getSortedEffects(index: number) {
     const ret = schedulingEffects[index].sort((a, b) => {
         return a.t - b.t || a.i - b.i

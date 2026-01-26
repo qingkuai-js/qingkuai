@@ -5,7 +5,7 @@ import type {
     TextContentPart,
     ScriptDescriptor,
     TemplateAttribute,
-    AttributeQuoteKind,
+    AttributeValueEnclosure,
     StandaloneParseOptions
 } from "#type-declarations/compiler"
 import type { RegExpExecRet } from "#type-declarations/tools"
@@ -17,14 +17,21 @@ import {
     findOutOfStringComment
 } from "../../util/compiler/string"
 import {
+    equalTokenRE,
+    startCurlyRE,
+    startQuoteRE,
+    nonWhitespaceRE,
+    whitespacesRE,
     tagIsComponentRE,
     preWhiteSpaceRuleRE,
+    templateAttributeEndRE,
     templateCloseCharsRE,
     startWithTagStructureRE,
     templateAttributeNameRE,
     templateTagStructureRE,
     templateEmbeddedLangTagRE,
-    templateInvalidAttributeRE
+    templateInvalidAttributeRE,
+    interpolatedAttrStartCharRE
 } from "../regular"
 import {
     getPosByIndex,
@@ -45,11 +52,11 @@ import {
     EmbeddedLangNotInTopLevel,
     TemplateStartsWithEndTag,
     UnclosedInterpolationBlock,
-    UnclosedNormalAttributeValue,
+    UnclosedStaticAttributeValue,
     EmbeddedScriptBlockOutOfLimit,
     NoNameForInterpolatedAttribute,
-    InvalidQuoteForNormalAttribute,
-    InvalidQuoteForInterpolatedAttribute
+    InvalidValueEnclosureForStaticAttribute,
+    InvalidValueEnclosureForInterpolatedAttribute
 } from "../message/error"
 import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
@@ -127,7 +134,7 @@ export function parseTemplate(source: string) {
     // 将 dps 快进到非空白字符的位置，返回下次开始的位置
     // Fast-forward `dps` to the next non-whitespace character, returns the starting position for next time.
     function reduceSpaces() {
-        const spacesMatched = /\s*/.exec(dps)
+        const spacesMatched = whitespacesRE.exec(dps)
         return reduceSource(spacesMatched?.[0].length || 0)
     }
 
@@ -285,7 +292,7 @@ export function parseTemplate(source: string) {
             let valueStartIndex = -1
             let fullValueEndIndex = -1
             let fullValueStartIndex = -1
-            let quoteKind: AttributeQuoteKind = "none"
+            let valueEnclosure: AttributeValueEnclosure = "none"
 
             const nameStartIndex = reduceSpaces().index
             const attrNameMatched = templateAttributeNameRE.exec(dps)
@@ -303,43 +310,43 @@ export function parseTemplate(source: string) {
             }
 
             const attrName = attrNameMatched[0]
-            const isInterpolatedAttr = /^[!@#&]/.test(attrName)
             const nameEndIndex = reduceSource(attrName.length).index
+            const isInterpolatedAttr = interpolatedAttrStartCharRE.test(attrName[0])
 
             // 插值属性的名长度为1时表示没有指定属性名称
             // An interpolated attribute with a name length of 1 indicates that no attribute name was specified.
             if (isInterpolatedAttr && attrName.length === 1) {
                 NoNameForInterpolatedAttribute(
                     getLocByIndex(nameStartIndex, nameStartIndex + 1),
-                    attrName[0]
+                    attrName
                 )
             }
 
             // 解析属性值部分
             // Parse the attribute value.
-            const equalTokenMatched = /^\s*=/.exec(dps)
+            const equalTokenMatched = equalTokenRE.exec(dps)
             if (!isNull(equalTokenMatched)) {
                 const mi = equalTokenMatched.index
                 const ml = equalTokenMatched[0].length
                 const equalTokenEndIndex = reduceSource(mi + ml).index
 
-                // 当普通属性值未被引号包裹或插值属性未被花括号包裹时报错；检查模式下，之后的连续非空白字符会被解析为属性值
-                // Report an error when a normal attribute value is not enclosed in quotes or when an interpolated
+                // 当静态属性值未被引号包裹或插值属性未被花括号包裹时报错；检查模式下，之后的连续非空白字符会被解析为属性值
+                // Report an error when a static attribute value is not enclosed in quotes or when an interpolated
                 // attribute is not enclosed in braces; in check mode, the following consecutive non-whitespace.
                 // characters will be parsed as the attribute value
                 if (
-                    (isInterpolatedAttr && !/^\s*\{/.test(dps)) ||
-                    (!isInterpolatedAttr && !/^\s*['"]/.test(dps))
+                    (isInterpolatedAttr && !startCurlyRE.test(dps)) ||
+                    (!isInterpolatedAttr && !startQuoteRE.test(dps))
                 ) {
-                    const endIndex = /\s|>|$/.exec(dps)!.index
+                    const endIndex = templateAttributeEndRE.exec(dps)!.index
                     const errorLoc = getLocByIndex(
                         equalTokenEndIndex,
                         equalTokenEndIndex + endIndex
                     )
                     if (!isInterpolatedAttr) {
-                        InvalidQuoteForNormalAttribute(errorLoc)
+                        InvalidValueEnclosureForStaticAttribute(errorLoc)
                     } else {
-                        InvalidQuoteForInterpolatedAttribute(errorLoc)
+                        InvalidValueEnclosureForInterpolatedAttribute(errorLoc, attrName)
                     }
                     attrValue = dps.slice(0, endIndex)
                     valueStartIndex = fullValueStartIndex = equalTokenEndIndex
@@ -347,7 +354,11 @@ export function parseTemplate(source: string) {
                 } else {
                     fullValueStartIndex = reduceSpaces().index
                     valueStartIndex = fullValueStartIndex + 1
-                    quoteKind = isInterpolatedAttr ? "curly" : dps[0] === "'" ? "single" : "double"
+                    valueEnclosure = isInterpolatedAttr
+                        ? "curly"
+                        : dps[0] === "'"
+                        ? "single"
+                        : "double"
                     endCharIndex = isInterpolatedAttr ? findEndBracket(dps) : dps.indexOf(dps[0], 1)
 
                     // 当属性值的结束字符不存在（右花括号或单双引号）时报错，空插值块也要报错
@@ -359,13 +370,13 @@ export function parseTemplate(source: string) {
                             index + dps.length
                         )
                         if (!isInterpolatedAttr) {
-                            UnclosedNormalAttributeValue(unclosedAttributeValueLoc)
+                            UnclosedStaticAttributeValue(unclosedAttributeValueLoc)
                         } else {
                             UnclosedInterpolationBlock(unclosedAttributeValueLoc)
                         }
                     } else if (
                         isInterpolatedAttr &&
-                        findOutOfComment(dps.slice(1, endCharIndex), /\S/)[0] === -1
+                        findOutOfComment(dps.slice(1, endCharIndex), nonWhitespaceRE)[0] === -1
                     ) {
                         EmptyInterpolationBlock(getLocByIndex(index, index + endCharIndex + 1))
                     }
@@ -389,7 +400,7 @@ export function parseTemplate(source: string) {
             // 将属性相关信息记录到当前节点（templateNode)
             // Record attribute-related information to the current node (templateNode).
             const attributeInfo: TemplateAttribute = {
-                key: {
+                name: {
                     raw: attrName,
                     loc: getLocByIndex(nameStartIndex, nameEndIndex)
                 },
@@ -397,7 +408,8 @@ export function parseTemplate(source: string) {
                     raw: attrValue,
                     loc: newASTLocation()
                 },
-                quote: quoteKind,
+                valueEnclosure,
+                equalSign: !!equalTokenMatched,
                 loc: getLocWithDefaultEnd(nameStartIndex)
             }
             templateNode.attributes.push(attributeInfo)
@@ -415,6 +427,16 @@ export function parseTemplate(source: string) {
             }
             if (valueStartIndex !== -1) {
                 attributeInfo.value.loc.start = getPosByIndex(valueStartIndex)
+            }
+
+            // 嵌入脚本语言标签上的 shallow 属性需要修改 CompilerOptions.reactivityMode 为 shallow
+            // The `shallow` attribute on an embedded script language tag requires setting `CompilerOptions.reactivityMode` to `shallow`.
+            if (
+                !isInterpolatedAttr &&
+                attrName === "shallow" &&
+                (templateNode.tag === "lang-js" || templateNode.tag === "lang-ts")
+            ) {
+                inputDescriptor.options.reactivityMode = "shallow"
             }
         }
 
@@ -480,15 +502,7 @@ export function parseTemplate(source: string) {
 
             // 记录嵌入样式/脚本语言块的相关信息
             // Record relevant information of embedded style/script blocks.
-            if (!/js|ts/.test(embeddedLang)) {
-                markPositionFlag(PositionFlag.InStyle, contentLoc.start.index, contentLoc.end.index)
-                inputDescriptor.styles.push({
-                    startTagOpenRange,
-                    loc: contentLoc,
-                    code: rawContent,
-                    lang: embeddedLang
-                })
-            } else {
+            if (embeddedLang === "js" || embeddedLang === "ts") {
                 if (scriptDescriptor.existing) {
                     EmbeddedScriptBlockOutOfLimit(tagOpenLoc)
                     return templateNode
@@ -507,6 +521,14 @@ export function parseTemplate(source: string) {
                     isTS: embeddedLang === "ts",
                     lineCount: contentLoc.end.line - contentLoc.start.line + 1
                 })
+            } else {
+                inputDescriptor.styles.push({
+                    startTagOpenRange,
+                    loc: contentLoc,
+                    code: rawContent,
+                    lang: embeddedLang
+                })
+                markPositionFlag(PositionFlag.InStyle, contentLoc.start.index, contentLoc.end.index)
             }
             return templateNode
         }

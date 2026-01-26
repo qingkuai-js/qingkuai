@@ -260,73 +260,79 @@ describe("Unnecessary reactive marking", () => {
             const d = shallow()
             const e = reactive(null)
             const f = shallow(null)
+            const g = raw(\`\`)
         `)
         localMatchCompileMessages([
             {
                 type: "warning",
-                range: [6, 21],
-                value: getMsg()
+                range: [10, 21],
+                value: getMsg("reactive")
             },
             {
                 type: "warning",
-                range: [28, 42],
+                range: [32, 42],
                 value: getMsg("shallow")
             },
             {
                 type: "warning",
-                range: [49, 65],
-                value: getMsg()
+                range: [53, 65],
+                value: getMsg("reactive")
             },
             {
                 type: "warning",
-                range: [72, 85],
+                range: [76, 85],
                 value: getMsg("shallow")
             },
             {
                 type: "warning",
-                range: [92, 110],
-                value: getMsg()
+                range: [96, 110],
+                value: getMsg("reactive")
             },
             {
                 type: "warning",
-                range: [117, 134],
+                range: [121, 134],
                 value: getMsg("shallow")
+            },
+            {
+                type: "warning",
+                range: [145, 152],
+                value: commonWarnMsg.RedundantRawMark[1]()
             }
         ])
     })
 
     test("Derived with literals", () => {
         localAnalyze(`
-            const a = derived()
-            const b = derived(1)
-            const c = derived("")
-            const d = derived(null)
-            const e = derived(undefined)
-        `)
+                const a = derived()
+                const b = derived(1)
+                const c = derived("")
+                const d = derived(null)
+                const e = derived(undefined)
+            `)
         localMatchCompileMessages([
             {
                 type: "warning",
-                range: [6, 19],
+                range: [10, 19],
                 value: getMsg("derived")
             },
             {
                 type: "warning",
-                range: [26, 40],
+                range: [30, 40],
                 value: getMsg("derived")
             },
             {
                 type: "warning",
-                range: [47, 62],
+                range: [51, 62],
                 value: getMsg("derived")
             },
             {
                 type: "warning",
-                range: [69, 86],
+                range: [73, 86],
                 value: getMsg("derived")
             },
             {
                 type: "warning",
-                range: [93, 115],
+                range: [97, 115],
                 value: getMsg("derived")
             }
         ])
@@ -334,11 +340,11 @@ describe("Unnecessary reactive marking", () => {
 
     test("Shorthand derived", () => {
         localAnalyze(`
-            const $a = 1
-            const $b = ""
-            const $c = null
-            const $d = undefined
-        `)
+                const $a = 1
+                const $b = ""
+                const $c = null
+                const $d = undefined
+            `)
         localMatchCompileMessages([
             {
                 type: "warning",
@@ -367,28 +373,28 @@ describe("Unnecessary reactive marking", () => {
 test("Shadow compiler intrinsic identifiers", () => {
     const getMsg = commonErrorMsg.ShadowCompilerIntrinsicAtTopLevel[1]
     localAnalyze(`
-            if(true){
+                if(true){
+                    const props = 1
+                    const refs = 2
+                    const reactive = 3
+                }
+
                 const props = 1
                 const refs = 2
-                const reactive = 3
-            }
-
-            const props = 1
-            const refs = 2
-            const slots = 3
-            const reactive = 4
-            let shallow =5
-            var raw = 6
-            using derived = 7
-            const defaultProps = 8
-            enum defaultRefs {}
-            namespace watch {
-                const props = 9
-            }
-            import preWatch from ""
-            import { postWatch } from ""
-            import { ___ as syncWatch } from ""
-        `)
+                const slots = 3
+                const reactive = 4
+                let shallow =5
+                var raw = 6
+                using derived = 7
+                const defaultProps = 8
+                enum defaultRefs {}
+                namespace watch {
+                    const props = 9
+                }
+                import preWatch from ""
+                import { postWatch } from ""
+                import { ___ as syncWatch } from ""
+            `)
     localMatchCompileMessages([
         {
             type: "error",
@@ -474,6 +480,11 @@ test("Shorthand derived declaration with compiler intrinsic method", () => {
             type: "error",
             range: [33, 49],
             value: commonErrorMsg.AmbiguousReactiveMarking[1]("reactive")
+        },
+        {
+            type: "warning",
+            range: [33, 35],
+            value: commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
         },
         {
             type: "error",

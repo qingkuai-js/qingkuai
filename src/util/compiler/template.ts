@@ -28,6 +28,18 @@ export function isBlankTextNode(node: TemplateNode) {
     )
 }
 
+// 获取节点前方首个非文本的兄弟节点
+// Get the first non-text sibling node before the current node.
+export function getPrevNonTextNode(node: TemplateNode) {
+    while (node.prev) {
+        if (node.prev.tag !== "") {
+            return node.prev
+        }
+        node = node.prev
+    }
+    return null
+}
+
 // 获取元素的前置注释节点（前方的空白文本节点将被忽略）
 // Get the leading comment node for a given element (ignoring the preceding blank text node)
 export function getLeadingCommentNode(node: TemplateNode) {
@@ -60,4 +72,14 @@ export function getParentTag(node: TemplateNode) {
 export function getStartTagOpenLoc(node: TemplateNode) {
     const tagLength = node.tag === "!" ? 3 : node.tag.length
     return getLocByIndex(node.loc.start.index, node.loc.start.index + tagLength + 1)
+}
+
+export function walkTemplateNodes(nodes: TemplateNode[], callback: (node: TemplateNode) => void) {
+    for (const node of nodes) {
+        callback(node)
+
+        for (const child of node.children) {
+            callback(child)
+        }
+    }
 }

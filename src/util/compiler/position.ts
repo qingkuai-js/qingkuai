@@ -2,6 +2,7 @@ import type { Range } from "#type-declarations/compiler"
 import type { ASTLocation, ASTPosition, ASTPositionWithFlag } from "#type-declarations/compiler"
 
 import { PositionFlag } from "../../compiler/enums"
+import { whitespaceRE } from "../../compiler/regular"
 import { inputDescriptor } from "../../compiler/state"
 
 export function newASTPosition(): ASTPosition {
@@ -43,6 +44,26 @@ export function getRangeByLocation(loc: ASTLocation): Range {
 
 export function getLocWithDefaultEnd(index: number): ASTLocation {
     return { start: getPosByIndex(index), end: newASTPosition() }
+}
+
+export function getNonWhiteSpaceLocByLoc(loc: ASTLocation) {
+    return getNonWhitespaceLocByIndex(loc.start.index, loc.end.index)
+}
+
+export function getNonWhitespaceLocByIndex(start: number, end: number) {
+    while (start < end) {
+        if (!whitespaceRE.test(inputDescriptor.source[start])) {
+            break
+        }
+        start++
+    }
+    while (end > start) {
+        if (!whitespaceRE.test(inputDescriptor.source[end - 1])) {
+            break
+        }
+        end--
+    }
+    return getLocByIndex(start, end)
 }
 
 export function getPosByIndex(index: number): ASTPosition {

@@ -2,6 +2,7 @@ import type { ExpectedCompileMessage, ExpectedTopLevelIdentifier } from "#type-d
 
 import { expect, test } from "vitest"
 import { analyzeResult } from "../../../src/compiler/state"
+import { objectKeys } from "../../../src/util/shared/aliases"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../src/util/testing/match"
@@ -25,14 +26,16 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
 
 function checkTopLevelIdentifiers(expected: ExpectedTopLevelIdentifier[]) {
     let index = 0
-    for (const [name, { hoist, status, implicit }] of analyzeResult.script.topLevelIdentifiers) {
+    const { topLevelIdentifiers } = analyzeResult.script
+    objectKeys(topLevelIdentifiers).forEach(name => {
+        const { hoist, status, implicit } = topLevelIdentifiers[name]
         expect({
             name,
             hoist,
             status,
             implicit
         }).toEqual(expected[index++])
-    }
+    })
 }
 
 test("Variable declarations with key: let, const", () => {
@@ -50,7 +53,7 @@ test("Variable declarations with key: let, const", () => {
             name: "a",
             hoist: false,
             implicit: true,
-            status: "pending"
+            status: "literal"
         },
         {
             name: "b",
@@ -87,7 +90,7 @@ test("Variable declarations with key: let, const", () => {
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
-    expect(analyzeResult.script.topLevelIdentifiers.size).toBe(12)
+    expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12)
 })
 
 test("Variable declaration with key: var", () => {
@@ -119,7 +122,7 @@ test("Variable declaration with key: var", () => {
             name: "a",
             hoist: true,
             implicit: true,
-            status: "pending"
+            status: "literal"
         },
         ...["b", "c", "f", "i", "l"].map(name => {
             return {
@@ -134,7 +137,7 @@ test("Variable declaration with key: var", () => {
                 name,
                 hoist: true,
                 implicit: true,
-                status: "pending"
+                status: "literal"
             } satisfies ExpectedTopLevelIdentifier
         }),
         ...["q", "r", "t"].map(name => {
@@ -146,7 +149,7 @@ test("Variable declaration with key: var", () => {
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
-    expect(analyzeResult.script.topLevelIdentifiers.size).toBe(12)
+    expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12)
 })
 
 test("Typescript enum and module declarations", () => {
@@ -194,7 +197,7 @@ test("Function declarations", () => {
             name: "a",
             hoist: true,
             implicit: true,
-            status: "pending"
+            status: "literal"
         }
     ])
 })
@@ -212,7 +215,7 @@ test("Class declarations", () => {
             name: "A",
             hoist: false,
             implicit: true,
-            status: "pending"
+            status: "literal"
         }
     ])
 })
@@ -244,6 +247,11 @@ test("Redeclarations", () => {
 
         var $g = ()=>{}
         var $g = _
+
+        var h = 1
+        
+        var i = 1
+        var i = 2
     `)
     checkTopLevelIdentifiers([
         {
@@ -287,6 +295,18 @@ test("Redeclarations", () => {
             hoist: true,
             implicit: false,
             status: "derived"
+        },
+        {
+            name: "h",
+            hoist: true,
+            implicit: true,
+            status: "literal"
+        },
+        {
+            name: "i",
+            hoist: true,
+            implicit: true,
+            status: "pending"
         }
     ])
     localMatchCompileMessages([

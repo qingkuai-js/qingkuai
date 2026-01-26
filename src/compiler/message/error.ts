@@ -3,6 +3,8 @@ import type { ASTLocation } from "#type-declarations/compiler"
 
 import { inputDescriptor, messages } from "../state"
 
+// 空缺 1029
+
 export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>>(obj: T): T => {
     return obj
 })({
@@ -124,8 +126,8 @@ export const UnclosedInterpolationBlock = withLocation(1003, () => {
     return "Unclosed interpolation expression block."
 })
 
-export const UnclosedNormalAttributeValue = withLocation(1008, () => {
-    return "Unclosed normal attribute value."
+export const UnclosedStaticAttributeValue = withLocation(1008, () => {
+    return "Unclosed static attribute value."
 })
 
 export const NoEndTagMatched = withLocation(1012, (tag: string) => {
@@ -137,7 +139,7 @@ export const EmbeddedScriptBlockOutOfLimit = withLocation(1011, () => {
 })
 
 export const TagCanNotBeSelfClosing = withLocation(1013, (tag: string) => {
-    return `The <${tag}> tag can not be used as self-closing tag.`
+    return `The <${tag}> tag cannot be used as self-closing tag.`
 })
 
 export const InvalidTemplateStructure = withLocation(1015, (msg: string) => {
@@ -148,16 +150,29 @@ export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
     return `Starts with an end tag: </${tag}>.`
 })
 
-export const InvalidQuoteForNormalAttribute = withLocation(1006, () => {
-    return "The normal attribute value must be quoted with single or double quote."
+export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
+    return `Directive "${directive}" requires a value.`
 })
 
-export const InvalidQuoteForInterpolatedAttribute = withLocation(1007, () => {
-    return "The interpolation attribute value must be wrapped with curly bracket."
+export const ConflictDirectives = withLocation(1026, (a: string, b: string) => {
+    return `Directives "${a}" and "${b}" cannot be used together.`
+})
+
+export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {
+    return "The value for static attribute must be quoted with single or double quote."
 })
 
 export const NoNameForInterpolatedAttribute = withLocation(1005, (char: string) => {
     return `The ${getSpecialAttrDescription(char)} must be specified a name.`
+})
+
+export const DuplicateAttributes = withLocation(1028, (a: string, b: string) => {
+    if (a === b) {
+        return `Duplicate ${getSpecialAttrDescription(a)}s: "${a}".`
+    }
+    return `Conflicting attributes: the ${getSpecialAttrDescription(
+        a
+    )} "${a}" and ${getSpecialAttrDescription(b)} "${b}" resolve to the same attribute.`
 })
 
 export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false) => {
@@ -168,6 +183,10 @@ export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false
     } is not closed.`
 })
 
+export const DirectiveValueMustBePattern = withLocation(1032, (directive: string) => {
+    return `The value for "${directive}" directive must be a binding pattern.`
+})
+
 export const UnexpectedToken = withLocation(1002, (str: string, expected?: string) => {
     return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
 })
@@ -176,8 +195,41 @@ export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
     return `The embedded language block <${tag}> can only be used in the top level of the template.`
 })
 
+export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
+    return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
+})
+
+export const InvalidForDirectiveValue = withLocation(1034, () => {
+    return `Invalid value for "#for" directive: the segment before \`of\` keyword must be valid binding patterns.`
+})
+
+export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
+    return `The embedded language tag <${tag}> can only accept static attributes, but a ${getSpecialAttrDescription(
+        name
+    )} was found: "${name}".`
+})
+
+export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
+    return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`
+})
+
+export const MissingPrecedingDirective = withLocation(
+    1031,
+    (directive: string, expectedList: string[], allowSameNode: boolean) => {
+        const expected = expectedList.reduce(
+            (ret, cur, index) => `${ret}${index === 0 ? "" : ", "}"${cur}"`,
+            ""
+        )
+        if (allowSameNode) {
+            return `The "${directive}" directive must be preceded by one of the following directives: ${expected}.`
+        } else {
+            return `The "${directive}" directive requires a preceding sibling node with one of the following directives: ${expected}.`
+        }
+    }
+)
+
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
-    return `The <${tag}> tag can not be used in components file, as it can not be embedded inside <body>, however you can define it in the entry HTML file.`
+    return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
 })
 
 export class CompileError extends Error {
@@ -208,8 +260,8 @@ function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
 
 // 获取特殊属性的描述（指令、事件、动态或引用属性）
 // Retrieve the description of a special attribute (such as directives, events, or dynamic/reference attributes)
-function getSpecialAttrDescription(tc: string) {
-    switch (tc) {
+function getSpecialAttrDescription(name: string) {
+    switch (name[0]) {
         case "#": {
             return "directive"
         }
@@ -223,7 +275,7 @@ function getSpecialAttrDescription(tc: string) {
             return "reference attribute"
         }
         default: {
-            return "normal attribute"
+            return "static attribute"
         }
     }
 }

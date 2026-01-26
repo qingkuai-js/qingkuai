@@ -56,10 +56,10 @@ export function matchTemplateNodeList(
             }
         })
         nodeList[i].attributes.forEach(item => {
-            if (item.quote === "curly") {
+            if (item.valueEnclosure === "curly") {
                 assertPositionFlagIsSet(PositionFlag.InScript, item.value.loc)
             }
-            assertPositionFlagIsSet(PositionFlag.IsAttributeStart, item.key.loc.start)
+            assertPositionFlagIsSet(PositionFlag.IsAttributeStart, item.name.loc.start)
         })
         if (nodeList[i].isEmbedded) {
             if (nodeList[i].content.length) {

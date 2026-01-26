@@ -3,7 +3,7 @@ import type { AnyNode, Visitor, WalkPatternCallback, WithLoc } from "#type-decla
 
 import { any } from "../../shared/sundry"
 import { isArray, isObject } from "../../shared/assert"
-import { isBlockNode, isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
+import { isBlock, isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
 
 export class WalkContext<T extends AnyNode = AnyNode> {
     inTopLevel: boolean
@@ -18,7 +18,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
             recordScopeIdentifiers(this)
         }
         this.isBindingReference = isBindingReference(this)
-        this.inTopLevel = !parent || (parent.inTopLevel && !isBlockNode(parent.value))
+        this.inTopLevel = !parent || (parent.inTopLevel && !isBlock(parent.value))
     }
 
     // 判断节点是否为作用域边界的上下文
@@ -48,6 +48,29 @@ export class WalkContext<T extends AnyNode = AnyNode> {
             }
         }
         return false
+    }
+
+    // 判断节点是否为标识符形式的赋值目标
+    // Determine whether the node is an identifier-form assignment target.
+    get isIdentifierAssignmentTarget() {
+        if (!this.isBindingReference) {
+            return false
+        }
+
+        let ret = false
+        this.walkAncestors(current => {
+            switch (current.value.type) {
+                case "MemberExpression":
+                case "TSNonNullExpression":
+                case "OptionalMemberExpression": {
+                    return true
+                }
+                case "AssignmentExpression": {
+                    return (ret = true)
+                }
+            }
+        })
+        return ret
     }
 
     // 判断节点是否为不可提升作用域边界的上下文
@@ -112,9 +135,9 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         return ret
     }
 
-    // 节点是否为简写标识符，如 { a } 等
-    // Whether the node is a shorthand identifier, e.g. `{ a }`.
-    get isShorthandIdentifier() {
+    // 节点是否为简写标识符访问，如 { a } 等
+    // Whether the node is a shorthand identifier aceess, e.g. `{ a }`.
+    get isShorthandIdentifierAccess() {
         if (this.value.type !== "Identifier") {
             return false
         }
@@ -314,7 +337,7 @@ function isBindingReference(context: WalkContext) {
         case "ObjectPattern":
         case "ObjectProperty": {
             let ret = false
-            let isAssignTargetPattern = false
+            let isAssignmentTargetPattern = false
             let patternContext: WalkContext<PatternLike> | undefined
             if (parentNode.type !== "ObjectProperty" && parentNode.type !== "RestElement") {
                 patternContext = parent as any
@@ -351,11 +374,11 @@ function isBindingReference(context: WalkContext) {
                     case "ForOfStatement":
                     case "ForInStatement":
                     case "AssignmentExpression": {
-                        return (isAssignTargetPattern = true)
+                        return (isAssignmentTargetPattern = true)
                     }
                 }
             })
-            if (isAssignTargetPattern) {
+            if (isAssignmentTargetPattern) {
                 walkPatternIdentifiers(patternContext!.value, identifier => {
                     ret ||= node === identifier
                 })
@@ -372,7 +395,7 @@ function recordScopeIdentifiers(context: WalkContext) {
     const node = context.value
     const paramPatterns: PatternLike[] = []
     const declarations: VariableDeclaration[] = []
-    const children = isBlockNode(node) ? node.body : [node]
+    const children = isBlock(node) ? node.body : [node]
     const parentNode = context.striptTypeOperationsParent!.value
     switch (parentNode.type) {
         case "CatchClause": {

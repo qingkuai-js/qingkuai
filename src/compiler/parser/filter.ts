@@ -153,7 +153,7 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
             if (ancestorRules[0].includes(arcn.parent.tag)) {
                 InvalidTemplateStructure(
                     startTagOpenLoc,
-                    `the <${tag}> tag can not be descendant of <${arcn.parent.tag}>`
+                    `the <${tag}> tag cannot be descendant of <${arcn.parent.tag}>`
                 )
                 return false
             }
@@ -165,7 +165,7 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
         (expectedParentTags && !expectedParentTags.includes(parentTag)) ||
         (expectedTags && !expectedTags.includes(tag) && !isBlankTextNode(node))
     ) {
-        let msg = `the <${tag}> tag can not be nested in <${parentTag}>`
+        let msg = `the <${tag}> tag cannot be nested in <${parentTag}>`
         if (expectedParentTags) {
             msg += expectedParentTags.reduce((ret, cur, index) => {
                 if (isEmptyString(cur)) {

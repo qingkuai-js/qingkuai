@@ -1,4 +1,6 @@
 import type { ParserOptions } from "@babel/parser"
+import type { AssignmentExpression } from "@babel/types"
+import type { ContextPattern } from "#type-declarations/estree"
 
 import { inputDescriptor } from "../state"
 import { isUndefined } from "../../util/shared/assert"
@@ -19,9 +21,30 @@ export function parseScript(source: string) {
     }
 }
 
-export function parseExpression(source: string, startsourceIndex = 0, postfix = "") {
+export function parsePattern(source: string): ContextPattern | null {
     try {
-        return _parseExpression(source + postfix, getParserOptions())
+        const assignmentExpression = _parseExpression(source + "=_", {
+            ...getParserOptions(),
+            errorRecovery: false
+        }) as AssignmentExpression
+        switch (assignmentExpression.left.type) {
+            case "Identifier":
+            case "ArrayPattern":
+            case "ObjectPattern": {
+                return assignmentExpression.left
+            }
+            default: {
+                return null
+            }
+        }
+    } catch {
+        return null
+    }
+}
+
+export function parseExpression(source: string, startsourceIndex = 0) {
+    try {
+        return _parseExpression(source, getParserOptions())
     } catch (error: any) {
         correctErrorInfomations(error, startsourceIndex)
     }

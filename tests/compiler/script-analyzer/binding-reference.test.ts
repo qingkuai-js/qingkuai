@@ -15,7 +15,7 @@ function localParse(source: string) {
 }
 
 const checkShorthandBindingReference = (context: WalkContext<Identifier>) => {
-    expect(context.isShorthandIdentifier).toBeTruthy()
+    expect(context.isShorthandIdentifierAccess).toBeTruthy()
     expect(context.isBindingReference).toBe(any(context).parent.value.value === context.value)
 }
 
