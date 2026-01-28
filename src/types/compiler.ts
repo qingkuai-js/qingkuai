@@ -89,6 +89,18 @@ export interface AnalyzeResult {
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
 }
+export interface TemplateAnalyzeRet {
+    nodeInfos: Map<
+        TemplateNode,
+        {
+            directives: string[]
+            contextIdentifiers: Set<string>
+            attributesMap: Record<string, TemplateAttribute>
+        }
+    >
+    parsedExpressions: Map<any, Expression | undefined>
+    parsedPatterns: Map<TemplateAttribute, ContextPattern | undefined>
+}
 export interface ScriptAnalyzeRet {
     topLevelReferences: Record<
         string,
@@ -116,20 +128,6 @@ export interface ScriptAnalyzeRet {
     defaultRefs?: WalkContext<Expression | SpreadElement>
     defaultProps?: WalkContext<Expression | SpreadElement>
     importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
-}
-export interface TemplateAnalyzeRet {
-    nodeInfos: Map<
-        TemplateNode,
-        {
-            directives: string[]
-            contextIdentifiers: Set<string>
-            attributesMap: Record<string, AnalyzedTemplateAttribute>
-        }
-    >
-    parsedPatterns: Map<TemplateAttribute, ContextPattern>
-}
-export interface AnalyzedTemplateAttribute extends TemplateAttribute {
-    hasValue: "yes" | "no" | "unknown"
 }
 
 export type Range = Pair<number>

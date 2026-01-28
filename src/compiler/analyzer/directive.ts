@@ -3,105 +3,99 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import {
     UnrecognizedDirective,
+    MissingDirectiveValue,
+    InvalidForDirectiveValue,
     MissingPrecedingDirective,
-    DirectiveValueMustBePattern,
-    InvalidForDirectiveValue
+    DirectiveValueMustBePattern
 } from "../message/error"
 import { analyzeResult } from "../state"
-import { DIRECTIVE_LIST } from "../constants"
 import { parsePattern } from "../parser/script"
+import { analyzeInterpolation } from "./interpolation"
+import { RedundantAttributeValue } from "../message/warn"
 import { getPrevNonTextNode } from "../../util/compiler/template"
-import { findOutOfStringComment } from "../../util/compiler/string"
+import { findOutOfLiteralComment } from "../../util/compiler/string"
 import { walkPatternIdentifiers } from "../../util/compiler/estree/walk"
+import { DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
+import { isAttributeValid, isNonEmptyExpression } from "../../util/compiler/assert"
 import { getNonWhitespaceLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
     const directiveName = directive.name.raw
     const directiveValue = directive.value.raw
-    const directiveNameLoc = directive.name.loc
-    const directiveValueLoc = directive.value.loc
-    const { parsedPatterns } = analyzeResult.template
     const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
+    const valueStartSourceIndex = directive.value.loc.start.index
+
+    // 缺少指令值
+    // Missing directive value.
+    if (REQUIRED_VALUE_DIRECTIVES.has(directiveName) && !directive.equalSign) {
+        MissingDirectiveValue(directive.loc, directiveName)
+    }
 
     // 未知指令
     // Unrecognized directives.
     if (!DIRECTIVE_LIST.has(directiveName)) {
-        UnrecognizedDirective(directive.loc, directiveName)
+        if (isAttributeValid(directive) && isNonEmptyExpression(directiveValue)) {
+            analyzeInterpolation(node, directive, directiveValue, valueStartSourceIndex)
+        }
+        return UnrecognizedDirective(directive.loc, directiveName)
     }
 
     switch (directiveName) {
         case "#for": {
-            if (!nodeInfo.attributesMap[directiveName].hasValue) {
-                break
-            }
-
-            const separatorIndex = findOutOfStringComment(directiveValue, " of ")
-            if (separatorIndex === -1) {
-                break
-            }
-
-            const pattern = parsePattern(`[${directiveValue.slice(0, separatorIndex)}]`)
-            if (pattern && pattern.type === "ArrayPattern" && pattern.elements.length) {
-                recordContextIdentifiers(pattern)
-            } else {
-                InvalidForDirectiveValue(
-                    getNonWhitespaceLocByIndex(
-                        directiveValueLoc.start.index,
-                        directiveValueLoc.start.index + separatorIndex + 1
+            let base = directiveValue
+            let baseStartSourceIndex = valueStartSourceIndex
+            const separatorIndex = findOutOfLiteralComment(directiveValue, " of ")
+            if (separatorIndex !== -1) {
+                const pattern = parsePattern(`[${directiveValue.slice(0, separatorIndex)}]`)
+                if (pattern && pattern.type === "ArrayPattern" && pattern.elements.length) {
+                    recordContextIdentifiers(pattern)
+                } else {
+                    InvalidForDirectiveValue(
+                        getNonWhitespaceLocByIndex(
+                            valueStartSourceIndex,
+                            valueStartSourceIndex + separatorIndex + 1
+                        )
                     )
-                )
+                }
+                baseStartSourceIndex += separatorIndex + 4
+                base = directiveValue.slice(separatorIndex + 4)
             }
-            break
+            return analyzeInterpolation(node, directive, base, baseStartSourceIndex, false)
         }
 
         case "#then":
         case "#catch": {
             const expectedList = ["#await", directiveName === "#then" ? "#catch" : "#then"]
-            if (!nodeInfo.directives.some(item => expectedList.includes(item))) {
-                const prevNonTextNodeInfo = getPrevNonTextNodeInfo(node)
-                if (
-                    !prevNonTextNodeInfo ||
-                    !expectedList.includes(prevNonTextNodeInfo.directives[0])
-                ) {
-                    MissingPrecedingDirective(directiveNameLoc, directiveName, expectedList, true)
-                }
+            if (
+                !nodeInfo.directives.some(item => expectedList.includes(item)) &&
+                !expectedList.includes(getPrevNonTextNodeInfo(node)?.directives[0] ?? "")
+            ) {
+                MissingPrecedingDirective(directive.name.loc, directiveName, expectedList, true)
             }
-            checkWhetherDirectiveValueIsValidPattern()
-            break
+            return checkWhetherDirectiveValueIsValidPattern()
         }
 
         case "#else":
         case "#elif": {
-            const prevNonTextNodeInfo = getPrevNonTextNodeInfo(node)
-            if (
-                !prevNonTextNodeInfo ||
-                !/#(?:el)?if/.test(prevNonTextNodeInfo.directives[0] ?? "")
-            ) {
-                MissingPrecedingDirective(directiveNameLoc, directiveName, ["#if", "#elif"], false)
+            const expectedList = ["#if", "#elif"]
+            if (!expectedList.includes(getPrevNonTextNodeInfo(node)?.directives[0] ?? "")) {
+                MissingPrecedingDirective(directive.name.loc, directiveName, expectedList, false)
             }
-            break
+            return
         }
 
         case "#slot": {
-            checkWhetherDirectiveValueIsValidPattern()
-            break
+            return checkWhetherDirectiveValueIsValidPattern()
         }
-    }
 
-    // 检查指令值是否是有效的绑定模式：#then, #catch, #slot 指令值必须是绑定模式
-    // Check whether the directive value is a valid binding pattern:
-    // the values of `#then`, `#catch`, and `#slot` directives must be binding patterns.
-    function checkWhetherDirectiveValueIsValidPattern() {
-        if (nodeInfo.attributesMap[directiveName].hasValue) {
-            const pattern = parsePattern(directiveValue)
-            if (pattern) {
-                recordContextIdentifiers(pattern)
-            } else {
-                DirectiveValueMustBePattern(
-                    getNonWhiteSpaceLocByLoc(directiveValueLoc),
-                    directiveName
-                )
+        default: {
+            if (directiveName === "#else") {
+                RedundantAttributeValue(directive.loc, directiveName)
             }
+            if (isAttributeValid(directive) && isNonEmptyExpression(directiveValue)) {
+                analyzeInterpolation(node, directive, directiveValue, valueStartSourceIndex)
+            }
+            return
         }
     }
 
@@ -109,7 +103,22 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         walkPatternIdentifiers(pattern, ({ name }) => {
             nodeInfo.contextIdentifiers.add(name)
         })
-        parsedPatterns.set(directive, pattern)
+        analyzeResult.template.parsedPatterns.set(directive, pattern)
+    }
+
+    // 检查指令值是否是有效的绑定模式：#then, #catch, #slot 指令值必须是绑定模式
+    // Check whether the directive value is a valid binding pattern:
+    // the values of `#then`, `#catch`, and `#slot` directives must be binding patterns.
+    function checkWhetherDirectiveValueIsValidPattern() {
+        const pattern = parsePattern(directiveValue)
+        if (pattern) {
+            recordContextIdentifiers(pattern)
+        } else {
+            DirectiveValueMustBePattern(
+                getNonWhiteSpaceLocByLoc(directive.value.loc),
+                directiveName
+            )
+        }
     }
 }
 

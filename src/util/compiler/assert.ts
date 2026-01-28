@@ -1,4 +1,5 @@
 import type { TemplateAttribute } from "#type-declarations/compiler"
+import { nonWhitespaceRE } from "../../compiler/regular"
 
 import { findOutOfComment } from "./string"
 
@@ -12,6 +13,6 @@ export function isAttributeValid(attr: TemplateAttribute) {
     return attr.value.loc.end.index !== attr.loc.end.index
 }
 
-export function attributeHasNonEmptyValue(attr: TemplateAttribute) {
-    return findOutOfComment(attr.value.raw, /\S/)[0] !== -1
+export function isNonEmptyExpression(exp: string) {
+    return findOutOfComment(exp, nonWhitespaceRE)[0] !== -1
 }

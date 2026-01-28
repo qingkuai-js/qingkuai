@@ -77,17 +77,17 @@ export function matchTemplateNodeList(
         // 断言节点结构与给定项目相同（deep equal）
         // Assert that the node structure deeply equals the given item (expectedList)
         expect(
-            isDeepStrictEqual(nodeList[i], {
-                ...newTemplateNode(),
-                ...expectedList[i],
-                children: nodeList[i].children
-            }),
+            nodeList[i],
             showCustomAsseertMessage
                 ? `The expected template node structure does not match result for ${
                       expectedList[i].tag || '""'
                   }_${expectedList[i].loc?.start.index}_${expectedList[i].loc?.end.index}`
                 : void 0
-        ).toBeTruthy()
+        ).toEqual({
+            ...newTemplateNode(),
+            ...expectedList[i],
+            children: nodeList[i].children
+        })
         if (nodeList[i].children.length) {
             matchTemplateNodeList(nodeList[i].children, ...(expectedList[i].children || []))
         }

@@ -8,6 +8,7 @@ import type {
 import { isUndefined } from "../util/shared/assert"
 import { objectAssign } from "../util/shared/aliases"
 import { newASTLocation } from "../util/compiler/position"
+import { newCleanObj } from "../util/shared/sundry"
 
 export let messages: CompileMessage[] = []
 export let inputDescriptor: InputDescriptor
@@ -23,15 +24,16 @@ function newAnalyzeResult(): AnalyzeResult {
     return {
         template: {
             nodeInfos: new Map(),
-            parsedPatterns: new Map()
+            parsedPatterns: new Map(),
+            parsedExpressions: new Map()
         },
         script: {
             watchers: [],
             locations: [],
             importDeclarations: [],
-            topLevelReferences: {},
-            topLevelIdentifiers: {},
-            fullIdentifiers: new Set()
+            fullIdentifiers: new Set(),
+            topLevelReferences: newCleanObj(),
+            topLevelIdentifiers: newCleanObj()
         }
     }
 }

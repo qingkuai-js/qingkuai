@@ -1151,4 +1151,85 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
             }
         ])
     })
+
+    test("Empty interpolation blocks", () => {
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseRecover(
+                formatSourceCode(`
+                    <div #if={}></div>
+                    <span !class={ /* ... */ }></span>
+                `)
+            )
+            return [
+                nodeList,
+                {
+                    tag: "div",
+                    attributes: [
+                        {
+                            name: {
+                                raw: "#if",
+                                loc: getLocByIndex(5, 8)
+                            },
+                            value: {
+                                raw: "",
+                                loc: getLocByIndex(10, 10)
+                            },
+                            equalSign: true,
+                            loc: getLocByIndex(5, 11),
+                            valueEnclosure: "curly"
+                        }
+                    ],
+                    next: nodeList[1],
+                    loc: getLocByIndex(0, 18),
+                    startTagEndPos: getPosByIndex(12),
+                    endTagStartPos: getPosByIndex(12)
+                },
+                {
+                    content: [
+                        {
+                            value: "\n",
+                            isInterpolated: false,
+                            loc: getLocByIndex(18, 19)
+                        }
+                    ],
+                    prev: nodeList[0],
+                    next: nodeList[2],
+                    loc: getLocByIndex(18, 19)
+                },
+                {
+                    tag: "span",
+                    attributes: [
+                        {
+                            name: {
+                                raw: "!class",
+                                loc: getLocByIndex(25, 31)
+                            },
+                            value: {
+                                raw: " /* ... */ ",
+                                loc: getLocByIndex(33, 44)
+                            },
+                            equalSign: true,
+                            loc: getLocByIndex(25, 45),
+                            valueEnclosure: "curly"
+                        }
+                    ],
+                    prev: nodeList[1],
+                    loc: getLocByIndex(19, 53),
+                    startTagEndPos: getPosByIndex(46),
+                    endTagStartPos: getPosByIndex(46)
+                }
+            ]
+        }, [
+            {
+                type: "error",
+                range: [9, 11],
+                value: "Empty interpolation expression block is not allowed."
+            },
+            {
+                type: "error",
+                range: [32, 45],
+                value: "Empty interpolation expression block is not allowed."
+            }
+        ])
+    })
 })

@@ -74,10 +74,6 @@ export function ensureGetRefProperty(property: ObjectKeys) {
     return getRefProperty(WRAPPER_SET, property)
 }
 
-export function stripPrototype<T extends AnyObject>(o: T): T {
-    return setPrototypeOf(o, NIL), o
-}
-
 export function getRefProperty(wrapperFlag: number, property: ObjectKeys) {
     if (!(wrapperFlag & (WRAPPER_SET | WRAPPER_MAP))) {
         return property

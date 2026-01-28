@@ -11,17 +11,10 @@ import type {
 import type { RegExpExecRet } from "#type-declarations/tools"
 
 import {
-    kebab2Camel,
-    findEndBracket,
-    findOutOfComment,
-    findOutOfStringComment
-} from "../../util/compiler/string"
-import {
+    whitespacesRE,
     equalTokenRE,
     startCurlyRE,
     startQuoteRE,
-    nonWhitespaceRE,
-    whitespacesRE,
     tagIsComponentRE,
     preWhiteSpaceRuleRE,
     templateAttributeEndRE,
@@ -65,6 +58,8 @@ import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
+import { isNonEmptyExpression } from "../../util/compiler/assert"
+import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
 
 export function newTemplateNode(): TemplateNode {
@@ -194,6 +189,11 @@ export function parseTemplate(source: string) {
                     value: dps.slice(1, endBracketIndex),
                     loc: getLocByIndex(index + 1, reduceSource(endBracketIndex + 1).index - 1)
                 })
+            }
+
+            const lastItem = getLastElem(contentParts)
+            if (lastItem?.isInterpolated && !isNonEmptyExpression(lastItem.value)) {
+                EmptyInterpolationBlock(lastItem.loc)
             }
 
             const interpolationLoc = getLastElem(contentParts)!.loc
@@ -376,7 +376,7 @@ export function parseTemplate(source: string) {
                         }
                     } else if (
                         isInterpolatedAttr &&
-                        findOutOfComment(dps.slice(1, endCharIndex), nonWhitespaceRE)[0] === -1
+                        !isNonEmptyExpression(dps.slice(1, endCharIndex))
                     ) {
                         EmptyInterpolationBlock(getLocByIndex(index, index + endCharIndex + 1))
                     }
@@ -450,7 +450,7 @@ export function parseTemplate(source: string) {
         // 遇到 script/style 或嵌入语言标签时直接快进到结束标签的结尾
         // Fast-forward to the end of the end tag when encountering a script/style or embedded language tag.
         if (langMatched || tag === "script" || tag === "style") {
-            const endTagIndex = findOutOfStringComment(dps, "</" + tag)
+            const endTagIndex = new RegExp("</" + tag).exec(dps)?.index ?? -1
             const embeddedLang = langMatched?.[1] || ""
             const neverOver = endTagIndex === -1
             if (neverOver) {
@@ -459,7 +459,7 @@ export function parseTemplate(source: string) {
 
             // 如果没有匹配到结束标签，整个 dps 都被认为是当前标签的内容
             // If no end tag is matched, the entire `dps` is treated as the content of the current tag.
-            const endtagStartIndex = neverOver ? -1 : index + endTagIndex
+            const endTagSourceIndex = neverOver ? -1 : index + endTagIndex
             const rawContent = dps.slice(0, neverOver ? undefined : endTagIndex)
             reduceSource(neverOver ? dps.length : endTagIndex + tag.length + 2)
             templateNode.isEmbedded = !!embeddedLang
@@ -467,7 +467,7 @@ export function parseTemplate(source: string) {
             // 检查结束标签是否闭合，并记录当前节点的相关位置信息
             // Check whether the end tag is properly closed and record the relevant position info of the current node.
             if (!neverOver) {
-                const endTagOpenLoc = getLocByIndex(endtagStartIndex, index)
+                const endTagOpenLoc = getLocByIndex(endTagSourceIndex, index)
                 if (findCloseCharOfEndTag()) {
                     templateNode.loc.end = getPosByIndex(index)
                 } else {

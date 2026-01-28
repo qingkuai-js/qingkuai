@@ -1,9 +1,14 @@
 import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
 
-import { OBJECT_PROTO } from "../../runtime/constants"
+import { setPrototypeOf } from "./aliases"
+import { NIL, OBJECT_PROTO } from "../../runtime/constants"
 
 export function any(v: any) {
     return v
+}
+
+export function newCleanObj() {
+    return stripPrototype({})
 }
 
 export function notEqual(a: any, b: any) {
@@ -26,6 +31,10 @@ export function runAll<T extends ArbitraryFunc>(fns: T[]) {
     for (const fn of fns) {
         fn()
     }
+}
+
+export function stripPrototype<T extends AnyObject>(o: T): T {
+    return setPrototypeOf(o, NIL), o
 }
 
 export function len(target: ArrayLike<any> | undefined | null) {

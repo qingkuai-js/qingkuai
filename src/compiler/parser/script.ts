@@ -8,6 +8,12 @@ import { objectAssign } from "../../util/shared/aliases"
 import { getPosByIndex } from "../../util/compiler/position"
 import { parse, parseExpression as _parseExpression } from "@babel/parser"
 
+export function parseExpression(source: string) {
+    try {
+        return _parseExpression(source, getParserOptions())
+    } catch {}
+}
+
 export function parseScript(source: string) {
     try {
         return parse(
@@ -17,7 +23,21 @@ export function parseScript(source: string) {
             })
         ).program
     } catch (error: any) {
-        correctErrorInfomations(error, inputDescriptor.script.loc.start.index)
+        if (!inputDescriptor.options.checkMode) {
+            // 将解析错误的位置信息修改为源码位置信息
+            // Change the location information of parse error to the source location
+            const sourceStartIndex = inputDescriptor.script.loc.start.index
+            const sourcePosition = getPosByIndex(sourceStartIndex)
+            if (!isUndefined(error.loc)) {
+                objectAssign(error.loc, sourcePosition)
+            }
+            error.pos = sourceStartIndex
+            error.message = error.message.replace(
+                /\(\d+:\d+\)$/,
+                `(${sourcePosition.line}:${sourcePosition.column})`
+            )
+            throw error
+        }
     }
 }
 
@@ -39,31 +59,6 @@ export function parsePattern(source: string): ContextPattern | null {
         }
     } catch {
         return null
-    }
-}
-
-export function parseExpression(source: string, startsourceIndex = 0) {
-    try {
-        return _parseExpression(source, getParserOptions())
-    } catch (error: any) {
-        correctErrorInfomations(error, startsourceIndex)
-    }
-}
-
-// 将解析错误的位置信息修改为源码位置信息
-// Change the location information of parse error to the source location
-function correctErrorInfomations(error: any, sourceIndex: number) {
-    if (!inputDescriptor.options.checkMode) {
-        const sourcePosition = getPosByIndex(sourceIndex)
-        if (!isUndefined(error.loc)) {
-            objectAssign(error.loc, sourcePosition)
-        }
-        error.pos = sourceIndex
-        error.message = error.message.replace(
-            /\(\d+:\d+\)$/,
-            `(${sourcePosition.line}:${sourcePosition.column})`
-        )
-        throw error
     }
 }
 

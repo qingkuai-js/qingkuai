@@ -1,24 +1,13 @@
-import type { AnalyzedTemplateAttribute, TemplateNode } from "#type-declarations/compiler"
+import type { TemplateNode } from "#type-declarations/compiler"
 
-import {
-    DuplicateAttributes,
-    ConflictDirectives,
-    MissingDirectiveValue,
-    DisallowedAttributeKind
-} from "../message/error"
-import {
-    ATTRIBUTE_PRIORITY_MAP,
-    CONFLICT_DIRECTIVES_MAP,
-    REQUIRED_VALUE_DIRECTIVES
-} from "../constants"
-import { analyzeResult } from "../state"
+import { analyzeResult, inputDescriptor } from "../state"
 import { analyzeDirective } from "./directive"
 import { kebab2Camel } from "../../util/compiler/string"
 import { interpolatedAttrStartCharRE } from "../regular"
 import { RedundantAttributeValue } from "../message/warn"
-import { getLocByIndex } from "../../util/compiler/position"
-import { attributeHasNonEmptyValue } from "../../util/compiler/assert"
-import { getAttributeBaseName, updateTopLevelIdentifierStatus } from "../../util/compiler/sundry"
+import { getAttributeBaseName } from "../../util/compiler/sundry"
+import { ATTRIBUTE_PRIORITY_MAP, CONFLICT_DIRECTIVES_MAP } from "../constants"
+import { DuplicateAttributes, ConflictDirectives, DisallowedAttributeKind } from "../message/error"
 
 export function analyzeAttributes(node: TemplateNode) {
     const isScript = node.isEmbedded && /^lang-[jt]s$/.test(node.tag)
@@ -36,21 +25,15 @@ export function analyzeAttributes(node: TemplateNode) {
         let mappedKey: string
         const rawName = attribute.name.raw
         const nameLoc = attribute.name.loc
-        const valueLoc = attribute.value.loc
         const isComponent = !!node.componentTag
         const isDirective = rawName.startsWith("#")
-        const analyzedAttribute: AnalyzedTemplateAttribute = {
-            ...attribute,
-            hasValue: "unknown"
-        }
 
         if (isScript) {
             if (interpolatedAttrStartCharRE.test(rawName[0])) {
                 DisallowedAttributeKind(attribute.loc, node.tag, rawName)
             }
             if (rawName === "shallow" && attribute.equalSign) {
-                const sourceLoc = getLocByIndex(nameLoc.start.index, valueLoc.end.index)
-                RedundantAttributeValue(sourceLoc, node.tag, rawName)
+                RedundantAttributeValue(attribute.loc, node.tag, rawName)
             }
         }
 
@@ -72,7 +55,16 @@ export function analyzeAttributes(node: TemplateNode) {
             mappedKey = getAttributeBaseName(attribute)
         }
 
-        if (!isDirective) {
+        if (isDirective) {
+            const existingKey = CONFLICT_DIRECTIVES_MAP[rawName]?.find(item => {
+                return !!attributesMap[item]
+            })
+            if (existingKey) {
+                ConflictDirectives(nameLoc, existingKey, rawName)
+                ConflictDirectives(attributesMap[existingKey].name.loc, existingKey, rawName)
+            }
+            directives.push(rawName)
+        } else {
             const existing = attributesMap[mappedKey]
             if (existing) {
                 DuplicateAttributes(nameLoc, existing.name.raw, rawName)
@@ -81,27 +73,18 @@ export function analyzeAttributes(node: TemplateNode) {
 
             // 同名简写语法，更新顶级作用域标识符的响应性状态
             // For shorthand properties with the same name, update the reactive status of the corresponding top-level scope identifier.
-            if (/[!@&]/.test(rawName[0]) && !attribute.equalSign) {
+            if (interpolatedAttrStartCharRE.test(rawName[0]) && !attribute.equalSign) {
                 updateTopLevelIdentifierStatus(kebab2Camel(getAttributeBaseName(attribute)))
             }
-        } else {
-            const existingKey = CONFLICT_DIRECTIVES_MAP[rawName]?.find(item => {
-                return !!attributesMap[item]
-            })
-            if (REQUIRED_VALUE_DIRECTIVES.has(rawName)) {
-                if (attributeHasNonEmptyValue(attribute)) {
-                    analyzedAttribute.hasValue = "yes"
-                } else {
-                    MissingDirectiveValue(nameLoc, rawName)
-                }
-            }
-            if (existingKey) {
-                ConflictDirectives(nameLoc, existingKey, rawName)
-                ConflictDirectives(attributesMap[existingKey].name.loc, existingKey, rawName)
-            }
-            directives.push(rawName)
         }
-        attributesMap[mappedKey] = analyzedAttribute
+        attributesMap[mappedKey] = attribute
         isDirective && analyzeDirective(node, attribute)
+    }
+}
+
+function updateTopLevelIdentifierStatus(id: string) {
+    const info = analyzeResult.script.topLevelIdentifiers[id]
+    if (info?.status === "pending") {
+        info.status = inputDescriptor.options.reactivityMode
     }
 }

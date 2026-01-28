@@ -3,8 +3,6 @@ import type { ASTLocation } from "#type-declarations/compiler"
 
 import { inputDescriptor, messages } from "../state"
 
-// 空缺 1029
-
 export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>>(obj: T): T => {
     return obj
 })({
@@ -148,6 +146,13 @@ export const InvalidTemplateStructure = withLocation(1015, (msg: string) => {
 
 export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
     return `Starts with an end tag: </${tag}>.`
+})
+
+export const InvalidExpression = withLocation(1029, (interpolation = true) => {
+    if (!interpolation) {
+        return `Expression expected.`
+    }
+    return `Only expressions are allowed in interpolation.`
 })
 
 export const MissingDirectiveValue = withLocation(1027, (directive: string) => {

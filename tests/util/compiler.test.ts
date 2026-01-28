@@ -3,9 +3,9 @@ import {
     camel2Kebab,
     kebab2Camel,
     findEndBracket,
-    findOutOfString,
+    findOutOfLiteral,
     findOutOfComment,
-    findOutOfStringComment
+    findOutOfLiteralComment
 } from "../../src/util/compiler/string"
 import { getPositionOfEachChar } from "../../src/util/compiler/position"
 
@@ -163,61 +163,61 @@ test("Function: findOutOfComment", () => {
 })
 
 test("Function: findOutOfString", () => {
-    expect(findOutOfString(`'test`, "test")).toBe(-1)
-    expect(findOutOfString(`"test`, "test")).toBe(-1)
-    expect(findOutOfString(`"test"`, "test")).toBe(-1)
-    expect(findOutOfString(`"\n"test`, "test")).toBe(-1)
-    expect(findOutOfString(`'\n'test`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`'test`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`"test`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`"test"`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`"\n"test`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`'\n'test`, "test")).toBe(-1)
 
-    expect(findOutOfString("`\n`test", "test")).toBe(3)
-    expect(findOutOfString(`"test" test 'test'`, "test")).toBe(7)
-    expect(findOutOfString(`"abc test def" test`, "test")).toBe(15)
-    expect(findOutOfString(`'hello "test"' test`, "test")).toBe(15)
-    expect(findOutOfString(`"a test" 'b test' test`, "test")).toBe(18)
+    expect(findOutOfLiteral("`\n`test", "test")).toBe(3)
+    expect(findOutOfLiteral(`"test" test 'test'`, "test")).toBe(7)
+    expect(findOutOfLiteral(`"abc test def" test`, "test")).toBe(15)
+    expect(findOutOfLiteral(`'hello "test"' test`, "test")).toBe(15)
+    expect(findOutOfLiteral(`"a test" 'b test' test`, "test")).toBe(18)
 
     // 带转义字符的字符串
     // String with escape characters
-    expect(findOutOfString(`'escaped \\'test\\'' test`, "test")).toBe(19)
-    expect(findOutOfString(`"escaped \\"test\\"" test`, "test")).toBe(19)
-    expect(findOutOfString(`'line \\\n continuation' test`, "test")).toBe(23)
+    expect(findOutOfLiteral(`'escaped \\'test\\'' test`, "test")).toBe(19)
+    expect(findOutOfLiteral(`"escaped \\"test\\"" test`, "test")).toBe(19)
+    expect(findOutOfLiteral(`'line \\\n continuation' test`, "test")).toBe(23)
 
     // 模板字符串
     // Template string
-    expect(findOutOfString("`x${1 + test + 2}`", "test")).toBe(8)
-    expect(findOutOfString("`a ${'b test'} c` test", "test")).toBe(18)
-    expect(findOutOfString("`a${`b${`c test`}d`}e` test", "test")).toBe(23)
-    expect(findOutOfString("`a${`b${`c ${test}`}d`}e` test", "test")).toBe(13)
-    expect(findOutOfString("`hello ${`inner ${'test'}`} test` test", "test")).toBe(34)
+    expect(findOutOfLiteral("`x${1 + test + 2}`", "test")).toBe(8)
+    expect(findOutOfLiteral("`a ${'b test'} c` test", "test")).toBe(18)
+    expect(findOutOfLiteral("`a${`b${`c test`}d`}e` test", "test")).toBe(23)
+    expect(findOutOfLiteral("`a${`b${`c ${test}`}d`}e` test", "test")).toBe(13)
+    expect(findOutOfLiteral("`hello ${`inner ${'test'}`} test` test", "test")).toBe(34)
 
     // 偏移 startIndex
     // Offset by startIndex
-    expect(findOutOfString(`'test' test test`, "test", 13)).toBe(-1)
-    expect(findOutOfString(`"test" test test`, "test", 10)).toBe(12)
+    expect(findOutOfLiteral(`'test' test test`, "test", 13)).toBe(-1)
+    expect(findOutOfLiteral(`"test" test test`, "test", 10)).toBe(12)
 
     // 使用正则表达式查找
     // Use regular expression to search
-    expect(findOutOfString(`"test" test test`, /test/)).toEqual([7, 4])
-    expect(findOutOfString(`'escaped \\'test\\'' test`, /test/)).toEqual([19, 4])
-    expect(findOutOfString("`hello ${`inner ${'test'}`} test` test", /test/)).toEqual([34, 4])
+    expect(findOutOfLiteral(`"test" test test`, /test/)).toEqual([7, 4])
+    expect(findOutOfLiteral(`'escaped \\'test\\'' test`, /test/)).toEqual([19, 4])
+    expect(findOutOfLiteral("`hello ${`inner ${'test'}`} test` test", /test/)).toEqual([34, 4])
 })
 
 test("Function: findOutOfStringComment", () => {
-    expect(findOutOfStringComment(`"unclosed test`, "test")).toBe(-1)
-    expect(findOutOfStringComment(`/* unclosed test`, "test")).toBe(-1)
-    expect(findOutOfStringComment(`// comment without newline test`, "test")).toBe(-1)
-    expect(findOutOfStringComment(`"test" /* test */ // test\n'test'`, "test")).toBe(-1)
+    expect(findOutOfLiteralComment(`"unclosed test`, "test")).toBe(-1)
+    expect(findOutOfLiteralComment(`/* unclosed test`, "test")).toBe(-1)
+    expect(findOutOfLiteralComment(`// comment without newline test`, "test")).toBe(-1)
+    expect(findOutOfLiteralComment(`"test" /* test */ // test\n'test'`, "test")).toBe(-1)
 
-    expect(findOutOfStringComment("`a ${'test'} b` test", "test")).toBe(16)
-    expect(findOutOfStringComment(`'test' // test\n test`, "test")).toBe(16)
-    expect(findOutOfStringComment(`"test" /* test */ test`, "test")).toBe(18)
-    expect(findOutOfStringComment("`a ${/* test */ 1 + 2} b` test", "test")).toBe(26)
-    expect(findOutOfStringComment("`a ${'test' /* test */ + test}`", "test")).toBe(25)
-    expect(findOutOfStringComment("`a ${'b test'} c` // test\n test", "test")).toBe(27)
-    expect(findOutOfStringComment(`'a test' /* block */ // line\n test`, "test")).toBe(30)
-    expect(findOutOfStringComment(`"test" /* test */ 'test' // test\ntest`, "test")).toBe(33)
-    expect(findOutOfStringComment(`test /* comment */ test // comment\ntest`, "test", 20)).toBe(35)
+    expect(findOutOfLiteralComment("`a ${'test'} b` test", "test")).toBe(16)
+    expect(findOutOfLiteralComment(`'test' // test\n test`, "test")).toBe(16)
+    expect(findOutOfLiteralComment(`"test" /* test */ test`, "test")).toBe(18)
+    expect(findOutOfLiteralComment("`a ${/* test */ 1 + 2} b` test", "test")).toBe(26)
+    expect(findOutOfLiteralComment("`a ${'test' /* test */ + test}`", "test")).toBe(25)
+    expect(findOutOfLiteralComment("`a ${'b test'} c` // test\n test", "test")).toBe(27)
+    expect(findOutOfLiteralComment(`'a test' /* block */ // line\n test`, "test")).toBe(30)
+    expect(findOutOfLiteralComment(`"test" /* test */ 'test' // test\ntest`, "test")).toBe(33)
+    expect(findOutOfLiteralComment(`test /* comment */ test // comment\ntest`, "test", 20)).toBe(35)
 
-    expect(findOutOfStringComment(`'test' // test\ntest`, /test/)).toEqual([15, 4])
-    expect(findOutOfStringComment("`x${'test'} y` test`, test", /test/)).toEqual([15, 4])
-    expect(findOutOfStringComment(`let a = 1; // comment\ntest`, /test/)).toEqual([22, 4])
+    expect(findOutOfLiteralComment(`'test' // test\ntest`, /test/)).toEqual([15, 4])
+    expect(findOutOfLiteralComment("`x${'test'} y` test`, test", /test/)).toEqual([15, 4])
+    expect(findOutOfLiteralComment(`let a = 1; // comment\ntest`, /test/)).toEqual([22, 4])
 })

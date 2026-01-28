@@ -43,10 +43,10 @@ export interface FindEndBracketFunc {
     (str: string): number
 }
 
-export interface FindOutOfStringFunc {
+export interface FindOutOfLiteralFunc {
     /**
-     * 在 Javascript 源码中脱离字符串范围查找匹配项，注意模板字符串的插值部分不会被忽略 \
-     * Search for matches outside of string literals in JavaScript source code;
+     * 在 Javascript 源码中脱离字符串/正则字面量范围查找匹配项，注意：模板字符串的插值部分不会被忽略 \
+     * Search for matches outside of string/regexp literals in JavaScript source code;
      * Note: the interpolated parts of template strings will not be ignored
      *
      * @param str 被检索的 Javascript 源码字符串 \
@@ -64,8 +64,8 @@ export interface FindOutOfStringFunc {
     (str: string, substr: string, startIndex?: number): number
 
     /**
-     * 在 Javascript 源码中脱离字符串范围查找匹配项，模板字符串的插值部分不会被忽略 \
-     * Search for matches outside of string literals in JavaScript source code;
+     * 在 Javascript 源码中脱离字符串/正则字面量范围查找匹配项，注意：模板字符串的插值部分不会被忽略 \
+     * Search for matches outside of string/regexp literals in JavaScript source code;
      * Note: the interpolated parts of template strings will not be ignored
      *
      * @param str 被检索的 Javascript 源码字符串 \
@@ -121,10 +121,10 @@ export interface FindOutOfCommentFunc {
     (str: string, pattern: RegExp, startIndex?: number): Range
 }
 
-export interface FindOutOfStringCommentFunc {
+export interface FindOutOfLiteralCommentFunc {
     /**
-     * 在 Javascript 源码中脱离字符串和注释范围查找匹配项，注意模板字符串的插值部分不会被忽略 \
-     * Search for matches outside of string literals and comment in JavaScript source code;
+     * 在 Javascript 源码中脱离字符串/正则字面量和注释范围查找匹配项，注意：模板字符串的插值部分不会被忽略 \
+     * Search for matches outside of string/regexp literals and comment in JavaScript source code;
      * Note: the interpolated parts of template strings will not be ignored
      *
      * @param str 被检索的 Javascript 源码字符串 \
@@ -142,8 +142,8 @@ export interface FindOutOfStringCommentFunc {
     (str: string, substr: string, startIndex?: number): number
 
     /**
-     * 在 Javascript 源码中脱离字符串和注释范围查找匹配项，模板字符串的插值部分不会被忽略 \
-     * Search for matches outside of string literals and comment in JavaScript source code;
+     * 在 Javascript 源码中脱离字符串/正则字面量和注释范围查找匹配项，注意：模板字符串的插值部分不会被忽略 \
+     * Search for matches outside of string/regexp literals and comment in JavaScript source code;
      * Note: the interpolated parts of template strings will not be ignored
      *
      * @param str 被检索的 Javascript 源码字符串 \

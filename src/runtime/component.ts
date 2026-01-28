@@ -13,7 +13,7 @@ import { isElement } from "../util/runtime/assert"
 import { appendChild, selectElement } from "./dom"
 import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
-import { stripPrototype } from "../util/runtime/sundry"
+import { stripPrototype } from "../util/shared/sundry"
 import { any, createProxy, len, runAll } from "../util/shared/sundry"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 

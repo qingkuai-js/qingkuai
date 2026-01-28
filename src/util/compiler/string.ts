@@ -2,25 +2,32 @@ import type {
     Kebab2CamelFunc,
     Camel2KebabFunc,
     FindEndBracketFunc,
-    FindOutOfStringFunc,
+    FindOutOfLiteralFunc,
     FindOutOfCommentFunc,
-    FindOutOfStringCommentFunc
+    FindOutOfLiteralCommentFunc
 } from "#type-declarations/exfuncs"
 import type { Range } from "#type-declarations/compiler"
 
+import {
+    whitespaceRE,
+    kebabWholeRE,
+    jsValueCharRE,
+    jsStartRegexKeywordsRE,
+    jsStringLiteralQuoteRE,
+    kebabWithoutFirstLetterRE
+} from "../../compiler/regular"
 import { escapeRegExpSource } from "../shared/sundry"
 import { isString, isUndefined } from "../shared/assert"
-import { kebabWholeRE, kebabWithoutFirstLetterRE } from "../../compiler/regular"
 
-export const findOutOfString: FindOutOfStringFunc = findOutOfGen(true, false)
+export const findOutOfLiteral: FindOutOfLiteralFunc = findOutOfGen(true, false)
 export const findOutOfComment: FindOutOfCommentFunc = findOutOfGen(false, true)
-export const findOutOfStringComment: FindOutOfStringCommentFunc = findOutOfGen(true, true)
+export const findOutOfLiteralComment: FindOutOfLiteralCommentFunc = findOutOfGen(true, true)
 
 export const findEndBracket: FindEndBracketFunc = (str: string) => {
     const endBracket = { "{": "}", "(": ")", "[": "]" }[str[0]]!
     for (let startIndex = 0; startIndex < str.length; ) {
-        const endBracketIndex = findOutOfStringComment(str, endBracket, startIndex)
-        const startBracketIndex = findOutOfStringComment(str, str[0], startIndex + 1)
+        const endBracketIndex = findOutOfLiteralComment(str, endBracket, startIndex)
+        const startBracketIndex = findOutOfLiteralComment(str, str[0], startIndex + 1)
         if (startBracketIndex === -1 || startBracketIndex > endBracketIndex) {
             return endBracketIndex
         }
@@ -47,35 +54,38 @@ export const kebab2Camel: Kebab2CamelFunc = (str: string, startWithUppercase = f
 // 生成在脚本源码中脱离指定范围（字符串、注释）查找子串（或正则）的方法
 // Generate methods to search for a substring (or RegExp) in script source code,
 // excluding matches that appear inside specified ranges (e.g., strings or comments).
-function findOutOfGen(outOfString: boolean, outOfComment: boolean) {
+function findOutOfGen(outOfLiteral: boolean, outOfComment: boolean) {
     function generated(str: string, substr: string, startIndex?: number): number
     function generated(str: string, pattern: RegExp, startIndex?: number): Range
     function generated(s: string, m: string | RegExp, n?: number): number | Range {
-        const pIsString = isString(m)
-        const patternSoruce = `^${pIsString ? escapeRegExpSource(m) : m.source}`
-        const patternRE = new RegExp(patternSoruce, pIsString ? "" : m.flags)
+        const mIsString = isString(m)
+        const patternSoruce = `^${mIsString ? escapeRegExpSource(m) : m.source}`
+        const patternRE = new RegExp(patternSoruce, mIsString ? "" : m.flags)
 
         // 第二个参数为正则表达式时需要返回匹配项的长度
         // When the second argument is a RegExp, returns the match length
         const reloadedReturn = (index: number, len: number) => {
-            return pIsString ? index : ([index, len] as Range)
+            return mIsString ? index : ([index, len] as Range)
         }
 
         for (let i = 0, left = s; i < s.length; left = s.slice(++i)) {
-            if (outOfString && /^['"`]/.test(left)) {
-                const stopCharacter = s[i]
-                while (!(left = s.slice(++i)).startsWith(stopCharacter)) {
+            if (outOfLiteral && jsStringLiteralQuoteRE.test(left[0])) {
+                for (
+                    const stopChar = s[i];
+                    stopChar !== (left = s.slice(++i))[0] && i < s.length;
+
+                ) {
                     if ("\\" === left[0]) {
                         i++
                         continue
                     }
-                    if (i >= s.length || (left[0] === "\n" && stopCharacter !== "`")) {
+                    if (left[0] === "\n" && stopChar !== "`") {
                         return reloadedReturn(-1, 0)
                     }
 
                     // 在模板字符串的插值表达式中查找
                     // Search within the interpolation expression of a template string
-                    if (stopCharacter === "`" && left.startsWith("${")) {
+                    if (stopChar === "`" && left.startsWith("${")) {
                         const temp = findEndBracket(left.slice(1))
                         const endBracketIndex = temp === -1 ? left.length : temp + 1
                         const [matchedIndex, matchedLength] = generated(
@@ -93,7 +103,11 @@ function findOutOfGen(outOfString: boolean, outOfComment: boolean) {
                         return reloadedReturn(matchedIndex + i + 2, matchedLength)
                     }
                 }
-                left = s.slice(++i)
+                if (i < s.length) {
+                    left = s.slice(++i)
+                } else {
+                    return reloadedReturn(-1, 0)
+                }
             }
 
             if (outOfComment && left.startsWith("//")) {
@@ -113,6 +127,35 @@ function findOutOfGen(outOfString: boolean, outOfComment: boolean) {
                 continue
             }
 
+            if (outOfLiteral && "/" === left[0] && canStartRegex(s, i)) {
+                for (
+                    let inCharClass = false;
+                    ("/" !== (left = s.slice(++i))[0] || inCharClass) && i < s.length;
+
+                ) {
+                    if ("\\" === left[0]) {
+                        i++
+                        continue
+                    }
+                    if (left[0] === "\n") {
+                        return reloadedReturn(-1, 0)
+                    }
+                    if ("[" === left[0]) {
+                        inCharClass = true
+                        continue
+                    }
+                    if (inCharClass && "]" === left[0]) {
+                        inCharClass = false
+                        continue
+                    }
+                }
+                if (i < s.length) {
+                    left = s.slice(++i)
+                } else {
+                    return reloadedReturn(-1, 0)
+                }
+            }
+
             const matched = patternRE.exec(left)
             if (matched && i >= (n ?? -1)) {
                 return reloadedReturn(i, matched[0].length)
@@ -121,4 +164,69 @@ function findOutOfGen(outOfString: boolean, outOfComment: boolean) {
         return reloadedReturn(-1, 0)
     }
     return generated
+}
+
+// 判断字符串指定位置之后是否可以表示正则表达式字面量
+function canStartRegex(s: string, i: number, j = i - 1) {
+    while (j >= 0 && whitespaceRE.test(s[j])) {
+        j--
+    }
+
+    if (j < 0) {
+        return true
+    }
+
+    if (j > 0) {
+        switch (s.slice(j - 1, j + 1)) {
+            case "==":
+            case "!=":
+            case "<=":
+            case ">=":
+            case "&&":
+            case "||": {
+                return true
+            }
+            case "++":
+            case "--": {
+                return false
+            }
+        }
+    }
+
+    switch (s[j]) {
+        case "(":
+        case "{":
+        case "[":
+        case ",":
+        case ";":
+        case ":":
+        case "?":
+        case "=":
+        case "!":
+        case "+":
+        case "-":
+        case "*":
+        case "%":
+        case "~":
+        case "^":
+        case "&":
+        case "|":
+        case "<":
+        case ">": {
+            return true
+        }
+        case ")":
+        case "]":
+        case "}":
+        case ".": {
+            return false
+        }
+        default: {
+            if (jsValueCharRE.test(s[j])) {
+                return false
+            }
+        }
+    }
+
+    return jsStartRegexKeywordsRE.test(s.slice(Math.max(0, j - 5), j + 1))
 }
