@@ -87,7 +87,7 @@ const visitor: Visitor = {
 
         // 记录所有引用顶部标识符的位置信息
         // Record the source ranges of all references to top-level identifiers.
-        if (!context.scopeIdentifiers.has(node.name) && context.isBindingReference) {
+        if (!context.scopeIdentifiers?.has(node.name) && context.isBindingReference) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[node.name]
             ;(analyzeResult.script.topLevelReferences[node.name] ??= []).push({
                 range: node.range,
@@ -349,7 +349,7 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
     if (
         !context.isBindingReference ||
         !intrinsicMethodsRE.test(node.name) ||
-        context.scopeIdentifiers.has(node.name)
+        context.scopeIdentifiers?.has(node.name)
     ) {
         return
     }

@@ -112,6 +112,10 @@ export const ShadowCompilerIntrinsicAtTopLevel = withLocation(
     ...commonMessage.ShadowCompilerIntrinsicAtTopLevel
 )
 
+export const InvalidExpression = withLocation(1029, () => {
+    return "Invalid expression."
+})
+
 export const InvalidAttributeFormat = withLocation(1016, () => {
     return "Invalid format for attributes."
 })
@@ -126,6 +130,10 @@ export const UnclosedInterpolationBlock = withLocation(1003, () => {
 
 export const UnclosedStaticAttributeValue = withLocation(1008, () => {
     return "Unclosed static attribute value."
+})
+
+export const SlotNameAttributeMustBeStatic = withLocation(1039, () => {
+    return `The "name" attribute on <slot> must be static.`
 })
 
 export const NoEndTagMatched = withLocation(1012, (tag: string) => {
@@ -148,13 +156,6 @@ export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
     return `Starts with an end tag: </${tag}>.`
 })
 
-export const InvalidExpression = withLocation(1029, (interpolation = true) => {
-    if (!interpolation) {
-        return `Expression expected.`
-    }
-    return `Only expressions are allowed in interpolation.`
-})
-
 export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
     return `Directive "${directive}" requires a value.`
 })
@@ -167,8 +168,16 @@ export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => 
     return "The value for static attribute must be quoted with single or double quote."
 })
 
+export const EmptyContextPattern = withLocation(1034, () => {
+    return `The context pattern is empty and does not declare any binding identifiers.`
+})
+
 export const NoNameForInterpolatedAttribute = withLocation(1005, (char: string) => {
     return `The ${getSpecialAttrDescription(char)} must be specified a name.`
+})
+
+export const HtmlDirectiveRequiresSingleTextChild = withLocation(1035, () => {
+    return `A tag with the "#html" directive must have exactly one text node as its child.`
 })
 
 export const DuplicateAttributes = withLocation(1028, (a: string, b: string) => {
@@ -188,12 +197,29 @@ export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false
     } is not closed.`
 })
 
-export const DirectiveValueMustBePattern = withLocation(1032, (directive: string) => {
+export const UnexpectedToken = withLocation(1002, (str: string, expected?: string) => {
+    return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
+})
+
+export const InvalidContextPatternForDirective = withLocation(1032, (directive?: string) => {
+    if (!directive) {
+        return `Expected a binding pattern.`
+    }
     return `The value for "${directive}" directive must be a binding pattern.`
 })
 
-export const UnexpectedToken = withLocation(1002, (str: string, expected?: string) => {
-    return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
+export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
+    return `The "#slot" directive can only be used on direct child elements of a component tag.`
+})
+
+export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
+    return `The "${directive}" directive accepts at most ${
+        count === 1 ? "one" : count === 2 ? "two" : count
+    } binding pattern${count === 1 ? "" : "s"}.`
+})
+
+export const InvalidSlotName = withLocation(1038, () => {
+    return `The "#slot" directive requires a string literal slot name after "from" keyword.`
 })
 
 export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
@@ -202,10 +228,6 @@ export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
 
 export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
     return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
-})
-
-export const InvalidForDirectiveValue = withLocation(1034, () => {
-    return `Invalid value for "#for" directive: the segment before \`of\` keyword must be valid binding patterns.`
 })
 
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {

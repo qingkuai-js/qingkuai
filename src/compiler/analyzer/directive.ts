@@ -2,28 +2,40 @@ import type { ContextPattern } from "#type-declarations/estree"
 import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
 import {
+    InvalidSlotName,
     UnrecognizedDirective,
+    EmptyContextPattern,
+    TooManyBindingPatterns,
     MissingDirectiveValue,
-    InvalidForDirectiveValue,
     MissingPrecedingDirective,
-    DirectiveValueMustBePattern
+    InvalidSlotDirectivePlacement,
+    InvalidContextPatternForDirective,
+    HtmlDirectiveRequiresSingleTextChild
 } from "../message/error"
+import {
+    getLocByIndex,
+    getNonWhiteSpaceLocByLoc,
+    getNonWhitespaceLocByIndex
+} from "../../util/compiler/position"
 import { analyzeResult } from "../state"
 import { parsePattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
+import { parseDirectiveValue } from "../parser/directive"
 import { RedundantAttributeValue } from "../message/warn"
 import { getPrevNonTextNode } from "../../util/compiler/template"
-import { findOutOfLiteralComment } from "../../util/compiler/string"
 import { walkPatternIdentifiers } from "../../util/compiler/estree/walk"
 import { DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
 import { isAttributeValid, isNonEmptyExpression } from "../../util/compiler/assert"
-import { getNonWhitespaceLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
     const directiveName = directive.name.raw
     const directiveValue = directive.value.raw
     const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
     const valueStartSourceIndex = directive.value.loc.start.index
+
+    const localAnalyzeInterpolation = (source: string, startSourceIndex: number) => {
+        return analyzeInterpolation(node, directive, source, startSourceIndex)
+    }
 
     // 缺少指令值
     // Missing directive value.
@@ -35,32 +47,66 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     // Unrecognized directives.
     if (!DIRECTIVE_LIST.has(directiveName)) {
         if (isAttributeValid(directive) && isNonEmptyExpression(directiveValue)) {
-            analyzeInterpolation(node, directive, directiveValue, valueStartSourceIndex)
+            localAnalyzeInterpolation(directiveValue, valueStartSourceIndex)
         }
         return UnrecognizedDirective(directive.loc, directiveName)
     }
 
     switch (directiveName) {
-        case "#for": {
-            let base = directiveValue
-            let baseStartSourceIndex = valueStartSourceIndex
-            const separatorIndex = findOutOfLiteralComment(directiveValue, " of ")
-            if (separatorIndex !== -1) {
-                const pattern = parsePattern(`[${directiveValue.slice(0, separatorIndex)}]`)
-                if (pattern && pattern.type === "ArrayPattern" && pattern.elements.length) {
-                    recordContextIdentifiers(pattern)
-                } else {
-                    InvalidForDirectiveValue(
+        case "#slot": {
+            if (!node.parent || !node.parent.componentTag) {
+                InvalidSlotDirectivePlacement(directive.loc)
+            } else {
+                const parseResult = parseDirectiveValue(
+                    directiveValue,
+                    "from",
+                    valueStartSourceIndex
+                )
+                if (parseResult.patterns.length) {
+                    recordContextIdentifiers(parseResult.patterns[0])
+                }
+                if (parseResult.patterns.length > 1) {
+                    const errorLoc = getNonWhitespaceLocByIndex(
+                        valueStartSourceIndex,
+                        valueStartSourceIndex + parseResult.keywordIndex
+                    )
+                    TooManyBindingPatterns(errorLoc, directiveName, 1)
+                }
+
+                // from 关键字后方的插槽名称必须是静态字符串字面量
+                // The slot name following the `from` keyword must be a static string literal.
+                const name = localAnalyzeInterpolation(
+                    parseResult.base,
+                    parseResult.baseStartSourceIndex
+                )
+                if (
+                    name?.type !== "StringLiteral" &&
+                    (name?.type !== "TemplateLiteral" || name.expressions.length)
+                ) {
+                    InvalidSlotName(
                         getNonWhitespaceLocByIndex(
-                            valueStartSourceIndex,
-                            valueStartSourceIndex + separatorIndex + 1
+                            parseResult.baseStartSourceIndex,
+                            parseResult.baseStartSourceIndex + parseResult.base.length
                         )
                     )
                 }
-                baseStartSourceIndex += separatorIndex + 4
-                base = directiveValue.slice(separatorIndex + 4)
             }
-            return analyzeInterpolation(node, directive, base, baseStartSourceIndex, false)
+            return
+        }
+
+        case "#for": {
+            const parseResult = parseDirectiveValue(directiveValue, "of", valueStartSourceIndex)
+            for (const pattern of parseResult.patterns) {
+                recordContextIdentifiers(pattern)
+            }
+            if (parseResult.patterns.length > 2) {
+                const errorLoc = getNonWhitespaceLocByIndex(
+                    valueStartSourceIndex,
+                    valueStartSourceIndex + parseResult.keywordIndex
+                )
+                TooManyBindingPatterns(errorLoc, directiveName, 2)
+            }
+            return localAnalyzeInterpolation(parseResult.base, parseResult.baseStartSourceIndex)
         }
 
         case "#then":
@@ -84,8 +130,13 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             return
         }
 
-        case "#slot": {
-            return checkWhetherDirectiveValueIsValidPattern()
+        case "#html": {
+            if (node.children.length !== 1 && "" !== node.children[0].tag) {
+                HtmlDirectiveRequiresSingleTextChild(
+                    getLocByIndex(node.startTagEndPos.index, node.endTagStartPos.index)
+                )
+            }
+            // fallthrough
         }
 
         default: {
@@ -93,17 +144,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 RedundantAttributeValue(directive.loc, directiveName)
             }
             if (isAttributeValid(directive) && isNonEmptyExpression(directiveValue)) {
-                analyzeInterpolation(node, directive, directiveValue, valueStartSourceIndex)
+                localAnalyzeInterpolation(directiveValue, valueStartSourceIndex)
             }
             return
         }
-    }
-
-    function recordContextIdentifiers(pattern: ContextPattern) {
-        walkPatternIdentifiers(pattern, ({ name }) => {
-            nodeInfo.contextIdentifiers.add(name)
-        })
-        analyzeResult.template.parsedPatterns.set(directive, pattern)
     }
 
     // 检查指令值是否是有效的绑定模式：#then, #catch, #slot 指令值必须是绑定模式
@@ -114,10 +158,33 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         if (pattern) {
             recordContextIdentifiers(pattern)
         } else {
-            DirectiveValueMustBePattern(
+            InvalidContextPatternForDirective(
                 getNonWhiteSpaceLocByLoc(directive.value.loc),
                 directiveName
             )
+        }
+    }
+
+    // 将指令产生的上下边标识符记录到节点
+    // Record the upper and lower edge identifiers generated by the directive on the node.
+    function recordContextIdentifiers(pattern: ContextPattern) {
+        let validIdentifierCount = 0
+        walkPatternIdentifiers(pattern, ({ name }) => {
+            validIdentifierCount++
+            nodeInfo.contextIdentifiers.add(name)
+        })
+        if (!validIdentifierCount) {
+            EmptyContextPattern(
+                getNonWhitespaceLocByIndex(
+                    valueStartSourceIndex + pattern.start!,
+                    valueStartSourceIndex + pattern.end!
+                )
+            )
+        } else {
+            if (!analyzeResult.template.parsedPatterns.has(directive)) {
+                analyzeResult.template.parsedPatterns.set(directive, [])
+            }
+            analyzeResult.template.parsedPatterns.get(directive)!.push(pattern)
         }
     }
 }

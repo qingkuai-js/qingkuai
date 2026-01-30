@@ -21,8 +21,8 @@ export const jsValueCharRE = /[A-Za-z0-9_$]/
 export const jsStringLiteralQuoteRE = /[`'"]/
 export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
 
-export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const forbiddenIdentifierRE = /^(?:__w__|__c__$)/
+export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived|alias)$/
 export const intrinsicMethodsRE =

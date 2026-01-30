@@ -1,4 +1,5 @@
 import type { Range } from "./compiler"
+import type { ContextPattern } from "./estree"
 
 /**
  * 驼峰命名转串型命名 \
@@ -159,4 +160,27 @@ export interface FindOutOfLiteralCommentFunc {
      * The index and count of characters of the found match; returns [-1, 0] if no match is found
      */
     (str: string, pattern: RegExp, startIndex?: number): Range
+}
+
+/**
+ * 解析带有上下文模式的指令值，目前需要此方法解析的指令有：`#for` 和 `#slot`\
+ * Parse directive values with contextual patterns. Currently, this is required for directives such as `#for` and `#slot`.
+ *
+ * @param source 需要解析的指令值\
+ * The directive value to be parsed.
+ *
+ * @param keyword 分割上下文模式和表达式的关键字\
+ * The keyword that separates the contextual pattern from the expression.
+ *
+ * 注意：此方法在遇到无效（不满足于 ContextPattern 类型）的模式时会抛出错误，需避免程序错误可以考虑使用 try-catch 块捕获此异常\
+ * Note: This method will throw an error when encountering an invalid pattern(i.e., one that does not satisfy the ContextPattern type).
+ * To prevent runtime errors, consider using a try-catch block to handle this exception.
+ */
+export interface parseDirectiveValueFunc {
+    (source: string, keyword: string, startSourceIndex: number): {
+        base: string
+        keywordIndex: number
+        patterns: ContextPattern[]
+        baseStartSourceIndex: number
+    }
 }

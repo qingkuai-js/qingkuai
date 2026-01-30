@@ -25,18 +25,20 @@ function checkScopeIdentifiers(context: WalkContext<Identifier>, full: string[][
         parentScope = context.scope!.scope!
     }
     const current = full[parseInt(context.value.name.slice(5, -1)) - 1]
-    for (const name of context.scopeIdentifiers) {
-        if (!parentScope.scopeIdentifiers.has(name)) {
-            expect(
-                current.includes(name),
-                `missing item for ${context.value.name}: "${name}"`
-            ).toBeTruthy()
-            size++
+    if (context.scopeIdentifiers) {
+        for (const name of context.scopeIdentifiers) {
+            if (!parentScope.scopeIdentifiers?.has(name)) {
+                expect(
+                    current.includes(name),
+                    `missing item for ${context.value.name}: "${name}"`
+                ).toBeTruthy()
+                size++
+            }
         }
     }
     for (const name of current) {
         expect(
-            context.scopeIdentifiers.has(name),
+            context.scopeIdentifiers?.has(name),
             `block for ${context.value.name} does not has "${name}"`
         ).toBeTruthy()
     }

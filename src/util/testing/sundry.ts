@@ -1,8 +1,9 @@
 import type { GeneralFunc } from "#type-declarations/tools"
 
-import { afterAll, beforeAll } from "vitest"
-import { getLastElem } from "../shared/arrays"
+import { objectAssign } from "../shared/aliases"
+import { afterAll, beforeAll, vi } from "vitest"
 import { currentDestruction } from "../../runtime/state"
+import { getLastElem, replaceEachItems } from "../shared/arrays"
 import { createDestruction, destroy } from "../../runtime/destroy"
 
 export function sleep(ms: number) {
@@ -32,6 +33,20 @@ export function getErrorMessage(makeErr: GeneralFunc) {
     } catch (err: any) {
         return err.message
     }
+}
+
+// 基于 vi.spyOn 创建警告信息的捕获验证器
+// Create a warning-capturing validator based on vi.spyOn
+export function createWarningMatcher() {
+    const warningArgs: any[] = []
+    return objectAssign(
+        vi.spyOn(console, "warn").mockImplementation((...args) => {
+            replaceEachItems(warningArgs, args)
+        }),
+        {
+            args: warningArgs
+        }
+    )
 }
 
 // 问题：由于使用模板字符串(反引号)书写源码时会保留所有空格。然而在书写带有缩进的

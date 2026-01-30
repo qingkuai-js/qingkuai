@@ -4,21 +4,24 @@ import type { AnyNode, Visitor, WalkPatternCallback, WithLoc } from "#type-decla
 import { any } from "../../shared/sundry"
 import { isArray, isObject } from "../../shared/assert"
 import { isBlock, isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
+import { intrinsicMethodsRE, intrinsicVariableRE } from "../../../compiler/regular"
 
 export class WalkContext<T extends AnyNode = AnyNode> {
-    inTopLevel: boolean
-    isBindingReference: boolean
+    inTopLevel = false
+    isBindingReference = false
 
     constructor(
         public value: T,
         public parent: WalkContext | null = null,
-        public scopeIdentifiers: Set<string> = new Set()
+        public scopeIdentifiers: Set<string> | undefined = undefined
     ) {
-        if (value.type !== "Program" && this.isScopeBoundary) {
-            recordScopeIdentifiers(this)
+        if (value) {
+            if (value.type !== "Program" && this.isScopeBoundary) {
+                recordScopeIdentifiers(this)
+            }
+            this.isBindingReference = isBindingReference(this)
+            this.inTopLevel = !parent || (parent.inTopLevel && !isBlock(parent.value))
         }
-        this.isBindingReference = isBindingReference(this)
-        this.inTopLevel = !parent || (parent.inTopLevel && !isBlock(parent.value))
     }
 
     // 判断节点是否为作用域边界的上下文
@@ -204,10 +207,21 @@ export class WalkContext<T extends AnyNode = AnyNode> {
 }
 
 export function walk(node: any, visitor: Visitor, context = new WalkContext(node)) {
-    const recursive = (child: AnyNode) => {
-        if (child.loc) {
-            const scopeIdentifiers = new Set(context.scopeIdentifiers)
-            walk(child, visitor, new WalkContext(child, context, scopeIdentifiers))
+    if (!node) {
+        return
+    }
+
+    const recursive = (child: any) => {
+        if (child && child.loc) {
+            walk(
+                child,
+                visitor,
+                new WalkContext(
+                    child,
+                    context,
+                    context.scopeIdentifiers && new Set(context.scopeIdentifiers)
+                )
+            )
         }
     }
 
@@ -221,11 +235,11 @@ export function walk(node: any, visitor: Visitor, context = new WalkContext(node
 
         const child = node[key]
         if (isArray(child)) {
-            child.forEach(item => {
-                item && recursive(item)
-            })
+            for (const item of child) {
+                recursive(item)
+            }
         } else if (isObject(child)) {
-            recursive(child as any)
+            recursive(child)
         }
     }
 }
@@ -397,6 +411,17 @@ function recordScopeIdentifiers(context: WalkContext) {
     const declarations: VariableDeclaration[] = []
     const children = isBlock(node) ? node.body : [node]
     const parentNode = context.striptTypeOperationsParent!.value
+
+    const extendScopeIdentifiers = (context: WalkContext, { name }: Identifier) => {
+        if (
+            any(import.meta).env ||
+            intrinsicMethodsRE.test(name) ||
+            intrinsicVariableRE.test(name)
+        ) {
+            ;(context.scopeIdentifiers ??= new Set()).add(name)
+        }
+    }
+
     switch (parentNode.type) {
         case "CatchClause": {
             if (parentNode.param) {
@@ -421,7 +446,7 @@ function recordScopeIdentifiers(context: WalkContext) {
 
         case "FunctionExpression": {
             if (parentNode.id?.type === "Identifier") {
-                context.scopeIdentifiers.add(parentNode.id.name)
+                extendScopeIdentifiers(context, parentNode.id)
             }
             // fallthrough
         }
@@ -442,7 +467,7 @@ function recordScopeIdentifiers(context: WalkContext) {
     }
     for (const pattern of paramPatterns) {
         walkPatternIdentifiers(pattern, identifier => {
-            context.scopeIdentifiers.add(identifier.name)
+            extendScopeIdentifiers(context, identifier)
         })
     }
     for (const child of children) {
@@ -461,7 +486,7 @@ function recordScopeIdentifiers(context: WalkContext) {
             case "TSEnumDeclaration":
             case "FunctionDeclaration": {
                 if (child.id?.type === "Identifier") {
-                    context.scopeIdentifiers.add(child.id.name)
+                    extendScopeIdentifiers(context, child.id)
                 }
                 break
             }
@@ -475,7 +500,7 @@ function recordScopeIdentifiers(context: WalkContext) {
                     scope = context.nonHoistableScope
                 }
                 if (scope && !scope.inTopLevel) {
-                    scope.scopeIdentifiers.add(identifier.name)
+                    extendScopeIdentifiers(scope, identifier)
                 }
             })
         }

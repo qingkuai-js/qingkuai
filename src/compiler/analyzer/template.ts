@@ -2,6 +2,7 @@ import type { TemplateNode } from "#type-declarations/compiler"
 
 import { analyzeResult } from "../state"
 import { analyzeAttributes } from "./attribute"
+import { newCleanObj } from "../../util/shared/sundry"
 import { walkTemplateNodes } from "../../util/compiler/template"
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
@@ -13,7 +14,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
         }
         nodeInfos.set(node, {
             directives: [],
-            attributesMap: {},
+            attributesMap: newCleanObj(),
             contextIdentifiers: new Set(parentContextIdentifiers)
         })
         analyzeAttributes(node)

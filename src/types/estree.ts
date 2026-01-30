@@ -2,6 +2,7 @@ import type {
     Node,
     Identifier,
     Program,
+    PatternLike,
     ClassMethod,
     TSModuleBlock,
     ObjectMethod,
@@ -22,7 +23,7 @@ import type { WalkContext } from "../util/compiler/estree/walk"
 
 export type AnyNode = Node
 export type PartialAnyNode = Node | undefined | null
-export type ContextPattern = Identifier | ArrayPattern | ObjectPattern
+export type ContextPattern = Identifier | ObjectPattern | ArrayPattern
 
 export type TopLevelDeclarationNode =
     | VariableDeclaration
@@ -38,6 +39,10 @@ export type FunctionNode =
     | FunctionExpression
     | FunctionDeclaration
     | ArrowFunctionExpression
+
+export type StrictArrayPattern = Omit<ArrayPattern, "elements"> & {
+    elements: Array<PatternLike>
+}
 
 export type ScopeContext = WalkContext<ScopeNode>
 export type ScopeNode = BlockStatement | TSModuleBlock | Program

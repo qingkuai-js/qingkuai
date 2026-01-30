@@ -16,7 +16,7 @@ export const InvalidElementNode = withCode(8005, (purpose: string) => {
     return `Invalid Element node: the given value for ${purpose} is not a valid Element node or the corresponding Element node cannot be selected.`
 })
 
-export const MaximumUpdateDepth = withCode(2004, () => {
+export const MaximumUpdateDepthExceeded = withCode(2004, () => {
     return `Maximum recursive update depth exceeded. This usually occurs because reactive values were modified within asynchronous side effects or watchers, leading to recursive update scheduling.`
 })
 

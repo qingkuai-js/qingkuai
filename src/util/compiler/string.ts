@@ -5,7 +5,7 @@ import type {
     FindOutOfLiteralFunc,
     FindOutOfCommentFunc,
     FindOutOfLiteralCommentFunc
-} from "#type-declarations/exfuncs"
+} from "#type-declarations/compiler-ex"
 import type { Range } from "#type-declarations/compiler"
 
 import {

@@ -24,19 +24,17 @@ import {
     getErrorMessage,
     getCurrentEffect
 } from "../../src/util/testing/sundry"
-import {
-    matchGlobalError,
-    createWarningMatcher,
-    checkEffectDependaceManager
-} from "../../src/util/testing/match"
 import { NOOP } from "../../src/runtime/constants"
+import { checkEffectDependaceManager } from "./_match"
 import { isReactive } from "../../src/util/runtime/assert"
 import { currentDestruction } from "../../src/runtime/state"
+import { matchGlobalError } from "../../src/util/testing/match"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { isArray, isNumber } from "../../src/util/shared/assert"
 import { arrayFrom, emptyArr } from "../../src/util/shared/arrays"
-import { MaximumUpdateDepth } from "../../src/runtime/messages/error"
+import { createWarningMatcher } from "../../src/util/testing/sundry"
 import { constReact, react } from "../../src/runtime/reactivity/value"
+import { MaximumUpdateDepthExceeded } from "../../src/runtime/messages/error"
 import { getRefProperty, toRaw, nextTick } from "../../src/util/runtime/sundry"
 
 const arr: any[] = []
@@ -568,7 +566,7 @@ test("Whether a runtime warning will be cause when effect dependants on no react
 })
 
 test("Wheter a runtime error will be cause when recursive update depth over than the maximum value", async () => {
-    const errMsg = getErrorMessage(() => MaximumUpdateDepth())
+    const errMsg = getErrorMessage(() => MaximumUpdateDepthExceeded())
     const stopGlobalErrorWatcher = matchGlobalError(errMsg, true)
     const v1 = react(0)
     for (let i = 0; i < 2; i++) {

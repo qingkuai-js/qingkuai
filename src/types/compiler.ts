@@ -99,7 +99,7 @@ export interface TemplateAnalyzeRet {
         }
     >
     parsedExpressions: Map<any, Expression | undefined>
-    parsedPatterns: Map<TemplateAttribute, ContextPattern | undefined>
+    parsedPatterns: Map<TemplateAttribute, ContextPattern[] | undefined>
 }
 export interface ScriptAnalyzeRet {
     topLevelReferences: Record<

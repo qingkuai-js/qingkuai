@@ -1,11 +1,8 @@
-import {
-    matchTemplateNodeList,
-    matchTemplateNodeListAndMessages
-} from "../../../src/util/testing/match"
 import { describe, it, test } from "vitest"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
 import { getLocByIndex, getPosByIndex } from "../../../src/util/compiler/position"
+import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Wheter comment nodes were removed from parse result", () => {
     const nodeList = parseTemplateStandalone(

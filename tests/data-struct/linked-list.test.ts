@@ -1,10 +1,6 @@
-import {
-    matchLinkedList,
-    getIndexedLinkedListNode,
-    createLinkedListFromArray
-} from "../../src/util/testing/match"
 import { expect, test } from "vitest"
 import { LinkedList } from "../../src/runtime/data-struct/linked-list"
+import { matchLinkedList, getIndexedLinkedListNode, createLinkedListFromArray } from "./_match"
 
 test("LinkedList method: insert", () => {
     const list = new LinkedList<number>()

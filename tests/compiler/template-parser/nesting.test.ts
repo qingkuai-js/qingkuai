@@ -1,15 +1,12 @@
 import { describe, test } from "vitest"
 import {
-    matchTemplateNodeList,
-    matchTemplateNodeListAndMessages
-} from "../../../src/util/testing/match"
-import {
     getLocByIndex,
     getPosByIndex,
     getLocWithDefaultEnd
 } from "../../../src/util/compiler/position"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Single level", () => {
     const nodeList = parseTemplateStandalone("\n \n<b>  bold  </b>\n")

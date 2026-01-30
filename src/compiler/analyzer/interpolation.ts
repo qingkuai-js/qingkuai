@@ -10,39 +10,30 @@ export function analyzeInterpolation(
     node: TemplateNode,
     pasingInfoKey: any,
     source: string,
-    startSourceIndex: number,
-    valueOfInterpolation = true
+    startSourceIndex: number
 ) {
     const expression = parseExpression(source)
-    if (expression) {
-        walk(expression, {
-            // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
-            // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
-            Identifier({ name }, context) {
-                const { contextIdentifiers } = analyzeResult.template.nodeInfos.get(node)!
-                const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
-                if (
-                    topLevelIdentifier &&
-                    context.isBindingReference &&
-                    !contextIdentifiers.has(name)
-                ) {
-                    const status = topLevelIdentifier.status
-                    if (
-                        status === "pending" ||
-                        (status === "literal" && context.isIdentifierAssignmentTarget)
-                    ) {
-                        topLevelIdentifier.status = inputDescriptor.options.reactivityMode
-                    }
-                }
-            }
-        })
-    } else {
+    if (!expression) {
         InvalidExpression(
-            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
-            valueOfInterpolation
+            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length)
         )
     }
-    if (inputDescriptor.options.checkMode) {
-        analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression)
-    }
+    walk(expression, {
+        // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
+        // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
+        Identifier({ name }, context) {
+            const { contextIdentifiers } = analyzeResult.template.nodeInfos.get(node)!
+            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
+            if (topLevelIdentifier && context.isBindingReference && !contextIdentifiers.has(name)) {
+                const status = topLevelIdentifier.status
+                if (
+                    status === "pending" ||
+                    (status === "literal" && context.isIdentifierAssignmentTarget)
+                ) {
+                    topLevelIdentifier.status = inputDescriptor.options.reactivityMode
+                }
+            }
+        }
+    })
+    return analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression), expression
 }

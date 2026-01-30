@@ -30,7 +30,7 @@ import { runHooks } from "../component"
 import { runAndUpdateEffect } from "./effect"
 import { len } from "../../util/shared/sundry"
 import { nextTick } from "../../util/runtime/sundry"
-import { MaximumUpdateDepth } from "../messages/error"
+import { MaximumUpdateDepthExceeded } from "../messages/error"
 import { RESOLVED, AFTER_UPDATE, BEFORE_UPDATE } from "../constants"
 import { isIteratorKey, isProxyWrapper } from "../../util/runtime/assert"
 
@@ -166,7 +166,7 @@ function update() {
     if (increRecursionScheduleCount() > __qk_max_schedule_depth) {
         resetSchedulingEffects(1)
         resetSchedulerState()
-        MaximumUpdateDepth()
+        MaximumUpdateDepthExceeded()
     }
     nextTick(update)
 }

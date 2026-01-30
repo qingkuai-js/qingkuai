@@ -43,23 +43,19 @@ export function parseScript(source: string) {
 
 export function parsePattern(source: string): ContextPattern | null {
     try {
-        const assignmentExpression = _parseExpression(source + "=_", {
+        const { left: pattern } = _parseExpression(source + "=_", {
             ...getParserOptions(),
+            tokens: true,
             errorRecovery: false
         }) as AssignmentExpression
-        switch (assignmentExpression.left.type) {
-            case "Identifier":
-            case "ArrayPattern":
-            case "ObjectPattern": {
-                return assignmentExpression.left
-            }
-            default: {
-                return null
-            }
+        if (pattern.type === "Identifier" || pattern.type === "ObjectPattern") {
+            return pattern
         }
-    } catch {
-        return null
-    }
+        if (pattern.type === "ArrayPattern" && pattern.elements.every(Boolean)) {
+            return pattern as any
+        }
+    } catch {}
+    return null
 }
 
 function getParserOptions(initial: ParserOptions = {}) {

@@ -1,4 +1,6 @@
-import { expect, test } from "vitest"
+import fs from "node:fs"
+import path from "node:path"
+
 import {
     camel2Kebab,
     kebab2Camel,
@@ -7,6 +9,7 @@ import {
     findOutOfComment,
     findOutOfLiteralComment
 } from "../../src/util/compiler/string"
+import { expect, test } from "vitest"
 import { getPositionOfEachChar } from "../../src/util/compiler/position"
 
 test("Function: getPositionOfEachChar", () => {
@@ -162,18 +165,27 @@ test("Function: findOutOfComment", () => {
     expect(findOutOfComment(`test // test\ntest`, /test/, 10)).toEqual([13, 4])
 })
 
-test("Function: findOutOfString", () => {
+test("Function: findOutOfLiteral", () => {
     expect(findOutOfLiteral(`'test`, "test")).toBe(-1)
     expect(findOutOfLiteral(`"test`, "test")).toBe(-1)
     expect(findOutOfLiteral(`"test"`, "test")).toBe(-1)
     expect(findOutOfLiteral(`"\n"test`, "test")).toBe(-1)
     expect(findOutOfLiteral(`'\n'test`, "test")).toBe(-1)
 
+    expect(findOutOfLiteral(`/test/`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`/\ntest/`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`/\\/test/`, "test")).toBe(-1)
+    expect(findOutOfLiteral(`a ? /[test]/ : /""test/`, "test")).toBe(-1)
+
     expect(findOutOfLiteral("`\n`test", "test")).toBe(3)
     expect(findOutOfLiteral(`"test" test 'test'`, "test")).toBe(7)
     expect(findOutOfLiteral(`"abc test def" test`, "test")).toBe(15)
     expect(findOutOfLiteral(`'hello "test"' test`, "test")).toBe(15)
     expect(findOutOfLiteral(`"a test" 'b test' test`, "test")).toBe(18)
+
+    expect(findOutOfLiteral(`/abc/ + test`, "test")).toBe(8)
+    expect(findOutOfLiteral(`/['"\`]/.test`, "test")).toBe(8)
+    expect(findOutOfLiteral(`/test/.test(test)`, "test")).toBe(7)
 
     // 带转义字符的字符串
     // String with escape characters
@@ -201,7 +213,7 @@ test("Function: findOutOfString", () => {
     expect(findOutOfLiteral("`hello ${`inner ${'test'}`} test` test", /test/)).toEqual([34, 4])
 })
 
-test("Function: findOutOfStringComment", () => {
+test("Function: findOutOfLiteralComment", () => {
     expect(findOutOfLiteralComment(`"unclosed test`, "test")).toBe(-1)
     expect(findOutOfLiteralComment(`/* unclosed test`, "test")).toBe(-1)
     expect(findOutOfLiteralComment(`// comment without newline test`, "test")).toBe(-1)
@@ -220,4 +232,17 @@ test("Function: findOutOfStringComment", () => {
     expect(findOutOfLiteralComment(`'test' // test\ntest`, /test/)).toEqual([15, 4])
     expect(findOutOfLiteralComment("`x${'test'} y` test`, test", /test/)).toEqual([15, 4])
     expect(findOutOfLiteralComment(`let a = 1; // comment\ntest`, /test/)).toEqual([22, 4])
+
+    // 复杂文件测试
+    // Complex file testing.
+    for (const fileName of ["chunks/runtime.js", "runtime/index.js", "runtime/internal.js"]) {
+        const fullPath = path.resolve(import.meta.dirname, "../../dist", fileName)
+        if (!fs.existsSync(fullPath)) {
+            continue
+        }
+
+        const target = "_".repeat(100)
+        const content = fs.readFileSync(fullPath, "utf-8")
+        expect(findOutOfLiteralComment(content + target, target)).toBe(content.length)
+    }
 })
