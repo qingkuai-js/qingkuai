@@ -63,12 +63,16 @@ export const UnnecessaryMutableDerivedDeclaration = withLocation(
     ...commonMessage.UnnecessaryMutableDerivedDeclaration
 )
 
-export const RedundantAttributeValue = withLocation(9006, (attribute: string, tag?: string) => {
-    if (!tag) {
-        return `The "${attribute}" directive does not need a value, and its value has been ignored.`
-    }
-    return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute, the redundant attribute value will be ignored.`
+export const RedundantDirectiveValue = withLocation(9006, (directive: string) => {
+    return `The "${directive}" directive does not need a value, and its value has been ignored.`
 })
+
+export const RedundantBooleanAttributeValue = withLocation(
+    9007,
+    (tag: string, attribute: string) => {
+        return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute, the redundant attribute value will be ignored.`
+    }
+)
 
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {

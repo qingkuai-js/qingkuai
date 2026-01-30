@@ -1,3 +1,277 @@
-import { test } from "vitest"
+import { test, describe } from "vitest"
+import { analyzeTemplateAndMatchMessages } from "./_match"
 
-test("Duplicate attributes for non-component tag", () => {})
+test("Directive names only need to be checked for duplication against other directive names.", () => {
+    for (const tag of ["span", "Comp"]) {
+        analyzeTemplateAndMatchMessages(`<${tag} target="" #target={_}></${tag}>`)
+        analyzeTemplateAndMatchMessages(`<${tag} !target={_} #target={_}></${tag}>`)
+        analyzeTemplateAndMatchMessages(`<${tag} @target={_} #target={_}></${tag}>`)
+        analyzeTemplateAndMatchMessages(`<${tag} &target={_} #target={_}></${tag}>`)
+        analyzeTemplateAndMatchMessages(`<${tag} #target={_} #target={_}></${tag}>`, [
+            {
+                type: "error",
+                range: [18, 29],
+                value: `Duplicate directives: "#target".`
+            },
+            {
+                type: "error",
+                range: [6, 17],
+                value: `Duplicate directives: "#target".`
+            }
+        ])
+    }
+})
+
+describe("Non-component tag", () => {
+    test("Duplicate attributes", () => {
+        analyzeTemplateAndMatchMessages(`<div id="" id=""></div>`, [
+            {
+                type: "error",
+                range: [11, 16],
+                value: `Duplicate static attributes: "id".`
+            },
+            {
+                type: "error",
+                range: [5, 10],
+                value: `Duplicate static attributes: "id".`
+            }
+        ])
+
+        analyzeTemplateAndMatchMessages(`<div !id={_} id=""></div>`, [
+            {
+                type: "error",
+                range: [13, 18],
+                value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same attribute.`
+            },
+            {
+                type: "error",
+                range: [5, 12],
+                value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same attribute.`
+            }
+        ])
+
+        analyzeTemplateAndMatchMessages(`<span id="" !id={_} &id={_}></span>`, [
+            {
+                type: "error",
+                range: [12, 19],
+                value: `Duplicate attributes: the static attribute "id" and the dynamic attribute "!id" resolve to the same attribute.`
+            },
+            {
+                type: "error",
+                range: [6, 11],
+                value: `Duplicate attributes: the static attribute "id" and the dynamic attribute "!id" resolve to the same attribute.`
+            },
+            {
+                type: "error",
+                range: [20, 27],
+                value: `Duplicate attributes: the dynamic attribute "!id" and the reference attribute "&id" resolve to the same attribute.`
+            },
+            {
+                type: "error",
+                range: [12, 19],
+                value: `Duplicate attributes: the dynamic attribute "!id" and the reference attribute "&id" resolve to the same attribute.`
+            }
+        ])
+    })
+
+    test("Dynamic and static class attribute can coexist.", () => {
+        analyzeTemplateAndMatchMessages(`<div class="" !class={_}></div>`)
+    })
+
+    test("Event names only need to be checked for duplication against other event names.", () => {
+        analyzeTemplateAndMatchMessages(`<div click="" @click={_}></div>`)
+        analyzeTemplateAndMatchMessages(`<div @click={_} @click={_}></div>`, [
+            {
+                type: "error",
+                range: [16, 26],
+                value: `Duplicate event listeners: "@click".`
+            },
+            {
+                type: "error",
+                range: [5, 15],
+                value: `Duplicate event listeners: "@click".`
+            }
+        ])
+    })
+})
+
+describe("Component tag", () => {
+    test("Duplicate attributes", () => {
+        analyzeTemplateAndMatchMessages(`<Comp custom="" custom="" />`, [
+            {
+                type: "error",
+                range: [16, 25],
+                value: `Duplicate static attributes: "custom".`
+            },
+            {
+                type: "error",
+                range: [6, 15],
+                value: `Duplicate static attributes: "custom".`
+            }
+        ])
+
+        analyzeTemplateAndMatchMessages(`<Comp !id={_} id=""></Comp>`, [
+            {
+                type: "error",
+                range: [14, 19],
+                value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same prop.`
+            },
+            {
+                type: "error",
+                range: [6, 13],
+                value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same prop.`
+            }
+        ])
+
+        analyzeTemplateAndMatchMessages(`<Comp custom="" !custom={_} @custom={_} />`, [
+            {
+                type: "error",
+                range: [16, 27],
+                value: `Duplicate attributes: the static attribute "custom" and the dynamic attribute "!custom" resolve to the same prop.`
+            },
+            {
+                type: "error",
+                range: [6, 15],
+                value: `Duplicate attributes: the static attribute "custom" and the dynamic attribute "!custom" resolve to the same prop.`
+            },
+            {
+                type: "error",
+                range: [28, 39],
+                value: `Duplicate attributes: the dynamic attribute "!custom" and the event listener "@custom" resolve to the same prop.`
+            },
+            {
+                type: "error",
+                range: [16, 27],
+                value: `Duplicate attributes: the dynamic attribute "!custom" and the event listener "@custom" resolve to the same prop.`
+            }
+        ])
+    })
+
+    test("Dynamic and static class attribute cannot coexist.", () => {
+        analyzeTemplateAndMatchMessages(`<Comp class="" !class={_} />`, [
+            {
+                type: "error",
+                range: [15, 25],
+                value: `Duplicate attributes: the static attribute "class" and the dynamic attribute "!class" resolve to the same prop.`
+            },
+            {
+                type: "error",
+                range: [6, 14],
+                value: `Duplicate attributes: the static attribute "class" and the dynamic attribute "!class" resolve to the same prop.`
+            }
+        ])
+    })
+
+    test("Reference attribute only need to be checked for duplication against other reference attributes.", () => {
+        analyzeTemplateAndMatchMessages(`<Comp custom="" &custom={_} />`)
+        analyzeTemplateAndMatchMessages(`<Comp &custom={_} &custom={_} />`, [
+            {
+                type: "error",
+                range: [18, 29],
+                value: `Duplicate reference attributes: "&custom".`
+            },
+            {
+                type: "error",
+                range: [6, 17],
+                value: `Duplicate reference attributes: "&custom".`
+            }
+        ])
+    })
+})
+
+test("Embedded language tag only allowed static attributes", () => {
+    for (const lang of ["js", "ts", "css", "scss", "sass", "less", "stylus", "postcss"]) {
+        analyzeTemplateAndMatchMessages(`<lang-${lang} custom=""></lang-${lang}>`)
+        analyzeTemplateAndMatchMessages(
+            `<lang-${lang} !id={_} @click={_} #custom={_} &custom={_}></lang-${lang}>`,
+            [
+                {
+                    type: "error",
+                    range: [7 + lang.length, 14 + lang.length],
+                    value: `The <lang-${lang}> tag can only accept static attributes, but a dynamic attribute was found: "!id".`
+                },
+                {
+                    type: "error",
+                    range: [15 + lang.length, 25 + lang.length],
+                    value: `The <lang-${lang}> tag can only accept static attributes, but an event listener was found: "@click".`
+                },
+                {
+                    type: "error",
+                    range: [26 + lang.length, 37 + lang.length],
+                    value: `The <lang-${lang}> tag can only accept static attributes, but a directive was found: "#custom".`
+                },
+                {
+                    type: "error",
+                    range: [38 + lang.length, 49 + lang.length],
+                    value: `The <lang-${lang}> tag can only accept static attributes, but a reference attribute was found: "&custom".`
+                }
+            ]
+        )
+    }
+})
+
+test("The name attribute on slot tag must be static", () => {
+    analyzeTemplateAndMatchMessages(`<slot name=""></slot>`)
+    analyzeTemplateAndMatchMessages(`<slot !name={_} name="" @name={_} &name={_}></slot>`, [
+        {
+            type: "error",
+            range: [6, 15],
+            value: `The "name" attribute on <slot> tag must be static.`
+        },
+        {
+            type: "error",
+            range: [24, 33],
+            value: `The <slot> tag can only accept static or dynamic attributes, but an event listener was found: "@name".`
+        },
+        {
+            type: "error",
+            range: [34, 43],
+            value: `The <slot> tag can only accept static or dynamic attributes, but a reference attribute was found: "&name".`
+        },
+        {
+            type: "error",
+            range: [34, 43],
+            value: `The "name" attribute on <slot> tag must be static.`
+        }
+    ])
+})
+
+test("The SPREAD_TAG can only accept directives as attributes", () => {
+    analyzeTemplateAndMatchMessages(`<qk:spread #target={_} #for={_}></qk:spread>`)
+    analyzeTemplateAndMatchMessages(
+        `<qk:spread id="" !custom={_} @click={_}  &value={_}></qk:spread>`,
+        [
+            {
+                type: "error",
+                range: [11, 16],
+                value: `The <qk:spread> tag can only accept directives, but a static attribute was found: "id".`
+            },
+            {
+                type: "error",
+                range: [17, 28],
+                value: `The <qk:spread> tag can only accept directives, but a dynamic attribute was found: "!custom".`
+            },
+            {
+                type: "error",
+                range: [29, 39],
+                value: `The <qk:spread> tag can only accept directives, but an event listener was found: "@click".`
+            },
+            {
+                type: "error",
+                range: [41, 51],
+                value: `The <qk:spread> tag can only accept directives, but a reference attribute was found: "&value".`
+            }
+        ]
+    )
+})
+
+test("Attribute value is redundant for shallow attribute on embedded script language tag", () => {
+    analyzeTemplateAndMatchMessages(`<lang-js shallow></lang-js>`)
+    analyzeTemplateAndMatchMessages(`<lang-ts shallow="true"></lang-ts>`, [
+        {
+            type: "warning",
+            range: [9, 23],
+            value: `The "shallow" attribute on <lang-ts> tag is a boolean attribute, the redundant attribute value will be ignored.`
+        }
+    ])
+})

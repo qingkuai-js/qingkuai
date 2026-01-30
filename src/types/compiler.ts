@@ -93,7 +93,7 @@ export interface TemplateAnalyzeRet {
     nodeInfos: Map<
         TemplateNode,
         {
-            directives: string[]
+            directives: TemplateAttribute[]
             contextIdentifiers: Set<string>
             attributesMap: Record<string, TemplateAttribute>
         }

@@ -2,6 +2,8 @@ import type { ArbitraryFunc } from "#type-declarations/tools"
 import type { ASTLocation } from "#type-declarations/compiler"
 
 import { inputDescriptor, messages } from "../state"
+import { templateEmbeddedLangTagRE } from "../regular"
+import { SPREAD_TAG } from "../constants"
 
 export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>>(obj: T): T => {
     return obj
@@ -133,7 +135,7 @@ export const UnclosedStaticAttributeValue = withLocation(1008, () => {
 })
 
 export const SlotNameAttributeMustBeStatic = withLocation(1039, () => {
-    return `The "name" attribute on <slot> must be static.`
+    return `The "name" attribute on <slot> tag must be static.`
 })
 
 export const NoEndTagMatched = withLocation(1012, (tag: string) => {
@@ -164,6 +166,20 @@ export const ConflictDirectives = withLocation(1026, (a: string, b: string) => {
     return `Directives "${a}" and "${b}" cannot be used together.`
 })
 
+export const DuplicateAttributes = withLocation(
+    1028,
+    (a: string, b: string, isComponent: boolean) => {
+        if (a === b) {
+            return `Duplicate ${getSpecialAttrDescription(a)}s: "${a}".`
+        }
+        return `Duplicate attributes: the ${getSpecialAttrDescription(
+            a
+        )} "${a}" and the ${getSpecialAttrDescription(b)} "${b}" resolve to the same ${
+            isComponent ? "prop" : "attribute"
+        }.`
+    }
+)
+
 export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {
     return "The value for static attribute must be quoted with single or double quote."
 })
@@ -180,15 +196,6 @@ export const HtmlDirectiveRequiresSingleTextChild = withLocation(1035, () => {
     return `A tag with the "#html" directive must have exactly one text node as its child.`
 })
 
-export const DuplicateAttributes = withLocation(1028, (a: string, b: string) => {
-    if (a === b) {
-        return `Duplicate ${getSpecialAttrDescription(a)}s: "${a}".`
-    }
-    return `Conflicting attributes: the ${getSpecialAttrDescription(
-        a
-    )} "${a}" and ${getSpecialAttrDescription(b)} "${b}" resolve to the same attribute.`
-})
-
 export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false) => {
     return `The ${
         tag === "#comment"
@@ -201,6 +208,19 @@ export const UnexpectedToken = withLocation(1002, (str: string, expected?: strin
     return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
 })
 
+export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
+    let expected!: string
+    const accept = getSpecialAttrDescription(name, true)
+    if (tag === SPREAD_TAG) {
+        expected = "directives"
+    } else if (templateEmbeddedLangTagRE.test(tag)) {
+        expected = "static attributes"
+    } else if (tag === "slot") {
+        expected = "static or dynamic attributes"
+    }
+    return `The <${tag}> tag can only accept ${expected}, but ${accept} was found: "${name}".`
+})
+
 export const InvalidContextPatternForDirective = withLocation(1032, (directive?: string) => {
     if (!directive) {
         return `Expected a binding pattern.`
@@ -210,6 +230,10 @@ export const InvalidContextPatternForDirective = withLocation(1032, (directive?:
 
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
     return `The "#slot" directive can only be used on direct child elements of a component tag.`
+})
+
+export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
+    return `The "target" directive is not allowed on direct child elements of a compoment tag.`
 })
 
 export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
@@ -228,12 +252,6 @@ export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
 
 export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
     return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
-})
-
-export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
-    return `The embedded language tag <${tag}> can only accept static attributes, but a ${getSpecialAttrDescription(
-        name
-    )} was found: "${name}".`
 })
 
 export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
@@ -287,22 +305,25 @@ function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
 
 // 获取特殊属性的描述（指令、事件、动态或引用属性）
 // Retrieve the description of a special attribute (such as directives, events, or dynamic/reference attributes)
-function getSpecialAttrDescription(name: string) {
-    switch (name[0]) {
-        case "#": {
-            return "directive"
+function getSpecialAttrDescription(name: string, article = false) {
+    const segments = (() => {
+        switch (name[0]) {
+            case "#": {
+                return ["a", "directive"]
+            }
+            case "@": {
+                return ["an", "event listener"]
+            }
+            case "!": {
+                return ["a", "dynamic attribute"]
+            }
+            case "&": {
+                return ["a", "reference attribute"]
+            }
+            default: {
+                return ["a", "static attribute"]
+            }
         }
-        case "@": {
-            return "event listener"
-        }
-        case "!": {
-            return "dynamic attribute"
-        }
-        case "&": {
-            return "reference attribute"
-        }
-        default: {
-            return "static attribute"
-        }
-    }
+    })()
+    return article ? segments.join(" ") : segments[1]
 }

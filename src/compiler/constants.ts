@@ -3,14 +3,14 @@ export const SPREAD_TAG = "qk:spread"
 export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
     "#key",
     "#for",
+    "#slot",
+    "#target",
     "#else",
     "#elif",
     "#if",
     "#then",
     "#catch",
     "#await",
-    "#slot",
-    "slot",
     "name"
 ].reduce((ret, name, index) => {
     return {
@@ -22,6 +22,7 @@ export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
 export const CONFLICT_DIRECTIVES_MAP: Record<string, string[]> = {
     "#then": ["#catch"],
     "#catch": ["#then"],
+    "#slot": ["#target"],
     "#if": ["#elif", "#else"],
     "#elif": ["#if", "#else"],
     "#else": ["#if", "#elif"]

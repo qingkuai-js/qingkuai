@@ -3,12 +3,14 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import {
     InvalidSlotName,
+    ConflictDirectives,
     UnrecognizedDirective,
     EmptyContextPattern,
     TooManyBindingPatterns,
     MissingDirectiveValue,
     MissingPrecedingDirective,
     InvalidSlotDirectivePlacement,
+    InvalidTargetDirectivePlacement,
     InvalidContextPatternForDirective,
     HtmlDirectiveRequiresSingleTextChild
 } from "../message/error"
@@ -21,13 +23,15 @@ import { analyzeResult } from "../state"
 import { parsePattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
-import { RedundantAttributeValue } from "../message/warn"
+import { RedundantDirectiveValue } from "../message/warn"
 import { getPrevNonTextNode } from "../../util/compiler/template"
 import { walkPatternIdentifiers } from "../../util/compiler/estree/walk"
-import { DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
 import { isAttributeValid, isNonEmptyExpression } from "../../util/compiler/assert"
+import { CONFLICT_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
+    let conflictingDirective: TemplateAttribute | undefined
+
     const directiveName = directive.name.raw
     const directiveValue = directive.value.raw
     const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
@@ -50,6 +54,19 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             localAnalyzeInterpolation(directiveValue, valueStartSourceIndex)
         }
         return UnrecognizedDirective(directive.loc, directiveName)
+    }
+
+    // 检查是否存在冲突的指令
+    // Check for conflicting directives.
+    if (CONFLICT_DIRECTIVES_MAP[directiveName]) {
+        conflictingDirective = nodeInfo.directives.find(item => {
+            return CONFLICT_DIRECTIVES_MAP[directiveName].includes(item.name.raw)
+        })
+    }
+    if (conflictingDirective) {
+        const conflictingName = conflictingDirective.name.raw
+        ConflictDirectives(directive.name.loc, conflictingName, directiveName)
+        ConflictDirectives(conflictingDirective.name.loc, conflictingName, directiveName)
     }
 
     switch (directiveName) {
@@ -106,28 +123,28 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 )
                 TooManyBindingPatterns(errorLoc, directiveName, 2)
             }
-            return localAnalyzeInterpolation(parseResult.base, parseResult.baseStartSourceIndex)
+            localAnalyzeInterpolation(parseResult.base, parseResult.baseStartSourceIndex)
+            return
         }
 
         case "#then":
         case "#catch": {
             const expectedList = ["#await", directiveName === "#then" ? "#catch" : "#then"]
             if (
-                !nodeInfo.directives.some(item => expectedList.includes(item)) &&
-                !expectedList.includes(getPrevNonTextNodeInfo(node)?.directives[0] ?? "")
+                !expectedList.includes(getFirstDirectiveNameOfPrevNonTextNode(node)) &&
+                !nodeInfo.directives.some(item => expectedList.includes(item.name.raw))
             ) {
                 MissingPrecedingDirective(directive.name.loc, directiveName, expectedList, true)
             }
-            return checkWhetherDirectiveValueIsValidPattern()
+            checkWhetherDirectiveValueIsValidPattern()
+            return
         }
 
-        case "#else":
-        case "#elif": {
-            const expectedList = ["#if", "#elif"]
-            if (!expectedList.includes(getPrevNonTextNodeInfo(node)?.directives[0] ?? "")) {
-                MissingPrecedingDirective(directive.name.loc, directiveName, expectedList, false)
+        case "#target": {
+            if (node.parent && node.parent.componentTag) {
+                InvalidTargetDirectivePlacement(directive.loc)
             }
-            return
+            break
         }
 
         case "#html": {
@@ -136,18 +153,24 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     getLocByIndex(node.startTagEndPos.index, node.endTagStartPos.index)
                 )
             }
-            // fallthrough
+            break
         }
 
-        default: {
-            if (directiveName === "#else") {
-                RedundantAttributeValue(directive.loc, directiveName)
+        case "#else":
+        case "#elif": {
+            if (directiveName === "#else" && directive.valueEnclosure !== "none") {
+                RedundantDirectiveValue(directive.loc, directiveName)
             }
-            if (isAttributeValid(directive) && isNonEmptyExpression(directiveValue)) {
-                localAnalyzeInterpolation(directiveValue, valueStartSourceIndex)
+            const expectedList = ["#if", "#elif"]
+            if (!expectedList.includes(getFirstDirectiveNameOfPrevNonTextNode(node))) {
+                MissingPrecedingDirective(directive.name.loc, directiveName, expectedList, false)
             }
-            return
+            break
         }
+    }
+
+    if (isAttributeValid(directive) && isNonEmptyExpression(directiveValue)) {
+        localAnalyzeInterpolation(directiveValue, valueStartSourceIndex)
     }
 
     // 检查指令值是否是有效的绑定模式：#then, #catch, #slot 指令值必须是绑定模式
@@ -197,4 +220,8 @@ function getPrevNonTextNodeInfo(node: TemplateNode) {
         return null
     }
     return analyzeResult.template.nodeInfos.get(prevNonTextNode)!
+}
+
+function getFirstDirectiveNameOfPrevNonTextNode(node: TemplateNode) {
+    return getPrevNonTextNodeInfo(node)?.directives[0].name.raw ?? ""
 }
