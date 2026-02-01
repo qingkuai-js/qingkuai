@@ -1,10 +1,10 @@
 import type { TemplateNode } from "#type-declarations/compiler"
 
 import { parseExpression } from "../parser/script"
-import { InvalidExpression } from "../message/error"
 import { walk } from "../../util/compiler/estree/walk"
 import { analyzeResult, inputDescriptor } from "../state"
-import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
+import { ExpressionExpected, InvalidExpression } from "../message/error"
+import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 
 export function analyzeInterpolation(
     node: TemplateNode,
@@ -12,6 +12,10 @@ export function analyzeInterpolation(
     source: string,
     startSourceIndex: number
 ) {
+    if (!source.trim()) {
+        return ExpressionExpected(getLocByIndex(startSourceIndex))
+    }
+
     const expression = parseExpression(source)
     if (!expression) {
         InvalidExpression(
@@ -35,5 +39,5 @@ export function analyzeInterpolation(
             }
         }
     })
-    return analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression), expression
+    return (analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression), expression)
 }

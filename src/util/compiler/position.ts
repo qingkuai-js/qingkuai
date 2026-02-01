@@ -46,32 +46,8 @@ export function getLocWithDefaultEnd(index: number): ASTLocation {
     return { start: getPosByIndex(index), end: newASTPosition() }
 }
 
-export function getNonWhiteSpaceLocByLoc(loc: ASTLocation) {
-    return getNonWhitespaceLocByIndex(loc.start.index, loc.end.index)
-}
-
-export function getNonWhitespaceLocByIndex(start: number, end: number) {
-    while (start < end) {
-        if (!whitespaceRE.test(inputDescriptor.source[start])) {
-            break
-        }
-        start++
-    }
-    while (end > start) {
-        if (!whitespaceRE.test(inputDescriptor.source[end - 1])) {
-            break
-        }
-        end--
-    }
-    return getLocByIndex(start, end)
-}
-
 export function getPosByIndex(index: number): ASTPosition {
     return (({ flag, ...rest }) => rest)(inputDescriptor.positions[index])
-}
-
-export function getLocByIndex(start: number, end?: number): ASTLocation {
-    return { start: getPosByIndex(start), end: getPosByIndex(end ?? start) }
 }
 
 export function isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
@@ -91,8 +67,33 @@ export function isPositionFlagSetInLoc(flag: PositionFlag, loc: ASTLocation) {
     return true
 }
 
-export function markPositionFlag(flag: PositionFlag, start: number, end?: number) {
-    for (let i = start; i < (end ?? start + 1); i++) {
+export function getLocByIndex(start: number, end: number = start): ASTLocation {
+    return { start: getPosByIndex(start), end: getPosByIndex(end) }
+}
+
+export function markPositionFlag(flag: PositionFlag, start: number, end = start + 1) {
+    for (let i = start; i < end; i++) {
         inputDescriptor.positions[i].flag |= flag
     }
+}
+
+export function getNonWhiteSpaceLocByLoc(loc: ASTLocation) {
+    return getNonWhitespaceLocByIndex(loc.start.index, loc.end.index)
+}
+
+export function getNonWhitespaceLocByIndex(start: number, end: number) {
+    const originalStart = start
+    while (start < end) {
+        if (!whitespaceRE.test(inputDescriptor.source[start])) {
+            break
+        }
+        start++
+    }
+    while (end > start) {
+        if (!whitespaceRE.test(inputDescriptor.source[end - 1])) {
+            break
+        }
+        end--
+    }
+    return start === end ? getLocByIndex(originalStart) : getLocByIndex(start, end)
 }

@@ -2,7 +2,8 @@ import { describe, test } from "vitest"
 import {
     getLocByIndex,
     getPosByIndex,
-    getLocWithDefaultEnd
+    getLocWithDefaultEnd,
+    newASTLocation
 } from "../../../src/util/compiler/position"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
@@ -821,7 +822,7 @@ test("With multiple text content interpolation blocks", () => {
     )
 })
 
-test("Whether the child tags inside a textarea are parsed as textContent", () => {
+test("Whether the child elemnts of textarea are parsed as textContent", () => {
     const nodeList = parseTemplateStandalone(
         formatSourceCode(`
             <textarea>
@@ -848,6 +849,51 @@ test("Whether the child tags inside a textarea are parsed as textContent", () =>
         loc: getLocByIndex(0, 50),
         startTagEndPos: getPosByIndex(10),
         endTagStartPos: getPosByIndex(39)
+    })
+})
+
+test("Whether children are parsed as textContent if the parent has the #html directive", () => {
+    const nodeList = parseTemplateStandalone(
+        formatSourceCode(`
+            <div #html>
+                <p></p>
+                <span></span>
+            </div>
+        `)
+    )
+    matchTemplateNodeList(nodeList, {
+        tag: "div",
+        children: [
+            {
+                content: [
+                    {
+                        isInterpolated: false,
+                        loc: getLocByIndex(11, 42),
+                        value: `\n    <p></p>\n    <span></span>\n`
+                    }
+                ],
+                parent: nodeList[0],
+                loc: getLocByIndex(11, 42)
+            }
+        ],
+        attributes: [
+            {
+                name: {
+                    raw: "#html",
+                    loc: getLocByIndex(5, 10)
+                },
+                value: {
+                    raw: "",
+                    loc: newASTLocation()
+                },
+                equalSign: false,
+                loc: getLocByIndex(5, 10),
+                valueEnclosure: "none"
+            }
+        ],
+        loc: getLocByIndex(0, 48),
+        startTagEndPos: getPosByIndex(11),
+        endTagStartPos: getPosByIndex(42)
     })
 })
 

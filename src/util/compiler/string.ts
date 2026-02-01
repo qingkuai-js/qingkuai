@@ -31,7 +31,7 @@ export const findEndBracket: FindEndBracketFunc = (str: string) => {
         if (startBracketIndex === -1 || startBracketIndex > endBracketIndex) {
             return endBracketIndex
         }
-        startIndex += startBracketIndex + findEndBracket(str.slice(startBracketIndex)) + 1
+        startIndex = startBracketIndex + findEndBracket(str.slice(startBracketIndex)) + 1
     }
     return -1
 }
@@ -73,7 +73,6 @@ function findOutOfGen(outOfLiteral: boolean, outOfComment: boolean) {
                 for (
                     const stopChar = s[i];
                     stopChar !== (left = s.slice(++i))[0] && i < s.length;
-
                 ) {
                     if ("\\" === left[0]) {
                         i++
@@ -131,7 +130,6 @@ function findOutOfGen(outOfLiteral: boolean, outOfComment: boolean) {
                 for (
                     let inCharClass = false;
                     ("/" !== (left = s.slice(++i))[0] || inCharClass) && i < s.length;
-
                 ) {
                     if ("\\" === left[0]) {
                         i++

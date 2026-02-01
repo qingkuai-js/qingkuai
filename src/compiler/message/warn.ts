@@ -64,15 +64,19 @@ export const UnnecessaryMutableDerivedDeclaration = withLocation(
 )
 
 export const RedundantDirectiveValue = withLocation(9006, (directive: string) => {
-    return `The "${directive}" directive does not need a value, and its value has been ignored.`
+    return `The "${directive}" directive does not need a value, and the redundant directive value has been ignored.`
 })
 
 export const RedundantBooleanAttributeValue = withLocation(
     9007,
     (tag: string, attribute: string) => {
-        return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute, the redundant attribute value will be ignored.`
+        return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute, and the redundant attribute value will be ignored.`
     }
 )
+
+export const UnnecessaryHtmlDirective = withLocation(9008, () => {
+    return `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and can be removed.`
+})
 
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
@@ -82,7 +86,11 @@ function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
 }
 
 export class CompileWarning {
-    constructor(public loc: ASTLocation, public code: number, public message: string) {
+    constructor(
+        public loc: ASTLocation,
+        public code: number,
+        public message: string
+    ) {
         messages.push({
             value: this,
             type: "warning"

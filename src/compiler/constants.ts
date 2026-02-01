@@ -1,23 +1,23 @@
+import { objectAssign } from "../util/shared/aliases"
+
 export const SPREAD_TAG = "qk:spread"
 
 export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
-    "#key",
-    "#for",
-    "#slot",
-    "#target",
-    "#else",
-    "#elif",
-    "#if",
-    "#then",
-    "#catch",
-    "#await",
-    "name"
-].reduce((ret, name, index) => {
-    return {
-        ...ret,
-        [name]: index + 1
-    }
-}, {})
+    ["#key", "#for"],
+    ["#slot", "#target"],
+    ["#if", "#elif", "#else"],
+    ["#await", "#then", "#catch"]
+].reduce(
+    (ret, items, index) => {
+        for (const item of items) {
+            objectAssign(ret, {
+                [item]: index + 1
+            })
+        }
+        return ret
+    },
+    { name: 100 }
+)
 
 export const CONFLICT_DIRECTIVES_MAP: Record<string, string[]> = {
     "#then": ["#catch"],

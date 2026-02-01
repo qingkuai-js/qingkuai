@@ -133,6 +133,7 @@ test("Function: findEndBracket", () => {
     expect(findEndBracket("[1, [2, 3], 4]")).toBe(13)
     expect(findEndBracket("{a + b} other content...")).toBe(6)
     expect(findEndBracket("(bar(baz({a: {b: 1}})))")).toBe(22)
+    expect(findEndBracket("{ a: { xxx }, b: { c: {} } }")).toBe(27)
     expect(findEndBracket("{ [1, 2, {a: () => (1 + 2)}] };")).toBe(29)
 
     expect(findEndBracket("(`${ ) }`)")).toBe(5)

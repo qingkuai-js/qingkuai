@@ -177,10 +177,14 @@ export interface FindOutOfLiteralCommentFunc {
  * To prevent runtime errors, consider using a try-catch block to handle this exception.
  */
 export interface parseDirectiveValueFunc {
-    (source: string, keyword: string, startSourceIndex: number): {
+    (
+        source: string,
+        keyword: string,
+        startSourceIndex: number
+    ): {
         base: string
         keywordIndex: number
-        patterns: ContextPattern[]
         baseStartSourceIndex: number
+        patterns: (ContextPattern | null)[]
     }
 }

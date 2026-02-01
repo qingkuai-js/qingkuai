@@ -2,7 +2,7 @@ import type { ArrayPattern } from "@babel/types"
 import type { ContextPattern } from "#type-declarations/estree"
 import type { parseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 
-import { parsePattern } from "./script"
+import { parseContextPattern } from "./script"
 import { walk } from "../../util/compiler/estree/walk"
 import { findOutOfLiteralComment } from "../../util/compiler/string"
 import { InvalidContextPatternForDirective } from "../message/error"
@@ -31,7 +31,7 @@ export const parseDirectiveValue: parseDirectiveValueFunc = (
                 baseStartSourceIndex: startSourceIndex
             }
         }
-        const pattern = parsePattern(`[${source.slice(0, i)}]`) as ArrayPattern | null
+        const pattern = parseContextPattern(`[${source.slice(0, i)}]`) as ArrayPattern | null
         if (pattern) {
             if (!pattern.elements.length) {
                 continue
@@ -64,9 +64,10 @@ export const parseDirectiveValue: parseDirectiveValueFunc = (
 
             // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
             // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
-            const patterns: ContextPattern[] = []
+            const patterns: (ContextPattern | null)[] = []
             for (const element of pattern.elements) {
                 switch (element?.type) {
+                    case undefined:
                     case "Identifier":
                     case "ArrayPattern":
                     case "ObjectPattern": {
@@ -74,14 +75,12 @@ export const parseDirectiveValue: parseDirectiveValueFunc = (
                         continue
                     }
                     default: {
-                        if (element) {
-                            InvalidContextPatternForDirective(
-                                getNonWhitespaceLocByIndex(
-                                    element!.start! + startSourceIndex,
-                                    element!.end! + startSourceIndex
-                                )
+                        InvalidContextPatternForDirective(
+                            getNonWhitespaceLocByIndex(
+                                element!.start! + startSourceIndex,
+                                element!.end! + startSourceIndex
                             )
-                        }
+                        )
                     }
                 }
             }

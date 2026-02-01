@@ -3,19 +3,19 @@ import { analyzeTemplateAndMatchMessages } from "./_match"
 
 test("Directive names only need to be checked for duplication against other directive names.", () => {
     for (const tag of ["span", "Comp"]) {
-        analyzeTemplateAndMatchMessages(`<${tag} target="" #target={_}></${tag}>`)
+        analyzeTemplateAndMatchMessages(`<${tag} target=" " #target={_}></${tag}>`)
         analyzeTemplateAndMatchMessages(`<${tag} !target={_} #target={_}></${tag}>`)
         analyzeTemplateAndMatchMessages(`<${tag} @target={_} #target={_}></${tag}>`)
         analyzeTemplateAndMatchMessages(`<${tag} &target={_} #target={_}></${tag}>`)
         analyzeTemplateAndMatchMessages(`<${tag} #target={_} #target={_}></${tag}>`, [
             {
                 type: "error",
-                range: [18, 29],
+                range: [18, 25],
                 value: `Duplicate directives: "#target".`
             },
             {
                 type: "error",
-                range: [6, 17],
+                range: [6, 13],
                 value: `Duplicate directives: "#target".`
             }
         ])
@@ -27,12 +27,12 @@ describe("Non-component tag", () => {
         analyzeTemplateAndMatchMessages(`<div id="" id=""></div>`, [
             {
                 type: "error",
-                range: [11, 16],
+                range: [11, 13],
                 value: `Duplicate static attributes: "id".`
             },
             {
                 type: "error",
-                range: [5, 10],
+                range: [5, 7],
                 value: `Duplicate static attributes: "id".`
             }
         ])
@@ -40,12 +40,12 @@ describe("Non-component tag", () => {
         analyzeTemplateAndMatchMessages(`<div !id={_} id=""></div>`, [
             {
                 type: "error",
-                range: [13, 18],
+                range: [13, 15],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same attribute.`
             },
             {
                 type: "error",
-                range: [5, 12],
+                range: [5, 8],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same attribute.`
             }
         ])
@@ -53,22 +53,22 @@ describe("Non-component tag", () => {
         analyzeTemplateAndMatchMessages(`<span id="" !id={_} &id={_}></span>`, [
             {
                 type: "error",
-                range: [12, 19],
+                range: [12, 15],
                 value: `Duplicate attributes: the static attribute "id" and the dynamic attribute "!id" resolve to the same attribute.`
             },
             {
                 type: "error",
-                range: [6, 11],
+                range: [6, 8],
                 value: `Duplicate attributes: the static attribute "id" and the dynamic attribute "!id" resolve to the same attribute.`
             },
             {
                 type: "error",
-                range: [20, 27],
+                range: [20, 23],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the reference attribute "&id" resolve to the same attribute.`
             },
             {
                 type: "error",
-                range: [12, 19],
+                range: [12, 15],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the reference attribute "&id" resolve to the same attribute.`
             }
         ])
@@ -83,12 +83,12 @@ describe("Non-component tag", () => {
         analyzeTemplateAndMatchMessages(`<div @click={_} @click={_}></div>`, [
             {
                 type: "error",
-                range: [16, 26],
+                range: [16, 22],
                 value: `Duplicate event listeners: "@click".`
             },
             {
                 type: "error",
-                range: [5, 15],
+                range: [5, 11],
                 value: `Duplicate event listeners: "@click".`
             }
         ])
@@ -100,12 +100,12 @@ describe("Component tag", () => {
         analyzeTemplateAndMatchMessages(`<Comp custom="" custom="" />`, [
             {
                 type: "error",
-                range: [16, 25],
+                range: [16, 22],
                 value: `Duplicate static attributes: "custom".`
             },
             {
                 type: "error",
-                range: [6, 15],
+                range: [6, 12],
                 value: `Duplicate static attributes: "custom".`
             }
         ])
@@ -113,12 +113,12 @@ describe("Component tag", () => {
         analyzeTemplateAndMatchMessages(`<Comp !id={_} id=""></Comp>`, [
             {
                 type: "error",
-                range: [14, 19],
+                range: [14, 16],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same prop.`
             },
             {
                 type: "error",
-                range: [6, 13],
+                range: [6, 9],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the static attribute "id" resolve to the same prop.`
             }
         ])
@@ -126,22 +126,22 @@ describe("Component tag", () => {
         analyzeTemplateAndMatchMessages(`<Comp custom="" !custom={_} @custom={_} />`, [
             {
                 type: "error",
-                range: [16, 27],
+                range: [16, 23],
                 value: `Duplicate attributes: the static attribute "custom" and the dynamic attribute "!custom" resolve to the same prop.`
             },
             {
                 type: "error",
-                range: [6, 15],
+                range: [6, 12],
                 value: `Duplicate attributes: the static attribute "custom" and the dynamic attribute "!custom" resolve to the same prop.`
             },
             {
                 type: "error",
-                range: [28, 39],
+                range: [28, 35],
                 value: `Duplicate attributes: the dynamic attribute "!custom" and the event listener "@custom" resolve to the same prop.`
             },
             {
                 type: "error",
-                range: [16, 27],
+                range: [16, 23],
                 value: `Duplicate attributes: the dynamic attribute "!custom" and the event listener "@custom" resolve to the same prop.`
             }
         ])
@@ -151,12 +151,12 @@ describe("Component tag", () => {
         analyzeTemplateAndMatchMessages(`<Comp class="" !class={_} />`, [
             {
                 type: "error",
-                range: [15, 25],
+                range: [15, 21],
                 value: `Duplicate attributes: the static attribute "class" and the dynamic attribute "!class" resolve to the same prop.`
             },
             {
                 type: "error",
-                range: [6, 14],
+                range: [6, 11],
                 value: `Duplicate attributes: the static attribute "class" and the dynamic attribute "!class" resolve to the same prop.`
             }
         ])
@@ -167,12 +167,12 @@ describe("Component tag", () => {
         analyzeTemplateAndMatchMessages(`<Comp &custom={_} &custom={_} />`, [
             {
                 type: "error",
-                range: [18, 29],
+                range: [18, 25],
                 value: `Duplicate reference attributes: "&custom".`
             },
             {
                 type: "error",
-                range: [6, 17],
+                range: [6, 13],
                 value: `Duplicate reference attributes: "&custom".`
             }
         ])
@@ -212,26 +212,36 @@ test("Embedded language tag only allowed static attributes", () => {
 
 test("The name attribute on slot tag must be static", () => {
     analyzeTemplateAndMatchMessages(`<slot name=""></slot>`)
-    analyzeTemplateAndMatchMessages(`<slot !name={_} name="" @name={_} &name={_}></slot>`, [
+    analyzeTemplateAndMatchMessages(`<slot !name={_} name="" &name={_}></slot>`, [
         {
             type: "error",
-            range: [6, 15],
+            range: [6, 11],
             value: `The "name" attribute on <slot> tag must be static.`
         },
         {
             type: "error",
-            range: [24, 33],
-            value: `The <slot> tag can only accept static or dynamic attributes, but an event listener was found: "@name".`
+            range: [24, 29],
+            value: `The <slot> tag does not support reference attributes or event listeners, but got a reference attribute: "&name".`
         },
         {
             type: "error",
-            range: [34, 43],
-            value: `The <slot> tag can only accept static or dynamic attributes, but a reference attribute was found: "&name".`
-        },
-        {
-            type: "error",
-            range: [34, 43],
+            range: [24, 29],
             value: `The "name" attribute on <slot> tag must be static.`
+        }
+    ])
+})
+
+test("The slot tag does not support reference attributes or event listeners", () => {
+    analyzeTemplateAndMatchMessages(`<slot &custom={_} @click={_}></slot>`, [
+        {
+            type: "error",
+            range: [6, 13],
+            value: `The <slot> tag does not support reference attributes or event listeners, but got a reference attribute: "&custom".`
+        },
+        {
+            type: "error",
+            range: [18, 24],
+            value: `The <slot> tag does not support reference attributes or event listeners, but got an event listener: "@click".`
         }
     ])
 })
@@ -243,22 +253,22 @@ test("The SPREAD_TAG can only accept directives as attributes", () => {
         [
             {
                 type: "error",
-                range: [11, 16],
+                range: [11, 13],
                 value: `The <qk:spread> tag can only accept directives, but a static attribute was found: "id".`
             },
             {
                 type: "error",
-                range: [17, 28],
+                range: [17, 24],
                 value: `The <qk:spread> tag can only accept directives, but a dynamic attribute was found: "!custom".`
             },
             {
                 type: "error",
-                range: [29, 39],
+                range: [29, 35],
                 value: `The <qk:spread> tag can only accept directives, but an event listener was found: "@click".`
             },
             {
                 type: "error",
-                range: [41, 51],
+                range: [41, 47],
                 value: `The <qk:spread> tag can only accept directives, but a reference attribute was found: "&value".`
             }
         ]
@@ -271,7 +281,7 @@ test("Attribute value is redundant for shallow attribute on embedded script lang
         {
             type: "warning",
             range: [9, 23],
-            value: `The "shallow" attribute on <lang-ts> tag is a boolean attribute, the redundant attribute value will be ignored.`
+            value: `The "shallow" attribute on <lang-ts> tag is a boolean attribute, and the redundant attribute value will be ignored.`
         }
     ])
 })

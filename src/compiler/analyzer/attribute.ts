@@ -26,6 +26,7 @@ export function analyzeAttributes(node: TemplateNode) {
 
     for (const attribute of node.attributes) {
         let mappedKey: string
+        const nameLoc = attribute.name.loc
         const rawName = attribute.name.raw
         const isEvent = "@" === rawName[0]
         const isDynamic = "!" === rawName[0]
@@ -50,17 +51,17 @@ export function analyzeAttributes(node: TemplateNode) {
         // The SPREAD_TAG element only allows directives as attributes.
         if (!isDirective && SPREAD_TAG === node.tag) {
             mappedKey = rawName
-            DisallowedAttributeKind(attribute.loc, SPREAD_TAG, rawName)
+            DisallowedAttributeKind(nameLoc, SPREAD_TAG, rawName)
         }
 
         // slot 标签且只允许使用静态 name 属性
         // Slot tags only allow a static `name` attribute.
         if (!isDirective && "slot" === node.tag) {
             if (((mappedKey = rawName), isEvent || isReference)) {
-                DisallowedAttributeKind(attribute.loc, node.tag, rawName)
+                DisallowedAttributeKind(nameLoc, node.tag, rawName)
             }
             if ((isDynamic || isReference) && "name" === getAttributeBaseName(attribute)) {
-                SlotNameAttributeMustBeStatic(attribute.loc)
+                SlotNameAttributeMustBeStatic(nameLoc)
             }
         }
 
@@ -86,8 +87,8 @@ export function analyzeAttributes(node: TemplateNode) {
         // Duplicate attribute.
         if (attributesMap[mappedKey]) {
             const existing = attributesMap[mappedKey]
-            DuplicateAttributes(attribute.loc, existing.name.raw, rawName, isComponent)
-            DuplicateAttributes(existing.loc, existing.name.raw, rawName, isComponent)
+            DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent)
+            DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
         }
 
         // 同名简写语法，更新顶级作用域标识符的响应性状态

@@ -141,11 +141,11 @@ export function parseTemplate(source: string) {
             const endCharIndex = dps.indexOf(">")
             if (endCharIndex !== -1) {
                 UnexpectedToken(getLocByIndex(index, index + 1), dps[0], ">")
-                return reduceSource(endCharIndex + 1), true
+                return (reduceSource(endCharIndex + 1), true)
             }
-            return reduceSource(dps.length), false
+            return (reduceSource(dps.length), false)
         }
-        return reduceSource(1), true
+        return (reduceSource(1), true)
     }
 
     // 解析出标签的 textContext 部分
@@ -153,7 +153,17 @@ export function parseTemplate(source: string) {
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | null = null) {
         const contentStartIndex = index
         const contentParts: TextContentPart[] = []
-        const contentEndRE = parent?.tag === "textarea" ? /<\/textarea/ : templateTagStructureRE
+
+        // textarea 或使用了 #html 指令的节点都被认作只有一个文本节点
+        // A textarea element or a node using the `#html` directive is treated as having only a single text node.
+        let contentEndRE = templateTagStructureRE
+        if (
+            parent?.tag === "textarea" ||
+            parent?.attributes.find(({ name }) => name.raw === "#html")
+        ) {
+            contentEndRE = new RegExp(`</${parent.tag}`)
+        }
+
         while (dps.length) {
             const startBracketIndex = dps.indexOf("{")
             const partEndIndex = contentEndRE.exec(dps)?.index ?? dps.length
@@ -266,7 +276,7 @@ export function parseTemplate(source: string) {
 
             // 检查模式下直接快进到结束标签关闭字符，以继续执行解析
             // In checking mode, fast-forward directly to the end tag's closing character to resume parsing.
-            return findCloseCharOfEndTag(), void 0
+            return (findCloseCharOfEndTag(), void 0)
         }
 
         const tag = tagOpenStr.slice(1)
@@ -357,8 +367,8 @@ export function parseTemplate(source: string) {
                     valueEnclosure = isInterpolatedAttr
                         ? "curly"
                         : dps[0] === "'"
-                        ? "single"
-                        : "double"
+                          ? "single"
+                          : "double"
                     endCharIndex = isInterpolatedAttr ? findEndBracket(dps) : dps.indexOf(dps[0], 1)
 
                     // 当属性值的结束字符不存在（右花括号或单双引号）时报错，空插值块也要报错
@@ -443,7 +453,7 @@ export function parseTemplate(source: string) {
         // 快进到开始标签结束处，不存在闭合字符时直接返回此节点
         // Fast-forward to the end of the start tag; return this node directly if no closing character is found.
         if (isNull(startTagCloseMatched)) {
-            return TagIsNotClosing(tagOpenLoc, tag), templateNode
+            return (TagIsNotClosing(tagOpenLoc, tag), templateNode)
         }
         templateNode.startTagEndPos = reduceSource(startTagCloseMatched[0].length)
 
@@ -599,7 +609,7 @@ export function parseTemplate(source: string) {
         if (options.componentTag && options.loc) {
             markPositionFlag(PositionFlag.IsComponentStart, options.loc.start.index)
         }
-        return options.parent?.children.push(templateNode), templateNode
+        return (options.parent?.children.push(templateNode), templateNode)
     }
 }
 
@@ -617,5 +627,5 @@ export function parseTemplateStandalone(source: string, options: StandaloneParse
     if (isUndefined(options.reseveCommentNodes) || options.reseveCommentNodes) {
         compileOptions.reserveCommentNodes = true
     }
-    return resetCompilerState(compileOptions), parseTemplate(source)
+    return (resetCompilerState(compileOptions), parseTemplate(source))
 }

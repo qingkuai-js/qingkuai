@@ -41,18 +41,21 @@ export function parseScript(source: string) {
     }
 }
 
-export function parsePattern(source: string): ContextPattern | null {
+export function parseContextPattern(source: string): ContextPattern | null {
     try {
-        const { left: pattern } = _parseExpression(source + "=_", {
+        const { left: pattern, right } = _parseExpression(source + "=_", {
             ...getParserOptions(),
             tokens: true,
             errorRecovery: false
         }) as AssignmentExpression
-        if (pattern.type === "Identifier" || pattern.type === "ObjectPattern") {
-            return pattern
-        }
-        if (pattern.type === "ArrayPattern" && pattern.elements.every(Boolean)) {
-            return pattern as any
+        switch (pattern.type) {
+            case "Identifier":
+            case "ArrayPattern":
+            case "ObjectPattern": {
+                if (right.type === "Identifier" && right.name === "_") {
+                    return pattern
+                }
+            }
         }
     } catch {}
     return null
@@ -64,5 +67,5 @@ function getParserOptions(initial: ParserOptions = {}) {
         ranges: true,
         errorRecovery: inputDescriptor.options.checkMode
     }
-    return inputDescriptor.script.isTS && (ret.plugins = ["typescript"]), ret
+    return (inputDescriptor.script.isTS && (ret.plugins = ["typescript"]), ret)
 }

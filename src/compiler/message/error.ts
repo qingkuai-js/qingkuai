@@ -118,6 +118,14 @@ export const InvalidExpression = withLocation(1029, () => {
     return "Invalid expression."
 })
 
+export const ExpressionExpected = withLocation(1041, () => {
+    return "Expression expected."
+})
+
+export const StringLiteralExpected = withLocation(1042, () => {
+    return "String literal expected."
+})
+
 export const InvalidAttributeFormat = withLocation(1016, () => {
     return "Invalid format for attributes."
 })
@@ -180,6 +188,10 @@ export const DuplicateAttributes = withLocation(
     }
 )
 
+export const InvalidKeyDirectivePlacement = withLocation(1043, () => {
+    return `The "#key" directive is only allowed on a tag with the "#for" directive.`
+})
+
 export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {
     return "The value for static attribute must be quoted with single or double quote."
 })
@@ -208,19 +220,6 @@ export const UnexpectedToken = withLocation(1002, (str: string, expected?: strin
     return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
 })
 
-export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
-    let expected!: string
-    const accept = getSpecialAttrDescription(name, true)
-    if (tag === SPREAD_TAG) {
-        expected = "directives"
-    } else if (templateEmbeddedLangTagRE.test(tag)) {
-        expected = "static attributes"
-    } else if (tag === "slot") {
-        expected = "static or dynamic attributes"
-    }
-    return `The <${tag}> tag can only accept ${expected}, but ${accept} was found: "${name}".`
-})
-
 export const InvalidContextPatternForDirective = withLocation(1032, (directive?: string) => {
     if (!directive) {
         return `Expected a binding pattern.`
@@ -229,11 +228,7 @@ export const InvalidContextPatternForDirective = withLocation(1032, (directive?:
 })
 
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
-    return `The "#slot" directive can only be used on direct child elements of a component tag.`
-})
-
-export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
-    return `The "target" directive is not allowed on direct child elements of a compoment tag.`
+    return `The "#slot" directive can only be used on direct child elements of a component node.`
 })
 
 export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
@@ -252,6 +247,20 @@ export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
 
 export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
     return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
+})
+
+export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
+    let expected!: string
+    const accept = getSpecialAttrDescription(name, true)
+    if (tag !== "slot") {
+        if (tag === SPREAD_TAG) {
+            expected = "directives"
+        } else if (templateEmbeddedLangTagRE.test(tag)) {
+            expected = "static attributes"
+        }
+        return `The <${tag}> tag can only accept ${expected}, but ${accept} was found: "${name}".`
+    }
+    return `The <slot> tag does not support reference attributes or event listeners, but got ${accept}: "${name}".`
 })
 
 export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
@@ -277,10 +286,18 @@ export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
     return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
 })
 
+export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
+    return `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`
+})
+
 export class CompileError extends Error {
     public description = "The QingKuai compiler encountered a fatal error during execution"
 
-    constructor(public loc: ASTLocation, public code: number, msg: string) {
+    constructor(
+        public loc: ASTLocation,
+        public code: number,
+        msg: string
+    ) {
         super(msg)
     }
 }
