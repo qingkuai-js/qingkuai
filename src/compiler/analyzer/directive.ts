@@ -4,8 +4,8 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import {
     InvalidSlotName,
     EmptyContextPattern,
-    ConflictDirectives,
-    StringLiteralExpected,
+    ConflictingDirectives,
+    ExpectedStringLiteral,
     UnrecognizedDirective,
     TooManyBindingPatterns,
     MissingDirectiveValue,
@@ -29,7 +29,7 @@ import { getPrevNonTextNode } from "../../util/compiler/template"
 import { walkPatternIdentifiers } from "../../util/compiler/estree/walk"
 import { isAttributeValid, isNonEmptyExpression } from "../../util/compiler/assert"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
-import { CONFLICT_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
+import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
     let conflictingDirective: TemplateAttribute | undefined
@@ -61,14 +61,14 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
     // 检查是否存在冲突的指令
     // Check for conflicting directives.
-    if (CONFLICT_DIRECTIVES_MAP[rawName]) {
-        conflictingDirective = nodeInfo.directives.find(item => {
-            return CONFLICT_DIRECTIVES_MAP[rawName].includes(item.name.raw)
+    if (CONFLICTING_DIRECTIVES_MAP[rawName]) {
+        conflictingDirective = nodeInfo.sortedDirectives.find(item => {
+            return CONFLICTING_DIRECTIVES_MAP[rawName].includes(item.name.raw)
         })
     }
     if (conflictingDirective) {
-        ConflictDirectives(nameLoc, rawName, conflictingDirective.name.raw)
-        ConflictDirectives(conflictingDirective.name.loc, rawName, conflictingDirective.name.raw)
+        ConflictingDirectives(nameLoc, rawName, conflictingDirective.name.raw)
+        ConflictingDirectives(conflictingDirective.name.loc, rawName, conflictingDirective.name.raw)
     }
 
     switch (rawName) {
@@ -94,7 +94,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 }
 
                 if (!base.trim()) {
-                    return StringLiteralExpected(getLocByIndex(baseStartSourceIndex))
+                    return ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
                 }
 
                 // from 关键字后方的插槽名称必须是静态字符串字面量
@@ -104,7 +104,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     name?.type !== "StringLiteral" &&
                     (name?.type !== "TemplateLiteral" || name.expressions.length)
                 ) {
-                    ;(keywordIndex === -1 ? StringLiteralExpected : InvalidSlotName)(
+                    ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
                         getNonWhitespaceLocByIndex(
                             baseStartSourceIndex,
                             baseStartSourceIndex + base.length
@@ -142,7 +142,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"]
             if (
                 !expectedList.includes(getFirstDirectiveNameOfPrevNonTextNode(node)) &&
-                !nodeInfo.directives.some(item => expectedList.includes(item.name.raw))
+                !nodeInfo.sortedDirectives.some(item => expectedList.includes(item.name.raw))
             ) {
                 MissingPrecedingDirective(directive.name.loc, rawName, expectedList, true)
             }
@@ -240,5 +240,5 @@ function getPrevNonTextNodeInfo(node: TemplateNode) {
 }
 
 function getFirstDirectiveNameOfPrevNonTextNode(node: TemplateNode) {
-    return getPrevNonTextNodeInfo(node)?.directives[0].name.raw ?? ""
+    return getPrevNonTextNodeInfo(node)?.sortedDirectives[0].name.raw ?? ""
 }

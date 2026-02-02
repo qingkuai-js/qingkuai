@@ -118,12 +118,16 @@ export const InvalidExpression = withLocation(1029, () => {
     return "Invalid expression."
 })
 
-export const ExpressionExpected = withLocation(1041, () => {
-    return "Expression expected."
+export const ExpectedExpression = withLocation(1041, () => {
+    return "Expected an expression."
 })
 
-export const StringLiteralExpected = withLocation(1042, () => {
-    return "String literal expected."
+export const ExpectedStringLiteral = withLocation(1042, () => {
+    return "Expected a string literal."
+})
+
+export const ExpectedEventFlagName = withLocation(1044, () => {
+    return "Expected an event flag name."
 })
 
 export const InvalidAttributeFormat = withLocation(1016, () => {
@@ -166,12 +170,20 @@ export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
     return `Starts with an end tag: </${tag}>.`
 })
 
+export const UnrecognizedEventFlag = withLocation(1045, (name: string) => {
+    return `Unrecognized event flag: "${name}".`
+})
+
 export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
     return `Directive "${directive}" requires a value.`
 })
 
-export const ConflictDirectives = withLocation(1026, (a: string, b: string) => {
-    return `Directives "${a}" and "${b}" cannot be used together.`
+export const ConflictingDirectives = withLocation(1026, (a: string, b: string) => {
+    return `Conflicting directives: "${a}" and "${b}" cannot be used together.`
+})
+
+export const ConflictingEventFlags = withLocation(1046, (a: string, b: string) => {
+    return `Conflicting event flags: "${a}" and "${b}" cannot be used together.`
 })
 
 export const DuplicateAttributes = withLocation(

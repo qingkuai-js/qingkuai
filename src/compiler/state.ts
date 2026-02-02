@@ -24,6 +24,7 @@ function newAnalyzeResult(): AnalyzeResult {
     return {
         template: {
             nodeInfos: new Map(),
+            eventInfos: new Map(),
             parsedPatterns: new Map(),
             parsedExpressions: new Map()
         },
@@ -79,5 +80,5 @@ function newInputDescriptor(options: CompileOptions) {
             ret.options.reserveCommentNodes = true
         }
     }
-    return objectAssign(ret.options, options), ret
+    return (objectAssign(ret.options, options), ret)
 }

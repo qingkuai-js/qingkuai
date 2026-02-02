@@ -1,4 +1,4 @@
-import type { Range } from "./compiler"
+import type { EventFlagInfo, Range } from "./compiler"
 import type { ContextPattern } from "./estree"
 
 /**
@@ -172,19 +172,46 @@ export interface FindOutOfLiteralCommentFunc {
  * @param keyword 分割上下文模式和表达式的关键字\
  * The keyword that separates the contextual pattern from the expression.
  *
+ * @param startSourceIndex 指令值在源码中的起始索引（用于报错，警告）\
+ * The starting index of the directive value in the source code (used for errors and warnings).
+ *
  * 注意：此方法在遇到无效（不满足于 ContextPattern 类型）的模式时会抛出错误，需避免程序错误可以考虑使用 try-catch 块捕获此异常\
  * Note: This method will throw an error when encountering an invalid pattern(i.e., one that does not satisfy the ContextPattern type).
  * To prevent runtime errors, consider using a try-catch block to handle this exception.
  */
-export interface parseDirectiveValueFunc {
+export interface ParseDirectiveValueFunc {
     (
         source: string,
         keyword: string,
-        startSourceIndex: number
+        startSourceIndex?: number
     ): {
         base: string
         keywordIndex: number
         baseStartSourceIndex: number
         patterns: (ContextPattern | null)[]
+    }
+}
+
+/**
+ * 解析事件名称源字符串：分离事件名称与事件标志\
+ * Parse the raw event name string: separate the event name and its flags.
+ *
+ * @param source 需要解析的事件名称源字符串（含标志）\
+ * The raw event name string to be parsed (including flags).
+ *
+ * @param startSourceIndex 事件名称在源码中的起始索引（用于报错，警告）\
+ * The starting index of the event name in the source code (used for errors and warnings).
+ *
+ * 注意：此方法在遇到冲突、未识别的标志等情况时会抛出错误，需避免程序错误可以考虑使用 try-catch 块捕获此异常\
+ * Note: This method will throw an error when encountering conflicts, unrecognized modifiers, or similar issues.
+ * To prevent runtime errors, consider using a try-catch block to handle this exception.
+ */
+export interface ParseEventFlagFunc {
+    (
+        source: string,
+        startSourceIndex?: number
+    ): {
+        eventName: string
+        flagInfo: EventFlagInfo
     }
 }

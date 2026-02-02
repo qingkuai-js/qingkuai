@@ -27,7 +27,7 @@ describe("#html", () => {
                 {
                     type: "warning",
                     range: [5, 10],
-                    value: `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and can be removed.`
+                    value: `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and will be ignored.`
                 }
             ]
         )
@@ -84,7 +84,7 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [34, 34],
-                    value: `String literal expected.`
+                    value: `Expected a string literal.`
                 }
             ]
         )
@@ -133,7 +133,7 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [23, 24],
-                    value: `String literal expected.`
+                    value: `Expected a string literal.`
                 }
             ]
         )
@@ -244,7 +244,7 @@ describe(`#for`, () => {
             {
                 type: "error",
                 range: [20, 20],
-                value: `Expression expected.`
+                value: `Expected an expression.`
             }
         ])
     })
@@ -443,7 +443,7 @@ describe("#else", () => {
                 {
                     type: "warning",
                     range: [25, 36],
-                    value: `The "#else" directive does not need a value, and the redundant directive value has been ignored.`
+                    value: `The "#else" directive does not need a value, and the redundant directive value will be ignored.`
                 }
             ]
         )
@@ -591,12 +591,12 @@ test("Conflicting directives", () => {
         {
             type: "error",
             range: [22, 28],
-            value: `Directives "#catch" and "#then" cannot be used together.`
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
         },
         {
             type: "error",
             range: [16, 21],
-            value: `Directives "#catch" and "#then" cannot be used together.`
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
         }
     ])
 
@@ -604,12 +604,12 @@ test("Conflicting directives", () => {
         {
             type: "error",
             range: [23, 28],
-            value: `Directives "#then" and "#catch" cannot be used together.`
+            value: `Conflicting directives: "#then" and "#catch" cannot be used together.`
         },
         {
             type: "error",
             range: [16, 22],
-            value: `Directives "#then" and "#catch" cannot be used together.`
+            value: `Conflicting directives: "#then" and "#catch" cannot be used together.`
         }
     ])
 
@@ -617,12 +617,12 @@ test("Conflicting directives", () => {
         {
             type: "error",
             range: [13, 18],
-            value: `Directives "#elif" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#elif" and "#if" cannot be used together.`
         },
         {
             type: "error",
             range: [5, 8],
-            value: `Directives "#elif" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#elif" and "#if" cannot be used together.`
         },
         {
             type: "error",
@@ -632,12 +632,12 @@ test("Conflicting directives", () => {
         {
             type: "error",
             range: [23, 28],
-            value: `Directives "#else" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#else" and "#if" cannot be used together.`
         },
         {
             type: "error",
             range: [5, 8],
-            value: `Directives "#else" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#else" and "#if" cannot be used together.`
         },
         {
             type: "error",

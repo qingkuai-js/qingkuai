@@ -63,8 +63,16 @@ export const UnnecessaryMutableDerivedDeclaration = withLocation(
     ...commonMessage.UnnecessaryMutableDerivedDeclaration
 )
 
+export const DuplicateEventFlag = withLocation(9011, (name: string) => {
+    return `Duplicate event flag "${name}" is redundant and will be ignored.`
+})
+
+export const RedundantEventFlags = withLocation(9009, () => {
+    return `Event flags for component event listeners are redundant and will be ignored.`
+})
+
 export const RedundantDirectiveValue = withLocation(9006, (directive: string) => {
-    return `The "${directive}" directive does not need a value, and the redundant directive value has been ignored.`
+    return `The "${directive}" directive does not need a value, and the redundant directive value will be ignored.`
 })
 
 export const RedundantBooleanAttributeValue = withLocation(
@@ -75,8 +83,15 @@ export const RedundantBooleanAttributeValue = withLocation(
 )
 
 export const UnnecessaryHtmlDirective = withLocation(9008, () => {
-    return `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and can be removed.`
+    return `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and will be ignored.`
 })
+
+export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
+    9010,
+    (name: string, eventName: string) => {
+        return `The event flag "${name}" only valid on keyboard events ("keyup", "keydown", "keypress"). It has no effect on "${eventName}" and will be ignored.`
+    }
+)
 
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {

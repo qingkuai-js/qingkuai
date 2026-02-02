@@ -1,7 +1,8 @@
 import type { ArrayPattern } from "@babel/types"
 import type { ContextPattern } from "#type-declarations/estree"
-import type { parseDirectiveValueFunc } from "#type-declarations/compiler-ex"
+import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 
+import { inputDescriptor } from "../state"
 import { parseContextPattern } from "./script"
 import { walk } from "../../util/compiler/estree/walk"
 import { findOutOfLiteralComment } from "../../util/compiler/string"
@@ -15,10 +16,10 @@ import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 // 解析时会跳过字面量和注释范围查找关键字，当关键字前方的模式可以被正确解析时视为解析成功，否则整个指令值被认作表达式
 // During parsing, literals and comment ranges are skipped when searching for the keyword. Parsing is considered successful
 // if the pattern before the keyword can be correctly parsed; otherwise, the entire directive value is treated as an expression.
-export const parseDirectiveValue: parseDirectiveValueFunc = (
-    source: string,
-    keyword: string,
-    startSourceIndex: number
+export const parseDirectiveValue: ParseDirectiveValueFunc = (
+    source,
+    keyword,
+    startSourceIndex = 0
 ) => {
     const findTarget = ` ${keyword} `
     const findLength = findTarget.length
@@ -93,4 +94,10 @@ export const parseDirectiveValue: parseDirectiveValueFunc = (
             }
         }
     }
+}
+
+export const parseDirectiveValueStandalone: ParseDirectiveValueFunc = (...args) => {
+    const { checkMode } = inputDescriptor.options
+    const ret = parseDirectiveValue(...args)
+    return ((inputDescriptor.options.checkMode = checkMode), ret)
 }

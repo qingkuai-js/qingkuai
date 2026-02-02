@@ -21,9 +21,9 @@ import { any, len } from "../util/shared/sundry"
 import { isUndefined } from "../util/shared/assert"
 import { defineProperties } from "../util/shared/aliases"
 
-// 包装带有标志的 Keyboard、Mouse、Touch 事件
-// Wrap the Keyboard, Mouse, and Touch events with flags
-export function wrapKMTEvents(fn: ArbitraryFunc, flag: number) {
+// 包装带有键位标志的事件
+// Wrap events with key flags.
+export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
     return function (this: EventTarget, event: KeyboardEvent) {
         let checkRes: boolean | undefined = true
         if (event.type.startsWith("key")) {
@@ -33,20 +33,20 @@ export function wrapKMTEvents(fn: ArbitraryFunc, flag: number) {
             return
         }
 
-        const pairs: [number, boolean | undefined][] = [
+        const pairs: [number, boolean][] = [
             [flag & KEY_ALT, event.altKey],
             [flag & KEY_META, event.metaKey],
             [flag & KEY_CTRL, event.ctrlKey],
             [flag & KEY_SHIFT, event.shiftKey]
         ]
-        for (const [flagSet, pressing] of pairs) {
+        for (const pair of pairs) {
             if (!checkRes) {
                 break
             }
-            if (flagSet) {
-                checkRes = pressing
+            if (pair[0]) {
+                checkRes = pair[1]
             } else if (flag & KEY_EXACT) {
-                checkRes = !pressing
+                checkRes = !pair[1]
             }
         }
         checkRes && fn.call(this, event)

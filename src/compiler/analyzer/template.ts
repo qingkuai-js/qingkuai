@@ -13,7 +13,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             parentContextIdentifiers = nodeInfos.get(node.parent)?.contextIdentifiers
         }
         nodeInfos.set(node, {
-            directives: [],
+            sortedDirectives: [],
             attributesMap: newCleanObj(),
             contextIdentifiers: new Set(parentContextIdentifiers)
         })

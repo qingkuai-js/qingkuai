@@ -67,6 +67,17 @@ export interface TemplateNode {
     attributes: TemplateAttribute[]
 }
 
+export interface EventFlagInfo {
+    general: {
+        value: number
+        names: string[]
+    }
+    modifier: {
+        value: number
+        names: string[]
+    }
+}
+
 export interface CompileMessage {
     type: "error" | "warning"
     value: CompileError | CompileWarning
@@ -90,11 +101,18 @@ export interface AnalyzeResult {
     template: TemplateAnalyzeRet
 }
 export interface TemplateAnalyzeRet {
+    eventInfos: Map<
+        TemplateAttribute,
+        {
+            eventName: string
+            flagInfo: EventFlagInfo
+        }
+    >
     nodeInfos: Map<
         TemplateNode,
         {
-            directives: TemplateAttribute[]
             contextIdentifiers: Set<string>
+            sortedDirectives: TemplateAttribute[]
             attributesMap: Record<string, TemplateAttribute>
         }
     >

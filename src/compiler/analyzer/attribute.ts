@@ -5,16 +5,18 @@ import {
     DisallowedAttributeKind,
     SlotNameAttributeMustBeStatic
 } from "../message/error"
+import { analyzeEvent } from "./event"
+import { analyzeResult } from "../state"
 import { analyzeDirective } from "./directive"
 import { kebab2Camel } from "../../util/compiler/string"
 import { interpolatedAttrStartCharRE } from "../regular"
-import { analyzeResult, inputDescriptor } from "../state"
 import { RedundantBooleanAttributeValue } from "../message/warn"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
+import { updateTopLevelIdentifierStatus } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {
-    const { attributesMap, directives } = analyzeResult.template.nodeInfos.get(node)!
+    const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -85,42 +87,30 @@ export function analyzeAttributes(node: TemplateNode) {
 
         // 重复的属性
         // Duplicate attribute.
-        if (attributesMap[mappedKey]) {
-            const existing = attributesMap[mappedKey]
+        if (nodeInfo.attributesMap[mappedKey]) {
+            const existing = nodeInfo.attributesMap[mappedKey]
             DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent)
             DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
         }
 
         // 同名简写语法，更新顶级作用域标识符的响应性状态
         // For shorthand properties with the same name, update the reactive status of the corresponding top-level scope identifier.
-        if (
-            !isDirective &&
-            !node.isEmbedded &&
-            !attribute.equalSign &&
-            (isDynamic || isEvent || isReference)
-        ) {
-            updateTopLevelIdentifierStatus(kebab2Camel(getAttributeBaseName(attribute)))
+        if (!node.isEmbedded && !attribute.equalSign && (isDynamic || isReference)) {
+            return updateTopLevelIdentifierStatus(kebab2Camel(getAttributeBaseName(attribute)))
         }
 
-        switch (((attributesMap[mappedKey] = attribute), rawName[0])) {
-            case "#": {
-                directives.push(attribute)
-                analyzeDirective(node, attribute)
-                break
-            }
+        switch (((nodeInfo.attributesMap[mappedKey] = attribute), rawName[0])) {
             case "@": {
+                analyzeEvent(node, attribute)
                 break
             }
             case "&": {
                 break
             }
+            case "#": {
+                ;(nodeInfo.sortedDirectives.push(attribute), analyzeDirective(node, attribute))
+                break
+            }
         }
-    }
-}
-
-function updateTopLevelIdentifierStatus(id: string) {
-    const info = analyzeResult.script.topLevelIdentifiers[id]
-    if (info?.status === "pending") {
-        info.status = inputDescriptor.options.reactivityMode
     }
 }

@@ -3,9 +3,11 @@ import type { TemplateNode } from "#type-declarations/compiler"
 import { parseExpression } from "../parser/script"
 import { walk } from "../../util/compiler/estree/walk"
 import { analyzeResult, inputDescriptor } from "../state"
-import { ExpressionExpected, InvalidExpression } from "../message/error"
+import { ExpectedExpression, InvalidExpression } from "../message/error"
 import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 
+// 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
+// Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
 export function analyzeInterpolation(
     node: TemplateNode,
     pasingInfoKey: any,
@@ -13,7 +15,7 @@ export function analyzeInterpolation(
     startSourceIndex: number
 ) {
     if (!source.trim()) {
-        return ExpressionExpected(getLocByIndex(startSourceIndex))
+        return ExpectedExpression(getLocByIndex(startSourceIndex))
     }
 
     const expression = parseExpression(source)
@@ -40,4 +42,13 @@ export function analyzeInterpolation(
         }
     })
     return (analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression), expression)
+}
+
+// 更新顶级作用域标识符的响应式状态
+// Update the reactive status of top-level scope identifiers.
+export function updateTopLevelIdentifierStatus(id: string) {
+    const info = analyzeResult.script.topLevelIdentifiers[id]
+    if (info?.status === "pending") {
+        info.status = inputDescriptor.options.reactivityMode
+    }
 }

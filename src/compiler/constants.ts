@@ -1,6 +1,53 @@
+import {
+    KEY_UP,
+    KEY_DOWN,
+    KEY_LEFT,
+    KEY_RIGHT,
+    KEY_TAB,
+    KEY_ENTER,
+    KEY_SPACE,
+    KEY_DELETE,
+    KEY_ESCAPE,
+    KEY_META,
+    KEY_ALT,
+    KEY_CTRL,
+    KEY_SHIFT,
+    KEY_EXACT,
+    EVENT_ONCE,
+    EVENT_STOP,
+    EVENT_SELF,
+    EVENT_PREVENT,
+    EVENT_CAPTURE,
+    EVENT_PASSIVE
+} from "../runtime/constants"
 import { objectAssign } from "../util/shared/aliases"
 
 export const SPREAD_TAG = "qk:spread"
+
+export const EVENT_FLAGS_MAP: Record<string, number> = {
+    once: EVENT_ONCE,
+    stop: EVENT_STOP,
+    self: EVENT_SELF,
+    prevent: EVENT_PREVENT,
+    capture: EVENT_CAPTURE,
+    passive: EVENT_PASSIVE,
+
+    tab: KEY_TAB,
+    enter: KEY_ENTER,
+    delete: KEY_DELETE,
+    escape: KEY_ESCAPE,
+    space: KEY_SPACE,
+    up: KEY_UP,
+    down: KEY_DOWN,
+    left: KEY_LEFT,
+    right: KEY_RIGHT,
+
+    meta: KEY_META,
+    alt: KEY_ALT,
+    ctrl: KEY_CTRL,
+    shift: KEY_SHIFT,
+    exact: KEY_EXACT
+}
 
 export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
     ["#key", "#for"],
@@ -19,7 +66,12 @@ export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
     { name: 100 }
 )
 
-export const CONFLICT_DIRECTIVES_MAP: Record<string, string[]> = {
+export const CONFLICTING_EVENT_FLAG_MAP: Record<string, string[]> = {
+    passive: ["prevent"],
+    prevent: ["passive"]
+}
+
+export const CONFLICTING_DIRECTIVES_MAP: Record<string, string[]> = {
     "#then": ["#catch"],
     "#catch": ["#then"],
     "#slot": ["#target"],
