@@ -239,6 +239,15 @@ export const InvalidContextPatternForDirective = withLocation(1032, (directive?:
     return `The value for "${directive}" directive must be a binding pattern.`
 })
 
+export const InvalidReferenceAttribute = withLocation(
+    1048,
+    (tag: string, reasonAttr?: string, extra?: string) => {
+        const allowed = '"&dom"' + (extra ? ` or "&${extra}"` : "")
+        const reason = reasonAttr ? ` with dynamic "${reasonAttr}" attribute` : ""
+        return `The <${tag}> tag${reason} can only accept ${allowed} as reference attribute.`
+    }
+)
+
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
     return `The "#slot" directive can only be used on direct child elements of a component node.`
 })
@@ -259,6 +268,14 @@ export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
 
 export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
     return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
+})
+
+export const InvalidReferenceAttributeValue = withLocation(1049, () => {
+    return `The value of a reference attribute must be either an identifier or a member expression.`
+})
+
+export const InvalidReferenceAttributePlacement = withLocation(1047, (tag: string) => {
+    return `The <${tag}> tag cannot accept reference attributes because it does not create a real DOM element.`
 })
 
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {

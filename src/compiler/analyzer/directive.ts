@@ -76,7 +76,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (!node.parent || !node.parent.componentTag) {
                 return InvalidSlotDirectivePlacement(nameLoc)
             }
-            if (directive.equalSign) {
+            if (directive.valueEnclosure !== "none") {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } = parseDirectiveValue(
                     rawValue,
                     "from",
@@ -116,7 +116,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         }
 
         case "#for": {
-            if (directive.equalSign) {
+            if (directive.valueEnclosure !== "none") {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } = parseDirectiveValue(
                     rawValue,
                     "of",
@@ -147,7 +147,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 MissingPrecedingDirective(directive.name.loc, rawName, expectedList, true)
             }
 
-            if (directive.equalSign) {
+            if (directive.valueEnclosure !== "none") {
                 const pattern = parseContextPattern(rawValue)
                 if (pattern) {
                     recordContextIdentifiers(pattern)

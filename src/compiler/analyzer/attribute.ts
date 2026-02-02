@@ -1,4 +1,4 @@
-import type { TemplateNode } from "#type-declarations/compiler"
+import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
 import {
     DuplicateAttributes,
@@ -8,12 +8,13 @@ import {
 import { analyzeEvent } from "./event"
 import { analyzeResult } from "../state"
 import { analyzeDirective } from "./directive"
+import { analyzeReferenceAttribute } from "./reference"
 import { kebab2Camel } from "../../util/compiler/string"
 import { interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
+import { updateTopLevelIdentifierStatus } from "./interpolation"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
-import { updateTopLevelIdentifierStatus } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {
     const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
@@ -35,17 +36,10 @@ export function analyzeAttributes(node: TemplateNode) {
         const isDirective = "#" === rawName[0]
         const isReference = "&" === rawName[0]
         const isComponent = !!node.componentTag
+        const baseName = getAttributeBaseName(rawName)
 
         if (node.isEmbedded) {
-            // 嵌入语言标签上只允许静态属性
-            // Only static attributes are allowed on embedded language tags.
-            if (interpolatedAttrStartCharRE.test(rawName[0])) {
-                DisallowedAttributeKind(attribute.loc, node.tag, rawName)
-            }
-
-            if (/[jt]s$/.test(node.tag) && rawName === "shallow" && attribute.equalSign) {
-                RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
-            }
+            analyzeEmbeddedLanguageAttribute(node, attribute)
             continue
         }
 
@@ -62,7 +56,7 @@ export function analyzeAttributes(node: TemplateNode) {
             if (((mappedKey = rawName), isEvent || isReference)) {
                 DisallowedAttributeKind(nameLoc, node.tag, rawName)
             }
-            if ((isDynamic || isReference) && "name" === getAttributeBaseName(attribute)) {
+            if ((isDynamic || isReference) && baseName === "name") {
                 SlotNameAttributeMustBeStatic(nameLoc)
             }
         }
@@ -82,7 +76,7 @@ export function analyzeAttributes(node: TemplateNode) {
         ) {
             mappedKey = rawName
         } else {
-            mappedKey ??= getAttributeBaseName(attribute)
+            mappedKey ??= baseName
         }
 
         // 重复的属性
@@ -96,7 +90,7 @@ export function analyzeAttributes(node: TemplateNode) {
         // 同名简写语法，更新顶级作用域标识符的响应性状态
         // For shorthand properties with the same name, update the reactive status of the corresponding top-level scope identifier.
         if (!node.isEmbedded && !attribute.equalSign && (isDynamic || isReference)) {
-            return updateTopLevelIdentifierStatus(kebab2Camel(getAttributeBaseName(attribute)))
+            return updateTopLevelIdentifierStatus(kebab2Camel(baseName))
         }
 
         switch (((nodeInfo.attributesMap[mappedKey] = attribute), rawName[0])) {
@@ -105,6 +99,7 @@ export function analyzeAttributes(node: TemplateNode) {
                 break
             }
             case "&": {
+                analyzeReferenceAttribute(node, attribute)
                 break
             }
             case "#": {
@@ -112,5 +107,19 @@ export function analyzeAttributes(node: TemplateNode) {
                 break
             }
         }
+    }
+}
+
+function analyzeEmbeddedLanguageAttribute(node: TemplateNode, attribute: TemplateAttribute) {
+    const rawName = attribute.name.raw
+
+    // 嵌入语言标签上只允许静态属性
+    // Only static attributes are allowed on embedded language tags.
+    if (interpolatedAttrStartCharRE.test(rawName[0])) {
+        DisallowedAttributeKind(attribute.loc, node.tag, rawName)
+    }
+
+    if (/[jt]s$/.test(node.tag) && rawName === "shallow" && attribute.equalSign) {
+        RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
     }
 }

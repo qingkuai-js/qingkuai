@@ -75,6 +75,10 @@ export const RedundantDirectiveValue = withLocation(9006, (directive: string) =>
     return `The "${directive}" directive does not need a value, and the redundant directive value will be ignored.`
 })
 
+export const DomRerferenceAttributeOnComponent = withLocation(9012, () => {
+    return `Using "&dom" on a component does not assign the DOM element to the target. It behaves like a normal reference attribute.`
+})
+
 export const RedundantBooleanAttributeValue = withLocation(
     9007,
     (tag: string, attribute: string) => {

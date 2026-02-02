@@ -19,9 +19,9 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     if (rawName !== parseResult.eventName) {
         analyzeResult.template.eventInfos.set(event, parseResult)
     }
-    if (event.valueEnclosure === "none") {
+    if (!event.equalSign) {
         updateTopLevelIdentifierStatus(parseResult.eventName)
-    } else {
+    } else if (event.valueEnclosure !== "none") {
         analyzeInterpolation(node, event, event.value.raw, event.value.loc.start.index)
     }
 }

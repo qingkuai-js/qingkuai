@@ -26,7 +26,8 @@ function newAnalyzeResult(): AnalyzeResult {
             nodeInfos: new Map(),
             eventInfos: new Map(),
             parsedPatterns: new Map(),
-            parsedExpressions: new Map()
+            parsedExpressions: new Map(),
+            validReferenceAttributes: new Set()
         },
         script: {
             watchers: [],
