@@ -9,7 +9,7 @@ export function analyzeTemplateAndMatchMessages(
     source: string,
     expectedMessages: ExpectedCompileMessage[] = []
 ) {
-    const nodes = parseTemplateStandalone(source, {
+    const nodes = parseTemplateStandalone(`${source}`, {
         recover: true
     })
     analyzeScript()

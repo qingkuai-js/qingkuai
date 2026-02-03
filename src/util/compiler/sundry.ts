@@ -1,7 +1,3 @@
-import type { TemplateNode } from "#type-declarations/compiler"
-
-import { SPREAD_TAG } from "../../compiler/constants"
-
 export function getAttributeBaseName(name: string) {
     switch (name[0]) {
         case "!":
@@ -12,6 +8,11 @@ export function getAttributeBaseName(name: string) {
         }
     }
     return name
+}
+
+export function getEventName(rawName: string) {
+    const speratorIndex = rawName.indexOf("|")
+    return speratorIndex === -1 ? rawName : rawName.slice(0, speratorIndex)
 }
 
 // TODO: useless

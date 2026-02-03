@@ -1,5 +1,5 @@
 import type { ParseEventFlagFunc } from "#type-declarations/compiler-ex"
-import type { ASTLocation, TemplateEventFlagInfo } from "#type-declarations/compiler"
+import type { ASTLocation, EventFlagInfo } from "#type-declarations/compiler"
 
 import {
     ConflictingEventFlags,
@@ -14,7 +14,7 @@ import { CONFLICTING_EVENT_FLAG_MAP, EVENT_FLAGS_MAP } from "../constants"
 import { DuplicateEventFlag, KeyFlagIgnoredOnNonKeyboardEvent } from "../message/warn"
 
 export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0) => {
-    const info: TemplateEventFlagInfo = {
+    const info: EventFlagInfo = {
         general: {
             value: 0,
             names: []

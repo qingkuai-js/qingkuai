@@ -27,8 +27,8 @@ import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { getPrevNonTextNode } from "../../util/compiler/template"
 import { walkPatternIdentifiers } from "../../util/compiler/estree/walk"
-import { isAttributeValid, isNonEmptyExpression } from "../../util/compiler/assert"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
+import { isNonEmptyExpression, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
@@ -53,10 +53,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     // 未知指令
     // Unrecognized directives.
     if (!DIRECTIVE_LIST.has(rawName)) {
-        if (isAttributeValid(directive) && isNonEmptyExpression(rawValue)) {
-            localAnalyzeInterpolation(rawValue, valueStartSourceIndex)
-        }
-        return UnrecognizedDirective(nameLoc, rawName)
+        UnrecognizedDirective(nameLoc, rawName)
     }
 
     // 检查是否存在冲突的指令
@@ -200,7 +197,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         }
     }
 
-    if (isAttributeValid(directive) && isNonEmptyExpression(rawValue)) {
+    if (shouldAnalyzeAttributeValue(directive)) {
         localAnalyzeInterpolation(rawValue, valueStartSourceIndex)
     }
 

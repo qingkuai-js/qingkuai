@@ -1,9 +1,16 @@
-import type { TemplateNode } from "#type-declarations/compiler"
+import type { ASTLocation, TemplateNode } from "#type-declarations/compiler"
 
+import {
+    ExpectedExpression,
+    InvalidExpression,
+    InvalidShorthandAttributeName
+} from "../message/error"
 import { parseExpression } from "../parser/script"
 import { walk } from "../../util/compiler/estree/walk"
+import { kebab2Camel } from "../../util/compiler/string"
+import { jsValidIdentifierStartCharRE } from "../regular"
 import { analyzeResult, inputDescriptor } from "../state"
-import { ExpectedExpression, InvalidExpression } from "../message/error"
+import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
@@ -44,11 +51,18 @@ export function analyzeInterpolation(
     return (analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression), expression)
 }
 
-// 更新顶级作用域标识符的响应式状态
-// Update the reactive status of top-level scope identifiers.
-export function updateTopLevelIdentifierStatus(id: string) {
-    const info = analyzeResult.script.topLevelIdentifiers[id]
-    if (info?.status === "pending") {
-        info.status = inputDescriptor.options.reactivityMode
+export function analyzeShorthandAttribute(name: string, loc: ASTLocation) {
+    const baseName = getAttributeBaseName(name)
+    for (let i = 0; i < baseName.length; i++) {
+        if ("-" === baseName[i]) {
+            continue
+        }
+        if (jsValidIdentifierStartCharRE.test(baseName[0])) {
+            break
+        }
+        return InvalidShorthandAttributeName(loc, name)
     }
+
+    const info = analyzeResult.script.topLevelIdentifiers[kebab2Camel(baseName)]
+    info?.status === "pending" && (info.status = inputDescriptor.options.reactivityMode)
 }

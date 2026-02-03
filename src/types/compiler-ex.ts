@@ -1,5 +1,5 @@
 import type { ContextPattern } from "./estree"
-import type { TemplateEventFlagInfo, Range } from "./compiler"
+import type { EventFlagInfo, Range } from "./compiler"
 
 /**
  * 驼峰命名转串型命名 \
@@ -212,6 +212,6 @@ export interface ParseEventFlagFunc {
         startSourceIndex?: number
     ): {
         eventName: string
-        flagInfo: TemplateEventFlagInfo
+        flagInfo: EventFlagInfo
     }
 }

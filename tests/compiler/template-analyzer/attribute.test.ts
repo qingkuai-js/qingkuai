@@ -3,10 +3,13 @@ import { analyzeTemplateAndMatchMessages } from "./_match"
 
 test("Directive names only need to be checked for duplication against other directive names.", () => {
     for (const tag of ["span", "Comp"]) {
+        if (tag === "Comp") {
+            analyzeTemplateAndMatchMessages(`<${tag} &target={_} #target={_}></${tag}>`)
+        }
         analyzeTemplateAndMatchMessages(`<${tag} target=" " #target={_}></${tag}>`)
         analyzeTemplateAndMatchMessages(`<${tag} !target={_} #target={_}></${tag}>`)
         analyzeTemplateAndMatchMessages(`<${tag} @target={_} #target={_}></${tag}>`)
-        analyzeTemplateAndMatchMessages(`<${tag} &target={_} #target={_}></${tag}>`)
+
         analyzeTemplateAndMatchMessages(`<${tag} #target={_} #target={_}></${tag}>`, [
             {
                 type: "error",
@@ -70,6 +73,11 @@ describe("Non-component tag", () => {
                 type: "error",
                 range: [12, 15],
                 value: `Duplicate attributes: the dynamic attribute "!id" and the reference attribute "&id" resolve to the same attribute.`
+            },
+            {
+                type: "error",
+                range: [20, 23],
+                value: `The <span> tag can only accept "&dom" as reference attribute, but got: "&id".`
             }
         ])
     })
@@ -188,22 +196,22 @@ test("Embedded language tag only allowed static attributes", () => {
                 {
                     type: "error",
                     range: [7 + lang.length, 14 + lang.length],
-                    value: `The <lang-${lang}> tag can only accept static attributes, but a dynamic attribute was found: "!id".`
+                    value: `The <lang-${lang}> tag can only accept static attributes, but got a dynamic attribute: "!id".`
                 },
                 {
                     type: "error",
                     range: [15 + lang.length, 25 + lang.length],
-                    value: `The <lang-${lang}> tag can only accept static attributes, but an event listener was found: "@click".`
+                    value: `The <lang-${lang}> tag can only accept static attributes, but got an event listener: "@click".`
                 },
                 {
                     type: "error",
                     range: [26 + lang.length, 37 + lang.length],
-                    value: `The <lang-${lang}> tag can only accept static attributes, but a directive was found: "#custom".`
+                    value: `The <lang-${lang}> tag can only accept static attributes, but got a directive: "#custom".`
                 },
                 {
                     type: "error",
                     range: [38 + lang.length, 49 + lang.length],
-                    value: `The <lang-${lang}> tag can only accept static attributes, but a reference attribute was found: "&custom".`
+                    value: `The <lang-${lang}> tag can only accept static attributes, but got a reference attribute: "&custom".`
                 }
             ]
         )
@@ -254,22 +262,22 @@ test("The SPREAD_TAG can only accept directives as attributes", () => {
             {
                 type: "error",
                 range: [11, 13],
-                value: `The <qk:spread> tag can only accept directives, but a static attribute was found: "id".`
+                value: `The <qk:spread> tag can only accept directives, but got a static attribute: "id".`
             },
             {
                 type: "error",
                 range: [17, 24],
-                value: `The <qk:spread> tag can only accept directives, but a dynamic attribute was found: "!custom".`
+                value: `The <qk:spread> tag can only accept directives, but got a dynamic attribute: "!custom".`
             },
             {
                 type: "error",
                 range: [29, 35],
-                value: `The <qk:spread> tag can only accept directives, but an event listener was found: "@click".`
+                value: `The <qk:spread> tag can only accept directives, but got an event listener: "@click".`
             },
             {
                 type: "error",
                 range: [41, 47],
-                value: `The <qk:spread> tag can only accept directives, but a reference attribute was found: "&value".`
+                value: `The <qk:spread> tag can only accept directives, but got a reference attribute: "&value".`
             }
         ]
     )

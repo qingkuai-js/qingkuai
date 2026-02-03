@@ -239,15 +239,6 @@ export const InvalidContextPatternForDirective = withLocation(1032, (directive?:
     return `The value for "${directive}" directive must be a binding pattern.`
 })
 
-export const InvalidReferenceAttribute = withLocation(
-    1048,
-    (tag: string, reasonAttr?: string, extra?: string) => {
-        const allowed = '"&dom"' + (extra ? ` or "&${extra}"` : "")
-        const reason = reasonAttr ? ` with dynamic "${reasonAttr}" attribute` : ""
-        return `The <${tag}> tag${reason} can only accept ${allowed} as reference attribute.`
-    }
-)
-
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
     return `The "#slot" directive can only be used on direct child elements of a component node.`
 })
@@ -270,13 +261,18 @@ export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, 
     return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
 })
 
-export const InvalidReferenceAttributeValue = withLocation(1049, () => {
+export const InvalidReferenceAttributeValue = withLocation(1048, () => {
     return `The value of a reference attribute must be either an identifier or a member expression.`
 })
 
-export const InvalidReferenceAttributePlacement = withLocation(1047, (tag: string) => {
-    return `The <${tag}> tag cannot accept reference attributes because it does not create a real DOM element.`
-})
+export const InvalidReferenceAttribute = withLocation(
+    1047,
+    (tag: string, gotAttr: string, reasonAttr?: string, extra?: string) => {
+        const allowed = '"&dom"' + (extra ? ` or "&${extra}"` : "")
+        const reason = reasonAttr ? ` with dynamic "${reasonAttr}" attribute` : ""
+        return `The <${tag}> tag${reason} can only accept ${allowed} as reference attribute, but got: "${gotAttr}".`
+    }
+)
 
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
     let expected!: string
@@ -287,7 +283,7 @@ export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: st
         } else if (templateEmbeddedLangTagRE.test(tag)) {
             expected = "static attributes"
         }
-        return `The <${tag}> tag can only accept ${expected}, but ${accept} was found: "${name}".`
+        return `The <${tag}> tag can only accept ${expected}, but got ${accept}: "${name}".`
     }
     return `The <slot> tag does not support reference attributes or event listeners, but got ${accept}: "${name}".`
 })
@@ -310,6 +306,10 @@ export const MissingPrecedingDirective = withLocation(
         }
     }
 )
+
+export const InvalidShorthandAttributeName = withLocation(1049, (name: string) => {
+    return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier.`
+})
 
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
     return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`

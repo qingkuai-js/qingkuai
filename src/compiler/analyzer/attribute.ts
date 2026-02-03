@@ -9,12 +9,12 @@ import { analyzeEvent } from "./event"
 import { analyzeResult } from "../state"
 import { analyzeDirective } from "./directive"
 import { analyzeReferenceAttribute } from "./reference"
-import { kebab2Camel } from "../../util/compiler/string"
 import { interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
-import { updateTopLevelIdentifierStatus } from "./interpolation"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
+import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {
     const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
@@ -61,6 +61,13 @@ export function analyzeAttributes(node: TemplateNode) {
             }
         }
 
+        // 动态属性同名简写语法，更新顶级作用域标识符的响应性状态
+        // For dynamic attributes with same-name shorthand syntax,
+        // update the reactive status of the corresponding top-level scope identifier.
+        if (!attribute.equalSign && isDynamic) {
+            analyzeShorthandAttribute(rawName, nameLoc)
+        }
+
         // mappedKey 用于检查属性是否被重复传递
         // 对于组件标签：静态属性，动态属性及事件的基础名称不能重复
         // 对于非组件标签：静态属性，动态属性及引用属性的基础名称不能重复，但 class 和 !class 可同时存在
@@ -87,12 +94,6 @@ export function analyzeAttributes(node: TemplateNode) {
             DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
         }
 
-        // 同名简写语法，更新顶级作用域标识符的响应性状态
-        // For shorthand properties with the same name, update the reactive status of the corresponding top-level scope identifier.
-        if (!node.isEmbedded && !attribute.equalSign && (isDynamic || isReference)) {
-            return updateTopLevelIdentifierStatus(kebab2Camel(baseName))
-        }
-
         switch (((nodeInfo.attributesMap[mappedKey] = attribute), rawName[0])) {
             case "@": {
                 analyzeEvent(node, attribute)
@@ -103,7 +104,19 @@ export function analyzeAttributes(node: TemplateNode) {
                 break
             }
             case "#": {
-                ;(nodeInfo.sortedDirectives.push(attribute), analyzeDirective(node, attribute))
+                nodeInfo.sortedDirectives.push(attribute)
+                analyzeDirective(node, attribute)
+                break
+            }
+            case "!": {
+                if (shouldAnalyzeAttributeValue(attribute)) {
+                    analyzeInterpolation(
+                        node,
+                        attribute,
+                        attribute.value.raw,
+                        attribute.value.loc.start.index
+                    )
+                }
                 break
             }
         }
