@@ -1,18 +1,24 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
 
+import { stringify } from "../../util/shared/aliases"
+
 export const NotPromise = withCode(2001, (purpose: string) => {
     return `The given value for ${purpose} is not a Promise.`
 })
 
 export const NonTraverse = withCode(2002, () => {
-    return "The given value for #for directive is non-traversable."
+    return `The given value for "#for" directive is non-traversable.`
+})
+
+export const NotArrayOrSet = withCode(2006, (attr: string, target: string) => {
+    return `The "${attr}" attribute value for ${target} must be an array or a set.`
 })
 
 export const DuplicateKey = withCode(2003, (key: string) => {
-    return `Duplicate value for #key directive, duplicate item: ${key}.`
+    return `Duplicate value for "#key" directive, duplicate item: ${stringify(key)}.`
 })
 
-export const InvalidElementNode = withCode(8005, (purpose: string) => {
+export const InvalidElementNode = withCode(2005, (purpose: string) => {
     return `Invalid Element node: the given value for ${purpose} is not a valid Element node or the corresponding Element node cannot be selected.`
 })
 

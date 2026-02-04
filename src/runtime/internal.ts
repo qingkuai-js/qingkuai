@@ -9,13 +9,17 @@ export {
 } from "./reactivity/value"
 
 export {
-    listen,
+    setAttribute,
+    setClassName,
+    setInputGroup,
+    setSelectValue,
+    setXlinkAttribute
+} from "./attribute"
+
+export {
     getChild,
     getSibling,
     setText,
-    setAttribute,
-    setClassName,
-    setXlinkAttribute,
     insertBefore,
     bindDOMReceiver,
     replaceWithText,
@@ -30,6 +34,7 @@ export { displayBlock } from "./directives/display"
 export { promiseBlock } from "./directives/promise"
 export { conditionBlock } from "./directives/condition"
 export { listBlock, keyedListBlock } from "./directives/list"
-export { createEventWrapper, registerEvents, delegate } from "./event"
 export { derived, destructuringDerived } from "./reactivity/derived"
 export { init, mount, initProps, initRefs, initSlots } from "./component"
+export { listen, createEventWrapper, registerEvents, delegate } from "./event"
+export { bindInputChecked, bindInputGroup, bindInputValue, bindSelectValue } from "./reference"

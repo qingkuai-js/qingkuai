@@ -55,7 +55,7 @@ export function makeCancelablePromise(pms: any): CancelablePromise {
         return pms
     }
     if (!isPromise(pms)) {
-        NotPromise("#await directive")
+        NotPromise(`"#await" directive`)
     }
 
     let isCanceled = false

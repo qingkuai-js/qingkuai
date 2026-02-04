@@ -1,7 +1,6 @@
 import { expect, test, vi } from "vitest"
+import { sleep } from "../../src/util/testing/sundry"
 import { isFunction } from "../../src/util/shared/assert"
-import { NotPromise } from "../../src/runtime/messages/error"
-import { getErrorMessage, sleep } from "../../src/util/testing/sundry"
 import { makeCancelablePromise } from "../../src/runtime/directives/promise"
 
 test("Functions of cancelable promise", async () => {
@@ -41,14 +40,14 @@ test("Functions of cancelable promise", async () => {
         invokeMarker()
     })
 
-    await sleep(10)
+    await sleep(100)
     expect(invokeMarker).toHaveBeenCalledTimes(2)
 })
 
 test("Whether passing a non-promise argument will cause error", () => {
     for (const value of [1, undefined, null, {}, () => {}, Symbol()] as any[]) {
         expect(() => makeCancelablePromise(value)).toThrow(
-            getErrorMessage(() => NotPromise("#await directive"))
+            `The given value for "#await" directive is not a Promise. (2001)`
         )
     }
 })

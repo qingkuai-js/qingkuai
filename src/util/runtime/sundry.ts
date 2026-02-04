@@ -1,5 +1,5 @@
 import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime"
-import type { AnyObject, ArbitraryFunc, GeneralFunc, ObjectKeys } from "#type-declarations/tools"
+import type { ArbitraryFunc, GeneralFunc, ObjectKeys } from "#type-declarations/tools"
 
 import {
     WRAPPER,
@@ -11,9 +11,8 @@ import { isRefProperty } from "./assert"
 import { isFunction } from "../shared/assert"
 import { getSibling } from "../../runtime/dom"
 import { any, notEqual } from "../shared/sundry"
-import { setPrototypeOf } from "../shared/aliases"
+import { RESOLVED } from "../../runtime/constants"
 import { constReact } from "../../runtime/internal"
-import { NIL, RESOLVED } from "../../runtime/constants"
 import { createDestruction } from "../../runtime/destroy"
 import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
@@ -67,7 +66,7 @@ export function getRawProperty(property: any) {
 
 export function invokeRender(render: GeneralFunc) {
     const destruction = createDestruction()
-    return render(), backToParentDestruction(), destruction
+    return (render(), backToParentDestruction(), destruction)
 }
 
 export function ensureGetRefProperty(property: ObjectKeys) {

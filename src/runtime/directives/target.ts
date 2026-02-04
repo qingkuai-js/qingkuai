@@ -19,7 +19,7 @@ export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFun
             newTarget = isNull(value) ? anchor : value
         }
         if (newTarget !== anchor && !isElement(newTarget)) {
-            InvalidElementNode("#target directive")
+            InvalidElementNode(`"#target" directive`)
         }
         if (newTarget !== oldTarget) {
             walkNodes(destruction, node => {

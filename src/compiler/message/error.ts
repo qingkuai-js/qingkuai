@@ -265,15 +265,6 @@ export const InvalidReferenceAttributeValue = withLocation(1048, () => {
     return `The value of a reference attribute must be either an identifier or a member expression.`
 })
 
-export const InvalidReferenceAttribute = withLocation(
-    1047,
-    (tag: string, gotAttr: string, reasonAttr?: string, extra?: string) => {
-        const allowed = '"&dom"' + (extra ? ` or "&${extra}"` : "")
-        const reason = reasonAttr ? ` with dynamic "${reasonAttr}" attribute` : ""
-        return `The <${tag}> tag${reason} can only accept ${allowed} as reference attribute, but got: "${gotAttr}".`
-    }
-)
-
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
     let expected!: string
     const accept = getSpecialAttrDescription(name, true)
@@ -314,6 +305,16 @@ export const InvalidShorthandAttributeName = withLocation(1049, (name: string) =
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
     return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
 })
+
+export const InvalidReferenceAttribute = withLocation(
+    1047,
+    (tag: string, name: string, allowedList: string[]) => {
+        if (allowedList.length !== 1) {
+            return `Invalid reference attribute "${name}" on <${tag}>.`
+        }
+        return `The <${tag}> tag only supports "${allowedList[0]}" as a reference attribute, but got: "${name}".`
+    }
+)
 
 export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
     return `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`

@@ -65,7 +65,7 @@ export function initProps(transformed: any, defaults: any) {
             return defaults[property]
         },
         set() {
-            return InvalidAssignment("component props"), true
+            return (InvalidAssignment("component props"), true)
         }
     })
 }
@@ -88,7 +88,7 @@ export function mountApp(render: ComponentFunc, target: Element | string) {
         target = selectElement(target) as Element
     }
     if (!isElement(target)) {
-        InvalidElementNode("mountApp")
+        InvalidElementNode('"mountApp"')
     }
     render(target)
 }

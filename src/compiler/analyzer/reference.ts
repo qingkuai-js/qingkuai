@@ -50,12 +50,12 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
 
 function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribute) {
     const tag = node.tag
+    const allowedList = ["&dom"]
     const rawName = attribute.name.raw
     const nameLoc = attribute.name.loc
-    const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
 
-    const localInvalidReferenceAttribute = (tag: string, reasonAttr?: string, extra?: string) => {
-        return (InvalidReferenceAttribute(nameLoc, tag, rawName, reasonAttr, extra), false)
+    const localInvalidReferenceAttribute = (tag: string) => {
+        return (InvalidReferenceAttribute(nameLoc, tag, rawName, allowedList), false)
     }
 
     if (node.componentTag) {
@@ -64,68 +64,20 @@ function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribut
         }
         return true
     }
-
-    // <slot> 及 <qk:spread> 上不能使用 &dom
-    // The `<slot>` and `<qk:spread>` elements cannot use `&dom`.
-    if (SPREAD_TAG === tag || "slot" === tag) {
-        return false
-    }
-
-    if (rawName === "&dom") {
-        return true
-    }
-
-    // textarea 仅允许 &value 作为引用属性
-    // A textarea element only allows the `&value` as reference attribute.
-    if (tag === "textarea") {
-        if (rawName === "&value") {
-            return true
+    switch (tag) {
+        case "slot":
+        case SPREAD_TAG: {
+            return false
         }
-        return localInvalidReferenceAttribute(tag, undefined, "value")
+        case "select":
+        case "textarea": {
+            allowedList.push("&value")
+            break
+        }
+        case "input": {
+            allowedList.push("&value", "&number", "&checked", "&group")
+            break
+        }
     }
-
-    if (tag === "input") {
-        const typeAttr = nodeInfo.attributesMap["type"]
-        const isReferenceType = typeAttr && "&" === typeAttr.name.raw[0]
-
-        // 具有动态 type 属性的 input 只接受 &dom 作为引用属性
-        // An input element with a dynamic `type` attribute only accepts the `&dom` as reference attribute.
-        if ("!" === typeAttr?.name.raw[0]) {
-            return localInvalidReferenceAttribute(tag, "type")
-        }
-
-        // input 作为单选框或复选框时允许 &checked 属性，其他情况仅接受 &value 作为引用属性
-        // When an input element is a radio button or checkbox, the `&checked` attribute is allowed;
-        // otherwise, only accepts `&value` as reference attribute.
-        if (
-            !isReferenceType &&
-            ("radio" === typeAttr?.value.raw || "checkbox" === typeAttr?.value.raw)
-        ) {
-            const fullTag = `input type="${typeAttr.value.raw}"`
-            if (rawName !== "&checked") {
-                return localInvalidReferenceAttribute(fullTag, undefined, "checked")
-            }
-        } else if (rawName !== "&value") {
-            const fullTag = `input type="${!typeAttr || isReferenceType ? "text" : typeAttr.value.raw}"`
-            return localInvalidReferenceAttribute(fullTag, undefined, "value")
-        }
-        return true
-    }
-
-    if (tag === "select") {
-        // 具有动态 multiple 属性的 select 只接受 &dom 作为引用属性
-        // A select element with a dynamic `multiple` attribute only accepts the `&dom` as reference attribute.
-        if ("!" === nodeInfo.attributesMap["multiple"]?.name.raw[0]) {
-            return localInvalidReferenceAttribute(tag, "multiple")
-        }
-
-        // select 仅允许 &value 作为引用属性
-        // A select element only allows the `&value` as reference attribute.
-        if (rawName === "&value") {
-            return true
-        }
-        return localInvalidReferenceAttribute(tag, undefined, "value")
-    }
-
-    return localInvalidReferenceAttribute(tag)
+    return allowedList.includes(rawName) || localInvalidReferenceAttribute(tag)
 }

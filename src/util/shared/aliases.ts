@@ -3,6 +3,10 @@ import type { AnyObject } from "#type-declarations/tools"
 import { any } from "./sundry"
 import { OBJECT } from "../../runtime/constants"
 
+export function stringify(v: any) {
+    return JSON.stringify(v)
+}
+
 export const objectKeys: typeof Object.keys = (o: AnyObject) => {
     return OBJECT.keys(o)
 }

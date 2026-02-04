@@ -584,7 +584,7 @@ test("Wheter a runtime error will be cause when recursive update depth over than
     await nextTick()
     expect(arr).toEqual([0, 1, 2, 3])
 
-    await sleep(10)
+    await sleep(100)
     expect(arr).toEqual(makeConsecutiveNumbersArr(100))
 
     const v2 = (cleanup(), react(0))
@@ -595,7 +595,7 @@ test("Wheter a runtime error will be cause when recursive update depth over than
     }
     expect(arr).toEqual([0, 1])
 
-    await sleep(10)
+    await sleep(100)
     stopGlobalErrorWatcher()
     expect(arr).toEqual(makeConsecutiveNumbersArr(303))
 })

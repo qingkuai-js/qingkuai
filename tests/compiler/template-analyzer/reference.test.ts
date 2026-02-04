@@ -2,16 +2,18 @@ import { test } from "vitest"
 import { analyzeTemplateAndMatchMessages } from "./_match"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 
-test("input(text)", () => {
+test("input", () => {
     analyzeTemplateAndMatchMessages(`<input &dom />`)
     analyzeTemplateAndMatchMessages(`<input &value>`)
-    analyzeTemplateAndMatchMessages(`<input &value />`)
+    analyzeTemplateAndMatchMessages(`<input &number />`)
+    analyzeTemplateAndMatchMessages(`<input &group />`)
+    analyzeTemplateAndMatchMessages(`<input type="text" &checked={_} />`)
 
     analyzeTemplateAndMatchMessages(`<input &type &value />`, [
         {
             type: "error",
             range: [7, 12],
-            value: `The <input type="text"> tag can only accept "&dom" or "&value" as reference attribute, but got: "&type".`
+            value: `Invalid reference attribute "&type" on <input>.`
         }
     ])
 
@@ -19,39 +21,7 @@ test("input(text)", () => {
         {
             type: "error",
             range: [7, 14],
-            value: `The <input type="text"> tag can only accept "&dom" or "&value" as reference attribute, but got: "&custom".`
-        }
-    ])
-
-    analyzeTemplateAndMatchMessages(`<input type="text" &checked={_} />`, [
-        {
-            type: "error",
-            range: [19, 27],
-            value: `The <input type="text"> tag can only accept "&dom" or "&value" as reference attribute, but got: "&checked".`
-        }
-    ])
-})
-
-test("input(radio)", () => {
-    analyzeTemplateAndMatchMessages(`<input type="radio" &checked />`)
-
-    analyzeTemplateAndMatchMessages(`<input type="radio" &custom>`, [
-        {
-            type: "error",
-            range: [20, 27],
-            value: `The <input type="radio"> tag can only accept "&dom" or "&checked" as reference attribute, but got: "&custom".`
-        }
-    ])
-})
-
-test("input(checkbox)", () => {
-    analyzeTemplateAndMatchMessages(`<input type="checkbox" &checked={_} />`)
-
-    analyzeTemplateAndMatchMessages(`<input type="checkbox" &value />`, [
-        {
-            type: "error",
-            range: [23, 29],
-            value: `The <input type="checkbox"> tag can only accept "&dom" or "&checked" as reference attribute, but got: "&value".`
+            value: `Invalid reference attribute "&custom" on <input>.`
         }
     ])
 })
@@ -64,27 +34,7 @@ test("select", () => {
         {
             type: "error",
             range: [8, 16],
-            value: `The <select> tag can only accept "&dom" or "&value" as reference attribute, but got: "&checked".`
-        }
-    ])
-})
-
-test("Dynamic type attribute on input", () => {
-    analyzeTemplateAndMatchMessages(`<input !type &value />`, [
-        {
-            type: "error",
-            range: [13, 19],
-            value: `The <input> tag with dynamic "type" attribute can only accept "&dom" as reference attribute, but got: "&value".`
-        }
-    ])
-})
-
-test("Dynamic multiple attribute on select", () => {
-    analyzeTemplateAndMatchMessages(`<select !multiple &value></select>`, [
-        {
-            type: "error",
-            range: [18, 24],
-            value: `The <select> tag with dynamic "multiple" attribute can only accept "&dom" as reference attribute, but got: "&value".`
+            value: `Invalid reference attribute "&checked" on <select>.`
         }
     ])
 })

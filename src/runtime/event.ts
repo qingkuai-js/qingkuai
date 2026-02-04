@@ -18,8 +18,21 @@ import {
 import { getNodeContext } from "./dom"
 import { eventRegisterInfo } from "./state"
 import { any, len } from "../util/shared/sundry"
+import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { defineProperties } from "../util/shared/aliases"
+
+export function listen(
+    elem: HTMLElement,
+    type: string,
+    handler: ArbitraryFunc,
+    options?: boolean | AddEventListenerOptions
+) {
+    pushDestructionCleaner(() => {
+        elem.removeEventListener(type, handler, options)
+    })
+    elem.addEventListener(type, handler, options)
+}
 
 // 包装带有键位标志的事件
 // Wrap events with key flags.
