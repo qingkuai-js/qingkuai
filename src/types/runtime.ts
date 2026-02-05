@@ -17,7 +17,7 @@ interface CancelablePromiseExtra {
     [CANCELABLE]: boolean
 }
 
-export interface PropInfo {
+export interface PropertyInfo {
     v: any // value
     l: number // flag
     k: number // link flag

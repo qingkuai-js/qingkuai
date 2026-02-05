@@ -86,8 +86,10 @@ export interface ASTPositionWithFlag extends ASTPosition {
 }
 
 export interface AnalyzeResult {
+    internalId: string
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
+    slots: Record<string, TemplateNode>
 }
 export interface EventFlagInfo {
     general: {
@@ -107,6 +109,14 @@ export interface TemplateAnalyzeRet {
             flagInfo: EventFlagInfo
         }
     >
+    parsedExpressions: Map<
+        any,
+        {
+            node: Expression
+            startSourceIndex: number
+            topLevelReferences: TopLevelReferences
+        }
+    >
     nodeInfos: Map<
         TemplateNode,
         {
@@ -116,18 +126,9 @@ export interface TemplateAnalyzeRet {
         }
     >
     validReferenceAttributes: Set<TemplateAttribute>
-    parsedExpressions: Map<any, Expression | undefined>
     parsedPatterns: Map<TemplateAttribute, (ContextPattern | null)[] | undefined>
 }
 export interface ScriptAnalyzeRet {
-    topLevelReferences: Record<
-        string,
-        {
-            range: Range
-            declared: boolean
-            shorthand: boolean
-        }[]
-    >
     topLevelIdentifiers: Record<
         string,
         {
@@ -142,11 +143,20 @@ export interface ScriptAnalyzeRet {
     >
     locations: Set<number>[]
     fullIdentifiers: Set<string>
+    topLevelReferences: TopLevelReferences
     watchers: WalkContext<CallExpression>[]
     defaultRefs?: WalkContext<Expression | SpreadElement>
     defaultProps?: WalkContext<Expression | SpreadElement>
     importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
 }
+export type TopLevelReferences = Record<
+    string,
+    {
+        range: Range
+        declared: boolean
+        shorthand: boolean
+    }[]
+>
 
 export type Range = Pair<number>
 

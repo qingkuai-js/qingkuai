@@ -73,6 +73,34 @@ describe("#slot", () => {
         `)
     })
 
+    test("Without pattern", () => {
+        analyzeTemplateAndMatchMessages(`
+            <Comp>
+                <div #slot={"from"}></div>
+            </Comp>
+        `)
+        analyzeTemplateAndMatchMessages(`
+            <Comp>
+                <div #slot={"default"}></div>
+            </Comp>
+        `)
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #slot={a}></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [23, 24],
+                    value: `Expected a string literal.`
+                }
+            ]
+        )
+    })
+
     test(`Expression is missing after keyword`, () => {
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`

@@ -1,5 +1,5 @@
-import type { AnyNode } from "#type-declarations/estree"
 import type { Range } from "#type-declarations/compiler"
+import type { AnyNode } from "#type-declarations/estree"
 
 import { isTypeOperation } from "./assert"
 

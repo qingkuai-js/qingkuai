@@ -6,9 +6,9 @@ import type {
 } from "#type-declarations/compiler"
 
 import { isUndefined } from "../util/shared/assert"
+import { newCleanObj } from "../util/shared/sundry"
 import { objectAssign } from "../util/shared/aliases"
 import { newASTLocation } from "../util/compiler/position"
-import { newCleanObj } from "../util/shared/sundry"
 
 export let messages: CompileMessage[] = []
 export let inputDescriptor: InputDescriptor
@@ -22,6 +22,8 @@ export function resetCompilerState(options: CompileOptions) {
 
 function newAnalyzeResult(): AnalyzeResult {
     return {
+        internalId: "",
+        slots: newCleanObj(),
         template: {
             nodeInfos: new Map(),
             eventInfos: new Map(),

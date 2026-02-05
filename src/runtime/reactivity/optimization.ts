@@ -1,4 +1,4 @@
-import type { PropInfo } from "#type-declarations/runtime"
+import type { PropertyInfo } from "#type-declarations/runtime"
 import type { AnyObject, ArbitraryFunc } from "#type-declarations/tools"
 
 import {
@@ -80,7 +80,7 @@ function updateWithRawGen(batchSync?: boolean) {
         const rawValue: any = toRaw(value)
         const isMap = wrapper.l & WRAPPER_MAP
         const isArray = wrapper.l & WRAPPER_ARRAY
-        const originEntries = new Map<any, PropInfo>()
+        const originEntries = new Map<any, PropertyInfo>()
         const isChanged = isShallow(wrapper) ? notEqual : reactiveNotEqual
 
         const getValue = (key: any) => {

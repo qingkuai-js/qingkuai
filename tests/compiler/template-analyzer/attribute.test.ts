@@ -80,10 +80,31 @@ describe("Non-component tag", () => {
                 value: `The <span> tag only supports "&dom" as a reference attribute, but got: "&id".`
             }
         ])
+
+        analyzeTemplateAndMatchMessages(`<lang-js shallow shallow></lang-js>`, [
+            {
+                type: "error",
+                range: [17, 24],
+                value: `Duplicate static attributes: "shallow".`
+            },
+            {
+                type: "error",
+                range: [9, 16],
+                value: `Duplicate static attributes: "shallow".`
+            }
+        ])
     })
 
     test("Dynamic and static class attribute can coexist.", () => {
         analyzeTemplateAndMatchMessages(`<div class="" !class={_}></div>`)
+
+        analyzeTemplateAndMatchMessages(`<lang-js shallow !shallow></lang-js>`, [
+            {
+                type: "error",
+                range: [17, 25],
+                value: `The <lang-js> tag can only accept static attributes, but got a dynamic attribute: "!shallow".`
+            }
+        ])
     })
 
     test("Event names only need to be checked for duplication against other event names.", () => {

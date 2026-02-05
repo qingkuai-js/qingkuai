@@ -89,7 +89,6 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     )
                     TooManyBindingPatterns(errorLoc, rawName, 1)
                 }
-
                 if (!base.trim()) {
                     return ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
                 }

@@ -1,4 +1,4 @@
-import type { ASTLocation, TemplateNode } from "#type-declarations/compiler"
+import type { ASTLocation, TemplateNode, TopLevelReferences } from "#type-declarations/compiler"
 
 import {
     ExpectedExpression,
@@ -6,6 +6,7 @@ import {
     InvalidShorthandAttributeName
 } from "../message/error"
 import { parseExpression } from "../parser/script"
+import { newCleanObj } from "../../util/shared/sundry"
 import { walk } from "../../util/compiler/estree/walk"
 import { kebab2Camel } from "../../util/compiler/string"
 import { jsValidIdentifierStartCharRE } from "../regular"
@@ -17,7 +18,7 @@ import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/p
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
 export function analyzeInterpolation(
     node: TemplateNode,
-    pasingInfoKey: any,
+    parsingInfoKey: any,
     source: string,
     startSourceIndex: number
 ) {
@@ -26,7 +27,15 @@ export function analyzeInterpolation(
     }
 
     const expression = parseExpression(source)
-    if (!expression) {
+    const topLevelReferences: TopLevelReferences = newCleanObj()
+
+    if (expression) {
+        analyzeResult.template.parsedExpressions.set(parsingInfoKey, {
+            node: expression,
+            startSourceIndex,
+            topLevelReferences
+        })
+    } else {
         InvalidExpression(
             getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length)
         )
@@ -34,7 +43,7 @@ export function analyzeInterpolation(
     walk(expression, {
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
-        Identifier({ name }, context) {
+        Identifier({ name, range }, context) {
             const { contextIdentifiers } = analyzeResult.template.nodeInfos.get(node)!
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
             if (topLevelIdentifier && context.isBindingReference && !contextIdentifiers.has(name)) {
@@ -45,10 +54,15 @@ export function analyzeInterpolation(
                 ) {
                     topLevelIdentifier.status = inputDescriptor.options.reactivityMode
                 }
+                ;(topLevelReferences[name] ??= []).push({
+                    range,
+                    declared: true,
+                    shorthand: context.isShorthandIdentifierAccess
+                })
             }
         }
     })
-    return (analyzeResult.template.parsedExpressions.set(pasingInfoKey, expression), expression)
+    return expression
 }
 
 export function analyzeShorthandAttribute(name: string, loc: ASTLocation) {

@@ -283,6 +283,10 @@ export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
     return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`
 })
 
+export const DuplicateSlotName = withLocation(1050, (name: string) => {
+    return `Duplicate slot name: "${name}". Consider using a different value for the "name" attribute on one of the <slot> tags.`
+})
+
 export const MissingPrecedingDirective = withLocation(
     1031,
     (directive: string, expectedList: string[], allowSameNode: boolean) => {
@@ -300,6 +304,10 @@ export const MissingPrecedingDirective = withLocation(
 
 export const InvalidShorthandAttributeName = withLocation(1049, (name: string) => {
     return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier.`
+})
+
+export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {
+    return `Multiple elements are assigned to the same slot in <${component}>: "${name}". Consider using a different slot name in the "#slot" directive.`
 })
 
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {

@@ -1,4 +1,4 @@
-import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
+import type { TemplateNode } from "#type-declarations/compiler"
 
 import {
     DuplicateAttributes,
@@ -17,7 +17,7 @@ import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {
-    const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
+    const { attributesMap, sortedDirectives } = analyzeResult.template.nodeInfos.get(node)!
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -35,12 +35,21 @@ export function analyzeAttributes(node: TemplateNode) {
         const isDynamic = "!" === rawName[0]
         const isDirective = "#" === rawName[0]
         const isReference = "&" === rawName[0]
+        const rawValue = attribute.value.raw
         const isComponent = !!node.componentTag
         const baseName = getAttributeBaseName(rawName)
 
         if (node.isEmbedded) {
-            analyzeEmbeddedLanguageAttribute(node, attribute)
-            continue
+            // 嵌入语言标签上只允许静态属性
+            // Only static attributes are allowed on embedded language tags.
+            if (interpolatedAttrStartCharRE.test(rawName[0])) {
+                DisallowedAttributeKind(attribute.loc, node.tag, rawName)
+                continue
+            }
+
+            if (/[jt]s$/.test(node.tag) && rawName === "shallow" && attribute.equalSign) {
+                RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
+            }
         }
 
         // SPREAD_TAG 标签仅允许指令作为属性
@@ -50,13 +59,16 @@ export function analyzeAttributes(node: TemplateNode) {
             DisallowedAttributeKind(nameLoc, SPREAD_TAG, rawName)
         }
 
-        // slot 标签且只允许使用静态 name 属性
-        // Slot tags only allow a static `name` attribute.
         if (!isDirective && "slot" === node.tag) {
-            if (((mappedKey = rawName), isEvent || isReference)) {
+            if (isEvent || isReference) {
+                mappedKey = rawName
                 DisallowedAttributeKind(nameLoc, node.tag, rawName)
             }
-            if ((isDynamic || isReference) && baseName === "name") {
+
+            // slot 标签且只允许使用静态 name 属性
+            // Slot tags only allow a static `name` attribute.
+            if (baseName === "name" && (isDynamic || isReference)) {
+                mappedKey = rawName
                 SlotNameAttributeMustBeStatic(nameLoc)
             }
         }
@@ -88,51 +100,32 @@ export function analyzeAttributes(node: TemplateNode) {
 
         // 重复的属性
         // Duplicate attribute.
-        if (nodeInfo.attributesMap[mappedKey]) {
-            const existing = nodeInfo.attributesMap[mappedKey]
+        if (attributesMap[mappedKey]) {
+            const existing = attributesMap[mappedKey]
             DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent)
             DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
         }
 
-        switch (((nodeInfo.attributesMap[mappedKey] = attribute), rawName[0])) {
+        switch (((attributesMap[mappedKey] = attribute), rawName[0])) {
             case "@": {
                 analyzeEvent(node, attribute)
+                break
+            }
+            case "#": {
+                sortedDirectives.push(attribute)
+                analyzeDirective(node, attribute)
                 break
             }
             case "&": {
                 analyzeReferenceAttribute(node, attribute)
                 break
             }
-            case "#": {
-                nodeInfo.sortedDirectives.push(attribute)
-                analyzeDirective(node, attribute)
-                break
-            }
             case "!": {
                 if (shouldAnalyzeAttributeValue(attribute)) {
-                    analyzeInterpolation(
-                        node,
-                        attribute,
-                        attribute.value.raw,
-                        attribute.value.loc.start.index
-                    )
+                    analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)
                 }
                 break
             }
         }
-    }
-}
-
-function analyzeEmbeddedLanguageAttribute(node: TemplateNode, attribute: TemplateAttribute) {
-    const rawName = attribute.name.raw
-
-    // 嵌入语言标签上只允许静态属性
-    // Only static attributes are allowed on embedded language tags.
-    if (interpolatedAttrStartCharRE.test(rawName[0])) {
-        DisallowedAttributeKind(attribute.loc, node.tag, rawName)
-    }
-
-    if (/[jt]s$/.test(node.tag) && rawName === "shallow" && attribute.equalSign) {
-        RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
     }
 }
