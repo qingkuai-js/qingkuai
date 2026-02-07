@@ -1,6 +1,7 @@
 import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
 
 import { setPrototypeOf } from "./aliases"
+import { objectKeys } from "../shared/aliases"
 import { NIL, OBJECT_PROTO } from "../../runtime/constants"
 
 export function any(v: any) {
@@ -34,11 +35,21 @@ export function runAll<T extends ArbitraryFunc>(fns: T[]) {
 }
 
 export function stripPrototype<T extends AnyObject>(o: T): T {
-    return setPrototypeOf(o, NIL), o
+    return (setPrototypeOf(o, NIL), o)
 }
 
 export function len(target: ArrayLike<any> | undefined | null) {
     return target?.length || 0
+}
+
+export function traverseObject<T extends AnyObject>(
+    o: T,
+    callback: (key: keyof T, value: T[keyof T], index: number) => void
+) {
+    const keys = objectKeys(o)
+    for (let i = 0; i < len(keys); i++) {
+        callback(keys[i], o[keys[i]], i)
+    }
 }
 
 export function createProxy<T extends AnyObject>(target: T, handler: ProxyHandler<T>) {

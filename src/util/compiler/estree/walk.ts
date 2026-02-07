@@ -68,6 +68,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
                 case "OptionalMemberExpression": {
                     return true
                 }
+                case "UpdateExpression":
                 case "AssignmentExpression": {
                     return (ret = true)
                 }

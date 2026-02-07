@@ -1,8 +1,9 @@
+import type { StringLiteral } from "@babel/types"
 import type { ASTLocation, TemplateNode, TopLevelReferences } from "#type-declarations/compiler"
 
 import {
-    ExpectedExpression,
     InvalidExpression,
+    ExpectedExpression,
     InvalidShorthandAttributeName
 } from "../message/error"
 import { parseExpression } from "../parser/script"
@@ -11,8 +12,9 @@ import { walk } from "../../util/compiler/estree/walk"
 import { kebab2Camel } from "../../util/compiler/string"
 import { jsValidIdentifierStartCharRE } from "../regular"
 import { analyzeResult, inputDescriptor } from "../state"
-import { getAttributeBaseName } from "../../util/compiler/sundry"
+import { markNeedSourcemap } from "../../util/compiler/estree/sundry"
 import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
+import { getAttributeBaseName, increaseCommonStringCount } from "../../util/compiler/sundry"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
@@ -27,11 +29,16 @@ export function analyzeInterpolation(
     }
 
     const expression = parseExpression(source)
+    const stringLiterals: StringLiteral[] = []
     const topLevelReferences: TopLevelReferences = newCleanObj()
 
     if (expression) {
-        analyzeResult.template.parsedExpressions.set(parsingInfoKey, {
+        if (!analyzeResult.template.parsedExpressions.has(parsingInfoKey)) {
+            analyzeResult.template.parsedExpressions.set(parsingInfoKey, [])
+        }
+        analyzeResult.template.parsedExpressions.get(parsingInfoKey)!.push({
             node: expression,
+            stringLiterals,
             startSourceIndex,
             topLevelReferences
         })
@@ -41,6 +48,15 @@ export function analyzeInterpolation(
         )
     }
     walk(expression, {
+        AnyNode(node) {
+            markNeedSourcemap(node, startSourceIndex)
+        },
+
+        StringLiteral(node) {
+            stringLiterals.push(node)
+            increaseCommonStringCount(node.value)
+        },
+
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
         Identifier({ name, range }, context) {

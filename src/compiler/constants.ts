@@ -24,7 +24,7 @@ import { objectAssign } from "../util/shared/aliases"
 
 export const SPREAD_TAG = "qk:spread"
 
-export const EVENT_FLAGS_MAP: Record<string, number> = {
+export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     once: EVENT_ONCE,
     stop: EVENT_STOP,
     self: EVENT_SELF,
@@ -49,7 +49,7 @@ export const EVENT_FLAGS_MAP: Record<string, number> = {
     exact: KEY_EXACT
 }
 
-export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
+export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
     ["#key", "#for"],
     ["#slot", "#target"],
     ["#if", "#elif", "#else"],
@@ -66,12 +66,12 @@ export const ATTRIBUTE_PRIORITY_MAP: Record<string, number> = [
     { name: 100 }
 )
 
-export const CONFLICTING_EVENT_FLAG_MAP: Record<string, string[]> = {
+export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
     passive: ["prevent"],
     prevent: ["passive"]
 }
 
-export const CONFLICTING_DIRECTIVES_MAP: Record<string, string[]> = {
+export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
     "#then": ["#catch"],
     "#catch": ["#then"],
     "#slot": ["#target"],
@@ -80,27 +80,7 @@ export const CONFLICTING_DIRECTIVES_MAP: Record<string, string[]> = {
     "#else": ["#if", "#elif"]
 }
 
-export const SELF_CLOSING_TAGS = new Set([
-    "br",
-    "img",
-    "input",
-    "meta",
-    "link",
-    "hr",
-    "base",
-    "area",
-    "col",
-    "embed",
-    "param",
-    "source",
-    "track",
-    "wbr",
-    "frame",
-    "isindex",
-    "basefont"
-])
-
-export const BLOCK_TAGS = new Set([
+export const BLOCK_TAGS: ReadonlySet<string> = new Set([
     "address",
     "article",
     "aside",
@@ -148,18 +128,74 @@ export const BLOCK_TAGS = new Set([
     "noframes"
 ])
 
-export const REQUIRED_VALUE_DIRECTIVES = new Set([
-    "#if",
-    "#elif",
-    "#for",
-    "#await",
-    "#for",
-    "#key",
-    "#slot",
-    "#show",
-    "#target"
+export const SELF_CLOSING_TAGS: ReadonlySet<string> = new Set([
+    "br",
+    "img",
+    "input",
+    "meta",
+    "link",
+    "hr",
+    "base",
+    "area",
+    "col",
+    "embed",
+    "param",
+    "source",
+    "track",
+    "wbr",
+    "frame",
+    "isindex",
+    "basefont"
 ])
-export const DIRECTIVE_LIST = new Set([
+
+export const DELEGATABLE_EVENTS: ReadonlySet<string> = new Set([
+    "beforeinput",
+    "change",
+    "click",
+    "copy",
+    "cut",
+    "contextmenu",
+    "dbclick",
+    "drag",
+    "dragend",
+    "dragenter",
+    "dragleave",
+    "dragover",
+    "dragstart",
+    "drop",
+    "input",
+    "keydown",
+    "keypress",
+    "keyup",
+    "mousedown",
+    "mousemove",
+    "mouseout",
+    "mouseover",
+    "mouseup",
+    "paste",
+    "pointercancel",
+    "pointerdown",
+    "pointermove",
+    "pointerout",
+    "pointerover",
+    "pointerup",
+    "select",
+    "selectionchange",
+    "selectstart",
+    "touchcancel",
+    "touchend",
+    "touchmove",
+    "touchstart"
+])
+
+export const DISALLOWED_TAGS: ReadonlySet<string> = new Set([
+    "html",
+    "head",
+    "body",
+    "frame",
+    "frameset"
+])
+export const DIRECTIVE_LIST: ReadonlySet<string> = new Set([
     "#if",
     "#elif",
     "#else",
@@ -173,4 +209,14 @@ export const DIRECTIVE_LIST = new Set([
     "#html",
     "#target"
 ])
-export const DISALLOWED_TAGS = new Set(["html", "head", "body", "frame", "frameset"])
+export const REQUIRED_VALUE_DIRECTIVES: ReadonlySet<string> = new Set([
+    "#if",
+    "#elif",
+    "#for",
+    "#await",
+    "#for",
+    "#key",
+    "#slot",
+    "#show",
+    "#target"
+])

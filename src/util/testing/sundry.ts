@@ -5,6 +5,7 @@ import { afterAll, beforeAll, vi } from "vitest"
 import { currentDestruction } from "../../runtime/state"
 import { getLastElem, replaceEachItems } from "../shared/arrays"
 import { createDestruction, destroy } from "../../runtime/destroy"
+import { testingPreWhitespaceRE, testingUselessWhitespaceRE } from "../../compiler/regular"
 
 export function sleep(ms: number) {
     return new Promise(r => setTimeout(r, ms))
@@ -68,8 +69,8 @@ export function createWarningMatcher() {
 // and any blank lines at the beginning and end will be removed.
 export function formatSourceCode(code: string) {
     code = code.trimEnd()
-    code = code.replace(/\n?[\s]*\n/, "")
+    code = code.replace(testingPreWhitespaceRE, "")
 
-    const uselessIndentStr = /^[ \t]*/.exec(code)![0]
+    const uselessIndentStr = testingUselessWhitespaceRE.exec(code)![0]
     return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "")
 }

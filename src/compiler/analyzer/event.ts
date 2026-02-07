@@ -2,8 +2,11 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import { analyzeResult } from "../state"
 import { parseEventFlag } from "../parser/event"
+import { DELEGATABLE_EVENTS } from "../constants"
 import { RedundantEventFlags } from "../message/warn"
+import { EVENT_PASSIVE } from "../../runtime/constants"
 import { getLocByIndex } from "../../util/compiler/position"
+import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
 
@@ -19,6 +22,15 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     }
     if (rawName !== parseResult.eventName) {
         analyzeResult.template.eventInfos.set(event, parseResult)
+    }
+
+    const delegateEventName = parseResult.eventName.slice(1)
+    if (!isComponent && DELEGATABLE_EVENTS.has(delegateEventName)) {
+        const passive = parseResult.flagInfo.general.value & EVENT_PASSIVE
+        analyzeResult.template.delegateEvents[passive ? "passive" : "nonPassive"].add(
+            delegateEventName
+        )
+        increaseCommonStringCount(delegateEventName)
     }
 
     // 同名简写语法，更新顶级作用域标识符的响应性状态

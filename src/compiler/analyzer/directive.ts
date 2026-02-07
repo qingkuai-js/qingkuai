@@ -21,12 +21,13 @@ import {
     getNonWhiteSpaceLocByLoc,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
-import { analyzeResult } from "../state"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
+import { analyzeResult, inputDescriptor } from "../state"
 import { getPrevNonTextNode } from "../../util/compiler/template"
-import { walkPatternIdentifiers } from "../../util/compiler/estree/walk"
+import { markNeedSourcemap } from "../../util/compiler/estree/sundry"
+import { walk, walkPatternIdentifiers } from "../../util/compiler/estree/walk"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { isNonEmptyExpression, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
@@ -205,6 +206,13 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     function recordContextIdentifiers(pattern: ContextPattern | null) {
         let validIdentifierCount = 0
         if (pattern) {
+            if (inputDescriptor.options.sourcemap) {
+                walk(pattern, {
+                    AnyNode(node) {
+                        markNeedSourcemap(node, valueStartSourceIndex)
+                    }
+                })
+            }
             walkPatternIdentifiers(pattern, ({ name }) => {
                 validIdentifierCount++
                 nodeInfo.contextIdentifiers.add(name)

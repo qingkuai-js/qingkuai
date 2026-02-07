@@ -1,5 +1,4 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { EventRegistration } from "#type-declarations/runtime"
 
 import {
     DOCUMENT,
@@ -69,21 +68,21 @@ export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
 // 在根节点注册原生事件监听器，不同的 passive 属性独立注册（同类型只注册一个）
 // Register native event listeners on the root node, registering separately
 // for different `passive` option (only one will be registered for per type)
-export function registerEvents(registration: EventRegistration) {
-    for (let i = 0; i < 2; i++) {
-        if (isUndefined(registration[i])) {
+export function registerEvents(registration: string[]) {
+    for (let i = 0, passive = false; i < len(registration); i++) {
+        const eventName = registration[i]
+        if (isUndefined(eventName)) {
+            passive = true
             continue
         }
-        for (const eventName of registration[i]!) {
-            if (eventRegisterInfo[eventName][i]) {
-                continue
-            }
-            DOCUMENT.addEventListener(eventName, dispatch, {
-                passive: !!i,
-                capture: true
-            })
-            eventRegisterInfo[eventName][i] = true
+        if (eventRegisterInfo[eventName][i]) {
+            continue
         }
+        DOCUMENT.addEventListener(eventName, dispatch, {
+            passive,
+            capture: true
+        })
+        eventRegisterInfo[eventName][+!passive] = true
     }
 }
 

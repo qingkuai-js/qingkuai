@@ -14,8 +14,8 @@ export const nonWhitespaceRE = /\S/
 export const equalTokenRE = /^\s*=/
 export const startCurlyRE = /^\s*\{/
 export const startQuoteRE = /^\s*['"]/
-export const indentSpacesRE = /(?<=\n) +/
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
+export const indentSpacesRE = /(?<=\n)(?:[ \t]+)/
 export const interpolatedAttrStartCharRE = /[!@#&]/
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
@@ -24,7 +24,6 @@ export const jsStringLiteralQuoteRE = /[`'"]/
 export const jsValidIdentifierStartCharRE = /[a-zA-Z_$]/
 export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
 
-export const forbiddenIdentifierRE = /^(?:__w__|__c__$)/
 export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived|alias)$/
@@ -33,3 +32,6 @@ export const intrinsicMethodsRE =
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
+
+export const testingPreWhitespaceRE = /\n?[\s]*\n/
+export const testingUselessWhitespaceRE = /^[ \t]*/

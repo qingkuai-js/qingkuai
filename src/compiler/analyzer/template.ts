@@ -2,8 +2,9 @@ import type { ASTLocation, TemplateAttribute, TemplateNode } from "#type-declara
 
 import { analyzeAttributes } from "./attribute"
 import { newCleanObj } from "../../util/shared/sundry"
+import { analyzeInterpolation } from "./interpolation"
 import { analyzeResult, inputDescriptor } from "../state"
-import { getLocByIndex } from "../../util/compiler/position"
+import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { DuplicateSlotAssignment, DuplicateSlotName } from "../message/error"
 import { getStartTagOpenLoc, walkTemplateNodes } from "../../util/compiler/template"
 
@@ -21,6 +22,15 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
         })
         if ((analyzeAttributes(node), "slot" === node.tag)) {
             recordSlotName(node, nodeInfos.get(node)!.attributesMap.name)
+        }
+        if ("" === node.tag) {
+            for (const item of node.content) {
+                if (!item.isInterpolated) {
+                    increaseCommonStringCount(item.value)
+                } else {
+                    analyzeInterpolation(node, node.content, item.value, item.loc.start.index)
+                }
+            }
         }
     })
     walkTemplateNodes(nodes, node => node.componentTag && checkSlotAssignment(node))
@@ -47,16 +57,17 @@ function checkSlotAssignment(node: TemplateNode) {
         const { nodeInfos, parsedExpressions } = analyzeResult.template
         const directive = nodeInfos.get(child)!.attributesMap["#slot"]
         const expressionInfo = parsedExpressions.get(directive)
-        if (!expressionInfo) {
-            recordExistingMap("default", getStartTagOpenLoc(child))
-        } else {
+        if (expressionInfo) {
+            const { startSourceIndex, node } = expressionInfo[0]
             recordExistingMap(
                 inputDescriptor.source.slice(
-                    expressionInfo.startSourceIndex + expressionInfo.node.start! + 1,
-                    expressionInfo.startSourceIndex + expressionInfo.node.end! - 1
+                    startSourceIndex + node.start! + 1,
+                    startSourceIndex + node.end! - 1
                 ),
                 directive.loc
             )
+        } else {
+            recordExistingMap("default", getStartTagOpenLoc(child))
         }
     }
 }

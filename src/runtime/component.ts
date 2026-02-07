@@ -1,9 +1,4 @@
-import type {
-    HookFunc,
-    ComponentFunc,
-    ComponentInstance,
-    EventRegistration
-} from "#type-declarations/runtime"
+import type { HookFunc, ComponentFunc, ComponentInstance } from "#type-declarations/runtime"
 
 import { registerEvents } from "./event"
 import { AFTER_MOUNT, NIL } from "./constants"
@@ -27,47 +22,62 @@ export const [
 ] = hooksRegisterGen()
 
 export function initSlots(transformed: any) {
-    return createProxy(stripPrototype(transformed), {
-        get(target, property) {
-            return !!target[property]
-        }
-    })
+    if (transformed && stripPrototype(transformed)) {
+        return createProxy(
+            {},
+            {
+                get(_, property) {
+                    return !!transformed[property]
+                }
+            }
+        )
+    }
 }
 
 export function initRefs(transformed: any, defaults: any) {
-    return createProxy(stripPrototype(transformed), {
-        get(target, property) {
-            const propValue = target[property]
-            if (propValue) {
-                return propValue[0]()
+    if (transformed && stripPrototype(transformed)) {
+        return createProxy(
+            {},
+            {
+                get(_, property) {
+                    const propValue = transformed[property]
+                    if (propValue) {
+                        return propValue[0]()
+                    }
+                    return defaults?.[property]
+                },
+                set(_, property, value) {
+                    const propValue = transformed[property]
+                    if (propValue) {
+                        propValue[1](value)
+                    } else if (defaults && property in defaults) {
+                        defaults[property] = value
+                    }
+                    return true
+                }
             }
-            return defaults[property]
-        },
-        set(target, property, value) {
-            const propValue = target[property]
-            if (propValue) {
-                propValue[1](value)
-            } else if (property in defaults) {
-                defaults[property] = value
-            }
-            return true
-        }
-    })
+        )
+    }
 }
 
 export function initProps(transformed: any, defaults: any) {
-    return createProxy(stripPrototype(transformed), {
-        get(target, property) {
-            const propValue = target[property]
-            if (propValue) {
-                return propValue()
+    if (transformed && stripPrototype(transformed)) {
+        createProxy(
+            {},
+            {
+                get(_, property) {
+                    const propValue = transformed[property]
+                    if (propValue) {
+                        return propValue()
+                    }
+                    return defaults?.[property]
+                },
+                set() {
+                    return (InvalidAssignment("component props"), true)
+                }
             }
-            return defaults[property]
-        },
-        set() {
-            return (InvalidAssignment("component props"), true)
-        }
-    })
+        )
+    }
 }
 
 export function runHooks(instance: ComponentInstance, index: number) {
@@ -93,7 +103,7 @@ export function mountApp(render: ComponentFunc, target: Element | string) {
     render(target)
 }
 
-export function init(registration: EventRegistration) {
+export function init(registration: string[]) {
     const instance: ComponentInstance = {
         d: NIL,
         u: false,

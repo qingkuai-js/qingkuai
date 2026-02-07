@@ -1,3 +1,6 @@
+import { analyzeResult } from "../../compiler/state"
+import { stringify } from "../shared/aliases"
+
 export function getAttributeBaseName(name: string) {
     switch (name[0]) {
         case "!":
@@ -13,6 +16,18 @@ export function getAttributeBaseName(name: string) {
 export function getEventName(rawName: string) {
     const speratorIndex = rawName.indexOf("|")
     return speratorIndex === -1 ? rawName : rawName.slice(0, speratorIndex)
+}
+
+export function getStringifiedLiteral(value: string) {
+    return analyzeResult.commonStrings[value].id || stringify(value)
+}
+
+export function increaseCommonStringCount(value: string) {
+    ;(analyzeResult.commonStrings[value] ??= { id: "", times: 0 }).times++
+}
+
+export function shouldExtractCommonString(value: string, count: number) {
+    return count <= 1 ? false : count === 2 ? value.length > 4 : value.length > 2
 }
 
 // TODO: useless

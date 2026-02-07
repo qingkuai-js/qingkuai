@@ -1,8 +1,10 @@
 import type {
-    SpreadElement,
+    Identifier,
     Expression,
-    ImportDeclaration,
+    SpreadElement,
+    StringLiteral,
     CallExpression,
+    ImportDeclaration,
     TSImportEqualsDeclaration
 } from "@babel/types"
 import type { Pair } from "./tools"
@@ -27,7 +29,7 @@ export interface StyleDescriptor {
 }
 export interface InputDescriptor {
     source: string
-    indent: number
+    indent: string
     script: ScriptDescriptor
     styles: StyleDescriptor[]
     positions: ASTPositionWithFlag[]
@@ -86,6 +88,13 @@ export interface ASTPositionWithFlag extends ASTPosition {
 }
 
 export interface AnalyzeResult {
+    commonStrings: Record<
+        string,
+        {
+            id: string
+            times: number
+        }
+    >
     internalId: string
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
@@ -102,6 +111,10 @@ export interface EventFlagInfo {
     }
 }
 export interface TemplateAnalyzeRet {
+    delegateEvents: {
+        passive: Set<string>
+        nonPassive: Set<string>
+    }
     eventInfos: Map<
         TemplateAttribute,
         {
@@ -114,8 +127,9 @@ export interface TemplateAnalyzeRet {
         {
             node: Expression
             startSourceIndex: number
+            stringLiterals: StringLiteral[]
             topLevelReferences: TopLevelReferences
-        }
+        }[]
     >
     nodeInfos: Map<
         TemplateNode,
@@ -141,14 +155,23 @@ export interface ScriptAnalyzeRet {
             contexts: WalkContext<TopLevelDeclarationNode>[]
         }
     >
-    locations: Set<number>[]
+    defaultRefs?: {
+        id: Identifier
+        value: Expression | SpreadElement
+    }
+    defaultProps?: {
+        id: Identifier
+        value: Expression | SpreadElement
+    }
     fullIdentifiers: Set<string>
+    stringLiterals: StringLiteral[]
     topLevelReferences: TopLevelReferences
     watchers: WalkContext<CallExpression>[]
-    defaultRefs?: WalkContext<Expression | SpreadElement>
-    defaultProps?: WalkContext<Expression | SpreadElement>
     importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
 }
+
+export type Range = Pair<number>
+
 export type TopLevelReferences = Record<
     string,
     {
@@ -157,8 +180,6 @@ export type TopLevelReferences = Record<
         shorthand: boolean
     }[]
 >
-
-export type Range = Pair<number>
 
 export type StandaloneParseOptions = Partial<{
     recover: boolean

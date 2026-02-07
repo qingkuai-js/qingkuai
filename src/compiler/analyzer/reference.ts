@@ -3,6 +3,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
 import { DomRerferenceAttributeOnComponent } from "../message/warn"
+import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
@@ -55,7 +56,7 @@ function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribut
     const nameLoc = attribute.name.loc
 
     const localInvalidReferenceAttribute = (tag: string) => {
-        return (InvalidReferenceAttribute(nameLoc, tag, rawName, allowedList), false)
+        InvalidReferenceAttribute(nameLoc, tag, rawName, allowedList)
     }
 
     if (node.componentTag) {
@@ -79,5 +80,23 @@ function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribut
             break
         }
     }
-    return allowedList.includes(rawName) || localInvalidReferenceAttribute(tag)
+    if (allowedList.includes(rawName)) {
+        switch (rawName) {
+            case "&number": {
+                increaseCommonStringCount("input")
+                break
+            }
+            case "&group":
+            case "&checked": {
+                increaseCommonStringCount("change")
+                break
+            }
+            case "&value": {
+                increaseCommonStringCount(tag === "slot" ? "change" : "input")
+                break
+            }
+        }
+        return true
+    }
+    return (localInvalidReferenceAttribute(tag), false)
 }

@@ -348,6 +348,55 @@ test("Redeclarations", () => {
     ])
 })
 
+test("Literals", () => {
+    localAnalyze(`
+        let a
+        let b = null
+        let c = 0
+        let d = ""
+        let e = true
+        let f = \`\`
+        let g = () => {}
+    `)
+    checkTopLevelIdentifiers([
+        ...["a", "b", "c", "d", "e", "f", "g"].map(name => {
+            return {
+                name,
+                hoist: false,
+                implicit: true,
+                status: "literal"
+            } satisfies ExpectedTopLevelIdentifier
+        })
+    ])
+})
+
+test("Literals will be updated later", () => {
+    localAnalyze(`
+        let a
+        let b = null
+        let c = 0
+        let d = ""
+        let e = true
+        let f = \`\`
+        let g = () => {}
+
+        a++, --b
+        c = undefined
+        ;[d, e] = []
+        ;{f, g} = {}
+    `)
+    checkTopLevelIdentifiers([
+        ...["a", "b", "c", "d", "e", "f", "g"].map(name => {
+            return {
+                name,
+                hoist: false,
+                implicit: true,
+                status: "pending"
+            } satisfies ExpectedTopLevelIdentifier
+        })
+    ])
+})
+
 test("Shorthand derived declaration is invalid for destructuring declarations", () => {
     localAnalyze(`
         const {$a, $b} = obj

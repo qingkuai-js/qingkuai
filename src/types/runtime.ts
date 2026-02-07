@@ -126,11 +126,10 @@ export type HTMLBlockOptions = Partial<{
     escapeStyle: boolean
     escapeScript: boolean
 }>
-export type ComponentOptions = Partial<{
+export type ComponentContext = Partial<{
     r: AnyObject // refs
     p: AnyObject // props
     s: Record<string, ArbitraryFunc> // slots
 }>
-export type EventRegistration = FixedArray<string[] | undefined, 2>
-export type ComponentFunc = (target: Element, options?: ComponentOptions) => void
+export type ComponentFunc = (target: Element, options?: ComponentContext) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

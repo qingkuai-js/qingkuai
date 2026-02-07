@@ -22,9 +22,11 @@ export function resetCompilerState(options: CompileOptions) {
 
 function newAnalyzeResult(): AnalyzeResult {
     return {
-        internalId: "",
-        slots: newCleanObj(),
         template: {
+            delegateEvents: {
+                passive: new Set(),
+                nonPassive: new Set()
+            },
             nodeInfos: new Map(),
             eventInfos: new Map(),
             parsedPatterns: new Map(),
@@ -33,12 +35,15 @@ function newAnalyzeResult(): AnalyzeResult {
         },
         script: {
             watchers: [],
-            locations: [],
+            stringLiterals: [],
             importDeclarations: [],
             fullIdentifiers: new Set(),
             topLevelReferences: newCleanObj(),
             topLevelIdentifiers: newCleanObj()
-        }
+        },
+        internalId: "",
+        slots: newCleanObj(),
+        commonStrings: newCleanObj()
     }
 }
 
@@ -46,7 +51,7 @@ function newAnalyzeResult(): AnalyzeResult {
 // Generate a new input source descriptor
 function newInputDescriptor(options: CompileOptions) {
     const ret: InputDescriptor = {
-        indent: 0,
+        indent: "",
         source: "",
         styles: [],
         positions: [],

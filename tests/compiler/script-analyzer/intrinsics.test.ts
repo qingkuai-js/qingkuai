@@ -493,3 +493,31 @@ test("Shorthand derived declaration with compiler intrinsic method", () => {
         }
     ])
 })
+
+test("Duplicate default definitions", () => {
+    localAnalyze(`
+        defaultProps({})
+        defaultProps({})
+
+        defaultRefs({})
+        defaultRefs({})
+        defaultRefs({})
+    `)
+    localMatchCompileMessages([
+        {
+            type: "warning",
+            range: [0, 12],
+            value: `This default value definition for "props" is ignored because it is overridden by a later one.`
+        },
+        {
+            type: "warning",
+            range: [35, 46],
+            value: `This default value definition for "refs" is ignored because it is overridden by a later one.`
+        },
+        {
+            type: "warning",
+            range: [51, 62],
+            value: `This default value definition for "refs" is ignored because it is overridden by a later one.`
+        }
+    ])
+})

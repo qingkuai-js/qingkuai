@@ -11,7 +11,7 @@ import { analyzeDirective } from "./directive"
 import { analyzeReferenceAttribute } from "./reference"
 import { interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
-import { getAttributeBaseName } from "../../util/compiler/sundry"
+import { getAttributeBaseName, increaseCommonStringCount } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
@@ -124,7 +124,10 @@ export function analyzeAttributes(node: TemplateNode) {
                 if (shouldAnalyzeAttributeValue(attribute)) {
                     analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)
                 }
-                break
+                // fallthrough
+            }
+            default: {
+                !attributesMap[mappedKey] && increaseCommonStringCount(mappedKey)
             }
         }
     }

@@ -13,6 +13,9 @@ export type SetValue<S> = S extends Set<infer U> ? U : never
 export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
 export type MapValueType<M> = M extends Map<any, infer U> ? U : never
 
+export type ReadonlySet<T = any> = Omit<Set<T>, "add" | "delete" | "clear">
+export type ReadonlyMap<K = any, V = any> = Omit<Map<K, V>, "set" | "delete" | "clear">
+
 export type RequiredNonNullableKeys<T, K extends keyof T> = Omit<T, K> & {
     [P in K]-?: NonNullable<T[P]>
 }

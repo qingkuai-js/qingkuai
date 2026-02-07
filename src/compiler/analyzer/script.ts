@@ -7,7 +7,6 @@ import {
     indentSpacesRE,
     intrinsicMethodsRE,
     intrinsicVariableRE,
-    forbiddenIdentifierRE,
     intrinsicWatcherMethodsRE,
     intrinsicReactiveMethodsRE
 } from "../regular"
@@ -23,15 +22,17 @@ import {
     InvalidParameterForAliasIntrinsic
 } from "../message/error"
 import {
+    RedundantRawMark,
     UnnecessaryReactiveMark,
     IdentifierMaybeOverwritten,
+    DuplicateDefaultDeclaration,
     DeclareDerivedMixedSyntaticForms,
-    UnnecessaryMutableDerivedDeclaration,
-    RedundantRawMark
+    UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
 import {
     isLiteral,
     isLeftValue,
+    isTypeOperation,
     isFunctionLiteral,
     willModuleDeclarationEmitsJS
 } from "../../util/compiler/estree/assert"
@@ -39,23 +40,18 @@ import { parseScript } from "../parser/script"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
 import { getScriptLocByRange } from "../../util/compiler/position"
-import { stripTypeExpressions } from "../../util/compiler/estree/sundry"
+import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { walk, walkPatternIdentifiers } from "../../util/compiler/estree/walk"
+import { markNeedSourcemap, stripTypeExpressions } from "../../util/compiler/estree/sundry"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
     const program = parseScript(sourceCode)
     program && walk(program, visitor)
-    inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.length || 2
+    inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
 }
 
 const visitor: Visitor = {
-    AwaitExpression(node, context) {
-        if (context.inTopLevel) {
-            TopLevelAwaitNotBeSupported(getScriptLocByRange(node.range))
-        }
-    },
-
     AnyNode(node, context) {
         switch (node.type) {
             case "TSExportAssignment":
@@ -71,18 +67,26 @@ const visitor: Visitor = {
             }
         }
         if (node.type !== "Program") {
-            ;(analyzeResult.script.locations[node.loc.end.line - 1] ??= new Set()).add(
-                node.loc.end.column
-            )
-            ;(analyzeResult.script.locations[node.loc.start.line - 1] ??= new Set()).add(
-                node.loc.start.column
-            )
+            markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
+        }
+    },
+
+    StringLiteral(node, context) {
+        if (context.parent?.value.type !== "ImportDeclaration") {
+            increaseCommonStringCount(node.value)
+            analyzeResult.script.stringLiterals.push(node)
+        }
+    },
+
+    AwaitExpression(node, context) {
+        if (context.inTopLevel) {
+            TopLevelAwaitNotBeSupported(getScriptLocByRange(node.range))
         }
     },
 
     Identifier(node, context) {
-        if (forbiddenIdentifierRE.test(node.name)) {
-            UsedForbiddenIdentifierFormat(getScriptLocByRange(node.range), node.name)
+        if (node.name.startsWith("__r__")) {
+            UsedForbiddenIdentifierFormat(getScriptLocByRange(node.range))
         }
 
         // 记录所有引用顶部标识符的位置信息
@@ -226,7 +230,7 @@ function inferStatusWithDeclarator(
 
             // 初始值为字面量值的简写衍生响应式声明无意义，退化为使用原始值
             // Shorthand derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
-            return UnnecessaryReactiveMark(declaratorLoc, "derived"), "raw"
+            return (UnnecessaryReactiveMark(declaratorLoc, "derived"), "raw")
         }
 
         // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
@@ -273,7 +277,7 @@ function inferStatusWithDeclarator(
 
             // 通过 derived 标记的衍生响应式字面量值无意义，退化为使用原始值
             // Derived reactive literal values marked with `derived` are meaningless and are downgraded to using the raw value.
-            return UnnecessaryReactiveMark(initLoc, calleeName), "raw"
+            return (UnnecessaryReactiveMark(initLoc, calleeName), "raw")
         }
         default: {
             if (isShorthandDerived) {
@@ -287,12 +291,12 @@ function inferStatusWithDeclarator(
             // 通过 raw 标记常量声明的字面量值是冗余的
             // Marking a literal value in a constant declaration with `raw` is redundant.
             if (calleeName === "raw") {
-                return RedundantRawMark(initLoc), "raw"
+                return (RedundantRawMark(initLoc), "raw")
             }
 
             // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
             // Marking a literal value in a constant declaration with `reactive` or `shallow` is meaningless and is downgraded to using the raw value.
-            return UnnecessaryReactiveMark(initLoc, calleeName), "raw"
+            return (UnnecessaryReactiveMark(initLoc, calleeName), "raw")
         }
     }
 }
@@ -365,17 +369,40 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
             }
             case "defaultRefs":
             case "defaultProps": {
-                if (context.striptTypeOperationsParent?.value.type === "Program") {
+                if (!parent.inTopLevel) {
+                    break
+                }
+
+                let isValidDefinition = true
+                parent.walkAncestors(({ value }) => {
+                    if (
+                        !isTypeOperation(value) &&
+                        value.type !== "Program" &&
+                        value.type !== "ExpressionStatement"
+                    ) {
+                        return !(isValidDefinition = false)
+                    }
+                })
+                if (isValidDefinition) {
                     if (
                         parent.value.arguments.length &&
                         parent.value.arguments[0].type !== "ArgumentPlaceholder"
                     ) {
-                        // @ts-ignore: node.name is defaultProps or defaultRefs
-                        analyzeResult.script[node.name] = parent.value.arguments[0]
+                        const existing = analyzeResult.script[node.name]
+                        if (existing) {
+                            DuplicateDefaultDeclaration(
+                                getScriptLocByRange(existing.id.range!),
+                                node.name.slice(7).toLowerCase()
+                            )
+                        }
+                        analyzeResult.script[node.name] = {
+                            id: node,
+                            value: parent.value.arguments[0]
+                        }
                     }
                     return
                 }
-                // fallthrough
+                break
             }
             default: {
                 if (node.name === "alias") {
@@ -388,7 +415,7 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                     }
                 }
                 if (
-                    context.inTopLevel &&
+                    parent.inTopLevel &&
                     parent.striptTypeOperationsParent!.value.type === "VariableDeclarator"
                 ) {
                     return

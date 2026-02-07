@@ -14,12 +14,6 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
             return "Export statements are not supported."
         }
     ],
-    UsedForbiddenIdentifierFormat: [
-        1017,
-        (name: string) => {
-            return `The identifier "${name}" has a forbidden format.`
-        }
-    ],
     TopLevelAwaitNotBeSupported: [
         1018,
         () => {
@@ -30,6 +24,12 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
         1022,
         (name: string) => {
             return `The derived reactive value "${name}" cannot be redeclared.`
+        }
+    ],
+    UsedForbiddenIdentifierFormat: [
+        1017,
+        () => {
+            return `Identifiers starting with "__r__" are reserved for internal use.`
         }
     ],
     ShadowCompilerIntrinsicAtTopLevel: [
