@@ -35,7 +35,7 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
     UnnecessaryMutableDerivedDeclaration: [
         9004,
         () => {
-            return "Derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider using const instead."
+            return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider using \`const\` instead.`
         }
     ]
 })

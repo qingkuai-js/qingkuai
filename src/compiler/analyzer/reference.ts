@@ -2,6 +2,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
+import { isLeftValue } from "../../util/compiler/estree/assert"
 import { DomRerferenceAttributeOnComponent } from "../message/warn"
 import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
@@ -31,21 +32,12 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
         attribute.value.raw,
         attribute.value.loc.start.index
     )
-    switch (target?.type) {
-        case undefined: {
-            return
+    if (target && isLeftValue(target)) {
+        if (checkResult) {
+            analyzeResult.template.validReferenceAttributes.add(attribute)
         }
-        case "Identifier":
-        case "MemberExpression":
-        case "TSNonNullExpression": {
-            if (checkResult) {
-                analyzeResult.template.validReferenceAttributes.add(attribute)
-            }
-            return
-        }
-        default: {
-            return InvalidReferenceAttributeValue(getNonWhiteSpaceLocByLoc(attribute.value.loc))
-        }
+    } else {
+        InvalidReferenceAttributeValue(getNonWhiteSpaceLocByLoc(attribute.value.loc))
     }
 }
 

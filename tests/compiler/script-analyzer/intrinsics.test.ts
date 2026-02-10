@@ -223,6 +223,8 @@ describe("Invalid usages of intrinsic methods", () => {
             } = alias(_)
             const [g = h] = alias(_),
                 [i, [j, [k = l]]] = alias(_)
+
+            var _
         `)
         localMatchCompileMessages([
             {
@@ -246,6 +248,15 @@ describe("Invalid usages of intrinsic methods", () => {
                 value: invalidAliasDestructuringMsg
             }
         ])
+    })
+
+    test("Valid calls", () => {
+        localAnalyze(`
+            const a = shallow!(_)
+            const b = (reactive as any)(_)
+            const c = (raw satisfies any)(_)
+        `)
+        localMatchCompileMessages([])
     })
 })
 
@@ -388,10 +399,7 @@ test("Shadow compiler intrinsic identifiers", () => {
                 using derived = 7
                 const defaultProps = 8
                 enum defaultRefs {}
-                namespace watch {
-                    const props = 9
-                }
-                import preWatch from ""
+                import watch from ""
                 import { postWatch } from ""
                 import { ___ as syncWatch } from ""
             `)
@@ -443,22 +451,17 @@ test("Shadow compiler intrinsic identifiers", () => {
         },
         {
             type: "error",
-            range: [239, 244],
+            range: [236, 241],
             value: getMsg("watch")
         },
         {
             type: "error",
-            range: [276, 284],
-            value: getMsg("preWatch")
-        },
-        {
-            type: "error",
-            range: [302, 311],
+            range: [259, 268],
             value: getMsg("postWatch")
         },
         {
             type: "error",
-            range: [338, 347],
+            range: [295, 304],
             value: getMsg("syncWatch")
         }
     ])
@@ -483,7 +486,7 @@ test("Shorthand derived declaration with compiler intrinsic method", () => {
         },
         {
             type: "warning",
-            range: [33, 35],
+            range: [33, 49],
             value: commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
         },
         {

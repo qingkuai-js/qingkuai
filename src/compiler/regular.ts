@@ -21,10 +21,13 @@ export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
 export const jsValueCharRE = /[A-Za-z0-9_$]/
 export const jsStringLiteralQuoteRE = /[`'"]/
+export const jsDestructuringEqualTokenRE = /\s*=\s*/
 export const jsValidIdentifierStartCharRE = /[a-zA-Z_$]/
 export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
 
+export const aliasTargetEndRE = /[!.\[]|$/
 export const intrinsicVariableRE = /^(?:props|refs|slots)$/
+export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
 export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived|alias)$/
 export const intrinsicMethodsRE =
@@ -35,3 +38,5 @@ export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.s
 
 export const testingPreWhitespaceRE = /\n?[\s]*\n/
 export const testingUselessWhitespaceRE = /^[ \t]*/
+
+export const babelErrorLocInfoRE = /\(\d+:\d+\)$/

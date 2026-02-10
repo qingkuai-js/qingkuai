@@ -3,6 +3,7 @@ import type { AssignmentExpression } from "@babel/types"
 import type { ContextPattern } from "#type-declarations/estree"
 
 import { inputDescriptor } from "../state"
+import { babelErrorLocInfoRE } from "../regular"
 import { isUndefined } from "../../util/shared/assert"
 import { objectAssign } from "../../util/shared/aliases"
 import { getPosByIndex } from "../../util/compiler/position"
@@ -27,15 +28,17 @@ export function parseScript(source: string) {
             // 将解析错误的位置信息修改为源码位置信息
             // Change the location information of parse error to the source location
             const sourceStartIndex = inputDescriptor.script.loc.start.index
-            const sourcePosition = getPosByIndex(sourceStartIndex)
+            const sourcePosition = getPosByIndex(sourceStartIndex + error.pos)
             if (!isUndefined(error.loc)) {
                 objectAssign(error.loc, sourcePosition)
             }
-            error.pos = sourceStartIndex
+            error.pos = sourcePosition.index
             error.message = error.message.replace(
-                /\(\d+:\d+\)$/,
-                `(${sourcePosition.line}:${sourcePosition.column})`
+                babelErrorLocInfoRE,
+                ""
+                // `(${sourcePosition.line}:${sourcePosition.column})`
             )
+            Error.captureStackTrace(error)
             throw error
         }
     }

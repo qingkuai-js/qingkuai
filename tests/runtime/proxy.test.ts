@@ -4,8 +4,8 @@ import {
     shallowReact,
     shallowConstReact,
     destructuringReact,
-    shallowDestructuringReact,
-    shallowConstDestructuringReact
+    destructuringShallowReact,
+    destructuringShallowConstReact
 } from "../../src/runtime/reactivity/value"
 import { describe, expect, test } from "vitest"
 import { NOOP } from "../../src/runtime/constants"
@@ -200,21 +200,21 @@ describe("Not destructuring", () => {
 
 describe("Destructuring", () => {
     test("Creating without setter for debugging", () => {
-        const [a, b] = destructuringReact({ a: 1, c: 2 }, ({ a, c: b }) => [a, 1, b, 1])
+        const [a, b] = destructuringReact(({ a, c: b }) => [a, 1, b, 1], { a: 1, c: 2 })
         expect([a.$, b.$]).toEqual([1, 2])
         expect(isReactive(a)).toBeTruthy()
         expect(isReactive(b)).toBeTruthy()
 
-        const [c, d, e] = destructuringReact([1, 2], ([c, d, e]) => [c, 1, d, 1, e, 1])
+        const [c, d, e] = destructuringReact(([c, d, e]) => [c, 1, d, 1, e, 1], [1, 2])
         expect(isReactive(c)).toBeTruthy()
         expect(isReactive(d)).toBeTruthy()
         expect(isReactive(e)).toBeTruthy()
         expect([c.$, d.$, e.$]).toEqual([1, 2, undefined])
 
-        const [obj, arr] = shallowDestructuringReact(
-            { obj: { v: 1 }, arr: [1, 2] },
-            ({ obj, arr }) => [obj, 1, arr, 0]
-        )
+        const [obj, arr] = destructuringShallowReact(({ obj, arr }) => [obj, 1, arr, 0], {
+            obj: { v: 1 },
+            arr: [1, 2]
+        })
         expect(arr).toEqual([1, 2])
         expect(obj.$).toEqual({ v: 1 })
         expect(isReactive(arr)).toBeFalsy()
@@ -222,7 +222,7 @@ describe("Destructuring", () => {
     })
 
     test("Creating with setter for debugging", () => {
-        const [[wa, a], [wb, b]] = destructuringReact({ a: 1, b: 2 }, ({ a, b }) => [a, 1, b, 1], [
+        const [[wa, a], [wb, b]] = destructuringReact(({ a, b }) => [a, 1, b, 1], { a: 1, b: 2 }, [
             NOOP,
             NOOP
         ])
@@ -231,18 +231,19 @@ describe("Destructuring", () => {
         expect(isReactive(wb)).toBeTruthy()
         expect([wa.$, wb.$]).toEqual([1, 2])
 
-        const [[wc, c], [wd, d]] = destructuringReact([3, 4], ([c, d]) => [c, 1, d, 1], [
-            NOOP,
-            NOOP
-        ])
+        const [[wc, c], [wd, d]] = destructuringReact(
+            ([c, d]) => [c, 1, d, 1],
+            [3, 4],
+            [NOOP, NOOP]
+        )
         expect([c, d]).toEqual([3, 4])
         expect(isReactive(wc)).toBeTruthy()
         expect(isReactive(wd)).toBeTruthy()
         expect([wc.$, wd.$]).toEqual([3, 4])
 
-        const [[wobj, obj], [warr, arr]] = shallowDestructuringReact(
-            { obj: { v: 1 }, arr: [1, 2] },
+        const [[wobj, obj], [warr, arr]] = destructuringShallowReact(
             ({ obj, arr }) => [obj, 1, arr, 1],
+            { obj: { v: 1 }, arr: [1, 2] },
             [NOOP, NOOP]
         )
         expect(arr).toEqual([1, 2])
@@ -252,23 +253,24 @@ describe("Destructuring", () => {
     })
 
     test("Whether debugging setters work", () => {
-        let [[wa, a], [wb, b]] = destructuringReact({ a: 1, b: 2 }, ({ a, b }) => [a, 1, b, 1], [
+        let [[wa, a], [wb, b]] = destructuringReact(({ a, b }) => [a, 1, b, 1], { a: 1, b: 2 }, [
             v => (a = v),
             v => (b = v)
         ])
         wa.$ -= wb.$ += 2
         expect([a, wa.$, b, wb.$]).toEqual([-3, -3, 4, 4])
 
-        let [[wc, c], [wd, d]] = destructuringReact([3, 4], ([c, d]) => [c, 1, d, 1], [
-            v => (c = v),
-            v => (d = v)
-        ])
+        let [[wc, c], [wd, d]] = destructuringReact(
+            ([c, d]) => [c, 1, d, 1],
+            [3, 4],
+            [v => (c = v), v => (d = v)]
+        )
         wc.$ *= wd.$ /= 2
         expect([c, wc.$, d, wd.$]).toEqual([6, 6, 2, 2])
 
-        let [[wobj, obj], [warr, arr]] = shallowDestructuringReact(
-            { obj: { v: 1 }, arr: [1, 2] },
+        let [[wobj, obj], [warr, arr]] = destructuringShallowReact(
             ({ obj, arr }) => [obj, 1, arr, 1],
+            { obj: { v: 1 }, arr: [1, 2] },
             [v => (obj = v), v => (arr = v)]
         )
         wobj.$ = [3, 4]
@@ -279,7 +281,7 @@ describe("Destructuring", () => {
 
     test("Creating with reactive value", () => {
         const reactive1 = react({ v: 1 })
-        const [reactive2] = destructuringReact({ r: reactive1.$ }, ({ r }) => [r, 1])
+        const [reactive2] = destructuringReact(({ r }) => [r, 1], { r: reactive1.$ })
         expect(reactive2.$).toEqual({ v: 1 })
         expect(isReactive(reactive1)).toBeTruthy()
         expect(isReactive(reactive2)).toBeTruthy()
@@ -306,7 +308,7 @@ test("The shallow reactive value is different from the non-shallow one", () => {
     const b = constReact(toRaw(a))
     const c = shallowReact(toRaw(a))
     const d = shallowConstReact(toRaw(a))
-    const [e] = shallowConstDestructuringReact({ v: toRaw(a) }, ({ v }) => [v, true])
+    const [e] = destructuringShallowConstReact(({ v }) => [v, 1], { v: toRaw(a) })
     for (const item of [a, b, c, d, e]) {
         expect(isReactive(item)).toBeTruthy()
     }

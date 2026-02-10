@@ -10,27 +10,24 @@ import type {
     ObjectPattern,
     ClassDeclaration,
     BlockStatement,
+    CallExpression,
     ClassPrivateMethod,
     TSEnumDeclaration,
+    VariableDeclarator,
     FunctionExpression,
     FunctionDeclaration,
-    TSModuleDeclaration,
     VariableDeclaration,
+    OptionalCallExpression,
     ArrowFunctionExpression
 } from "@babel/types"
 import type { RequiredNonNullableKeys } from "./tools"
 import type { WalkContext } from "../util/compiler/estree/walk"
-
-export type AnyNode = Node
-export type PartialAnyNode = Node | undefined | null
-export type ContextPattern = Identifier | ObjectPattern | ArrayPattern
 
 export type TopLevelDeclarationNode =
     | VariableDeclaration
     | FunctionDeclaration
     | ClassDeclaration
     | TSEnumDeclaration
-    | TSModuleDeclaration
 
 export type FunctionNode =
     | ObjectMethod
@@ -40,12 +37,13 @@ export type FunctionNode =
     | FunctionDeclaration
     | ArrowFunctionExpression
 
+export type TopLevelDeclaratorNode =
+    | VariableDeclarator
+    | Exclude<TopLevelDeclarationNode, VariableDeclaration>
+
 export type StrictArrayPattern = Omit<ArrayPattern, "elements"> & {
     elements: Array<PatternLike>
 }
-
-export type ScopeContext = WalkContext<ScopeNode>
-export type ScopeNode = BlockStatement | TSModuleBlock | Program
 
 export type WithLoc<T extends AnyNode> = RequiredNonNullableKeys<
     T,
@@ -57,6 +55,13 @@ export type Visitor = {
     [K in AnyNode["type"]]?: VisitorTrapFunc<Extract<AnyNode, { type: K }>>
 }
 
+export type AnyNode = Node
+export type ScopeContext = WalkContext<ScopeNode>
+export type PartialAnyNode = Node | undefined | null
+export type DeclarationKind = VariableDeclaration["kind"] | ""
+export type ScopeNode = BlockStatement | TSModuleBlock | Program
+export type IntrinsicCall = CallExpression | OptionalCallExpression
+export type ContextPattern = Identifier | ObjectPattern | ArrayPattern
 export type WalkPatternCallback = (identifier: WithLoc<Identifier>, path: string) => void
 
 type VisitorTrapFunc<T extends AnyNode> = (node: WithLoc<T>, context: WalkContext<T>) => void

@@ -1,21 +1,51 @@
 import type { TemplateNode } from "#type-declarations/compiler"
 
-import { CodeWriter } from "./writer"
-import { stringify } from "../../../util/shared/aliases"
+import {
+    ensureIdWithPrefix,
+    ensureIdWithNumSuffix,
+    getStringifiedLiteral,
+    shouldExtractCommonString
+} from "../../../util/compiler/sundry"
+import { CodeWriter } from "../writer"
+import { CodeEditor } from "../editor"
+import { getScriptTransformInfo } from "./script"
+import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
-import { getStringifiedLiteral, shouldExtractCommonString } from "../../../util/compiler/sundry"
-import { transformScript } from "./script"
+import { objectAssign, stringify } from "../../../util/shared/aliases"
+import { findNonWhitespaceChar, findNonWhitespaceCharRight } from "../../../util/compiler/string"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
     let hasTopExtra = false
+    let extractCommonStrCount = 0
 
-    const writer = new CodeWriter()
-    const targetId = ensureIdentifierName("target")
-    const contextId = ensureIdentifierName("context")
-    const componentName = inputDescriptor.options.componentName
-    const internalId = (analyzeResult.internalId = ensureIdentifierName("_"))
+    const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
     const { importDeclarations, defaultProps, defaultRefs } = analyzeResult.script
+
+    objectAssign(analyzeResult.generateIds, {
+        internal: ensureIdWithPrefix("_"),
+        setterArg: ensureIdWithPrefix("v")
+    })
+
+    const writer = new CodeWriter(true)
+    const targetId = ensureIdWithPrefix("target")
+    const contextId = ensureIdWithPrefix("context")
+    const internalId = analyzeResult.generateIds.internal
+    const componentName = inputDescriptor.options.componentName
+    const scriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
+    const scriptTransformInfo = getScriptTransformInfo(writer, scriptEditor)
+
+    const eliminateNodes = arrayFrom(analyzeResult.script.eliminateNodes).sort((a, b) => {
+        return a.start! - b.start!
+    })
+    for (let i = 0, prevEnd = 0; i < eliminateNodes.length; i++) {
+        const end =
+            i === eliminateNodes.length - 1
+                ? eliminateNodes[i].end!
+                : findNonWhitespaceChar(scriptSource, eliminateNodes[i].end!)
+        const start = findNonWhitespaceCharRight(scriptSource, eliminateNodes[i].start!)
+        scriptEditor.remove(Math.max(prevEnd, start), (prevEnd = end))
+    }
 
     for (const declaration of importDeclarations) {
         writer.writeScriptNode(declaration.value).wrapLine()
@@ -27,7 +57,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     traverseObject(analyzeResult.commonStrings, (key, value) => {
         if (shouldExtractCommonString(key, value.times)) {
             hasTopExtra = true
-            value.id = ensureIdentifierName("__r__s", false)
+            value.id = ensureIdWithNumSuffix("_s", ++extractCommonStrCount)
             writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
         }
     })
@@ -37,6 +67,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writer.write(`export default function ${componentName}(${targetId}, ${contextId}) {`)
 
     writeDelegateEventsRegistration(writer)
+    writer.write(scriptTransformInfo.hoistContent)
 
     writer.write(`const refs = ${internalId}.initRefs(${contextId}.r`)
     defaultRefs && writer.write(", ").writeScriptNode(defaultRefs.value)
@@ -47,21 +78,17 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writer.write(");").wrapLine()
 
     writer.write(`const slots = ${internalId}.initSlots(${contextId}.s);`)
-    writer.dedent().write("}")
 
-    transformScript(writer)
+    const transformedScript = scriptEditor.result.trim()
+    if (!transformedScript) {
+        writer.dedent().write("}")
+    } else {
+        writer.dedent().wrapLine().write(inputDescriptor.indent)
+        writer.write(transformedScript).wrapLine().write("}")
+    }
+
     // console.log(writer.mappings)
     return writer.code
-}
-
-function ensureIdentifierName(name: string, prefix = true) {
-    for (let i = 1, current = name; true; i++) {
-        if (analyzeResult.script.fullIdentifiers.has(name)) {
-            name = prefix ? "_" + name : name + i
-            continue
-        }
-        return (analyzeResult.script.fullIdentifiers.add(name), name)
-    }
 }
 
 // 生成 <interna>.init 方法调用代码，用于注册被委托的事件
@@ -79,13 +106,15 @@ function writeDelegateEventsRegistration(writer: CodeWriter) {
 
     const passiveLen = passiveEvents.length
     const nonPassiveLen = nonPassiveEvents.length
+    const internalId = analyzeResult.generateIds.internal
     const shouldWrapLine = passiveLen + nonPassiveLen > 10
     const seperator = ", " + (shouldWrapLine ? "\n" : "")
-    writer.indent().write(`${analyzeResult.internalId}.init([`)
+    const concatSeperatorCount = passiveLen ? (nonPassiveLen ? 2 : 1) : 0
+    writer.indent().write(`${internalId}.init([`)
     shouldWrapLine && writer.indent()
 
     writer.write(nonPassiveEvents.join(seperator))
-    writer.write(seperator.repeat(nonPassiveLen ? (passiveLen ? 2 : 0) : 1))
+    writer.write(seperator.repeat(concatSeperatorCount))
     writer.write(passiveEvents.join(seperator))
 
     shouldWrapLine && writer.dedent()

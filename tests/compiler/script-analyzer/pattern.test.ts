@@ -57,10 +57,11 @@ test("Left value", () => {
     expectIsLeftValue("a", true)
     expectIsLeftValue("a.b", true)
     expectIsLeftValue("a!.b!", true)
-    expectIsLeftValue("[a] = _", true, "left")
-    expectIsLeftValue("{ a } = _", true, "left")
-    expectIsLeftValue("[a, [b = c, [d = e] = f, ...g] = h, ...i] = _", true, "left")
-    expectIsLeftValue("{ a, b: c, d: e = f, g: { h = i } = j, ...k } = _", true, "left")
+
+    expectIsLeftValue("[a] = _", false, "left")
+    expectIsLeftValue("{ a } = _", false, "left")
+    expectIsLeftValue("[a, [b = c, [d = e] = f, ...g] = h, ...i] = _", false, "left")
+    expectIsLeftValue("{ a, b: c, d: e = f, g: { h = i } = j, ...k } = _", false, "left")
 
     for (const expression of [
         "a()",

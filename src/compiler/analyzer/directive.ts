@@ -216,6 +216,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             walkPatternIdentifiers(pattern, ({ name }) => {
                 validIdentifierCount++
                 nodeInfo.contextIdentifiers.add(name)
+                analyzeResult.script.fullIdentifiers.add(name)
             })
         }
         if (pattern && !validIdentifierCount) {

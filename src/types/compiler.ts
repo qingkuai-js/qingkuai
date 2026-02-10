@@ -5,13 +5,21 @@ import type {
     StringLiteral,
     CallExpression,
     ImportDeclaration,
+    VariableDeclarator,
+    VariableDeclaration,
     TSImportEqualsDeclaration
 } from "@babel/types"
+import type {
+    AnyNode,
+    IntrinsicCall,
+    ContextPattern,
+    TopLevelDeclaratorNode,
+    TopLevelDeclarationNode
+} from "./estree"
 import type { Pair } from "./tools"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
 import type { WalkContext } from "../util/compiler/estree/walk"
-import type { ContextPattern, TopLevelDeclarationNode } from "./estree"
 
 export interface ScriptDescriptor {
     code: string
@@ -34,6 +42,12 @@ export interface InputDescriptor {
     styles: StyleDescriptor[]
     positions: ASTPositionWithFlag[]
     options: Required<CompileOptions>
+}
+
+export interface Replacement {
+    index: number
+    length: number
+    value: string
 }
 
 export interface TextContentPart {
@@ -95,7 +109,10 @@ export interface AnalyzeResult {
             times: number
         }
     >
-    internalId: string
+    generateIds: {
+        internal: string
+        setterArg: string
+    }
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
     slots: Record<string, TemplateNode>
@@ -109,6 +126,20 @@ export interface EventFlagInfo {
         value: number
         names: string[]
     }
+}
+export interface TopLevelIdentifierInfo {
+    nodeInfos: {
+        id: Identifier
+        declarator: TopLevelDeclaratorNode
+        declaration: TopLevelDeclarationNode
+        destructuringIdentifierNames?: string[]
+    }[]
+    path: string
+    hoist: boolean
+    implicit: boolean
+    accessor: boolean
+    status: IdentifierStatus
+    destructuringIdentifierNames?: string[]
 }
 export interface TemplateAnalyzeRet {
     delegateEvents: {
@@ -143,18 +174,6 @@ export interface TemplateAnalyzeRet {
     parsedPatterns: Map<TemplateAttribute, (ContextPattern | null)[] | undefined>
 }
 export interface ScriptAnalyzeRet {
-    topLevelIdentifiers: Record<
-        string,
-        {
-            range: Range
-            path: string
-            hoist: boolean
-            implicit: boolean
-            accessor: boolean
-            status: IdentifierStatus
-            contexts: WalkContext<TopLevelDeclarationNode>[]
-        }
-    >
     defaultRefs?: {
         id: Identifier
         value: Expression | SpreadElement
@@ -163,10 +182,20 @@ export interface ScriptAnalyzeRet {
         id: Identifier
         value: Expression | SpreadElement
     }
+    declaratorToAlias: Map<
+        VariableDeclarator,
+        {
+            path: string
+            declaration: VariableDeclaration
+        }
+    >
     fullIdentifiers: Set<string>
+    eliminateNodes: Set<AnyNode>
     stringLiterals: StringLiteral[]
     topLevelReferences: TopLevelReferences
     watchers: WalkContext<CallExpression>[]
+    topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
+    declaratorToIntrinsic: Map<VariableDeclarator, WalkContext<Identifier>>
     importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
 }
 

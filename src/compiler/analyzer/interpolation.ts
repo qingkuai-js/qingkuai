@@ -76,6 +76,7 @@ export function analyzeInterpolation(
                     shorthand: context.isShorthandIdentifierAccess
                 })
             }
+            analyzeResult.script.fullIdentifiers.add(name)
         }
     })
     return expression

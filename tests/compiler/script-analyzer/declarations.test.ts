@@ -3,6 +3,7 @@ import type { ExpectedCompileMessage, ExpectedTopLevelIdentifier } from "#type-d
 import { expect, test } from "vitest"
 import { analyzeResult } from "../../../src/compiler/state"
 import { objectKeys } from "../../../src/util/shared/aliases"
+import { traverseObject } from "../../../src/util/shared/sundry"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../src/util/testing/match"
@@ -25,17 +26,20 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
 }
 
 function checkTopLevelIdentifiers(expected: ExpectedTopLevelIdentifier[]) {
-    let index = 0
-    const { topLevelIdentifiers } = analyzeResult.script
-    objectKeys(topLevelIdentifiers).forEach(name => {
-        const { hoist, status, implicit } = topLevelIdentifiers[name]
+    traverseObject(analyzeResult.script.topLevelIdentifiers, (key, value, index) => {
         expect({
-            name,
-            hoist,
-            status,
-            implicit
-        }).toEqual(expected[index++])
+            name: key,
+            hoist: value.hoist,
+            status: value.status,
+            implicit: value.implicit
+        }).toEqual(expected[index])
     })
+    for (const item of expected) {
+        expect(
+            !!analyzeResult.script.topLevelIdentifiers[item.name],
+            `The identifier "${item.name}" does not exist in topLevelIdentifiers`
+        ).toBeTruthy()
+    }
 }
 
 test("Variable declarations with key: let, const", () => {
@@ -43,10 +47,10 @@ test("Variable declarations with key: let, const", () => {
         let a
         let b = reactive()
         let c = shallow()
-        let d = derived(()=>{})
+        let d = (derived satisfies any)(()=>{})
 
         const {e, f: g = h, ...i} = {}
-        const [j, k = l, [m = n] = o, ...[p = q, ...r]] = shallow([])
+        const [j, k = l, [m = n] = o, ...[p = q, ...r]] = shallow?.([])
     `)
     checkTopLevelIdentifiers([
         {
@@ -104,7 +108,7 @@ test("Variable declaration with key: var", () => {
                 i = j
             } = k,
             ...l
-        } = reactive()
+        } = reactive!()
 
         if(true){
             var m
@@ -115,7 +119,7 @@ test("Variable declaration with key: var", () => {
             }
         }
 
-        var [q, r = s, ...t] = shallow()
+        var [q, r = s, ...t] = (shallow as any)()
     `)
     checkTopLevelIdentifiers([
         {
@@ -152,31 +156,16 @@ test("Variable declaration with key: var", () => {
     expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12)
 })
 
-test("Typescript enum and module declarations", () => {
+test("Typescript enum declarations", () => {
     localAnalyze(`
         enum a{}
         const enum b{}
-
-        namespace c{}
-        namespace d{
-            type e = string
-        }
-        namespace f{
-            const g = 1
-        }
-        namespace h.i.j{
-            export interface k{}
-        }
-        namespace l.m.n{
-            export interface o{}
-            export function p(){}
-        }
     `)
     checkTopLevelIdentifiers([
-        ...["a", "b", "f", "l"].map(name => {
+        ...["a", "b"].map(name => {
             return {
                 name,
-                hoist: true,
+                hoist: false,
                 implicit: true,
                 status: "pending"
             } satisfies ExpectedTopLevelIdentifier
@@ -220,8 +209,8 @@ test("Class declarations", () => {
     ])
 })
 
-test("Redeclarations", () => {
-    const unnecessaryMutableDerivedMsg = commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
+test("Redeclarations for derived reactive value", () => {
+    const unnecessaryDerived = commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
 
     localAnalyze(`
         var a
@@ -248,6 +237,7 @@ test("Redeclarations", () => {
         var $g = ()=>{}
         var $g = _
 
+        var c
         var h = 1
         
         var i = 1
@@ -312,38 +302,90 @@ test("Redeclarations", () => {
     localMatchCompileMessages([
         {
             type: "warning",
-            range: [70, 71],
-            value: unnecessaryMutableDerivedMsg
+            range: [70, 89],
+            value: unnecessaryDerived
         },
         {
             type: "error",
             range: [94, 95],
-            value: `The derived reactive value "c" cannot be redeclared.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
+        },
+        {
+            type: "warning",
+            range: [144, 158],
+            value: unnecessaryDerived
         },
         {
             type: "error",
             range: [138, 139],
-            value: `The derived reactive value "e" cannot be redeclared.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
         },
         {
             type: "warning",
-            range: [164, 165],
-            value: unnecessaryMutableDerivedMsg
+            range: [164, 178],
+            value: unnecessaryDerived
+        },
+        {
+            type: "warning",
+            range: [183, 197],
+            value: unnecessaryDerived
         },
         {
             type: "error",
             range: [183, 184],
-            value: `The derived reactive value "f" cannot be redeclared.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
         },
         {
             type: "warning",
-            range: [203, 205],
-            value: unnecessaryMutableDerivedMsg
+            range: [203, 214],
+            value: unnecessaryDerived
+        },
+        {
+            type: "warning",
+            range: [219, 225],
+            value: unnecessaryDerived
         },
         {
             type: "error",
             range: [219, 221],
-            value: `The derived reactive value "$g" cannot be redeclared.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
+        },
+        {
+            type: "error",
+            range: [231, 232],
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
+        }
+    ])
+})
+
+test("Redeclarations for alias", () => {
+    localAnalyze(`
+        var a = alias(_)
+        var a
+
+        var b
+        var b = alias(_)
+
+        var c = alias(_)
+        var c = alias(_)
+
+        var _
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [21, 22],
+            value: `The identifier cannot be redeclared when it is marked as an alias.`
+        },
+        {
+            type: "error",
+            range: [28, 29],
+            value: `The identifier cannot be redeclared when it is marked as an alias.`
+        },
+        {
+            type: "error",
+            range: [69, 70],
+            value: `The identifier cannot be redeclared when it is marked as an alias.`
         }
     ])
 })
@@ -383,7 +425,7 @@ test("Literals will be updated later", () => {
         a++, --b
         c = undefined
         ;[d, e] = []
-        ;{f, g} = {}
+        ;({f, g} = {})
     `)
     checkTopLevelIdentifiers([
         ...["a", "b", "c", "d", "e", "f", "g"].map(name => {
@@ -410,5 +452,43 @@ test("Shorthand derived declaration is invalid for destructuring declarations", 
                 status: "pending"
             } satisfies ExpectedTopLevelIdentifier
         })
+    ])
+})
+
+test("The alias target must be declared in current component", () => {
+    localAnalyze(`
+        const a = alias(_)
+        const b = alias(a)
+        const c = alias(z)
+        let z
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [10, 18],
+            value: `The alias target "_" is not declared at the top-level scope of this component.`
+        }
+    ])
+})
+
+test("Cannot create mutable alias for the immutable constant binding", () => {
+    localAnalyze(`
+        const a = 0
+        let b = alias(a)
+        var c = alias(a)
+        var d = alias(a.b)
+        var {e, f} = alias(a)
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [16, 28],
+            value: `Cannot create mutable alias for the immutable constant binding: "a".`
+        },
+        {
+            type: "error",
+            range: [33, 45],
+            value: `Cannot create mutable alias for the immutable constant binding: "a".`
+        }
     ])
 })

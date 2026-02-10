@@ -6,7 +6,7 @@ import type {
 } from "#type-declarations/compiler"
 
 import { isUndefined } from "../util/shared/assert"
-import { newCleanObj } from "../util/shared/sundry"
+import { newCleanObj, stripPrototype } from "../util/shared/sundry"
 import { objectAssign } from "../util/shared/aliases"
 import { newASTLocation } from "../util/compiler/position"
 
@@ -37,11 +37,17 @@ function newAnalyzeResult(): AnalyzeResult {
             watchers: [],
             stringLiterals: [],
             importDeclarations: [],
+            eliminateNodes: new Set(),
             fullIdentifiers: new Set(),
+            declaratorToAlias: new Map(),
+            declaratorToIntrinsic: new Map(),
             topLevelReferences: newCleanObj(),
             topLevelIdentifiers: newCleanObj()
         },
-        internalId: "",
+        generateIds: stripPrototype({
+            internal: "",
+            setterArg: ""
+        }),
         slots: newCleanObj(),
         commonStrings: newCleanObj()
     }

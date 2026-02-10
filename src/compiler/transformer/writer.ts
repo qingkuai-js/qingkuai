@@ -2,22 +2,34 @@ import type { ASTPosition } from "#type-declarations/compiler"
 import type { PartialAnyNode } from "#type-declarations/estree"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 
-import { PositionFlag } from "../../enums"
-import { inputDescriptor } from "../../state"
-import { getPosByIndex, isPositionFlagSetAtIndex } from "../../../util/compiler/position"
+import { PositionFlag } from "../enums"
+import { inputDescriptor } from "../state"
+import { getPosByIndex, isPositionFlagSetAtIndex } from "../../util/compiler/position"
 
 export class CodeWriter {
-    code = ""
-    indentLevel = 0
-    mappings: SourceMapMappings = []
-    nextSourcePos: ASTPosition | undefined
+    private _code = ""
+    private _mappings: SourceMapMappings = []
 
+    private indentLevel = 0
     private generateLine = 0
     private generateColumn = 0
     private mappingLine: SourceMapLine = []
+    private nextSourcePos: ASTPosition | undefined
 
-    constructor() {
-        this.mappings.push(this.mappingLine)
+    constructor(private sourcemap = false) {
+        this._mappings.push(this.mappingLine)
+    }
+
+    get code() {
+        return this._code
+    }
+
+    get mappings() {
+        return this._mappings
+    }
+
+    get empty() {
+        return !this._code.trim()
     }
 
     wrapLine(count = 1) {
@@ -27,12 +39,13 @@ export class CodeWriter {
         return this
     }
 
-    indent() {
-        return ((this.indentLevel++, this.wrapLine()), this)
+    indent(wrapLine = true) {
+        ++this.indentLevel
+        return wrapLine ? this.wrapLine() : this
     }
 
     dedent() {
-        return ((this.indentLevel--, this.wrapLine()), this)
+        return (--this.indentLevel, this.wrapLine())
     }
 
     write(str: string) {
@@ -64,8 +77,12 @@ export class CodeWriter {
         return this
     }
 
+    private get indentStr() {
+        return inputDescriptor.indent.repeat(this.indentLevel)
+    }
+
     private writeCharacter(character: string, sourceIndex: number) {
-        if (inputDescriptor.options.sourcemap) {
+        if (!this.sourcemap && inputDescriptor.options.sourcemap) {
             if (
                 this.nextSourcePos &&
                 -1 === sourceIndex &&
@@ -86,14 +103,13 @@ export class CodeWriter {
             }
             this.nextSourcePos = inputDescriptor.positions[sourceIndex + 1]
         }
-        if (((this.code += character), "\n" !== character)) {
+        if (((this._code += character), "\n" !== character)) {
             this.generateColumn++
         } else {
-            const indentStr = inputDescriptor.indent.repeat(this.indentLevel)
             this.generateLine++
-            this.code += indentStr
-            this.generateColumn = indentStr.length
-            this.mappings.push((this.mappingLine = []))
+            this._code += this.indentStr
+            this.generateColumn = this.indentStr.length
+            this._mappings.push((this.mappingLine = []))
         }
     }
 }

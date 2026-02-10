@@ -2,11 +2,10 @@ import type { TSModuleDeclaration } from "@babel/types"
 import type { AnyNode, PartialAnyNode } from "#type-declarations/estree"
 
 import { stripTypeExpressions } from "./sundry"
+import { getLastElem } from "../../shared/arrays"
 
 export function isLeftValue(node: AnyNode) {
     switch ((node = stripTypeExpressions(node)).type) {
-        case "ArrayPattern":
-        case "ObjectPattern":
         case "MemberExpression": {
             return true
         }
@@ -50,6 +49,9 @@ export function isLiteral(node: PartialAnyNode) {
         case "Identifier": {
             return node.name === "undefined"
         }
+        case "SequenceExpression": {
+            return isLiteral(getLastElem(node.expressions))
+        }
     }
     return false
 }
@@ -62,6 +64,11 @@ export function isUndefinedLiteral(node: AnyNode) {
     return node.type === "Identifier" && node.name === "undefined"
 }
 
+// 暂未使用的方法：组件中不支持命名空间声明（若确定未来不会提供支持，可考虑移除此方法）
+//
+// Currently unused method: namespace declarations are not supported in components
+// (if support is confirmed to be unnecessary in the future, consider removing this method).
+//
 // 判断 TSModuleDeclaration (typescript namespace) 是否会生成 JS 标识符
 // 例如：对于没有内种的命名空间声明或只有类型声明的命名空间标识符，在生成的 JS 文件中不存在
 //

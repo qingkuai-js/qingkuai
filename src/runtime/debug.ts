@@ -2,7 +2,6 @@ import type { Getter, Setter } from "#type-declarations/tools"
 
 export function alias(getter: Getter, setter: Setter) {
     return [
-        getter(),
         {
             get $() {
                 return getter()
@@ -10,6 +9,7 @@ export function alias(getter: Getter, setter: Setter) {
             set $(value) {
                 setter(value)
             }
-        }
+        },
+        getter()
     ]
 }

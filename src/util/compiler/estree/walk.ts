@@ -109,7 +109,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         let ret: any = null
         this.walkAncestors(current => {
             if (current.isScopeBoundary) {
-                return (ret = current), true
+                return ((ret = current), true)
             }
         })
         return ret
@@ -121,7 +121,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         let ret: any = null
         this.walkAncestors(current => {
             if (current.isNonHoistableScopeBoundary) {
-                return (ret = current), true
+                return ((ret = current), true)
             }
         })
         return ret
@@ -133,7 +133,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         let ret = true
         this.walkAncestors(current => {
             if (current.isNonHoistableScopeBoundary) {
-                return (ret = current.value.type === "Program"), true
+                return ((ret = current.value.type === "Program"), true)
             }
         })
         return ret
@@ -145,7 +145,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         if (this.value.type !== "Identifier") {
             return false
         }
-        return !!any(this.parent?.value).shorthand
+        return !!any(this.parent)?.value.shorthand
     }
 
     // 节点是否为计算标识符，如 { [a]: 1 } 等
@@ -154,7 +154,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         if (this.value.type !== "Identifier") {
             return false
         }
-        return !!any(this.parent?.value).computed
+        return !!any(this.parent)?.value.computed
     }
 
     // 节点是否为函数参数中的标识符，如 { _: (a) {} } 等
@@ -176,6 +176,17 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         return false
     }
 
+    get outermostTypeOperationAncestor() {
+        let ret: WalkContext = this
+        this.walkAncestors(current => {
+            if (!isTypeOperation(current.value)) {
+                return true
+            }
+            ret = current
+        })
+        return ret
+    }
+
     get striptTypeOperationsParent(): WalkContext<AnyNode> | null {
         if (!this.parent) {
             return null
@@ -192,7 +203,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         let ret: any = null
         this.walkAncestors(current => {
             if (type === current.value.type) {
-                return (ret = current), true
+                return ((ret = current), true)
             }
         })
         return ret
@@ -258,7 +269,7 @@ export function walkPatternIdentifiers(pattern: LVal | PatternLike, callback: Wa
                 return callback(from as WithLoc<Identifier>, path)
             }
             case "AssignmentPattern": {
-                return extract(from.left, path), true
+                return (extract(from.left, path), true)
             }
             case "RestElement": {
                 return extract(from.argument, path)
@@ -292,8 +303,11 @@ function isBindingReference(context: WalkContext) {
     const parent = context.parent
     const parentNode = parent?.value
     const assertedContext = context as WalkContext<Identifier>
-    if (!parentNode || node.type !== "Identifier") {
+    if (node.type !== "Identifier") {
         return false
+    }
+    if (!parentNode) {
+        return true
     }
     switch (parentNode.type) {
         case "BreakStatement":
@@ -368,7 +382,7 @@ function isBindingReference(context: WalkContext) {
                         }
                         case "ArrayPattern":
                         case "ObjectPattern": {
-                            return (patternContext = current as any), true
+                            return ((patternContext = current as any), true)
                         }
                     }
                 })

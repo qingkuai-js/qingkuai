@@ -1,14 +1,14 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
 import type { ASTLocation } from "#type-declarations/compiler"
 
+import { SPREAD_TAG } from "../constants"
 import { inputDescriptor, messages } from "../state"
 import { templateEmbeddedLangTagRE } from "../regular"
-import { SPREAD_TAG } from "../constants"
 
 export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>>(obj: T): T => {
     return obj
 })({
-    ExportRelatedNotBeSupported: [
+    ExportStatementsAreNotSupported: [
         1019,
         () => {
             return "Export statements are not supported."
@@ -18,12 +18,6 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
         1018,
         () => {
             return "Top-level await expressions are not supported."
-        }
-    ],
-    RedeclareDerivedReactiveValue: [
-        1022,
-        (name: string) => {
-            return `The derived reactive value "${name}" cannot be redeclared.`
         }
     ],
     UsedForbiddenIdentifierFormat: [
@@ -68,6 +62,12 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
             return `The compiler intrinsic "${name}" must be called at the top-level to mark the variable initializer.`
         }
     ],
+    IdentifierCannotBeRedeclared: [
+        1022,
+        (status: string) => {
+            return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`
+        }
+    ],
     AmbiguousReactiveMarking: [
         1023,
         (name: string) => {
@@ -90,16 +90,16 @@ export const TopLevelAwaitNotBeSupported = withLocation(
     ...commonMessage.TopLevelAwaitNotBeSupported
 )
 
-export const ExportRelatedNotBeSupported = withLocation(
-    ...commonMessage.ExportRelatedNotBeSupported
-)
-
 export const UsedForbiddenIdentifierFormat = withLocation(
     ...commonMessage.UsedForbiddenIdentifierFormat
 )
 
-export const RedeclareDerivedReactiveValue = withLocation(
-    ...commonMessage.RedeclareDerivedReactiveValue
+export const IdentifierCannotBeRedeclared = withLocation(
+    ...commonMessage.IdentifierCannotBeRedeclared
+)
+
+export const ExportStatementsAreNotSupported = withLocation(
+    ...commonMessage.ExportStatementsAreNotSupported
 )
 
 export const InvalidUsageForIntrinsicMethods = withLocation(
@@ -243,10 +243,18 @@ export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
     return `The "#slot" directive can only be used on direct child elements of a component node.`
 })
 
+export const AliasTargetIsNotDeclared = withLocation(1053, (target: string) => {
+    return `The alias target "${target}" is not declared at the top-level scope of this component.`
+})
+
 export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
     return `The "${directive}" directive accepts at most ${
         count === 1 ? "one" : count === 2 ? "two" : count
     } binding pattern${count === 1 ? "" : "s"}.`
+})
+
+export const AliasMutabilityMismatch = withLocation(1054, (target: string) => {
+    return `Cannot create mutable alias for the immutable constant binding: "${target}".`
 })
 
 export const InvalidSlotName = withLocation(1038, () => {
@@ -285,6 +293,10 @@ export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
 
 export const DuplicateSlotName = withLocation(1050, (name: string) => {
     return `Duplicate slot name: "${name}". Consider using a different value for the "name" attribute on one of the <slot> tags.`
+})
+
+export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
+    return `Namespace declarations are not allowed in component embedded scripts because they are wrapped inside a component method.`
 })
 
 export const MissingPrecedingDirective = withLocation(

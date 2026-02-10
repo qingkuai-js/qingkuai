@@ -1,11 +1,12 @@
 export {
     react,
-    shallowReact,
     constReact,
+    shallowReact,
     shallowConstReact,
     destructuringReact,
-    shallowDestructuringReact,
-    shallowConstDestructuringReact
+    destructuringConstReact,
+    destructuringShallowReact,
+    destructuringShallowConstReact
 } from "./reactivity/value"
 
 export {
@@ -26,12 +27,14 @@ export {
     createFragmentGetter
 } from "./dom"
 
-export { NIL } from "./constants"
+export { alias } from "./debug"
 export { htmlBlock } from "./directives/html"
+export { NIL, UNDEF, NOOP } from "./constants"
 export { targetBlock } from "./directives/target"
 export { renderEffect } from "./reactivity/effect"
 export { displayBlock } from "./directives/display"
 export { promiseBlock } from "./directives/promise"
+export { objectAssign } from "../util/shared/aliases"
 export { conditionBlock } from "./directives/condition"
 export { listBlock, keyedListBlock } from "./directives/list"
 export { derived, destructuringDerived } from "./reactivity/derived"

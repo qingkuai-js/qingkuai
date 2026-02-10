@@ -39,14 +39,16 @@ export const proxyCache = new WeakMap<AnyObject, ReactivityWrapper>()
 export const shallowProxyCache = new WeakMap<AnyObject, ReactivityWrapper>()
 
 export const react = reactGen()
-export const constReact = reactGen(WRAPPER_PROXY)
 export const destructuringReact = destructuringReactGen(react)
 
+export const constReact = reactGen(WRAPPER_PROXY)
+export const destructuringConstReact = destructuringReactGen(constReact)
+
 export const shallowReact = reactGen(WRAPPER_SHALLOW)
-export const shallowDestructuringReact = destructuringReactGen(shallowReact)
+export const destructuringShallowReact = destructuringReactGen(shallowReact)
 
 export const shallowConstReact = reactGen(WRAPPER_PROXY | WRAPPER_SHALLOW)
-export const shallowConstDestructuringReact = destructuringReactGen(shallowConstReact)
+export const destructuringShallowConstReact = destructuringReactGen(shallowConstReact)
 
 export function toReactive<T extends AnyObject>(value: T): T {
     return proxyCache.get(toRaw(value))?.p ?? value
@@ -106,16 +108,16 @@ function reactGen(declarationFlag = 0) {
         if (!cached && createWithProxy) {
             cache.set(target, wrapper)
         }
-        return isUndefined(debugSetter) ? wrapper.p : [wrapper.p, target]
+        return isUndefined(debugSetter) ? wrapper.p : [wrapper.p, toRaw(target)]
     }
 }
 
 function destructuringReactGen(reactFn: ReturnType<typeof reactGen>) {
-    return (target: any, dfn: DestructuringFunc, debugSetters?: Setter[]) => {
+    return (dfn: DestructuringFunc, target: any, debugSetters?: Setter[]) => {
         const ret: any[] = []
         const values = dfn(target)
         for (let i = 0; i < len(values); i += 2) {
-            ret.push(values[i + 1] ? reactFn(values[i], debugSetters?.[i / 2]) : values[i])
+            ret.push(values[i + 1] ? reactFn(values[i], debugSetters?.[i / 2]) : toRaw(values[i]))
         }
         return ret
     }
@@ -233,7 +235,7 @@ function createReactivityWrapper(target: any, flag: number, debugSetter: Setter 
                             scheduleUpdate(child, property, LINK_IN_CHANGED)
                         }
                     }
-                    return scheduleUpdate(wrapper, scheduleProp, linkFlagForSchedule), result
+                    return (scheduleUpdate(wrapper, scheduleProp, linkFlagForSchedule), result)
                 })
             },
 
@@ -264,7 +266,7 @@ function createReactivityWrapper(target: any, flag: number, debugSetter: Setter 
                             scheduleUpdate(child, property, LINK_IN_CHANGED)
                         }
                     }
-                    return scheduleUpdate(wrapper, refProp, linkFlagForSchedule), result
+                    return (scheduleUpdate(wrapper, refProp, linkFlagForSchedule), result)
                 })
             },
 

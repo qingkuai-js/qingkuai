@@ -12,6 +12,7 @@ import {
     whitespaceRE,
     kebabWholeRE,
     jsValueCharRE,
+    nonWhitespaceRE,
     jsStartRegexKeywordsRE,
     jsStringLiteralQuoteRE,
     kebabWithoutFirstLetterRE
@@ -49,6 +50,20 @@ export const kebab2Camel: Kebab2CamelFunc = (str: string, startWithUppercase = f
     return str.replace(startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE, s => {
         return s === "-" ? "" : s.toUpperCase()
     })
+}
+
+export function findNonWhitespaceChar(str: string, start: number) {
+    while (!nonWhitespaceRE.test(str[start]) && start < str.length) {
+        start++
+    }
+    return start
+}
+
+export function findNonWhitespaceCharRight(str: string, start: number) {
+    while (start > 0 && !nonWhitespaceRE.test(str[start - 1])) {
+        start--
+    }
+    return start
 }
 
 // 生成在脚本源码中脱离指定范围（字符串、注释）查找子串（或正则）的方法

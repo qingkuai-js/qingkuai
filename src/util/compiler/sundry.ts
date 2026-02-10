@@ -1,5 +1,5 @@
-import { analyzeResult } from "../../compiler/state"
 import { stringify } from "../shared/aliases"
+import { analyzeResult } from "../../compiler/state"
 
 export function getAttributeBaseName(name: string) {
     switch (name[0]) {
@@ -14,12 +14,39 @@ export function getAttributeBaseName(name: string) {
 }
 
 export function getEventName(rawName: string) {
-    const speratorIndex = rawName.indexOf("|")
-    return speratorIndex === -1 ? rawName : rawName.slice(0, speratorIndex)
+    const sepratorIndex = rawName.indexOf("|")
+    if (-1 === sepratorIndex) {
+        return rawName
+    }
+    return rawName.slice(0, sepratorIndex)
+}
+
+export function generateSetterCode(target: string) {
+    const setterArgId = analyzeResult.generateIds.setterArg
+    return `${setterArgId} => (${target} = ${setterArgId})`
 }
 
 export function getStringifiedLiteral(value: string) {
     return analyzeResult.commonStrings[value].id || stringify(value)
+}
+
+export function ensureIdWithPrefix(name: string, prefix = "_") {
+    const { fullIdentifiers } = analyzeResult.script
+    while (fullIdentifiers.has(name)) {
+        name = prefix + name
+    }
+    return (fullIdentifiers.add(name), name)
+}
+
+export function ensureIdWithNumSuffix(name: string, start = 1) {
+    const { fullIdentifiers } = analyzeResult.script
+    for (let i = start, initial = name; true; i++) {
+        if (i !== start && !fullIdentifiers.has(name)) {
+            break
+        }
+        name = initial + i
+    }
+    return (fullIdentifiers.add(name), name)
 }
 
 export function increaseCommonStringCount(value: string) {
