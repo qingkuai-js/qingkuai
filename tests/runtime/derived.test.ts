@@ -180,6 +180,7 @@ describe("Destructuring", () => {
     test("Modifying is invalid", () => {
         const a = react(1)
         let [[wx, x], [wy, y]] = destructuringDerived(
+            ({ x, y }) => [x, y],
             () => {
                 return {
                     x: a.$,
@@ -187,7 +188,6 @@ describe("Destructuring", () => {
                 }
             },
             2,
-            ({ x, y }) => [x, y],
             [v => (x = v), v => (y = v)]
         )
         expect([x, y]).toEqual([undefined, undefined])
@@ -211,12 +211,12 @@ describe("Destructuring", () => {
         const a = constReact({ x: 1 })
         const b = react({ y: 2, z: 3 })
         let [[wx, x], [wy, y], [wz, z]] = destructuringDerived(
+            ({ x, y, z }) => [x, y, z],
             () => {
                 invokeMarker()
                 return { ...a, ...b.$ }
             },
             3,
-            ({ x, y, z }) => [x, y, z],
             [v => (x = v), v => (y = v), v => (z = v)]
         )
 

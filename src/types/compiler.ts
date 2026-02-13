@@ -3,7 +3,6 @@ import type {
     Expression,
     SpreadElement,
     StringLiteral,
-    CallExpression,
     ImportDeclaration,
     VariableDeclarator,
     VariableDeclaration,
@@ -44,10 +43,13 @@ export interface InputDescriptor {
     options: Required<CompileOptions>
 }
 
-export interface Replacement {
-    index: number
-    length: number
+export interface EditInsertSnippet {
     value: string
+    sourceRange?: Range
+}
+export interface EditReplacement {
+    removedLength?: number
+    additions?: EditInsertSnippet[]
 }
 
 export interface TextContentPart {
@@ -174,6 +176,13 @@ export interface TemplateAnalyzeRet {
     parsedPatterns: Map<TemplateAttribute, (ContextPattern | null)[] | undefined>
 }
 export interface ScriptAnalyzeRet {
+    declaratorToAliasInfos: Map<
+        VariableDeclarator,
+        {
+            target: string
+            property: string
+        }[]
+    >
     defaultRefs?: {
         id: Identifier
         value: Expression | SpreadElement
@@ -182,18 +191,12 @@ export interface ScriptAnalyzeRet {
         id: Identifier
         value: Expression | SpreadElement
     }
-    declaratorToAlias: Map<
-        VariableDeclarator,
-        {
-            path: string
-            declaration: VariableDeclaration
-        }
-    >
+    watchers: IntrinsicCall[]
     fullIdentifiers: Set<string>
     eliminateNodes: Set<AnyNode>
     stringLiterals: StringLiteral[]
     topLevelReferences: TopLevelReferences
-    watchers: WalkContext<CallExpression>[]
+    preMutatedTopLevelIdentifiers: Set<string>
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<VariableDeclarator, WalkContext<Identifier>>
     importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]

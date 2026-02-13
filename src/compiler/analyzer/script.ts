@@ -1,10 +1,16 @@
 import type {
     Visitor,
+    IntrinsicCall,
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
 import type { WalkContext } from "../../util/compiler/estree/walk"
-import type { Identifier, VariableDeclaration, VariableDeclarator } from "@babel/types"
+import type {
+    Identifier,
+    MemberExpression,
+    VariableDeclaration,
+    VariableDeclarator
+} from "@babel/types"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import {
@@ -13,22 +19,21 @@ import {
     intrinsicVariableRE,
     cannotRedeclareStatusRE,
     intrinsicWatcherMethodsRE,
-    intrinsicReactiveMethodsRE,
-    aliasTargetEndRE
+    intrinsicReactiveMethodsRE
 } from "../regular"
 import {
-    AliasTargetIsNotDeclared,
+    CannotAliasIdentifier,
     AmbiguousReactiveMarking,
     InvalidAliasDestructuring,
     TopLevelAwaitNotBeSupported,
-    IdentifierCannotBeRedeclared,
     UsedForbiddenIdentifierFormat,
+    IdentifierCannotBeRedeclared,
     InvalidUsageForIntrinsicMethods,
     ExportStatementsAreNotSupported,
     ShadowCompilerIntrinsicAtTopLevel,
     InvalidParameterForAliasIntrinsic,
     TSModuleDeclarationsAreNotSupported,
-    AliasMutabilityMismatch
+    IntrinsicNotAllowedInUsingDeclaration
 } from "../message/error"
 import {
     RedundantRawMark,
@@ -44,42 +49,20 @@ import {
     isTypeOperation,
     isFunctionLiteral
 } from "../../util/compiler/estree/assert"
-import { parseScript } from "../parser/script"
+import { any } from "../../util/shared/sundry"
+import { parseExpression, parseScript } from "../parser/script"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
 import { getScriptLocByRange } from "../../util/compiler/position"
 import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { walk, walkPatternIdentifiers } from "../../util/compiler/estree/walk"
 import { markNeedSourcemap, stripTypeExpressions } from "../../util/compiler/estree/sundry"
+import { stringify } from "../../util/shared/aliases"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
     const program = parseScript(sourceCode)
     program && walk(program, visitor)
-
-    for (const [declarator, { declaration, path }] of analyzeResult.script.declaratorToAlias) {
-        const targetName = path.slice(0, aliasTargetEndRE.exec(path)!.index)
-        const targetInfo = analyzeResult.script.topLevelIdentifiers[targetName]
-
-        // 只能为组件顶级作用域存在的标识符或其属性标记别名
-        // Aliases can only be marked for identifiers(or for their properties) that exist in the top-level scope of current component.
-        if (!targetInfo) {
-            return AliasTargetIsNotDeclared(
-                getScriptLocByRange(declarator.init!.range!),
-                targetName
-            )
-        }
-
-        // 目标是常量而别名是非常量会导致赋值歧义
-        // If the target is a constant but the alias is not, it will cause assignment ambiguity.
-        if (
-            targetName === path &&
-            declaration.kind !== "const" &&
-            (getLastElem(targetInfo.nodeInfos)!.declaration as VariableDeclaration).kind === "const"
-        ) {
-            AliasMutabilityMismatch(getScriptLocByRange(declarator.range!), targetName)
-        }
-    }
     inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
 }
 
@@ -99,6 +82,14 @@ const visitor: Visitor = {
             }
             case "TSModuleDeclaration": {
                 TSModuleDeclarationsAreNotSupported(getScriptLocByRange(node.range))
+            }
+            case "CallExpression":
+            case "OptionalCallExpression": {
+                const call = node as IntrinsicCall
+                const callee = stripTypeExpressions(call.callee)
+                if (callee.type === "Identifier" && intrinsicWatcherMethodsRE.test(callee.name)) {
+                    analyzeResult.script.watchers.push(call)
+                }
             }
         }
         if (node.type !== "Program") {
@@ -127,14 +118,26 @@ const visitor: Visitor = {
         // 记录所有引用顶部标识符的位置信息
         // Record the source ranges of all references to top-level identifiers.
         if (!context.scopeIdentifiers?.has(node.name) && context.isBindingReference) {
+            const { preMutatedTopLevelIdentifiers } = analyzeResult.script
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[node.name]
             ;(analyzeResult.script.topLevelReferences[node.name] ??= []).push({
                 range: node.range,
                 declared: !!topLevelIdentifier,
                 shorthand: context.isShorthandIdentifierAccess
             })
-            if (topLevelIdentifier?.status === "literal" && context.isIdentifierAssignmentTarget) {
-                topLevelIdentifier.status = "pending"
+            if (
+                // prettier-ignore
+                (
+                    topLevelIdentifier?.status === "literal" ||
+                    (!topLevelIdentifier && !preMutatedTopLevelIdentifiers.has(node.name))
+                ) &&
+                context.isIdentifierAssignmentTarget
+            ) {
+                if (topLevelIdentifier) {
+                    topLevelIdentifier.status = "pending"
+                } else {
+                    preMutatedTopLevelIdentifiers.add(node.name)
+                }
             }
             if (intrinsicMethodsRE.test(node.name)) {
                 checkUsageOfIntrinsicMethods(node, context)
@@ -166,15 +169,15 @@ const visitor: Visitor = {
             return
         }
         for (const declarator of node.declarations) {
-            const isConst = node.kind === "const"
             const destructuringIdentifierNames: string[] | undefined =
                 declarator.id.type === "Identifier" ? undefined : []
-            const status = inferStatusWithDeclarator(declarator, isConst)
+            const status = inferStatusWithDeclarator(declarator, node)
+            const { topLevelIdentifiers, declaratorToAliasInfos: declaratorToAlias } =
+                analyzeResult.script
             const specifiedDefaultValue = walkPatternIdentifiers(
                 declarator.id,
                 (identifier, path) => {
                     const initNode = declarator.init
-                    const { topLevelIdentifiers } = analyzeResult.script
 
                     // let/var 声明对衍生响应式值无意义，它不可被修改
                     // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
@@ -221,16 +224,28 @@ const visitor: Visitor = {
                     if (
                         status === "alias" &&
                         initNode?.type === "CallExpression" &&
+                        initNode.arguments.length &&
                         isLeftValue(initNode.arguments[0])
                     ) {
-                        const target = inputDescriptor.script.code.slice(
-                            ...initNode.arguments[0].range!
+                        let aliasInfos = declaratorToAlias.get(declarator)
+                        if (!aliasInfos) {
+                            declaratorToAlias.set(declarator, (aliasInfos = []))
+                        }
+                        const argSource = inputDescriptor.script.code.slice(
+                            ...stripTypeExpressions(initNode.arguments[0]).range!
                         )
-                        analyzeResult.script.declaratorToAlias.set(declarator, {
-                            declaration: node,
-                            path: target + path
+                        const fullPath = argSource + path
+                        const expression = stripTypeExpressions(
+                            parseExpression(fullPath)!
+                        ) as MemberExpression
+                        const propertySource = fullPath.slice(...expression.property.range!)
+                        aliasInfos.push({
+                            property: expression.computed
+                                ? propertySource
+                                : stringify(propertySource),
+                            target: fullPath.slice(0, expression.object.end!)
                         })
-                        topLevelIdentifiers[identifier.name].path = target + path
+                        topLevelIdentifiers[identifier.name].path = fullPath
                     }
 
                     // 记录解构声明的标识符名称列表
@@ -264,12 +279,6 @@ const visitor: Visitor = {
             analyzeResult.script.eliminateNodes.add(node)
         }
         analyzeResult.script.importDeclarations.push(context)
-    },
-
-    CallExpression(node, context) {
-        if (node.callee.type === "Identifier" && intrinsicWatcherMethodsRE.test(node.callee.name)) {
-            analyzeResult.script.watchers.push(context)
-        }
     }
 }
 
@@ -277,12 +286,17 @@ const visitor: Visitor = {
 // Infer the reactive status of top-level scope identifiers.
 function inferStatusWithDeclarator(
     declarator: VariableDeclarator,
-    isConst: boolean
+    declaration: VariableDeclaration
 ): IdentifierStatus {
+    if (declaration.kind === "using" || declaration.kind === "await using") {
+        return "raw"
+    }
+
     const isShorthandDerived =
         declarator.id.type === "Identifier" &&
         declarator.id.name.startsWith("$") &&
         inputDescriptor.options.shorthandDerivedDeclaration
+    const isConst = declaration.kind === "const"
     const declaratorLoc = getScriptLocByRange(declarator.range!)
     const initNode = declarator.init && stripTypeExpressions(declarator.init)
 
@@ -379,6 +393,9 @@ function updateTopLevelIdentifiers(
 ) {
     const existing = analyzeResult.script.topLevelIdentifiers[id.name]
     const nodeInfo = { id, declarator, declaration, destructuringIdentifierNames }
+    if (status === "literal" && analyzeResult.script.preMutatedTopLevelIdentifiers.has(id.name)) {
+        status = "pending"
+    }
     if (existing) {
         if (status !== "pending" && status !== "literal") {
             existing.status = status
@@ -446,21 +463,23 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                     }
                 })
                 if (isValidDefinition) {
+                    const existing = analyzeResult.script[node.name]
+                    if (existing) {
+                        DuplicateDefaultDeclaration(
+                            getScriptLocByRange(existing.id.range!),
+                            node.name.slice(7).toLowerCase()
+                        )
+                    }
                     if (
                         parent.value.arguments.length &&
                         parent.value.arguments[0].type !== "ArgumentPlaceholder"
                     ) {
-                        const existing = analyzeResult.script[node.name]
-                        if (existing) {
-                            DuplicateDefaultDeclaration(
-                                getScriptLocByRange(existing.id.range!),
-                                node.name.slice(7).toLowerCase()
-                            )
-                        }
                         analyzeResult.script[node.name] = {
                             id: node,
                             value: parent.value.arguments[0]
                         }
+                    } else {
+                        analyzeResult.script[node.name] = undefined
                     }
                     return
                 }
@@ -469,17 +488,26 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
             default: {
                 if (node.name === "alias") {
                     const args = parent.value.arguments
+                    const callRange = parent.value.range!
+                    if (args[0].type === "Identifier") {
+                        CannotAliasIdentifier(getScriptLocByRange(callRange))
+                    }
                     if (args.length !== 1 || !isLeftValue(args[0])) {
-                        const range: Range = !args[0]
-                            ? parent.value.range!
-                            : [args[0].start!, getLastElem(args)!.end!]!
-                        InvalidParameterForAliasIntrinsic(getScriptLocByRange(range))
+                        InvalidParameterForAliasIntrinsic(getScriptLocByRange(callRange))
                     }
                 }
 
-                const grandParentNode = parent.striptTypeOperationsParent!.value
-                if (parent.inTopLevel && grandParentNode.type === "VariableDeclarator") {
-                    analyzeResult.script.declaratorToIntrinsic.set(grandParentNode, context)
+                const grandParent = parent.striptTypeOperationsParent!
+                if (parent.inTopLevel && grandParent.value.type === "VariableDeclarator") {
+                    const declaration = grandParent.parent!.value as VariableDeclaration
+                    if (declaration.kind === "using" || declaration.kind === "await using") {
+                        IntrinsicNotAllowedInUsingDeclaration(
+                            getScriptLocByRange(grandParent.value.range!),
+                            node.name
+                        )
+                    } else {
+                        analyzeResult.script.declaratorToIntrinsic.set(grandParent.value, context)
+                    }
                     return
                 }
             }

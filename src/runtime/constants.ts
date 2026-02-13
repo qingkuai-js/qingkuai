@@ -2,6 +2,7 @@
 export const NIL = null
 export const NOOP = () => {}
 export const UNDEF = undefined
+export const TOARRAY = (v: any) => [v]
 
 export const OBJECT = Object
 export const REFLECT = Reflect

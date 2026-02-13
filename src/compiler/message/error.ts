@@ -243,22 +243,18 @@ export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
     return `The "#slot" directive can only be used on direct child elements of a component node.`
 })
 
-export const AliasTargetIsNotDeclared = withLocation(1053, (target: string) => {
-    return `The alias target "${target}" is not declared at the top-level scope of this component.`
-})
-
 export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
     return `The "${directive}" directive accepts at most ${
         count === 1 ? "one" : count === 2 ? "two" : count
     } binding pattern${count === 1 ? "" : "s"}.`
 })
 
-export const AliasMutabilityMismatch = withLocation(1054, (target: string) => {
-    return `Cannot create mutable alias for the immutable constant binding: "${target}".`
-})
-
 export const InvalidSlotName = withLocation(1038, () => {
     return `The "#slot" directive requires a string literal slot name after "from" keyword.`
+})
+
+export const CannotAliasIdentifier = withLocation(1053, () => {
+    return `The "alias" intrinsic cannot be used to create an alias for a standalone identifier.`
 })
 
 export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
@@ -271,6 +267,10 @@ export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, 
 
 export const InvalidReferenceAttributeValue = withLocation(1048, () => {
     return `The value of a reference attribute must be either an identifier or a member expression.`
+})
+
+export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrinsic: string) => {
+    return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })
 
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {

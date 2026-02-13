@@ -108,7 +108,7 @@ function reactGen(declarationFlag = 0) {
         if (!cached && createWithProxy) {
             cache.set(target, wrapper)
         }
-        return isUndefined(debugSetter) ? wrapper.p : [wrapper.p, toRaw(target)]
+        return isUndefined(debugSetter) ? wrapper.p : [wrapper.p, target]
     }
 }
 
@@ -117,7 +117,7 @@ function destructuringReactGen(reactFn: ReturnType<typeof reactGen>) {
         const ret: any[] = []
         const values = dfn(target)
         for (let i = 0; i < len(values); i += 2) {
-            ret.push(values[i + 1] ? reactFn(values[i], debugSetters?.[i / 2]) : toRaw(values[i]))
+            ret.push(values[i + 1] ? reactFn(values[i], debugSetters?.[i / 2]) : values[i])
         }
         return ret
     }

@@ -33,7 +33,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const internalId = analyzeResult.generateIds.internal
     const componentName = inputDescriptor.options.componentName
     const scriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
-    const scriptTransformInfo = getScriptTransformInfo(writer, scriptEditor)
+    const scriptTransformInfo = getScriptTransformInfo(scriptEditor)
 
     const eliminateNodes = arrayFrom(analyzeResult.script.eliminateNodes).sort((a, b) => {
         return a.start! - b.start!

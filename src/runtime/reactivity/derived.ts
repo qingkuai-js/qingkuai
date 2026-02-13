@@ -1,8 +1,8 @@
 import type { Getter, Setter } from "#type-declarations/tools"
 import type { DestructuringFunc } from "#type-declarations/runtime"
 
-import { UNDEF } from "../constants"
 import { activeEffect } from "./state"
+import { TOARRAY, UNDEF } from "../constants"
 import { arrayFrom } from "../../util/shared/arrays"
 import { InvalidAssignment } from "../messages/warn"
 import { isUndefined } from "../../util/shared/assert"
@@ -10,9 +10,9 @@ import { EFFECT_DERIVED_DIRTY, EFFECT_DERIVED_READING } from "./constants"
 import { appendLinksToActiveEffect, derivedEffect, runAndUpdateEffect } from "./effect"
 
 export function destructuringDerived(
-    fn: Getter,
-    valuesLen: number,
     dfn: DestructuringFunc,
+    getter: Getter,
+    valuesLen: number,
     debugSetters?: Setter[]
 ) {
     let initialized = false
@@ -24,10 +24,10 @@ export function destructuringDerived(
     const effect = derivedEffect(() => {
         const isReading = initialized && effect.l & EFFECT_DERIVED_READING
         if (isReading && effect.l & EFFECT_DERIVED_DIRTY) {
-            const values = dfn(fn())
+            const values = dfn(getter())
             for (let i = 0; i < valuesLen; i++) {
-                debugSetters?.[i](values[i])
                 targets[i].$ = values[i]
+                debugSetters?.[i](values[i])
             }
         }
         if (initialized && !isReading) {
@@ -60,5 +60,5 @@ export function destructuringDerived(
 }
 
 export function derived(fn: Getter, debugSetter?: Setter) {
-    return destructuringDerived(fn, 1, (v: any) => [v], debugSetter ? [debugSetter] : UNDEF)[0]
+    return destructuringDerived(TOARRAY, fn, 1, debugSetter ? [debugSetter] : UNDEF)[0]
 }

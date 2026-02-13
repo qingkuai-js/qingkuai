@@ -39,10 +39,11 @@ function newAnalyzeResult(): AnalyzeResult {
             importDeclarations: [],
             eliminateNodes: new Set(),
             fullIdentifiers: new Set(),
-            declaratorToAlias: new Map(),
+            declaratorToAliasInfos: new Map(),
             declaratorToIntrinsic: new Map(),
             topLevelReferences: newCleanObj(),
-            topLevelIdentifiers: newCleanObj()
+            topLevelIdentifiers: newCleanObj(),
+            preMutatedTopLevelIdentifiers: new Set()
         },
         generateIds: stripPrototype({
             internal: "",
