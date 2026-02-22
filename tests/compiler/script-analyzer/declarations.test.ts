@@ -360,31 +360,27 @@ test("Redeclarations for derived reactive value", () => {
 
 test("Redeclarations for alias", () => {
     localAnalyze(`
-        var a = alias(_)
+        var a = alias(_._)
         var a
-
         var b
-        var b = alias(_)
-
-        var c = alias(_)
-        var c = alias(_)
-
-        var _
+        var b = alias(_._)
+        var c = alias(_._)
+        var c = alias(_._)
     `)
     localMatchCompileMessages([
         {
             type: "error",
-            range: [21, 22],
+            range: [23, 24],
             value: `The identifier cannot be redeclared when it is marked as an alias.`
         },
         {
             type: "error",
-            range: [28, 29],
+            range: [29, 30],
             value: `The identifier cannot be redeclared when it is marked as an alias.`
         },
         {
             type: "error",
-            range: [69, 70],
+            range: [73, 74],
             value: `The identifier cannot be redeclared when it is marked as an alias.`
         }
     ])
@@ -452,43 +448,5 @@ test("Shorthand derived declaration is invalid for destructuring declarations", 
                 status: "pending"
             } satisfies ExpectedTopLevelIdentifier
         })
-    ])
-})
-
-test("The alias target must be declared in current component", () => {
-    localAnalyze(`
-        const a = alias(_)
-        const b = alias(a)
-        const c = alias(z)
-        let z
-    `)
-    localMatchCompileMessages([
-        {
-            type: "error",
-            range: [10, 18],
-            value: `The alias target "_" is not declared at the top-level scope of this component.`
-        }
-    ])
-})
-
-test("Cannot create mutable alias for the immutable constant binding", () => {
-    localAnalyze(`
-        const a = 0
-        let b = alias(a)
-        var c = alias(a)
-        var d = alias(a.b)
-        var {e, f} = alias(a)
-    `)
-    localMatchCompileMessages([
-        {
-            type: "error",
-            range: [16, 28],
-            value: `Cannot create mutable alias for the immutable constant binding: "a".`
-        },
-        {
-            type: "error",
-            range: [33, 45],
-            value: `Cannot create mutable alias for the immutable constant binding: "a".`
-        }
     ])
 })

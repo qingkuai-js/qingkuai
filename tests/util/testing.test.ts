@@ -2,6 +2,8 @@ import { expect, test } from "vitest"
 import { formatSourceCode } from "../../src/util/testing/sundry"
 
 test("Function: formatSourceCode", () => {
+    expect(formatSourceCode("a\nb")).toBe("a\nb")
+    
     expect(
         formatSourceCode(`
 

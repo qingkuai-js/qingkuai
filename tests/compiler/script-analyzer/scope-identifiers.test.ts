@@ -2,7 +2,7 @@ import type { Identifier } from "@babel/types"
 
 import { expect, test } from "vitest"
 import { parse } from "@babel/parser"
-import { walk, WalkContext } from "../../../src/util/compiler/estree/walk"
+import { walk, WalkContext } from "../../../src/compiler/estree/walk"
 
 function localParse(source: string) {
     return parse(source, {

@@ -16,9 +16,9 @@ import type {
     TopLevelDeclarationNode
 } from "./estree"
 import type { Pair } from "./tools"
+import type { WalkContext } from "../compiler/estree/walk"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
-import type { WalkContext } from "../util/compiler/estree/walk"
 
 export interface ScriptDescriptor {
     code: string

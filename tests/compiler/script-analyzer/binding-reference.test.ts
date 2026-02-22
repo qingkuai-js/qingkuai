@@ -1,10 +1,10 @@
 import type { Identifier } from "@babel/types"
-import type { WalkContext } from "../../../src/util/compiler/estree/walk"
+import type { WalkContext } from "../../../src/compiler/estree/walk"
 
 import { parse } from "@babel/parser"
 import { expect, test } from "vitest"
 import { any } from "../../../src/util/shared/sundry"
-import { walk } from "../../../src/util/compiler/estree/walk"
+import { walk } from "../../../src/compiler/estree/walk"
 
 function localParse(source: string) {
     return parse(source, {

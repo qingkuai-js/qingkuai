@@ -21,13 +21,13 @@ import {
     getNonWhiteSpaceLocByLoc,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
+import { markNeedSourcemap } from "../estree/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
+import { walk, walkPatternIdentifiers } from "../estree/walk"
 import { getPrevNonTextNode } from "../../util/compiler/template"
-import { markNeedSourcemap } from "../../util/compiler/estree/sundry"
-import { walk, walkPatternIdentifiers } from "../../util/compiler/estree/walk"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { isNonEmptyExpression, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"

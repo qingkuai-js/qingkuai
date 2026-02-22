@@ -41,8 +41,11 @@ export function ensureIdWithPrefix(name: string, prefix = "_") {
 export function ensureIdWithNumSuffix(name: string, start = 1) {
     const { fullIdentifiers } = analyzeResult.script
     for (let i = start, initial = name; true; i++) {
-        if (i !== start && !fullIdentifiers.has(name)) {
+        if ((!start || i !== start) && !fullIdentifiers.has(name)) {
             break
+        }
+        if (!start) {
+            i++
         }
         name = initial + i
     }

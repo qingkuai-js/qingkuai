@@ -38,10 +38,10 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
             return `The compiler intrinsic "alias" can only accept a writable target (lvalue) as its argument.`
         }
     ],
-    InvalidAliasDestructuring: [
+    InvalidAliasDestructuringDeclaration: [
         1025,
         () => {
-            return "Invalid alias destructuring: default values are not allowed in destructuring alias bindings."
+            return "Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations."
         }
     ],
     InvalidUsageForIntrinsicMethods: [
@@ -81,11 +81,6 @@ export const AmbiguousReactiveMarking = withLocation(
     ...commonMessage.AmbiguousReactiveMarking
 )
 
-// prettier-ignore
-export const InvalidAliasDestructuring = withLocation(
-    ...commonMessage.InvalidAliasDestructuring
-)
-
 export const TopLevelAwaitNotBeSupported = withLocation(
     ...commonMessage.TopLevelAwaitNotBeSupported
 )
@@ -112,6 +107,10 @@ export const InvalidParameterForAliasIntrinsic = withLocation(
 
 export const ShadowCompilerIntrinsicAtTopLevel = withLocation(
     ...commonMessage.ShadowCompilerIntrinsicAtTopLevel
+)
+
+export const InvalidAliasDestructuringDeclaration = withLocation(
+    ...commonMessage.InvalidAliasDestructuringDeclaration
 )
 
 export const InvalidExpression = withLocation(1029, () => {

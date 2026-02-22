@@ -2,7 +2,7 @@ import type { TSModuleDeclaration } from "@babel/types"
 import type { AnyNode, PartialAnyNode } from "#type-declarations/estree"
 
 import { stripTypeExpressions } from "./sundry"
-import { getLastElem } from "../../shared/arrays"
+import { getLastElem } from "../../util/shared/arrays"
 
 export function isLeftValue(node: AnyNode) {
     switch ((node = stripTypeExpressions(node)).type) {
@@ -70,7 +70,7 @@ export function isUndefinedLiteral(node: AnyNode) {
 // (if support is confirmed to be unnecessary in the future, consider removing this method).
 //
 // 判断 TSModuleDeclaration (typescript namespace) 是否会生成 JS 标识符
-// 例如：对于没有内种的命名空间声明或只有类型声明的命名空间标识符，在生成的 JS 文件中不存在
+// 例如：对于没有内容的命名空间声明或只有类型声明的命名空间标识符，在生成的 JS 文件中不存在
 //
 // Determine whether a TSModuleDeclaration (TypeScript namespace) generates a JavaScript identifier.
 // For example, a namespace declaration with no contents or only type declarations will not produce

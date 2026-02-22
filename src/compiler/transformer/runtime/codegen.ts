@@ -8,7 +8,7 @@ import {
 } from "../../../util/compiler/sundry"
 import { CodeWriter } from "../writer"
 import { CodeEditor } from "../editor"
-import { getScriptTransformInfo } from "./script"
+import { transformEmbeddedScript } from "./script"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
@@ -28,12 +28,14 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     })
 
     const writer = new CodeWriter(true)
+    const scriptHoistWriter = new CodeWriter()
     const targetId = ensureIdWithPrefix("target")
     const contextId = ensureIdWithPrefix("context")
     const internalId = analyzeResult.generateIds.internal
     const componentName = inputDescriptor.options.componentName
-    const scriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
-    const scriptTransformInfo = getScriptTransformInfo(scriptEditor)
+    const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
+
+    transformEmbeddedScript(scriptHoistWriter, embeddedScriptEditor)
 
     const eliminateNodes = arrayFrom(analyzeResult.script.eliminateNodes).sort((a, b) => {
         return a.start! - b.start!
@@ -44,7 +46,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
                 ? eliminateNodes[i].end!
                 : findNonWhitespaceChar(scriptSource, eliminateNodes[i].end!)
         const start = findNonWhitespaceCharRight(scriptSource, eliminateNodes[i].start!)
-        scriptEditor.remove(Math.max(prevEnd, start), (prevEnd = end))
+        embeddedScriptEditor.remove(Math.max(prevEnd, start), (prevEnd = end))
     }
 
     for (const declaration of importDeclarations) {
@@ -67,7 +69,8 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writer.write(`export default function ${componentName}(${targetId}, ${contextId}) {`)
 
     writeDelegateEventsRegistration(writer)
-    writer.write(scriptTransformInfo.hoistContent)
+
+    scriptHoistWriter.empty || writer.write(scriptHoistWriter.code).wrapLine()
 
     writer.write(`const refs = ${internalId}.initRefs(${contextId}.r`)
     defaultRefs && writer.write(", ").writeScriptNode(defaultRefs.value)
@@ -79,16 +82,14 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
 
     writer.write(`const slots = ${internalId}.initSlots(${contextId}.s);`)
 
-    const transformedScript = scriptEditor.result.trim()
-    if (!transformedScript) {
-        writer.dedent().write("}")
-    } else {
-        writer.dedent().wrapLine().write(inputDescriptor.indent)
-        writer.write(transformedScript).wrapLine().write("}")
-    }
+    writer.writeEditedScript(embeddedScriptEditor)
 
-    // console.log(writer.mappings)
-    return writer.code
+    writer.dedent().write("}")
+
+    return {
+        code: writer.code,
+        mappings: writer.mappings
+    }
 }
 
 // 生成 <interna>.init 方法调用代码，用于注册被委托的事件

@@ -6,13 +6,13 @@ import {
     ExpectedExpression,
     InvalidShorthandAttributeName
 } from "../message/error"
+import { walk } from "../estree/walk"
 import { parseExpression } from "../parser/script"
+import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
-import { walk } from "../../util/compiler/estree/walk"
 import { kebab2Camel } from "../../util/compiler/string"
 import { jsValidIdentifierStartCharRE } from "../regular"
 import { analyzeResult, inputDescriptor } from "../state"
-import { markNeedSourcemap } from "../../util/compiler/estree/sundry"
 import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 import { getAttributeBaseName, increaseCommonStringCount } from "../../util/compiler/sundry"
 

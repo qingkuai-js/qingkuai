@@ -21,7 +21,7 @@ import type {
     ArrowFunctionExpression
 } from "@babel/types"
 import type { RequiredNonNullableKeys } from "./tools"
-import type { WalkContext } from "../util/compiler/estree/walk"
+import type { WalkContext } from "../compiler/estree/walk"
 
 export type TopLevelDeclarationNode =
     | VariableDeclaration

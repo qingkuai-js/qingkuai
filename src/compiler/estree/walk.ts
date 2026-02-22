@@ -1,10 +1,10 @@
 import type { LVal, Identifier, PatternLike, VariableDeclaration } from "@babel/types"
 import type { AnyNode, Visitor, WalkPatternCallback, WithLoc } from "#type-declarations/estree"
 
-import { any } from "../../shared/sundry"
-import { isArray, isObject } from "../../shared/assert"
+import { any } from "../../util/shared/sundry"
+import { isArray, isObject } from "../../util/shared/assert"
+import { intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 import { isBlock, isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
-import { intrinsicMethodsRE, intrinsicVariableRE } from "../../../compiler/regular"
 
 export class WalkContext<T extends AnyNode = AnyNode> {
     inTopLevel = false

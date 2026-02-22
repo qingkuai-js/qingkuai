@@ -35,7 +35,7 @@ export const intrinsicMethodsRE =
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
 
-export const testingPreWhitespaceRE = /\n?[\s]*\n/
+export const testingPreWhitespaceRE = /^\n?[\s]*\n/
 export const testingUselessWhitespaceRE = /^[ \t]*/
 
 export const babelErrorLocInfoRE = /\(\d+:\d+\)$/

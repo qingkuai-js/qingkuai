@@ -1,28 +1,27 @@
+import type {
+    Identifier,
+    TSEnumDeclaration,
+    VariableDeclarator,
+    VariableDeclaration
+} from "@babel/types"
+import type { CodeEditor } from "../editor"
+import type { Pair } from "#type-declarations/tools"
 import type { AnyNode, IntrinsicCall } from "#type-declarations/estree"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
-import type { Identifier, VariableDeclaration, VariableDeclarator } from "@babel/types"
 
-import {
-    generateSetterCode,
-    ensureIdWithPrefix,
-    ensureIdWithNumSuffix
-} from "../../../util/compiler/sundry"
 import { CodeWriter } from "../writer"
-import { CodeEditor } from "../editor"
 import { arrayFrom } from "../../../util/shared/arrays"
+import { stripTypeExpressions } from "../../estree/sundry"
 import { jsDestructuringEqualTokenRE } from "../../regular"
 import { analyzeResult, inputDescriptor } from "../../state"
 import { findOutOfComment } from "../../../util/compiler/string"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
-import { stripTypeExpressions } from "../../../util/compiler/estree/sundry"
-import { Pair } from "#type-declarations/tools"
+import { generateSetterCode, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
-export function getScriptTransformInfo(editor: CodeEditor) {
+export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEditor) {
     let hoistGettersCount = 0
     let hoistSettersCount = 0
 
-    const hoistWriter = new CodeWriter()
-    const extractWriter = new CodeWriter()
     const debugMode = inputDescriptor.options.debug
     const scriptSource = inputDescriptor.script.code
     const internalId = analyzeResult.generateIds.internal
@@ -33,7 +32,7 @@ export function getScriptTransformInfo(editor: CodeEditor) {
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
     // Used to record VariableDeclarators that have already been processed.
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
-    const processedDeclarators = new Set<VariableDeclarator>()
+    const processedItems = new Set<VariableDeclarator | TSEnumDeclaration>()
 
     // 调试模式下衍生响应式值标识符在编译后不能是常量，因为目标被修改后需要通过 setter 同步修原始始标识符
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
@@ -60,7 +59,7 @@ export function getScriptTransformInfo(editor: CodeEditor) {
             editor.insert(declarator.start!, "let ")
             replaceCommaWithSemi(declarations[declaratorIndex - 1])
         } else {
-            editor.replace(declaration.start!, declaration.start! + 5, "let")
+            editor.replace(declaration.start!, declaration.start! + 5, "let", true)
         }
         for (let i = declaratorIndex + 1; i < declarations.length; i++) {
             if (!convertToLetKeywordDeclarators.has(declarations[i])) {
@@ -74,6 +73,9 @@ export function getScriptTransformInfo(editor: CodeEditor) {
 
     traverseObject(topLevelIdentifiers, (key, value) => {
         switch (value.status) {
+            case "pending": {
+                return
+            }
             case "raw":
             case "literal": {
                 return transformRawDecalration(value)
@@ -96,21 +98,25 @@ export function getScriptTransformInfo(editor: CodeEditor) {
         }
         if (topLevelReferences[key]) {
             for (const reference of topLevelReferences[key]) {
-                if (value.status !== "alias") {
-                    if (!(value.hoist || reference.declared) || !identifierMap[key]) {
+                const { hoist, path, accessor, status } = value
+                if (status !== "alias") {
+                    if (!(hoist || reference.declared) || !accessor) {
                         continue
                     }
                 }
-                const to = identifierMap[key] ? `${identifierMap[key]}.$` : value.path
-                if (reference.shorthand) {
-                    editor.insert(reference.range[1], `: ${to}`)
-                } else {
+
+                const to = status === "alias" ? path : `${identifierMap[key] ?? key}.$`
+                if (!reference.shorthand) {
                     editor.replace(...reference.range, `${to}`, true)
+                } else {
+                    editor.insert(reference.range[1], `: ${to}`, reference.range)
                 }
             }
         }
     })
 
+    // 转换监视器创建调用
+    // Transform watcher creation calls
     for (const call of analyzeResult.script.watchers) {
         const firstArg = call.arguments[0]
         if (firstArg && shouldNodeWrapAsGetter(firstArg)) {
@@ -120,23 +126,15 @@ export function getScriptTransformInfo(editor: CodeEditor) {
         editor.insert(call.callee.start!, `${internalId}.`)
     }
 
-    return {
-        identifierMap,
-        hoistContent: hoistWriter.empty ? "" : hoistWriter.wrapLine().code,
-        extractContent: extractWriter.empty ? "" : extractWriter.wrapLine().code
-    }
-
     function transformRawDecalration(info: TopLevelIdentifierInfo) {
         for (const { declarator } of info.nodeInfos) {
             if (
                 declarator.type === "VariableDeclarator" &&
                 declaratorToIntrinsic.has(declarator) &&
-                !processedDeclarators.has(declarator)
+                !processedItems.has(declarator)
             ) {
                 replaceIntrinsicCall(declarator, "", hasArg => {
-                    if (!hasArg) {
-                        return undefId
-                    }
+                    return hasArg ? undefined : undefId
                 })
             }
         }
@@ -185,7 +183,7 @@ export function getScriptTransformInfo(editor: CodeEditor) {
             return
         }
 
-        if (processedDeclarators.has(declarator)) {
+        if (processedItems.has(declarator)) {
             return
         }
 
@@ -232,17 +230,17 @@ export function getScriptTransformInfo(editor: CodeEditor) {
         if (!info.destructuringIdentifierNames) {
             transformNonDestructuringDeclaratorId(declarator)
             editor.insert(intrinsicId.start!, `${internalId}.`)
-            editor.insert(intrinsicCall.arguments[0].start!, "() => [")
+            editor.insert(intrinsicCall.arguments[0].start!, "() => ")
             editor.replace(
                 ...intrinsicCall.arguments[0].range!,
-                `${aliasInfos[0].target}, ${aliasInfos[0].property}`,
+                `[${aliasInfos[0].target}, ${aliasInfos[0].property}]`,
                 true
             )
-            editor.insert(intrinsicCall.arguments[0].end!, `], ${generateHoistSetter(name)}`)
+            editor.insert(intrinsicCall.arguments[0].end!, `, ${generateHoistSetter(name)}`)
             return
         }
 
-        if (processedDeclarators.has(declarator)) {
+        if (processedItems.has(declarator)) {
             return
         }
 
@@ -265,26 +263,51 @@ export function getScriptTransformInfo(editor: CodeEditor) {
     }
 
     function transformReactiveDeclaration(name: string, info: TopLevelIdentifierInfo) {
+        const reactiveIdentifier = shouldGenerateReactiveIdentifier(info)
+            ? getReactiveIdentifier(name)
+            : name
         const isShallow = info.status === "shallow"
         const firstDeclaration = info.nodeInfos[0].declaration
         const defaultReactFunc = isShallow ? "shallowReact" : "react"
         const defaultReactCallee = `${internalId}.${defaultReactFunc}`
-        const reactiveIdentifier = info.accessor ? getReactiveIdentifier(name) : name
+
+        // ClassDeclaration
+        if (firstDeclaration.type === "ClassDeclaration") {
+            if (debugMode) {
+                editor.insert(
+                    firstDeclaration.start!,
+                    `let [${reactiveIdentifier}, ${name}] = ${defaultReactCallee}(`
+                )
+                editor.insert(firstDeclaration.end!, `, ${generateHoistSetter(name)})`)
+            } else {
+                editor.insert(firstDeclaration.end!, ")")
+                editor.insert(firstDeclaration.start!, `let ${name} = ${defaultReactCallee}(`)
+            }
+            return
+        }
 
         // TSEnumDeclaration
         if (firstDeclaration.type === "TSEnumDeclaration") {
-            const writer = new CodeWriter().indent(false)
-            writer.write(`let [${reactiveIdentifier}] = ${defaultReactCallee}(`).indent()
-            writer.write("{},").wrapLine().write(generateSetterCode(name)).dedent().write(")")
-            editor.insert(info.nodeInfos[0].declaration.start!, writer.wrapLine().code)
-
+            if (debugMode) {
+                editor.insert(
+                    firstDeclaration.start!,
+                    `let [${reactiveIdentifier}] = ${defaultReactCallee}({}, ${generateSetterCode(
+                        name
+                    )})\n${inputDescriptor.indent}`
+                )
+            } else {
+                editor.insert(
+                    firstDeclaration.start!,
+                    `let ${reactiveIdentifier} = ${defaultReactCallee}({})\n${inputDescriptor.indent}`
+                )
+            }
             for (const { declaration } of info.nodeInfos) {
                 const writer = new CodeWriter().indent()
                 editor.insert(
                     declaration.end!,
                     writer.write(
                         isShallow
-                            ? `${reactiveIdentifier}.$ = ${name}`
+                            ? `${reactiveIdentifier}.$ = ${name};`
                             : `${internalId}.objectAssign(${reactiveIdentifier}.$ ??= {}, ${name});`
                     ).code
                 )
@@ -299,10 +322,10 @@ export function getScriptTransformInfo(editor: CodeEditor) {
                 for (const nodeInfo of info.nodeInfos) {
                     const declarator = nodeInfo.declarator as VariableDeclarator
                     const declaration = nodeInfo.declaration as VariableDeclaration
-                    if (processedDeclarators.has(declarator)) {
+                    if (processedItems.has(declarator)) {
                         continue
                     }
-                    processedDeclarators.add(declarator)
+                    processedItems.add(declarator)
 
                     if (declaratorToIntrinsic.has(declarator)) {
                         replaceIntrinsicCall(declarator, "", hasArg =>
@@ -332,37 +355,22 @@ export function getScriptTransformInfo(editor: CodeEditor) {
                         )
                         editor.insert(
                             declarator.end!,
-                            `[${shouldUpdateTargetsArr.join(", ")}] = [${shouldUpdateItemsArr.join(", ")}];`
+                            ` [${shouldUpdateTargetsArr.join(", ")}] = [${shouldUpdateItemsArr.join(", ")}];`
                         )
                     } else {
-                        editor.insert(declarator.end!, `${reactiveIdentifier}.$ = ${name};`)
+                        editor.insert(declarator.end!, ` ${reactiveIdentifier}.$ = ${name};`)
                     }
                 }
             }
 
             const reactiveTarget = isFunctionDeclaration ? name : undefId
-            if (isFunctionDeclaration && debugMode) {
+            if (debugMode) {
                 hoistWriter.write(`let [${reactiveIdentifier}] = ${defaultReactCallee}(`)
                 hoistWriter.write(`${reactiveTarget}, ${generateSetterCode(name)})\n`)
             } else {
                 hoistWriter.write(
                     `let ${reactiveIdentifier} = ${defaultReactCallee}(${reactiveTarget})\n`
                 )
-            }
-            return
-        }
-
-        // ClassDeclaration
-        if (firstDeclaration.type === "ClassDeclaration") {
-            if (debugMode) {
-                editor.insert(
-                    firstDeclaration.start!,
-                    `let [${reactiveIdentifier}, ${name}] = ${defaultReactCallee}(`
-                )
-                editor.insert(firstDeclaration.end!, `, ${generateHoistSetter(name)})`)
-            } else {
-                editor.insert(firstDeclaration.end!, ")")
-                editor.insert(firstDeclaration.start!, `let ${name} = ${defaultReactCallee}(`)
             }
             return
         }
@@ -413,10 +421,10 @@ export function getScriptTransformInfo(editor: CodeEditor) {
             return
         }
 
-        if (processedDeclarators.has(declarator)) {
+        if (processedItems.has(declarator)) {
             return
         }
-        processedDeclarators.add(declarator)
+        processedItems.add(declarator)
 
         const setterIds: string[] = []
         const needSetters = debugMode && !isConst
@@ -473,9 +481,10 @@ export function getScriptTransformInfo(editor: CodeEditor) {
     ) {
         const { call, id } = getIntrinsicInfo(declarator)!
         const args = call.arguments
+        const initNodeStart = declarator.init!.start!
         const insertArgRet = insertArg?.(!!args.length)
 
-        if ((processedDeclarators.add(declarator), insertArgRet)) {
+        if ((processedItems.add(declarator), insertArgRet)) {
             if (args.length) {
                 editor.insert(args[0].end!, insertArgRet)
             } else {
@@ -484,14 +493,15 @@ export function getScriptTransformInfo(editor: CodeEditor) {
         }
         if (newName === "") {
             if (!args.length) {
-                editor.remove(call.start!, call.end! - 1)
+                editor.remove(initNodeStart, call.end! - 1)
             } else {
-                editor.remove(call.start!, args[0].start!)
                 editor.remove(args[0].end!, call.end! - 1)
+                editor.remove(initNodeStart, args[0].start!)
             }
             editor.remove(call.end! - 1, call.end!)
         } else {
-            editor.replace(...id.range!, `${internalId}.${newName}`, true)
+            editor.insert(id.start!, `${internalId}.`)
+            editor.replace(...id.range!, newName, true)
         }
     }
 
@@ -504,7 +514,7 @@ export function getScriptTransformInfo(editor: CodeEditor) {
     }
 
     function getReactiveIdentifier(name: string) {
-        return (identifierMap[name] ??= ensureIdWithPrefix("_" + name))
+        return (identifierMap[name] ??= ensureIdWithNumSuffix("_" + name, 0))
     }
 
     function generateHoistGetter(returns: string) {
@@ -520,8 +530,11 @@ export function getScriptTransformInfo(editor: CodeEditor) {
     function transformNonDestructuringDeclaratorId(declarator: VariableDeclarator) {
         if (debugMode) {
             const idNode = declarator.id as Identifier
-            editor.insert(idNode.end!, "]")
-            editor.insert(idNode.start!, `[${getReactiveIdentifier(idNode.name)}, `)
+            editor.replace(
+                ...idNode.range!,
+                `[${getReactiveIdentifier(idNode.name)}, ${idNode.name}]`,
+                true
+            )
         }
     }
 
@@ -549,13 +562,30 @@ function shouldNodeWrapAsGetter(node: AnyNode) {
     return true
 }
 
+function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
+    const debugMode = inputDescriptor.options.debug
+    const firstDeclaration = info.nodeInfos[0].declaration
+    switch (firstDeclaration.type) {
+        case "ClassDeclaration": {
+            return debugMode
+        }
+        case "TSEnumDeclaration":
+        case "FunctionDeclaration": {
+            return true
+        }
+        default: {
+            return firstDeclaration.kind !== "let" || debugMode
+        }
+    }
+}
+
 function getIntrinsicInfo(declarator: VariableDeclarator) {
     const context = analyzeResult.script.declaratorToIntrinsic.get(declarator)!
     if (context) {
         return {
             context,
             id: context.value,
-            call: context.parent!.value as IntrinsicCall
+            call: context.striptTypeOperationsParent!.value as IntrinsicCall
         }
     }
 }

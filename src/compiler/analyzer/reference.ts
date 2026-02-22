@@ -2,7 +2,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
-import { isLeftValue } from "../../util/compiler/estree/assert"
+import { isLeftValue } from "../estree/assert"
 import { DomRerferenceAttributeOnComponent } from "../message/warn"
 import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"

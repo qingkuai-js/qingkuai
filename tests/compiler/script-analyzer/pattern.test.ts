@@ -1,11 +1,11 @@
 import type { PatternLike } from "@babel/types"
-import type { WalkContext } from "../../../src/util/compiler/estree/walk"
+import type { WalkContext } from "../../../src/compiler/estree/walk"
 
 import { expect, test } from "vitest"
-import { parse, parseExpression } from "@babel/parser"
-import { isLeftValue } from "../../../src/util/compiler/estree/assert"
-import { walk, walkPatternIdentifiers } from "../../../src/util/compiler/estree/walk"
 import { NOOP } from "../../../src/runtime/constants"
+import { parse, parseExpression } from "@babel/parser"
+import { isLeftValue } from "../../../src/compiler/estree/assert"
+import { walk, walkPatternIdentifiers } from "../../../src/compiler/estree/walk"
 
 function extractIdentifiers(source: string) {
     const result: string[][] = []

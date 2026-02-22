@@ -1,9 +1,9 @@
 import type { Range } from "#type-declarations/compiler"
 import type { AnyNode, WithLoc } from "#type-declarations/estree"
 
+import { PositionFlag } from "../enums"
 import { isTypeOperation } from "./assert"
-import { markPositionFlag } from "../position"
-import { PositionFlag } from "../../../compiler/enums"
+import { markPositionFlag } from "../../util/compiler/position"
 
 export function stripTypeExpressions(node: AnyNode) {
     if (isTypeOperation(node)) {
@@ -20,6 +20,7 @@ export function getStripedTypeAnnotationRange(node: AnyNode): Range {
 }
 
 export function markNeedSourcemap(node: WithLoc<AnyNode>, startSourceIndex: number) {
-    markPositionFlag(PositionFlag.Sourcemap, startSourceIndex + node.end)
-    markPositionFlag(PositionFlag.Sourcemap, startSourceIndex + node.start)
+    const { Sourcemap, SourcemapEnd: sourceMapEnd, SourcemapStart } = PositionFlag
+    markPositionFlag(sourceMapEnd | Sourcemap, startSourceIndex + node.end)
+    markPositionFlag(SourcemapStart | Sourcemap, startSourceIndex + node.start)
 }

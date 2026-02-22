@@ -1,9 +1,11 @@
+import type { CodeEditor } from "./editor"
 import type { ASTPosition } from "#type-declarations/compiler"
 import type { PartialAnyNode } from "#type-declarations/estree"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 
 import { PositionFlag } from "../enums"
 import { inputDescriptor } from "../state"
+import { nonWhitespaceRE } from "../regular"
 import { getPosByIndex, isPositionFlagSetAtIndex } from "../../util/compiler/position"
 
 export class CodeWriter {
@@ -77,12 +79,26 @@ export class CodeWriter {
         return this
     }
 
+    writeEditedScript(editor: CodeEditor) {
+        const editedContent = editor.result.trimEnd()
+        const nonEmptyIndex = editedContent.search(nonWhitespaceRE)
+        if (nonEmptyIndex === -1) {
+            return
+        }
+
+        this.dedent().wrapLine().write(inputDescriptor.indent)
+        for (let i = nonEmptyIndex; i < editedContent.length; i++) {
+            this.writeCharacter(editedContent[i], editor.getSourceIndex(i) ?? -1, false)
+        }
+        this.indent(false)
+    }
+
     private get indentStr() {
         return inputDescriptor.indent.repeat(this.indentLevel)
     }
 
-    private writeCharacter(character: string, sourceIndex: number) {
-        if (!this.sourcemap && inputDescriptor.options.sourcemap) {
+    private writeCharacter(character: string, sourceIndex: number, createMappingAtNodeEnt = true) {
+        if (this.sourcemap && inputDescriptor.options.sourcemap) {
             if (
                 this.nextSourcePos &&
                 -1 === sourceIndex &&
@@ -101,7 +117,11 @@ export class CodeWriter {
                 const { line, column } = getPosByIndex(sourceIndex)
                 this.mappingLine.push([this.generateColumn, 0, line - 1, column])
             }
-            this.nextSourcePos = inputDescriptor.positions[sourceIndex + 1]
+            if (!createMappingAtNodeEnt) {
+                this.nextSourcePos = undefined
+            } else {
+                this.nextSourcePos = inputDescriptor.positions[sourceIndex + 1]
+            }
         }
         if (((this._code += character), "\n" !== character)) {
             this.generateColumn++

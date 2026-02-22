@@ -26,7 +26,6 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
 describe("Invalid usages of intrinsic methods", () => {
     const getMsg = commonErrorMsg.InvalidUsageForIntrinsicMethods[1]
     const invalidArgMsg = commonErrorMsg.InvalidParameterForAliasIntrinsic[1]()
-    const invalidAliasDestructuringMsg = commonErrorMsg.InvalidAliasDestructuring[1]()
 
     test("Not in the top level", () => {
         localAnalyze(`
@@ -118,7 +117,7 @@ describe("Invalid usages of intrinsic methods", () => {
             shallow()
             test(raw(1))
             derived && derived(()=>{})
-            alias(_)
+            alias(a.b)
         `)
         localMatchCompileMessages([
             {
@@ -193,21 +192,27 @@ describe("Invalid usages of intrinsic methods", () => {
             let a = alias(1)
             let { b } = alias({})
             const [c, d] = alias(getObj(), a++)
+            const { e, f: { g } } = alias(h.i, j.k)
         `)
         localMatchCompileMessages([
             {
                 type: "error",
-                range: [14, 15],
+                range: [8, 16],
                 value: invalidArgMsg
             },
             {
                 type: "error",
-                range: [35, 37],
+                range: [29, 38],
                 value: invalidArgMsg
             },
             {
                 type: "error",
-                range: [60, 73],
+                range: [54, 74],
+                value: invalidArgMsg
+            },
+            {
+                type: "error",
+                range: [99, 114],
                 value: invalidArgMsg
             }
         ])
@@ -215,37 +220,35 @@ describe("Invalid usages of intrinsic methods", () => {
 
     test("Destructuring alias binding can not specific default values", () => {
         localAnalyze(`
-            var { a = b } = alias(_)
+            var { a = b } = alias(_._)
             let {
                 c: {
                     d: { e = f }
                 }
-            } = alias(_)
-            const [g = h] = alias(_),
-                [i, [j, [k = l]]] = alias(_)
-
-            var _
+            } = alias(_._)
+            const [g = h] = alias(_._),
+                [i, [j, [k = l]]] = alias(_._)
         `)
         localMatchCompileMessages([
             {
                 type: "error",
-                range: [4, 24],
-                value: invalidAliasDestructuringMsg
+                range: [4, 26],
+                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
             },
             {
                 type: "error",
-                range: [29, 79],
-                value: invalidAliasDestructuringMsg
+                range: [31, 83],
+                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
             },
             {
                 type: "error",
-                range: [86, 104],
-                value: invalidAliasDestructuringMsg
+                range: [90, 110],
+                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
             },
             {
                 type: "error",
-                range: [110, 138],
-                value: invalidAliasDestructuringMsg
+                range: [116, 146],
+                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
             }
         ])
     })
@@ -470,7 +473,7 @@ test("Shadow compiler intrinsic identifiers", () => {
 test("Shorthand derived declaration with compiler intrinsic method", () => {
     localAnalyze(`
         const $a = derived(() => {})
-        let $b = reactive(1)
+        let $b = reactive()
         const $c = raw(1)
     `)
     localMatchCompileMessages([
@@ -481,17 +484,17 @@ test("Shorthand derived declaration with compiler intrinsic method", () => {
         },
         {
             type: "error",
-            range: [33, 49],
+            range: [33, 48],
             value: commonErrorMsg.AmbiguousReactiveMarking[1]("reactive")
         },
         {
             type: "warning",
-            range: [33, 49],
+            range: [33, 48],
             value: commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
         },
         {
             type: "error",
-            range: [56, 67],
+            range: [55, 66],
             value: commonErrorMsg.AmbiguousReactiveMarking[1]("raw")
         }
     ])

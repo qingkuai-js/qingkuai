@@ -4,13 +4,13 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
-import type { WalkContext } from "../../util/compiler/estree/walk"
 import type {
     Identifier,
     MemberExpression,
-    VariableDeclaration,
-    VariableDeclarator
+    VariableDeclarator,
+    VariableDeclaration
 } from "@babel/types"
+import type { WalkContext } from "../estree/walk"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import {
@@ -24,7 +24,7 @@ import {
 import {
     CannotAliasIdentifier,
     AmbiguousReactiveMarking,
-    InvalidAliasDestructuring,
+    InvalidAliasDestructuringDeclaration,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -43,21 +43,15 @@ import {
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
-import {
-    isLiteral,
-    isLeftValue,
-    isTypeOperation,
-    isFunctionLiteral
-} from "../../util/compiler/estree/assert"
-import { any } from "../../util/shared/sundry"
-import { parseExpression, parseScript } from "../parser/script"
+import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
+import { walk, walkPatternIdentifiers } from "../estree/walk"
+import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
 import { increaseCommonStringCount } from "../../util/compiler/sundry"
-import { walk, walkPatternIdentifiers } from "../../util/compiler/estree/walk"
-import { markNeedSourcemap, stripTypeExpressions } from "../../util/compiler/estree/sundry"
-import { stringify } from "../../util/shared/aliases"
+import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
+import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../estree/assert"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
@@ -259,7 +253,7 @@ const visitor: Visitor = {
             // 别名绑定搭配解构语法时不允许指定默认值
             // Alias bindings are not allowed to specify default values when used with destructuring syntax.
             if (status === "alias" && specifiedDefaultValue) {
-                InvalidAliasDestructuring(getScriptLocByRange(declarator.range!))
+                InvalidAliasDestructuringDeclaration(getScriptLocByRange(declarator.range!))
             }
         }
     },
@@ -297,6 +291,7 @@ function inferStatusWithDeclarator(
         declarator.id.name.startsWith("$") &&
         inputDescriptor.options.shorthandDerivedDeclaration
     const isConst = declaration.kind === "const"
+    const isDestructuring = declarator.id.type !== "Identifier"
     const declaratorLoc = getScriptLocByRange(declarator.range!)
     const initNode = declarator.init && stripTypeExpressions(declarator.init)
 
@@ -314,7 +309,7 @@ function inferStatusWithDeclarator(
 
         // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
         // Constant declarations with literal initial values have no reactive semantics and are downgraded to using the raw value.
-        if (isLiteralInit || isFunctionLiteral(initNode)) {
+        if (!isDestructuring && (isLiteralInit || isFunctionLiteral(initNode))) {
             return isConst ? "raw" : "literal"
         }
 
@@ -363,7 +358,7 @@ function inferStatusWithDeclarator(
                 return "derived"
             }
 
-            if (!isConst || !(isLiteralArg || isFunctionLiteralArg)) {
+            if (isDestructuring || !isConst || !(isLiteralArg || isFunctionLiteralArg)) {
                 return calleeName
             }
 
@@ -489,7 +484,7 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                 if (node.name === "alias") {
                     const args = parent.value.arguments
                     const callRange = parent.value.range!
-                    if (args[0].type === "Identifier") {
+                    if (args[0]?.type === "Identifier") {
                         CannotAliasIdentifier(getScriptLocByRange(callRange))
                     }
                     if (args.length !== 1 || !isLeftValue(args[0])) {

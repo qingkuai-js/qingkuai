@@ -1,7 +1,11 @@
 import type { EditInsertSnippet, EditReplacement, Range } from "#type-declarations/compiler"
+import { isPositionFlagSetAtIndex } from "../../util/compiler/position"
+
 import { isString } from "../../util/shared/assert"
+import { PositionFlag } from "../enums"
 
 export class CodeEditor {
+    private indexToSourceIndex: number[]
     private replacements: EditReplacement[]
 
     constructor(
@@ -9,10 +13,11 @@ export class CodeEditor {
         private startSourceIndex: number
     ) {
         this.replacements = Array(source.length)
+        this.indexToSourceIndex = Array(source.length)
     }
 
-    removeCharacter(index: number) {
-        this.remove(index, index + 1)
+    getSourceIndex(index: number) {
+        return this.indexToSourceIndex[index]
     }
 
     remove(start: number, end: number) {
@@ -49,21 +54,38 @@ export class CodeEditor {
 
     get result() {
         const segments: string[] = []
-        for (let i = 0; i < this.source.length; ) {
-            const operateIndex = i
+
+        const recordIndexMap = (
+            generateIndex: number,
+            sourceIndex: number,
+            key: keyof typeof PositionFlag = "Sourcemap"
+        ) => {
+            if (isPositionFlagSetAtIndex(PositionFlag[key], this.startSourceIndex + sourceIndex)) {
+                this.indexToSourceIndex[generateIndex] = this.startSourceIndex + sourceIndex
+            }
+        }
+
+        for (let i = 0, j = 0; i < this.source.length; ) {
             const replacement = this.replacements[i]
             if (replacement?.removedLength) {
                 i += replacement.removedLength
+            } else {
+                recordIndexMap(j, i, "SourcemapEnd")
             }
             if (replacement?.additions) {
                 for (const addition of replacement.additions) {
-                    segments.push(addition.value)
+                    if ((segments.push(addition.value), addition.sourceRange)) {
+                        recordIndexMap(j, addition.sourceRange[0])
+                        recordIndexMap(j + addition.value.length, addition.sourceRange[1])
+                    }
+                    j += addition.value.length
                 }
             }
-            if (operateIndex !== i) {
+            if (replacement?.removedLength) {
                 continue
             }
             if (i < this.source.length) {
+                recordIndexMap(j++, i, "SourcemapStart")
                 segments.push(this.source[i++])
             }
         }
