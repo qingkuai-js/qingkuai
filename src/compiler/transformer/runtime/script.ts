@@ -80,14 +80,12 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             case "literal": {
                 return transformRawDecalration(value)
             }
-            case "derived": {
-                transformDerivedDeclaration(key, value)
+            case "alias": {
+                transformAliasDeclaration(key, value)
                 break
             }
-            case "alias": {
-                if (debugMode) {
-                    transformAliasDeclaration(key, value)
-                }
+            case "derived": {
+                transformDerivedDeclaration(key, value)
                 break
             }
             case "shallow":
@@ -199,12 +197,20 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
                 return `[${getReactiveIdentifier(item)}, ${item}]`
             })
             editor.insertMulti(declarator.id.start!, [
-                `[${destructuringIds.join(", ")}] = ${internalId}.`,
+                {
+                    sourceRange: declarator.id.range!,
+                    value: `[${destructuringIds.join(", ")}]`
+                },
+                {
+                    value: `= ${internalId}.`
+                },
                 {
                     value: "destructuringDerived",
                     sourceRange: intrinsicInfo!.id.range
                 },
-                "(("
+                {
+                    value: "(("
+                }
             ])
         } else {
             editor.insert(
@@ -225,16 +231,35 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
 
     function transformAliasDeclaration(name: string, info: TopLevelIdentifierInfo) {
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
+        const { declarations } = info.nodeInfos[0].declaration as VariableDeclaration
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
         const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
+
+        // 移除 VariableDeclarator 多余的尾部逗号
+        // Remove any trailing comma from the VariableDeclarator.
+        if (!debugMode) {
+            if (declarations.length !== 1) {
+                let declaratorToRemoveEndComma: VariableDeclarator
+                const declaratorIndex = declarations.indexOf(declarator)
+                if (declaratorIndex !== declarations.length - 1) {
+                    declaratorToRemoveEndComma = declarator
+                } else {
+                    declaratorToRemoveEndComma = declarations[declaratorIndex - 1]
+                }
+                editor.removeCharacter(
+                    declaratorToRemoveEndComma.end! +
+                        findEndCommaIndexOfVariableDeclarator(declaratorToRemoveEndComma)
+                )
+            }
+            return
+        }
+
         if (!info.destructuringIdentifierNames) {
             transformNonDestructuringDeclaratorId(declarator)
             editor.insert(intrinsicId.start!, `${internalId}.`)
-            editor.insert(intrinsicCall.arguments[0].start!, "() => ")
             editor.replace(
                 ...intrinsicCall.arguments[0].range!,
-                `[${aliasInfos[0].target}, ${aliasInfos[0].property}]`,
-                true
+                generateHoistGetter(`[${aliasInfos[0].target}, ${aliasInfos[0].property}]`)
             )
             editor.insert(intrinsicCall.arguments[0].end!, `, ${generateHoistSetter(name)}`)
             return
@@ -244,22 +269,23 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             return
         }
 
+        const declaratorIdRange = declarator.id.range!
         const [getterIds, setterIds]: Pair<string[]> = [[], []]
         const destructuringIds = info.destructuringIdentifierNames.map(item => {
             return `[${getReactiveIdentifier(item)}, ${item}]`
         })
         for (const aliasInfo of aliasInfos) {
             getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.property}]`))
-            setterIds.push(generateHoistSetter(name))
+            setterIds.push(generateHoistSetter(aliasInfo.id))
         }
         replaceIntrinsicCall(declarator, "destructuringAlias")
-        editor.remove(...declarator.id.range!)
+        editor.remove(...declaratorIdRange)
         editor.remove(...intrinsicCall.arguments[0].range!)
         editor.insert(
             intrinsicCall.arguments[0].end!,
             `[${getterIds.join(", ")}], [${setterIds.join(", ")}]`
         )
-        editor.insert(declarator.id.start!, `[${destructuringIds.join(", ")}]`)
+        editor.insert(declarator.id.start!, `[${destructuringIds.join(", ")}]`, declaratorIdRange)
     }
 
     function transformReactiveDeclaration(name: string, info: TopLevelIdentifierInfo) {
@@ -291,14 +317,14 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             if (debugMode) {
                 editor.insert(
                     firstDeclaration.start!,
-                    `let [${reactiveIdentifier}] = ${defaultReactCallee}({}, ${generateSetterCode(
+                    `const [${reactiveIdentifier}] = ${defaultReactCallee}({}, ${generateSetterCode(
                         name
                     )})\n${inputDescriptor.indent}`
                 )
             } else {
                 editor.insert(
                     firstDeclaration.start!,
-                    `let ${reactiveIdentifier} = ${defaultReactCallee}({})\n${inputDescriptor.indent}`
+                    `const ${reactiveIdentifier} = ${defaultReactCallee}({})\n${inputDescriptor.indent}`
                 )
             }
             for (const { declaration } of info.nodeInfos) {
@@ -365,11 +391,11 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
 
             const reactiveTarget = isFunctionDeclaration ? name : undefId
             if (debugMode) {
-                hoistWriter.write(`let [${reactiveIdentifier}] = ${defaultReactCallee}(`)
+                hoistWriter.write(`const [${reactiveIdentifier}] = ${defaultReactCallee}(`)
                 hoistWriter.write(`${reactiveTarget}, ${generateSetterCode(name)})\n`)
             } else {
                 hoistWriter.write(
-                    `let ${reactiveIdentifier} = ${defaultReactCallee}(${reactiveTarget})\n`
+                    `const ${reactiveIdentifier} = ${defaultReactCallee}(${reactiveTarget})\n`
                 )
             }
             return
@@ -450,7 +476,15 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
                 const isReactive = status === "shallow" || status === "reactive"
                 return isReactive ? `[${getReactiveIdentifier(item)}, ${item}]` : item
             })
-            editor.insert(declarator.id.start!, `[${destructuringIds.join(", ")}] = ${internalId}.`)
+            editor.insertMulti(declarator.id.start!, [
+                {
+                    sourceRange: declarator.id.range!,
+                    value: `[${destructuringIds.join(", ")}]`
+                },
+                {
+                    value: ` = ${internalId}.`
+                }
+            ])
         }
         editor.insert(
             declarator.id.start!,
@@ -507,12 +541,11 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
 
     function replaceCommaWithSemi(declarator: VariableDeclarator) {
         const declaratorEnd = declarator.end!
-        const commaIndex = findOutOfComment(scriptSource.slice(declaratorEnd!), ",")
+        const commaIndex = findEndCommaIndexOfVariableDeclarator(declarator)
         if (commaIndex !== -1) {
             editor.replace(declaratorEnd + commaIndex, declaratorEnd + commaIndex + 1, ";")
         }
     }
-
     function getReactiveIdentifier(name: string) {
         return (identifierMap[name] ??= ensureIdWithNumSuffix("_" + name, 0))
     }
@@ -588,4 +621,8 @@ function getIntrinsicInfo(declarator: VariableDeclarator) {
             call: context.striptTypeOperationsParent!.value as IntrinsicCall
         }
     }
+}
+
+function findEndCommaIndexOfVariableDeclarator(declarator: VariableDeclarator) {
+    return findOutOfComment(inputDescriptor.script.code.slice(declarator.end!), ",")
 }

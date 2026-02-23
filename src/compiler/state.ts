@@ -37,7 +37,7 @@ function newAnalyzeResult(): AnalyzeResult {
             watchers: [],
             stringLiterals: [],
             importDeclarations: [],
-            eliminateNodes: new Set(),
+            eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),
             declaratorToAliasInfos: new Map(),
             declaratorToIntrinsic: new Map(),

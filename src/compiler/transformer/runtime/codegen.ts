@@ -35,19 +35,8 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const componentName = inputDescriptor.options.componentName
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
+    removeEliminatedNodes(embeddedScriptEditor)
     transformEmbeddedScript(scriptHoistWriter, embeddedScriptEditor)
-
-    const eliminateNodes = arrayFrom(analyzeResult.script.eliminateNodes).sort((a, b) => {
-        return a.start! - b.start!
-    })
-    for (let i = 0, prevEnd = 0; i < eliminateNodes.length; i++) {
-        const end =
-            i === eliminateNodes.length - 1
-                ? eliminateNodes[i].end!
-                : findNonWhitespaceChar(scriptSource, eliminateNodes[i].end!)
-        const start = findNonWhitespaceCharRight(scriptSource, eliminateNodes[i].start!)
-        embeddedScriptEditor.remove(Math.max(prevEnd, start), (prevEnd = end))
-    }
 
     for (const declaration of importDeclarations) {
         writer.writeScriptNode(declaration.value).wrapLine()
@@ -89,6 +78,19 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     return {
         code: writer.code,
         mappings: writer.mappings
+    }
+}
+
+export function removeEliminatedNodes(editor: CodeEditor) {
+    const { eliminatedNodes } = analyzeResult.script
+    const scriptSource = inputDescriptor.script.code
+    const sortedEliminatedNodes = arrayFrom(eliminatedNodes).sort((a, b) => {
+        return a.start! - b.start!
+    })
+    for (let i = 0, prevEnd = 0; i < sortedEliminatedNodes.length; i++) {
+        const elininatedNode = sortedEliminatedNodes[i]
+        const start = findNonWhitespaceCharRight(scriptSource, elininatedNode.start!)
+        editor.remove(Math.max(prevEnd, start), (prevEnd = elininatedNode.end!))
     }
 }
 

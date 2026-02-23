@@ -179,6 +179,7 @@ export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
         VariableDeclarator,
         {
+            id: string
             target: string
             property: string
         }[]
@@ -193,7 +194,7 @@ export interface ScriptAnalyzeRet {
     }
     watchers: IntrinsicCall[]
     fullIdentifiers: Set<string>
-    eliminateNodes: Set<AnyNode>
+    eliminatedNodes: Set<AnyNode>
     stringLiterals: StringLiteral[]
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>

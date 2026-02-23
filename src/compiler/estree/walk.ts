@@ -256,44 +256,62 @@ export function walk(node: any, visitor: Visitor, context = new WalkContext(node
     }
 }
 
-// 递归遍历一个 Pattern 节点，当遇到绑定标识符时，调用传入的 callback，
-// 并传入当前标识符节点及其访问路径，该方法的返回值表示 Pattern 中是否指定了默认值
+// 递归遍历一个 Pattern 节点，当遇到绑定标识符时，调用传入的 callback，并传入当前标识符节点及其访问路径
+// Recursively traverse a Pattern node. When a binding identifier is encountered, invoke the
+// provided callback with the current identifier node and its access path.
 //
-// Recursively traverse a Pattern node. When a binding identifier is encountered,
-// invoke the provided callback with the current identifier node and its access path.
-// The return value of this method indicates whether the Pattern specifies a default value.
+// 注意：通过此方法分析解构模式的访问路径时，只有模式中未使用剩余元素语法才能得到精确的静态访问路径
+// Note: When analyzing access paths of destructuring patterns using this method,
+// precise static access paths can only be obtained if the pattern does not use rest elements.
 export function walkPatternIdentifiers(pattern: LVal | PatternLike, callback: WalkPatternCallback) {
-    return (function extract(from: LVal | PatternLike, path: string): void | boolean {
+    const result = {
+        hasRestElement: false,
+        specifiedDefaultValue: false
+    }
+
+    function extract(from: LVal | PatternLike, path: string): void | boolean {
         switch (from.type) {
-            case "Identifier": {
-                return callback(from as WithLoc<Identifier>, path)
-            }
-            case "AssignmentPattern": {
-                return (extract(from.left, path), true)
-            }
-            case "RestElement": {
-                return extract(from.argument, path)
-            }
             case "ArrayPattern": {
-                return from.elements.reduce((ret, element, index) => {
-                    return (element && extract(element, path + `[${index}]`)) || ret
-                }, false)
+                for (let i = 0; i < from.elements.length; i++) {
+                    const element = from.elements[i]
+                    if (!element) {
+                        continue
+                    }
+                    if (element.type === "RestElement") {
+                        extract(from.elements[i]!, path)
+                    } else {
+                        extract(from.elements[i]!, path + `[${i}]`)
+                    }
+                }
+                break
             }
             case "ObjectPattern": {
-                return from.properties.reduce((ret, property) => {
+                for (const property of from.properties) {
                     if (property.type === "RestElement") {
-                        return extract(property, path) || ret
+                        extract(property, path)
                     } else {
                         let extra = ""
                         if (property.key.type === "Identifier") {
                             extra = `.${property.key.name}`
                         }
-                        return extract(property.value as PatternLike, path + extra) || ret
+                        extract(property.value as PatternLike, path + extra)
                     }
-                }, false)
+                }
+                break
+            }
+            case "Identifier": {
+                return callback(from as WithLoc<Identifier>, path)
+            }
+            case "RestElement": {
+                return ((result.hasRestElement = true), extract(from.argument, path))
+            }
+            case "AssignmentPattern": {
+                return ((result.specifiedDefaultValue = true), extract(from.left, path))
             }
         }
-    })(pattern, "")
+    }
+
+    return (extract(pattern, ""), result)
 }
 
 // 判断是否为值标识符引用

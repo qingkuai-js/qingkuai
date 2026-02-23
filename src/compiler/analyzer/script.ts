@@ -168,72 +168,69 @@ const visitor: Visitor = {
             const status = inferStatusWithDeclarator(declarator, node)
             const { topLevelIdentifiers, declaratorToAliasInfos: declaratorToAlias } =
                 analyzeResult.script
-            const specifiedDefaultValue = walkPatternIdentifiers(
-                declarator.id,
-                (identifier, path) => {
-                    const initNode = declarator.init
+            const patternInfo = walkPatternIdentifiers(declarator.id, (identifier, path) => {
+                const initNode = declarator.init
 
-                    // let/var 声明对衍生响应式值无意义，它不可被修改
-                    // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
-                    if (status === "derived" && node.kind !== "const") {
-                        UnnecessaryMutableDerivedDeclaration(getScriptLocByRange(declarator.range!))
-                    }
+                // let/var 声明对衍生响应式值无意义，它不可被修改
+                // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
+                if (status === "derived" && node.kind !== "const") {
+                    UnnecessaryMutableDerivedDeclaration(getScriptLocByRange(declarator.range!))
+                }
 
-                    // 衍生响应式值/别名 标识符不能重复声明（使用 var 关键字时可能导致此问题）
-                    // Derived reactive value or alias identifiers must not be declared more than once (this may occur when using the `var` keyword).
-                    if (topLevelIdentifiers[identifier.name]) {
-                        const existing = topLevelIdentifiers[identifier.name]
-                        const existingCannotBeRedeclared = cannotRedeclareStatusRE.test(
-                            existing.status
-                        )
-                        if (existingCannotBeRedeclared || cannotRedeclareStatusRE.test(status)) {
-                            if (!existingCannotBeRedeclared) {
-                                IdentifierCannotBeRedeclared(
-                                    getScriptLocByRange(getLastElem(existing.nodeInfos)!.id.range!),
-                                    status
-                                )
-                            } else {
-                                IdentifierCannotBeRedeclared(
-                                    getScriptLocByRange(identifier.range),
-                                    existing!.status
-                                )
-                            }
+                // 衍生响应式值/别名 标识符不能重复声明（使用 var 关键字时可能导致此问题）
+                // Derived reactive value or alias identifiers must not be declared more than once (this may occur when using the `var` keyword).
+                if (topLevelIdentifiers[identifier.name]) {
+                    const existing = topLevelIdentifiers[identifier.name]
+                    const existingCannotBeRedeclared = cannotRedeclareStatusRE.test(existing.status)
+                    if (existingCannotBeRedeclared || cannotRedeclareStatusRE.test(status)) {
+                        if (!existingCannotBeRedeclared) {
+                            IdentifierCannotBeRedeclared(
+                                getScriptLocByRange(getLastElem(existing.nodeInfos)!.id.range!),
+                                status
+                            )
+                        } else {
+                            IdentifierCannotBeRedeclared(
+                                getScriptLocByRange(identifier.range),
+                                existing!.status
+                            )
                         }
                     }
+                }
 
-                    const hoist = node.kind === "var"
-                    const implicit = status === "pending" || status === "literal"
-                    updateTopLevelIdentifiers(
-                        identifier,
-                        hoist,
-                        implicit,
-                        status,
-                        declarator,
-                        node,
-                        destructuringIdentifierNames
+                const hoist = node.kind === "var"
+                const implicit = status === "pending" || status === "literal"
+                updateTopLevelIdentifiers(
+                    identifier,
+                    hoist,
+                    implicit,
+                    status,
+                    declarator,
+                    node,
+                    destructuringIdentifierNames
+                )
+
+                // status 为 alias 时记录标识符别名的访问路径
+                // When the status is `alias`, record the access path of the identifier alias.
+                if (
+                    status === "alias" &&
+                    initNode?.type === "CallExpression" &&
+                    initNode.arguments.length &&
+                    isLeftValue(initNode.arguments[0])
+                ) {
+                    let aliasInfos = declaratorToAlias.get(declarator)
+                    if (!aliasInfos) {
+                        declaratorToAlias.set(declarator, (aliasInfos = []))
+                    }
+
+                    const argSource = inputDescriptor.script.code.slice(
+                        ...stripTypeExpressions(initNode.arguments[0]).range!
                     )
-
-                    // status 为 alias 时记录标识符别名的访问路径
-                    // When the status is `alias`, record the access path of the identifier alias.
-                    if (
-                        status === "alias" &&
-                        initNode?.type === "CallExpression" &&
-                        initNode.arguments.length &&
-                        isLeftValue(initNode.arguments[0])
-                    ) {
-                        let aliasInfos = declaratorToAlias.get(declarator)
-                        if (!aliasInfos) {
-                            declaratorToAlias.set(declarator, (aliasInfos = []))
-                        }
-                        const argSource = inputDescriptor.script.code.slice(
-                            ...stripTypeExpressions(initNode.arguments[0]).range!
-                        )
-                        const fullPath = argSource + path
-                        const expression = stripTypeExpressions(
-                            parseExpression(fullPath)!
-                        ) as MemberExpression
+                    const fullPath = argSource + path
+                    const expression = stripTypeExpressions(parseExpression(fullPath)!)
+                    if (expression.type === "MemberExpression") {
                         const propertySource = fullPath.slice(...expression.property.range!)
                         aliasInfos.push({
+                            id: identifier.name,
                             property: expression.computed
                                 ? propertySource
                                 : stringify(propertySource),
@@ -241,19 +238,32 @@ const visitor: Visitor = {
                         })
                         topLevelIdentifiers[identifier.name].path = fullPath
                     }
-
-                    // 记录解构声明的标识符名称列表
-                    // Record the list of identifier names declared by a destructuring declaration.
-                    topLevelIdentifiers[identifier.name].destructuringIdentifierNames =
-                        destructuringIdentifierNames
-                    destructuringIdentifierNames?.push(identifier.name)
                 }
-            )
 
-            // 别名绑定搭配解构语法时不允许指定默认值
-            // Alias bindings are not allowed to specify default values when used with destructuring syntax.
-            if (status === "alias" && specifiedDefaultValue) {
-                InvalidAliasDestructuringDeclaration(getScriptLocByRange(declarator.range!))
+                // 记录解构声明的标识符名称列表
+                // Record the list of identifier names declared by a destructuring declaration.
+                topLevelIdentifiers[identifier.name].destructuringIdentifierNames =
+                    destructuringIdentifierNames
+                destructuringIdentifierNames?.push(identifier.name)
+            })
+
+            // 别名绑定搭配解构语法时不允许指定默认值或剩余元素语法
+            // Alias bindings are not allowed to specify default values or use rest elements when combined with destructuring syntax.
+            if (status === "alias") {
+                const errorLoc = getScriptLocByRange(declarator.range!)
+                if (!inputDescriptor.options.debug) {
+                    if (node.declarations.length === 1) {
+                        analyzeResult.script.eliminatedNodes.add(node)
+                    } else {
+                        analyzeResult.script.eliminatedNodes.add(declarator)
+                    }
+                }
+                if (patternInfo.hasRestElement) {
+                    InvalidAliasDestructuringDeclaration(errorLoc, "Rest elements")
+                }
+                if (patternInfo.specifiedDefaultValue) {
+                    InvalidAliasDestructuringDeclaration(errorLoc, "Default values")
+                }
             }
         }
     },
@@ -270,7 +280,7 @@ const visitor: Visitor = {
             }
         }
         if (!inputDescriptor.options.checkMode) {
-            analyzeResult.script.eliminateNodes.add(node)
+            analyzeResult.script.eliminatedNodes.add(node)
         }
         analyzeResult.script.importDeclarations.push(context)
     }
@@ -401,7 +411,11 @@ function updateTopLevelIdentifiers(
         }
         existing.nodeInfos.push(nodeInfo)
     } else {
-        const accessor = declaration.type !== "VariableDeclaration" || declaration.kind !== "const"
+        const accessor =
+            declaration.type !== "VariableDeclaration" ||
+            declaration.kind !== "const" ||
+            status === "alias" ||
+            status === "derived"
         analyzeResult.script.topLevelIdentifiers[id.name] = {
             status,
             hoist,
@@ -444,7 +458,7 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                     break
                 }
                 if (!inputDescriptor.options.checkMode) {
-                    analyzeResult.script.eliminateNodes.add(parent.value)
+                    analyzeResult.script.eliminatedNodes.add(parent.value)
                 }
 
                 let isValidDefinition = true
@@ -482,19 +496,24 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
             }
             default: {
                 if (node.name === "alias") {
-                    const args = parent.value.arguments
-                    const callRange = parent.value.range!
-                    if (args[0]?.type === "Identifier") {
-                        CannotAliasIdentifier(getScriptLocByRange(callRange))
-                    }
-                    if (args.length !== 1 || !isLeftValue(args[0])) {
-                        InvalidParameterForAliasIntrinsic(getScriptLocByRange(callRange))
+                    if (
+                        parent.value.arguments.length !== 1 ||
+                        !isLeftValue(parent.value.arguments[0])
+                    ) {
+                        InvalidParameterForAliasIntrinsic(getScriptLocByRange(parent.value.range!))
                     }
                 }
 
                 const grandParent = parent.striptTypeOperationsParent!
                 if (parent.inTopLevel && grandParent.value.type === "VariableDeclarator") {
                     const declaration = grandParent.parent!.value as VariableDeclaration
+                    if (
+                        node.name === "alias" &&
+                        grandParent.value.id.type === "Identifier" &&
+                        parent.value.arguments[0]?.type === "Identifier"
+                    ) {
+                        CannotAliasIdentifier(getScriptLocByRange(parent.value.range!))
+                    }
                     if (declaration.kind === "using" || declaration.kind === "await using") {
                         IntrinsicNotAllowedInUsingDeclaration(
                             getScriptLocByRange(grandParent.value.range!),

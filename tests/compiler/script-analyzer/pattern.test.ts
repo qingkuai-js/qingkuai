@@ -90,7 +90,7 @@ test("Whether default value is specified", () => {
         const node: any = parseExpression(`${source} = _`, {
             plugins: ["typescript"]
         })
-        expect(walkPatternIdentifiers(node.left, NOOP)).toBe(expected)
+        expect(walkPatternIdentifiers(node.left, NOOP).specifiedDefaultValue).toBe(expected)
     }
 
     expectedDefaultValueIsSpecified("{ a }", false)
@@ -110,8 +110,8 @@ test("Whether default value is specified", () => {
 
 test("Variable declarations", () => {
     const identifiers = extractIdentifiers(`
-        var {a, b, c = d, ...e} = {}
-        let [f, g, h = i, ...j] = []
+        var {a, b, c = d, e} = {}
+        let [f, g, h = i, j] = []
 
         const {
             k: l,
@@ -121,16 +121,16 @@ test("Variable declarations", () => {
                     q = r
                 } = s
             } = t,
-            ...u
+            u
         }: any = {}
-        
-        const [v, [w, [x, [y = z] = A] = B] = C, ...D] = []
+
+        const [v, [w, [x, [y = z] = A] = B] = C, D] = []
     `)
     expect(identifiers).toEqual([
         ["a", ".a"],
         ["b", ".b"],
         ["c", ".c"],
-        ["e", ""],
+        ["e", ".e"],
         ["f", "[0]"],
         ["g", "[1]"],
         ["h", "[2]"],
@@ -138,7 +138,7 @@ test("Variable declarations", () => {
         ["l", ".k"],
         ["n", ".m.n"],
         ["q", ".o.p.q"],
-        ["u", ""],
+        ["u", ".u"],
         ["v", "[0]"],
         ["w", "[1][0]"],
         ["x", "[1][1][0]"],
@@ -154,60 +154,60 @@ test("Function parameters", () => {
             d: {
                 e = f
             },
-            ...g
+            g
         }){}
 
-        ;(([h = i, [j = k] = l, ...m])=>{})()
+        ;(([h = i, [j = k] = l, m])=>{})()
 
         _ = {
             _({
                 n: o = p,
-                ...q
+                q
             }){}
         }
 
         class __{
             constructor(public r, private s = t){}
 
-            _([u = v, [w = x] = y, ...z]){}
+            _([u = v, [w = x] = y, z]){}
 
             #_({
                 A: {
                     B = C,
-                    ...D
+                    D
                 },
-                ...E
+                E
             }){}
         }
     `)
     expect(identifiers).toEqual([
         ["b", ".a"],
         ["e", ".d.e"],
-        ["g", ""],
+        ["g", ".g"],
         ["h", "[0]"],
         ["j", "[1][0]"],
         ["m", "[2]"],
         ["o", ".n"],
-        ["q", ""],
+        ["q", ".q"],
         ["s", ""],
         ["u", "[0]"],
         ["w", "[1][0]"],
         ["z", "[2]"],
         ["B", ".A.B"],
-        ["D", ".A"],
-        ["E", ""]
+        ["D", ".A.D"],
+        ["E", ".E"]
     ])
 })
 
 test("Assignment expressions", () => {
     const identifiers = extractIdentifiers(`
-        ;[a = b, [c = d] = e, ...[f = g, [h = i] = j]] = []
+        ;[a = b, [c = d] = e, [f = g, [h = i] = j]] = []
         ;({
             k,
             l: {
                 m: n = o
             } = p,
-            ...q
+            q
         } = {})
     `)
     expect(identifiers).toEqual([
@@ -217,7 +217,7 @@ test("Assignment expressions", () => {
         ["h", "[2][1][0]"],
         ["k", ".k"],
         ["n", ".l.m"],
-        ["q", ""]
+        ["q", ".q"]
     ])
 })
 
@@ -229,23 +229,23 @@ test("Statements", () => {
             e: {
                 f: g = h
             },
-            ...i
+            i
         }){}
 
-        for([j, [k = l], ...[m = n, [o = p] = q]] in []){}
+        for([j, [k = l], [m = n, [o = p] = q]] in []){}
 
         for({
             r,
             s: t = u,
             v: v = w,
-            ...x
+            x
         } of {}){}
     `)
     expect(identifiers).toEqual([
         ["a", ".a"],
         ["c", ".b"],
         ["g", ".e.f"],
-        ["i", ""],
+        ["i", ".i"],
         ["j", "[0]"],
         ["k", "[1][0]"],
         ["m", "[2][0]"],
@@ -253,6 +253,6 @@ test("Statements", () => {
         ["r", ".r"],
         ["t", ".s"],
         ["v", ".v"],
-        ["x", ""]
+        ["x", ".x"]
     ])
 })

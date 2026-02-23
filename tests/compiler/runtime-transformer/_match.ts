@@ -7,6 +7,7 @@ import { CodeWriter } from "../../../src/compiler/transformer/writer"
 import { parseTemplate } from "../../../src/compiler/parser/template"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { analyzeTemplate } from "../../../src/compiler/analyzer/template"
+import { removeEliminatedNodes } from "../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../src/compiler/transformer/runtime/script"
 import { analyzeResult, inputDescriptor, resetCompilerState } from "../../../src/compiler/state"
 
@@ -31,6 +32,7 @@ function localTransform(source: string, options: CompileOptions) {
     const hoistEmbeddedScriptWriter = new CodeWriter()
     analyzeResult.generateIds.internal = "_"
     analyzeResult.generateIds.setterArg = "v"
+    removeEliminatedNodes(embeddedScriptEditor)
     transformEmbeddedScript(hoistEmbeddedScriptWriter, embeddedScriptEditor)
 
     return {

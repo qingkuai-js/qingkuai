@@ -26,6 +26,12 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
             return `Identifiers starting with "__r__" are reserved for internal use.`
         }
     ],
+    InvalidAliasDestructuringDeclaration: [
+        1025,
+        (kind: string) => {
+            return `${kind} are not allowed in destructuring pattern of alias declarations.`
+        }
+    ],
     ShadowCompilerIntrinsicAtTopLevel: [
         1020,
         (name: string) => {
@@ -36,12 +42,6 @@ export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>
         1024,
         () => {
             return `The compiler intrinsic "alias" can only accept a writable target (lvalue) as its argument.`
-        }
-    ],
-    InvalidAliasDestructuringDeclaration: [
-        1025,
-        () => {
-            return "Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations."
         }
     ],
     InvalidUsageForIntrinsicMethods: [

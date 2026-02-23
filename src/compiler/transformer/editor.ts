@@ -16,6 +16,10 @@ export class CodeEditor {
         this.indexToSourceIndex = Array(source.length)
     }
 
+    removeCharacter(index: number) {
+        this.remove(index, index + 1)
+    }
+
     getSourceIndex(index: number) {
         return this.indexToSourceIndex[index]
     }

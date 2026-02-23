@@ -218,7 +218,7 @@ describe("Invalid usages of intrinsic methods", () => {
         ])
     })
 
-    test("Destructuring alias binding can not specific default values", () => {
+    test("Default values are not allowed in destructuring pattern of alias declaration", () => {
         localAnalyze(`
             var { a = b } = alias(_._)
             let {
@@ -233,22 +233,53 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [4, 26],
-                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
+                value: `Default values are not allowed in destructuring pattern of alias declarations.`
             },
             {
                 type: "error",
                 range: [31, 83],
-                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
+                value: `Default values are not allowed in destructuring pattern of alias declarations.`
             },
             {
                 type: "error",
                 range: [90, 110],
-                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
+                value: `Default values are not allowed in destructuring pattern of alias declarations.`
             },
             {
                 type: "error",
                 range: [116, 146],
-                value: `Invalid alias destructuring declaration: default values are not allowed in destructuring bindings of alias declarations.`
+                value: `Default values are not allowed in destructuring pattern of alias declarations.`
+            }
+        ])
+    })
+
+    test("Rest elements are not allowed in destructuring pattern of alias declaration", () => {
+        localAnalyze(`
+            const { a, ...b } = alias(PROPERTY_TYPES)
+            const { c: { d, ...e } } = alias(props)
+            const [f, ...g] = alias(arr)
+            const [h, [i, [j, ...k]]] = alias(arr)
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [6, 41],
+                value: `Rest elements are not allowed in destructuring pattern of alias declarations.`
+            },
+            {
+                type: "error",
+                range: [48, 81],
+                value: `Rest elements are not allowed in destructuring pattern of alias declarations.`
+            },
+            {
+                type: "error",
+                range: [88, 110],
+                value: `Rest elements are not allowed in destructuring pattern of alias declarations.`
+            },
+            {
+                type: "error",
+                range: [117, 149],
+                value: `Rest elements are not allowed in destructuring pattern of alias declarations.`
             }
         ])
     })

@@ -20,7 +20,7 @@ describe("Production", () => {
                         </lang-js>
                     `,
                     formatSourceCode(`
-                        let _b = _.react(_.UNDEF)
+                        const _b = _.react(_.UNDEF)
                         console.log(a, _b.$, c)
 
                         var a = 0,
@@ -81,7 +81,7 @@ describe("Production", () => {
                         </lang-ts>
                     `,
                     formatSourceCode(`
-                        let _b = _.shallowReact(_.UNDEF)
+                        const _b = _.shallowReact(_.UNDEF)
                         console.log(a satisfies any, _b.$ as any)
 
                         var a,
@@ -175,8 +175,8 @@ describe("Production", () => {
                         </lang-ts>
                     `,
                     formatSourceCode(`
-                        let _a = _.react(_.UNDEF)
-                        let _b = _.react(_.UNDEF)
+                        const _a = _.react(_.UNDEF)
+                        const _b = _.react(_.UNDEF)
                         console.log(_a.$, _b.$)
 
                         var [a, [b]]: any = 10; [_a.$, _b.$] = [a, b];
@@ -233,10 +233,10 @@ describe("Production", () => {
                         </lang-js>
                     `,
                     formatSourceCode(`
-                        let _a = _.shallowReact(_.UNDEF)
-                        let _b = _.shallowReact(_.UNDEF)
-                        let _c = _.shallowReact(_.UNDEF)
-                        let _d = _.shallowReact(_.UNDEF)
+                        const _a = _.shallowReact(_.UNDEF)
+                        const _b = _.shallowReact(_.UNDEF)
+                        const _c = _.shallowReact(_.UNDEF)
+                        const _d = _.shallowReact(_.UNDEF)
                         console.log(_a.$, _b.$, _c.$, _d.$)
 
                         var [a, [b]] = obj; [_a.$, _b.$] = [a, b];
@@ -302,7 +302,7 @@ describe("Production", () => {
                         {b++}
                     `,
                     formatSourceCode(`
-                        let _b = _.react(_.UNDEF)
+                        const _b = _.react(_.UNDEF)
                         console.log(a, _b.$, c)
 
                         var a = 10,
@@ -374,8 +374,8 @@ describe("Production", () => {
                         {a} {b}, {c}
                     `,
                     formatSourceCode(`
-                        let _b = _.shallowReact(_.UNDEF)
-                        let _c = _.shallowReact(_.UNDEF)
+                        const _b = _.shallowReact(_.UNDEF)
+                        const _c = _.shallowReact(_.UNDEF)
                         console.log(a, _b.$, _c.$)
 
                         var a = 1,
@@ -447,8 +447,8 @@ describe("Production", () => {
                         {(a, b, c, d)}
                     `,
                     formatSourceCode(`
-                        let _a = _.react(_.UNDEF)
-                        let _c = _.react(_.UNDEF)
+                        const _a = _.react(_.UNDEF)
+                        const _c = _.react(_.UNDEF)
                         console.log(_a.$, b, _c.$, d, e)
 
                         var {a, b: c = d, ...e} = obj as any; [_a.$, _c.$] = [a, c];
@@ -509,10 +509,10 @@ describe("Production", () => {
                         {(a, b, c, d)}
                     `,
                     formatSourceCode(`
-                        let _a = _.shallowReact(_.UNDEF)
-                        let _b = _.shallowReact(_.UNDEF)
-                        let _c = _.shallowReact(_.UNDEF)
-                        let _d = _.shallowReact(_.UNDEF)
+                        const _a = _.shallowReact(_.UNDEF)
+                        const _b = _.shallowReact(_.UNDEF)
+                        const _c = _.shallowReact(_.UNDEF)
+                        const _d = _.shallowReact(_.UNDEF)
                         console.log(_a.$, _b.$, _c.$, _d.$)
 
                         var [a, [b, ...c], ...d] = ""; [_a.$, _b.$, _c.$, _d.$] = [a, b, c, d];
@@ -579,7 +579,7 @@ describe("Production", () => {
                     {(a, c)}
                 `,
                 formatSourceCode(`
-                    let _c = _.react(c)
+                    const _c = _.react(c)
                     console.log(a, b, _c.$)
 
                     function a() {}
@@ -603,7 +603,7 @@ describe("Production", () => {
                     {a = undefined}
                 `,
                 formatSourceCode(`
-                    let _a = _.shallowReact(a)
+                    const _a = _.shallowReact(a)
                     console.log(_a.$)
 
                     function a<T>(...args: any) {}
@@ -680,13 +680,13 @@ describe("Production", () => {
                 formatSourceCode(`
                     console.log(a, b, c)
 
-                    let _a = _.react({})
+                    const _a = _.react({})
                     enum a {}
                     _.objectAssign(_a.$ ??= {}, a);
-                    let _b = _.react({})
+                    const _b = _.react({})
                     enum b {}
                     _.objectAssign(_b.$ ??= {}, b);
-                    let _c = _.react({})
+                    const _c = _.react({})
                     enum c {}
                     _.objectAssign(_c.$ ??= {}, c);
 
@@ -713,12 +713,12 @@ describe("Production", () => {
                 formatSourceCode(`
                     console.log(a, b)
 
-                    let _a = _.shallowReact({})
+                    const _a = _.shallowReact({})
                     enum a {}
                     _a.$ = a;
                     enum a {}
                     _a.$ = a;
-                    let _b = _.shallowReact({})
+                    const _b = _.shallowReact({})
                     enum b {}
                     _b.$ = b;
                     console.log(_a.$, _b.$)
@@ -751,8 +751,8 @@ describe("Development", () => {
                         </lang-ts>
                     `,
                     formatSourceCode(`
-                        let [_a] = _.react(_.UNDEF, v => (a = v))
-                        let [_b] = _.react(_.UNDEF, v => (b = v))
+                        const [_a] = _.react(_.UNDEF, v => (a = v))
+                        const [_b] = _.react(_.UNDEF, v => (b = v))
                         _a.$ + _b.$
 
                         var a = 1; _a.$ = a;
@@ -820,7 +820,7 @@ describe("Development", () => {
                         </lang-ts>
                     `,
                     formatSourceCode(`
-                        let [_a] = _.shallowReact(_.UNDEF, v => (a = v))
+                        const [_a] = _.shallowReact(_.UNDEF, v => (a = v))
                         _a.$ ?? 0
 
                         var a: number | undefined = _.UNDEF; _a.$ = a;
@@ -913,8 +913,8 @@ describe("Development", () => {
                         </lang-ts>
                     `,
                     formatSourceCode(`
-                        let [_a] = _.react(_.UNDEF, v => (a = v))
-                        let [_c] = _.react(_.UNDEF, v => (c = v))
+                        const [_a] = _.react(_.UNDEF, v => (a = v))
+                        const [_c] = _.react(_.UNDEF, v => (c = v))
                         _a.$ * _c.$
 
                         var { a, b: { c } } = { a: 1, b: { c: 2 } }; [_a.$, _c.$] = [a, c];
@@ -978,8 +978,8 @@ describe("Development", () => {
                         </lang-js>
                     `,
                     formatSourceCode(`
-                        let [_a] = _.shallowReact(_.UNDEF, v => (a = v))
-                        let [_b] = _.shallowReact(_.UNDEF, v => (b = v))
+                        const [_a] = _.shallowReact(_.UNDEF, v => (a = v))
+                        const [_b] = _.shallowReact(_.UNDEF, v => (b = v))
                         _a.$ + _b.$
 
                         var [a, { b }] = [{ b: 1 }]; [_a.$, _b.$] = [a, b];
@@ -1044,7 +1044,7 @@ describe("Development", () => {
                         {a * 2}
                     `,
                     formatSourceCode(`
-                        let [_a] = _.react(_.UNDEF, v => (a = v))
+                        const [_a] = _.react(_.UNDEF, v => (a = v))
                         _a.$
 
                         var a = 1; _a.$ = a;
@@ -1106,7 +1106,7 @@ describe("Development", () => {
                         {a}
                     `,
                     formatSourceCode(`
-                        let [_a] = _.shallowReact(_.UNDEF, v => (a = v))
+                        const [_a] = _.shallowReact(_.UNDEF, v => (a = v))
                         _a.$
 
                         var a = 0; _a.$ = a;
@@ -1170,7 +1170,7 @@ describe("Development", () => {
                         {a}
                     `,
                     formatSourceCode(`
-                        let [_a] = _.react(_.UNDEF, v => (a = v))
+                        const [_a] = _.react(_.UNDEF, v => (a = v))
                         _a.$
 
                         var { a } = { a: 1 }; [_a.$] = [a];
@@ -1232,8 +1232,8 @@ describe("Development", () => {
                     {(a, b)}
                     `,
                     formatSourceCode(`
-                        let [_a] = _.shallowReact(_.UNDEF, v => (a = v))
-                        let [_b] = _.shallowReact(_.UNDEF, v => (b = v))
+                        const [_a] = _.shallowReact(_.UNDEF, v => (a = v))
+                        const [_b] = _.shallowReact(_.UNDEF, v => (b = v))
                         _a.$
 
                         var [a, b] = [1, 2]; [_a.$, _b.$] = [a, b];
@@ -1299,7 +1299,7 @@ describe("Development", () => {
                     {a(b())}
                 `,
                 formatSourceCode(`
-                    let [_b] = _.react(b, v => (b = v))
+                    const [_b] = _.react(b, v => (b = v))
                     a?.(_b.$())
 
                     function a<T>():T {}
@@ -1321,7 +1321,7 @@ describe("Development", () => {
                     {a = NOOP}
                 `,
                 formatSourceCode(`
-                    let [_a] = _.shallowReact(a, v => (a = v))
+                    const [_a] = _.shallowReact(a, v => (a = v))
                     ;(_a.$ as any)()
 
                     function a() {}
@@ -1395,10 +1395,10 @@ describe("Development", () => {
                 formatSourceCode(`
                     a.b = b.a
 
-                    let [_a] = _.react({}, v => (a = v))
+                    const [_a] = _.react({}, v => (a = v))
                     enum a {}
                     _.objectAssign(_a.$ ??= {}, a);
-                    let [_b] = _.react({}, v => (b = v))
+                    const [_b] = _.react({}, v => (b = v))
                     enum b {}
                     _.objectAssign(_b.$ ??= {}, b);
                     enum a {}
@@ -1423,7 +1423,7 @@ describe("Development", () => {
                 formatSourceCode(`
                     console.log(a, b)
 
-                    let [_a] = _.shallowReact({}, v => (a = v))
+                    const [_a] = _.shallowReact({}, v => (a = v))
                     enum a {}
                     _a.$ = a;
                     enum b {}
