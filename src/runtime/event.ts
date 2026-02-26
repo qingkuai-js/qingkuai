@@ -128,12 +128,12 @@ function dispatch(event: Event) {
 
     for (let i = len(path) - 1; i >= 0; i--) {
         const elem = any(path[i])
-        const descriptor = getNodeContext(elem).e[type]
-        if (!descriptor) {
+        const delegateEvent = getNodeContext(elem).e[type]
+        if (!delegateEvent) {
             continue
         }
 
-        const flag = descriptor[1] ?? 0
+        const flag = delegateEvent[1] ?? 0
         const isTarget = elem === event.target
         if (flag & EVENT_SELF && !isTarget) {
             continue

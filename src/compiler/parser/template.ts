@@ -75,6 +75,7 @@ export function newTemplateNode(): TemplateNode {
         isEmbedded: false,
         isSelfClosing: false,
         preWhiteSpace: false,
+        hasInterpolation: false,
         loc: newASTLocation(),
         endTagStartPos: newASTPosition(),
         startTagEndPos: newASTPosition()
@@ -151,12 +152,14 @@ export function parseTemplate(source: string) {
     // 解析出标签的 textContext 部分
     // Parse the textContent part of the tag.
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | null = null) {
+        let hasInterpolation = false
+        let contentEndRE = templateTagStructureRE
+
         const contentStartIndex = index
         const contentParts: TextContentPart[] = []
 
         // textarea 或使用了 #html 指令的节点都被认作只有一个文本节点
         // A textarea element or a node using the `#html` directive is treated as having only a single text node.
-        let contentEndRE = templateTagStructureRE
         if (
             parent?.tag === "textarea" ||
             parent?.attributes.find(({ name }) => name.raw === "#html")
@@ -186,7 +189,7 @@ export function parseTemplate(source: string) {
             }
 
             const endBracketIndex = findEndBracket(dps)
-            if (endBracketIndex === -1) {
+            if (((hasInterpolation = true), endBracketIndex === -1)) {
                 contentParts.push({
                     isInterpolated: true,
                     value: dps.slice(1),
@@ -217,13 +220,17 @@ export function parseTemplate(source: string) {
         // 内容非空时创建文本内容节点并返回
         // Create and return a text content node if the content is not empty.
         if (contentParts.length) {
-            return initTemplateNode({
+            const textNode = initTemplateNode({
                 prev,
                 parent,
                 content: contentParts,
                 preWhiteSpace: !!parent?.preWhiteSpace,
                 loc: getLocByIndex(contentStartIndex, index)
             })
+            if (hasInterpolation) {
+                markNodeHasInterpolation(textNode)
+            }
+            return textNode
         }
     }
 
@@ -246,7 +253,7 @@ export function parseTemplate(source: string) {
                 tag: "!",
                 prev,
                 parent,
-                content: contentParts,
+                preWhiteSpace: true,
                 loc: getLocWithDefaultEnd(index - 4),
                 startTagEndPos: getPosByIndex(index)
             })
@@ -256,6 +263,16 @@ export function parseTemplate(source: string) {
             } else {
                 reduceSource(contentEndIndex)
                 TagIsNotClosing(getStartTagOpenLoc(commentNode), "#comment")
+            }
+            if (contentParts.length) {
+                initTemplateNode({
+                    parent: commentNode,
+                    content: contentParts,
+                    loc: getLocByIndex(
+                        commentNode.startTagEndPos.index,
+                        closedIndex === -1 ? index : commentNode.endTagStartPos.index
+                    )
+                })
             }
             return commentNode
         }
@@ -325,11 +342,14 @@ export function parseTemplate(source: string) {
 
             // 插值属性的名长度为1时表示没有指定属性名称
             // An interpolated attribute with a name length of 1 indicates that no attribute name was specified.
-            if (isInterpolatedAttr && attrName.length === 1) {
-                NoNameForInterpolatedAttribute(
-                    getLocByIndex(nameStartIndex, nameStartIndex + 1),
-                    attrName
-                )
+            if (isInterpolatedAttr) {
+                if (attrName.length === 1) {
+                    NoNameForInterpolatedAttribute(
+                        getLocByIndex(nameStartIndex, nameStartIndex + 1),
+                        attrName
+                    )
+                }
+                markNodeHasInterpolation(templateNode)
             }
 
             // 解析属性值部分
@@ -490,11 +510,18 @@ export function parseTemplate(source: string) {
                 start: templateNode.startTagEndPos,
                 end: templateNode.endTagStartPos
             }
-            if (rawContent) {
-                templateNode.content.push({
+
+            if (((templateNode.preWhiteSpace = true), rawContent)) {
+                initTemplateNode({
+                    content: [
+                        {
+                            loc: contentLoc,
+                            value: rawContent,
+                            isInterpolated: false
+                        }
+                    ],
                     loc: contentLoc,
-                    value: rawContent,
-                    isInterpolated: false
+                    parent: templateNode
                 })
             }
 
@@ -603,7 +630,7 @@ export function parseTemplate(source: string) {
         }
         if (!templateNode.preWhiteSpace) {
             templateNode.preWhiteSpace = preWhiteSpaceRuleRE.test(
-                getLeadingCommentNode(templateNode)?.content[0]?.value || ""
+                getLeadingCommentNode(templateNode)?.children[0]?.content[0]?.value ?? ""
             )
         }
         if (options.componentTag && options.loc) {
@@ -625,7 +652,14 @@ export function parseTemplateStandalone(source: string, options: StandaloneParse
         compileOptions.checkTemplateStructure = true
     }
     if (isUndefined(options.reseveCommentNodes) || options.reseveCommentNodes) {
-        compileOptions.reserveCommentNodes = true
+        compileOptions.preserveCommentNodes = true
     }
     return (resetCompilerState(compileOptions), parseTemplate(source))
+}
+
+function markNodeHasInterpolation(node: TemplateNode) {
+    if (node.parent && !node.parent.hasInterpolation) {
+        markNodeHasInterpolation(node.parent)
+    }
+    node.hasInterpolation = true
 }

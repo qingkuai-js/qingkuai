@@ -4,7 +4,6 @@ import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
 import { isLeftValue } from "../estree/assert"
 import { DomRerferenceAttributeOnComponent } from "../message/warn"
-import { increaseCommonStringCount } from "../../util/compiler/sundry"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
@@ -73,21 +72,6 @@ function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribut
         }
     }
     if (allowedList.includes(rawName)) {
-        switch (rawName) {
-            case "&number": {
-                increaseCommonStringCount("input")
-                break
-            }
-            case "&group":
-            case "&checked": {
-                increaseCommonStringCount("change")
-                break
-            }
-            case "&value": {
-                increaseCommonStringCount(tag === "slot" ? "change" : "input")
-                break
-            }
-        }
         return true
     }
     return (localInvalidReferenceAttribute(tag), false)

@@ -63,6 +63,16 @@ test("<slot> and <qk:spread> cannot accept any reference attributes", () => {
             type: "error",
             range: [11, 15],
             value: `The <qk:spread> tag can only accept directives, but got a reference attribute: "&dom".`
+        },
+        {
+            type: "warning",
+            range: [0, 10],
+            value: `The <qk:spread> tag without children is unnecessary.`
+        },
+        {
+            type: "warning",
+            range: [0, 10],
+            value: `The <qk:spread> tag without directives is unnecessary.`
         }
     ])
 })

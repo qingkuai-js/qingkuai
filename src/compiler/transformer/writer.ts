@@ -86,7 +86,7 @@ export class CodeWriter {
             return
         }
 
-        this.dedent().wrapLine().write(inputDescriptor.indent)
+        this.dedent().write(inputDescriptor.indent)
         for (let i = nonEmptyIndex; i < editedContent.length; i++) {
             this.writeCharacter(editedContent[i], editor.getSourceIndex(i) ?? -1, false)
         }

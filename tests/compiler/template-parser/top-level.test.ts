@@ -44,6 +44,7 @@ test("Single comment", () => {
         }),
         {
             tag: "!",
+            preWhiteSpace: true,
             loc: getLocByIndex(0, 7),
             startTagEndPos: getPosByIndex(4),
             endTagStartPos: getPosByIndex(4)
@@ -72,6 +73,7 @@ test("Multiple comments", () => {
             tag: "!",
             prev: nodeList[0],
             next: nodeList[2],
+            preWhiteSpace: true,
             loc: getLocByIndex(1, 8),
             startTagEndPos: getPosByIndex(5),
             endTagStartPos: getPosByIndex(5)
@@ -88,6 +90,7 @@ test("Multiple comments", () => {
             tag: "!",
             prev: nodeList[2],
             next: nodeList[4],
+            preWhiteSpace: true,
             loc: getLocByIndex(19, 26),
             startTagEndPos: getPosByIndex(23),
             endTagStartPos: getPosByIndex(23)
@@ -108,6 +111,7 @@ test("Multiple comments", () => {
             tag: "!",
             prev: nodeList[4],
             next: nodeList[6],
+            preWhiteSpace: true,
             loc: getLocByIndex(28, 35),
             startTagEndPos: getPosByIndex(32),
             endTagStartPos: getPosByIndex(32)
@@ -250,6 +254,7 @@ test("Mixed source of text contents and tags", () => {
             tag: "!",
             prev: nodeList[4],
             next: nodeList[6],
+            preWhiteSpace: true,
             loc: getLocByIndex(25, 32),
             startTagEndPos: getPosByIndex(29),
             endTagStartPos: getPosByIndex(29)
@@ -277,6 +282,7 @@ test("Single text content interpolation block", () => {
                 loc: getLocByIndex(1, 6)
             }
         ],
+        hasInterpolation: true,
         loc: getLocByIndex(0, 7)
     })
 })
@@ -305,6 +311,7 @@ test("Multiple text content interpolation blocks", () => {
                 loc: getLocByIndex(6, 7)
             }
         ],
+        hasInterpolation: true,
         loc: getLocByIndex(0, 8)
     })
 })
@@ -413,33 +420,41 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
             ]
         )
 
-        matchTemplateNodeListAndMessages(
-            () => [
-                parseTemplateStandalone("<!-- ...\n ...", {
-                    recover: true,
-                    reseveCommentNodes: true
-                }),
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseTemplateStandalone("<!-- ...\n ...", {
+                recover: true,
+                reseveCommentNodes: true
+            })
+            return [
+                nodeList,
                 {
                     tag: "!",
-                    content: [
+                    children: [
                         {
-                            value: " ...\n ...",
-                            isInterpolated: false,
+                            content: [
+                                {
+                                    value: " ...\n ...",
+                                    isInterpolated: false,
+                                    loc: getLocByIndex(4, 13)
+                                }
+                            ],
+                            parent: nodeList[0],
+                            preWhiteSpace: true,
                             loc: getLocByIndex(4, 13)
                         }
                     ],
+                    preWhiteSpace: true,
                     loc: getLocWithDefaultEnd(0),
                     startTagEndPos: getPosByIndex(4)
                 }
-            ],
-            [
-                {
-                    type: "error",
-                    range: [0, 4],
-                    value: "The comment tag is not closed."
-                }
             ]
-        )
+        }, [
+            {
+                type: "error",
+                range: [0, 4],
+                value: "The comment tag is not closed."
+            }
+        ])
     })
 
     test("End tag is not closed", () => {

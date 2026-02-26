@@ -1,23 +1,27 @@
-import type { TemplateNode } from "#type-declarations/compiler"
+import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
 import {
     DuplicateAttributes,
     DisallowedAttributeKind,
     SlotNameAttributeMustBeStatic
 } from "../message/error"
+import {
+    getAttributeBaseName,
+    increaseCommonStringUsedTimes,
+    increaseCompressStringUsedTimes
+} from "../../util/compiler/sundry"
 import { analyzeEvent } from "./event"
-import { analyzeResult } from "../state"
 import { analyzeDirective } from "./directive"
 import { analyzeReferenceAttribute } from "./reference"
 import { interpolatedAttrStartCharRE } from "../regular"
+import { analyzeResult, inputDescriptor } from "../state"
 import { RedundantBooleanAttributeValue } from "../message/warn"
-import { getAttributeBaseName, increaseCommonStringCount } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {
-    const { attributesMap, sortedDirectives } = analyzeResult.template.nodeInfos.get(node)!
+    const { attributesMap, sortedDirectives } = analyzeResult.template.nodeContexts.get(node)!
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -38,6 +42,10 @@ export function analyzeAttributes(node: TemplateNode) {
         const rawValue = attribute.value.raw
         const isComponent = !!node.componentTag
         const baseName = getAttributeBaseName(rawName)
+
+        if (!inputDescriptor.options.checkMode && !isDirective && !node.isEmbedded) {
+            recordCompressAndCommonStrings(node, attribute)
+        }
 
         if (node.isEmbedded) {
             // 嵌入语言标签上只允许静态属性
@@ -124,10 +132,32 @@ export function analyzeAttributes(node: TemplateNode) {
                 if (shouldAnalyzeAttributeValue(attribute)) {
                     analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)
                 }
-                // fallthrough
+            }
+        }
+    }
+}
+
+function recordCompressAndCommonStrings(node: TemplateNode, attribute: TemplateAttribute) {
+    const rawName = attribute.name.raw
+    const rawValue = attribute.value.raw
+    if (node.componentTag) {
+        increaseCommonStringUsedTimes(rawName)
+    } else {
+        switch (rawName[0]) {
+            case "&": {
+                return
+            }
+            case "!":
+            case "@": {
+                const baseName = getAttributeBaseName(rawName)
+                if (baseName !== "class") {
+                    increaseCommonStringUsedTimes(baseName)
+                }
+                break
             }
             default: {
-                !attributesMap[mappedKey] && increaseCommonStringCount(mappedKey)
+                increaseCompressStringUsedTimes(rawName)
+                increaseCompressStringUsedTimes(rawValue)
             }
         }
     }

@@ -276,9 +276,15 @@ test("The slot tag does not support reference attributes or event listeners", ()
 })
 
 test("The SPREAD_TAG can only accept directives as attributes", () => {
-    analyzeTemplateAndMatchMessages(`<qk:spread #target={_} #for={_}></qk:spread>`)
+    analyzeTemplateAndMatchMessages(`<qk:spread #target={_} #for={_}></qk:spread>`, [
+        {
+            type: "warning",
+            range: [0, 10],
+            value: `The <qk:spread> tag without children is unnecessary.`
+        }
+    ])
     analyzeTemplateAndMatchMessages(
-        `<qk:spread id="" !custom={_} @click={_}  &value={_}></qk:spread>`,
+        `<qk:spread id="" !custom={_} @click={_}  &value={_} #show={_}></qk:spread>`,
         [
             {
                 type: "error",
@@ -299,6 +305,11 @@ test("The SPREAD_TAG can only accept directives as attributes", () => {
                 type: "error",
                 range: [41, 47],
                 value: `The <qk:spread> tag can only accept directives, but got a reference attribute: "&value".`
+            },
+            {
+                type: "warning",
+                range: [0, 10],
+                value: `The <qk:spread> tag without children is unnecessary.`
             }
         ]
     )

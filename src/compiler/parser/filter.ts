@@ -3,22 +3,19 @@ import type { TemplateNode } from "#type-declarations/compiler"
 import { inputDescriptor } from "../state"
 import { isEmptyString } from "../../util/shared/assert"
 import { templateConditionalCommentRE } from "../regular"
-import { BLOCK_TAGS, DISALLOWED_TAGS, SPREAD_TAG } from "../constants"
+import { BLOCK_TAGS, DISALLOWED_TAGS } from "../constants"
 import { InvalidTemplateStructure, UsedDisallowedTag } from "../message/error"
 import { getParentTag, getStartTagOpenLoc, isBlankTextNode } from "../../util/compiler/template"
 
 export function filterTemplateNodes(node: TemplateNode): boolean {
+    if (DISALLOWED_TAGS.has(node.tag)) {
+        return (UsedDisallowedTag(getStartTagOpenLoc(node), node.tag), false)
+    }
     if (node.tag === "!") {
         return (
-            inputDescriptor.options.reserveCommentNodes ||
-            templateConditionalCommentRE.test(node.content[0]?.value)
+            inputDescriptor.options.preserveCommentNodes ||
+            templateConditionalCommentRE.test(node.children[0]?.content[0]?.value ?? "")
         )
-    }
-    if (DISALLOWED_TAGS.has(node.tag)) {
-        return UsedDisallowedTag(getStartTagOpenLoc(node), node.tag), false
-    }
-    if (node.tag === SPREAD_TAG) {
-        return inputDescriptor.options.checkMode || node.children.length > 0
     }
     return !inputDescriptor.options.checkTemplateStructure || shouldNodeBePreserved(node)
 }
@@ -167,22 +164,25 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
     ) {
         let msg = `the <${tag}> tag cannot be nested in <${parentTag}>`
         if (expectedParentTags) {
-            msg += expectedParentTags.reduce((ret, cur, index) => {
-                if (isEmptyString(cur)) {
-                    cur = "#text"
-                } else {
-                    cur = `<${cur}>`
-                }
-                if (expectedParentTags.length === 1) {
-                    return ret + cur
-                }
-                if (index === expectedParentTags.length - 1) {
-                    return `${ret} or ${cur}`
-                }
-                return `${ret}${index ? ", " : ""}${cur}`
-            }, `, it can only be nested in ${expectedParentTags.length === 1 ? "" : "these tags: "}`)
+            msg += expectedParentTags.reduce(
+                (ret, cur, index) => {
+                    if (isEmptyString(cur)) {
+                        cur = "#text"
+                    } else {
+                        cur = `<${cur}>`
+                    }
+                    if (expectedParentTags.length === 1) {
+                        return ret + cur
+                    }
+                    if (index === expectedParentTags.length - 1) {
+                        return `${ret} or ${cur}`
+                    }
+                    return `${ret}${index ? ", " : ""}${cur}`
+                },
+                `, it can only be nested in ${expectedParentTags.length === 1 ? "" : "these tags: "}`
+            )
         }
-        return InvalidTemplateStructure(startTagOpenLoc, msg), false
+        return (InvalidTemplateStructure(startTagOpenLoc, msg), false)
     }
     return true
 }

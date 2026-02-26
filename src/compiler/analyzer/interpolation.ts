@@ -14,7 +14,7 @@ import { kebab2Camel } from "../../util/compiler/string"
 import { jsValidIdentifierStartCharRE } from "../regular"
 import { analyzeResult, inputDescriptor } from "../state"
 import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
-import { getAttributeBaseName, increaseCommonStringCount } from "../../util/compiler/sundry"
+import { getAttributeBaseName, increaseCommonStringUsedTimes } from "../../util/compiler/sundry"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
@@ -54,13 +54,13 @@ export function analyzeInterpolation(
 
         StringLiteral(node) {
             stringLiterals.push(node)
-            increaseCommonStringCount(node.value)
+            increaseCommonStringUsedTimes(node.value)
         },
 
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
         Identifier({ name, range }, context) {
-            const { contextIdentifiers } = analyzeResult.template.nodeInfos.get(node)!
+            const { contextIdentifiers } = analyzeResult.template.nodeContexts.get(node)!
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
             if (topLevelIdentifier && context.isBindingReference && !contextIdentifiers.has(name)) {
                 const status = topLevelIdentifier.status

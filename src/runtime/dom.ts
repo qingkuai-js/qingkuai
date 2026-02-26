@@ -1,18 +1,22 @@
 import type { Setter } from "#type-declarations/tools"
 import type { NodeContext } from "#type-declarations/runtime"
 
-import { any, len } from "../util/shared/sundry"
 import { currentDestruction } from "./state"
+import { any, len } from "../util/shared/sundry"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { DOCUMENT, NODE_CONTEXT } from "./constants"
+
+export function newTextNode() {
+    return DOCUMENT.createTextNode("")
+}
 
 export function selectElement(selector: string) {
     return DOCUMENT.querySelector(selector)
 }
 
 export function replaceWithText(comment: Comment) {
-    const textNode = DOCUMENT.createTextNode("")
+    const textNode = newTextNode()
     comment.replaceWith(textNode)
     return textNode
 }

@@ -67,6 +67,10 @@ export const DuplicateEventFlag = withLocation(9011, (name: string) => {
     return `Duplicate event flag "${name}" is redundant and will be ignored.`
 })
 
+export const UnnecessarySpreadTag = withLocation(9014, (without: string) => {
+    return `The <qk:spread> tag without ${without} is unnecessary.`
+})
+
 export const RedundantEventFlags = withLocation(9009, () => {
     return `Event flags for component event listeners are redundant and will be ignored.`
 })

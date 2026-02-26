@@ -5,7 +5,6 @@ import type {
     StringLiteral,
     ImportDeclaration,
     VariableDeclarator,
-    VariableDeclaration,
     TSImportEqualsDeclaration
 } from "@babel/types"
 import type {
@@ -52,6 +51,12 @@ export interface EditReplacement {
     additions?: EditInsertSnippet[]
 }
 
+export interface TemplateFragment {
+    id: string
+    content: string
+    statements: string[]
+}
+
 export interface TextContentPart {
     value: string
     loc: ASTLocation
@@ -71,10 +76,11 @@ export interface TemplateAttribute {
 export interface TemplateNode {
     tag: string
     loc: ASTLocation
-    preWhiteSpace: boolean
-    isEmbedded: boolean
-    isSelfClosing: boolean
     componentTag: string
+    isEmbedded: boolean
+    preWhiteSpace: boolean
+    isSelfClosing: boolean
+    hasInterpolation: boolean
     children: TemplateNode[]
     content: TextContentPart[]
     startTagEndPos: ASTPosition
@@ -143,7 +149,22 @@ export interface TopLevelIdentifierInfo {
     status: IdentifierStatus
     destructuringIdentifierNames?: string[]
 }
+export interface TemplateNodeContext {
+    id: string
+    anchorId: string
+    contextIdentifiers: Set<string>
+    fragment: TemplateFragment | null
+    sortedDirectives: TemplateAttribute[]
+    attributesMap: Record<string, TemplateAttribute>
+}
 export interface TemplateAnalyzeRet {
+    compressStrings: Record<
+        string,
+        {
+            id: string
+            times: number
+        }
+    >
     delegateEvents: {
         passive: Set<string>
         nonPassive: Set<string>
@@ -164,15 +185,10 @@ export interface TemplateAnalyzeRet {
             topLevelReferences: TopLevelReferences
         }[]
     >
-    nodeInfos: Map<
-        TemplateNode,
-        {
-            contextIdentifiers: Set<string>
-            sortedDirectives: TemplateAttribute[]
-            attributesMap: Record<string, TemplateAttribute>
-        }
-    >
+    compressStringsCount: number
+    staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
+    nodeContexts: Map<TemplateNode, TemplateNodeContext>
     parsedPatterns: Map<TemplateAttribute, (ContextPattern | null)[] | undefined>
 }
 export interface ScriptAnalyzeRet {
@@ -184,14 +200,15 @@ export interface ScriptAnalyzeRet {
             property: string
         }[]
     >
-    defaultRefs?: {
-        id: Identifier
-        value: Expression | SpreadElement
-    }
-    defaultProps?: {
-        id: Identifier
-        value: Expression | SpreadElement
-    }
+    defaultItems: Partial<
+        Record<
+            "refs" | "props",
+            {
+                intrinsicId: Identifier
+                value: Expression | SpreadElement
+            }
+        >
+    >
     watchers: IntrinsicCall[]
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<AnyNode>
@@ -227,9 +244,11 @@ export type CompileOptions = Partial<{
     checkMode: boolean
     tipComment: boolean
     componentName: string
+    trimTextEdges: boolean
     typeImportStatement: string
-    reserveCommentNodes: boolean
+    preserveCommentNodes: boolean
     checkTemplateStructure: boolean
+    collapseWhitespaceOnlyText: boolean
     shorthandDerivedDeclaration: boolean
     reactivityMode: "reactive" | "shallow"
 }>

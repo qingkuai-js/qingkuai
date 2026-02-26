@@ -38,8 +38,8 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     const nameLoc = directive.name.loc
     const rawName = directive.name.raw
     const rawValue = directive.value.raw
-    const nodeInfo = analyzeResult.template.nodeInfos.get(node)!
     const valueStartSourceIndex = directive.value.loc.start.index
+    const nodeContext = analyzeResult.template.nodeContexts.get(node)!
 
     const localAnalyzeInterpolation = (source: string, startSourceIndex: number) => {
         return analyzeInterpolation(node, directive, source, startSourceIndex)
@@ -60,7 +60,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     // 检查是否存在冲突的指令
     // Check for conflicting directives.
     if (CONFLICTING_DIRECTIVES_MAP[rawName]) {
-        conflictingDirective = nodeInfo.sortedDirectives.find(item => {
+        conflictingDirective = nodeContext.sortedDirectives.find(item => {
             return CONFLICTING_DIRECTIVES_MAP[rawName].includes(item.name.raw)
         })
     }
@@ -139,7 +139,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"]
             if (
                 !expectedList.includes(getFirstDirectiveNameOfPrevNonTextNode(node)) &&
-                !nodeInfo.sortedDirectives.some(item => expectedList.includes(item.name.raw))
+                !nodeContext.sortedDirectives.some(item => expectedList.includes(item.name.raw))
             ) {
                 MissingPrecedingDirective(directive.name.loc, rawName, expectedList, true)
             }
@@ -159,7 +159,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         }
 
         case "#key": {
-            if (!nodeInfo.attributesMap["#for"]) {
+            if (!nodeContext.attributesMap["#for"]) {
                 InvalidKeyDirectivePlacement(nameLoc)
             }
             break
@@ -215,7 +215,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
             walkPatternIdentifiers(pattern, ({ name }) => {
                 validIdentifierCount++
-                nodeInfo.contextIdentifiers.add(name)
+                nodeContext.contextIdentifiers.add(name)
                 analyzeResult.script.fullIdentifiers.add(name)
             })
         }
@@ -236,14 +236,14 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
 // 获取指定节点的前一个非文本节点的兄弟节点
 // Get the previous non-text sibling node of the specified node.
-function getPrevNonTextNodeInfo(node: TemplateNode) {
+function getPrevNonTextNodeContext(node: TemplateNode) {
     const prevNonTextNode = getPrevNonTextNode(node)
     if (!prevNonTextNode) {
         return null
     }
-    return analyzeResult.template.nodeInfos.get(prevNonTextNode)!
+    return analyzeResult.template.nodeContexts.get(prevNonTextNode)!
 }
 
 function getFirstDirectiveNameOfPrevNonTextNode(node: TemplateNode) {
-    return getPrevNonTextNodeInfo(node)?.sortedDirectives[0].name.raw ?? ""
+    return getPrevNonTextNodeContext(node)?.sortedDirectives[0].name.raw ?? ""
 }

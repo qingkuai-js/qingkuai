@@ -112,18 +112,18 @@ function assertPositionFlagIsSet(flag: PositionFlag, target: number | ASTPositio
 // 断言嵌入语言块的描述信息
 // Assert the description information of the embedded language blocks
 function assertEmbeddedLangDescriptor(node: TemplateNode) {
-    const hasContent = node.content.length === 1
+    const contentNode = node.children[0]?.content[0]
     if (/[jt]s$/.test(node.tag)) {
         if (node.loc.start.index === inputDescriptor.script.startTagOpenRange[0]) {
             expect(inputDescriptor.script).toEqual<ScriptDescriptor>({
                 existing: true,
                 isTS: node.tag.endsWith("ts"),
-                code: hasContent ? node.content[0].value : "",
+                code: contentNode ? contentNode.value : "",
                 startTagOpenRange: getRangeByLocation(getStartTagOpenLoc(node)),
-                lineCount: hasContent
-                    ? node.content[0].loc.end.line - node.content[0].loc.start.line + 1
+                lineCount: contentNode
+                    ? contentNode.loc.end.line - contentNode.loc.start.line + 1
                     : 1,
-                loc: hasContent ? node.content[0].loc : getLocByIndex(node.startTagEndPos.index)
+                loc: contentNode ? contentNode.loc : getLocByIndex(node.startTagEndPos.index)
             })
         }
     } else {
@@ -131,9 +131,9 @@ function assertEmbeddedLangDescriptor(node: TemplateNode) {
             if (item.loc.start.index === node.startTagEndPos.index) {
                 expect(item).toEqual<StyleDescriptor>({
                     lang: node.tag.slice(5),
-                    code: hasContent ? node.content[0].value : "",
+                    code: contentNode ? contentNode.value : "",
                     startTagOpenRange: getRangeByLocation(getStartTagOpenLoc(node)),
-                    loc: hasContent ? node.content[0].loc : getLocByIndex(node.startTagEndPos.index)
+                    loc: contentNode ? contentNode.loc : getLocByIndex(node.startTagEndPos.index)
                 })
             }
         }

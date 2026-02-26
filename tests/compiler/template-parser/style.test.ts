@@ -224,14 +224,22 @@ describe("Nesting structure", () => {
                 },
                 {
                     tag: "!",
-                    content: [
+                    children: [
                         {
-                            isInterpolated: false,
+                            content: [
+                                {
+                                    isInterpolated: false,
+                                    loc: getLocByIndex(14, 34),
+                                    value: "white-space:pre-wrap"
+                                }
+                            ],
+                            preWhiteSpace: true,
                             loc: getLocByIndex(14, 34),
-                            value: "white-space:pre-wrap"
+                            parent: nodeList[0].children[1]
                         }
                     ],
                     parent: nodeList[0],
+                    preWhiteSpace: true,
                     loc: getLocByIndex(10, 37),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],

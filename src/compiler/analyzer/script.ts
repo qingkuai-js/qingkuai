@@ -49,7 +49,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { walk, walkPatternIdentifiers } from "../estree/walk"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
-import { increaseCommonStringCount } from "../../util/compiler/sundry"
+import { increaseCommonStringUsedTimes } from "../../util/compiler/sundry"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../estree/assert"
 
@@ -93,7 +93,7 @@ const visitor: Visitor = {
 
     StringLiteral(node, context) {
         if (context.parent?.value.type !== "ImportDeclaration") {
-            increaseCommonStringCount(node.value)
+            increaseCommonStringUsedTimes(node.value)
             analyzeResult.script.stringLiterals.push(node)
         }
     },
@@ -472,10 +472,11 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                     }
                 })
                 if (isValidDefinition) {
-                    const existing = analyzeResult.script[node.name]
+                    const key = node.name === "defaultProps" ? "props" : "refs"
+                    const existing = analyzeResult.script.defaultItems[key]
                     if (existing) {
                         DuplicateDefaultDeclaration(
-                            getScriptLocByRange(existing.id.range!),
+                            getScriptLocByRange(existing.intrinsicId.range!),
                             node.name.slice(7).toLowerCase()
                         )
                     }
@@ -483,12 +484,12 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                         parent.value.arguments.length &&
                         parent.value.arguments[0].type !== "ArgumentPlaceholder"
                     ) {
-                        analyzeResult.script[node.name] = {
-                            id: node,
+                        analyzeResult.script.defaultItems[key] = {
+                            intrinsicId: node,
                             value: parent.value.arguments[0]
                         }
                     } else {
-                        analyzeResult.script[node.name] = undefined
+                        analyzeResult.script.defaultItems[key] = undefined
                     }
                     return
                 }

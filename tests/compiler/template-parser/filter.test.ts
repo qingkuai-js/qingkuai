@@ -94,14 +94,22 @@ test("Whether conditional comment nodes were always preserved", () => {
         nodeList,
         {
             tag: "!",
-            content: [
+            children: [
                 {
-                    isInterpolated: false,
-                    loc: getLocByIndex(4, 71),
-                    value: "[if lte IE 8]>\n    This will be displayed in IE8 or lower\n<![endif]"
+                    content: [
+                        {
+                            isInterpolated: false,
+                            loc: getLocByIndex(4, 71),
+                            value: "[if lte IE 8]>\n    This will be displayed in IE8 or lower\n<![endif]"
+                        }
+                    ],
+                    parent: nodeList[0],
+                    preWhiteSpace: true,
+                    loc: getLocByIndex(4, 71)
                 }
             ],
             next: nodeList[1],
+            preWhiteSpace: true,
             loc: getLocByIndex(0, 74),
             startTagEndPos: getPosByIndex(4),
             endTagStartPos: getPosByIndex(71)
@@ -120,15 +128,23 @@ test("Whether conditional comment nodes were always preserved", () => {
         },
         {
             tag: "!",
-            content: [
+            children: [
                 {
-                    value: "[if !IE]> ",
-                    isInterpolated: false,
+                    content: [
+                        {
+                            value: "[if !IE]> ",
+                            isInterpolated: false,
+                            loc: getLocByIndex(79, 89)
+                        }
+                    ],
+                    parent: nodeList[2],
+                    preWhiteSpace: true,
                     loc: getLocByIndex(79, 89)
                 }
             ],
             prev: nodeList[1],
             next: nodeList[3],
+            preWhiteSpace: true,
             loc: getLocByIndex(75, 92),
             startTagEndPos: getPosByIndex(79),
             endTagStartPos: getPosByIndex(89)
@@ -147,14 +163,22 @@ test("Whether conditional comment nodes were always preserved", () => {
         },
         {
             tag: "!",
-            content: [
+            children: [
                 {
-                    value: " <![endif]",
-                    isInterpolated: false,
+                    content: [
+                        {
+                            value: " <![endif]",
+                            isInterpolated: false,
+                            loc: getLocByIndex(143, 153)
+                        }
+                    ],
+                    parent: nodeList[4],
+                    preWhiteSpace: true,
                     loc: getLocByIndex(143, 153)
                 }
             ],
             prev: nodeList[3],
+            preWhiteSpace: true,
             loc: getLocByIndex(139, 156),
             startTagEndPos: getPosByIndex(143),
             endTagStartPos: getPosByIndex(153)

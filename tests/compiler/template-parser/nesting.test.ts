@@ -325,14 +325,22 @@ test("With comment", () => {
             },
             {
                 tag: "!",
-                content: [
+                children: [
                     {
-                        value: " line comment ",
-                        isInterpolated: false,
-                        loc: getLocByIndex(14, 28)
+                        content: [
+                            {
+                                value: " line comment ",
+                                isInterpolated: false,
+                                loc: getLocByIndex(14, 28)
+                            }
+                        ],
+                        preWhiteSpace: true,
+                        loc: getLocByIndex(14, 28),
+                        parent: nodeList[0].children[1]
                     }
                 ],
                 parent: nodeList[0],
+                preWhiteSpace: true,
                 loc: getLocByIndex(10, 31),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
@@ -354,14 +362,22 @@ test("With comment", () => {
             },
             {
                 tag: "!",
-                content: [
+                children: [
                     {
-                        value: " ... ",
-                        isInterpolated: false,
-                        loc: getLocByIndex(45, 50)
+                        content: [
+                            {
+                                value: " ... ",
+                                isInterpolated: false,
+                                loc: getLocByIndex(45, 50)
+                            }
+                        ],
+                        preWhiteSpace: true,
+                        loc: getLocByIndex(45, 50),
+                        parent: nodeList[0].children[3]
                     }
                 ],
                 parent: nodeList[0],
+                preWhiteSpace: true,
                 loc: getLocByIndex(41, 53),
                 prev: nodeList[0].children[2],
                 next: nodeList[0].children[4],
@@ -648,9 +664,11 @@ test("With a text content interpolation block", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasInterpolation: true,
                 loc: getLocByIndex(5, 12)
             }
         ],
+        hasInterpolation: true,
         loc: getLocByIndex(0, 18),
         startTagEndPos: getPosByIndex(5),
         endTagStartPos: getPosByIndex(12)
@@ -708,11 +726,13 @@ test("With multiple text content interpolation blocks", () => {
                                     loc: getLocByIndex(31, 32)
                                 }
                             ],
+                            hasInterpolation: true,
                             loc: getLocByIndex(24, 32),
                             parent: nodeList[0].children[1]
                         }
                     ],
                     parent: nodeList[0],
+                    hasInterpolation: true,
                     loc: getLocByIndex(18, 39),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -733,6 +753,7 @@ test("With multiple text content interpolation blocks", () => {
                 }
             ],
             next: nodeList[1],
+            hasInterpolation: true,
             loc: getLocByIndex(0, 44),
             startTagEndPos: getPosByIndex(3),
             endTagStartPos: getPosByIndex(40)
@@ -790,11 +811,13 @@ test("With multiple text content interpolation blocks", () => {
                                     loc: getLocByIndex(79, 85)
                                 }
                             ],
+                            hasInterpolation: true,
                             loc: getLocByIndex(70, 86),
                             parent: nodeList[2].children[1]
                         }
                     ],
                     parent: nodeList[2],
+                    hasInterpolation: true,
                     loc: getLocByIndex(64, 93),
                     prev: nodeList[2].children[0],
                     next: nodeList[2].children[2],
@@ -815,6 +838,7 @@ test("With multiple text content interpolation blocks", () => {
                 }
             ],
             prev: nodeList[1],
+            hasInterpolation: true,
             loc: getLocByIndex(45, 98),
             startTagEndPos: getPosByIndex(48),
             endTagStartPos: getPosByIndex(94)
@@ -891,6 +915,7 @@ test("Whether children are parsed as textContent if the parent has the #html dir
                 valueEnclosure: "none"
             }
         ],
+        hasInterpolation: true,
         loc: getLocByIndex(0, 48),
         startTagEndPos: getPosByIndex(11),
         endTagStartPos: getPosByIndex(42)
@@ -1090,14 +1115,22 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                     children: [
                         {
                             tag: "!",
-                            content: [
+                            children: [
                                 {
-                                    value: " </Comp>",
-                                    isInterpolated: false,
-                                    loc: getLocByIndex(10, 18)
+                                    content: [
+                                        {
+                                            value: " </Comp>",
+                                            isInterpolated: false,
+                                            loc: getLocByIndex(10, 18)
+                                        }
+                                    ],
+                                    preWhiteSpace: true,
+                                    loc: getLocByIndex(10, 18),
+                                    parent: nodeList[0].children[0]
                                 }
                             ],
                             parent: nodeList[0],
+                            preWhiteSpace: true,
                             loc: getLocWithDefaultEnd(6),
                             startTagEndPos: getPosByIndex(10)
                         }

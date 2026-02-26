@@ -8,19 +8,21 @@ import {
 } from "../../../util/compiler/sundry"
 import { CodeWriter } from "../writer"
 import { CodeEditor } from "../editor"
+import { transformTemplate } from "./template"
 import { transformEmbeddedScript } from "./script"
+import { generateTemplateFragments } from "./fragment"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
 import { objectAssign, stringify } from "../../../util/shared/aliases"
-import { findNonWhitespaceChar, findNonWhitespaceCharRight } from "../../../util/compiler/string"
+import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
     let hasTopExtra = false
     let extractCommonStrCount = 0
 
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
-    const { importDeclarations, defaultProps, defaultRefs } = analyzeResult.script
+    const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
     objectAssign(analyzeResult.generateIds, {
         internal: ensureIdWithPrefix("_"),
@@ -28,57 +30,52 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     })
 
     const writer = new CodeWriter(true)
-    const scriptHoistWriter = new CodeWriter()
-    const targetId = ensureIdWithPrefix("target")
+    const hoistWriter = new CodeWriter()
+    const anchorId = ensureIdWithPrefix("anchor")
     const contextId = ensureIdWithPrefix("context")
     const internalId = analyzeResult.generateIds.internal
     const componentName = inputDescriptor.options.componentName
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
-    removeEliminatedNodes(embeddedScriptEditor)
-    transformEmbeddedScript(scriptHoistWriter, embeddedScriptEditor)
-
-    for (const declaration of importDeclarations) {
+    for (const declaration of analyzeResult.script.importDeclarations) {
         writer.writeScriptNode(declaration.value).wrapLine()
     }
-    writer.write(`import * as ${internalId} from "qingkuai/internal";`).wrapLine(2)
+    writer.write(`import * as ${internalId} from "qingkuai/internal"`).wrapLine(2)
 
     // 重复使用的字符串字面量将被声明为常量，这里用于确定其标识符名称
     // Reused string literals will be declared as constants; this is used to determine their identifier names.
     traverseObject(analyzeResult.commonStrings, (key, value) => {
-        if (shouldExtractCommonString(key, value.times)) {
-            hasTopExtra = true
-            value.id = ensureIdWithNumSuffix("_s", ++extractCommonStrCount)
-            writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
+        if (!shouldExtractCommonString(key)) {
+            return
         }
+        hasTopExtra = true
+        value.id = ensureIdWithNumSuffix("_s", ++extractCommonStrCount)
+        writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
     })
 
+    generateTemplateFragments(nodes, writer)
+    removeEliminatedNodes(embeddedScriptEditor)
+    transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
+
     hasTopExtra && writer.wrapLine()
+    writer.write(`export default function ${componentName}(${anchorId}, ${contextId}) {`).indent()
 
-    writer.write(`export default function ${componentName}(${targetId}, ${contextId}) {`)
-
-    writeDelegateEventsRegistration(writer)
-
-    scriptHoistWriter.empty || writer.write(scriptHoistWriter.code).wrapLine()
-
-    writer.write(`const refs = ${internalId}.initRefs(${contextId}.r`)
-    defaultRefs && writer.write(", ").writeScriptNode(defaultRefs.value)
-    writer.write(");").wrapLine()
-
-    writer.write(`const props = ${internalId}.initProps(${contextId}.p`)
-    defaultProps && writer.write(", ").writeScriptNode(defaultProps.value)
-    writer.write(");").wrapLine()
-
-    writer.write(`const slots = ${internalId}.initSlots(${contextId}.s);`)
-
+    if (defaultRefs) {
+        writer.write(`${contextId}.R = `).writeScriptNode(defaultRefs.value).wrapLine()
+    }
+    if (defaultProps) {
+        writer.write(`${contextId}.P = `).writeScriptNode(defaultProps.value).wrapLine()
+    }
+    if (writeDelegateEventsRegistration(writer, contextId) || defaultRefs || defaultProps) {
+        writer.wrapLine()
+    }
+    writer.write(`const { props, refs, slots } = ${internalId}.init(${contextId})`)
+    hoistWriter.empty || writer.wrapLine().write(hoistWriter.code)
     writer.writeEditedScript(embeddedScriptEditor)
-
+    transformTemplate(nodes, writer)
     writer.dedent().write("}")
 
-    return {
-        code: writer.code,
-        mappings: writer.mappings
-    }
+    return (({ code, mappings }) => ({ code, mappings }))(writer)
 }
 
 export function removeEliminatedNodes(editor: CodeEditor) {
@@ -94,9 +91,9 @@ export function removeEliminatedNodes(editor: CodeEditor) {
     }
 }
 
-// 生成 <interna>.init 方法调用代码，用于注册被委托的事件
-// Generate code for the `<internal>.init` method call, used to register delegated events.
-function writeDelegateEventsRegistration(writer: CodeWriter) {
+// 将需要委托的事件名称列表设置到 context.e
+// Assign the list of event names that need to be delegated to `context.e`.
+function writeDelegateEventsRegistration(writer: CodeWriter, contextId: string) {
     const passiveEvents: string[] = []
     const nonPassiveEvents: string[] = []
     const { delegateEvents } = analyzeResult.template
@@ -109,11 +106,14 @@ function writeDelegateEventsRegistration(writer: CodeWriter) {
 
     const passiveLen = passiveEvents.length
     const nonPassiveLen = nonPassiveEvents.length
-    const internalId = analyzeResult.generateIds.internal
-    const shouldWrapLine = passiveLen + nonPassiveLen > 10
+    if (!passiveLen && !nonPassiveLen) {
+        return false
+    }
+
+    const shouldWrapLine = passiveLen + nonPassiveLen > 8
     const seperator = ", " + (shouldWrapLine ? "\n" : "")
     const concatSeperatorCount = passiveLen ? (nonPassiveLen ? 2 : 1) : 0
-    writer.indent().write(`${internalId}.init([`)
+    writer.write(`${contextId}.e = [`)
     shouldWrapLine && writer.indent()
 
     writer.write(nonPassiveEvents.join(seperator))
@@ -121,5 +121,5 @@ function writeDelegateEventsRegistration(writer: CodeWriter) {
     writer.write(passiveEvents.join(seperator))
 
     shouldWrapLine && writer.dedent()
-    writer.write("]);").wrapLine(2)
+    return (writer.write("]").wrapLine(), true)
 }

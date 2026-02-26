@@ -5,60 +5,72 @@ import { getLocByIndex, getPosByIndex } from "../../../src/util/compiler/positio
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Single embedded script language block", () => {
-    matchTemplateNodeList(
-        parseTemplateStandalone(
-            formatSourceCode(`
-                <lang-js>
-                    let name = "World"
-                    setTimeout(() => {
-                        name = "QingKuai"
-                    })
-                </lang-js>
-            `)
-        ),
-        {
-            tag: "lang-js",
-            content: [
-                {
-                    isInterpolated: false,
-                    loc: getLocByIndex(9, 89),
-                    value: `\n    let name = "World"\n    setTimeout(() => {\n        name = "QingKuai"\n    })\n`
-                }
-            ],
-            isEmbedded: true,
-            loc: getLocByIndex(0, 99),
-            startTagEndPos: getPosByIndex(9),
-            endTagStartPos: getPosByIndex(89)
-        }
+    const nodeList = parseTemplateStandalone(
+        formatSourceCode(`
+            <lang-js>
+                let name = "World"
+                setTimeout(() => {
+                    name = "QingKuai"
+                })
+            </lang-js>
+        `)
     )
+    matchTemplateNodeList(nodeList, {
+        tag: "lang-js",
+        children: [
+            {
+                content: [
+                    {
+                        isInterpolated: false,
+                        loc: getLocByIndex(9, 89),
+                        value: `\n    let name = "World"\n    setTimeout(() => {\n        name = "QingKuai"\n    })\n`
+                    }
+                ],
+                parent: nodeList[0],
+                preWhiteSpace: true,
+                loc: getLocByIndex(9, 89)
+            }
+        ],
+        isEmbedded: true,
+        preWhiteSpace: true,
+        loc: getLocByIndex(0, 99),
+        startTagEndPos: getPosByIndex(9),
+        endTagStartPos: getPosByIndex(89)
+    })
 })
 
 test("Single embedded style language block", () => {
-    matchTemplateNodeList(
-        parseTemplateStandalone(
-            formatSourceCode(`
-                <lang-css>
-                    .container {
-                        background-color: red;
-                    }
-                </lang-css>
-            `)
-        ),
-        {
-            tag: "lang-css",
-            content: [
-                {
-                    isInterpolated: false,
-                    loc: getLocByIndex(10, 65),
-                    value: "\n    .container {\n        background-color: red;\n    }\n"
+    const nodeList = parseTemplateStandalone(
+        formatSourceCode(`
+            <lang-css>
+                .container {
+                    background-color: red;
                 }
-            ],
-            isEmbedded: true,
-            loc: getLocByIndex(0, 76),
-            startTagEndPos: getPosByIndex(10),
-            endTagStartPos: getPosByIndex(65)
-        }
+            </lang-css>
+        `)
     )
+    matchTemplateNodeList(nodeList, {
+        tag: "lang-css",
+        children: [
+            {
+                content: [
+                    {
+                        isInterpolated: false,
+                        loc: getLocByIndex(10, 65),
+                        value: "\n    .container {\n        background-color: red;\n    }\n"
+                    }
+                ],
+                parent: nodeList[0],
+                preWhiteSpace: true,
+                loc: getLocByIndex(10, 65)
+            }
+        ],
+        isEmbedded: true,
+        preWhiteSpace: true,
+        loc: getLocByIndex(0, 76),
+        startTagEndPos: getPosByIndex(10),
+        endTagStartPos: getPosByIndex(65)
+    })
 })
 
 test("Whether multiple embedded script language block will cause parsing error", () => {
@@ -76,6 +88,7 @@ test("Whether multiple embedded script language block will cause parsing error",
                 tag: "lang-js",
                 isEmbedded: true,
                 next: nodeList[1],
+                preWhiteSpace: true,
                 loc: getLocByIndex(0, 19),
                 startTagEndPos: getPosByIndex(9),
                 endTagStartPos: getPosByIndex(9)
@@ -96,6 +109,7 @@ test("Whether multiple embedded script language block will cause parsing error",
                 tag: "lang-ts",
                 isEmbedded: true,
                 prev: nodeList[1],
+                preWhiteSpace: true,
                 loc: getLocByIndex(20, 39),
                 startTagEndPos: getPosByIndex(29),
                 endTagStartPos: getPosByIndex(29)
@@ -123,6 +137,7 @@ test("Whether multiple embedded style language blocks will not cause parsing err
             tag: "lang-css",
             isEmbedded: true,
             next: nodeList[1],
+            preWhiteSpace: true,
             loc: getLocByIndex(0, 21),
             startTagEndPos: getPosByIndex(10),
             endTagStartPos: getPosByIndex(10)
@@ -143,6 +158,7 @@ test("Whether multiple embedded style language blocks will not cause parsing err
             tag: "lang-scss",
             isEmbedded: true,
             prev: nodeList[1],
+            preWhiteSpace: true,
             loc: getLocByIndex(22, 45),
             startTagEndPos: getPosByIndex(33),
             endTagStartPos: getPosByIndex(33)
@@ -153,37 +169,71 @@ test("Whether multiple embedded style language blocks will not cause parsing err
 test("Whether <script> and <style> element will not be parsed as embedded language block", () => {
     const nodeList = parseTemplateStandalone(
         formatSourceCode(`
-            <script></script>
-            <style></style>
+            <script>
+                console.log()
+            </script>
+            <style>
+                .container {}
+            </style>
         `)
     )
     matchTemplateNodeList(
         nodeList,
         {
             tag: "script",
+            children: [
+                {
+                    content: [
+                        {
+                            isInterpolated: false,
+                            loc: getLocByIndex(8, 27),
+                            value: `\n    console.log()\n`
+                        }
+                    ],
+                    parent: nodeList[0],
+                    preWhiteSpace: true,
+                    loc: getLocByIndex(8, 27)
+                }
+            ],
             next: nodeList[1],
-            loc: getLocByIndex(0, 17),
+            preWhiteSpace: true,
+            loc: getLocByIndex(0, 36),
             startTagEndPos: getPosByIndex(8),
-            endTagStartPos: getPosByIndex(8)
+            endTagStartPos: getPosByIndex(27)
         },
         {
             content: [
                 {
                     value: "\n",
                     isInterpolated: false,
-                    loc: getLocByIndex(17, 18)
+                    loc: getLocByIndex(36, 37)
                 }
             ],
             prev: nodeList[0],
             next: nodeList[2],
-            loc: getLocByIndex(17, 18)
+            loc: getLocByIndex(36, 37)
         },
         {
             tag: "style",
+            children: [
+                {
+                    content: [
+                        {
+                            isInterpolated: false,
+                            loc: getLocByIndex(44, 63),
+                            value: "\n    .container {}\n"
+                        }
+                    ],
+                    parent: nodeList[2],
+                    preWhiteSpace: true,
+                    loc: getLocByIndex(44, 63)
+                }
+            ],
             prev: nodeList[1],
-            loc: getLocByIndex(18, 33),
-            startTagEndPos: getPosByIndex(25),
-            endTagStartPos: getPosByIndex(25)
+            preWhiteSpace: true,
+            loc: getLocByIndex(37, 71),
+            startTagEndPos: getPosByIndex(44),
+            endTagStartPos: getPosByIndex(63)
         }
     )
 })

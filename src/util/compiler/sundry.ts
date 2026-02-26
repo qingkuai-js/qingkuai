@@ -1,5 +1,19 @@
 import { stringify } from "../shared/aliases"
-import { analyzeResult } from "../../compiler/state"
+import { analyzeResult, inputDescriptor } from "../../compiler/state"
+
+export const createHashId = (function () {
+    const existing = new Set<string>()
+    const max = parseInt(`0x${"f".repeat(8)}`)
+    return () => {
+        while (true) {
+            const hash = Math.floor(Math.random() * max).toString(16)
+            if (existing.has(hash)) {
+                continue
+            }
+            return (existing.add(hash), hash)
+        }
+    }
+})()
 
 export function getAttributeBaseName(name: string) {
     switch (name[0]) {
@@ -39,12 +53,13 @@ export function ensureIdWithPrefix(name: string, prefix = "_") {
 }
 
 export function ensureIdWithNumSuffix(name: string, start = 1) {
+    const initialIsOk = start === 0
     const { fullIdentifiers } = analyzeResult.script
     for (let i = start, initial = name; true; i++) {
-        if ((!start || i !== start) && !fullIdentifiers.has(name)) {
+        if ((initialIsOk || i !== start) && !fullIdentifiers.has(name)) {
             break
         }
-        if (!start) {
+        if (!start && !i) {
             i++
         }
         name = initial + i
@@ -52,12 +67,33 @@ export function ensureIdWithNumSuffix(name: string, start = 1) {
     return (fullIdentifiers.add(name), name)
 }
 
-export function increaseCommonStringCount(value: string) {
+export function increaseCommonStringUsedTimes(value: string) {
+    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
+        return
+    }
     ;(analyzeResult.commonStrings[value] ??= { id: "", times: 0 }).times++
 }
 
-export function shouldExtractCommonString(value: string, count: number) {
+export function shouldExtractCommonString(value: string) {
+    const count = analyzeResult.commonStrings[value]?.times ?? 0
     return count <= 1 ? false : count === 2 ? value.length > 4 : value.length > 2
+}
+
+export function increaseCompressStringUsedTimes(str: string) {
+    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
+        return
+    }
+    if (str.length > Math.floor(analyzeResult.template.compressStringsCount / 10) + 1) {
+        if (!analyzeResult.template.compressStrings[str]) {
+            analyzeResult.template.compressStrings[str] = {
+                id: "",
+                times: 0
+            }
+            increaseCommonStringUsedTimes(str)
+            analyzeResult.template.compressStringsCount++
+        }
+        analyzeResult.template.compressStrings[str].times++
+    }
 }
 
 // TODO: useless

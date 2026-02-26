@@ -1,7 +1,6 @@
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
 import { any } from "../../util/shared/sundry"
-import { createDestruction } from "../destroy"
 import { getNodeContext, setText } from "../dom"
 import { renderEffect } from "../reactivity/effect"
 import { invokeRender, walkNodes } from "../../util/runtime/sundry"

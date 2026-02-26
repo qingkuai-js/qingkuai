@@ -1,11 +1,16 @@
-import type { HookFunc, ComponentFunc, ComponentInstance } from "#type-declarations/runtime"
+import type {
+    HookFunc,
+    ComponentFunc,
+    ComponentContext,
+    ComponentInstance
+} from "#type-declarations/runtime"
 
 import { registerEvents } from "./event"
 import { AFTER_MOUNT, NIL } from "./constants"
 import { createDestruction } from "./destroy"
 import { isString } from "../util/shared/assert"
 import { isElement } from "../util/runtime/assert"
-import { appendChild, selectElement } from "./dom"
+import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
 import { stripPrototype } from "../util/shared/sundry"
@@ -21,20 +26,63 @@ export const [
     onAfterDestroy
 ] = hooksRegisterGen()
 
-export function initSlots(transformed: any) {
-    if (transformed && stripPrototype(transformed)) {
-        return createProxy(
-            {},
-            {
-                get(_, property) {
-                    return !!transformed[property]
-                }
-            }
-        )
+export function init(context: ComponentContext) {
+    const instance: ComponentInstance = {
+        d: NIL,
+        u: false,
+        h: any([]),
+        p: currentInstance
+    }
+    setCurrentInstance(instance)
+    createDestruction(instance)
+    context.e && registerEvents(context.e)
+    return {
+        slots: initSlots(context.s),
+        refs: initRefs(context.r, context.R),
+        props: initProps(context.p, context.P)
     }
 }
 
-export function initRefs(transformed: any, defaults: any) {
+export function runHooks(instance: ComponentInstance, index: number) {
+    if (len(instance.h[index])) {
+        runAll(instance.h[index]!)
+    }
+}
+
+export function mount(anchor: Element, fragment: DocumentFragment) {
+    backToParentDestruction()
+    insertBefore(anchor, fragment)
+    setCurrentInstance(currentInstance!.p)
+    runHooks(currentInstance!, AFTER_MOUNT)
+}
+
+export function mountApp(render: ComponentFunc, target: Element | string) {
+    if (isString(target)) {
+        target = selectElement(target) as Element
+    }
+    if (!isElement(target)) {
+        InvalidElementNode('"mountApp"')
+    }
+
+    const anchor = newTextNode()
+    appendChild(target, anchor)
+    render(anchor)
+}
+
+// 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法
+// Component lifecycle callbacks are stored as elements at different indices
+// in `ComponentInstance.h`; this method generates functions for registering them
+function hooksRegisterGen() {
+    const hookRegisters: HookFunc[] = []
+    for (let i = 0; i < 6; i++) {
+        hookRegisters.push(callback => {
+            ;(currentInstance!.h[i] ??= []).push(callback)
+        })
+    }
+    return hookRegisters
+}
+
+function initRefs(transformed: any, defaults: any) {
     if (transformed && stripPrototype(transformed)) {
         return createProxy(
             {},
@@ -60,7 +108,7 @@ export function initRefs(transformed: any, defaults: any) {
     }
 }
 
-export function initProps(transformed: any, defaults: any) {
+function initProps(transformed: any, defaults: any) {
     if (transformed && stripPrototype(transformed)) {
         createProxy(
             {},
@@ -80,50 +128,18 @@ export function initProps(transformed: any, defaults: any) {
     }
 }
 
-export function runHooks(instance: ComponentInstance, index: number) {
-    if (len(instance.h[index])) {
-        runAll(instance.h[index]!)
+function initSlots(transformed: any) {
+    if (transformed && stripPrototype(transformed)) {
+        return createProxy(
+            {},
+            {
+                get(_, property) {
+                    return !!transformed[property]
+                },
+                set() {
+                    return true
+                }
+            }
+        )
     }
-}
-
-export function mount(target: Element, fragment: DocumentFragment) {
-    backToParentDestruction()
-    appendChild(target, fragment)
-    setCurrentInstance(currentInstance!.p)
-    runHooks(currentInstance!, AFTER_MOUNT)
-}
-
-export function mountApp(render: ComponentFunc, target: Element | string) {
-    if (isString(target)) {
-        target = selectElement(target) as Element
-    }
-    if (!isElement(target)) {
-        InvalidElementNode('"mountApp"')
-    }
-    render(target)
-}
-
-export function init(registration: string[]) {
-    const instance: ComponentInstance = {
-        d: NIL,
-        u: false,
-        h: any([]),
-        p: currentInstance
-    }
-    setCurrentInstance(instance)
-    createDestruction(instance)
-    registerEvents(registration)
-}
-
-// 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法
-// Component lifecycle callbacks are stored as elements at different indices
-// in `ComponentInstance.h`; this method generates functions for registering them
-function hooksRegisterGen() {
-    const hookRegisters: HookFunc[] = []
-    for (let i = 0; i < 6; i++) {
-        hookRegisters.push(callback => {
-            ;(currentInstance!.h[i] ??= []).push(callback)
-        })
-    }
-    return hookRegisters
 }

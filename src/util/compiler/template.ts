@@ -40,6 +40,15 @@ export function getPrevNonTextNode(node: TemplateNode) {
     return null
 }
 
+// 查找节点非 SPREAD_TAG 的父节点
+// Find the nearest parent node that is not a SPREAD_TAG.
+export function getNonSpreadParent(node: TemplateNode | null) {
+    while (node?.parent && SPREAD_TAG === node.parent.tag) {
+        node = node.parent
+    }
+    return node && node.parent
+}
+
 // 获取元素的前置注释节点（前方的空白文本节点将被忽略）
 // Get the leading comment node for a given element (ignoring the preceding blank text node)
 export function getLeadingCommentNode(node: TemplateNode) {
@@ -77,9 +86,6 @@ export function getStartTagOpenLoc(node: TemplateNode) {
 export function walkTemplateNodes(nodes: TemplateNode[], callback: (node: TemplateNode) => void) {
     for (const node of nodes) {
         callback(node)
-
-        for (const child of node.children) {
-            callback(child)
-        }
+        walkTemplateNodes(node.children, callback)
     }
 }

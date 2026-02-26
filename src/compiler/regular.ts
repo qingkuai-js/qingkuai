@@ -15,8 +15,10 @@ export const equalTokenRE = /^\s*=/
 export const startCurlyRE = /^\s*\{/
 export const startQuoteRE = /^\s*['"]/
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
+export const textContentReplacerRE = /\s+|\//g
 export const indentSpacesRE = /(?<=\n)(?:[ \t]+)/
 export const interpolatedAttrStartCharRE = /[!@#&]/
+export const omitQuoteAttrValueRE = /^[^\s'"`=<>]+$/
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
 export const jsValueCharRE = /[A-Za-z0-9_$]/
