@@ -25,13 +25,13 @@ export function analyzeAttributes(node: TemplateNode) {
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
-    node.attributes.sort((a, b) => {
+    const sortedAttributes = node.attributes.toSorted((a, b) => {
         const av = ATTRIBUTE_PRIORITY_MAP[a.name.raw] ?? 0
         const bv = ATTRIBUTE_PRIORITY_MAP[b.name.raw] ?? 0
         return bv - av
     })
 
-    for (const attribute of node.attributes) {
+    for (const attribute of sortedAttributes) {
         let mappedKey: string
         const nameLoc = attribute.name.loc
         const rawName = attribute.name.raw
@@ -43,7 +43,7 @@ export function analyzeAttributes(node: TemplateNode) {
         const isComponent = !!node.componentTag
         const baseName = getAttributeBaseName(rawName)
 
-        if (!inputDescriptor.options.checkMode && !isDirective && !node.isEmbedded) {
+        if (!isDirective && !node.isEmbedded) {
             recordCompressAndCommonStrings(node, attribute)
         }
 
@@ -138,6 +138,10 @@ export function analyzeAttributes(node: TemplateNode) {
 }
 
 function recordCompressAndCommonStrings(node: TemplateNode, attribute: TemplateAttribute) {
+    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
+        return
+    }
+
     const rawName = attribute.name.raw
     const rawValue = attribute.value.raw
     if (node.componentTag) {

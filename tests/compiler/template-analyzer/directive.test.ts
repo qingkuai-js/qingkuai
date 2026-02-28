@@ -354,15 +354,56 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [5, 10],
-                value: `The "#then" directive must be preceded by one of the following directives: "#await", "#catch".`
+                value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`
             }
         ])
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #slot={"a"} #await={_}></div>
+                    <div #slot={"b"} #then></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [67, 72],
+                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`
+                }
+            ]
+        )
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #await={_}></div>
+                    <div #slot={"b"} #then></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [55, 60],
+                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch". Note that the preceding element has an implicit "#slot" directive.`
+                }
+            ]
+        )
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <div #await={_}></div>
                 <div #then={_}></div>
             `)
+        )
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div></div>
+                    <div #slot={"b"} #await={_} #then></div>
+                </Comp>
+            `),
+            []
         )
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={_}></div>`)
     })
@@ -410,15 +451,56 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [6, 12],
-                value: `The "#catch" directive must be preceded by one of the following directives: "#await", "#then".`
+                value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`
             }
         ])
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <p #slot={"a"} #await={_}></p>
+                    <p #slot={"b"} #catch></p>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [61, 67],
+                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`
+                }
+            ]
+        )
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <p #await={_}></p>
+                    <p #slot={"b"} #catch></p>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [49, 55],
+                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then". Note that the preceding element has an implicit "#slot" directive.`
+                }
+            ]
+        )
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <p #await={_}></p>
                 <p #then={_}></p>
             `)
+        )
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div></div>
+                    <div #slot={"b"} #await={_} #catch></div>
+                </Comp>
+            `),
+            []
         )
         analyzeTemplateAndMatchMessages(`<p #await={_} #then={_}></p>`)
     })
@@ -482,9 +564,41 @@ describe("#else", () => {
             {
                 type: "error",
                 range: [5, 10],
-                value: `The "#else" directive requires a preceding sibling node with one of the following directives: "#if", "#elif".`
+                value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
             }
         ])
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #slot={"a"} #if={_}></div>
+                    <div #slot={"b"} #else></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [64, 69],
+                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
+                }
+            ]
+        )
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #if={_}></div>
+                    <div #slot={"b"} #else></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [52, 57],
+                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`
+                }
+            ]
+        )
     })
 })
 
@@ -505,9 +619,41 @@ test("#elif: missing preceding directive", () => {
         {
             type: "error",
             range: [5, 10],
-            value: `The "#elif" directive requires a preceding sibling node with one of the following directives: "#if", "#elif".`
+            value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
         }
     ])
+
+    analyzeTemplateAndMatchMessages(
+        formatSourceCode(`
+            <Comp>
+                <div #slot={"a"} #if={_}></div>
+                <div #slot={"b"} #elif={_}></div>
+            </Comp>
+        `),
+        [
+            {
+                type: "error",
+                range: [64, 69],
+                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
+            }
+        ]
+    )
+
+    analyzeTemplateAndMatchMessages(
+        formatSourceCode(`
+            <Comp>
+                <div #if={_}></div>
+                <div #slot={"b"} #elif={_}></div>
+            </Comp>
+        `),
+        [
+            {
+                type: "error",
+                range: [52, 57],
+                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`
+            }
+        ]
+    )
 })
 
 test("#target: invalid placement", () => {
@@ -544,11 +690,6 @@ test("Missing directive value", () => {
         },
         {
             type: "error",
-            range: [26, 33],
-            value: `Directive "#target" requires a value.`
-        },
-        {
-            type: "error",
             range: [9, 13],
             value: `Directive "#for" requires a value.`
         },
@@ -556,6 +697,11 @@ test("Missing directive value", () => {
             type: "error",
             range: [21, 25],
             value: `Directive "#key" requires a value.`
+        },
+        {
+            type: "error",
+            range: [26, 33],
+            value: `Directive "#target" requires a value.`
         },
         {
             type: "error",
@@ -655,7 +801,7 @@ test("Conflicting directives", () => {
         {
             type: "error",
             range: [13, 18],
-            value: `The "#elif" directive requires a preceding sibling node with one of the following directives: "#if", "#elif".`
+            value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
         },
         {
             type: "error",
@@ -670,7 +816,7 @@ test("Conflicting directives", () => {
         {
             type: "error",
             range: [23, 28],
-            value: `The "#else" directive requires a preceding sibling node with one of the following directives: "#if", "#elif".`
+            value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
         }
     ])
 })

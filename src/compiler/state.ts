@@ -19,13 +19,6 @@ export function resetCompilerState(options: CompileOptions) {
     messages = []
     analyzeResult = newAnalyzeResult()
     inputDescriptor = newInputDescriptor(options)
-
-    if (!inputDescriptor.options.debug && !inputDescriptor.options.checkMode) {
-        analyzeResult.template.compressStrings[` qk-${inputDescriptor.options.hashId}`] = {
-            id: "",
-            times: 2
-        }
-    }
 }
 
 function newAnalyzeResult(): AnalyzeResult {
@@ -35,6 +28,7 @@ function newAnalyzeResult(): AnalyzeResult {
                 passive: new Set(),
                 nonPassive: new Set()
             },
+            compressStringsCount: 0,
             eventInfos: new Map(),
             nodeContexts: new Map(),
             parsedPatterns: new Map(),
@@ -61,7 +55,7 @@ function newAnalyzeResult(): AnalyzeResult {
             setterArg: ""
         }),
         slots: newCleanObj(),
-        commonStrings: newCleanObj()
+        reusedStrings: newCleanObj()
     }
 }
 
@@ -88,12 +82,11 @@ function newInputDescriptor(options: CompileOptions) {
             checkMode: false,
             tipComment: false,
             componentName: "",
-            trimTextEdges: true,
             typeImportStatement: "",
             reactivityMode: "reactive",
+            whitespace: "trim-collapse",
             preserveCommentNodes: false,
             checkTemplateStructure: true,
-            collapseWhitespaceOnlyText: false,
             shorthandDerivedDeclaration: true
         }
     }

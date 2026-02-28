@@ -114,12 +114,39 @@ describe("Duplicate slot assignment", () => {
                 {
                     type: "error",
                     range: [27, 31],
-                    value: `Multiple elements are assigned to the same slot in <Comp>: "default". Consider using a different slot name in the "#slot" directive.`
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
                 },
                 {
                     type: "error",
                     range: [11, 15],
-                    value: `Multiple elements are assigned to the same slot in <Comp>: "default". Consider using a different slot name in the "#slot" directive.`
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
+                }
+            ]
+        )
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    hellow
+                    <p> world </p>
+                    !
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [22, 24],
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
+                },
+                {
+                    type: "error",
+                    range: [11, 17],
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
+                },
+                {
+                    type: "error",
+                    range: [41, 42],
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
                 }
             ]
         )
@@ -135,12 +162,12 @@ describe("Duplicate slot assignment", () => {
                 {
                     type: "error",
                     range: [32, 49],
-                    value: `Multiple elements are assigned to the same slot in <Comp>: "default". Consider using a different slot name in the "#slot" directive.`
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
                 },
                 {
                     type: "error",
                     range: [11, 15],
-                    value: `Multiple elements are assigned to the same slot in <Comp>: "default". Consider using a different slot name in the "#slot" directive.`
+                    value: `Multiple nodes are assigned to the same slot("default") in <Comp>. Consider using a different slot name in the "#slot" directive.`
                 }
             ]
         )
@@ -158,12 +185,12 @@ describe("Duplicate slot assignment", () => {
                 {
                     type: "error",
                     range: [46, 72],
-                    value: `Multiple elements are assigned to the same slot in <Comp>: "xxx". Consider using a different slot name in the "#slot" directive.`
+                    value: `Multiple nodes are assigned to the same slot("xxx") in <Comp>. Consider using a different slot name in the "#slot" directive.`
                 },
                 {
                     type: "error",
                     range: [16, 29],
-                    value: `Multiple elements are assigned to the same slot in <Comp>: "xxx". Consider using a different slot name in the "#slot" directive.`
+                    value: `Multiple nodes are assigned to the same slot("xxx") in <Comp>. Consider using a different slot name in the "#slot" directive.`
                 }
             ]
         )

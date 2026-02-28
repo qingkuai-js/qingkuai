@@ -41,6 +41,10 @@ export class CodeWriter {
         return this
     }
 
+    writeLine(str: string) {
+        return this.write(str).wrapLine()
+    }
+
     indent(wrapLine = true) {
         ++this.indentLevel
         return wrapLine ? this.wrapLine() : this

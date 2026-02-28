@@ -41,7 +41,7 @@ export function generateSetterCode(target: string) {
 }
 
 export function getStringifiedLiteral(value: string) {
-    return analyzeResult.commonStrings[value].id || stringify(value)
+    return analyzeResult.reusedStrings[value].id || stringify(value)
 }
 
 export function ensureIdWithPrefix(name: string, prefix = "_") {
@@ -71,11 +71,11 @@ export function increaseCommonStringUsedTimes(value: string) {
     if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
         return
     }
-    ;(analyzeResult.commonStrings[value] ??= { id: "", times: 0 }).times++
+    ;(analyzeResult.reusedStrings[value] ??= { id: "", times: 0 }).times++
 }
 
 export function shouldExtractCommonString(value: string) {
-    const count = analyzeResult.commonStrings[value]?.times ?? 0
+    const count = analyzeResult.reusedStrings[value]?.times ?? 0
     return count <= 1 ? false : count === 2 ? value.length > 4 : value.length > 2
 }
 

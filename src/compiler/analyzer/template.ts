@@ -5,6 +5,12 @@ import type {
     TemplateNodeContext
 } from "#type-declarations/compiler"
 
+import {
+    isSelectableNode,
+    walkTemplateNodes,
+    getStartTagOpenLoc,
+    willTextNodeGenerateFragment
+} from "../../util/compiler/template"
 import { SPREAD_TAG } from "../constants"
 import { analyzeAttributes } from "./attribute"
 import { analyzeStaticTextContent } from "./text"
@@ -12,9 +18,9 @@ import { newCleanObj } from "../../util/shared/sundry"
 import { analyzeInterpolation } from "./interpolation"
 import { UnnecessarySpreadTag } from "../message/warn"
 import { analyzeResult, inputDescriptor } from "../state"
+import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { increaseCompressStringUsedTimes } from "../../util/compiler/sundry"
-import { DuplicateSlotAssignment, DuplicateSlotName } from "../message/error"
-import { getStartTagOpenLoc, walkTemplateNodes } from "../../util/compiler/template"
+import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from "../message/error"
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
     const { nodeContexts } = analyzeResult.template
@@ -38,6 +44,11 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
 
         switch ((analyzeAttributes(node), node.tag)) {
             case "slot": {
+                for (let current = node.parent; current; current = current.parent) {
+                    if (current.tag === "slot") {
+                        NestedSlotElement(getStartTagOpenLoc(current))
+                    }
+                }
                 recordSlotName(node, nodeContexts.get(node)!.attributesMap.name)
                 break
             }
@@ -56,47 +67,48 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                     if (!node.children.length) {
                         UnnecessarySpreadTag(getStartTagOpenLoc(node), "children")
                     }
-                    if (!nodeContext.sortedDirectives.length) {
+                    if (!node.parent?.componentTag && !nodeContext.sortedDirectives.length) {
                         UnnecessarySpreadTag(getStartTagOpenLoc(node), "directives")
                     }
                 }
-                if (!node.componentTag && !node.isEmbedded) {
-                    increaseCompressStringUsedTimes(`<${node.tag}`)
-                    node.isSelfClosing || increaseCompressStringUsedTimes(`</${node.tag}>`)
+                if (isSelectableNode(node)) {
+                    if ("!" === node.tag) {
+                        increaseCompressStringUsedTimes("<!--")
+                        increaseCompressStringUsedTimes("-->")
+                    } else {
+                        increaseCompressStringUsedTimes(`<${node.tag}`)
+                        node.isSelfClosing || increaseCompressStringUsedTimes(`</${node.tag}>`)
+                    }
                 }
             }
         }
-        if (nodeContext.sortedDirectives.length) {
-            increaseCompressStringUsedTimes("<!>")
-        }
     })
-    walkTemplateNodes(nodes, node => {
-        if (node.componentTag) {
-            checkSlotAssignment(node)
-        }
-    })
+    walkTemplateNodes(nodes, node => node.componentTag && checkSlotAssignment(node))
 }
 
 // 检查组件一级子元素是否被分配到了相同的插槽出口
 // Check whether direct child elements of a component are assigned to the same slot outlet.
 function checkSlotAssignment(node: TemplateNode) {
-    const existingMap: Record<string, ASTLocation> = newCleanObj()
+    const existingMap: Record<string, [ASTLocation, boolean]> = newCleanObj()
 
     const recordExistingMap = (name: string, loc: ASTLocation) => {
         const existing = existingMap[name]
-        if (((existingMap[name] = loc), existing)) {
-            DuplicateSlotAssignment(loc, node.componentTag, name)
-            DuplicateSlotAssignment(existing, node.componentTag, name)
+        if (((existingMap[name] = [loc, false]), existing)) {
+            DuplicateSlotAssignment(loc, node.tag, name)
+
+            if (!existing[1]) {
+                existingMap[name][1] = true
+                DuplicateSlotAssignment(existing[0], node.tag, name)
+            }
         }
     }
 
     for (const child of node.children) {
-        if ("" === child.tag) {
+        if ("" === child.tag && !willTextNodeGenerateFragment(child)) {
             continue
         }
-
-        const { nodeContexts: nodeInfos, parsedExpressions } = analyzeResult.template
-        const directive = nodeInfos.get(child)!.attributesMap["#slot"]
+        const { nodeContexts, parsedExpressions } = analyzeResult.template
+        const directive = nodeContexts.get(child)!.attributesMap["#slot"]
         const expressionInfo = parsedExpressions.get(directive)
         if (expressionInfo) {
             const { startSourceIndex, node } = expressionInfo[0]
@@ -108,7 +120,10 @@ function checkSlotAssignment(node: TemplateNode) {
                 directive.loc
             )
         } else {
-            recordExistingMap("default", getStartTagOpenLoc(child))
+            recordExistingMap(
+                "default",
+                child.tag ? getStartTagOpenLoc(child) : getNonWhiteSpaceLocByLoc(child.loc)
+            )
         }
     }
 }

@@ -1,4 +1,4 @@
-import type { CompileOptions } from "#type-declarations/compiler"
+import type { CompileOptions, TemplateNode } from "#type-declarations/compiler"
 
 import { expect } from "vitest"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
@@ -9,6 +9,7 @@ import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { analyzeTemplate } from "../../../src/compiler/analyzer/template"
 import { removeEliminatedNodes } from "../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../src/compiler/transformer/runtime/script"
+import { generateTemplateFragments } from "../../../src/compiler/transformer/runtime/fragment"
 import { analyzeResult, inputDescriptor, resetCompilerState } from "../../../src/compiler/state"
 
 export function matchTransformedScript(
@@ -18,6 +19,34 @@ export function matchTransformedScript(
 ) {
     const { hoist, edieted } = localTransform(source, options)
     expect(hoist ? `${hoist}\n${edieted}` : edieted).toBe(expected)
+}
+
+export function matchGeneratedFragment(
+    source: string,
+    expected: string,
+    options: CompileOptions = {}
+) {
+    resetCompilerState(options)
+
+    const writer = new CodeWriter()
+    const templateNodes = parseTemplate(source)
+    analyzeResult.generateIds.internal = "_"
+    ;(analyzeScript(), analyzeTemplate(templateNodes))
+    generateTemplateFragments(templateNodes, writer)
+    expect(writer.code.trim()).toBe(formatSourceCode(expected))
+    return templateNodes
+}
+
+export function matchTemplateNodesRuntimeId(data: [TemplateNode, string][]) {
+    for (const [node, id] of data) {
+        expect(analyzeResult.template.nodeContexts.get(node)?.id).toBe(id)
+    }
+}
+
+export function matchTemplateNodesAnchorId(data: [TemplateNode, string][]) {
+    for (const [node, id] of data) {
+        expect(analyzeResult.template.nodeContexts.get(node)?.anchorId).toBe(id)
+    }
 }
 
 function localTransform(source: string, options: CompileOptions) {

@@ -2,6 +2,7 @@ import type { TemplateNode } from "#type-declarations/compiler"
 
 import { getLocByIndex } from "./position"
 import { isEmptyString } from "../shared/assert"
+import { analyzeResult } from "../../compiler/state"
 import { SPREAD_TAG } from "../../compiler/constants"
 
 // 获取节点的原始文本内容
@@ -28,25 +29,21 @@ export function isBlankTextNode(node: TemplateNode) {
     )
 }
 
-// 获取节点前方首个非文本的兄弟节点
-// Get the first non-text sibling node before the current node.
-export function getPrevNonTextNode(node: TemplateNode) {
-    while (node.prev) {
-        if (node.prev.tag !== "") {
-            return node.prev
-        }
-        node = node.prev
+// 判断文本节点是否会生成 HTMLFragment
+// Determine whether a text node will generate an HTMLFragment.
+export function willTextNodeGenerateFragment(node: TemplateNode) {
+    if (node.content.length > 1) {
+        return true
     }
-    return null
+
+    const staticContent = analyzeResult.template.staticTextContents.get(node.content[0])
+    return !!(node.parent?.componentTag ? staticContent?.trim() : staticContent)
 }
 
-// 查找节点非 SPREAD_TAG 的父节点
-// Find the nearest parent node that is not a SPREAD_TAG.
-export function getNonSpreadParent(node: TemplateNode | null) {
-    while (node?.parent && SPREAD_TAG === node.parent.tag) {
-        node = node.parent
-    }
-    return node && node.parent
+// 判断节点是否可选中以在运行时中声明
+// Determine whether the node can be selected for declaration at runtime.
+export function isSelectableNode(node: TemplateNode) {
+    return !node.isEmbedded && !node.componentTag && node.tag !== "slot" && node.tag !== SPREAD_TAG
 }
 
 // 获取元素的前置注释节点（前方的空白文本节点将被忽略）

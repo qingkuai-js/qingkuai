@@ -117,6 +117,10 @@ export const InvalidExpression = withLocation(1029, () => {
     return "Invalid expression."
 })
 
+export const NestedSlotElement = withLocation(1055, () => {
+    return `Nested <slot> elements are not allowed.`
+})
+
 export const ExpectedExpression = withLocation(1041, () => {
     return "Expected an expression."
 })
@@ -272,20 +276,6 @@ export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrins
     return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })
 
-export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
-    let expected!: string
-    const accept = getSpecialAttrDescription(name, true)
-    if (tag !== "slot") {
-        if (tag === SPREAD_TAG) {
-            expected = "directives"
-        } else if (templateEmbeddedLangTagRE.test(tag)) {
-            expected = "static attributes"
-        }
-        return `The <${tag}> tag can only accept ${expected}, but got ${accept}: "${name}".`
-    }
-    return `The <slot> tag does not support reference attributes or event listeners, but got ${accept}: "${name}".`
-})
-
 export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
     return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`
 })
@@ -300,15 +290,15 @@ export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
 
 export const MissingPrecedingDirective = withLocation(
     1031,
-    (directive: string, expectedList: string[], allowSameNode: boolean) => {
+    (directive: string, expectedList: string[], extra = "") => {
         const expected = expectedList.reduce(
             (ret, cur, index) => `${ret}${index === 0 ? "" : ", "}"${cur}"`,
             ""
         )
-        if (allowSameNode) {
-            return `The "${directive}" directive must be preceded by one of the following directives: ${expected}.`
+        if (expectedList[0] !== "#if") {
+            return `The "${directive}" directive requires one of the following preceding directives: ${expected}.${extra}`
         } else {
-            return `The "${directive}" directive requires a preceding sibling node with one of the following directives: ${expected}.`
+            return `The "${directive}" directive requires a preceding sibling element with one of the following directives: ${expected}.${extra}`
         }
     }
 )
@@ -317,8 +307,23 @@ export const InvalidShorthandAttributeName = withLocation(1049, (name: string) =
     return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier.`
 })
 
+export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
+    const gotDescription = `, but got ${getSpecialAttrDescription(name, true)}: "${name}".`
+    switch (tag) {
+        case SPREAD_TAG: {
+            return `The <qk:spread> tag can only accept directives${gotDescription}`
+        }
+        case "slot": {
+            return `The <slot> tag does not support reference attributes or event listeners${gotDescription}`
+        }
+        default: {
+            return `The <${tag}> tag can only accept static attributes${gotDescription}`
+        }
+    }
+})
+
 export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {
-    return `Multiple elements are assigned to the same slot in <${component}>: "${name}". Consider using a different slot name in the "#slot" directive.`
+    return `Multiple nodes are assigned to the same slot("${name}") in <${component}>. Consider using a different slot name in the "#slot" directive.`
 })
 
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {

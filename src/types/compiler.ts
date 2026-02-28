@@ -54,7 +54,9 @@ export interface EditReplacement {
 export interface TemplateFragment {
     id: string
     content: string
+    getterId: string
     statements: string[]
+    usedCompressString: boolean
 }
 
 export interface TextContentPart {
@@ -110,7 +112,7 @@ export interface ASTPositionWithFlag extends ASTPosition {
 }
 
 export interface AnalyzeResult {
-    commonStrings: Record<
+    reusedStrings: Record<
         string,
         {
             id: string
@@ -244,13 +246,12 @@ export type CompileOptions = Partial<{
     checkMode: boolean
     tipComment: boolean
     componentName: string
-    trimTextEdges: boolean
     typeImportStatement: string
     preserveCommentNodes: boolean
     checkTemplateStructure: boolean
-    collapseWhitespaceOnlyText: boolean
     shorthandDerivedDeclaration: boolean
     reactivityMode: "reactive" | "shallow"
+    whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
 
 export type IdentifierStatus =

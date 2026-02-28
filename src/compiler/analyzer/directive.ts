@@ -27,7 +27,6 @@ import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
 import { walk, walkPatternIdentifiers } from "../estree/walk"
-import { getPrevNonTextNode } from "../../util/compiler/template"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { isNonEmptyExpression, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
@@ -38,8 +37,9 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     const nameLoc = directive.name.loc
     const rawName = directive.name.raw
     const rawValue = directive.value.raw
+    const { nodeContexts } = analyzeResult.template
+    const nodeContext = nodeContexts.get(node)!
     const valueStartSourceIndex = directive.value.loc.start.index
-    const nodeContext = analyzeResult.template.nodeContexts.get(node)!
 
     const localAnalyzeInterpolation = (source: string, startSourceIndex: number) => {
         return analyzeInterpolation(node, directive, source, startSourceIndex)
@@ -137,11 +137,20 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         case "#then":
         case "#catch": {
             const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"]
-            if (
-                !expectedList.includes(getFirstDirectiveNameOfPrevNonTextNode(node)) &&
-                !nodeContext.sortedDirectives.some(item => expectedList.includes(item.name.raw))
-            ) {
-                MissingPrecedingDirective(directive.name.loc, rawName, expectedList, true)
+            if (!nodeContext.sortedDirectives.some(item => expectedList.includes(item.name.raw))) {
+                const prevElement = getPrevNonTextNode(node)
+                const prevElementContext = prevElement && nodeContexts.get(prevElement)
+                const prevElementFirstDirective =
+                    prevElementContext?.sortedDirectives[0].name.raw ?? ""
+                const extraMsg =
+                    prevElement &&
+                    prevElement.parent?.componentTag &&
+                    prevElementFirstDirective !== "#slot"
+                        ? ` Note that the preceding element has an implicit "#slot" directive.`
+                        : ""
+                if (extraMsg || !expectedList.includes(prevElementFirstDirective)) {
+                    MissingPrecedingDirective(directive.name.loc, rawName, expectedList, extraMsg)
+                }
             }
 
             if (directive.valueEnclosure !== "none") {
@@ -189,9 +198,19 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (rawName === "#else" && directive.valueEnclosure !== "none") {
                 RedundantDirectiveValue(directive.loc, rawName)
             }
+
             const expectedList = ["#if", "#elif"]
-            if (!expectedList.includes(getFirstDirectiveNameOfPrevNonTextNode(node))) {
-                MissingPrecedingDirective(nameLoc, rawName, expectedList, false)
+            const prevElement = getPrevNonTextNode(node)
+            const prevElementContext = prevElement && nodeContexts.get(prevElement)
+            const prevElementFirstDirective = prevElementContext?.sortedDirectives[0].name.raw ?? ""
+            const extraMsg =
+                prevElement &&
+                prevElement.parent?.componentTag &&
+                prevElementFirstDirective !== "#slot"
+                    ? ` Note that the preceding element has an implicit "#slot" directive.`
+                    : ""
+            if (extraMsg || !expectedList.includes(prevElementFirstDirective)) {
+                MissingPrecedingDirective(nameLoc, rawName, expectedList, extraMsg)
             }
             break
         }
@@ -236,14 +255,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
 // 获取指定节点的前一个非文本节点的兄弟节点
 // Get the previous non-text sibling node of the specified node.
-function getPrevNonTextNodeContext(node: TemplateNode) {
-    const prevNonTextNode = getPrevNonTextNode(node)
-    if (!prevNonTextNode) {
-        return null
+function getPrevNonTextNode(node: TemplateNode) {
+    while (node.prev) {
+        if (node.prev.tag !== "") {
+            return node.prev
+        }
+        node = node.prev
     }
-    return analyzeResult.template.nodeContexts.get(prevNonTextNode)!
-}
-
-function getFirstDirectiveNameOfPrevNonTextNode(node: TemplateNode) {
-    return getPrevNonTextNodeContext(node)?.sortedDirectives[0].name.raw ?? ""
+    return null
 }

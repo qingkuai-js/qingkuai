@@ -51,9 +51,10 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
     ["#key", "#for"],
-    ["#slot", "#target"],
+    ["target"],
     ["#if", "#elif", "#else"],
-    ["#await", "#then", "#catch"]
+    ["#await", "#then", "#catch"],
+    ["#slot"]
 ].reduce(
     (ret, items, index) => {
         for (const item of items) {
@@ -209,6 +210,16 @@ export const DIRECTIVE_LIST: ReadonlySet<string> = new Set([
     "#html",
     "#target"
 ])
+export const CREATE_ANCHOR_DIRECTIVES: ReadonlySet<string> = new Set([
+    "#if",
+    "#for",
+    "#key",
+    "#await",
+    "#show",
+    "#html",
+    "#target"
+])
+
 export const REQUIRED_VALUE_DIRECTIVES: ReadonlySet<string> = new Set([
     "#if",
     "#elif",

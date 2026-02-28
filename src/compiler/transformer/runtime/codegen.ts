@@ -14,11 +14,11 @@ import { generateTemplateFragments } from "./fragment"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
-import { objectAssign, stringify } from "../../../util/shared/aliases"
+import { objectAssign, objectKeys, stringify } from "../../../util/shared/aliases"
 import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
-    let hasTopExtra = false
+    let hasTopExtract = false
     let extractCommonStrCount = 0
 
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
@@ -44,20 +44,21 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
 
     // 重复使用的字符串字面量将被声明为常量，这里用于确定其标识符名称
     // Reused string literals will be declared as constants; this is used to determine their identifier names.
-    traverseObject(analyzeResult.commonStrings, (key, value) => {
+    traverseObject(analyzeResult.reusedStrings, (key, value) => {
         if (!shouldExtractCommonString(key)) {
             return
         }
-        hasTopExtra = true
+        hasTopExtract = true
         value.id = ensureIdWithNumSuffix("_s", ++extractCommonStrCount)
         writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
     })
 
+    hasTopExtract && writer.wrapLine()
     generateTemplateFragments(nodes, writer)
     removeEliminatedNodes(embeddedScriptEditor)
+    replaceStringLiterals(embeddedScriptEditor)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
 
-    hasTopExtra && writer.wrapLine()
     writer.write(`export default function ${componentName}(${anchorId}, ${contextId}) {`).indent()
 
     if (defaultRefs) {
@@ -122,4 +123,15 @@ function writeDelegateEventsRegistration(writer: CodeWriter, contextId: string) 
 
     shouldWrapLine && writer.dedent()
     return (writer.write("]").wrapLine(), true)
+}
+
+function replaceStringLiterals(editor: CodeEditor) {
+    if (!objectKeys(analyzeResult.reusedStrings).length) {
+        return
+    }
+    for (const item of analyzeResult.script.stringLiterals) {
+        if (analyzeResult.reusedStrings[item.value]) {
+            editor.replace(...item.range!, analyzeResult.reusedStrings[item.value].id, true)
+        }
+    }
 }

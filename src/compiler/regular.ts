@@ -14,8 +14,8 @@ export const nonWhitespaceRE = /\S/
 export const equalTokenRE = /^\s*=/
 export const startCurlyRE = /^\s*\{/
 export const startQuoteRE = /^\s*['"]/
+export const atLeastOneWhitespaceRE = /\s+/g
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g
-export const textContentReplacerRE = /\s+|\//g
 export const indentSpacesRE = /(?<=\n)(?:[ \t]+)/
 export const interpolatedAttrStartCharRE = /[!@#&]/
 export const omitQuoteAttrValueRE = /^[^\s'"`=<>]+$/
