@@ -159,12 +159,10 @@ test("With directives", () => {
                                 loc: getLocByIndex(37, 38)
                             }
                         ],
-                        hasInterpolation: true,
                         loc: getLocByIndex(30, 38),
                         parent: nodeList[0].children[1]
                     }
                 ],
-                hasInterpolation: true,
                 loc: getLocByIndex(9, 43),
                 next: nodeList[0].children[2],
                 prev: nodeList[0].children[0],
@@ -184,7 +182,6 @@ test("With directives", () => {
                 prev: nodeList[0].children[1]
             }
         ],
-        hasInterpolation: true,
         loc: getLocByIndex(0, 49),
         startTagEndPos: getPosByIndex(4),
         endTagStartPos: getPosByIndex(44)
@@ -224,7 +221,6 @@ test("With dynamic attributes", () => {
                     loc: getLocByIndex(23, 38)
                 }
             ],
-            hasInterpolation: true,
             loc: getLocByIndex(0, 45),
             startTagEndPos: getPosByIndex(39),
             endTagStartPos: getPosByIndex(39)
@@ -272,7 +268,6 @@ test("With reference attributes", () => {
                     loc: getLocByIndex(32, 43)
                 }
             ],
-            hasInterpolation: true,
             loc: getLocByIndex(0, 52),
             startTagEndPos: getPosByIndex(45),
             endTagStartPos: getPosByIndex(45)
@@ -338,7 +333,6 @@ test("With event listeners", () => {
                 loc: getLocByIndex(92, 121)
             }
         ],
-        hasInterpolation: true,
         loc: getLocByIndex(0, 146),
         startTagEndPos: getPosByIndex(123),
         endTagStartPos: getPosByIndex(137)
@@ -431,7 +425,6 @@ test("Within nested structure", () => {
                 ],
                 parent: nodeList[0],
                 isSelfClosing: true,
-                hasInterpolation: true,
                 loc: getLocByIndex(34, 149),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
@@ -465,7 +458,6 @@ test("Within nested structure", () => {
                 loc: getLocByIndex(5, 28)
             }
         ],
-        hasInterpolation: true,
         loc: getLocByIndex(0, 156),
         startTagEndPos: getPosByIndex(29),
         endTagStartPos: getPosByIndex(150)
@@ -659,7 +651,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         }
                     ],
                     isSelfClosing: true,
-                    hasInterpolation: true,
                     loc: getLocByIndex(0, 41),
                     startTagEndPos: getPosByIndex(41)
                 }
@@ -800,7 +791,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             loc: getLocByIndex(3, 11)
                         }
                     ],
-                    hasInterpolation: true,
                     loc: getLocByIndex(0, 16),
                     startTagEndPos: getPosByIndex(12),
                     endTagStartPos: getPosByIndex(12)
@@ -875,7 +865,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             loc: getLocWithDefaultEnd(5)
                         }
                     ],
-                    hasInterpolation: true,
                     loc: getLocWithDefaultEnd(0)
                 }
             ],
@@ -915,7 +904,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             loc: getLocByIndex(3, 11)
                         }
                     ],
-                    hasInterpolation: true,
                     loc: getLocByIndex(0, 16),
                     startTagEndPos: getPosByIndex(12),
                     endTagStartPos: getPosByIndex(12)
@@ -989,7 +977,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             ],
                             isSelfClosing: true,
                             parent: nodeList[0],
-                            hasInterpolation: true,
                             loc: getLocByIndex(28, 56),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -1008,7 +995,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             prev: nodeList[0].children[1]
                         }
                     ],
-                    hasInterpolation: true,
                     loc: getLocByIndex(0, 63),
                     startTagEndPos: getPosByIndex(23),
                     endTagStartPos: getPosByIndex(57)
@@ -1045,7 +1031,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         }
                     ],
                     isSelfClosing: true,
-                    hasInterpolation: true,
                     componentTag: "Component",
                     loc: getLocByIndex(0, 26),
                     startTagEndPos: getPosByIndex(26)
@@ -1131,7 +1116,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
-                            hasInterpolation: true,
                             loc: getLocByIndex(32, 67),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -1151,7 +1135,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             prev: nodeList[0].children[1]
                         }
                     ],
-                    hasInterpolation: true,
                     loc: getLocByIndex(0, 87),
                     startTagEndPos: getPosByIndex(21),
                     endTagStartPos: getPosByIndex(83)
@@ -1194,7 +1177,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         }
                     ],
                     next: nodeList[1],
-                    hasInterpolation: true,
                     loc: getLocByIndex(0, 18),
                     startTagEndPos: getPosByIndex(12),
                     endTagStartPos: getPosByIndex(12)
@@ -1229,7 +1211,6 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         }
                     ],
                     prev: nodeList[1],
-                    hasInterpolation: true,
                     loc: getLocByIndex(19, 53),
                     startTagEndPos: getPosByIndex(46),
                     endTagStartPos: getPosByIndex(46)

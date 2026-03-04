@@ -52,11 +52,17 @@ export interface EditReplacement {
 }
 
 export interface TemplateFragment {
+    selections: {
+        id: string
+        index: number
+        parent: string | undefined
+    }[]
     id: string
-    content: string
     getterId: string
-    statements: string[]
+    content: string[]
     usedCompressString: boolean
+    directChildrenCount: number
+    getWith: TemplateFragment | undefined
 }
 
 export interface TextContentPart {
@@ -82,7 +88,6 @@ export interface TemplateNode {
     isEmbedded: boolean
     preWhiteSpace: boolean
     isSelfClosing: boolean
-    hasInterpolation: boolean
     children: TemplateNode[]
     content: TextContentPart[]
     startTagEndPos: ASTPosition
@@ -120,9 +125,14 @@ export interface AnalyzeResult {
         }
     >
     generateIds: {
+        anchor: string
+        context: string
         internal: string
+        getterArg: string
         setterArg: string
+        contextGetter: string
     }
+    fragmentIdCount: number
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
     slots: Record<string, TemplateNode>
@@ -132,7 +142,7 @@ export interface EventFlagInfo {
         value: number
         names: string[]
     }
-    modifier: {
+    wrapper: {
         value: number
         names: string[]
     }
@@ -148,22 +158,30 @@ export interface TopLevelIdentifierInfo {
     hoist: boolean
     implicit: boolean
     accessor: boolean
+    transofrmedTo: string
     status: IdentifierStatus
     destructuringIdentifierNames?: string[]
 }
 export interface TemplateNodeContext {
     id: string
     anchorId: string
+    node: TemplateNode
+    shouldBeSelected: boolean
+    selectedChildCount: number
     contextIdentifiers: Set<string>
     fragment: TemplateFragment | null
+    eventListeners: TemplateAttribute[]
     sortedDirectives: TemplateAttribute[]
+    staticAttributes: TemplateAttribute[]
+    dynamicAttributes: TemplateAttribute[]
+    referenceAttributes: TemplateAttribute[]
     attributesMap: Record<string, TemplateAttribute>
 }
 export interface TemplateAnalyzeRet {
     compressStrings: Record<
         string,
         {
-            id: string
+            index: number
             times: number
         }
     >
@@ -181,11 +199,13 @@ export interface TemplateAnalyzeRet {
     parsedExpressions: Map<
         any,
         {
+            source: string
             node: Expression
+            reactive: boolean
             startSourceIndex: number
             stringLiterals: StringLiteral[]
             topLevelReferences: TopLevelReferences
-        }[]
+        }
     >
     compressStringsCount: number
     staticTextContents: Map<TextContentPart, string>
@@ -197,10 +217,12 @@ export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
         VariableDeclarator,
         {
-            id: string
+            items: {
+                id: string
+                property: string
+            }[]
             target: string
-            property: string
-        }[]
+        }
     >
     defaultItems: Partial<
         Record<

@@ -2,12 +2,11 @@ import type { TemplateNode, TextContentPart } from "#type-declarations/compiler"
 
 import { analyzeResult, inputDescriptor } from "../state"
 import { atLeastOneWhitespaceRE, nonWhitespaceRE } from "../regular"
-import { increaseCompressStringUsedTimes } from "../../util/compiler/sundry"
 
 export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPart) {
-    let str = part.value
+    let str = node.componentTag ? part.value.trim() : part.value
     const whitespaceRule = inputDescriptor.options.whitespace
-    if (!node.parent?.preWhiteSpace) {
+    if (!node.parent?.preWhiteSpace && !node.componentTag) {
         if (!nonWhitespaceRE.test(str)) {
             switch (whitespaceRule) {
                 case "collapse": {
@@ -36,6 +35,5 @@ export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPa
             }
         }
     }
-    increaseCompressStringUsedTimes(str)
     analyzeResult.template.staticTextContents.set(part, str)
 }

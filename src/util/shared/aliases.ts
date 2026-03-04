@@ -1,3 +1,5 @@
+import type { ArbitraryFunc } from "#type-declarations/tools"
+
 import { any } from "./sundry"
 import { OBJECT } from "../../runtime/constants"
 
@@ -7,6 +9,14 @@ export function stringify(v: any) {
 
 export const objectKeys: typeof Object.keys = (o: any) => {
     return OBJECT.keys(o)
+}
+
+export function call(fn: ArbitraryFunc, caller: any, ...args: any) {
+    return fn.call(caller, ...args)
+}
+
+export function apply(fn: ArbitraryFunc, caller: any, ...args: any) {
+    return fn.apply(caller, args)
 }
 
 export const objectAssign: typeof Object.assign = (...args: any) => {

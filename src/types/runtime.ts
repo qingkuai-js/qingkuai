@@ -122,9 +122,9 @@ export type EffectExtra = GeneralEffectExtra | WatchEffectExtra
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
 export interface ComponentContext {
-    r: AnyObject // refs
-    p: AnyObject // props
-    s: AnyObject // slots
+    r: any[] // refs
+    p: any[] // props
+    s: any[] // slots
     R?: any // default refs
     P?: any // default props
     e?: string[] // delegated events

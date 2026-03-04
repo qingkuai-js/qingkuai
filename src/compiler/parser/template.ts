@@ -75,7 +75,6 @@ export function newTemplateNode(): TemplateNode {
         isEmbedded: false,
         isSelfClosing: false,
         preWhiteSpace: false,
-        hasInterpolation: false,
         loc: newASTLocation(),
         endTagStartPos: newASTPosition(),
         startTagEndPos: newASTPosition()
@@ -152,18 +151,13 @@ export function parseTemplate(source: string) {
     // 解析出标签的 textContext 部分
     // Parse the textContent part of the tag.
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | null = null) {
-        let hasInterpolation = false
         let contentEndRE = templateTagStructureRE
-
         const contentStartIndex = index
         const contentParts: TextContentPart[] = []
 
-        // textarea 或使用了 #html 指令的节点都被认作只有一个文本节点
-        // A textarea element or a node using the `#html` directive is treated as having only a single text node.
-        if (
-            parent?.tag === "textarea" ||
-            parent?.attributes.find(({ name }) => name.raw === "#html")
-        ) {
+        // textarea 节点都认作只有一个文本节点
+        // A textarea element is treated as having only a single text node.
+        if (parent?.tag === "textarea") {
             contentEndRE = new RegExp(`</${parent.tag}`)
         }
 
@@ -189,7 +183,7 @@ export function parseTemplate(source: string) {
             }
 
             const endBracketIndex = findEndBracket(dps)
-            if (((hasInterpolation = true), endBracketIndex === -1)) {
+            if (endBracketIndex === -1) {
                 contentParts.push({
                     isInterpolated: true,
                     value: dps.slice(1),
@@ -220,17 +214,13 @@ export function parseTemplate(source: string) {
         // 内容非空时创建文本内容节点并返回
         // Create and return a text content node if the content is not empty.
         if (contentParts.length) {
-            const textNode = initTemplateNode({
+            return initTemplateNode({
                 prev,
                 parent,
                 content: contentParts,
                 preWhiteSpace: !!parent?.preWhiteSpace,
                 loc: getLocByIndex(contentStartIndex, index)
             })
-            if (hasInterpolation) {
-                markNodeHasInterpolation(textNode)
-            }
-            return textNode
         }
     }
 
@@ -349,7 +339,6 @@ export function parseTemplate(source: string) {
                         attrName
                     )
                 }
-                markNodeHasInterpolation(templateNode)
             }
 
             // 解析属性值部分
@@ -655,11 +644,4 @@ export function parseTemplateStandalone(source: string, options: StandaloneParse
         compileOptions.preserveCommentNodes = true
     }
     return (resetCompilerState(compileOptions), parseTemplate(source))
-}
-
-function markNodeHasInterpolation(node: TemplateNode) {
-    if (node.parent && !node.parent.hasInterpolation) {
-        markNodeHasInterpolation(node.parent)
-    }
-    node.hasInterpolation = true
 }

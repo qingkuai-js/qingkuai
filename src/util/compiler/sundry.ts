@@ -15,6 +15,14 @@ export const createHashId = (function () {
     }
 })()
 
+export function getEventName(rawName: string) {
+    const sepratorIndex = rawName.indexOf("|")
+    if (-1 === sepratorIndex) {
+        return rawName
+    }
+    return rawName.slice(0, sepratorIndex)
+}
+
 export function getAttributeBaseName(name: string) {
     switch (name[0]) {
         case "!":
@@ -27,21 +35,12 @@ export function getAttributeBaseName(name: string) {
     return name
 }
 
-export function getEventName(rawName: string) {
-    const sepratorIndex = rawName.indexOf("|")
-    if (-1 === sepratorIndex) {
-        return rawName
+export function getMaybeReusedString(value: string) {
+    let ret: string | undefined
+    if (!(ret = analyzeResult.reusedStrings[value]?.id)) {
+        return stringify(value)
     }
-    return rawName.slice(0, sepratorIndex)
-}
-
-export function generateSetterCode(target: string) {
-    const setterArgId = analyzeResult.generateIds.setterArg
-    return `${setterArgId} => (${target} = ${setterArgId})`
-}
-
-export function getStringifiedLiteral(value: string) {
-    return analyzeResult.reusedStrings[value].id || stringify(value)
+    return `${inputDescriptor.options.tipComment ? `/* ${value} */ ` : ""}${ret}`
 }
 
 export function ensureIdWithPrefix(name: string, prefix = "_") {
@@ -67,7 +66,7 @@ export function ensureIdWithNumSuffix(name: string, start = 1) {
     return (fullIdentifiers.add(name), name)
 }
 
-export function increaseCommonStringUsedTimes(value: string) {
+export function increaseReusedStringUsedTimes(value: string) {
     if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
         return
     }
@@ -76,7 +75,7 @@ export function increaseCommonStringUsedTimes(value: string) {
 
 export function shouldExtractCommonString(value: string) {
     const count = analyzeResult.reusedStrings[value]?.times ?? 0
-    return count <= 1 ? false : count === 2 ? value.length > 4 : value.length > 2
+    return count <= 1 ? false : count === 2 ? value.length > 4 : true
 }
 
 export function increaseCompressStringUsedTimes(str: string) {
@@ -86,10 +85,10 @@ export function increaseCompressStringUsedTimes(str: string) {
     if (str.length > Math.floor(analyzeResult.template.compressStringsCount / 10) + 1) {
         if (!analyzeResult.template.compressStrings[str]) {
             analyzeResult.template.compressStrings[str] = {
-                id: "",
-                times: 0
+                times: 0,
+                index: -1
             }
-            increaseCommonStringUsedTimes(str)
+            increaseReusedStringUsedTimes(str)
             analyzeResult.template.compressStringsCount++
         }
         analyzeResult.template.compressStrings[str].times++

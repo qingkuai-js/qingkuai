@@ -50,13 +50,6 @@ export function getSibling(node: ChildNode, distance = 1) {
     return node
 }
 
-export function bindDOMReceiver(elem: any, setter: Setter) {
-    pushDestructionCleaner(() => {
-        setter(null)
-    })
-    setter(elem)
-}
-
 export function insertBefore(reference: ChildNode, node: Node) {
     reference.before(node)
 }

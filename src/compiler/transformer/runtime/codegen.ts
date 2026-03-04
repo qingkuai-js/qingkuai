@@ -3,36 +3,42 @@ import type { TemplateNode } from "#type-declarations/compiler"
 import {
     ensureIdWithPrefix,
     ensureIdWithNumSuffix,
-    getStringifiedLiteral,
+    getMaybeReusedString,
     shouldExtractCommonString
 } from "../../../util/compiler/sundry"
 import { CodeWriter } from "../writer"
 import { CodeEditor } from "../editor"
-import { transformTemplate } from "./template"
+import { generateTemplateRender } from "./template"
 import { transformEmbeddedScript } from "./script"
-import { generateTemplateFragments } from "./fragment"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
-import { objectAssign, objectKeys, stringify } from "../../../util/shared/aliases"
 import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
+import { getTemplateFragments, generateTemplateFragments } from "./fragment"
+import { objectAssign, objectKeys, stringify } from "../../../util/shared/aliases"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
     let hasTopExtract = false
     let extractCommonStrCount = 0
 
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
+    const getterArgId = inputDescriptor.options.debug ? ensureIdWithPrefix("_") : "()"
     const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
     objectAssign(analyzeResult.generateIds, {
+        getterArg: getterArgId,
         internal: ensureIdWithPrefix("_"),
-        setterArg: ensureIdWithPrefix("v")
+        setterArg: ensureIdWithPrefix("v"),
+        anchor: ensureIdWithPrefix("anchor"),
+        context: ensureIdWithPrefix("context"),
+        contextGetter: ensureIdWithPrefix("ctx")
     })
 
     const writer = new CodeWriter(true)
     const hoistWriter = new CodeWriter()
-    const anchorId = ensureIdWithPrefix("anchor")
-    const contextId = ensureIdWithPrefix("context")
+    const anchorId = analyzeResult.generateIds.anchor
+    const contextId = analyzeResult.generateIds.context
+    const templateFragments = getTemplateFragments(nodes)
     const internalId = analyzeResult.generateIds.internal
     const componentName = inputDescriptor.options.componentName
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
@@ -54,12 +60,12 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     })
 
     hasTopExtract && writer.wrapLine()
-    generateTemplateFragments(nodes, writer)
     removeEliminatedNodes(embeddedScriptEditor)
     replaceStringLiterals(embeddedScriptEditor)
+    generateTemplateFragments(templateFragments, writer)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
-
-    writer.write(`export default function ${componentName}(${anchorId}, ${contextId}) {`).indent()
+    writer.write(`export default function ${componentName}(`)
+    writer.write(`${anchorId}, ${contextId} = {}) {`).indent()
 
     if (defaultRefs) {
         writer.write(`${contextId}.R = `).writeScriptNode(defaultRefs.value).wrapLine()
@@ -73,7 +79,11 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writer.write(`const { props, refs, slots } = ${internalId}.init(${contextId})`)
     hoistWriter.empty || writer.wrapLine().write(hoistWriter.code)
     writer.writeEditedScript(embeddedScriptEditor)
-    transformTemplate(nodes, writer)
+
+    if (templateFragments.some(item => item.content.length)) {
+        writer.wrapLine()
+    }
+    generateTemplateRender(nodes, writer)
     writer.dedent().write("}")
 
     return (({ code, mappings }) => ({ code, mappings }))(writer)
@@ -101,7 +111,7 @@ function writeDelegateEventsRegistration(writer: CodeWriter, contextId: string) 
     traverseObject(delegateEvents, (_, value, index) => {
         const container = index ? nonPassiveEvents : passiveEvents
         for (const item of value) {
-            container.push(getStringifiedLiteral(item))
+            container.push(getMaybeReusedString(item))
         }
     })
 
@@ -130,7 +140,7 @@ function replaceStringLiterals(editor: CodeEditor) {
         return
     }
     for (const item of analyzeResult.script.stringLiterals) {
-        if (analyzeResult.reusedStrings[item.value]) {
+        if (analyzeResult.reusedStrings[item.value]?.id) {
             editor.replace(...item.range!, analyzeResult.reusedStrings[item.value].id, true)
         }
     }

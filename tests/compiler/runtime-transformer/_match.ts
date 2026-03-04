@@ -1,6 +1,10 @@
 import type { CompileOptions, TemplateNode } from "#type-declarations/compiler"
 
 import { expect } from "vitest"
+import {
+    getTemplateFragments,
+    generateTemplateFragments
+} from "../../../src/compiler/transformer/runtime/fragment"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { CodeEditor } from "../../../src/compiler/transformer/editor"
 import { CodeWriter } from "../../../src/compiler/transformer/writer"
@@ -9,7 +13,6 @@ import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { analyzeTemplate } from "../../../src/compiler/analyzer/template"
 import { removeEliminatedNodes } from "../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../src/compiler/transformer/runtime/script"
-import { generateTemplateFragments } from "../../../src/compiler/transformer/runtime/fragment"
 import { analyzeResult, inputDescriptor, resetCompilerState } from "../../../src/compiler/state"
 
 export function matchTransformedScript(
@@ -32,7 +35,7 @@ export function matchGeneratedFragment(
     const templateNodes = parseTemplate(source)
     analyzeResult.generateIds.internal = "_"
     ;(analyzeScript(), analyzeTemplate(templateNodes))
-    generateTemplateFragments(templateNodes, writer)
+    generateTemplateFragments(getTemplateFragments(templateNodes), writer)
     expect(writer.code.trim()).toBe(formatSourceCode(expected))
     return templateNodes
 }

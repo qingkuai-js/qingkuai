@@ -447,7 +447,7 @@ function recordScopeIdentifiers(context: WalkContext) {
 
     const extendScopeIdentifiers = (context: WalkContext, { name }: Identifier) => {
         if (
-            any(import.meta).env ||
+            process.env.VITEST === "true" ||
             intrinsicMethodsRE.test(name) ||
             intrinsicVariableRE.test(name)
         ) {

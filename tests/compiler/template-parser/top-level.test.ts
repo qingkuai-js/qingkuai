@@ -282,7 +282,6 @@ test("Single text content interpolation block", () => {
                 loc: getLocByIndex(1, 6)
             }
         ],
-        hasInterpolation: true,
         loc: getLocByIndex(0, 7)
     })
 })
@@ -311,7 +310,6 @@ test("Multiple text content interpolation blocks", () => {
                 loc: getLocByIndex(6, 7)
             }
         ],
-        hasInterpolation: true,
         loc: getLocByIndex(0, 8)
     })
 })

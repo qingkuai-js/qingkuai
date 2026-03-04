@@ -4,22 +4,28 @@ import type { ASTLocation, TemplateNode, TopLevelReferences } from "#type-declar
 import {
     InvalidExpression,
     ExpectedExpression,
+    InvalidComponentName,
     InvalidShorthandAttributeName
 } from "../message/error"
+import {
+    getLocByIndex,
+    markSourcemapEndFlag,
+    getNonWhitespaceLocByIndex
+} from "../../util/compiler/position"
 import { walk } from "../estree/walk"
+import { PositionFlag } from "../enums"
 import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
-import { jsValidIdentifierStartCharRE } from "../regular"
 import { analyzeResult, inputDescriptor } from "../state"
-import { getLocByIndex, getNonWhitespaceLocByIndex } from "../../util/compiler/position"
-import { getAttributeBaseName, increaseCommonStringUsedTimes } from "../../util/compiler/sundry"
+import { getParsedExpression, getTemplateNodeContext } from "../../util/compiler/template"
+import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
 export function analyzeInterpolation(
-    node: TemplateNode,
+    templateNode: TemplateNode,
     parsingInfoKey: any,
     source: string,
     startSourceIndex: number
@@ -33,12 +39,11 @@ export function analyzeInterpolation(
     const topLevelReferences: TopLevelReferences = newCleanObj()
 
     if (expression) {
-        if (!analyzeResult.template.parsedExpressions.has(parsingInfoKey)) {
-            analyzeResult.template.parsedExpressions.set(parsingInfoKey, [])
-        }
-        analyzeResult.template.parsedExpressions.get(parsingInfoKey)!.push({
-            node: expression,
+        analyzeResult.template.parsedExpressions.set(parsingInfoKey, {
+            source,
             stringLiterals,
+            reactive: false,
+            node: expression,
             startSourceIndex,
             topLevelReferences
         })
@@ -54,13 +59,13 @@ export function analyzeInterpolation(
 
         StringLiteral(node) {
             stringLiterals.push(node)
-            increaseCommonStringUsedTimes(node.value)
+            increaseReusedStringUsedTimes(node.value)
         },
 
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
         Identifier({ name, range }, context) {
-            const { contextIdentifiers } = analyzeResult.template.nodeContexts.get(node)!
+            const { contextIdentifiers } = getTemplateNodeContext(templateNode)
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
             if (topLevelIdentifier && context.isBindingReference && !contextIdentifiers.has(name)) {
                 const status = topLevelIdentifier.status
@@ -76,24 +81,51 @@ export function analyzeInterpolation(
                     shorthand: context.isShorthandIdentifierAccess
                 })
             }
-            analyzeResult.script.fullIdentifiers.add(name)
+            if ((analyzeResult.script.fullIdentifiers.add(name), topLevelIdentifier)) {
+                getParsedExpression(parsingInfoKey)!.reactive ||= true
+            }
         }
     })
     return expression
 }
 
-export function analyzeShorthandAttribute(name: string, loc: ASTLocation) {
+export function analyzeTemplateAsExpression(
+    node: TemplateNode,
+    name: string,
+    parsingKey: any,
+    loc: ASTLocation,
+    type: "component" | "attribue"
+) {
+    let expression!: ReturnType<typeof analyzeInterpolation>
+
     const baseName = getAttributeBaseName(name)
-    for (let i = 0; i < baseName.length; i++) {
-        if ("-" === baseName[i]) {
-            continue
-        }
-        if (jsValidIdentifierStartCharRE.test(baseName[0])) {
-            break
-        }
+    const camelName = kebab2Camel(baseName)
+    try {
+        expression = analyzeInterpolation(
+            node,
+            parsingKey,
+            camelName,
+            loc.start.index + +(type === "attribue")
+        )
+    } catch {}
+
+    if (
+        type === "component" &&
+        expression?.type !== "Identifier" &&
+        expression?.type !== "MemberExpression"
+    ) {
+        return InvalidComponentName(loc, name)
+    }
+    if (type === "attribue" && expression?.type !== "Identifier") {
         return InvalidShorthandAttributeName(loc, name)
     }
 
-    const info = analyzeResult.script.topLevelIdentifiers[kebab2Camel(baseName)]
-    info?.status === "pending" && (info.status = inputDescriptor.options.reactivityMode)
+    const nameSub = baseName.length - camelName.length
+    if (nameSub > 0) {
+        const parsedExpression = getParsedExpression(parsingKey)!
+        const sourcemapEndFlag = PositionFlag.Sourcemap | PositionFlag.SourcemapEnd
+        markSourcemapEndFlag(loc.end.index)
+        parsedExpression.source = " ".repeat(nameSub) + parsedExpression.source
+        inputDescriptor.positions[loc.start.index + camelName.length + 1].flag &= ~sourcemapEndFlag
+    }
 }

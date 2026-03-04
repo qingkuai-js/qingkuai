@@ -5,23 +5,19 @@ import {
     DisallowedAttributeKind,
     SlotNameAttributeMustBeStatic
 } from "../message/error"
-import {
-    getAttributeBaseName,
-    increaseCommonStringUsedTimes,
-    increaseCompressStringUsedTimes
-} from "../../util/compiler/sundry"
 import { analyzeEvent } from "./event"
 import { analyzeDirective } from "./directive"
 import { analyzeReferenceAttribute } from "./reference"
 import { interpolatedAttrStartCharRE } from "../regular"
-import { analyzeResult, inputDescriptor } from "../state"
 import { RedundantBooleanAttributeValue } from "../message/warn"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
+import { getTemplateNodeContext } from "../../util/compiler/template"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
+import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
+import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
 export function analyzeAttributes(node: TemplateNode) {
-    const { attributesMap, sortedDirectives } = analyzeResult.template.nodeContexts.get(node)!
+    const nodeContext = getTemplateNodeContext(node)
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -44,7 +40,7 @@ export function analyzeAttributes(node: TemplateNode) {
         const baseName = getAttributeBaseName(rawName)
 
         if (!isDirective && !node.isEmbedded) {
-            recordCompressAndCommonStrings(node, attribute)
+            markAttributeNameAsReusedStrings(node, attribute)
         }
 
         if (node.isEmbedded) {
@@ -81,13 +77,6 @@ export function analyzeAttributes(node: TemplateNode) {
             }
         }
 
-        // 动态属性同名简写语法，更新顶级作用域标识符的响应性状态
-        // For dynamic attributes with same-name shorthand syntax,
-        // update the reactive status of the corresponding top-level scope identifier.
-        if (!attribute.equalSign && isDynamic) {
-            analyzeShorthandAttribute(rawName, nameLoc)
-        }
-
         // mappedKey 用于检查属性是否被重复传递
         // 对于组件标签：静态属性，动态属性及事件的基础名称不能重复
         // 对于非组件标签：静态属性，动态属性及引用属性的基础名称不能重复，但 class 和 !class 可同时存在
@@ -108,61 +97,60 @@ export function analyzeAttributes(node: TemplateNode) {
 
         // 重复的属性
         // Duplicate attribute.
-        if (attributesMap[mappedKey]) {
-            const existing = attributesMap[mappedKey]
+        if (nodeContext.attributesMap[mappedKey]) {
+            const existing = nodeContext.attributesMap[mappedKey]
             DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent)
             DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
         }
 
-        switch (((attributesMap[mappedKey] = attribute), rawName[0])) {
+        switch (((nodeContext.attributesMap[mappedKey] = attribute), rawName[0])) {
             case "@": {
                 analyzeEvent(node, attribute)
+                nodeContext.eventListeners.push(attribute)
                 break
             }
             case "#": {
-                sortedDirectives.push(attribute)
                 analyzeDirective(node, attribute)
+                nodeContext.sortedDirectives.push(attribute)
                 break
             }
             case "&": {
                 analyzeReferenceAttribute(node, attribute)
+                nodeContext.referenceAttributes.push(attribute)
                 break
             }
             case "!": {
+                if (!attribute.equalSign) {
+                    analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribue")
+                }
                 if (shouldAnalyzeAttributeValue(attribute)) {
                     analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)
                 }
+                nodeContext.dynamicAttributes.push(attribute)
+                break
+            }
+            default: {
+                nodeContext.staticAttributes.push(attribute)
+                break
             }
         }
     }
 }
 
-function recordCompressAndCommonStrings(node: TemplateNode, attribute: TemplateAttribute) {
-    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
+function markAttributeNameAsReusedStrings(node: TemplateNode, attribute: TemplateAttribute) {
+    const rawName = attribute.name.raw
+    const baseName = getAttributeBaseName(rawName)
+
+    // 事件名称可能包含标志，推迟至事件分析中标记
+    // Event names may include flags; defer marking them until event analysis.
+    if (rawName[0] === "@") {
         return
     }
-
-    const rawName = attribute.name.raw
-    const rawValue = attribute.value.raw
     if (node.componentTag) {
-        increaseCommonStringUsedTimes(rawName)
-    } else {
-        switch (rawName[0]) {
-            case "&": {
-                return
-            }
-            case "!":
-            case "@": {
-                const baseName = getAttributeBaseName(rawName)
-                if (baseName !== "class") {
-                    increaseCommonStringUsedTimes(baseName)
-                }
-                break
-            }
-            default: {
-                increaseCompressStringUsedTimes(rawName)
-                increaseCompressStringUsedTimes(rawValue)
-            }
+        if (baseName.length >= 3) {
+            increaseReusedStringUsedTimes(baseName)
         }
+    } else if (rawName[0] === "!" && rawName !== "!class") {
+        increaseReusedStringUsedTimes(baseName)
     }
 }

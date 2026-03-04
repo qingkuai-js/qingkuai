@@ -3,14 +3,15 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import {
     InvalidSlotName,
-    EmptyContextPattern,
     ConflictingDirectives,
+    EmptyContextPattern,
     ExpectedStringLiteral,
     UnrecognizedDirective,
     TooManyBindingPatterns,
     MissingDirectiveValue,
     MissingPrecedingDirective,
     InvalidKeyDirectivePlacement,
+    DuplicatePromiseBlockDirectives,
     InvalidSlotDirectivePlacement,
     InvalidTargetDirectivePlacement,
     InvalidContextPatternForDirective,
@@ -27,8 +28,9 @@ import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
 import { walk, walkPatternIdentifiers } from "../estree/walk"
+import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
-import { isNonEmptyExpression, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
@@ -37,8 +39,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     const nameLoc = directive.name.loc
     const rawName = directive.name.raw
     const rawValue = directive.value.raw
-    const { nodeContexts } = analyzeResult.template
-    const nodeContext = nodeContexts.get(node)!
+    const nodeContext = getTemplateNodeContext(node)
     const valueStartSourceIndex = directive.value.loc.start.index
 
     const localAnalyzeInterpolation = (source: string, startSourceIndex: number) => {
@@ -136,19 +137,35 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
         case "#then":
         case "#catch": {
-            const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"]
-            if (!nodeContext.sortedDirectives.some(item => expectedList.includes(item.name.raw))) {
-                const prevElement = getPrevNonTextNode(node)
-                const prevElementContext = prevElement && nodeContexts.get(prevElement)
-                const prevElementFirstDirective =
-                    prevElementContext?.sortedDirectives[0].name.raw ?? ""
+            if (!nodeContext.attributesMap["#await"]) {
+                let checkRes = false
+                let prevElementContext = getPrevElementContext(node)
+
+                const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"]
+                const prevElementFirstDirective = prevElementContext?.sortedDirectives[0]
                 const extraMsg =
-                    prevElement &&
-                    prevElement.parent?.componentTag &&
-                    prevElementFirstDirective !== "#slot"
+                    prevElementContext &&
+                    prevElementContext.node.parent?.componentTag &&
+                    prevElementFirstDirective?.name.raw !== "#slot"
                         ? ` Note that the preceding element has an implicit "#slot" directive.`
                         : ""
-                if (extraMsg || !expectedList.includes(prevElementFirstDirective)) {
+
+                while (prevElementContext) {
+                    if (prevElementContext.sortedDirectives[0]?.name.raw === "#await") {
+                        if (prevElementContext.sortedDirectives[1]?.name.raw === rawName) {
+                            DuplicatePromiseBlockDirectives(directive.name.loc, rawName)
+                            DuplicatePromiseBlockDirectives(
+                                prevElementContext.sortedDirectives[1].name.loc,
+                                rawName
+                            )
+                        }
+                        checkRes = true
+                        break
+                    }
+                    prevElementContext = getPrevElementContext(prevElementContext.node)
+                }
+
+                if (extraMsg || !checkRes) {
                     MissingPrecedingDirective(directive.name.loc, rawName, expectedList, extraMsg)
                 }
             }
@@ -182,10 +199,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         }
 
         case "#html": {
-            if (!node.children.length) {
+            if (!node.children.length || node.children.some(child => child.tag)) {
                 HtmlDirectiveRequiresSingleTextChild(node.loc)
             } else if (
-                !isNonEmptyExpression(rawValue) &&
+                !directive.value.raw &&
                 !node.children[0].content.some(item => item.isInterpolated)
             ) {
                 UnnecessaryHtmlDirective(directive.loc)
@@ -200,16 +217,15 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
 
             const expectedList = ["#if", "#elif"]
-            const prevElement = getPrevNonTextNode(node)
-            const prevElementContext = prevElement && nodeContexts.get(prevElement)
-            const prevElementFirstDirective = prevElementContext?.sortedDirectives[0].name.raw ?? ""
+            const prevElementContext = getPrevElementContext(node)
+            const prevElementFirstDirective = prevElementContext?.sortedDirectives[0]
             const extraMsg =
-                prevElement &&
-                prevElement.parent?.componentTag &&
-                prevElementFirstDirective !== "#slot"
+                prevElementContext &&
+                prevElementContext.node.parent?.componentTag &&
+                prevElementFirstDirective?.name.raw !== "#slot"
                     ? ` Note that the preceding element has an implicit "#slot" directive.`
                     : ""
-            if (extraMsg || !expectedList.includes(prevElementFirstDirective)) {
+            if (extraMsg || !expectedList.includes(prevElementFirstDirective?.name.raw ?? "")) {
                 MissingPrecedingDirective(nameLoc, rawName, expectedList, extraMsg)
             }
             break
@@ -251,16 +267,4 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         parsedPatterns.has(directive) || parsedPatterns.set(directive, [])
         parsedPatterns.get(directive)!.push(validIdentifierCount ? pattern : null)
     }
-}
-
-// 获取指定节点的前一个非文本节点的兄弟节点
-// Get the previous non-text sibling node of the specified node.
-function getPrevNonTextNode(node: TemplateNode) {
-    while (node.prev) {
-        if (node.prev.tag !== "") {
-            return node.prev
-        }
-        node = node.prev
-    }
-    return null
 }

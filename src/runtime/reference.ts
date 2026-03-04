@@ -1,10 +1,18 @@
-import type { Setter } from "#type-declarations/tools"
+import type { Getter, Setter } from "#type-declarations/tools"
 
 import { listen } from "./internal"
 import { isArray } from "../util/shared/assert"
 import { notEqual } from "../util/shared/sundry"
+import { pushDestructionCleaner } from "./destroy"
 import { spliceByElem } from "../util/shared/arrays"
 import { getElementValue, getNodeContext } from "./dom"
+
+export function bindDomReceiver(elem: any, setter: Setter) {
+    pushDestructionCleaner(() => {
+        setter(null)
+    })
+    setter(elem)
+}
 
 export function bindInputValue(elem: HTMLInputElement, setter: Setter) {
     listen(elem, "input", () => setter(elem.value))
@@ -18,8 +26,9 @@ export function bindInputChecked(elem: HTMLInputElement, setter: Setter) {
     listen(elem, "change", () => setter(elem.checked))
 }
 
-export function bindInputGroup(elem: HTMLInputElement, target: any) {
+export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {
     listen(elem, "change", () => {
+        const target = getTarget()
         const { checked } = elem
         const value = getElementValue(elem)
         if (!isArray(target)) {
@@ -30,8 +39,9 @@ export function bindInputGroup(elem: HTMLInputElement, target: any) {
     })
 }
 
-export function bindSelectValue(elem: HTMLSelectElement, target: any) {
+export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter) {
     listen(elem, "change", () => {
+        const target = getTarget()
         if (elem.multiple) {
             for (const option of elem.options) {
                 const value = getElementValue(option)

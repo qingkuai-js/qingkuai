@@ -1,10 +1,13 @@
 import type { EditInsertSnippet, EditReplacement, Range } from "#type-declarations/compiler"
+
+import { PositionFlag } from "../enums"
+import { inputDescriptor } from "../state"
+import { isString } from "../../util/shared/assert"
 import { isPositionFlagSetAtIndex } from "../../util/compiler/position"
 
-import { isString } from "../../util/shared/assert"
-import { PositionFlag } from "../enums"
-
 export class CodeEditor {
+    isEmbeddedScript: boolean
+
     private indexToSourceIndex: number[]
     private replacements: EditReplacement[]
 
@@ -13,7 +16,8 @@ export class CodeEditor {
         private startSourceIndex: number
     ) {
         this.replacements = Array(source.length)
-        this.indexToSourceIndex = Array(source.length)
+        this.indexToSourceIndex = Array(source.length + 1)
+        this.isEmbeddedScript = startSourceIndex === inputDescriptor.script.loc.start.index
     }
 
     removeCharacter(index: number) {
@@ -57,6 +61,10 @@ export class CodeEditor {
     }
 
     get result() {
+        if (this.startSourceIndex === -1) {
+            return ""
+        }
+
         const segments: string[] = []
 
         const recordIndexMap = (
@@ -69,7 +77,7 @@ export class CodeEditor {
             }
         }
 
-        for (let i = 0, j = 0; i < this.source.length; ) {
+        for (let i = 0, j = 0; i <= this.source.length; ) {
             const replacement = this.replacements[i]
             if (replacement?.removedLength) {
                 i += replacement.removedLength
@@ -88,8 +96,11 @@ export class CodeEditor {
             if (replacement?.removedLength) {
                 continue
             }
-            if (i < this.source.length) {
-                recordIndexMap(j++, i, "SourcemapStart")
+            recordIndexMap(j++, i, "SourcemapStart")
+
+            if (i === this.source.length) {
+                i++
+            } else {
                 segments.push(this.source[i++])
             }
         }

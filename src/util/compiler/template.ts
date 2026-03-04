@@ -1,12 +1,10 @@
-import type { TemplateNode } from "#type-declarations/compiler"
+import type { TemplateAttribute, TemplateNode, TextContentPart } from "#type-declarations/compiler"
 
 import { getLocByIndex } from "./position"
 import { isEmptyString } from "../shared/assert"
 import { analyzeResult } from "../../compiler/state"
 import { SPREAD_TAG } from "../../compiler/constants"
 
-// 获取节点的原始文本内容
-// Retrieve the node's raw text content
 export function getRawContent(node: TemplateNode) {
     if (!node.content.length) {
         return ""
@@ -19,8 +17,6 @@ export function getRawContent(node: TemplateNode) {
     }, "")
 }
 
-// 判断是否为空白文本节点
-// Check whether the node is a blank text node
 export function isBlankTextNode(node: TemplateNode) {
     return (
         isEmptyString(node.tag) &&
@@ -29,21 +25,45 @@ export function isBlankTextNode(node: TemplateNode) {
     )
 }
 
-// 判断文本节点是否会生成 HTMLFragment
-// Determine whether a text node will generate an HTMLFragment.
-export function willTextNodeGenerateFragment(node: TemplateNode) {
-    if (node.content.length > 1) {
-        return true
+export function getPrevElementContext(node: TemplateNode) {
+    while (node.prev && "" === node.prev.tag) {
+        node = node.prev
     }
-
-    const staticContent = analyzeResult.template.staticTextContents.get(node.content[0])
-    return !!(node.parent?.componentTag ? staticContent?.trim() : staticContent)
+    return node.prev && getTemplateNodeContext(node.prev)
 }
 
-// 判断节点是否可选中以在运行时中声明
-// Determine whether the node can be selected for declaration at runtime.
-export function isSelectableNode(node: TemplateNode) {
-    return !node.isEmbedded && !node.componentTag && node.tag !== "slot" && node.tag !== SPREAD_TAG
+export function getNextElementContent(node: TemplateNode) {
+    while (node.next && "" === node.next.tag) {
+        node = node.next
+    }
+    return node.next && getTemplateNodeContext(node.next)
+}
+
+export function getParsedPatterns(key: any) {
+    return analyzeResult.template.parsedPatterns.get(key)
+}
+
+export function getParsedExpression(key: any) {
+    return analyzeResult.template.parsedExpressions.get(key)
+}
+
+export function getTemplateNodeContext(node: TemplateNode) {
+    return analyzeResult.template.nodeContexts.get(node)!
+}
+
+export function getParsedEventInfo(key: TemplateAttribute) {
+    return analyzeResult.template.eventInfos.get(key)
+}
+
+export function getGeneratedStaticTextContent(part: TextContentPart) {
+    return analyzeResult.template.staticTextContents.get(part)
+}
+
+export function isHtmlDirectiveChild(node: TemplateNode) {
+    if (!node.parent) {
+        return false
+    }
+    return !!getTemplateNodeContext(node.parent).attributesMap["#html"]
 }
 
 // 获取元素的前置注释节点（前方的空白文本节点将被忽略）
@@ -78,6 +98,10 @@ export function getParentTag(node: TemplateNode) {
 export function getStartTagOpenLoc(node: TemplateNode) {
     const tagLength = node.tag === "!" ? 3 : node.tag.length
     return getLocByIndex(node.loc.start.index, node.loc.start.index + tagLength + 1)
+}
+
+export function getStartTagLoc(node: TemplateNode) {
+    return getLocByIndex(node.loc.start.index + 1, node.loc.start.index + 1 + node.tag.length)
 }
 
 export function walkTemplateNodes(nodes: TemplateNode[], callback: (node: TemplateNode) => void) {

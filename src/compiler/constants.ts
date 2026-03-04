@@ -50,19 +50,22 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
 }
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
-    ["#key", "#for"],
-    ["target"],
-    ["#if", "#elif", "#else"],
-    ["#await", "#then", "#catch"],
-    ["#slot"]
+    "#key",
+    "#for",
+    "#target",
+    "#show",
+    "#else",
+    "#elif",
+    "#if",
+    "#catch",
+    "#then",
+    "#await",
+    "#slot"
 ].reduce(
-    (ret, items, index) => {
-        for (const item of items) {
-            objectAssign(ret, {
-                [item]: index + 1
-            })
-        }
-        return ret
+    (ret, name, index) => {
+        return objectAssign(ret, {
+            [name]: index + 1
+        })
     },
     { name: 100 }
 )

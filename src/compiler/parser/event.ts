@@ -19,7 +19,7 @@ export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0)
             value: 0,
             names: []
         },
-        modifier: {
+        wrapper: {
             value: 0,
             names: []
         }
@@ -29,8 +29,8 @@ export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0)
     const eventName = -1 === flagStartIndex ? source : source.slice(0, flagStartIndex)
     const sourceFlagsArr = -1 === flagStartIndex ? [] : source.slice(flagStartIndex + 1).split("|")
 
-    const updateFlag = (flagName: string, flagNameLoc: ASTLocation, modifier = false) => {
-        const target = info[modifier ? "modifier" : "general"]
+    const updateFlag = (flagName: string, flagNameLoc: ASTLocation, wrapper = false) => {
+        const target = info[wrapper ? "wrapper" : "general"]
         if (!existingFlags[flagName]) {
             target.names.push(flagName)
         } else {
@@ -38,7 +38,7 @@ export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0)
         }
 
         // 检查是否存在冲突的事件标志
-        // Check for conflicting event modifiers.
+        // Check for conflicting event flags.
         const conflictingFlag = CONFLICTING_EVENT_FLAG_MAP[flagName]?.find(item => {
             return !!existingFlags[item]
         })
@@ -92,7 +92,7 @@ export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0)
             case "left":
             case "right": {
                 if (keyboardEventNamesRE.test(eventName)) {
-                    updateFlag(flagName, flagNameLoc)
+                    updateFlag(flagName, flagNameLoc, true)
                 } else {
                     KeyFlagIgnoredOnNonKeyboardEvent(flagNameLoc, flagName, eventName)
                 }

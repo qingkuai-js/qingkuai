@@ -23,11 +23,7 @@ export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFun
         }
         if (newTarget !== oldTarget) {
             walkNodes(destruction, node => {
-                if (newTarget === anchor) {
-                    insertBefore(anchor, node)
-                } else {
-                    appendChild(newTarget, node)
-                }
+                appendChild(newTarget, node)
             })
         }
         oldTarget = newTarget

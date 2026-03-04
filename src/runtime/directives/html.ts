@@ -7,18 +7,14 @@ import { renderEffect } from "../reactivity/effect"
 import { invokeRender } from "../../util/runtime/sundry"
 import { createFragmentGetter, insertBefore } from "../internal"
 
-export function htmlBlock(
-    getValue: Getter<string>,
-    anchor: Text,
-    getOptions: Getter<HTMLBlockOptions>
-) {
+export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
     let html: string | undefined
     let destruction: Destruction | undefined
     let options: HTMLBlockOptions | undefined
 
     renderEffect(() => {
         const newHtml = "" + getValue()
-        const newOptions = getOptions()
+        const newOptions: HTMLBlockOptions = getOptions?.()
         if (newHtml == html && newOptions === options) {
             return
         }

@@ -28,8 +28,8 @@ function newAnalyzeResult(): AnalyzeResult {
                 passive: new Set(),
                 nonPassive: new Set()
             },
-            compressStringsCount: 0,
             eventInfos: new Map(),
+            compressStringsCount: 0,
             nodeContexts: new Map(),
             parsedPatterns: new Map(),
             parsedExpressions: new Map(),
@@ -51,9 +51,14 @@ function newAnalyzeResult(): AnalyzeResult {
             preMutatedTopLevelIdentifiers: new Set()
         },
         generateIds: stripPrototype({
+            anchor: "",
+            context: "",
             internal: "",
-            setterArg: ""
+            getterArg: "",
+            setterArg: "",
+            contextGetter: ""
         }),
+        fragmentIdCount: 0,
         slots: newCleanObj(),
         reusedStrings: newCleanObj()
     }

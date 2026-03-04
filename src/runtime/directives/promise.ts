@@ -12,15 +12,15 @@ import { CANCELABLE, PROMISE_PENDING, PROMISE_SETTLED } from "./constants"
 
 export function promiseBlock(
     getValue: Getter,
-    renderPending: ArbitraryFunc | null,
-    renderThen: ArbitraryFunc | null,
-    renderCatch: ArbitraryFunc | null
+    renderPending: ArbitraryFunc | undefined,
+    renderThen: ArbitraryFunc | undefined,
+    renderCatch: ArbitraryFunc | undefined
 ) {
     let state: number
     let pms: CancelablePromise | null
     let destruction: Destruction | null
 
-    const changeState = (newState: number, render: ArbitraryFunc | null, arg?: any) => {
+    const changeState = (newState: number, render: ArbitraryFunc | undefined, arg?: any) => {
         destruction && destroy(destruction)
         destruction = NIL
         state = newState

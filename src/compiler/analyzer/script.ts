@@ -6,7 +6,7 @@ import type {
 } from "#type-declarations/estree"
 import type {
     Identifier,
-    MemberExpression,
+    CallExpression,
     VariableDeclarator,
     VariableDeclaration
 } from "@babel/types"
@@ -22,9 +22,8 @@ import {
     intrinsicReactiveMethodsRE
 } from "../regular"
 import {
-    CannotAliasIdentifier,
     AmbiguousReactiveMarking,
-    InvalidAliasDestructuringDeclaration,
+    CannotAliasIdentifier,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -33,6 +32,7 @@ import {
     ShadowCompilerIntrinsicAtTopLevel,
     InvalidParameterForAliasIntrinsic,
     TSModuleDeclarationsAreNotSupported,
+    InvalidAliasDestructuringDeclaration,
     IntrinsicNotAllowedInUsingDeclaration
 } from "../message/error"
 import {
@@ -49,7 +49,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { walk, walkPatternIdentifiers } from "../estree/walk"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
-import { increaseCommonStringUsedTimes } from "../../util/compiler/sundry"
+import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../estree/assert"
 
@@ -93,7 +93,7 @@ const visitor: Visitor = {
 
     StringLiteral(node, context) {
         if (context.parent?.value.type !== "ImportDeclaration") {
-            increaseCommonStringUsedTimes(node.value)
+            increaseReusedStringUsedTimes(node.value)
             analyzeResult.script.stringLiterals.push(node)
         }
     },
@@ -163,14 +163,14 @@ const visitor: Visitor = {
             return
         }
         for (const declarator of node.declarations) {
+            const initNode = declarator.init
+            const assertedInitNode = initNode as CallExpression
             const destructuringIdentifierNames: string[] | undefined =
                 declarator.id.type === "Identifier" ? undefined : []
             const status = inferStatusWithDeclarator(declarator, node)
             const { topLevelIdentifiers, declaratorToAliasInfos: declaratorToAlias } =
                 analyzeResult.script
             const patternInfo = walkPatternIdentifiers(declarator.id, (identifier, path) => {
-                const initNode = declarator.init
-
                 // let/var 声明对衍生响应式值无意义，它不可被修改
                 // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
                 if (status === "derived" && node.kind !== "const") {
@@ -211,32 +211,32 @@ const visitor: Visitor = {
 
                 // status 为 alias 时记录标识符别名的访问路径
                 // When the status is `alias`, record the access path of the identifier alias.
+                let aliasInfo = declaratorToAlias.get(declarator)
+                if (!aliasInfo) {
+                    aliasInfo = { items: [], target: "" }
+                    declaratorToAlias.set(declarator, aliasInfo)
+                }
                 if (
                     status === "alias" &&
-                    initNode?.type === "CallExpression" &&
-                    initNode.arguments.length &&
-                    isLeftValue(initNode.arguments[0])
+                    inputDescriptor.options.debug &&
+                    !inputDescriptor.options.checkMode &&
+                    isLeftValue(assertedInitNode.arguments[0])
                 ) {
-                    let aliasInfos = declaratorToAlias.get(declarator)
-                    if (!aliasInfos) {
-                        declaratorToAlias.set(declarator, (aliasInfos = []))
-                    }
-
                     const argSource = inputDescriptor.script.code.slice(
-                        ...stripTypeExpressions(initNode.arguments[0]).range!
+                        ...stripTypeExpressions(assertedInitNode.arguments[0]).range!
                     )
                     const fullPath = argSource + path
                     const expression = stripTypeExpressions(parseExpression(fullPath)!)
                     if (expression.type === "MemberExpression") {
                         const propertySource = fullPath.slice(...expression.property.range!)
-                        aliasInfos.push({
+                        aliasInfo.items.push({
                             id: identifier.name,
                             property: expression.computed
                                 ? propertySource
-                                : stringify(propertySource),
-                            target: fullPath.slice(0, expression.object.end!)
+                                : stringify(propertySource)
                         })
                         topLevelIdentifiers[identifier.name].path = fullPath
+                        aliasInfo.target = fullPath.slice(0, expression.object.end!)
                     }
                 }
 
@@ -411,17 +411,30 @@ function updateTopLevelIdentifiers(
         }
         existing.nodeInfos.push(nodeInfo)
     } else {
-        const accessor =
-            declaration.type !== "VariableDeclaration" ||
-            declaration.kind !== "const" ||
-            status === "alias" ||
-            status === "derived"
+        let accessor: boolean
+        if (!(accessor = declaration.type !== "VariableDeclaration")) {
+            switch (status) {
+                case "derived": {
+                    accessor = true
+                    break
+                }
+                case "alias": {
+                    accessor = !inputDescriptor.options.debug
+                    break
+                }
+                default: {
+                    accessor = declaration.kind === "let" || declaration.kind === "var"
+                    break
+                }
+            }
+        }
         analyzeResult.script.topLevelIdentifiers[id.name] = {
             status,
             hoist,
             implicit,
             accessor,
             path: "",
+            transofrmedTo: "",
             nodeInfos: [nodeInfo]
         }
     }

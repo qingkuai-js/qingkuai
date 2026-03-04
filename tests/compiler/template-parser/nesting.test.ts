@@ -664,11 +664,9 @@ test("With a text content interpolation block", () => {
                     }
                 ],
                 parent: nodeList[0],
-                hasInterpolation: true,
                 loc: getLocByIndex(5, 12)
             }
         ],
-        hasInterpolation: true,
         loc: getLocByIndex(0, 18),
         startTagEndPos: getPosByIndex(5),
         endTagStartPos: getPosByIndex(12)
@@ -726,13 +724,11 @@ test("With multiple text content interpolation blocks", () => {
                                     loc: getLocByIndex(31, 32)
                                 }
                             ],
-                            hasInterpolation: true,
                             loc: getLocByIndex(24, 32),
                             parent: nodeList[0].children[1]
                         }
                     ],
                     parent: nodeList[0],
-                    hasInterpolation: true,
                     loc: getLocByIndex(18, 39),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -753,7 +749,6 @@ test("With multiple text content interpolation blocks", () => {
                 }
             ],
             next: nodeList[1],
-            hasInterpolation: true,
             loc: getLocByIndex(0, 44),
             startTagEndPos: getPosByIndex(3),
             endTagStartPos: getPosByIndex(40)
@@ -811,13 +806,11 @@ test("With multiple text content interpolation blocks", () => {
                                     loc: getLocByIndex(79, 85)
                                 }
                             ],
-                            hasInterpolation: true,
                             loc: getLocByIndex(70, 86),
                             parent: nodeList[2].children[1]
                         }
                     ],
                     parent: nodeList[2],
-                    hasInterpolation: true,
                     loc: getLocByIndex(64, 93),
                     prev: nodeList[2].children[0],
                     next: nodeList[2].children[2],
@@ -838,7 +831,6 @@ test("With multiple text content interpolation blocks", () => {
                 }
             ],
             prev: nodeList[1],
-            hasInterpolation: true,
             loc: getLocByIndex(45, 98),
             startTagEndPos: getPosByIndex(48),
             endTagStartPos: getPosByIndex(94)
@@ -873,52 +865,6 @@ test("Whether the child elemnts of textarea are parsed as textContent", () => {
         loc: getLocByIndex(0, 50),
         startTagEndPos: getPosByIndex(10),
         endTagStartPos: getPosByIndex(39)
-    })
-})
-
-test("Whether children are parsed as textContent if the parent has the #html directive", () => {
-    const nodeList = parseTemplateStandalone(
-        formatSourceCode(`
-            <div #html>
-                <p></p>
-                <span></span>
-            </div>
-        `)
-    )
-    matchTemplateNodeList(nodeList, {
-        tag: "div",
-        children: [
-            {
-                content: [
-                    {
-                        isInterpolated: false,
-                        loc: getLocByIndex(11, 42),
-                        value: `\n    <p></p>\n    <span></span>\n`
-                    }
-                ],
-                parent: nodeList[0],
-                loc: getLocByIndex(11, 42)
-            }
-        ],
-        attributes: [
-            {
-                name: {
-                    raw: "#html",
-                    loc: getLocByIndex(5, 10)
-                },
-                value: {
-                    raw: "",
-                    loc: newASTLocation()
-                },
-                equalSign: false,
-                loc: getLocByIndex(5, 10),
-                valueEnclosure: "none"
-            }
-        ],
-        hasInterpolation: true,
-        loc: getLocByIndex(0, 48),
-        startTagEndPos: getPosByIndex(11),
-        endTagStartPos: getPosByIndex(42)
     })
 })
 

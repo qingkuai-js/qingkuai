@@ -25,9 +25,9 @@ describe("#html", () => {
             `),
             [
                 {
-                    type: "warning",
-                    range: [5, 10],
-                    value: `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and will be ignored.`
+                    type: "error",
+                    range: [0, 48],
+                    value: `A tag with the "#html" directive must have exactly one text node as its child.`
                 }
             ]
         )
@@ -443,6 +443,28 @@ describe("#then", () => {
             }
         ])
     })
+
+    test(`A promise block can only use the "#then" directive once`, () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <dit #await={_} #then></dit>
+                <div #catch></div>
+                <div #then></div>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [53, 58],
+                    value: `The "#then" directive can only appear once in a promise block.`
+                },
+                {
+                    type: "error",
+                    range: [16, 21],
+                    value: `The "#then" directive can only appear once in a promise block.`
+                }
+            ]
+        )
+    })
 })
 
 describe("#catch", () => {
@@ -539,6 +561,28 @@ describe("#catch", () => {
                 value: `The context pattern is empty and does not declare any binding identifiers.`
             }
         ])
+    })
+
+    test(`A promise block can only use the "#catch" directive once`, () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <dit #await={_} #catch></dit>
+                <div #then></div>
+                <div #catch></div>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [53, 59],
+                    value: `The "#catch" directive can only appear once in a promise block.`
+                },
+                {
+                    type: "error",
+                    range: [16, 22],
+                    value: `The "#catch" directive can only appear once in a promise block.`
+                }
+            ]
+        )
     })
 })
 
@@ -690,13 +734,8 @@ test("Missing directive value", () => {
         },
         {
             type: "error",
-            range: [9, 13],
-            value: `Directive "#for" requires a value.`
-        },
-        {
-            type: "error",
-            range: [21, 25],
-            value: `Directive "#key" requires a value.`
+            range: [34, 39],
+            value: `Directive "#show" requires a value.`
         },
         {
             type: "error",
@@ -705,8 +744,13 @@ test("Missing directive value", () => {
         },
         {
             type: "error",
-            range: [34, 39],
-            value: `Directive "#show" requires a value.`
+            range: [9, 13],
+            value: `Directive "#for" requires a value.`
+        },
+        {
+            type: "error",
+            range: [21, 25],
+            value: `Directive "#key" requires a value.`
         }
     ])
 
@@ -777,13 +821,13 @@ test("Conflicting directives", () => {
     analyzeTemplateAndMatchMessages(`<div #await={_} #catch #then={res}></div>`, [
         {
             type: "error",
-            range: [23, 28],
-            value: `Conflicting directives: "#then" and "#catch" cannot be used together.`
+            range: [16, 22],
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
         },
         {
             type: "error",
-            range: [16, 22],
-            value: `Conflicting directives: "#then" and "#catch" cannot be used together.`
+            range: [23, 28],
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
         }
     ])
 

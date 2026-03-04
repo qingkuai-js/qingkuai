@@ -56,6 +56,21 @@ export function isLiteral(node: PartialAnyNode) {
     return false
 }
 
+export function isInlineEventHandler(node: AnyNode) {
+    switch (stripTypeExpressions(node).type) {
+        case "Identifier":
+        case "MemberExpression":
+        case "FunctionExpression":
+        case "ArrowFunctionExpression":
+        case "OptionalMemberExpression": {
+            return false
+        }
+        default: {
+            return true
+        }
+    }
+}
+
 export function isBlock(node: AnyNode) {
     return is(node, "BlockStatement") || is(node, "TSModuleBlock")
 }

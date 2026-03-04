@@ -8,7 +8,7 @@ import type {
 import { registerEvents } from "./event"
 import { AFTER_MOUNT, NIL } from "./constants"
 import { createDestruction } from "./destroy"
-import { isString } from "../util/shared/assert"
+import { isFunction, isString } from "../util/shared/assert"
 import { isElement } from "../util/runtime/assert"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { InvalidAssignment } from "./messages/warn"
@@ -116,6 +116,9 @@ function initProps(transformed: any, defaults: any) {
                 get(_, property) {
                     const propValue = transformed[property]
                     if (propValue) {
+                        if (!isFunction(propValue)) {
+                            return propValue
+                        }
                         return propValue()
                     }
                     return defaults?.[property]

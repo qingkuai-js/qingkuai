@@ -235,6 +235,10 @@ export const UnexpectedToken = withLocation(1002, (str: string, expected?: strin
     return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
 })
 
+export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: string) => {
+    return `The "${directive}" directive can only appear once in a promise block.`
+})
+
 export const InvalidContextPatternForDirective = withLocation(1032, (directive?: string) => {
     if (!directive) {
         return `Expected a binding pattern.`
@@ -278,6 +282,10 @@ export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrins
 
 export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
     return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`
+})
+
+export const InvalidComponentName = withLocation(1057, (name: string) => {
+    return `Invalid component name: "${name}". It cannot be converted into a valid JavaScript identifier or member expression.`
 })
 
 export const DuplicateSlotName = withLocation(1050, (name: string) => {

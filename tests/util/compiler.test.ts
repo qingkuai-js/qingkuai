@@ -242,7 +242,7 @@ test("Function: findOutOfLiteralComment", () => {
             continue
         }
 
-        const target = "_".repeat(100)
+        const target = "_".repeat(10)
         const content = fs.readFileSync(fullPath, "utf-8")
         expect(findOutOfLiteralComment(content + target, target)).toBe(content.length)
     }

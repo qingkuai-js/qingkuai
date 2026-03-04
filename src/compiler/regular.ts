@@ -19,12 +19,13 @@ export const kebabWholeRE = /^\w|-|(?<=-)\w/g
 export const indentSpacesRE = /(?<=\n)(?:[ \t]+)/
 export const interpolatedAttrStartCharRE = /[!@#&]/
 export const omitQuoteAttrValueRE = /^[^\s'"`=<>]+$/
+export const shouldBeSelectedAttrStartCharRE = /[!@&]/
 export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 
 export const jsValueCharRE = /[A-Za-z0-9_$]/
 export const jsStringLiteralQuoteRE = /[`'"]/
 export const jsDestructuringEqualTokenRE = /\s*=\s*/
-export const jsValidIdentifierStartCharRE = /[a-zA-Z_$]/
+export const jsValidIdentifierRE = /^[a-zA-Z_$][a-zA-Z_$0-9]*$/
 export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
 
 export const intrinsicVariableRE = /^(?:props|refs|slots)$/

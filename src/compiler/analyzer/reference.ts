@@ -6,10 +6,12 @@ import { isLeftValue } from "../estree/assert"
 import { DomRerferenceAttributeOnComponent } from "../message/warn"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { analyzeInterpolation, analyzeShorthandAttribute } from "./interpolation"
+import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 import { InvalidReferenceAttribute, InvalidReferenceAttributeValue } from "../message/error"
 
 export function analyzeReferenceAttribute(node: TemplateNode, attribute: TemplateAttribute) {
+    const rawName = attribute.name.raw
+    const nameLoc = attribute.name.loc
     const checkResult = checkReferenceAttribute(node, attribute)
 
     // 同名简写语法，更新顶级作用域标识符的响应性状态
@@ -18,7 +20,7 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
         if (checkResult) {
             analyzeResult.template.validReferenceAttributes.add(attribute)
         }
-        return analyzeShorthandAttribute(attribute.name.raw, attribute.name.loc)
+        return analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribue")
     }
 
     if (!shouldAnalyzeAttributeValue(attribute)) {

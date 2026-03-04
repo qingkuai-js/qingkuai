@@ -81,7 +81,7 @@ test("Transform result of alias in development environment", () => [
             const _S9 = v => (r = v)
             const _G10 = () => ([props, "u"])
             const _S10 = v => (u = v)
-            console.log(a, props.b, props.c, d, props.d.e, f, g, h, arr[0], arr[1], arr[2][0], arr[3][0], arr[3][1], n, o, p, q, props.q, s, t, props.u)
+            console.log(a, _b.$, _c.$, d, _e.$, f, g, h, _i.$, _j.$, _k.$, _l.$, _m.$, n, o, p, q, _r.$, s, t, _u.$)
             
             const a = 1;
                 let [_b, b] = _.alias(_G1, _S1)
@@ -95,7 +95,7 @@ test("Transform result of alias in development environment", () => [
                 s = 8,
                 t = 9
             let [_u, u] = _.alias(_G10, _S10)
-            console.log(a, props.b, props.c, d, props.d.e, f, g, h, arr[0], arr[1], arr[2][0], arr[3][0], arr[3][1], n, o, p, q, props.q, s, t, props.u)
+            console.log(a, _b.$, _c.$, d, _e.$, f, g, h, _i.$, _j.$, _k.$, _l.$, _m.$, n, o, p, q, _r.$, s, t, _u.$)
         `),
         {
             debug: true

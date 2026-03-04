@@ -15,8 +15,8 @@ import { stripTypeExpressions } from "../../estree/sundry"
 import { jsDestructuringEqualTokenRE } from "../../regular"
 import { analyzeResult, inputDescriptor } from "../../state"
 import { findOutOfComment } from "../../../util/compiler/string"
+import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
-import { generateSetterCode, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
 export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEditor) {
     let hoistGettersCount = 0
@@ -80,34 +80,36 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             case "literal": {
                 return transformRawDecalration(value)
             }
-            case "alias": {
-                transformAliasDeclaration(key, value)
-                break
-            }
             case "derived": {
                 transformDerivedDeclaration(key, value)
+                value.transofrmedTo = `${identifierMap[key] ?? key}.$`
+                break
+            }
+            case "alias": {
+                transformAliasDeclaration(key, value)
+                value.transofrmedTo = debugMode ? `${identifierMap[key]}.$` : value.path
                 break
             }
             case "shallow":
             case "reactive": {
                 transformReactiveDeclaration(key, value)
+                value.transofrmedTo = `${identifierMap[key] ?? key}${value.accessor ? ".$" : ""}`
                 break
             }
         }
         if (topLevelReferences[key]) {
             for (const reference of topLevelReferences[key]) {
-                const { hoist, path, accessor, status } = value
-                if (status !== "alias") {
-                    if (!(hoist || reference.declared) || !accessor) {
-                        continue
-                    }
+                const { hoist, transofrmedTo, status } = value
+                if (!transofrmedTo) {
+                    continue
                 }
-
-                const to = status === "alias" ? path : `${identifierMap[key] ?? key}.$`
+                if (status !== "alias" && !hoist && !reference.declared) {
+                    continue
+                }
                 if (!reference.shorthand) {
-                    editor.replace(...reference.range, `${to}`, true)
+                    editor.replace(...reference.range, `${transofrmedTo}`, true)
                 } else {
-                    editor.insert(reference.range[1], `: ${to}`, reference.range)
+                    editor.insert(reference.range[1], `: ${transofrmedTo}`, reference.range)
                 }
             }
         }
@@ -233,7 +235,7 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
         const { declarations } = info.nodeInfos[0].declaration as VariableDeclaration
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
-        const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
+        const aliasInfo = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
 
         // 移除 VariableDeclarator 多余的尾部逗号
         // Remove any trailing comma from the VariableDeclarator.
@@ -259,7 +261,7 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             editor.insert(intrinsicId.start!, `${internalId}.`)
             editor.replace(
                 ...intrinsicCall.arguments[0].range!,
-                generateHoistGetter(`[${aliasInfos[0].target}, ${aliasInfos[0].property}]`)
+                generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.items[0].property}]`)
             )
             editor.insert(intrinsicCall.arguments[0].end!, `, ${generateHoistSetter(name)}`)
             return
@@ -274,9 +276,9 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         const destructuringIds = info.destructuringIdentifierNames.map(item => {
             return `[${getReactiveIdentifier(item)}, ${item}]`
         })
-        for (const aliasInfo of aliasInfos) {
-            getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.property}]`))
-            setterIds.push(generateHoistSetter(aliasInfo.id))
+        for (const aliasItem of aliasInfo.items) {
+            getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasItem.property}]`))
+            setterIds.push(generateHoistSetter(aliasItem.id))
         }
         replaceIntrinsicCall(declarator, "destructuringAlias")
         editor.remove(...declaratorIdRange)
@@ -551,8 +553,9 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
     }
 
     function generateHoistGetter(returns: string) {
+        const getterArg = analyzeResult.generateIds.getterArg || "()"
         const getterId = ensureIdWithNumSuffix("_G", ++hoistGettersCount)
-        return (hoistWriter.write(`const ${getterId} = () => (${returns})\n`), getterId)
+        return (hoistWriter.write(`const ${getterId} = ${getterArg} => (${returns})\n`), getterId)
     }
 
     function generateHoistSetter(target: string) {
@@ -595,6 +598,11 @@ function shouldNodeWrapAsGetter(node: AnyNode) {
     return true
 }
 
+function generateSetterCode(target: string) {
+    const setterArgId = analyzeResult.generateIds.setterArg
+    return `${setterArgId} => (${target} = ${setterArgId})`
+}
+
 function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
     const debugMode = inputDescriptor.options.debug
     const firstDeclaration = info.nodeInfos[0].declaration
@@ -607,7 +615,17 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
             return true
         }
         default: {
-            return firstDeclaration.kind !== "let" || debugMode
+            switch (firstDeclaration.kind) {
+                case "var": {
+                    return true
+                }
+                case "let": {
+                    return debugMode
+                }
+                default: {
+                    return false
+                }
+            }
         }
     }
 }
