@@ -3,7 +3,6 @@ import type { ASTLocation } from "#type-declarations/compiler"
 
 import { SPREAD_TAG } from "../constants"
 import { inputDescriptor, messages } from "../state"
-import { templateEmbeddedLangTagRE } from "../regular"
 
 export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>>(obj: T): T => {
     return obj
@@ -355,6 +354,10 @@ export const InvalidReferenceAttribute = withLocation(
 export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
     return `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`
 })
+
+export function isCompileError(err: Error): err is CompileError {
+    return err instanceof CompileError
+}
 
 export class CompileError extends Error {
     public description = "The QingKuai compiler encountered a fatal error during execution"

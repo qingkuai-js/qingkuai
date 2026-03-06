@@ -1,6 +1,5 @@
-import type { Destruction } from "./runtime"
-import type { TemplateNode } from "./compiler"
-import type { Range, IdentifierStatus } from "./compiler"
+import type { Destruction } from "#type-declarations/runtime"
+import type { TemplateNode, Range, IdentifierStatus } from "#type-declarations/compiler"
 
 export interface ExpectedEffect {
     cleaner: any

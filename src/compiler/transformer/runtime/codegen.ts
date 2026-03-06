@@ -82,10 +82,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     if (templateFragments.some(item => item.content.length)) {
         writer.wrapLine()
     }
-    generateTemplateRender(nodes, writer)
-    writer.dedent().write("}")
-
-    return (({ code, mappings }) => ({ code, mappings }))(writer)
+    return (generateTemplateRender(nodes, writer), writer.dedent().write("}"))
 }
 
 export function removeEliminatedNodes(editor: CodeEditor) {

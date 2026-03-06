@@ -29,10 +29,10 @@ import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
 import { walk, walkPatternIdentifiers } from "../estree/walk"
-import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
-import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST, REQUIRED_VALUE_DIRECTIVES } from "../constants"
+import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
     let conflictingDirective: TemplateAttribute | undefined
@@ -49,7 +49,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
     // 缺少指令值
     // Missing directive value.
-    if (REQUIRED_VALUE_DIRECTIVES.has(rawName) && !directive.equalSign) {
+    if (isRequiredValueDirective(rawName) && !directive.equalSign) {
         MissingDirectiveValue(directive.loc, rawName)
     }
 

@@ -13,8 +13,8 @@ import type {
     ContextPattern,
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
-} from "./estree"
-import type { Pair } from "./tools"
+} from "#type-declarations/estree"
+import type { Pair } from "#type-declarations/tools"
 import type { WalkContext } from "../compiler/estree/walk"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
@@ -283,6 +283,20 @@ export type CompileOptions = Partial<{
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
+
+export interface CompileResult {
+    interIndexMap: {
+        itos: number[]
+        stoi: number[]
+    }
+    code: string
+    hashId: string
+    mappings: string
+    typeDeclarationLen: number
+    messages: CompileMessage[]
+    templateNodes: TemplateNode[]
+    inputDescriptor: InputDescriptor
+}
 
 export type IdentifierStatus =
     | "reactive"

@@ -5,7 +5,8 @@ import { isEmptyString } from "../../util/shared/assert"
 import { templateConditionalCommentRE } from "../regular"
 import { BLOCK_TAGS, DISALLOWED_TAGS } from "../constants"
 import { InvalidTemplateStructure, UsedDisallowedTag } from "../message/error"
-import { getParentTag, getStartTagOpenLoc, isBlankTextNode } from "../../util/compiler/template"
+import { getParentTag, getStartTagOpenLoc } from "../../util/compiler/template"
+import { isBlankTextNode } from "../../util/compiler/assert"
 
 export function filterTemplateNodes(node: TemplateNode): boolean {
     if (DISALLOWED_TAGS.has(node.tag)) {

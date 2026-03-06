@@ -1,5 +1,5 @@
-import type { ContextPattern } from "./estree"
-import type { EventFlagInfo, Range } from "./compiler"
+import type { ContextPattern } from "#type-declarations/estree"
+import type { EventFlagInfo, Range } from "#type-declarations/compiler"
 
 /**
  * 驼峰命名转串型命名 \

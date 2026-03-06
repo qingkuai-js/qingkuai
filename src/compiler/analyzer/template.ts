@@ -10,7 +10,6 @@ import {
     walkTemplateNodes,
     getStartTagOpenLoc,
     getParsedExpression,
-    isHtmlDirectiveChild,
     getTemplateNodeContext,
     getGeneratedStaticTextContent
 } from "../../util/compiler/template"
@@ -21,6 +20,7 @@ import { newCleanObj } from "../../util/shared/sundry"
 import { UnnecessarySpreadTag } from "../message/warn"
 import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
+import { isHtmlDirectiveChild } from "../../util/compiler/assert"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"

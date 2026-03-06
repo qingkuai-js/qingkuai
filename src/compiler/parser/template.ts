@@ -53,13 +53,12 @@ import {
 } from "../message/error"
 import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
-import { SELF_CLOSING_TAGS } from "../constants"
 import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
-import { isNonEmptyExpression } from "../../util/compiler/assert"
 import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
+import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
 
 export function newTemplateNode(): TemplateNode {
@@ -562,7 +561,7 @@ export function parseTemplate(source: string) {
         // 自闭合标签或组件开始标签以 /> 结尾时，无需解析子节点，其他情况解析文本内容和子节点
         // when tag is self-closing tag or a component start tag end in `/>`, there is no
         // need to parse child nodes, otherwise, the content and child nodes should be parsed.
-        if (!SELF_CLOSING_TAGS.has(tag) && !startTagCloseMatched[0].startsWith("/")) {
+        if (!isSelfClosingTag(tag) && !startTagCloseMatched[0].startsWith("/")) {
             while (true) {
                 const endtagStartIndex = index
                 const endTagMatched = new RegExp(`^</${tag}`).exec(dps)
@@ -595,7 +594,7 @@ export function parseTemplate(source: string) {
                     prevForChild = parseContent(templateNode, prevForChild)
                 }
             }
-        } else if (SELF_CLOSING_TAGS.has(tag) || isComponent) {
+        } else if (isSelfClosingTag(tag) || isComponent) {
             templateNode.isSelfClosing = true
             templateNode.loc.end = getPosByIndex(index)
         } else {
@@ -615,7 +614,7 @@ export function parseTemplate(source: string) {
             templateNode.preWhiteSpace = true
         }
         if (options.tag) {
-            templateNode.isSelfClosing = SELF_CLOSING_TAGS.has(options.tag)
+            templateNode.isSelfClosing = isSelfClosingTag(options.tag)
         }
         if (!templateNode.preWhiteSpace) {
             templateNode.preWhiteSpace = preWhiteSpaceRuleRE.test(

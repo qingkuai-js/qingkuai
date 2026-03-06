@@ -1,6 +1,13 @@
+import type {
+    Getter,
+    AnyObject,
+    FixedArray,
+    ObjectKeys,
+    GeneralFunc,
+    ArbitraryFunc
+} from "#type-declarations/tools"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
-import type { AnyObject, ArbitraryFunc, FixedArray, GeneralFunc, Getter, ObjectKeys } from "./tools"
 
 interface WatchEffectExtra {
     v: any // target value

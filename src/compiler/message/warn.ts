@@ -105,6 +105,10 @@ export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
     }
 )
 
+export function isCompileWarning(v: any): v is CompileWarning {
+    return v instanceof CompileWarning
+}
+
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
         new CompileWarning(loc, code, fn(...params))

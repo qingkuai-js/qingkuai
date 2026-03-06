@@ -20,8 +20,8 @@ import type {
     OptionalCallExpression,
     ArrowFunctionExpression
 } from "@babel/types"
-import type { RequiredNonNullableKeys } from "./tools"
 import type { WalkContext } from "../compiler/estree/walk"
+import type { RequiredNonNullableKeys } from "#type-declarations/tools"
 
 export type TopLevelDeclarationNode =
     | VariableDeclaration

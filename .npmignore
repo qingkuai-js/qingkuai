@@ -1,0 +1,17 @@
+src
+tests
+test-space
+node_modules
+
+.DS_Store
+.vscode
+.history
+.gitignore
+.prettierrc
+
+env.d.ts
+tsconfig.json
+memorandum.md
+qingkuai-*.tgz
+pnpm-lock.yaml
+rollup.config.js

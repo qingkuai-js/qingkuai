@@ -1,6 +1,7 @@
 import type { TemplateAttribute, TemplateNode, TextContentPart } from "#type-declarations/compiler"
 
 import { getLocByIndex } from "./position"
+import { isBlankTextNode } from "./assert"
 import { isEmptyString } from "../shared/assert"
 import { analyzeResult } from "../../compiler/state"
 import { SPREAD_TAG } from "../../compiler/constants"
@@ -16,14 +17,6 @@ export function getRawContent(node: TemplateNode) {
         }
         return ret + `{${cur.value}}`
     }, "")
-}
-
-export function isBlankTextNode(node: TemplateNode) {
-    return (
-        isEmptyString(node.tag) &&
-        node.content.length === 1 &&
-        isEmptyString(node.content[0].value.trim())
-    )
 }
 
 export function getPrevElementContext(node: TemplateNode) {
@@ -56,15 +49,12 @@ export function getParsedEventInfo(key: TemplateAttribute) {
     return analyzeResult.template.eventInfos.get(key)
 }
 
-export function getGeneratedStaticTextContent(part: TextContentPart) {
-    return analyzeResult.template.staticTextContents.get(part)
+export function getTemplateContextIdentifiers(node: TemplateNode) {
+    return getTemplateNodeContext(node).contextIdentifiers
 }
 
-export function isHtmlDirectiveChild(node: TemplateNode) {
-    if (!node.parent) {
-        return false
-    }
-    return !!getTemplateNodeContext(node.parent).attributesMap["#html"]
+export function getGeneratedStaticTextContent(part: TextContentPart) {
+    return analyzeResult.template.staticTextContents.get(part)
 }
 
 // 获取元素的前置注释节点（前方的空白文本节点将被忽略）

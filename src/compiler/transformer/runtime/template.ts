@@ -13,8 +13,7 @@ import {
     getParsedExpression,
     getPrevElementContext,
     getNextElementContent,
-    getTemplateNodeContext,
-    isHtmlDirectiveChild
+    getTemplateNodeContext
 } from "../../../util/compiler/template"
 import {
     getAttributeBaseName,
@@ -28,6 +27,7 @@ import { DELEGATABLE_EVENTS } from "../../constants"
 import { generateFramgmentSelection } from "./fragment"
 import { getLastElem } from "../../../util/shared/arrays"
 import { stripTypeExpressions } from "../../estree/sundry"
+import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 

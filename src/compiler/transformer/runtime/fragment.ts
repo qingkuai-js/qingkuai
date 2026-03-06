@@ -6,7 +6,6 @@ import type {
 import type { CodeWriter } from "../writer"
 
 import {
-    isHtmlDirectiveChild,
     getTemplateNodeContext,
     getGeneratedStaticTextContent
 } from "../../../util/compiler/template"
