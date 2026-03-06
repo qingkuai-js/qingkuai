@@ -3,76 +3,34 @@ import type { ASTLocation, IdentifierStatus } from "#type-declarations/compiler"
 
 import { messages } from "../state"
 
-export const commonMessage = (<T extends Record<string, [number, ArbitraryFunc]>>(obj: T): T => {
-    return obj
-})({
-    UnnecessaryReactiveMark: [
-        9001,
-        (status: IdentifierStatus) => {
-            return `This value will never change, so making it ${
-                status === "reactive" ? "" : status + " "
-            }reactive is unnecessary and it will be treated as a raw (non-reactive) value.`
-        }
-    ],
-    IdentifierMaybeOverwritten: [
-        9002,
-        (name: string, scope: string) => {
-            return `Top-level scope identifier "${name}" will be overwrittern in ${scope}.`
-        }
-    ],
-    DeclareDerivedMixedSyntaticForms: [
-        9003,
-        () => {
-            return "Mixing two syntactic forms to declare derived reactive value is not recommended."
-        }
-    ],
-    RedundantRawMark: [
-        9005,
-        () => {
-            return `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
-        }
-    ],
-    UnnecessaryMutableDerivedDeclaration: [
-        9004,
-        () => {
-            return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider using \`const\` instead.`
-        }
-    ]
+export const UnnecessarySpreadTag = withLocation(9014, (without: string) => {
+    return `The <qk:spread> tag without ${without} is unnecessary.`
 })
-
-// prettier-ignore
-export const RedundantRawMark = withLocation(
-    ...commonMessage.RedundantRawMark
-)
-
-// prettier-ignore
-export const UnnecessaryReactiveMark = withLocation(
-    ...commonMessage.UnnecessaryReactiveMark
-)
-
-// prettier-ignore
-export const IdentifierMaybeOverwritten = withLocation(
-    ...commonMessage.IdentifierMaybeOverwritten
-)
-
-export const DeclareDerivedMixedSyntaticForms = withLocation(
-    ...commonMessage.DeclareDerivedMixedSyntaticForms
-)
-
-export const UnnecessaryMutableDerivedDeclaration = withLocation(
-    ...commonMessage.UnnecessaryMutableDerivedDeclaration
-)
 
 export const DuplicateEventFlag = withLocation(9011, (name: string) => {
     return `Duplicate event flag "${name}" is redundant and will be ignored.`
 })
 
-export const UnnecessarySpreadTag = withLocation(9014, (without: string) => {
-    return `The <qk:spread> tag without ${without} is unnecessary.`
-})
-
 export const RedundantEventFlags = withLocation(9009, () => {
     return `Event flags for component event listeners are redundant and will be ignored.`
+})
+
+export const UnnecessaryReactiveMark = withLocation(9001, (status: IdentifierStatus) => {
+    return `This value will never change, so marking it ${
+        status === "reactive" ? "" : status + " "
+    }reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+})
+
+export const DeclareDerivedMixedSyntaticForms = withLocation(9003, () => {
+    return "Mixing two syntactic forms to declare derived reactive value is not recommended."
+})
+
+export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scope: string) => {
+    return `Top-level scope identifier "${name}" will be overwrittern in ${scope}.`
+})
+
+export const RedundantRawMark = withLocation(9005, () => {
+    return `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
 })
 
 export const UnnecessaryHtmlDirective = withLocation(9008, () => {
@@ -104,6 +62,10 @@ export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
         return `The event flag "${name}" only valid on keyboard events ("keyup", "keydown", "keypress"). It has no effect on "${eventName}" and will be ignored.`
     }
 )
+
+export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
+    return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
+})
 
 export function isCompileWarning(v: any): v is CompileWarning {
     return v instanceof CompileWarning

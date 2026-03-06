@@ -5,8 +5,6 @@ import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../src/util/testing/match"
 import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
-import { commonMessage as commonWarnMsg } from "../../../src/compiler/message/warn"
-import { commonMessage as commonErrorMsg } from "../../../src/compiler/message/error"
 
 function localAnalyze(source: string) {
     parseTemplateStandalone(`<lang-ts>${formatSourceCode(source)}</lang-ts>`, {
@@ -24,9 +22,6 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
 }
 
 describe("Invalid usages of intrinsic methods", () => {
-    const getMsg = commonErrorMsg.InvalidUsageForIntrinsicMethods[1]
-    const invalidArgMsg = commonErrorMsg.InvalidParameterForAliasIntrinsic[1]()
-
     test("Not in the top level", () => {
         localAnalyze(`
             {
@@ -43,42 +38,42 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [6, 18],
-                value: getMsg("defaultProps")
+                value: `The compiler intrinsic "defaultProps" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
                 range: [25, 36],
-                value: getMsg("defaultRefs")
+                value: `The compiler intrinsic "defaultRefs" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
                 range: [43, 51],
-                value: getMsg("reactive")
+                value: `The compiler intrinsic "reactive" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [58, 65],
-                value: getMsg("shallow")
+                value: `The compiler intrinsic "shallow" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [72, 75],
-                value: getMsg("raw")
+                value: `The compiler intrinsic "raw" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [82, 89],
-                value: getMsg("derived")
+                value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [96, 103],
-                value: invalidArgMsg
+                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [96, 101],
-                value: getMsg("alias")
+                value: `The compiler intrinsic "alias" must be called at top-level scope to mark the variable initializer.`
             }
         ])
     })
@@ -96,17 +91,17 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [10, 22],
-                value: getMsg("defaultProps")
+                value: `The compiler intrinsic "defaultProps" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
                 range: [30, 41],
-                value: getMsg("defaultRefs")
+                value: `The compiler intrinsic "defaultRefs" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
                 range: [71, 83],
-                value: getMsg("defaultProps")
+                value: `The compiler intrinsic "defaultProps" must be called as a standalone expression at top-level scope.`
             }
         ])
     })
@@ -123,32 +118,32 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [10, 18],
-                value: getMsg("reactive")
+                value: `The compiler intrinsic "reactive" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [19, 26],
-                value: getMsg("shallow")
+                value: `The compiler intrinsic "shallow" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [34, 37],
-                value: getMsg("raw")
+                value: `The compiler intrinsic "raw" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [42, 49],
-                value: getMsg("derived")
+                value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [53, 60],
-                value: getMsg("derived")
+                value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [69, 74],
-                value: getMsg("alias")
+                value: `The compiler intrinsic "alias" must be called at top-level scope to mark the variable initializer.`
             }
         ])
     })
@@ -167,22 +162,22 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [0, 5],
-                value: getMsg("watch")
+                value: `The compiler intrinsic "watch" can only be used as a function call.`
             },
             {
                 type: "error",
                 range: [18, 26],
-                value: getMsg("preWatch")
+                value: `The compiler intrinsic "preWatch" can only be used as a function call.`
             },
             {
                 type: "error",
                 range: [29, 38],
-                value: getMsg("postWatch")
+                value: `The compiler intrinsic "postWatch" can only be used as a function call.`
             },
             {
                 type: "error",
                 range: [42, 51],
-                value: getMsg("syncWatch")
+                value: `The compiler intrinsic "syncWatch" can only be used as a function call.`
             }
         ])
     })
@@ -198,22 +193,22 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [8, 16],
-                value: invalidArgMsg
+                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [29, 38],
-                value: invalidArgMsg
+                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [54, 74],
-                value: invalidArgMsg
+                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [99, 114],
-                value: invalidArgMsg
+                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             }
         ])
     })
@@ -295,8 +290,6 @@ describe("Invalid usages of intrinsic methods", () => {
 })
 
 describe("Unnecessary reactive marking", () => {
-    const getMsg = commonWarnMsg.UnnecessaryReactiveMark[1]
-
     test("Const declarations with literals", () => {
         localAnalyze(`
             const a = reactive(1)
@@ -311,37 +304,37 @@ describe("Unnecessary reactive marking", () => {
             {
                 type: "warning",
                 range: [10, 21],
-                value: getMsg("reactive")
+                value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [32, 42],
-                value: getMsg("shallow")
+                value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [53, 65],
-                value: getMsg("reactive")
+                value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [76, 85],
-                value: getMsg("shallow")
+                value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [96, 110],
-                value: getMsg("reactive")
+                value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [121, 134],
-                value: getMsg("shallow")
+                value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [145, 152],
-                value: commonWarnMsg.RedundantRawMark[1]()
+                value: `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
             }
         ])
     })
@@ -358,27 +351,27 @@ describe("Unnecessary reactive marking", () => {
             {
                 type: "warning",
                 range: [10, 19],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [30, 40],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [51, 62],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [73, 86],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [97, 115],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             }
         ])
     })
@@ -394,29 +387,28 @@ describe("Unnecessary reactive marking", () => {
             {
                 type: "warning",
                 range: [6, 12],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [19, 26],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [33, 42],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
                 range: [49, 63],
-                value: getMsg("derived")
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             }
         ])
     })
 })
 
 test("Shadow compiler intrinsic identifiers", () => {
-    const getMsg = commonErrorMsg.ShadowCompilerIntrinsicAtTopLevel[1]
     localAnalyze(`
                 if(true){
                     const props = 1
@@ -427,11 +419,11 @@ test("Shadow compiler intrinsic identifiers", () => {
                 const props = 1
                 const refs = 2
                 const slots = 3
-                const reactive = 4
-                let shallow =5
-                var raw = 6
-                using derived = 7
-                const defaultProps = 8
+                let reactive = 4
+                var shallow =5
+                using raw = 6
+                class derived {}
+                function defaultProps() {}
                 enum defaultRefs {}
                 import watch from ""
                 import { postWatch } from ""
@@ -441,62 +433,62 @@ test("Shadow compiler intrinsic identifiers", () => {
         {
             type: "error",
             range: [81, 86],
-            value: getMsg("props")
+            value: `Compiler intrinsic identifier "props" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [97, 101],
-            value: getMsg("refs")
+            value: `Compiler intrinsic identifier "refs" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [112, 117],
-            value: getMsg("slots")
+            value: `Compiler intrinsic identifier "slots" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [128, 136],
-            value: getMsg("reactive")
+            range: [126, 134],
+            value: `Compiler intrinsic identifier "reactive" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [145, 152],
-            value: getMsg("shallow")
+            range: [143, 150],
+            value: `Compiler intrinsic identifier "shallow" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [160, 163],
-            value: getMsg("raw")
+            value: `Compiler intrinsic identifier "raw" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [174, 181],
-            value: getMsg("derived")
+            value: `Compiler intrinsic identifier "derived" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [192, 204],
-            value: getMsg("defaultProps")
+            range: [194, 206],
+            value: `Compiler intrinsic identifier "defaultProps" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [214, 225],
-            value: getMsg("defaultRefs")
+            range: [217, 228],
+            value: `Compiler intrinsic identifier "defaultRefs" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [236, 241],
-            value: getMsg("watch")
+            range: [239, 244],
+            value: `Compiler intrinsic identifier "watch" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [259, 268],
-            value: getMsg("postWatch")
+            range: [262, 271],
+            value: `Compiler intrinsic identifier "postWatch" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [295, 304],
-            value: getMsg("syncWatch")
+            range: [298, 307],
+            value: `Compiler intrinsic identifier "syncWatch" cannot be shadowed at top-level scope.`
         }
     ])
 })
@@ -511,22 +503,22 @@ test("Shorthand derived declaration with compiler intrinsic method", () => {
         {
             type: "warning",
             range: [6, 28],
-            value: commonWarnMsg.DeclareDerivedMixedSyntaticForms[1]()
+            value: `Mixing two syntactic forms to declare derived reactive value is not recommended.`
         },
         {
             type: "error",
             range: [33, 48],
-            value: commonErrorMsg.AmbiguousReactiveMarking[1]("reactive")
+            value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("reactive") method is ambiguous.`
         },
         {
             type: "warning",
             range: [33, 48],
-            value: commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
+            value: `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
         },
         {
             type: "error",
             range: [55, 66],
-            value: commonErrorMsg.AmbiguousReactiveMarking[1]("raw")
+            value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("raw") method is ambiguous.`
         }
     ])
 })

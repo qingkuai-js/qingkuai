@@ -8,7 +8,6 @@ import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../src/util/testing/match"
 import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
-import { commonMessage as commonWarnMsg } from "../../../src/compiler/message/warn"
 
 function localAnalyze(source: string) {
     parseTemplateStandalone(`<lang-ts>${formatSourceCode(source)}</lang-ts>`, {
@@ -210,7 +209,7 @@ test("Class declarations", () => {
 })
 
 test("Redeclarations for derived reactive value", () => {
-    const unnecessaryDerived = commonWarnMsg.UnnecessaryMutableDerivedDeclaration[1]()
+    const unnecessaryDerived = `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 
     localAnalyze(`
         var a
