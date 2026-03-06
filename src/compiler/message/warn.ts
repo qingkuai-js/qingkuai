@@ -75,6 +75,10 @@ export const RedundantEventFlags = withLocation(9009, () => {
     return `Event flags for component event listeners are redundant and will be ignored.`
 })
 
+export const UnnecessaryHtmlDirective = withLocation(9008, () => {
+    return `The "#html" directive without a value has no effect because the element content is entirely static.`
+})
+
 export const RedundantDirectiveValue = withLocation(9006, (directive: string) => {
     return `The "${directive}" directive does not need a value, and the redundant directive value will be ignored.`
 })
@@ -93,10 +97,6 @@ export const RedundantBooleanAttributeValue = withLocation(
         return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute, and the redundant attribute value will be ignored.`
     }
 )
-
-export const UnnecessaryHtmlDirective = withLocation(9008, () => {
-    return `This element uses the #html directive without a value, but its content is entirely static, so the directive has no effect and will be ignored.`
-})
 
 export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
     9010,

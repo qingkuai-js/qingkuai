@@ -32,6 +32,34 @@ describe("#html", () => {
             ]
         )
     })
+
+    test("Invalid placement", () => {
+        analyzeTemplateAndMatchMessages(`<slot #html></slot>`, [
+            {
+                type: "error",
+                range: [6, 11],
+                value: `The "#html" directive cannot be used on <slot> tags.`
+            }
+        ])
+
+        analyzeTemplateAndMatchMessages(`<Comp #html></Comp>`, [
+            {
+                type: "error",
+                range: [6, 11],
+                value: `The "#html" directive cannot be used on components.`
+            }
+        ])
+    })
+
+    test("Unnecessary direct", () => {
+        analyzeTemplateAndMatchMessages(`<div #html>...</div>`, [
+            {
+                type: "warning",
+                range: [5, 10],
+                value: `The "#html" directive without a value has no effect because the element content is entirely static.`
+            }
+        ])
+    })
 })
 
 describe("#slot", () => {
@@ -721,7 +749,7 @@ test("#target: invalid placement", () => {
 })
 
 test("Missing directive value", () => {
-    analyzeTemplateAndMatchMessages(`<div #if #for #await #key #target #show></div>`, [
+    analyzeTemplateAndMatchMessages(`<div #if #for #await #key #target></div>`, [
         {
             type: "error",
             range: [14, 20],
@@ -731,11 +759,6 @@ test("Missing directive value", () => {
             type: "error",
             range: [5, 8],
             value: `Directive "#if" requires a value.`
-        },
-        {
-            type: "error",
-            range: [34, 39],
-            value: `Directive "#show" requires a value.`
         },
         {
             type: "error",

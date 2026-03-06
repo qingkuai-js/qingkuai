@@ -55,6 +55,7 @@ export interface TemplateFragment {
     selections: {
         id: string
         index: number
+        replaceWithText: boolean
         parent: string | undefined
     }[]
     id: string
@@ -116,6 +117,23 @@ export interface ASTPositionWithFlag extends ASTPosition {
     flag: number
 }
 
+export interface GenerateIdentifier {
+    suffix: Record<
+        string,
+        {
+            last: number
+            originUsed: boolean
+        }
+    >
+    anchor: string
+    context: string
+    internal: string
+    getterArg: string
+    setterArg: string
+    contextGetter: string
+    prefix: Record<string, number>
+}
+
 export interface AnalyzeResult {
     reusedStrings: Record<
         string,
@@ -124,15 +142,6 @@ export interface AnalyzeResult {
             times: number
         }
     >
-    generateIds: {
-        anchor: string
-        context: string
-        internal: string
-        getterArg: string
-        setterArg: string
-        contextGetter: string
-    }
-    fragmentIdCount: number
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
     slots: Record<string, TemplateNode>
@@ -167,7 +176,7 @@ export interface TemplateNodeContext {
     anchorId: string
     node: TemplateNode
     shouldBeSelected: boolean
-    selectedChildCount: number
+    selectableChildCount: number
     contextIdentifiers: Set<string>
     fragment: TemplateFragment | null
     eventListeners: TemplateAttribute[]
@@ -208,6 +217,7 @@ export interface TemplateAnalyzeRet {
         }
     >
     compressStringsCount: number
+    componentFragment: TemplateFragment | null
     staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
@@ -217,12 +227,10 @@ export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
         VariableDeclarator,
         {
-            items: {
-                id: string
-                property: string
-            }[]
+            id: string
             target: string
-        }
+            property: string
+        }[]
     >
     defaultItems: Partial<
         Record<

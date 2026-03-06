@@ -4,6 +4,7 @@ import { getLocByIndex } from "./position"
 import { isEmptyString } from "../shared/assert"
 import { analyzeResult } from "../../compiler/state"
 import { SPREAD_TAG } from "../../compiler/constants"
+import { interpolatedAttrStartCharRE } from "../../compiler/regular"
 
 export function getRawContent(node: TemplateNode) {
     if (!node.content.length) {
@@ -98,6 +99,13 @@ export function getParentTag(node: TemplateNode) {
 export function getStartTagOpenLoc(node: TemplateNode) {
     const tagLength = node.tag === "!" ? 3 : node.tag.length
     return getLocByIndex(node.loc.start.index, node.loc.start.index + tagLength + 1)
+}
+
+export function getAttributeBaseNameLoc(attribute: TemplateAttribute) {
+    if (!interpolatedAttrStartCharRE.test(attribute.name.raw[0])) {
+        return attribute.name.loc
+    }
+    return getLocByIndex(attribute.name.loc.start.index, attribute.name.loc.end.index)
 }
 
 export function getStartTagLoc(node: TemplateNode) {

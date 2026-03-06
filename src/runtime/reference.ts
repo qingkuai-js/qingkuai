@@ -1,11 +1,12 @@
 import type { Getter, Setter } from "#type-declarations/tools"
 
-import { listen } from "./internal"
+import { setInputGroup } from "./attribute"
 import { isArray } from "../util/shared/assert"
 import { notEqual } from "../util/shared/sundry"
 import { pushDestructionCleaner } from "./destroy"
 import { spliceByElem } from "../util/shared/arrays"
 import { getElementValue, getNodeContext } from "./dom"
+import { listen, renderEffect, setAttribute, setSelectValue } from "./internal"
 
 export function bindDomReceiver(elem: any, setter: Setter) {
     pushDestructionCleaner(() => {
@@ -14,16 +15,19 @@ export function bindDomReceiver(elem: any, setter: Setter) {
     setter(elem)
 }
 
-export function bindInputValue(elem: HTMLInputElement, setter: Setter) {
-    listen(elem, "input", () => setter(elem.value))
+export function bindInputValue(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
+    listen(elem, "input", () => setValue(elem.value))
+    renderEffect(() => setAttribute(elem, "value", getTarget()))
 }
 
-export function bindInputNumber(elem: HTMLInputElement, setter: Setter) {
-    listen(elem, "input", () => setter(+elem.value))
+export function bindInputNumber(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
+    listen(elem, "input", () => setValue(+elem.value))
+    renderEffect(() => setAttribute(elem, "value", getTarget()))
 }
 
-export function bindInputChecked(elem: HTMLInputElement, setter: Setter) {
-    listen(elem, "change", () => setter(elem.checked))
+export function bindInputChecked(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
+    listen(elem, "change", () => setValue(elem.checked))
+    renderEffect(() => setAttribute(elem, "value", getTarget()))
 }
 
 export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {
@@ -37,6 +41,7 @@ export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {
             checked ? target.push(value) : spliceByElem(target, value)
         }
     })
+    renderEffect(() => setInputGroup(elem, getTarget()))
 }
 
 export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter) {
@@ -61,4 +66,5 @@ export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter) {
             }
         }
     })
+    renderEffect(() => setSelectValue(elem, getTarget()))
 }

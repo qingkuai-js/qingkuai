@@ -1,9 +1,7 @@
-import type { Setter } from "#type-declarations/tools"
 import type { NodeContext } from "#type-declarations/runtime"
 
 import { currentDestruction } from "./state"
 import { any, len } from "../util/shared/sundry"
-import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { DOCUMENT, NODE_CONTEXT } from "./constants"
 
@@ -13,12 +11,6 @@ export function newTextNode() {
 
 export function selectElement(selector: string) {
     return DOCUMENT.querySelector(selector)
-}
-
-export function replaceWithText(comment: Comment) {
-    const textNode = newTextNode()
-    comment.replaceWith(textNode)
-    return textNode
 }
 
 export function setText(text: Text, content: any) {
@@ -49,6 +41,11 @@ export function getSibling(node: ChildNode, distance = 1) {
     }
     return node
 }
+export function getChildAsText(target: Element, index = 0) {
+    const textNode = newTextNode()
+    const child = getChild(target, index)
+    return (child.replaceWith(textNode), textNode)
+}
 
 export function insertBefore(reference: ChildNode, node: Node) {
     reference.before(node)
@@ -68,23 +65,20 @@ export function getNodeContext(elem: any, create = true): NodeContext {
 // Create an HTML fragment getter that returns a cloned instance
 // of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
-    let createdFragment: DocumentFragment | undefined
+    let fragment: DocumentFragment | undefined
     const template = DOCUMENT.createElement("template")
-    if (!isUndefined(arr)) {
-        html = restoreHtmlForFragment(html, arr)
-    }
     return () => {
-        let fragment: DocumentFragment
-        if (isUndefined(createdFragment)) {
-            template.innerHTML = html
-            fragment = createdFragment = template.content
-        } else {
-            fragment = createdFragment.cloneNode(true) as DocumentFragment
+        if (isUndefined(fragment)) {
+            template.innerHTML = arr ? restoreHtmlForFragment(html, arr) : html
+            fragment = template.content
+            fragment.prepend(newTextNode())
         }
+
+        const ret = fragment.cloneNode(true) as DocumentFragment
         if (currentDestruction) {
-            currentDestruction.n = [fragment.firstChild, fragment.lastChild]
+            currentDestruction.n = [ret.firstChild, ret.lastChild]
         }
-        return fragment
+        return ret
     }
 }
 

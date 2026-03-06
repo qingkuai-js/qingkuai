@@ -150,7 +150,13 @@ function markAttributeNameAsReusedStrings(node: TemplateNode, attribute: Templat
         if (baseName.length >= 3) {
             increaseReusedStringUsedTimes(baseName)
         }
-    } else if (rawName[0] === "!" && rawName !== "!class") {
-        increaseReusedStringUsedTimes(baseName)
+        return
+    }
+    if (rawName[0] === "!" && rawName !== "!class") {
+        if (!baseName.startsWith("xlink:")) {
+            increaseReusedStringUsedTimes(baseName)
+        } else {
+            increaseReusedStringUsedTimes(baseName.slice(6))
+        }
     }
 }

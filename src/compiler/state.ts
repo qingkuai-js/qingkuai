@@ -2,6 +2,7 @@ import type {
     AnalyzeResult,
     CompileMessage,
     CompileOptions,
+    GenerateIdentifier,
     InputDescriptor
 } from "#type-declarations/compiler"
 
@@ -14,11 +15,26 @@ import { newCleanObj, stripPrototype } from "../util/shared/sundry"
 export let analyzeResult: AnalyzeResult
 export let messages: CompileMessage[] = []
 export let inputDescriptor: InputDescriptor
+export let generateIdentifier: GenerateIdentifier
 
 export function resetCompilerState(options: CompileOptions) {
     messages = []
     analyzeResult = newAnalyzeResult()
+    generateIdentifier = newGenerateIdentifier()
     inputDescriptor = newInputDescriptor(options)
+}
+
+function newGenerateIdentifier(): GenerateIdentifier {
+    return {
+        anchor: "",
+        context: "",
+        internal: "",
+        getterArg: "",
+        setterArg: "",
+        contextGetter: "",
+        suffix: newCleanObj(),
+        prefix: newCleanObj()
+    }
 }
 
 function newAnalyzeResult(): AnalyzeResult {
@@ -28,8 +44,9 @@ function newAnalyzeResult(): AnalyzeResult {
                 passive: new Set(),
                 nonPassive: new Set()
             },
-            eventInfos: new Map(),
+            componentFragment: null,
             compressStringsCount: 0,
+            eventInfos: new Map(),
             nodeContexts: new Map(),
             parsedPatterns: new Map(),
             parsedExpressions: new Map(),
@@ -50,15 +67,6 @@ function newAnalyzeResult(): AnalyzeResult {
             topLevelIdentifiers: newCleanObj(),
             preMutatedTopLevelIdentifiers: new Set()
         },
-        generateIds: stripPrototype({
-            anchor: "",
-            context: "",
-            internal: "",
-            getterArg: "",
-            setterArg: "",
-            contextGetter: ""
-        }),
-        fragmentIdCount: 0,
         slots: newCleanObj(),
         reusedStrings: newCleanObj()
     }

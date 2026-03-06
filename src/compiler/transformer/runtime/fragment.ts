@@ -17,9 +17,9 @@ import {
     increaseCompressStringUsedTimes
 } from "../../../util/compiler/sundry"
 import { getLastElem } from "../../../util/shared/arrays"
-import { analyzeResult, inputDescriptor } from "../../state"
 import { CREATE_ANCHOR_DIRECTIVES, SPREAD_TAG } from "../../constants"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { interpolatedAttrStartCharRE, omitQuoteAttrValueRE } from "../../regular"
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
@@ -28,11 +28,10 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
     }
 
     const fragments: TemplateFragment[] = []
-    const nodeIdCountMap: Record<string, number> = newCleanObj()
     const existingFragmentContentMap: Record<string, TemplateFragment> = newCleanObj()
 
-    function extendFragments(nodeContext: TemplateNodeContext) {
-        const fragment: TemplateFragment = (nodeContext.fragment = {
+    function extendFragments(nodeContext: TemplateNodeContext | null) {
+        const fragment: TemplateFragment = {
             id: "",
             content: [],
             getterId: "",
@@ -40,36 +39,36 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             getWith: undefined,
             directChildrenCount: 0,
             usedCompressString: false
-        })
-        return (fragments.push(fragment), fragment)
+        }
+        if ((fragments.push(fragment), nodeContext)) {
+            return (nodeContext.fragment = fragment)
+        } else {
+            return (analyzeResult.template.componentFragment = fragment)
+        }
     }
 
     ;(function generate(
         nodes: TemplateNode[],
         fragment: TemplateFragment,
-        parent: TemplateNode | null
+        parentContext: TemplateNodeContext | null
     ) {
         const increaseDirectChildrenCount = () => {
-            if (!parent) {
+            if (!parentContext) {
                 fragment.directChildrenCount++
             } else {
-                getTemplateNodeContext(parent).selectedChildCount++
+                parentContext.selectableChildCount++
             }
         }
 
         const selectLastNode = (id: string, nodeContext?: TemplateNodeContext) => {
-            const nodeIdStart = (nodeIdCountMap[id] ??= 1)
-            const nodeId = ensureIdWithNumSuffix(id, nodeIdStart)
-            const parentContext = parent && getTemplateNodeContext(parent)
-            if ((nodeIdCountMap[id]++, nodeContext)) {
-                nodeContext.id = nodeId
-            }
+            const nodeId = ensureIdWithNumSuffix("_" + id)
             fragment.selections.push({
                 id: nodeId,
                 parent: parentContext?.id,
-                index: parentContext?.selectedChildCount ?? fragment.directChildrenCount
+                replaceWithText: getLastElem(fragment.content) === "<!>",
+                index: (parentContext?.selectableChildCount ?? fragment.directChildrenCount) - 1
             })
-            return nodeId
+            return (nodeContext && (nodeContext.id = nodeId), nodeId)
         }
 
         for (const node of nodes) {
@@ -80,13 +79,19 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             const isComment = "!" === node.tag
             const nodeContext = getTemplateNodeContext(node)
 
-            const createFragmentWithAnchor = (nodes: TemplateNode[]) => {
+            const addEmptyTextNodeContent = (select = false) => {
                 const useComment = getLastElem(fragment.content) === " "
-                const existringFragment = nodeContext.fragment ?? extendFragments(nodeContext)
-                fragment.content.push(useComment ? "<!>" : " ")
-                nodeContext.anchorId = selectLastNode("text")
                 increaseDirectChildrenCount()
-                generate(nodes, existringFragment, null)
+                fragment.content.push(useComment ? "<!>" : " ")
+                return select ? selectLastNode("text", nodeContext) : ""
+            }
+
+            const createFragmentWithAnchor = (nodes: TemplateNode[]) => {
+                const existingFragment = nodeContext.fragment ?? extendFragments(nodeContext)
+                if (!node.parent?.componentTag) {
+                    nodeContext.anchorId = addEmptyTextNodeContent(true)
+                }
+                generate(nodes, existingFragment, null)
             }
 
             if ("slot" === node.tag) {
@@ -104,38 +109,43 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                 continue
             }
 
+            // 如果节点只具有一个 #html 指令，只需要在其内部的文本节点处创建一个锚点
+            // If the node only has a `#html` directive, just create an anchor at its internal text node
             if (nodeContext.sortedDirectives.length && !nodeContext.fragment) {
-                if (CREATE_ANCHOR_DIRECTIVES.has(nodeContext.sortedDirectives[0].name.raw)) {
-                    createFragmentWithAnchor([node])
-                } else {
-                    nodeContext.anchorId = getTemplateNodeContext(
-                        getPrevHasDirectiveSibling(node)!
-                    ).anchorId
-                    generate([node], extendFragments(nodeContext), null)
+                if (
+                    !nodeContext.attributesMap["#html"] ||
+                    nodeContext.sortedDirectives.length !== 1
+                ) {
+                    if (CREATE_ANCHOR_DIRECTIVES.has(nodeContext.sortedDirectives[0].name.raw)) {
+                        createFragmentWithAnchor([node])
+                    } else {
+                        nodeContext.anchorId = getTemplateNodeContext(
+                            getPrevHasDirectiveSibling(node)!
+                        ).anchorId
+                        generate([node], extendFragments(nodeContext), null)
+                    }
+                    continue
                 }
-                continue
             }
 
             if (SPREAD_TAG === node.tag) {
-                generate(node.children, fragment, getSelectableParentNode(node))
+                const selectableParent = getSelectableParentNode(node)
+                generate(
+                    node.children,
+                    fragment,
+                    selectableParent && getTemplateNodeContext(selectableParent)
+                )
                 continue
             }
 
-            if (nodeContext.shouldBeSelected) {
-                selectLastNode(node.tag || "text", nodeContext)
-            }
-
             if ("" === node.tag) {
-                if (!isHtmlDirectiveChild(node)) {
-                    if (nodeContext.shouldBeSelected) {
-                        fragment.content.push(" ")
+                if (nodeContext.shouldBeSelected) {
+                    addEmptyTextNodeContent(true)
+                } else {
+                    const content = getGeneratedStaticTextContent(node.content[0])!
+                    if (content) {
                         increaseDirectChildrenCount()
-                    } else {
-                        const content = getGeneratedStaticTextContent(node.content[0])!
-                        if (content) {
-                            increaseDirectChildrenCount()
-                            fragment.content.push(content)
-                        }
+                        fragment.content.push(content)
                     }
                 }
                 continue
@@ -169,11 +179,13 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             if (!isComment) {
                 fragment.content.push(">")
             }
-            increaseDirectChildrenCount()
-            generate(node.children, fragment, node)
+            if ((increaseDirectChildrenCount(), nodeContext.shouldBeSelected)) {
+                selectLastNode(node.tag, nodeContext)
+            }
+            generate(node.children, fragment, nodeContext)
             node.isSelfClosing || fragment.content.push(isComment ? "-->" : `</${node.tag}>`)
         }
-    })(nodes, extendFragments(getTemplateNodeContext(nodes[0])), null)
+    })(nodes, extendFragments(null), null)
 
     for (const fragment of fragments) {
         const joinedContent = fragment.content.join("")
@@ -190,12 +202,11 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
 }
 
 export function generateTemplateFragments(fragments: TemplateFragment[], writer: CodeWriter) {
-    let fragmentsCount = 0
     let compressStringsId = ""
+    let hasDeclaration = false
 
     const validCompressStrings: string[] = []
-    const isTesting = process.env.VITEST === "true"
-    const internalId = analyzeResult.generateIds.internal
+    const internalId = generateIdentifier.internal
 
     traverseObject(analyzeResult.template.compressStrings, (key, value) => {
         if (value.times > 1) {
@@ -207,7 +218,7 @@ export function generateTemplateFragments(fragments: TemplateFragment[], writer:
     // 生成压缩字符串数组声明
     // Generate the declaration for the compressed strings array.
     if (validCompressStrings.length) {
-        compressStringsId = ensureIdWithPrefix("compressStrings")
+        compressStringsId = ensureIdWithPrefix("_compressStrings")
 
         if (validCompressStrings.length > 10) {
             for (let i = 0; i < validCompressStrings.length; i++) {
@@ -224,8 +235,8 @@ export function generateTemplateFragments(fragments: TemplateFragment[], writer:
         }
     }
 
-    // 生成 FragmentGetter 声明，若处于测试状态则附加节点选择语句
-    // Generate the FragmentGetter declaration; if in test mode, append node selection statements.
+    // 生成 FragmentGetter 声明
+    // Generate the FragmentGetter declaration
     for (const fragment of fragments) {
         if (!fragment.content.length) {
             continue
@@ -238,6 +249,7 @@ export function generateTemplateFragments(fragments: TemplateFragment[], writer:
             }
             return ((fragment.usedCompressString = true), ret + "/" + info.index)
         }, "")
+        hasDeclaration = true
         joinedContent = joinedContent.replaceAll("`", "\\`")
 
         if (inputDescriptor.options.debug) {
@@ -245,54 +257,33 @@ export function generateTemplateFragments(fragments: TemplateFragment[], writer:
         }
         if (fragment.getWith) {
             fragment.getterId = fragment.getWith.getterId
-        } else if (joinedContent !== " ") {
-            const getterId = (fragment.getterId = ensureIdWithNumSuffix(
-                "getFragment",
-                ++fragmentsCount
-            ))
-            writer.writeLine(
-                `const ${getterId} = ${internalId}.createFragmentGetter(\`${joinedContent}\`${
-                    validCompressStrings.length && fragment.usedCompressString
-                        ? `, ${compressStringsId}`
-                        : ""
-                })`
-            )
-        }
-        if (isTesting) {
-            generateFramgmentSelection(fragment, writer).wrapLine()
+        } else {
+            const arg =
+                validCompressStrings.length && fragment.usedCompressString
+                    ? `, ${compressStringsId}`
+                    : ""
+            writer.write(`const ${(fragment.getterId = ensureIdWithNumSuffix("_getFragment"))}`)
+            writer.write(` = ${internalId}.createFragmentGetter(\`${joinedContent}\`${arg})\n`)
         }
     }
-    if (!isTesting && fragments.some(fragment => fragment.content[0]?.trim())) {
-        writer.wrapLine()
-    }
+    return (hasDeclaration && writer.wrapLine(), writer)
 }
 
 export function generateFramgmentSelection(fragment: TemplateFragment, writer: CodeWriter) {
-    const isTesting = process.env.VITEST === "true"
-    const internalId = analyzeResult.generateIds.internal
-    if (fragment.content.length !== 1 || fragment.content[0] !== " ") {
-        const fragmentId = (fragment.id = ensureIdWithNumSuffix(
-            "fragment",
-            ++analyzeResult.fragmentIdCount
-        ))
-        writer.wrapLine().write(`const ${fragmentId} = ${fragment.getterId}()`)
+    const internalId = generateIdentifier.internal
+    const fragmentId = (fragment.id = ensureIdWithNumSuffix("_fragment"))
+    writer.wrapLine().write(`const ${fragmentId} = ${fragment.getterId}()`)
 
-        for (const selection of fragment.selections) {
-            writer.write(
-                `\nconst ${selection.id} = _.getChild(${
-                    selection.parent ?? fragmentId
-                }${selection.index ? `, ${selection.index}` : ""})`
-            )
-        }
-    } else {
-        if (fragment.selections.length) {
-            fragment.id = fragment.selections[0].id
-        } else {
-            fragment.id = ensureIdWithNumSuffix("fragment", ++analyzeResult.fragmentIdCount)
-        }
-        writer.wrapLine().write(`const ${fragment.id} = ${internalId}.newTextNode()`)
+    for (const selection of fragment.selections) {
+        writer.wrapLine().write(`const ${selection.id} = `)
+        writer.write(
+            `${internalId}.getChild${selection.replaceWithText ? "AsText" : ""}(${
+                selection.parent ?? fragmentId
+            }${selection.index ? `, ${selection.index}` : ""})`
+        )
+        selection.replaceWithText && writer.write(")")
     }
-    return isTesting ? writer.wrapLine() : writer
+    return writer
 }
 
 function getSelectableParentNode(node: TemplateNode) {

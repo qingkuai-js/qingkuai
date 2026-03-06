@@ -276,6 +276,10 @@ export const InvalidReferenceAttributeValue = withLocation(1048, () => {
     return `The value of a reference attribute must be either an identifier or a member expression.`
 })
 
+export const InvalidHtmlDirectivePlacement = withLocation(1058, (kind: "slot" | "component") => {
+    return `The "#html" directive cannot be used on ${kind === "slot" ? "<slot> tags" : "components"}.`
+})
+
 export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrinsic: string) => {
     return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })

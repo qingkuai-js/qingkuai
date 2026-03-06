@@ -13,7 +13,8 @@ import {
     getParsedExpression,
     getPrevElementContext,
     getNextElementContent,
-    getTemplateNodeContext
+    getTemplateNodeContext,
+    isHtmlDirectiveChild
 } from "../../../util/compiler/template"
 import {
     getAttributeBaseName,
@@ -22,89 +23,124 @@ import {
     shouldExtractCommonString
 } from "../../../util/compiler/sundry"
 import { jsValidIdentifierRE } from "../../regular"
-import { DELEGATABLE_EVENTS, SPREAD_TAG } from "../../constants"
+import { isNull } from "../../../util/shared/assert"
+import { DELEGATABLE_EVENTS } from "../../constants"
 import { generateFramgmentSelection } from "./fragment"
 import { getLastElem } from "../../../util/shared/arrays"
 import { stripTypeExpressions } from "../../estree/sundry"
-import { analyzeResult, inputDescriptor } from "../../state"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
-export function generateTemplateRender(
-    nodes: TemplateNode[],
-    writer: CodeWriter,
-    by: "directive" | "component" | "slot" | "" = ""
-) {
-    let attachmentNodeContext: TemplateNodeContext | undefined
+export function generateTemplateRender(nodes: TemplateNode[], writer: CodeWriter) {
+    let insertPostfix: GeneralFunc | undefined
+
+    const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
+    const componentFragment = analyzeResult.template.componentFragment
+
+    const wrapInsertPostfix = (method: GeneralFunc | undefined) => {
+        if (method) {
+            const original = insertPostfix
+            insertPostfix = () => {
+                method()
+                original?.()
+                insertPostfix = undefined
+            }
+        }
+    }
+
+    if (isTopLevelNodes && componentFragment?.content.length) {
+        generateFramgmentSelection(componentFragment, writer)
+        generateRenderEffect(writer, nodes, null)
+    }
+
     for (const node of nodes) {
         const nodeContext = getTemplateNodeContext(node)
+        const hasFragmentContent = !!nodeContext.fragment?.content.length
         if (
             nodeContext.sortedDirectives.some(item => {
                 return item.name.raw !== "#slot"
             })
         ) {
-            generateDirectiveBlock(nodeContext, 0, writer)
-        } else if ("slot" === node.tag && by !== "slot") {
-            generateSlotCall(nodeContext, writer)
-        } else if (node.componentTag) {
-            generateComponentInstantiate(node, writer)
-        } else if (nodeContext.fragment?.content.length) {
-            attachmentNodeContext = nodeContext
-            generateFramgmentSelection(nodeContext.fragment, writer)
+            wrapInsertPostfix(generateDirectiveBlock(writer, 0, nodeContext))
+        }
+        if (node.componentTag) {
+            generateComponentInstantiate(writer, nodeContext)
+            continue
+        }
+        if ("slot" === node.tag) {
+            wrapInsertPostfix(generateSlotCall(writer, nodeContext) as any)
+        }
+        if (hasFragmentContent) {
+            generateFramgmentSelection(nodeContext.fragment!, writer)
+            generateRenderEffect(writer, [node], node)
+        }
+
+        /**
+         * 当节点上除了 #html 指令还存在其他指令时，{@link generateDirectiveBlock}
+         * 方法不会生成指令块调用语句，因为此情况下调用语句必须等待其他节点（锚点）选择完成后才能生成
+         *
+         * When a node has other directives besides the #html directive, the {@link generateDirectiveBlock}
+         * method will not generate the directive block call statement, because in this case the call statement
+         * must wait until other nodes (anchor) are selected before it can be generated
+         */
+        if (nodeContext.attributesMap["#html"] && nodeContext.sortedDirectives.length !== 1) {
+            const htmlDirectiveIndex = nodeContext.sortedDirectives.findIndex(item => {
+                return item.name.raw === "#html"
+            })
+            generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext)
+        }
+
+        if ((generateTemplateRender(node.children, writer), hasFragmentContent)) {
+            wrapInsertPostfix(() => {
+                generateFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!.id)
+            })
         }
     }
-    if (by !== "directive") {
-        generateRenderEffect(nodes, writer, !!by)
-    }
-    if (attachmentNodeContext) {
-        generateFragmentAttachment(attachmentNodeContext, writer)
+    if ((insertPostfix?.(), isTopLevelNodes)) {
+        generateFragmentAttachment(writer, generateIdentifier.anchor, componentFragment!.id)
     }
 }
 
 function generateDirectiveBlock(
-    nodeContext: TemplateNodeContext,
+    writer: CodeWriter,
     directiveIndex: number,
-    writer: CodeWriter
-) {
+    nodeContext: TemplateNodeContext
+): GeneralFunc | undefined {
     const node = nodeContext.node
-    const internalId = analyzeResult.generateIds.internal
-    const getterArg = analyzeResult.generateIds.getterArg
+    const internalId = generateIdentifier.internal
+    const getterArg = generateIdentifier.getterArg
     const directive = nodeContext.sortedDirectives[directiveIndex]
 
-    switch (directive?.name.raw) {
-        case "#show": {
-            writer.wrapLine().write(`${internalId}.displayBlock(`).indent()
-            writer.write(`${getterArg} => (`).writeParsedExpression(directive).writeLine("),")
-            generateDirectiveRender({
-                enclosure() {
-                    writer.dedent().write(")")
-                }
-            })
-            break
-        }
+    // 跳过 #html 指令的处理，推迟至节点选择完成后生成
+    // Skip processing the `#html` directive; generate it after node selection is completed
+    const generateNextDirective = () => {
+        const delta = nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1
+        return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext)
+    }
 
+    switch (directive?.name.raw) {
         case "#html": {
             writer.wrapLine().write(`${internalId}.htmlBlock(`).indent()
-            writer.write(nodeContext.anchorId).writeLine(",").write(`${getterArg} => (`)
+            writer.write(getTemplateNodeContext(nodeContext.node.children[0]).id)
+            writer.writeLine(",").write(`${getterArg} => (`)
             writer.writeInterpolatedText(node.children[0]).write(")")
 
             if (directive.equalSign) {
                 writer.writeLine(",").write(`${getterArg} => (`)
                 writer.writeParsedExpression(writer).write(")")
             }
-            writer.dedent().writeLine(")")
-            break
+            return (writer.dedent().write(")"), undefined)
         }
 
         case "#target": {
             writer.wrapLine().write(`${internalId}.targetBlock(`).indent()
             writer.write(nodeContext.anchorId).writeLine(",").write(`${getterArg} => (`)
             writer.writeParsedExpression(directive).writeLine("),")
-            generateDirectiveRender({
+            return generateDirectiveRender({
                 enclosure() {
                     writer.dedent().write(")")
                 }
             })
-            break
         }
 
         case "#if": {
@@ -117,7 +153,7 @@ function generateDirectiveBlock(
             // fallthrough
         }
         case "#else": {
-            generateDirectiveRender({
+            return generateDirectiveRender({
                 enclosure() {
                     if (doesDirectiveHasContinuousItem(nodeContext.node, directive)) {
                         writer.writeLine(",")
@@ -126,8 +162,6 @@ function generateDirectiveBlock(
                     }
                 }
             })
-
-            break
         }
 
         case "#await": {
@@ -138,15 +172,13 @@ function generateDirectiveBlock(
             writer.write(`${getterArg} => (`).writeParsedExpression(directive).writeLine("),")
 
             if (noRender) {
-                generateDirectiveEmptyRender()
-                break
+                return (writer.writeLine(`${internalId}.UNDEF,`), generateNextDirective())
             }
             // fallthrough
         }
         case "#then": {
             if (!nodeContext.fragment?.content.length) {
-                generateDirectiveEmptyRender()
-                break
+                return (writer.writeLine(`${internalId}.UNDEF,`), undefined)
             }
             // fallthrough
         }
@@ -167,7 +199,7 @@ function generateDirectiveBlock(
                     writer.writeLine(`${internalId}.NIL,`)
                 }
             }
-            generateDirectiveRender({
+            return generateDirectiveRender({
                 enclosure() {
                     if (doesDirectiveHasContinuousItem(node, directive)) {
                         writer.writeLine(",")
@@ -176,7 +208,6 @@ function generateDirectiveBlock(
                     }
                 }
             })
-            break
         }
 
         case "#for": {
@@ -192,8 +223,8 @@ function generateDirectiveBlock(
 
                         const pattern = patterns[i]!
                         const contextGetterArg = i ? "0" : ""
+                        const contextGetterId = generateIdentifier.contextGetter
                         const valueStartSourceIndex = directive.value.loc.start.index
-                        const contextGetterId = analyzeResult.generateIds.contextGetter
                         const pureMarker = pattern.type === "Identifier" ? "/*#__PURE__*/" : ""
                         writer.write(`const `).writeContextPattern(pattern, valueStartSourceIndex)
                         writer.writeLine(` = ${pureMarker}${contextGetterId}(${contextGetterArg})`)
@@ -203,7 +234,7 @@ function generateDirectiveBlock(
 
             if ((writer.wrapLine().write(`${internalId}.listBlock(`).indent(), keyDirective)) {
                 writer.write(nodeContext.anchorId).write(",").wrapLine()
-                nodeContext.anchorId = ensureIdWithNumSuffix("anchor")
+                nodeContext.anchorId = ensureIdWithNumSuffix("_anchor")
             }
             writer.write(`${getterArg} => (`)
             writer.writeParsedExpression(directive).write("),").wrapLine()
@@ -215,7 +246,7 @@ function generateDirectiveBlock(
                 writer.writeParsedExpression(keyDirective)
                 writer.write(")").dedent().write("},").wrapLine()
             }
-            generateDirectiveRender({
+            return generateDirectiveRender({
                 context() {
                     generateContextDeclaration()
                 },
@@ -225,14 +256,13 @@ function generateDirectiveBlock(
                 arg() {
                     if (keyDirective) {
                         writer.write(
-                            `(${nodeContext.anchorId}, ${analyzeResult.generateIds.contextGetter})`
+                            `(${nodeContext.anchorId}, ${generateIdentifier.contextGetter})`
                         )
                     } else {
-                        writer.write(analyzeResult.generateIds.contextGetter)
+                        writer.write(generateIdentifier.contextGetter)
                     }
                 }
             })
-            break
         }
     }
 
@@ -240,193 +270,203 @@ function generateDirectiveBlock(
         arg?: GeneralFunc
         context?: GeneralFunc
         enclosure?: GeneralFunc
-    }) {
+    }): GeneralFunc {
         if (insert?.arg) {
             insert.arg()
         } else {
             writer.write(getterArg)
         }
-        if (
-            (writer.write(" => {").indent(false), isLastDirectiveIndex(nodeContext, directiveIndex))
-        ) {
-            if (node.componentTag) {
-                generateComponentInstantiate(node, writer)
-            } else {
-                if ((insert?.context?.(), nodeContext.fragment)) {
-                    generateFramgmentSelection(nodeContext.fragment, writer)
-                }
-                generateRenderEffect([node], writer, true)
-                generateTemplateRender(node.children, writer, "directive")
-                nodeContext.fragment && generateFragmentAttachment(nodeContext, writer)
-            }
-        }
-        generateDirectiveBlock(nodeContext, directiveIndex + 1, writer)
-        writer.dedent().write("}")
-        insert?.enclosure?.()
-    }
+        writer.write(" => {").indent(false)
 
-    function generateDirectiveEmptyRender() {
-        writer.writeLine(`${internalId}.UNDEF,`)
-        generateDirectiveBlock(nodeContext, directiveIndex + 1, writer)
+        const childEnclosure = generateNextDirective()
+        return () => (childEnclosure?.(), writer.dedent().write("}"), insert?.enclosure?.())
     }
 }
 
 function generateRenderEffect(
-    nodes: TemplateNode[],
     writer: CodeWriter,
-    skipAnchorCheck = false,
-    withinRenderEffect = false
+    nodes: TemplateNode[],
+    skipCheckNode: TemplateNode | null
 ) {
-    let createdRenderEffect = false
-    const internalId = analyzeResult.generateIds.internal
-    const getterArgId = analyzeResult.generateIds.getterArg
-    const setterArgId = analyzeResult.generateIds.setterArg
+    let withinRenderEffect = false
+    const internalId = generateIdentifier.internal
+    const getterArgId = generateIdentifier.getterArg
+    const setterArgId = generateIdentifier.setterArg
 
     const generateRenderEffectCall = () => {
-        if (!withinRenderEffect && !createdRenderEffect) {
-            createdRenderEffect = true
+        if (!withinRenderEffect) {
+            withinRenderEffect = true
             writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false)
         }
         return writer
     }
 
-    for (const node of nodes) {
-        const nodeContext = getTemplateNodeContext(node)
-        if (!skipAnchorCheck && nodeContext.anchorId) {
-            continue
-        }
-        if (node.componentTag || "slot" === node.tag || SPREAD_TAG === node.tag) {
-            generateRenderEffect(node.children, writer, false, withinRenderEffect)
-            continue
-        }
-
-        // event handlers
-        for (const event of nodeContext.eventListeners) {
-            const eventInfo = getParsedEventInfo(event)!
-            const expression = getParsedExpression(event)!
-            const baseName = eventInfo.eventName.slice(1)
-            const wrapperFlag = eventInfo.flagInfo.wrapper
-            const generalFlag = eventInfo.flagInfo.general
-            const delegated = DELEGATABLE_EVENTS.has(baseName)
-            const tipComment = inputDescriptor.options.tipComment
-            const stringifiedBaseName = getMaybeReusedString(baseName)
-            const stripTypeExpressionNode = stripTypeExpressions(expression.node)
-            writer.write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
-            writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
-
-            if (wrapperFlag.value) {
-                writer.write(`${internalId}.createEventWrapper(`)
+    ;(function generate(nodes: TemplateNode[]) {
+        for (const node of nodes) {
+            const nodeContext = getTemplateNodeContext(node)
+            if (nodeContext.fragment && skipCheckNode !== node) {
+                continue
             }
-            if (isFunctionLiteral(stripTypeExpressionNode)) {
-                writer.writeParsedExpression(event)
-            } else if (!isInlineEventHandler(stripTypeExpressionNode)) {
-                writer.write(`function ($arg){`).indent()
-                writer.write(`${internalId}.call(`)
-                writer.writeParsedExpression(event)
-                writer.write(`, this, $arg)`)
-                writer.dedent().write("}")
-            } else {
-                writer.write(`$arg => {`).indent()
-                writer.writeParsedExpression(event)
-                writer.dedent().write("}")
-            }
-            if (wrapperFlag.value) {
-                if ((writer.write(", "), tipComment)) {
-                    writer.write(`/* ${wrapperFlag.names.join(" | ")} */ `)
-                }
-                writer.write(wrapperFlag.value.toString()).write(")")
-            }
-            if (generalFlag.value) {
-                if ((writer.write(", "), tipComment)) {
-                    writer.write(`/* ${generalFlag.names.join("| ")} */ `)
-                }
-                writer.write(generalFlag.value.toString())
-            }
-            writer.writeLine(")")
-        }
-
-        // refernec attributes
-        for (const attribute of nodeContext.referenceAttributes) {
-            const generateBindCall = (method: string, type: "getter" | "setter") => {
-                writer.write(`${internalId}.${method}(${nodeContext.id}, `)
-
-                if (type === "getter") {
-                    writer.write(`${getterArgId} => (`)
-                    writer.writeParsedExpression(attribute).writeLine(")")
-                } else {
-                    writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
-                    writer.write(` = ${setterArgId}`).writeLine(")")
-                }
+            if (node.componentTag || "slot" === node.tag) {
+                generate(node.children)
+                continue
             }
 
-            switch (attribute.name.raw) {
-                case "&group": {
-                    generateBindCall("bindInputGroup", "getter")
-                }
-                case "&dom": {
-                    generateBindCall("bindDomReceiver", "setter")
-                    break
-                }
-                case "&number": {
-                    generateBindCall("bindInputNumber", "setter")
-                    break
-                }
-                case "&checked": {
-                    generateBindCall("bindInputChecked", "setter")
-                    break
-                }
-                case "&value": {
-                    if (node.tag === "input") {
-                        generateBindCall("bindInputValue", "setter")
-                    } else {
-                        generateBindCall("bindSelectValue", "getter")
+            const generateSetAttributeCall = (
+                attribute: TemplateAttribute,
+                renderEffect = false
+            ) => {
+                const baseName = getAttributeBaseName(attribute.name.raw)
+                if ((renderEffect && generateRenderEffectCall(), baseName === "class")) {
+                    const staticClassAttr = nodeContext.attributesMap["class"]
+                    if ((writer.wrapLine().write(`${internalId}.setClassName(`), staticClassAttr)) {
+                        writer.write("[")
+                        writer.writeTemplateStr(
+                            getMaybeReusedString(staticClassAttr.value.raw),
+                            staticClassAttr.value.loc
+                        )
+                        writer.write(", ")
                     }
-                    break
+                    writer.writeParsedExpression(attribute)
+                    writer.write(`${staticClassAttr ? "]" : ""})`)
+                    return
+                }
+                if (baseName === "value" && node.tag === "select") {
+                    writer.wrapLine().write(`${internalId}.`)
+                    writer.write(`setSelectValue(${nodeContext.id}, `)
+                    writer.writeParsedExpression(attribute).write(")")
+                    return
+                }
+
+                const isXlinkAttr = baseName.startsWith("xlink:")
+                const attrName = isXlinkAttr ? baseName.slice(6) : baseName
+                const method = isXlinkAttr ? "setXlinkAttribute" : "setAttribute"
+                writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
+                writer.write(`${getMaybeReusedString(attrName)}, `)
+                writer.writeParsedExpression(attribute).write(")")
+            }
+
+            // event handlers
+            for (const event of nodeContext.eventListeners) {
+                const eventInfo = getParsedEventInfo(event)!
+                const expression = getParsedExpression(event)!
+                const baseName = eventInfo.eventName.slice(1)
+                const wrapperFlag = eventInfo.flagInfo.wrapper
+                const generalFlag = eventInfo.flagInfo.general
+                const delegated = DELEGATABLE_EVENTS.has(baseName)
+                const tipComment = inputDescriptor.options.tipComment
+                const stringifiedBaseName = getMaybeReusedString(baseName)
+                const stripTypeExpressionNode = stripTypeExpressions(expression.node)
+                writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
+                writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
+
+                if (wrapperFlag.value) {
+                    writer.write(`${internalId}.createEventWrapper(`)
+                }
+                if (isFunctionLiteral(stripTypeExpressionNode)) {
+                    writer.writeParsedExpression(event)
+                } else if (!isInlineEventHandler(stripTypeExpressionNode)) {
+                    writer.write(`function ($arg){`).indent()
+                    writer.write(`${internalId}.call(`)
+                    writer.writeParsedExpression(event)
+                    writer.write(`, this, $arg)`)
+                    writer.dedent().write("}")
+                } else {
+                    writer.write(`$arg => {`).indent()
+                    writer.writeParsedExpression(event)
+                    writer.dedent().write("}")
+                }
+                if (wrapperFlag.value) {
+                    if ((writer.write(", "), tipComment)) {
+                        writer.write(`/* ${wrapperFlag.names.join(" | ")} */ `)
+                    }
+                    writer.write(wrapperFlag.value.toString()).write(")")
+                }
+                if (generalFlag.value) {
+                    if ((writer.write(", "), tipComment)) {
+                        writer.write(`/* ${generalFlag.names.join("| ")} */ `)
+                    }
+                    writer.write(generalFlag.value.toString())
+                }
+                writer.write(")")
+            }
+
+            // refernec attributes
+            for (const attribute of nodeContext.referenceAttributes) {
+                const generateBindCall = (method: string, type: "getter" | "setter" | "both") => {
+                    writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
+
+                    if (type !== "setter") {
+                        writer.write(`${getterArgId} => (`)
+                        writer.writeParsedExpression(attribute).write(")")
+                    }
+                    if ((type === "both" && writer.write(", "), type !== "getter")) {
+                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
+                        writer.write(` = ${setterArgId}`).write(")")
+                    }
+                }
+
+                switch (attribute.name.raw) {
+                    case "&number": {
+                        generateBindCall("bindInputNumber", "both")
+                        break
+                    }
+                    case "&checked": {
+                        generateBindCall("bindInputChecked", "both")
+                        break
+                    }
+                    case "&group": {
+                        generateBindCall("bindInputGroup", "getter")
+                    }
+                    case "&dom": {
+                        generateBindCall("bindDomReceiver", "setter")
+                        break
+                    }
+                    case "&value": {
+                        if (node.tag === "input") {
+                            generateBindCall("bindInputValue", "both")
+                        } else {
+                            generateBindCall("bindSelectValue", "getter")
+                        }
+                        break
+                    }
                 }
             }
-        }
 
-        // dynamic attributes
-        const dynamicAttrsWithEffect: TemplateAttribute[] = []
-        const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
-        for (const attribute of nodeContext.dynamicAttributes) {
-            if (doesAttributeHasRenderEffect(attribute)) {
-                dynamicAttrsWithEffect.push(attribute)
-            } else {
-                dynamicAttrsWithoutEffect.push(attribute)
+            // dynamic attributes
+            const dynamicAttrsWithEffect: TemplateAttribute[] = []
+            const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
+            for (const attribute of nodeContext.dynamicAttributes) {
+                if (doesAttributeHasRenderEffect(attribute)) {
+                    dynamicAttrsWithEffect.push(attribute)
+                } else {
+                    dynamicAttrsWithoutEffect.push(attribute)
+                }
             }
-        }
-        for (const attribute of dynamicAttrsWithoutEffect) {
-            const baseName = getAttributeBaseName(attribute.name.raw)
-            writer.wrapLine().write(`${internalId}.setAttribute(`)
-            writer.write(`${nodeContext.id}, `)
-            writer.write(`${getMaybeReusedString(baseName)}, `)
-            writer.writeParsedExpression(attribute).write(")")
-        }
-        for (const attribute of dynamicAttrsWithEffect) {
-            const baseName = getAttributeBaseName(attribute.name.raw)
-            generateRenderEffectCall().wrapLine()
-            writer.write(`${internalId}.setAttribute(`)
-            writer.write(`${nodeContext.id}, `)
-            writer.write(`${getMaybeReusedString(baseName)}, `)
-            writer.writeParsedExpression(attribute).write(")")
-        }
+            for (const attribute of dynamicAttrsWithoutEffect) {
+                generateSetAttributeCall(attribute)
+            }
+            for (const attribute of dynamicAttrsWithEffect) {
+                generateSetAttributeCall(attribute, true)
+            }
 
-        if (node.content.some(part => part.isInterpolated)) {
-            generateRenderEffectCall().wrapLine()
-            writer.write(`${internalId}.setText(`)
-            writer.write(`${nodeContext.id}, `)
-            writer.writeInterpolatedText(node).write(")")
+            if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
+                generateRenderEffectCall().wrapLine()
+                writer.write(`${internalId}.setText(`)
+                writer.write(`${nodeContext.id}, `)
+                writer.writeInterpolatedText(node).write(")")
+            }
+            generate(node.children)
         }
-        generateRenderEffect(node.children, writer, false, withinRenderEffect)
-    }
-    createdRenderEffect && writer.dedent().write("})")
+    })(nodes)
+
+    withinRenderEffect && writer.dedent().write("})")
 }
 
-function generateSlotCall(nodeContext: TemplateNodeContext, writer: CodeWriter) {
+function generateSlotCall(writer: CodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
-    const contextId = analyzeResult.generateIds.context
+    const contextId = generateIdentifier.context
     const hasDefaultContent = !!nodeContext.fragment?.content.length
 
     const insertTrailingComma = () => {
@@ -446,50 +486,47 @@ function generateSlotCall(nodeContext: TemplateNodeContext, writer: CodeWriter) 
     } else {
         writer.wrapLine().write(`;(${contextId}.s?.`)
         generateSlotName().write(" ?? () => {").indent(false)
-        generateTemplateRender([nodeContext.node], writer, "slot")
-        writer.dedent().write(`})(${nodeContext.anchorId}`)
     }
-
-    if (nodeContext.staticAttributes.length || nodeContext.dynamicAttributes.length) {
-        writer.write(", {").indent()
-
-        for (const attribute of nodeContext.dynamicAttributes) {
-            const baseName = getAttributeBaseName(attribute.name.raw)
-            insertTrailingComma()
-            generateContextKey(baseName, writer, {
-                after(computed) {
-                    if (!computed && !attribute.equalSign) {
-                        return
-                    }
-                    writer.write(": ").writeParsedExpression(attribute)
-                }
-            })
+    return () => {
+        if (hasDefaultContent) {
+            writer.dedent().write(`})(${nodeContext.anchorId}`)
         }
-        for (const attribute of nodeContext.staticAttributes) {
-            const rawName = attribute.name.raw
-            if (rawName === "name") {
-                continue
+        if (nodeContext.staticAttributes.length || nodeContext.dynamicAttributes.length) {
+            writer.write(", {").indent()
+
+            for (const attribute of nodeContext.dynamicAttributes) {
+                const baseName = getAttributeBaseName(attribute.name.raw)
+                insertTrailingComma()
+                generateContextKey(baseName, writer)
+                writer.write(": ").writeParsedExpression(attribute)
             }
-            insertTrailingComma()
-            generateContextKey(attribute.name.raw, writer).write(": ")
-            writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true")
+            for (const attribute of nodeContext.staticAttributes) {
+                const rawName = attribute.name.raw
+                if (rawName === "name") {
+                    continue
+                }
+                insertTrailingComma()
+                generateContextKey(attribute.name.raw, writer).write(": ")
+                writer.write(
+                    attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true"
+                )
+            }
+            writer.dedent().write("}")
         }
-        writer.dedent().write("}")
+        writer.write(")")
     }
-    writer.write(")")
 }
 
-function generateComponentInstantiate(node: TemplateNode, writer: CodeWriter) {
+function generateComponentInstantiate(writer: CodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
-    const nodeContext = getTemplateNodeContext(node)
-    const getterArgId = analyzeResult.generateIds.getterArg
-    const setterArgId = analyzeResult.generateIds.setterArg
+    const getterArgId = generateIdentifier.getterArg
+    const setterArgId = generateIdentifier.setterArg
     const hasRefs = !!nodeContext.referenceAttributes.length
     const hasStaticAttrs = !!nodeContext.staticAttributes.length
     const hasEventListeners = !!nodeContext.eventListeners.length
     const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length
-    const hasSlots = node.children.some(child => {
+    const hasSlots = nodeContext.node.children.some(child => {
         return getTemplateNodeContext(child).fragment!.content.length
     })
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
@@ -501,7 +538,9 @@ function generateComponentInstantiate(node: TemplateNode, writer: CodeWriter) {
         return ((needInsertComma = true), writer)
     }
 
-    if ((writer.wrapLine().writeParsedExpression(node), !(hasSlots || hasProps || hasRefs))) {
+    writer.wrapLine().writeParsedExpression(nodeContext.node)
+
+    if (!(hasSlots || hasProps || hasRefs)) {
         return (writer.write(`(${nodeContext.anchorId})`), undefined)
     }
 
@@ -548,9 +587,7 @@ function generateComponentInstantiate(node: TemplateNode, writer: CodeWriter) {
         writer.dedent().write("}")
     }
 
-    if (hasRefs) {
-        insertTrailingComma().write("r: {").indent()
-
+    if (hasRefs && insertTrailingComma().write("r: {").indent()) {
         for (const attribute of nodeContext.referenceAttributes) {
             if (attribute !== nodeContext.referenceAttributes[0]) {
                 insertTrailingComma()
@@ -568,13 +605,13 @@ function generateComponentInstantiate(node: TemplateNode, writer: CodeWriter) {
         insertTrailingComma().write("s: {").indent()
         needInsertComma = false
 
-        for (const child of node.children) {
+        for (const child of nodeContext.node.children) {
             const childContext = getTemplateNodeContext(child)
             if (!childContext.fragment!.content.length) {
                 continue
             }
 
-            const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("anchor"))
+            const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const slotDirective = childContext.attributesMap["#slot"]
             const expression = slotDirective && getParsedExpression(slotDirective)
             const pattern = slotDirective && getParsedPatterns(slotDirective)?.[0]
@@ -587,7 +624,7 @@ function generateComponentInstantiate(node: TemplateNode, writer: CodeWriter) {
                 writer.write(", ").writeContextPattern(pattern, startSourceIndex)
             }
             writer.write(") {").indent(false)
-            generateTemplateRender([child], writer, "component")
+            generateTemplateRender([child], writer)
             writer.dedent().write("}")
         }
         writer.dedent().write("}")
@@ -641,25 +678,13 @@ function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
     return getParsedExpression(attribute)!.reactive
 }
 
-function generateFragmentAttachment(nodeContext: TemplateNodeContext, writer: CodeWriter) {
-    const fragmentId = nodeContext.fragment!.id
-    const internalId = analyzeResult.generateIds.internal
-    const anchorId = nodeContext.anchorId || analyzeResult.generateIds.anchor
-    writer.wrapLine().write(`${internalId}.insertBefore(${anchorId}, ${fragmentId})`)
+function generateContextKey(str: string, writer: CodeWriter) {
+    if (jsValidIdentifierRE.test(str) && (str.length < 3 || !shouldExtractCommonString(str))) {
+        return writer.write(str)
+    }
+    return writer.write(`[${getMaybeReusedString(str)}]`)
 }
 
-function generateContextKey(
-    str: string,
-    writer: CodeWriter,
-    insert?: {
-        after?: (computed: boolean) => void
-        before?: (computed: boolean) => void
-    }
-) {
-    if (jsValidIdentifierRE.test(str) && (str.length < 3 || !shouldExtractCommonString(str))) {
-        return (insert?.before?.(false), writer.write(str), insert?.after?.(false), writer)
-    }
-
-    // prettier-ignore
-    return (insert?.before?.(true), writer.write(`[${getMaybeReusedString(str)}]`), insert?.after?.(true), writer)
+function generateFragmentAttachment(writer: CodeWriter, anchorId: string, fragmentId: string) {
+    writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
 }

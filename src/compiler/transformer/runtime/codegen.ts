@@ -1,9 +1,9 @@
-import type { TemplateNode } from "#type-declarations/compiler"
+import type { GenerateIdentifier, TemplateNode } from "#type-declarations/compiler"
 
 import {
     ensureIdWithPrefix,
-    ensureIdWithNumSuffix,
     getMaybeReusedString,
+    ensureIdWithNumSuffix,
     shouldExtractCommonString
 } from "../../../util/compiler/sundry"
 import { CodeWriter } from "../writer"
@@ -12,34 +12,33 @@ import { generateTemplateRender } from "./template"
 import { transformEmbeddedScript } from "./script"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
-import { analyzeResult, inputDescriptor } from "../../state"
 import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
 import { getTemplateFragments, generateTemplateFragments } from "./fragment"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { objectAssign, objectKeys, stringify } from "../../../util/shared/aliases"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
     let hasTopExtract = false
-    let extractCommonStrCount = 0
 
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
     const getterArgId = inputDescriptor.options.debug ? ensureIdWithPrefix("_") : "()"
     const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
-    objectAssign(analyzeResult.generateIds, {
+    objectAssign(generateIdentifier, {
         getterArg: getterArgId,
         internal: ensureIdWithPrefix("_"),
         setterArg: ensureIdWithPrefix("v"),
-        anchor: ensureIdWithPrefix("anchor"),
-        context: ensureIdWithPrefix("context"),
-        contextGetter: ensureIdWithPrefix("ctx")
-    })
+        anchor: ensureIdWithPrefix("_anchor"),
+        context: ensureIdWithPrefix("_context"),
+        contextGetter: ensureIdWithPrefix("_ctx")
+    } satisfies Partial<GenerateIdentifier>)
 
     const writer = new CodeWriter(true)
     const hoistWriter = new CodeWriter()
-    const anchorId = analyzeResult.generateIds.anchor
-    const contextId = analyzeResult.generateIds.context
+    const anchorId = generateIdentifier.anchor
+    const contextId = generateIdentifier.context
+    const internalId = generateIdentifier.internal
     const templateFragments = getTemplateFragments(nodes)
-    const internalId = analyzeResult.generateIds.internal
     const componentName = inputDescriptor.options.componentName
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
@@ -55,7 +54,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
             return
         }
         hasTopExtract = true
-        value.id = ensureIdWithNumSuffix("_s", ++extractCommonStrCount)
+        value.id = ensureIdWithNumSuffix("_s")
         writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
     })
 

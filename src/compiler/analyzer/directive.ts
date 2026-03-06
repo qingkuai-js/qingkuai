@@ -15,7 +15,8 @@ import {
     InvalidSlotDirectivePlacement,
     InvalidTargetDirectivePlacement,
     InvalidContextPatternForDirective,
-    HtmlDirectiveRequiresSingleTextChild
+    HtmlDirectiveRequiresSingleTextChild,
+    InvalidHtmlDirectivePlacement
 } from "../message/error"
 import {
     getLocByIndex,
@@ -199,7 +200,9 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         }
 
         case "#html": {
-            if (!node.children.length || node.children.some(child => child.tag)) {
+            if (node.componentTag || "slot" === node.tag) {
+                InvalidHtmlDirectivePlacement(nameLoc, node.componentTag ? "component" : "slot")
+            } else if (!(node.children.length === 1 && !node.children[0].tag)) {
                 HtmlDirectiveRequiresSingleTextChild(node.loc)
             } else if (
                 !directive.value.raw &&

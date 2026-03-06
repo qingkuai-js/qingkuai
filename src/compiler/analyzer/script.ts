@@ -4,13 +4,8 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
-import type {
-    Identifier,
-    CallExpression,
-    VariableDeclarator,
-    VariableDeclaration
-} from "@babel/types"
 import type { WalkContext } from "../estree/walk"
+import type { Identifier, VariableDeclarator, VariableDeclaration } from "@babel/types"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import {
@@ -22,8 +17,8 @@ import {
     intrinsicReactiveMethodsRE
 } from "../regular"
 import {
-    AmbiguousReactiveMarking,
     CannotAliasIdentifier,
+    AmbiguousReactiveMarking,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -163,14 +158,14 @@ const visitor: Visitor = {
             return
         }
         for (const declarator of node.declarations) {
-            const initNode = declarator.init
-            const assertedInitNode = initNode as CallExpression
             const destructuringIdentifierNames: string[] | undefined =
                 declarator.id.type === "Identifier" ? undefined : []
             const status = inferStatusWithDeclarator(declarator, node)
             const { topLevelIdentifiers, declaratorToAliasInfos: declaratorToAlias } =
                 analyzeResult.script
             const patternInfo = walkPatternIdentifiers(declarator.id, (identifier, path) => {
+                const initNode = declarator.init
+
                 // let/var 声明对衍生响应式值无意义，它不可被修改
                 // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
                 if (status === "derived" && node.kind !== "const") {
@@ -211,32 +206,32 @@ const visitor: Visitor = {
 
                 // status 为 alias 时记录标识符别名的访问路径
                 // When the status is `alias`, record the access path of the identifier alias.
-                let aliasInfo = declaratorToAlias.get(declarator)
-                if (!aliasInfo) {
-                    aliasInfo = { items: [], target: "" }
-                    declaratorToAlias.set(declarator, aliasInfo)
-                }
                 if (
                     status === "alias" &&
-                    inputDescriptor.options.debug &&
-                    !inputDescriptor.options.checkMode &&
-                    isLeftValue(assertedInitNode.arguments[0])
+                    initNode?.type === "CallExpression" &&
+                    initNode.arguments.length &&
+                    isLeftValue(initNode.arguments[0])
                 ) {
+                    let aliasInfos = declaratorToAlias.get(declarator)
+                    if (!aliasInfos) {
+                        declaratorToAlias.set(declarator, (aliasInfos = []))
+                    }
+
                     const argSource = inputDescriptor.script.code.slice(
-                        ...stripTypeExpressions(assertedInitNode.arguments[0]).range!
+                        ...stripTypeExpressions(initNode.arguments[0]).range!
                     )
                     const fullPath = argSource + path
                     const expression = stripTypeExpressions(parseExpression(fullPath)!)
                     if (expression.type === "MemberExpression") {
                         const propertySource = fullPath.slice(...expression.property.range!)
-                        aliasInfo.items.push({
+                        aliasInfos.push({
                             id: identifier.name,
                             property: expression.computed
                                 ? propertySource
-                                : stringify(propertySource)
+                                : stringify(propertySource),
+                            target: fullPath.slice(0, expression.object.end!)
                         })
                         topLevelIdentifiers[identifier.name].path = fullPath
-                        aliasInfo.target = fullPath.slice(0, expression.object.end!)
                     }
                 }
 

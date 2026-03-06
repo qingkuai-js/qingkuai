@@ -13,20 +13,17 @@ import { CodeWriter } from "../writer"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { jsDestructuringEqualTokenRE } from "../../regular"
-import { analyzeResult, inputDescriptor } from "../../state"
 import { findOutOfComment } from "../../../util/compiler/string"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
 export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEditor) {
-    let hoistGettersCount = 0
-    let hoistSettersCount = 0
-
+    const internalId = generateIdentifier.internal
     const debugMode = inputDescriptor.options.debug
     const scriptSource = inputDescriptor.script.code
-    const internalId = analyzeResult.generateIds.internal
     const identifierMap: Record<string, string> = newCleanObj()
-    const undefId = `${analyzeResult.generateIds.internal}.UNDEF`
+    const undefId = `${generateIdentifier.internal}.UNDEF`
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
@@ -235,7 +232,7 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
         const { declarations } = info.nodeInfos[0].declaration as VariableDeclaration
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
-        const aliasInfo = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
+        const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
 
         // 移除 VariableDeclarator 多余的尾部逗号
         // Remove any trailing comma from the VariableDeclarator.
@@ -261,7 +258,7 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             editor.insert(intrinsicId.start!, `${internalId}.`)
             editor.replace(
                 ...intrinsicCall.arguments[0].range!,
-                generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.items[0].property}]`)
+                generateHoistGetter(`[${aliasInfos[0].target}, ${aliasInfos[0].property}]`)
             )
             editor.insert(intrinsicCall.arguments[0].end!, `, ${generateHoistSetter(name)}`)
             return
@@ -276,9 +273,9 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         const destructuringIds = info.destructuringIdentifierNames.map(item => {
             return `[${getReactiveIdentifier(item)}, ${item}]`
         })
-        for (const aliasItem of aliasInfo.items) {
-            getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasItem.property}]`))
-            setterIds.push(generateHoistSetter(aliasItem.id))
+        for (const aliasInfo of aliasInfos) {
+            getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.property}]`))
+            setterIds.push(generateHoistSetter(aliasInfo.id))
         }
         replaceIntrinsicCall(declarator, "destructuringAlias")
         editor.remove(...declaratorIdRange)
@@ -549,17 +546,17 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         }
     }
     function getReactiveIdentifier(name: string) {
-        return (identifierMap[name] ??= ensureIdWithNumSuffix("_" + name, 0))
+        return (identifierMap[name] ??= ensureIdWithNumSuffix("_" + name, true))
     }
 
     function generateHoistGetter(returns: string) {
-        const getterArg = analyzeResult.generateIds.getterArg || "()"
-        const getterId = ensureIdWithNumSuffix("_G", ++hoistGettersCount)
+        const getterId = ensureIdWithNumSuffix("_G")
+        const getterArg = generateIdentifier.getterArg || "()"
         return (hoistWriter.write(`const ${getterId} = ${getterArg} => (${returns})\n`), getterId)
     }
 
     function generateHoistSetter(target: string) {
-        const setterId = ensureIdWithNumSuffix("_S", ++hoistSettersCount)
+        const setterId = ensureIdWithNumSuffix("_S")
         return (hoistWriter.write(`const ${setterId} = ${generateSetterCode(target)}\n`), setterId)
     }
 
@@ -599,7 +596,7 @@ function shouldNodeWrapAsGetter(node: AnyNode) {
 }
 
 function generateSetterCode(target: string) {
-    const setterArgId = analyzeResult.generateIds.setterArg
+    const setterArgId = generateIdentifier.setterArg
     return `${setterArgId} => (${target} = ${setterArgId})`
 }
 

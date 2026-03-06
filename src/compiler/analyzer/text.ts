@@ -4,9 +4,11 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { atLeastOneWhitespaceRE, nonWhitespaceRE } from "../regular"
 
 export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPart) {
-    let str = node.componentTag ? part.value.trim() : part.value
+    let str = part.value
+
+    const withInComponent = !!node.parent?.componentTag
     const whitespaceRule = inputDescriptor.options.whitespace
-    if (!node.parent?.preWhiteSpace && !node.componentTag) {
+    if (!node.parent?.preWhiteSpace && !withInComponent) {
         if (!nonWhitespaceRE.test(str)) {
             switch (whitespaceRule) {
                 case "collapse": {
@@ -34,6 +36,9 @@ export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPa
                 }
             }
         }
+    }
+    if (withInComponent && !str.trim()) {
+        str = ""
     }
     analyzeResult.template.staticTextContents.set(part, str)
 }

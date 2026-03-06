@@ -27,14 +27,13 @@ import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolati
 import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from "../message/error"
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
-    const { nodeContexts } = analyzeResult.template
     walkTemplateNodes(nodes, node => {
         let nodeContext: TemplateNodeContext
         let parentContextIdentifiers: Set<string> | undefined
         if (node.parent) {
-            parentContextIdentifiers = nodeContexts.get(node.parent)?.contextIdentifiers
+            parentContextIdentifiers = getTemplateNodeContext(node.parent)?.contextIdentifiers
         }
-        nodeContexts.set(
+        analyzeResult.template.nodeContexts.set(
             node,
             (nodeContext = {
                 node,
@@ -46,7 +45,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 staticAttributes: [],
                 dynamicAttributes: [],
                 referenceAttributes: [],
-                selectedChildCount: 0,
+                selectableChildCount: 0,
                 shouldBeSelected: false,
                 attributesMap: newCleanObj(),
                 contextIdentifiers: new Set(parentContextIdentifiers)
@@ -65,7 +64,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                         NestedSlotElement(getStartTagOpenLoc(current))
                     }
                 }
-                recordSlotName(node, nodeContexts.get(node)!.attributesMap.name)
+                recordSlotName(node, getTemplateNodeContext(node).attributesMap.name)
                 break
             }
             case "": {
@@ -117,7 +116,7 @@ function evaluateTemplateNodeSelection(node: TemplateNode) {
     }
 
     if ("" === node.tag) {
-        if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
+        if (isHtmlDirectiveChild(node) || node.content.some(part => part.isInterpolated)) {
             markTemplateNodeShouldBeSelected(node)
         }
         return

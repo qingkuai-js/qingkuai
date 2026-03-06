@@ -50,25 +50,23 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
 }
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
+    "#html",
     "#key",
     "#for",
     "#target",
-    "#show",
     "#else",
     "#elif",
     "#if",
     "#catch",
     "#then",
     "#await",
-    "#slot"
-].reduce(
-    (ret, name, index) => {
-        return objectAssign(ret, {
-            [name]: index + 1
-        })
-    },
-    { name: 100 }
-)
+    "#slot",
+    "name"
+].reduce((ret, name, index) => {
+    return objectAssign(ret, {
+        [name]: index + 1
+    })
+}, {})
 
 export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
     passive: ["prevent"],
@@ -209,7 +207,6 @@ export const DIRECTIVE_LIST: ReadonlySet<string> = new Set([
     "#then",
     "#catch",
     "#slot",
-    "#show",
     "#html",
     "#target"
 ])
@@ -218,8 +215,6 @@ export const CREATE_ANCHOR_DIRECTIVES: ReadonlySet<string> = new Set([
     "#for",
     "#key",
     "#await",
-    "#show",
-    "#html",
     "#target"
 ])
 
@@ -231,6 +226,5 @@ export const REQUIRED_VALUE_DIRECTIVES: ReadonlySet<string> = new Set([
     "#for",
     "#key",
     "#slot",
-    "#show",
     "#target"
 ])

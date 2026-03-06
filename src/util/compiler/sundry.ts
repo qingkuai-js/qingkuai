@@ -1,5 +1,5 @@
 import { stringify } from "../shared/aliases"
-import { analyzeResult, inputDescriptor } from "../../compiler/state"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../compiler/state"
 
 export const createHashId = (function () {
     const existing = new Set<string>()
@@ -45,23 +45,30 @@ export function getMaybeReusedString(value: string) {
 
 export function ensureIdWithPrefix(name: string, prefix = "_") {
     const { fullIdentifiers } = analyzeResult.script
+    const startIndex = (generateIdentifier.prefix[name] ??= 0)
+    name = prefix.repeat(startIndex) + name
+
     while (fullIdentifiers.has(name)) {
         name = prefix + name
+        generateIdentifier.prefix[name]++
     }
     return (fullIdentifiers.add(name), name)
 }
 
-export function ensureIdWithNumSuffix(name: string, start = 1) {
-    const initialIsOk = start === 0
+export function ensureIdWithNumSuffix(name: string, useOrigin = false) {
     const { fullIdentifiers } = analyzeResult.script
-    for (let i = start, initial = name; true; i++) {
-        if ((initialIsOk || i !== start) && !fullIdentifiers.has(name)) {
-            break
+    const generateInfo = (generateIdentifier.suffix[name] ??= {
+        last: 1,
+        originUsed: false
+    })
+    if (useOrigin && !generateInfo.originUsed && !fullIdentifiers.has(name)) {
+        generateInfo.originUsed = true
+    } else {
+        for (let i = generateInfo.last, initial = name; true; i++) {
+            if (!fullIdentifiers.has((name = initial + i))) {
+                break
+            }
         }
-        if (!start && !i) {
-            i++
-        }
-        name = initial + i
     }
     return (fullIdentifiers.add(name), name)
 }
