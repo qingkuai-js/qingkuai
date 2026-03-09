@@ -6,10 +6,10 @@ import {
     ensureIdWithNumSuffix,
     shouldExtractCommonString
 } from "../../../util/compiler/sundry"
-import { CodeWriter } from "../writer"
+import { RuntimeCodeWriter } from "../writer"
 import { CodeEditor } from "../editor"
-import { generateTemplateRender } from "./template"
 import { transformEmbeddedScript } from "./script"
+import { generateTemplateRender } from "./template"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { traverseObject } from "../../../util/shared/sundry"
 import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
@@ -33,8 +33,8 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         contextGetter: ensureIdWithPrefix("_ctx")
     } satisfies Partial<GenerateIdentifier>)
 
-    const writer = new CodeWriter(true)
-    const hoistWriter = new CodeWriter()
+    const writer = new RuntimeCodeWriter(true)
+    const hoistWriter = new RuntimeCodeWriter()
     const anchorId = generateIdentifier.anchor
     const contextId = generateIdentifier.context
     const internalId = generateIdentifier.internal
@@ -61,7 +61,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     hasTopExtract && writer.wrapLine()
     removeEliminatedNodes(embeddedScriptEditor)
     replaceStringLiterals(embeddedScriptEditor)
-    generateTemplateFragments(templateFragments, writer)
+    generateTemplateFragments(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
     writer.write(`export default function ${componentName}(`)
     writer.write(`${anchorId}, ${contextId} = {}) {`).indent()
@@ -82,7 +82,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     if (templateFragments.some(item => item.content.length)) {
         writer.wrapLine()
     }
-    return (generateTemplateRender(nodes, writer), writer.dedent().write("}"))
+    return (generateTemplateRender(writer, nodes), writer.dedent().write("}"))
 }
 
 export function removeEliminatedNodes(editor: CodeEditor) {
@@ -100,7 +100,7 @@ export function removeEliminatedNodes(editor: CodeEditor) {
 
 // 将需要委托的事件名称列表设置到 context.e
 // Assign the list of event names that need to be delegated to `context.e`.
-function writeDelegateEventsRegistration(writer: CodeWriter, contextId: string) {
+function writeDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId: string) {
     const passiveEvents: string[] = []
     const nonPassiveEvents: string[] = []
     const { delegateEvents } = analyzeResult.template

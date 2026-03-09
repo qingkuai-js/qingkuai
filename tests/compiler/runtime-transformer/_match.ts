@@ -12,11 +12,11 @@ import {
     generateTemplateFragments
 } from "../../../src/compiler/transformer/runtime/fragment"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { CodeEditor } from "../../../src/compiler/transformer/editor"
-import { CodeWriter } from "../../../src/compiler/transformer/writer"
 import { parseTemplate } from "../../../src/compiler/parser/template"
+import { CodeEditor } from "../../../src/compiler/transformer/editor"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { analyzeTemplate } from "../../../src/compiler/analyzer/template"
+import { RuntimeCodeWriter } from "../../../src/compiler/transformer/writer"
 import { removeEliminatedNodes } from "../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../src/compiler/transformer/runtime/script"
 
@@ -36,11 +36,11 @@ export function matchGeneratedFragment(
 ) {
     resetCompilerState(options)
 
-    const writer = new CodeWriter()
+    const writer = new RuntimeCodeWriter()
     const templateNodes = parseTemplate(source)
     generateIdentifier.internal = "_"
     ;(analyzeScript(), analyzeTemplate(templateNodes))
-    generateTemplateFragments(getTemplateFragments(templateNodes), writer)
+    generateTemplateFragments(writer, getTemplateFragments(templateNodes))
     expect(writer.code.trim()).toBe(formatSourceCode(expected))
     return templateNodes
 }
@@ -66,7 +66,7 @@ function localTransform(source: string, options: CompileOptions) {
         scriptDescriptor.code,
         scriptDescriptor.loc.start.index
     )
-    const hoistEmbeddedScriptWriter = new CodeWriter()
+    const hoistEmbeddedScriptWriter = new RuntimeCodeWriter()
     generateIdentifier.internal = "_"
     generateIdentifier.setterArg = "v"
     removeEliminatedNodes(embeddedScriptEditor)

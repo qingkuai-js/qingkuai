@@ -1,44 +1,112 @@
-import type { CompileOptions, CompileResult } from "#type-declarations/compiler"
+import type {
+    TemplateNode,
+    CompileMessage,
+    CompileOptions,
+    IdentifierStatus,
+    TemplateAttribute,
+    ASTPositionWithFlag
+} from "#type-declarations/compiler"
+import type { PositionFlag } from "./enums"
 
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
-import { encode } from "@jridgewell/sourcemap-codec"
 import { analyzeTemplate } from "./analyzer/template"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
-import { inputDescriptor, messages, resetCompilerState } from "./state"
+import { newCleanObj, traverseObject } from "../util/shared/sundry"
+import { generateIntermediateCode } from "./transformer/check/codegen"
+import { analyzeResult, inputDescriptor, messages, resetCompilerState } from "./state"
 
-export function compile(source: string, options: CompileOptions = {}): CompileResult {
-    const templateNodes = (resetCompilerState(options), parseTemplate(source))
-    ;(analyzeScript(), analyzeTemplate(templateNodes))
-    if (!inputDescriptor.options.checkMode) {
-        const writer = generateRuntimeCode(templateNodes)
+export function compile(source: string, options: CompileOptions = {}) {
+    resetCompilerState(options)
+
+    const templateNodes = parseTemplate(source)
+    const generate = options.checkMode ? generateIntermediateCode : generateRuntimeCode
+    const writer = (analyzeScript(), analyzeTemplate(templateNodes), generate(templateNodes))
+
+    const idStatusMap: Record<string, IdentifierStatus> = newCleanObj()
+    traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
+        idStatusMap[name] = info.status
+    })
+
+    const positions = inputDescriptor.positions
+    const gtdii = "gtdii" in writer ? writer.gtdii : []
+    const scriptKind = inputDescriptor.script.isTS ? "ts" : "js"
+    const mappings = "mappings" in writer ? writer.mappings : ""
+    const indexMap = "indexMap" in writer ? writer.indexMap : { itos: [], stoi: [] }
+    return new CompileResult(
+        options.hashId!,
+        writer.code,
+        mappings,
+        scriptKind,
+        messages,
+        templateNodes,
+        gtdii,
+        positions,
+        indexMap,
+        idStatusMap,
+        analyzeResult.template.slots,
+        analyzeResult.template.eventInfos,
+        analyzeResult.template.nodeContexts
+    )
+}
+
+class CompileResult {
+    public slotNames: string[] = []
+
+    constructor(
+        public hashId: string,
+        public code: string,
+        public mappings: string,
+        public scriptKind: "js" | "ts",
+        public messages: CompileMessage[],
+        public templateNodes: TemplateNode[],
+        public getTypeDelayInterIndexes: number[],
+        private positions: ASTPositionWithFlag[],
+        private indexMap: { itos: number[]; stoi: number[] },
+        private idStatusMap: Record<string, IdentifierStatus>,
+        private slots: (typeof analyzeResult)["template"]["slots"],
+        private eventInfos: (typeof analyzeResult)["template"]["eventInfos"],
+        private nodeContexts: (typeof analyzeResult)["template"]["nodeContexts"]
+    ) {
+        traverseObject(slots, name => this.slotNames.push(name))
+    }
+
+    getPosition(index: number) {
+        return this.positions[index]
+    }
+
+    getLocation(start: number, end = start) {
         return {
-            interIndexMap: {
-                itos: [],
-                stoi: []
-            },
-            messages,
-            templateNodes,
-            inputDescriptor,
-            code: writer.code,
-            typeDeclarationLen: 0,
-            hashId: options.hashId!,
-            mappings: encode(writer.mappings)
+            start: this.getPosition(start),
+            end: this.getPosition(end)
         }
     }
 
-    const writer = generateRuntimeCode(templateNodes)
-    return {
-        interIndexMap: {
-            itos: [],
-            stoi: []
-        },
-        messages,
-        templateNodes,
-        inputDescriptor,
-        code: writer.code,
-        typeDeclarationLen: 0,
-        hashId: options.hashId!,
-        mappings: encode(writer.mappings)
+    isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
+        return !!(this.positions[index].flag & flag)
+    }
+
+    getInterIndex(sourceIndex: number) {
+        return this.indexMap.stoi[sourceIndex]
+    }
+
+    getSourceIndex(interIndex: number) {
+        return this.indexMap.itos[interIndex]
+    }
+
+    getIdentifierStatus(name: string) {
+        return this.idStatusMap[name]
+    }
+
+    getEventInfo(event: TemplateAttribute) {
+        return this.eventInfos.get(event)
+    }
+
+    getTemplateNodeContext(node: TemplateNode) {
+        return this.nodeContexts.get(node)
+    }
+
+    getSlotTemplateNode(name: string): TemplateNode | undefined {
+        return this.slots[name]
     }
 }

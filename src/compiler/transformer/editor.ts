@@ -15,8 +15,8 @@ export class CodeEditor {
         private source: string,
         private startSourceIndex: number
     ) {
-        this.replacements = Array(source.length)
-        this.indexToSourceIndex = Array(source.length + 1)
+        this.indexToSourceIndex = []
+        this.replacements = Array(source.length + 1)
         this.isEmbeddedScript = startSourceIndex === inputDescriptor.script.loc.start.index
     }
 
@@ -102,6 +102,38 @@ export class CodeEditor {
                 i++
             } else {
                 segments.push(this.source[i++])
+            }
+        }
+        return segments.join("")
+    }
+
+    get intermediateResult() {
+        if (this.startSourceIndex === -1) {
+            return ""
+        }
+
+        const segments: string[] = []
+        for (let i = 0, j = 0; i < this.source.length; ) {
+            const replacement = this.replacements[i]
+            if (replacement?.removedLength) {
+                i += replacement.removedLength
+            }
+            if (replacement?.additions) {
+                for (const addition of replacement.additions) {
+                    if ((segments.push(addition.value), addition.sourceRange)) {
+                        for (let k = 0; k < addition.value.length - 1; k++) {
+                            this.indexToSourceIndex[j + i] =
+                                this.startSourceIndex + addition.sourceRange[0]
+                        }
+                        this.indexToSourceIndex[j + addition.value.length] =
+                            this.startSourceIndex + addition.sourceRange[1]
+                    }
+                    j += addition.value.length
+                }
+            }
+            if (!replacement?.removedLength) {
+                segments.push(this.source[i])
+                this.indexToSourceIndex[j++] = this.startSourceIndex + i++
             }
         }
         return segments.join("")

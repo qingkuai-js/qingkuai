@@ -1,8 +1,8 @@
 // 注意：双向链表在当前版本中未被用到，在早期的版本中，响应式依赖的更新函数和销毁方法
 // 通过双向链表记录，但是这种方式会导致浏览器的devtool分析内存占用十分缓慢。
 // 当前版本使用Set替代了早期的双向链表，如若之后持续用不到此结构请考虑移除此文件。
-
-// Note: this data struct is not used for current version
+//
+// Note: this data struct is not used for current version.
 // In an earlier version，update functions of dependency and destruction structs are
 // recorded by LinkedList, but it causes browser devtools to analyze memory chains very slowly.
 // In current version, it was replaced by Set, if this structure is sure to be unused in future versions,

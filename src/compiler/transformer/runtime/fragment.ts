@@ -3,7 +3,7 @@ import type {
     TemplateFragment,
     TemplateNodeContext
 } from "#type-declarations/compiler"
-import type { CodeWriter } from "../writer"
+import type { RuntimeCodeWriter } from "../writer"
 
 import {
     getTemplateNodeContext,
@@ -200,7 +200,10 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
     return fragments
 }
 
-export function generateTemplateFragments(fragments: TemplateFragment[], writer: CodeWriter) {
+export function generateTemplateFragments(
+    writer: RuntimeCodeWriter,
+    fragments: TemplateFragment[]
+) {
     let compressStringsId = ""
     let hasDeclaration = false
 
@@ -268,7 +271,7 @@ export function generateTemplateFragments(fragments: TemplateFragment[], writer:
     return (hasDeclaration && writer.wrapLine(), writer)
 }
 
-export function generateFramgmentSelection(fragment: TemplateFragment, writer: CodeWriter) {
+export function generateFramgmentSelection(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
     const internalId = generateIdentifier.internal
     const fragmentId = (fragment.id = ensureIdWithNumSuffix("_fragment"))
     writer.wrapLine().write(`const ${fragmentId} = ${fragment.getterId}()`)

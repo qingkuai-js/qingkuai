@@ -12,9 +12,9 @@ describe("Production", () => {
                     <lang-ts>
                         console.log(a, b, c)
 
-                        const a = (derived as any)(obj)
-                        const b = (derived satisfies any)?.(count++)
-                        const c = derived!<number[]>(arr.concat([1, 2, 3]))
+                        const a = (derivedExp as any)(obj)
+                        const b = (derivedExp satisfies any)?.(count++)
+                        const c = derivedExp!<number[]>(arr.concat([1, 2, 3]))
                         console.log(a, b, c)
                     </lang-ts>
                 `,
@@ -34,7 +34,7 @@ describe("Production", () => {
                 `
                     <lang-ts>
                         console.log(a, b, c)
-                        
+
                         const a = (derived as any)(() => obj)
                         const b = derived<number>(function () {
                             return count++
@@ -47,7 +47,7 @@ describe("Production", () => {
                 `,
                 formatSourceCode(`
                     console.log(a, b, c)
-                    
+
                     const a = (_.derived as any)(() => obj)
                     const b = _.derived<number>(function () {
                         return count++
@@ -90,7 +90,7 @@ describe("Production", () => {
                 `
                     <lang-ts>
                         console.log($a, $b, $c)
-                        
+
                         const $a = (() => obj as any) as any
                         const $b = function<T>(count: T): T {
                             return count + 1
@@ -132,9 +132,9 @@ describe("Development", () => {
                     <lang-ts>
                         console.log(a, b, c)
 
-                        const a = (derived as any)(obj)
-                        const b = (derived satisfies any)?.(count++)
-                        const c = derived!<number[]>(arr.concat([1, 2, 3]))
+                        const a = (derivedExp as any)(obj)
+                        const b = (derivedExp satisfies any)?.(count++)
+                        const c = derivedExp!<number[]>(arr.concat([1, 2, 3]))
                         console.log(a, b, c)
                     </lang-ts>
                 `,
@@ -219,7 +219,7 @@ describe("Development", () => {
                 `
                     <lang-ts>
                         console.log($a, $b, $c)
-                        
+
                         const $a = (() => obj as any) as any
                         const $b = function<T>(count: T): T {
                             return count + 1

@@ -7,6 +7,7 @@ import {
 } from "../message/error"
 import { analyzeEvent } from "./event"
 import { analyzeDirective } from "./directive"
+import { newCleanObj } from "../../util/shared/sundry"
 import { analyzeReferenceAttribute } from "./reference"
 import { interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
@@ -18,6 +19,7 @@ import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/
 
 export function analyzeAttributes(node: TemplateNode) {
     const nodeContext = getTemplateNodeContext(node)
+    const duplicateCheckAttrsMap: Record<string, TemplateAttribute> = newCleanObj()
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -97,13 +99,14 @@ export function analyzeAttributes(node: TemplateNode) {
 
         // 重复的属性
         // Duplicate attribute.
-        if (nodeContext.attributesMap[mappedKey]) {
-            const existing = nodeContext.attributesMap[mappedKey]
+        if (duplicateCheckAttrsMap[mappedKey]) {
+            const existing = duplicateCheckAttrsMap[mappedKey]
             DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent)
             DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
         }
+        nodeContext.attributesMap[rawName] = duplicateCheckAttrsMap[mappedKey] = attribute
 
-        switch (((nodeContext.attributesMap[mappedKey] = attribute), rawName[0])) {
+        switch (rawName[0]) {
             case "@": {
                 analyzeEvent(node, attribute)
                 nodeContext.eventListeners.push(attribute)

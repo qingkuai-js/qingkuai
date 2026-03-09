@@ -30,10 +30,10 @@ export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|a
 
 export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
-export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)$/
-export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived|alias)$/
+export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)(?:Exp)?$/
+export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias)$/
 export const intrinsicMethodsRE =
-    /^(?:raw|reactive|shallow|derived|alias|default(?:Props|Refs)|watch|(?:pre|post|sync|)Watch)$/
+    /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|default(?:Props|Refs)|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?)$/
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)

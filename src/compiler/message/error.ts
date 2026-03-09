@@ -1,8 +1,8 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
 import type { ASTLocation } from "#type-declarations/compiler"
 
-import { SPREAD_TAG } from "../constants"
 import { inputDescriptor, messages } from "../state"
+import { RESERVED_IDPREFIX, SPREAD_TAG } from "../constants"
 
 export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false) => {
     return `The ${
@@ -31,6 +31,12 @@ export const InvalidContextPatternForDirective = withLocation(1032, (directive?:
         return `Expected a binding pattern.`
     }
     return `The value for "${directive}" directive must be a binding pattern.`
+})
+
+export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
+    return `The "${directive}" directive accepts at most ${
+        count === 1 ? "one" : count === 2 ? "two" : count
+    } binding pattern${count === 1 ? "" : "s"}.`
 })
 
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
@@ -74,6 +80,13 @@ export const InvalidReferenceAttribute = withLocation(
     }
 )
 
+export const InvalidIntrinsicArgCount = withLocation(
+    1059,
+    (name: string, expected: number, got: number) => {
+        return `The "${name}" intrinsic requires exactly ${expected} argument${expected === 1 ? "" : "s"}, but got ${got}.`
+    }
+)
+
 export const MissingPrecedingDirective = withLocation(
     1031,
     (directive: string, expectedList: string[], extra = "") => {
@@ -88,12 +101,6 @@ export const MissingPrecedingDirective = withLocation(
         }
     }
 )
-
-export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
-    return `The "${directive}" directive accepts at most ${
-        count === 1 ? "one" : count === 2 ? "two" : count
-    } binding pattern${count === 1 ? "" : "s"}.`
-})
 
 export const InvalidExpression = withLocation(1029, () => {
     return "Invalid expression."
@@ -133,10 +140,6 @@ export const TopLevelAwaitNotBeSupported = withLocation(1018, () => {
 
 export const UnclosedStaticAttributeValue = withLocation(1008, () => {
     return "Unclosed static attribute value."
-})
-
-export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
-    return `Identifiers starting with "__r__" are reserved for internal use.`
 })
 
 export const ExportStatementsAreNotSupported = withLocation(1019, () => {
@@ -219,6 +222,10 @@ export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: st
     return `The "${directive}" directive can only appear once in a promise block.`
 })
 
+export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
+    return `Identifiers starting with "${RESERVED_IDPREFIX}" are reserved for internal use.`
+})
+
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
     return `The "#slot" directive can only be used on direct child elements of a component node.`
 })
@@ -267,10 +274,6 @@ export const DuplicateSlotName = withLocation(1050, (name: string) => {
     return `Duplicate slot name: "${name}". Consider using a different value for the "name" attribute on one of the <slot> tags.`
 })
 
-export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
-    return `Namespace declarations are not allowed in component embedded scripts because they are wrapped inside a component method.`
-})
-
 export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) => {
     return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`
 })
@@ -285,6 +288,10 @@ export const DuplicateSlotAssignment = withLocation(1051, (component: string, na
 
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
     return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
+})
+
+export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
+    return `Namespace declarations are not allowed in component embedded scripts because the embedded script block are wrapped inside a component function.`
 })
 
 export const AmbiguousReactiveMarking = withLocation(1023, (name: string) => {

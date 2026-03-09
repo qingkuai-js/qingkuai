@@ -1,4 +1,4 @@
-import type { CodeWriter } from "../writer"
+import type { RuntimeCodeWriter } from "../writer"
 import type { TemplateNode } from "#type-declarations/compiler"
 import type { ContextPattern } from "#type-declarations/estree"
 
@@ -10,7 +10,7 @@ import { getMaybeReusedString } from "../../../util/compiler/sundry"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
 
 export function generateContextPattern(
-    writer: CodeWriter,
+    writer: RuntimeCodeWriter,
     node: ContextPattern,
     startSourceIndex: number
 ) {
@@ -25,7 +25,7 @@ export function generateContextPattern(
     )
 }
 
-export function transformParsedExpression(writer: CodeWriter, key: any) {
+export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
     const parsedExpression = getParsedExpression(key)!
     const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
     for (const literal of parsedExpression.stringLiterals) {
@@ -48,7 +48,7 @@ export function transformParsedExpression(writer: CodeWriter, key: any) {
     return writer.writeEditedScript(editor)
 }
 
-export function transformInterpolatedText(writer: CodeWriter, node: TemplateNode) {
+export function transformInterpolatedText(writer: RuntimeCodeWriter, node: TemplateNode) {
     if (!node.content.length) {
         return getMaybeReusedString("")
     }

@@ -9,7 +9,7 @@ import type { Pair } from "#type-declarations/tools"
 import type { AnyNode, IntrinsicCall } from "#type-declarations/estree"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
 
-import { CodeWriter } from "../writer"
+import { RuntimeCodeWriter } from "../writer"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { jsDestructuringEqualTokenRE } from "../../regular"
@@ -18,12 +18,12 @@ import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
-export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEditor) {
+export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: CodeEditor) {
     const internalId = generateIdentifier.internal
     const debugMode = inputDescriptor.options.debug
     const scriptSource = inputDescriptor.script.code
-    const identifierMap: Record<string, string> = newCleanObj()
     const undefId = `${generateIdentifier.internal}.UNDEF`
+    const identifierMap: Record<string, string> = newCleanObj()
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
@@ -116,7 +116,8 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
     // Transform watcher creation calls
     for (const call of analyzeResult.script.watchers) {
         const firstArg = call.arguments[0]
-        if (firstArg && shouldNodeWrapAsGetter(firstArg)) {
+        const callee = stripTypeExpressions(call.callee) as Identifier
+        if (callee.name.endsWith("Exp") && shouldNodeWrapAsGetter(firstArg)) {
             editor.insert(firstArg.end!, ")")
             editor.insert(firstArg.start!, `() => (`)
         }
@@ -141,24 +142,18 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
         const withIntrinsic = analyzeResult.script.declaratorToIntrinsic.has(declarator)
         const intrinsicInfo = withIntrinsic ? getIntrinsicInfo(declarator) : undefined
+        const byExpression = intrinsicInfo?.id.name === "derivedExp"
         if (!info.destructuringIdentifierNames) {
             if (intrinsicInfo) {
-                // 断言：此时内置方法调用一定存在参数（否则会退化为原始值）
-                // Assertion: at this point, the built-in method call must have arguments,
-                // (otherwise it would have been downgraded to the raw value).
                 const firstArg = intrinsicInfo.call.arguments[0]
-                if (shouldNodeWrapAsGetter(firstArg)) {
+                if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
                     editor.insert(firstArg.end!, ")")
                     editor.insert(firstArg.start!, "() => (")
-                }
-                if (intrinsicInfo.call.arguments.length > 1) {
-                    editor.remove(firstArg.end!, intrinsicInfo.call.end! - 1)
                 }
                 if (debugMode) {
                     editor.insert(firstArg.end!, `, ${generateHoistSetter(name)}`)
                 }
-                transformNonDestructuringDeclaratorId(declarator)
-                editor.insert(intrinsicInfo.id.start!, `${internalId}.`)
+                replaceIntrinsicCall(declarator, "derived")
             } else {
                 // 断言：此时一定存在初始值（不然会退化为原始值）
                 // Assertion: at this point, an initializer must exist
@@ -175,19 +170,16 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
                     debugMode ? `, ${generateHoistSetter(name)}` : "",
                     ")"
                 ])
-                transformNonDestructuringDeclaratorId(declarator)
             }
-            return
+            return transformNonDestructuringDeclaratorId(declarator)
         }
 
         if (processedItems.has(declarator)) {
             return
         }
 
-        // 断言：此时一定存在 derived 内置方法调用，且调用时至少有一个参数
-        // Assertion: at this point, a `derived` built-in method call must exist, and it must have at least one argument.
         const firstArg = intrinsicInfo!.call.arguments[0]
-        if (shouldNodeWrapAsGetter(firstArg)) {
+        if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
             editor.insert(firstArg.end!, ")")
             editor.insert(firstArg.start!, "() => (")
         }
@@ -202,21 +194,23 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
                 },
                 {
                     value: `= ${internalId}.`
-                },
-                {
-                    value: "destructuringDerived",
-                    sourceRange: intrinsicInfo!.id.range
-                },
-                {
-                    value: "(("
                 }
             ])
         } else {
             editor.insert(
                 declarator.id.start!,
-                `[${info.destructuringIdentifierNames.join(", ")}] = ${internalId}.destructuringDerived((`
+                `[${info.destructuringIdentifierNames.join(", ")}] = ${internalId}.`
             )
         }
+        editor.insertMulti(declarator.id.start!, [
+            {
+                value: "destructuringDerived",
+                sourceRange: intrinsicInfo?.id.range
+            },
+            {
+                value: "(("
+            }
+        ])
         replaceIntrinsicCall(declarator, "", () => {
             const segments: string[] = []
             const names = info.destructuringIdentifierNames!
@@ -254,12 +248,12 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         }
 
         if (!info.destructuringIdentifierNames) {
-            transformNonDestructuringDeclaratorId(declarator)
-            editor.insert(intrinsicId.start!, `${internalId}.`)
             editor.replace(
                 ...intrinsicCall.arguments[0].range!,
                 generateHoistGetter(`[${aliasInfos[0].target}, ${aliasInfos[0].property}]`)
             )
+            transformNonDestructuringDeclaratorId(declarator)
+            editor.insert(intrinsicId.start!, `${internalId}.`)
             editor.insert(intrinsicCall.arguments[0].end!, `, ${generateHoistSetter(name)}`)
             return
         }
@@ -277,13 +271,13 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
             getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.property}]`))
             setterIds.push(generateHoistSetter(aliasInfo.id))
         }
-        replaceIntrinsicCall(declarator, "destructuringAlias")
-        editor.remove(...declaratorIdRange)
-        editor.remove(...intrinsicCall.arguments[0].range!)
         editor.insert(
             intrinsicCall.arguments[0].end!,
             `[${getterIds.join(", ")}], [${setterIds.join(", ")}]`
         )
+        editor.remove(...declaratorIdRange)
+        editor.remove(...intrinsicCall.arguments[0].range!)
+        replaceIntrinsicCall(declarator, "destructuringAlias")
         editor.insert(declarator.id.start!, `[${destructuringIds.join(", ")}]`, declaratorIdRange)
     }
 
@@ -327,7 +321,7 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
                 )
             }
             for (const { declaration } of info.nodeInfos) {
-                const writer = new CodeWriter().indent()
+                const writer = new RuntimeCodeWriter().indent()
                 editor.insert(
                     declaration.end!,
                     writer.write(
@@ -513,28 +507,27 @@ export function transformEmbeddedScript(hoistWriter: CodeWriter, editor: CodeEdi
         insertArg?: (hasArg: boolean) => string | undefined
     ) {
         const { call, id } = getIntrinsicInfo(declarator)!
-        const args = call.arguments
         const initNodeStart = declarator.init!.start!
-        const insertArgRet = insertArg?.(!!args.length)
+        const insertArgRet = insertArg?.(!!call.arguments.length)
 
         if ((processedItems.add(declarator), insertArgRet)) {
-            if (args.length) {
-                editor.insert(args[0].end!, insertArgRet)
+            if (call.arguments.length) {
+                editor.insert(call.arguments[0].end!, insertArgRet)
             } else {
                 editor.insert(call.end! - 1, insertArgRet)
             }
         }
-        if (newName === "") {
-            if (!args.length) {
-                editor.remove(initNodeStart, call.end! - 1)
-            } else {
-                editor.remove(args[0].end!, call.end! - 1)
-                editor.remove(initNodeStart, args[0].start!)
-            }
-            editor.remove(call.end! - 1, call.end!)
-        } else {
+        if (newName !== "") {
             editor.insert(id.start!, `${internalId}.`)
             editor.replace(...id.range!, newName, true)
+        } else {
+            if (!call.arguments.length) {
+                editor.remove(initNodeStart, call.end! - 1)
+            } else {
+                editor.remove(call.arguments[0].end!, call.end! - 1)
+                editor.remove(initNodeStart, call.arguments[0].start!)
+            }
+            editor.remove(call.end! - 1, call.end!)
         }
     }
 

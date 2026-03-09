@@ -341,36 +341,36 @@ describe("Unnecessary reactive marking", () => {
 
     test("Derived with literals", () => {
         localAnalyze(`
-                const a = derived()
-                const b = derived(1)
-                const c = derived("")
-                const d = derived(null)
-                const e = derived(undefined)
+                const a = derivedExp()
+                const b = derivedExp(1)
+                const c = derivedExp("")
+                const d = derivedExp(null)
+                const e = derivedExp(undefined)
             `)
         localMatchCompileMessages([
             {
                 type: "warning",
-                range: [10, 19],
+                range: [10, 22],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [30, 40],
+                range: [33, 46],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [51, 62],
+                range: [57, 71],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [73, 86],
+                range: [82, 98],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [97, 115],
+                range: [109, 130],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             }
         ])

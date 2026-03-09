@@ -18,7 +18,8 @@ export default defineConfig(commentLineArgs => {
                 return
             }
         },
-        plugins: [esbuild()]
+        plugins: [esbuild()],
+        external: ["@babel/parser", "@jridgewell/sourcemap-codec"]
     }
 
     if (!isWatchMode) {
@@ -34,6 +35,11 @@ export default defineConfig(commentLineArgs => {
                         tsconfig: "./tsconfig.json"
                     })
                 ],
+                onwarn(warning) {
+                    if (warning.code === "UNUSED_EXTERNAL_IMPORTS") {
+                        return
+                    }
+                },
                 input: `./dist/temp-types/src/${folder}.d.ts`
             })
         })

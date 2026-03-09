@@ -14,10 +14,11 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
-import type { Pair } from "#type-declarations/tools"
 import type { WalkContext } from "../compiler/estree/walk"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
+import type { AnyObject, Pair } from "#type-declarations/tools"
+import type { IntermediateCodeWriter, RuntimeCodeWriter } from "../compiler/transformer/writer"
 
 export interface ScriptDescriptor {
     code: string
@@ -144,7 +145,6 @@ export interface AnalyzeResult {
     >
     script: ScriptAnalyzeRet
     template: TemplateAnalyzeRet
-    slots: Record<string, TemplateNode>
 }
 export interface EventFlagInfo {
     general: {
@@ -205,6 +205,14 @@ export interface TemplateAnalyzeRet {
             flagInfo: EventFlagInfo
         }
     >
+    directiveIndos: Map<
+        TemplateAttribute,
+        {
+            base: string
+            keywordIndex: number
+            baseStartSourceIndex: number
+        }
+    >
     parsedExpressions: Map<
         any,
         {
@@ -217,6 +225,7 @@ export interface TemplateAnalyzeRet {
         }
     >
     compressStringsCount: number
+    slots: Record<string, TemplateNode>
     componentFragment: TemplateFragment | null
     staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
@@ -269,34 +278,28 @@ export type StandaloneParseOptions = Partial<{
     reseveCommentNodes: boolean
 }>
 
+export interface CompileResultInitData {
+    messages: CompileMessage[]
+    analyzeResult: AnalyzeResult
+    templateNodes: TemplateNode[]
+    inputDescriptor: InputDescriptor
+    writer: RuntimeCodeWriter | IntermediateCodeWriter
+}
+
 export type CompileOptions = Partial<{
     hashId: string
     debug: boolean
+    extra: AnyObject
     sourcemap: boolean
     checkMode: boolean
     tipComment: boolean
     componentName: string
-    typeImportStatement: string
     preserveCommentNodes: boolean
     checkTemplateStructure: boolean
     shorthandDerivedDeclaration: boolean
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
-
-export interface CompileResult {
-    interIndexMap: {
-        itos: number[]
-        stoi: number[]
-    }
-    code: string
-    hashId: string
-    mappings: string
-    typeDeclarationLen: number
-    messages: CompileMessage[]
-    templateNodes: TemplateNode[]
-    inputDescriptor: InputDescriptor
-}
 
 export type IdentifierStatus =
     | "reactive"

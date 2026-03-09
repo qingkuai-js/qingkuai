@@ -44,10 +44,12 @@ function newAnalyzeResult(): AnalyzeResult {
                 passive: new Set(),
                 nonPassive: new Set()
             },
-            componentFragment: null,
-            compressStringsCount: 0,
+            slots: newCleanObj(),
             eventInfos: new Map(),
             nodeContexts: new Map(),
+            componentFragment: null,
+            compressStringsCount: 0,
+            directiveIndos: new Map(),
             parsedPatterns: new Map(),
             parsedExpressions: new Map(),
             staticTextContents: new Map(),
@@ -67,7 +69,6 @@ function newAnalyzeResult(): AnalyzeResult {
             topLevelIdentifiers: newCleanObj(),
             preMutatedTopLevelIdentifiers: new Set()
         },
-        slots: newCleanObj(),
         reusedStrings: newCleanObj()
     }
 }
@@ -89,13 +90,13 @@ function newInputDescriptor(options: CompileOptions) {
             startTagOpenRange: [-1, -1]
         },
         options: {
+            extra: {},
             hashId: "",
             debug: false,
             sourcemap: false,
             checkMode: false,
             tipComment: false,
             componentName: "",
-            typeImportStatement: "",
             reactivityMode: "reactive",
             whitespace: "trim-collapse",
             preserveCommentNodes: false,

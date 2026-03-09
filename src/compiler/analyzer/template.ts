@@ -181,8 +181,8 @@ function recordSlotName(node: TemplateNode, attribute?: TemplateAttribute) {
     // 没有 name 属性的 slot 节点，默认插槽名称为 default
     // For a `slot` node without a `name` attribute, the default slot name is `default`.
     const name = attribute?.value.raw ?? "default"
-    const existing = analyzeResult.slots[name]
-    if (((analyzeResult.slots[name] = node), !existing)) {
+    const existing = analyzeResult.template.slots[name]
+    if (((analyzeResult.template.slots[name] = node), !existing)) {
         return
     }
 

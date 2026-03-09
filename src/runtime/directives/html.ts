@@ -1,5 +1,5 @@
 import type { Getter } from "#type-declarations/tools"
-import type { Destruction, HTMLBlockOptions } from "#type-declarations/runtime"
+import type { Destruction, HtmlBlockOptions } from "#type-declarations/runtime"
 
 import { destroy } from "../destroy"
 import { len } from "../../util/shared/sundry"
@@ -10,11 +10,11 @@ import { createFragmentGetter, insertBefore } from "../internal"
 export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
     let html: string | undefined
     let destruction: Destruction | undefined
-    let options: HTMLBlockOptions | undefined
+    let options: HtmlBlockOptions | undefined
 
     renderEffect(() => {
         const newHtml = "" + getValue()
-        const newOptions: HTMLBlockOptions = getOptions?.()
+        const newOptions: HtmlBlockOptions = getOptions?.()
         if (newHtml == html && newOptions === options) {
             return
         }

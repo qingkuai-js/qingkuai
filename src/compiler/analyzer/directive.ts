@@ -74,7 +74,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
     switch (rawName) {
         case "#slot": {
             if (!node.parent || !node.parent.componentTag) {
-                return InvalidSlotDirectivePlacement(nameLoc)
+                InvalidSlotDirectivePlacement(nameLoc)
             }
             if (directive.valueEnclosure !== "none") {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } = parseDirectiveValue(
@@ -82,6 +82,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     "from",
                     valueStartSourceIndex
                 )
+                analyzeResult.template.directiveIndos.set(directive, {
+                    base,
+                    keywordIndex,
+                    baseStartSourceIndex
+                })
+
                 if (patterns.length) {
                     recordContextIdentifiers(patterns[0])
                 }
@@ -121,6 +127,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     "of",
                     valueStartSourceIndex
                 )
+                analyzeResult.template.directiveIndos.set(directive, {
+                    base,
+                    keywordIndex,
+                    baseStartSourceIndex
+                })
+
                 for (const pattern of patterns) {
                     recordContextIdentifiers(pattern)
                 }

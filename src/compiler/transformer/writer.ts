@@ -1,49 +1,38 @@
 import type { CodeEditor } from "./editor"
-import type {
-    ASTLocation,
-    ASTPosition,
-    TemplateAttribute,
-    TemplateNode
-} from "#type-declarations/compiler"
-import type { ContextPattern, PartialAnyNode } from "#type-declarations/estree"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
+import type { AnyNode, ContextPattern, PartialAnyNode } from "#type-declarations/estree"
+import type { ASTLocation, ASTPosition, Range, TemplateNode } from "#type-declarations/compiler"
 
 import {
     generateContextPattern,
     transformInterpolatedText,
     transformParsedExpression
 } from "./runtime/interpolation"
+import {
+    getPosByIndex,
+    markSourcemapEndFlag,
+    markSourcemapStartFlag,
+    isPositionFlagSetAtIndex
+} from "../../util/compiler/position"
 import { PositionFlag } from "../enums"
 import { inputDescriptor } from "../state"
 import { nonWhitespaceRE } from "../regular"
-import {
-    getPosByIndex,
-    isPositionFlagSetAtIndex,
-    markSourcemapEndFlag,
-    markSourcemapStartFlag
-} from "../../util/compiler/position"
-import { isUndefined } from "../../util/shared/assert"
+import { encode } from "@jridgewell/sourcemap-codec"
+import { isNumber, isUndefined } from "../../util/shared/assert"
 
-export class CodeWriter {
-    private _code = ""
-    private _mappings: SourceMapMappings = []
+abstract class BaseCodeWriter {
+    public abstract write(str: string, startSourceIndex?: number): this
+    protected abstract writeCharacter(character: string, sourceIndex: number): void
 
-    private indentLevel = 0
-    private generateLine = 0
-    private generateColumn = 0
-    private mappingLine: SourceMapLine = []
-    private nextSourcePos: ASTPosition | undefined
-
-    constructor(private sourcemap = false) {
-        this._mappings.push(this.mappingLine)
-    }
+    protected _code = ""
+    protected indentLevel = 0
 
     get code() {
         return this._code
     }
 
-    get mappings() {
-        return this._mappings
+    get length() {
+        return this._code.length
     }
 
     get empty() {
@@ -57,17 +46,40 @@ export class CodeWriter {
         return this
     }
 
-    writeLine(str: string) {
-        return this.write(str).wrapLine()
-    }
-
     indent(wrapLine = true) {
         ++this.indentLevel
         return wrapLine ? this.wrapLine() : this
     }
 
-    dedent() {
-        return (--this.indentLevel, this.wrapLine())
+    dedent(wrapLine = true) {
+        --this.indentLevel
+        return wrapLine ? this.wrapLine() : this
+    }
+
+    writeLine(str: string, startSourceIndex = -1) {
+        return this.write(str, startSourceIndex).wrapLine()
+    }
+
+    protected get indentStr() {
+        return inputDescriptor.indent.repeat(this.indentLevel)
+    }
+}
+
+export class RuntimeCodeWriter extends BaseCodeWriter {
+    private _mappings: SourceMapMappings = []
+
+    private generateLine = 0
+    private generateColumn = 0
+    private mappingLine: SourceMapLine = []
+    private nextSourcePos: ASTPosition | undefined
+
+    constructor(private sourcemap = false) {
+        super()
+        this._mappings.push(this.mappingLine)
+    }
+
+    get mappings() {
+        return encode(this._mappings)
     }
 
     write(str: string) {
@@ -75,6 +87,25 @@ export class CodeWriter {
             this.writeCharacter(str[i], -1)
         }
         return this
+    }
+
+    writeParsedExpression(key: any) {
+        return (transformParsedExpression(this, key), this)
+    }
+
+    writeInterpolatedText(node: TemplateNode) {
+        return (transformInterpolatedText(this, node), this)
+    }
+
+    writeTemplateStr(str: string, sourceLoc: ASTLocation) {
+        markSourcemapEndFlag(sourceLoc.end.index)
+        markSourcemapStartFlag(sourceLoc.start.index)
+        this.writeCharacter(str[0], sourceLoc.start.index)
+
+        for (let i = 1; i < str.length; i++) {
+            this.writeCharacter(str[i], -1)
+        }
+        return (this.writeCharacter("", sourceLoc.end.index), this)
     }
 
     writeScriptNode(node: PartialAnyNode, dedent = true) {
@@ -99,27 +130,8 @@ export class CodeWriter {
         return this
     }
 
-    writeParsedExpression(key: any) {
-        return (transformParsedExpression(this, key), this)
-    }
-
-    writeInterpolatedText(node: TemplateNode) {
-        return (transformInterpolatedText(this, node), this)
-    }
-
     writeContextPattern(node: ContextPattern, startSourceIndex: number) {
         return (generateContextPattern(this, node, startSourceIndex), this)
-    }
-
-    writeTemplateStr(str: string, sourceLoc: ASTLocation) {
-        markSourcemapEndFlag(sourceLoc.end.index)
-        markSourcemapStartFlag(sourceLoc.start.index)
-        this.writeCharacter(str[0], sourceLoc.start.index)
-
-        for (let i = 1; i < str.length; i++) {
-            this.writeCharacter(str[i], -1)
-        }
-        return (this.writeCharacter("", sourceLoc.end.index), this)
     }
 
     writeEditedScript(editor: CodeEditor) {
@@ -144,11 +156,11 @@ export class CodeWriter {
         return isEmbeddedScript ? this.indent(false) : this
     }
 
-    private get indentStr() {
-        return inputDescriptor.indent.repeat(this.indentLevel)
-    }
-
-    private writeCharacter(character: string, sourceIndex: number, createMappingAtNodeEnd = true) {
+    protected writeCharacter(
+        character: string,
+        sourceIndex: number,
+        createMappingAtNodeEnd = true
+    ) {
         if (this.sourcemap && inputDescriptor.options.sourcemap) {
             if (
                 this.nextSourcePos &&
@@ -181,6 +193,92 @@ export class CodeWriter {
             this._code += this.indentStr
             this.generateColumn = this.indentStr.length
             this._mappings.push((this.mappingLine = []))
+        }
+    }
+}
+
+export class IntermediateCodeWriter extends BaseCodeWriter {
+    private stoi: number[]
+    private itos: number[] = []
+    private nextSourceIndex = -1
+
+    public gtdii: number[] = [] // Get Type Delay Intermediate Indexes
+
+    constructor() {
+        super()
+        this.stoi = Array(inputDescriptor.source.length + 1).fill(-1)
+    }
+
+    get indexMap() {
+        return {
+            itos: this.itos,
+            stoi: this.stoi
+        }
+    }
+
+    startGetTypeDelayMarking() {
+        this.gtdii.push(this.length)
+    }
+
+    writeScriptNode(node: AnyNode) {
+        const startSourceIndex = inputDescriptor.script.loc.start.index
+        return this.write(
+            inputDescriptor.source.slice(
+                startSourceIndex + node.start!,
+                startSourceIndex + node.end!
+            ),
+            node.start!
+        )
+    }
+
+    writeEditedScript(editor: CodeEditor) {
+        const editedContent = editor.intermediateResult
+        for (let i = 0; i < editedContent.length; i++) {
+            this.writeCharacter(
+                editedContent[i],
+                editor.getSourceIndex(i) ?? -1,
+                i === editedContent.length - 1
+            )
+        }
+        return this
+    }
+
+    write(str: string, sourceRange?: Range): this
+    write(str: string, startSourceIndex?: number): this
+    write(str: string, indexOrRange?: Range | number) {
+        for (let i = 0; i < str.length; i++) {
+            let sourceIndex = -1
+            if (isNumber(indexOrRange)) {
+                sourceIndex = indexOrRange === -1 ? -1 : indexOrRange + i
+            } else if (indexOrRange) {
+                sourceIndex =
+                    i === str.length - 1
+                        ? indexOrRange[1] - 1
+                        : Math.min(indexOrRange[0] + i, indexOrRange[1] - 1)
+            }
+            this.writeCharacter(str[i], sourceIndex, i === str.length - 1)
+        }
+        return this
+    }
+
+    protected writeCharacter(character: string, sourceIndex: number, isLastCharacter = false) {
+        if (sourceIndex !== -1) {
+            if (isLastCharacter) {
+                this.nextSourceIndex = sourceIndex + 1
+            }
+        } else if (this.nextSourceIndex !== -1) {
+            sourceIndex = this.nextSourceIndex
+            this.nextSourceIndex = -1
+        }
+        if (sourceIndex !== -1 && this.stoi[sourceIndex] === -1) {
+            this.stoi[sourceIndex] = this.code.length
+        }
+        this._code += character
+        this.itos.push(sourceIndex)
+
+        if (character === "\n") {
+            this._code += this.indentStr
+            this.itos.push(...Array(this.indentStr.length).fill(-1))
         }
     }
 }

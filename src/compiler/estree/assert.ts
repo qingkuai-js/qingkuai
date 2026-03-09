@@ -79,6 +79,10 @@ export function isUndefinedLiteral(node: AnyNode) {
     return node.type === "Identifier" && node.name === "undefined"
 }
 
+export function isIntrinsicCall(node: PartialAnyNode) {
+    return node?.type === "CallExpression" || node?.type === "OptionalCallExpression"
+}
+
 // 暂未使用的方法：组件中不支持命名空间声明（若确定未来不会提供支持，可考虑移除此方法）
 //
 // Currently unused method: namespace declarations are not supported in components

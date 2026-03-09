@@ -9,6 +9,13 @@ import type { Identifier, VariableDeclarator, VariableDeclaration } from "@babel
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import {
+    isLiteral,
+    isLeftValue,
+    isIntrinsicCall,
+    isTypeOperation,
+    isFunctionLiteral
+} from "../estree/assert"
+import {
     indentSpacesRE,
     intrinsicMethodsRE,
     intrinsicVariableRE,
@@ -19,6 +26,7 @@ import {
 import {
     CannotAliasIdentifier,
     AmbiguousReactiveMarking,
+    InvalidIntrinsicArgCount,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -38,6 +46,7 @@ import {
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
+import { RESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
@@ -46,7 +55,6 @@ import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
 import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
-import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../estree/assert"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
@@ -100,7 +108,7 @@ const visitor: Visitor = {
     },
 
     Identifier(node, context) {
-        if (node.name.startsWith("__r__")) {
+        if (node.name.startsWith(RESERVED_IDPREFIX)) {
             UsedForbiddenIdentifierFormat(getScriptLocByRange(node.range))
         }
 
@@ -300,7 +308,7 @@ function inferStatusWithDeclarator(
     const declaratorLoc = getScriptLocByRange(declarator.range!)
     const initNode = declarator.init && stripTypeExpressions(declarator.init)
 
-    if (initNode?.type !== "CallExpression" && initNode?.type !== "OptionalCallExpression") {
+    if (!isIntrinsicCall(initNode)) {
         const isLiteralInit = isLiteral(initNode)
         if (isShorthandDerived) {
             if (!isLiteralInit) {
@@ -326,7 +334,7 @@ function inferStatusWithDeclarator(
         return "pending"
     }
 
-    const calleeName = callee.name as ReactiveIntrinsics
+    const calleeName = callee.name
     if (!intrinsicReactiveMethodsRE.test(calleeName)) {
         return "pending"
     }
@@ -334,7 +342,7 @@ function inferStatusWithDeclarator(
     // 检查是否混用了简洁衍生响应式声明语法和标记响应式声明语法
     // Check whether concise derived reactive declarations and marked reactive declarations are mixed.
     if (isShorthandDerived) {
-        if (calleeName === "derived") {
+        if (calleeName === "derived" || calleeName === "derivedExp") {
             DeclareDerivedMixedSyntaticForms(declaratorLoc)
         } else {
             AmbiguousReactiveMarking(declaratorLoc, calleeName)
@@ -342,29 +350,33 @@ function inferStatusWithDeclarator(
     }
 
     const firstArg = initNode.arguments[0]
-    const isLiteralArg = isLiteral(firstArg)
     const initLoc = getScriptLocByRange(initNode.range!)
-    const isFunctionLiteralArg = isFunctionLiteral(firstArg)
+    const isLiteralArg = isLiteral(firstArg) || isFunctionLiteral(firstArg)
     switch (calleeName) {
         case "alias": {
             return "alias"
         }
-        case "derived": {
-            if (!isLiteralArg) {
-                return "derived"
-            }
 
-            // 通过 derived 标记的衍生响应式字面量值无意义，退化为使用原始值
-            // Derived reactive literal values marked with `derived` are meaningless and are downgraded to using the raw value.
-            return (UnnecessaryReactiveMark(initLoc, calleeName), "raw")
+        case "derivedExp": {
+            // 通过 derivedExp 标记的衍生响应式字面量值无意义，退化为使用原始值
+            // Derived reactive literal values marked with `derivedExp` are meaningless and are downgraded to using the raw value.
+            if (isLiteralArg) {
+                return (UnnecessaryReactiveMark(initLoc, "derived"), "raw")
+            }
+            // fallthrough
         }
+        case "derived": {
+            return "derived"
+        }
+
         default: {
             if (isShorthandDerived) {
                 return "derived"
             }
 
-            if (isDestructuring || !isConst || !(isLiteralArg || isFunctionLiteralArg)) {
-                return calleeName
+            const status = calleeName as ReactiveIntrinsics
+            if (isDestructuring || !isConst || !isLiteralArg) {
+                return status
             }
 
             // 通过 raw 标记常量声明的字面量值是冗余的
@@ -375,7 +387,7 @@ function inferStatusWithDeclarator(
 
             // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
             // Marking a literal value in a constant declaration with `reactive` or `shallow` is meaningless and is downgraded to using the raw value.
-            return (UnnecessaryReactiveMark(initLoc, calleeName), "raw")
+            return (UnnecessaryReactiveMark(initLoc, status), "raw")
         }
     }
 }
@@ -452,12 +464,23 @@ function checkTopLevelIdentifier(name: string, range: Range) {
 // Validate the usage of compiler intrinsic methods.
 function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Identifier>) {
     const parent = context.striptTypeOperationsParent!
-    if (parent.value.type === "CallExpression" || parent.value.type === "OptionalCallExpression") {
+    if (isIntrinsicCall(parent.value)) {
+        const intrinsicCall = parent.value
+        const argsLen = intrinsicCall.arguments.length
+        const intrinsicCallLoc = getScriptLocByRange(intrinsicCall.range!)
+        const checkArgsLen = !(inputDescriptor.options.checkMode && inputDescriptor.script.isTS)
         switch (node.name) {
             case "watch":
             case "preWatch":
             case "postWatch":
-            case "syncWatch": {
+            case "syncWatch":
+            case "watchExp":
+            case "preWatchExp":
+            case "postWatchExp":
+            case "syncWatchExp": {
+                if (checkArgsLen && argsLen !== 2) {
+                    InvalidIntrinsicArgCount(intrinsicCallLoc, node.name, 2, argsLen)
+                }
                 return
             }
             case "defaultRefs":
@@ -467,6 +490,9 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                 }
                 if (!inputDescriptor.options.checkMode) {
                     analyzeResult.script.eliminatedNodes.add(parent.value)
+                }
+                if (checkArgsLen && argsLen !== 1) {
+                    InvalidIntrinsicArgCount(intrinsicCallLoc, node.name, 1, argsLen)
                 }
 
                 let isValidDefinition = true
@@ -503,6 +529,15 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Ide
                 }
                 break
             }
+
+            case "derived":
+            case "derivedExp": {
+                if (checkArgsLen && argsLen !== 1) {
+                    InvalidIntrinsicArgCount(intrinsicCallLoc, node.name, 1, argsLen)
+                }
+                // fallthrough
+            }
+
             default: {
                 if (node.name === "alias") {
                     if (

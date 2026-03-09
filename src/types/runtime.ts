@@ -136,7 +136,7 @@ export interface ComponentContext {
     P?: any // default props
     e?: string[] // delegated events
 }
-export type HTMLBlockOptions = Partial<{
+export type HtmlBlockOptions = Partial<{
     escapeTags: string[]
     escapeStyle: boolean
     escapeScript: boolean

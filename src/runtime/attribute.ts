@@ -73,8 +73,6 @@ export function setInputGroup(elem: HTMLInputElement, target: any) {
 }
 
 export function setSelectValue(elem: HTMLSelectElement, target: any) {
-    const type = optc(target)
-    const containerIsArray = type === "Array"
     if (!elem.multiple) {
         if (notEqual(target, getElementValue(elem))) {
             for (const option of elem.options) {
@@ -83,7 +81,8 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
             getNodeContext(elem).a.value = target
         }
     } else {
-        if (!containerIsArray && type !== "Set") {
+        const containerIsArray = isArray(target)
+        if (!containerIsArray && optc(target) !== "Set") {
             return NotArrayOrSet("value", "<select multiple>")
         }
         for (const option of elem.options) {

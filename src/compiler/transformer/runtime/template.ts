@@ -3,7 +3,7 @@ import type {
     TemplateAttribute,
     TemplateNodeContext
 } from "#type-declarations/compiler"
-import type { CodeWriter } from "../writer"
+import type { RuntimeCodeWriter } from "../writer"
 import type { StringLiteral } from "@babel/types"
 import type { GeneralFunc } from "#type-declarations/tools"
 
@@ -31,31 +31,32 @@ import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
-export function generateTemplateRender(nodes: TemplateNode[], writer: CodeWriter) {
-    let insertPostfix: GeneralFunc | undefined
-
+export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: TemplateNode[]) {
     const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
     const componentFragment = analyzeResult.template.componentFragment
+    const byComponent = isTopLevelNodes && componentFragment?.content.length
 
-    const wrapInsertPostfix = (method: GeneralFunc | undefined) => {
-        if (method) {
-            const original = insertPostfix
-            insertPostfix = () => {
-                method()
-                original?.()
-                insertPostfix = undefined
-            }
-        }
-    }
-
-    if (isTopLevelNodes && componentFragment?.content.length) {
-        generateFramgmentSelection(componentFragment, writer)
+    if (byComponent) {
+        generateFramgmentSelection(writer, componentFragment)
         generateRenderEffect(writer, nodes, null)
     }
 
     for (const node of nodes) {
+        let insertPostfix: GeneralFunc | undefined
         const nodeContext = getTemplateNodeContext(node)
         const hasFragmentContent = !!nodeContext.fragment?.content.length
+
+        const wrapInsertPostfix = (method: GeneralFunc | undefined) => {
+            if (method) {
+                const original = insertPostfix
+                insertPostfix = () => {
+                    method()
+                    original?.()
+                    insertPostfix = undefined
+                }
+            }
+        }
+
         if (
             nodeContext.sortedDirectives.some(item => {
                 return item.name.raw !== "#slot"
@@ -68,20 +69,20 @@ export function generateTemplateRender(nodes: TemplateNode[], writer: CodeWriter
             continue
         }
         if ("slot" === node.tag) {
-            wrapInsertPostfix(generateSlotCall(writer, nodeContext) as any)
+            wrapInsertPostfix(generateSlotCall(writer, nodeContext))
         }
         if (hasFragmentContent) {
-            generateFramgmentSelection(nodeContext.fragment!, writer)
+            generateFramgmentSelection(writer, nodeContext.fragment!)
             generateRenderEffect(writer, [node], node)
         }
 
         /**
          * 当节点上除了 #html 指令还存在其他指令时，{@link generateDirectiveBlock}
-         * 方法不会生成指令块调用语句，因为此情况下调用语句必须等待其他节点（锚点）选择完成后才能生成
+         * 方法不会为它生成指令块调用语句，因为此情况下调用语句必须等待其他节点（锚点）选择完成后才能生成
          *
          * When a node has other directives besides the #html directive, the {@link generateDirectiveBlock}
-         * method will not generate the directive block call statement, because in this case the call statement
-         * must wait until other nodes (anchor) are selected before it can be generated
+         * method will not generate the directive block call statement for it, because in this case the call
+         * statement must wait until other nodes (anchor) are selected before it can be generated.
          */
         if (nodeContext.attributesMap["#html"] && nodeContext.sortedDirectives.length !== 1) {
             const htmlDirectiveIndex = nodeContext.sortedDirectives.findIndex(item => {
@@ -90,19 +91,20 @@ export function generateTemplateRender(nodes: TemplateNode[], writer: CodeWriter
             generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext)
         }
 
-        if ((generateTemplateRender(node.children, writer), hasFragmentContent)) {
-            wrapInsertPostfix(() => {
-                generateFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!.id)
-            })
+        if ((generateTemplateRender(writer, node.children), hasFragmentContent)) {
+            generateFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!.id)
         }
+
+        insertPostfix?.()
     }
-    if ((insertPostfix?.(), isTopLevelNodes)) {
+
+    if (byComponent) {
         generateFragmentAttachment(writer, generateIdentifier.anchor, componentFragment!.id)
     }
 }
 
 function generateDirectiveBlock(
-    writer: CodeWriter,
+    writer: RuntimeCodeWriter,
     directiveIndex: number,
     nodeContext: TemplateNodeContext
 ): GeneralFunc | undefined {
@@ -284,7 +286,7 @@ function generateDirectiveBlock(
 }
 
 function generateRenderEffect(
-    writer: CodeWriter,
+    writer: RuntimeCodeWriter,
     nodes: TemplateNode[],
     skipCheckNode: TemplateNode | null
 ) {
@@ -463,7 +465,7 @@ function generateRenderEffect(
     withinRenderEffect && writer.dedent().write("})")
 }
 
-function generateSlotCall(writer: CodeWriter, nodeContext: TemplateNodeContext) {
+function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
     const contextId = generateIdentifier.context
@@ -477,7 +479,7 @@ function generateSlotCall(writer: CodeWriter, nodeContext: TemplateNodeContext) 
     }
 
     const generateSlotName = () => {
-        const slotName = nodeContext.attributesMap["name"]?.value.raw ?? "default"
+        const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
         return generateContextKey(slotName, writer)
     }
     if (!hasDefaultContent) {
@@ -491,7 +493,10 @@ function generateSlotCall(writer: CodeWriter, nodeContext: TemplateNodeContext) 
         if (hasDefaultContent) {
             writer.dedent().write(`})(${nodeContext.anchorId}`)
         }
-        if (nodeContext.staticAttributes.length || nodeContext.dynamicAttributes.length) {
+        if (
+            nodeContext.dynamicAttributes.length ||
+            nodeContext.staticAttributes.some(attr => attr.name.raw !== "name")
+        ) {
             writer.write(", {").indent()
 
             for (const attribute of nodeContext.dynamicAttributes) {
@@ -517,7 +522,7 @@ function generateSlotCall(writer: CodeWriter, nodeContext: TemplateNodeContext) 
     }
 }
 
-function generateComponentInstantiate(writer: CodeWriter, nodeContext: TemplateNodeContext) {
+function generateComponentInstantiate(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
     const getterArgId = generateIdentifier.getterArg
@@ -624,7 +629,7 @@ function generateComponentInstantiate(writer: CodeWriter, nodeContext: TemplateN
                 writer.write(", ").writeContextPattern(pattern, startSourceIndex)
             }
             writer.write(") {").indent(false)
-            generateTemplateRender([child], writer)
+            generateTemplateRender(writer, [child])
             writer.dedent().write("}")
         }
         writer.dedent().write("}")
@@ -678,13 +683,17 @@ function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
     return getParsedExpression(attribute)!.reactive
 }
 
-function generateContextKey(str: string, writer: CodeWriter) {
+function generateContextKey(str: string, writer: RuntimeCodeWriter) {
     if (jsValidIdentifierRE.test(str) && (str.length < 3 || !shouldExtractCommonString(str))) {
         return writer.write(str)
     }
     return writer.write(`[${getMaybeReusedString(str)}]`)
 }
 
-function generateFragmentAttachment(writer: CodeWriter, anchorId: string, fragmentId: string) {
+function generateFragmentAttachment(
+    writer: RuntimeCodeWriter,
+    anchorId: string,
+    fragmentId: string
+) {
     writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
 }
