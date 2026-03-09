@@ -1,11 +1,9 @@
 import { defineConfig } from "rollup"
 
-import dts from "rollup-plugin-dts"
 import esbuild from "rollup-plugin-esbuild"
 
 export default defineConfig(commentLineArgs => {
     const result = []
-    const isWatchMode = commentLineArgs.watch
 
     const baseOptions = {
         input: {
@@ -22,28 +20,6 @@ export default defineConfig(commentLineArgs => {
         external: ["@babel/parser", "@jridgewell/sourcemap-codec"]
     }
 
-    if (!isWatchMode) {
-        ;["runtime/index", "compiler/index", "runtime/internal"].forEach(folder => {
-            result.push({
-                output: {
-                    format: "es",
-                    inlineDynamicImports: true,
-                    file: `dist/types/${folder}.d.ts`
-                },
-                plugins: [
-                    dts({
-                        tsconfig: "./tsconfig.json"
-                    })
-                ],
-                onwarn(warning) {
-                    if (warning.code === "UNUSED_EXTERNAL_IMPORTS") {
-                        return
-                    }
-                },
-                input: `./dist/temp-types/src/${folder}.d.ts`
-            })
-        })
-    }
     result.push(
         {
             ...baseOptions,
