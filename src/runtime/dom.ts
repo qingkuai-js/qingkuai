@@ -6,11 +6,11 @@ import { isUndefined } from "../util/shared/assert"
 import { DOCUMENT, NODE_CONTEXT } from "./constants"
 
 export function newTextNode() {
-    return DOCUMENT.createTextNode("")
+    return DOCUMENT!.createTextNode("")
 }
 
 export function selectElement(selector: string) {
-    return DOCUMENT.querySelector(selector)
+    return DOCUMENT!.querySelector(selector)
 }
 
 export function setText(text: Text, content: any) {
@@ -66,7 +66,7 @@ export function getNodeContext(elem: any, create = true): NodeContext {
 // of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
     let fragment: DocumentFragment | undefined
-    const template = DOCUMENT.createElement("template")
+    const template = DOCUMENT!.createElement("template")
     return () => {
         if (isUndefined(fragment)) {
             template.innerHTML = arr ? restoreHtmlForFragment(html, arr) : html

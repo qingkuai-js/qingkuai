@@ -1,5 +1,5 @@
 {
-  "name": "qingkuai2",
+  "name": "qingkuai",
   "license": "MIT",
   "author": "lgq",
   "type": "module",
@@ -25,8 +25,9 @@
   "scripts": {
     "test": "vitest",
     "dev": "rollup -c -w",
+    "bundle": "rollup -c",
     "build-types": "node scripts/build-types.js",
-    "build": "rimraf dist && rollup -c && npm run build-types",
+    "build": "rimraf dist && npm run build-types && npm run bundle",
     "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/qingkuai/syncs'"
   },
   "dependencies": {

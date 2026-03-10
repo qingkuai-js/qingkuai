@@ -68,7 +68,7 @@ export function registerEvents(registration: string[]) {
         if (eventRegisterInfo[eventName][registeIndex]) {
             continue
         }
-        DOCUMENT.addEventListener(
+        DOCUMENT!.addEventListener(
             eventName,
             event => {
                 dispatch(event, passive)

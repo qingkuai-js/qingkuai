@@ -24,6 +24,8 @@ export type {
     ASTPositionWithFlag
 } from "../types/compiler"
 
+export type { CompileIntermediateResult } from "./compile"
+
 export const util = {
     camel2Kebab,
     kebab2Camel,
@@ -36,8 +38,8 @@ export const util = {
     isRequiredValueDirective
 }
 
-export { compile } from "./compile"
 export { PositionFlag } from "./enums"
 export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
+export { compile, compileIntermediate } from "./compile"
 export { parseTemplateStandalone as parseTemplate } from "./parser/template"

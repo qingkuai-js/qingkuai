@@ -34,16 +34,18 @@ export default defineConfig(commentLineArgs => {
 })
 
 function getOutput(format, dir) {
+    const ext = format === "cjs" ? ".cjs" : ".js"
     return {
         dir,
         format,
+        entryFileNames: `[name]${ext}`,
         chunkFileNames(info) {
             for (const id of info.moduleIds) {
                 if (id.includes("/src/runtime/constants")) {
-                    return "chunks/shared.js"
+                    return `chunks/shared${ext}`
                 }
                 if (id.includes("/src/runtime")) {
-                    return "runtime/chunk.js"
+                    return `runtime/chunk${ext}`
                 }
             }
         }

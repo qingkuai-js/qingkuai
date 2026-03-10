@@ -2,9 +2,13 @@ import type {
     TemplateNode,
     CompileMessage,
     CompileOptions,
+    StyleDescriptor,
+    ScriptDescriptor,
     IdentifierStatus,
     TemplateAttribute,
-    ASTPositionWithFlag
+    ASTPositionWithFlag,
+    CompileResult,
+    CompileIntermediateOptions
 } from "#type-declarations/compiler"
 import type { PositionFlag } from "./enums"
 
@@ -20,29 +24,41 @@ export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
 
     const templateNodes = parseTemplate(source)
-    const generate = options.checkMode ? generateIntermediateCode : generateRuntimeCode
-    const writer = (analyzeScript(), analyzeTemplate(templateNodes), generate(templateNodes))
+    ;(analyzeScript(), analyzeTemplate(templateNodes))
 
+    const writer = generateRuntimeCode(templateNodes)
+    return {
+        code: writer.code,
+        hashId: options.hashId!,
+        mappings: writer.mappings,
+        styles: inputDescriptor.styles
+    } satisfies CompileResult
+}
+
+export function compileIntermediate(source: string, options: CompileIntermediateOptions) {
+    resetCompilerState({ ...options, checkMode: true })
+
+    const templateNodes = parseTemplate(source)
+    ;(analyzeScript(), analyzeTemplate(templateNodes))
+
+    const writer = generateIntermediateCode(templateNodes)
     const idStatusMap: Record<string, IdentifierStatus> = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
         idStatusMap[name] = info.status
     })
 
     const positions = inputDescriptor.positions
-    const gtdii = "gtdii" in writer ? writer.gtdii : []
-    const scriptKind = inputDescriptor.script.isTS ? "ts" : "js"
-    const mappings = "mappings" in writer ? writer.mappings : ""
-    const indexMap = "indexMap" in writer ? writer.indexMap : { itos: [], stoi: [] }
-    return new CompileResult(
-        options.hashId!,
+    const scriptDescriptor = inputDescriptor.script
+    const styleDescriptors = inputDescriptor.styles
+    return new CompileIntermediateResult(
         writer.code,
-        mappings,
-        scriptKind,
         messages,
         templateNodes,
-        gtdii,
+        scriptDescriptor,
+        styleDescriptors,
+        writer.gtdii,
         positions,
-        indexMap,
+        writer.indexMap,
         idStatusMap,
         analyzeResult.template.slots,
         analyzeResult.template.eventInfos,
@@ -50,16 +66,15 @@ export function compile(source: string, options: CompileOptions = {}) {
     )
 }
 
-class CompileResult {
+export class CompileIntermediateResult {
     public slotNames: string[] = []
 
     constructor(
-        public hashId: string,
         public code: string,
-        public mappings: string,
-        public scriptKind: "js" | "ts",
         public messages: CompileMessage[],
         public templateNodes: TemplateNode[],
+        public scriptDescriptor: ScriptDescriptor,
+        public styleDescriptors: StyleDescriptor[],
         public getTypeDelayInterIndexes: number[],
         private positions: ASTPositionWithFlag[],
         private indexMap: { itos: number[]; stoi: number[] },
@@ -103,7 +118,7 @@ class CompileResult {
     }
 
     getTemplateNodeContext(node: TemplateNode) {
-        return this.nodeContexts.get(node)
+        return this.nodeContexts.get(node)!
     }
 
     getSlotTemplateNode(name: string): TemplateNode | undefined {

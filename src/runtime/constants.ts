@@ -6,9 +6,9 @@ export const TOARRAY = (v: any) => [v]
 
 export const OBJECT = Object
 export const REFLECT = Reflect
-export const DOCUMENT = document
 export const RESOLVED = Promise.resolve()
 export const OBJECT_PROTO = OBJECT.prototype
+export const DOCUMENT = typeof document === "undefined" ? UNDEF : document
 
 export const BEFORE_MOUNT = 0
 export const AFTER_MOUNT = 1

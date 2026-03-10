@@ -1,23 +1,23 @@
 import type {
+    InputOptions,
     AnalyzeResult,
     CompileMessage,
-    CompileOptions,
-    GenerateIdentifier,
-    InputDescriptor
+    InputDescriptor,
+    GenerateIdentifier
 } from "#type-declarations/compiler"
 
 import { isUndefined } from "../util/shared/assert"
+import { newCleanObj } from "../util/shared/sundry"
 import { objectAssign } from "../util/shared/aliases"
 import { createHashId } from "../util/compiler/sundry"
 import { newASTLocation } from "../util/compiler/position"
-import { newCleanObj, stripPrototype } from "../util/shared/sundry"
 
 export let analyzeResult: AnalyzeResult
 export let messages: CompileMessage[] = []
 export let inputDescriptor: InputDescriptor
 export let generateIdentifier: GenerateIdentifier
 
-export function resetCompilerState(options: CompileOptions) {
+export function resetCompilerState(options: Partial<InputOptions>) {
     messages = []
     analyzeResult = newAnalyzeResult()
     generateIdentifier = newGenerateIdentifier()
@@ -75,7 +75,7 @@ function newAnalyzeResult(): AnalyzeResult {
 
 // 生成一个新的输入源状态描述符
 // Generate a new input source descriptor
-function newInputDescriptor(options: CompileOptions) {
+function newInputDescriptor(options: Partial<InputOptions>) {
     const ret: InputDescriptor = {
         indent: "",
         source: "",
@@ -90,7 +90,6 @@ function newInputDescriptor(options: CompileOptions) {
             startTagOpenRange: [-1, -1]
         },
         options: {
-            extra: {},
             hashId: "",
             debug: false,
             sourcemap: false,
@@ -98,6 +97,7 @@ function newInputDescriptor(options: CompileOptions) {
             tipComment: false,
             componentName: "",
             reactivityMode: "reactive",
+            typeDeclarationFilePath: "",
             whitespace: "trim-collapse",
             preserveCommentNodes: false,
             checkTemplateStructure: true,

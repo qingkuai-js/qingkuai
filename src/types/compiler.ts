@@ -14,11 +14,10 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
+import type { Pair } from "#type-declarations/tools"
 import type { WalkContext } from "../compiler/estree/walk"
 import type { CompileError } from "../compiler/message/error"
 import type { CompileWarning } from "../compiler/message/warn"
-import type { AnyObject, Pair } from "#type-declarations/tools"
-import type { IntermediateCodeWriter, RuntimeCodeWriter } from "../compiler/transformer/writer"
 
 export interface ScriptDescriptor {
     code: string
@@ -37,10 +36,10 @@ export interface StyleDescriptor {
 export interface InputDescriptor {
     source: string
     indent: string
+    options: InputOptions
     script: ScriptDescriptor
     styles: StyleDescriptor[]
     positions: ASTPositionWithFlag[]
-    options: Required<CompileOptions>
 }
 
 export interface EditInsertSnippet {
@@ -278,20 +277,22 @@ export type StandaloneParseOptions = Partial<{
     reseveCommentNodes: boolean
 }>
 
-export interface CompileResultInitData {
-    messages: CompileMessage[]
-    analyzeResult: AnalyzeResult
-    templateNodes: TemplateNode[]
-    inputDescriptor: InputDescriptor
-    writer: RuntimeCodeWriter | IntermediateCodeWriter
+export interface CompileIntermediateOptions {
+    typeDeclarationFilePath: string
+    shorthandDerivedDeclaration?: boolean
+}
+
+export interface CompileResult {
+    code: string
+    hashId: string
+    mappings: string
+    styles: StyleDescriptor[]
 }
 
 export type CompileOptions = Partial<{
     hashId: string
     debug: boolean
-    extra: AnyObject
     sourcemap: boolean
-    checkMode: boolean
     tipComment: boolean
     componentName: string
     preserveCommentNodes: boolean
@@ -309,5 +310,9 @@ export type IdentifierStatus =
     | "pending"
     | "alias"
     | "literal"
+
+export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
+    checkMode: boolean
+}
 export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"
 export type ReactiveIntrinsics = "reactive" | "raw" | "shallow" | "derived" | "alias"

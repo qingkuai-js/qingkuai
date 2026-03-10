@@ -34,7 +34,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.code,
         inputDescriptor.script.loc.start.index
     )
-    const { typeDeclarationFilePath } = inputDescriptor.options.extra
+    const { typeDeclarationFilePath } = inputDescriptor.options
     traverseObject(analyzeResult.template.slots, name => slotNames.push(name))
 
     const UTILS = RESERVED_IDPREFIX + "lsu" // Language Service Utils
@@ -105,6 +105,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const isSpread = SPREAD_TAG === node.tag
             const nodeContext = getTemplateNodeContext(node)
             const componentInvalidExps: [string, Range][] = []
+            const slotNameLoc = nodeContext.attributesMap.name
+                ? nodeContext.attributesMap.name.loc
+                : getStartTagLoc(node)
+            const slotNameRange = getRangeByLoc(slotNameLoc)
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
@@ -271,9 +275,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     } else {
                         writer.startGetTypeDelayMarking()
                         writer.wrapLine().write(`${UTILS}.getTypeDelayMarking(`)
-                        writer.write(`${stringify(slotName)}, `)
-                        writer.write(`${stringify(camelName)}`, nameRange)
-                        writer.write(", ")
+                        writer.write(stringify(slotName), slotNameRange).write(", ")
+                        writer.write(stringify(camelName), nameRange).write(", ")
                     }
 
                     if (!attribute.equalSign) {
@@ -328,9 +331,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 }
                 writer.startGetTypeDelayMarking()
                 writer.write(`\n${UTILS}.getTypeDelayMarking(`)
-                writer.write(`${stringify(slotName)}, `)
-                writer.write(`${stringify(baseName)}`, nameRange)
-                writer.write(", ").write(rawValue, valueRange).write(");")
+                writer.write(stringify(slotName), slotNameRange).write(", ")
+                writer.write(stringify(baseName), nameRange).write(", ")
+                writer.write(rawValue, valueRange).write(");")
             }
 
             for (const event of nodeContext.eventListeners) {
