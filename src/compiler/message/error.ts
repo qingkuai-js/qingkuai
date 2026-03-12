@@ -2,7 +2,7 @@ import type { ArbitraryFunc } from "#type-declarations/tools"
 import type { ASTLocation } from "#type-declarations/compiler"
 
 import { inputDescriptor, messages } from "../state"
-import { RESERVED_IDPREFIX, SPREAD_TAG } from "../constants"
+import { PRESERVED_IDPREFIX, SPREAD_TAG } from "../constants"
 
 export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false) => {
     return `The ${
@@ -223,7 +223,7 @@ export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: st
 })
 
 export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
-    return `Identifiers starting with "${RESERVED_IDPREFIX}" are reserved for internal use.`
+    return `Identifiers starting with "${PRESERVED_IDPREFIX}" are reserved for internal use.`
 })
 
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {

@@ -1,4 +1,11 @@
 import {
+    SPREAD_TAG,
+    PRESERVED_IDPREFIX,
+    LANGUAGE_SERVICE_UTIL,
+    GET_TYPE_DELAY_MARKING
+} from "./constants"
+
+import {
     isSelfClosingTag,
     isEmbeddedLanguageTag,
     isRequiredValueDirective
@@ -20,6 +27,7 @@ export type {
     CompileOptions,
     StyleDescriptor,
     ScriptDescriptor,
+    IdentifierStatus,
     TemplateAttribute,
     ASTPositionWithFlag
 } from "../types/compiler"
@@ -36,6 +44,13 @@ export const util = {
     isEmbeddedLanguageTag,
     findOutOfLiteralComment,
     isRequiredValueDirective
+}
+
+export const constants = {
+    SPREAD_TAG,
+    PRESERVED_IDPREFIX,
+    LANGUAGE_SERVICE_UTIL,
+    GET_TYPE_DELAY_MARKING
 }
 
 export { PositionFlag } from "./enums"

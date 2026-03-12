@@ -26,7 +26,7 @@
     "test": "vitest",
     "dev": "rollup -c -w",
     "bundle": "rollup -c",
-    "build-types": "node scripts/build-types.js",
+    "build-types": "tsx scripts/build-types.ts",
     "build": "rimraf dist && npm run build-types && npm run bundle",
     "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/qingkuai/syncs'"
   },
@@ -41,6 +41,7 @@
     "rimraf": "^6.1.3",
     "rollup": "^4.53.3",
     "rollup-plugin-esbuild": "^6.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   },

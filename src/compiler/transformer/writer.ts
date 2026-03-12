@@ -17,8 +17,8 @@ import {
 import { PositionFlag } from "../enums"
 import { inputDescriptor } from "../state"
 import { nonWhitespaceRE } from "../regular"
+import { isNumber } from "../../util/shared/assert"
 import { encode } from "@jridgewell/sourcemap-codec"
-import { isNumber, isUndefined } from "../../util/shared/assert"
 
 abstract class BaseCodeWriter {
     public abstract write(str: string, startSourceIndex?: number): this
@@ -214,10 +214,6 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
             itos: this.itos,
             stoi: this.stoi
         }
-    }
-
-    startGetTypeDelayMarking() {
-        this.gtdii.push(this.length)
     }
 
     writeScriptNode(node: AnyNode) {

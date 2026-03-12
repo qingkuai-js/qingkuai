@@ -5,6 +5,7 @@ import type {
     TemplateAttribute
 } from "#type-declarations/compiler"
 import type { VariableDeclarator } from "@babel/types"
+import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
 
 import {
     getStartTagLoc,
@@ -23,11 +24,16 @@ import { stripTypeExpressions } from "../../estree/sundry"
 import { kebab2Camel } from "../../../util/compiler/string"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
-import { RESERVED_IDPREFIX, SPREAD_TAG } from "../../constants"
-import { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
+import { GET_TYPE_DELAY_MARKING, LANGUAGE_SERVICE_UTIL, SPREAD_TAG } from "../../constants"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
-    const slotNames: string[] = []
+    let slotNamesType = ""
+    traverseObject(analyzeResult.template.slots, name => {
+        slotNamesType += stringify(name) + " | "
+    })
+    slotNamesType = slotNamesType.slice(0, -3)
+    slotNamesType && (slotNamesType = `Record<${slotNamesType}, boolean>`)
+
     const isTS = inputDescriptor.script.isTS
     const writer = new IntermediateCodeWriter()
     const embeddedScriptEditor = new CodeEditor(
@@ -35,14 +41,11 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.loc.start.index
     )
     const { typeDeclarationFilePath } = inputDescriptor.options
-    traverseObject(analyzeResult.template.slots, name => slotNames.push(name))
 
-    const UTILS = RESERVED_IDPREFIX + "lsu" // Language Service Utils
+    const UTILS = LANGUAGE_SERVICE_UTIL
     const ANY_VALUE = `${UTILS}.anyValue`
     const EMPTY_OBJECT = `${UTILS}.EmptyObject`
-    const SLOT_NAMES_TYPE = slotNames.length
-        ? `Record<${slotNames.map(stringify).join(" | ")}, boolean>`
-        : EMPTY_OBJECT
+    const SLOT_NAMES_TYPE = slotNamesType || EMPTY_OBJECT
 
     const needImportItems: string[] = [
         UTILS,
@@ -95,7 +98,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             embeddedScriptEditor.insert(declarator.init!.start!, `${UTILS}.getReturnType(`)
         }
     })
-    writer.wrapLine().writeEditedScript(embeddedScriptEditor).writeLine(";")
+    writer.wrapLine().writeEditedScript(embeddedScriptEditor).writeLine("\n\n;")
 
     //
     ;(function generate(nodes: TemplateNode[]) {
@@ -261,30 +264,24 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent || isSlot) {
                 for (const attribute of nodeContext.staticAttributes) {
-                    if (isSlot && attribute.name.raw) {
+                    if (isSlot && "name" === attribute.name.raw) {
                         continue
                     }
 
-                    const rawValue = attribute.value.raw
                     const camelName = kebab2Camel(attribute.name.raw)
                     const nameRange = getRangeByLoc(attribute.name.loc)
                     const valueRange = getRangeByLoc(attribute.value.loc)
+                    const writeValue = attribute.equalSign ? stringify(attribute.value.raw) : "true"
 
                     if (isComponent) {
-                        writer.wrapLine().write(camelName, nameRange).write(": ")
+                        writer.wrapLine().write(camelName, nameRange)
+                        writer.write(": ").write(writeValue, valueRange)
                     } else {
-                        writer.startGetTypeDelayMarking()
-                        writer.wrapLine().write(`${UTILS}.getTypeDelayMarking(`)
+                        writer.wrapLine()
+                        startGetTypeDelayMarkingCall(writer)
                         writer.write(stringify(slotName), slotNameRange).write(", ")
-                        writer.write(stringify(camelName), nameRange).write(", ")
+                        writer.write(stringify(camelName), nameRange).write(`, ${writeValue});`)
                     }
-
-                    if (!attribute.equalSign) {
-                        writer.write(`true`)
-                    } else {
-                        writer.write(stringify(rawValue), valueRange)
-                    }
-                    writer.write(isComponent ? "," : ");")
                 }
             }
 
@@ -299,8 +296,16 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 if (!attribute.equalSign) {
                     if (camelName) {
-                        writer.wrapLine().write(camelName, nameRange)
-                        writer.write(isComponent ? "," : ";")
+                        if (!isSlot) {
+                            writer.wrapLine().write(camelName, nameRange)
+                            writer.write(isComponent ? "," : ";")
+                        } else {
+                            writer.wrapLine()
+                            startGetTypeDelayMarkingCall(writer)
+                            writer.write(stringify(slotName), slotNameRange).write(", ")
+                            writer.write(stringify(camelName), nameRange).write(", ")
+                            writer.write(camelName, valueRange).write(");")
+                        }
                     }
                     continue
                 }
@@ -329,11 +334,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.wrapLine().write(rawValue, valueRange).write(";")
                     continue
                 }
-                writer.startGetTypeDelayMarking()
-                writer.write(`\n${UTILS}.getTypeDelayMarking(`)
+                writer.wrapLine()
+                startGetTypeDelayMarkingCall(writer)
                 writer.write(stringify(slotName), slotNameRange).write(", ")
-                writer.write(stringify(baseName), nameRange).write(", ")
-                writer.write(rawValue, valueRange).write(");")
+                writer.write(stringify(baseName), nameRange).write(`, ${rawValue});`)
             }
 
             for (const event of nodeContext.eventListeners) {
@@ -527,17 +531,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
     })(nodes)
 
-    return writer
-}
-
-function getRangeByLoc(loc: ASTLocation): Range {
-    return [loc.start.index, loc.end.index]
-}
-
-function forEachRight(arr: any[], cb: ArbitraryFunc) {
-    for (let i = arr.length - 1; i >= 0; i--) {
-        cb(arr[i], i, arr)
-    }
+    return writer.write("\n\n;\n\n")
 }
 
 function generatePatterns(
@@ -570,4 +564,19 @@ function generatePatterns(
         writer.write(" = ")
     }
     return true
+}
+
+function getRangeByLoc(loc: ASTLocation): Range {
+    return [loc.start.index, loc.end.index]
+}
+
+function forEachRight(arr: any[], cb: ArbitraryFunc) {
+    for (let i = arr.length - 1; i >= 0; i--) {
+        cb(arr[i], i, arr)
+    }
+}
+
+function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
+    writer.gtdii.push(writer.length)
+    writer.write(`${LANGUAGE_SERVICE_UTIL}.${GET_TYPE_DELAY_MARKING}(`)
 }

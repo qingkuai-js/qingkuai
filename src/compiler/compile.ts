@@ -54,10 +54,10 @@ export function compileIntermediate(source: string, options: CompileIntermediate
         writer.code,
         messages,
         templateNodes,
+        positions,
+        writer.gtdii,
         scriptDescriptor,
         styleDescriptors,
-        writer.gtdii,
-        positions,
         writer.indexMap,
         idStatusMap,
         analyzeResult.template.slots,
@@ -73,44 +73,17 @@ export class CompileIntermediateResult {
         public code: string,
         public messages: CompileMessage[],
         public templateNodes: TemplateNode[],
+        public positions: ASTPositionWithFlag[],
+        public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],
-        public getTypeDelayInterIndexes: number[],
-        private positions: ASTPositionWithFlag[],
-        private indexMap: { itos: number[]; stoi: number[] },
-        private idStatusMap: Record<string, IdentifierStatus>,
+        public indexMap: { itos: number[]; stoi: number[] },
+        public identifierStatusMap: Record<string, IdentifierStatus>,
         private slots: (typeof analyzeResult)["template"]["slots"],
         private eventInfos: (typeof analyzeResult)["template"]["eventInfos"],
         private nodeContexts: (typeof analyzeResult)["template"]["nodeContexts"]
     ) {
         traverseObject(slots, name => this.slotNames.push(name))
-    }
-
-    getPosition(index: number) {
-        return this.positions[index]
-    }
-
-    getLocation(start: number, end = start) {
-        return {
-            start: this.getPosition(start),
-            end: this.getPosition(end)
-        }
-    }
-
-    isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
-        return !!(this.positions[index].flag & flag)
-    }
-
-    getInterIndex(sourceIndex: number) {
-        return this.indexMap.stoi[sourceIndex]
-    }
-
-    getSourceIndex(interIndex: number) {
-        return this.indexMap.itos[interIndex]
-    }
-
-    getIdentifierStatus(name: string) {
-        return this.idStatusMap[name]
     }
 
     getEventInfo(event: TemplateAttribute) {
@@ -123,5 +96,9 @@ export class CompileIntermediateResult {
 
     getSlotTemplateNode(name: string): TemplateNode | undefined {
         return this.slots[name]
+    }
+
+    isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
+        return !!(this.positions[index].flag & flag)
     }
 }

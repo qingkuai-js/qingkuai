@@ -1,7 +1,7 @@
 import type {
     Range,
     TemplateNode,
-    CompileOptions,
+    InputOptions,
     TextContentPart,
     ScriptDescriptor,
     TemplateAttribute,
@@ -632,15 +632,15 @@ export function parseTemplate(source: string) {
 // The standalone parseTemplate method; the `recover` parameter
 // indicates whether to continue parsing when an error is encountered.
 export function parseTemplateStandalone(source: string, options: StandaloneParseOptions = {}) {
-    const compileOptions: CompileOptions = {}
+    const inputOptions: Partial<InputOptions> = {}
     if (options.recover) {
-        compileOptions.checkMode = true
+        inputOptions.checkMode = true
     }
     if (options.structureCheck) {
-        compileOptions.checkTemplateStructure = true
+        inputOptions.checkTemplateStructure = true
     }
     if (isUndefined(options.reseveCommentNodes) || options.reseveCommentNodes) {
-        compileOptions.preserveCommentNodes = true
+        inputOptions.preserveCommentNodes = true
     }
-    return (resetCompilerState(compileOptions), parseTemplate(source))
+    return (resetCompilerState(inputOptions), parseTemplate(source))
 }

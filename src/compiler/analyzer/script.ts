@@ -46,7 +46,7 @@ import {
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
-import { RESERVED_IDPREFIX } from "../constants"
+import { PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
@@ -108,7 +108,7 @@ const visitor: Visitor = {
     },
 
     Identifier(node, context) {
-        if (node.name.startsWith(RESERVED_IDPREFIX)) {
+        if (node.name.startsWith(PRESERVED_IDPREFIX)) {
             UsedForbiddenIdentifierFormat(getScriptLocByRange(node.range))
         }
 

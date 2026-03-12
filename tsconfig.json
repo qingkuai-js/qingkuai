@@ -12,5 +12,5 @@
     }
   },
   "exclude": ["node_modules/**/*", "dist"],
-  "include": ["src", "tests", "test-space", "env.d.ts"]
+  "include": ["src", "tests", "test-space", "env.d.ts", "scripts"]
 }
