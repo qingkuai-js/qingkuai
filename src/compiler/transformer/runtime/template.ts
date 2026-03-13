@@ -684,7 +684,7 @@ function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
 }
 
 function generateContextKey(str: string, writer: RuntimeCodeWriter) {
-    if (jsValidIdentifierRE.test(str) && (str.length < 3 || !shouldExtractCommonString(str))) {
+    if (jsValidIdentifierRE.test(str) && !shouldExtractCommonString(str)) {
         return writer.write(str)
     }
     return writer.write(`[${getMaybeReusedString(str)}]`)

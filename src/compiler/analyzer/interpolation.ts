@@ -18,7 +18,7 @@ import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
-import { analyzeResult, inputDescriptor } from "../state"
+import { analyzeResult, inputDescriptor, messages } from "../state"
 import { getParsedExpression, getTemplateNodeContext } from "../../util/compiler/template"
 import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
@@ -108,6 +108,12 @@ export function analyzeTemplateAsExpression(
             loc.start.index + +(type === "attribue")
         )
     } catch {}
+
+    // 检查模式下无需再报 “无效表达式” 的错误
+    // No need to report "invalid expression" errors in check mode
+    if (inputDescriptor.options.checkMode && !expression) {
+        messages.pop()
+    }
 
     if (
         type === "component" &&

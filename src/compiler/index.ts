@@ -14,6 +14,7 @@ import {
 import {
     camel2Kebab,
     kebab2Camel,
+    toPropertyKey,
     findEndBracket,
     findOutOfComment,
     findOutOfLiteral,
@@ -37,6 +38,7 @@ export type { CompileIntermediateResult } from "./compile"
 export const util = {
     camel2Kebab,
     kebab2Camel,
+    toPropertyKey,
     findEndBracket,
     findOutOfComment,
     findOutOfLiteral,

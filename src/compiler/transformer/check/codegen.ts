@@ -21,9 +21,9 @@ import { IntermediateCodeWriter } from "../writer"
 import { isFunctionLiteral } from "../../estree/assert"
 import { stringify } from "../../../util/shared/aliases"
 import { stripTypeExpressions } from "../../estree/sundry"
-import { kebab2Camel } from "../../../util/compiler/string"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
+import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
 import { GET_TYPE_DELAY_MARKING, LANGUAGE_SERVICE_UTIL, SPREAD_TAG } from "../../constants"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
@@ -108,10 +108,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const isSpread = SPREAD_TAG === node.tag
             const nodeContext = getTemplateNodeContext(node)
             const componentInvalidExps: [string, Range][] = []
-            const slotNameLoc = nodeContext.attributesMap.name
-                ? nodeContext.attributesMap.name.loc
-                : getStartTagLoc(node)
-            const slotNameRange = getRangeByLoc(slotNameLoc)
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
@@ -268,41 +264,47 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         continue
                     }
 
-                    const camelName = kebab2Camel(attribute.name.raw)
+                    const rawName = attribute.name.raw
+                    const camelName = kebab2Camel(rawName)
+                    const property = toPropertyKey(camelName)
                     const nameRange = getRangeByLoc(attribute.name.loc)
                     const valueRange = getRangeByLoc(attribute.value.loc)
                     const writeValue = attribute.equalSign ? stringify(attribute.value.raw) : "true"
 
                     if (isComponent) {
-                        writer.wrapLine().write(camelName, nameRange)
+                        writer.wrapLine().write(property, nameRange)
                         writer.write(": ").write(writeValue, valueRange)
                     } else {
                         writer.wrapLine()
                         startGetTypeDelayMarkingCall(writer)
-                        writer.write(stringify(slotName), slotNameRange).write(", ")
+                        writer.write(stringify(slotName)).write(", ")
                         writer.write(stringify(camelName), nameRange).write(`, ${writeValue});`)
                     }
                 }
             }
 
             for (const attribute of nodeContext.dynamicAttributes) {
-                const rawValue = attribute.value.raw
                 const baseName = attribute.name.raw.slice(1)
                 const camelName = kebab2Camel(baseName)
+                const property = toPropertyKey(camelName)
+                const rawValue = attribute.value.raw
                 const expression = getParsedExpression(attribute)
                 const nameRange = getRangeByLoc(attribute.name.loc)
                 const valueRange = getRangeByLoc(attribute.value.loc)
                 const isValueValid = attribute.valueEnclosure === "curly"
 
                 if (!attribute.equalSign) {
-                    if (camelName) {
+                    if ((isSlot || isComponent) && !expression) {
+                        continue
+                    }
+                    if (property) {
                         if (!isSlot) {
-                            writer.wrapLine().write(camelName, nameRange)
+                            writer.wrapLine().write(property, nameRange)
                             writer.write(isComponent ? "," : ";")
                         } else {
                             writer.wrapLine()
                             startGetTypeDelayMarkingCall(writer)
-                            writer.write(stringify(slotName), slotNameRange).write(", ")
+                            writer.write(stringify(slotName)).write(", ")
                             writer.write(stringify(camelName), nameRange).write(", ")
                             writer.write(camelName, valueRange).write(");")
                         }
@@ -312,7 +314,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 if (!isValueValid) {
                     if (isComponent) {
-                        writer.wrapLine().write(camelName, nameRange).write(": ")
+                        writer.wrapLine().write(property, nameRange).write(": ")
                         writer.write(stringify(rawValue), valueRange).write(",")
                     }
                     continue
@@ -325,29 +327,30 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 if (isComponent) {
                     writer.wrapLine()
-                    writer.write(camelName, nameRange).write(": ")
+                    writer.write(property, nameRange).write(": ")
                     writer.write(rawValue, valueRange).write(",")
                     continue
                 }
 
-                if (!isSlot) {
-                    writer.wrapLine().write(rawValue, valueRange).write(";")
+                if (isSlot) {
+                    writer.wrapLine()
+                    startGetTypeDelayMarkingCall(writer)
+                    writer.write(stringify(slotName)).write(", ")
+                    writer.write(stringify(camelName), nameRange).write(`, ${rawValue});`)
                     continue
                 }
-                writer.wrapLine()
-                startGetTypeDelayMarkingCall(writer)
-                writer.write(stringify(slotName), slotNameRange).write(", ")
-                writer.write(stringify(baseName), nameRange).write(`, ${rawValue});`)
+
+                writer.wrapLine().write(rawValue, valueRange).write(";")
             }
 
             for (const event of nodeContext.eventListeners) {
                 const rawValue = event.value.raw
                 const eventInfo = getParsedEventInfo(event)!
                 const baseName = eventInfo.eventName.slice(1)
-                const camelBaseNeme = kebab2Camel(baseName)
                 const expression = getParsedExpression(event)
                 const valueRange = getRangeByLoc(event.value.loc)
                 const isValueValid = event.valueEnclosure === "curly"
+                const property = toPropertyKey(kebab2Camel(baseName))
                 const nameRange: Range = [
                     event.name.loc.start.index,
                     event.name.loc.start.index + eventInfo.eventName.length
@@ -358,7 +361,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.wrapLine()
 
                     if (!event.equalSign) {
-                        writer.write(camelBaseNeme).write(";")
+                        writer.write(property).write(";")
                     } else if (isValueValid) {
                         writer.write(rawValue, valueRange).write(";")
                     }
@@ -366,13 +369,16 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 }
 
                 if (!event.equalSign) {
-                    if (camelBaseNeme) {
+                    if (isComponent && !expression) {
+                        continue
+                    }
+                    if (property) {
                         writer.wrapLine()
 
                         if (!isComponent) {
                             writer.write(validatorCall)
                         }
-                        writer.write(camelBaseNeme, nameRange)
+                        writer.write(property, nameRange)
                         writer.write(isComponent ? "," : ");")
                     }
                     continue
@@ -380,7 +386,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 if (!isValueValid) {
                     if (isComponent) {
-                        writer.wrapLine().write(camelBaseNeme, nameRange)
+                        writer.wrapLine().write(property, nameRange)
                         writer.write(": ").write(stringify(rawValue), valueRange).write(",")
                     }
                     continue
@@ -398,7 +404,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 if (!isComponent) {
                     writer.wrapLine().write(validatorCall)
                 } else {
-                    writer.wrapLine().write(camelBaseNeme, nameRange).write(": ")
+                    writer.wrapLine().write(property, nameRange).write(": ")
                 }
                 writer.write(rawValue, valueRange).write(isComponent ? "," : ");")
             }
@@ -410,25 +416,27 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             for (const attribute of nodeContext.referenceAttributes) {
                 const rawName = attribute.name.raw
                 const rawValue = attribute.value.raw
-                const camelName = kebab2Camel(rawName.slice(1))
                 const nameRange = getRangeByLoc(attribute.name.loc)
                 const valueRange = getRangeByLoc(attribute.value.loc)
                 const isValueValid = attribute.valueEnclosure === "curly"
+                const property = toPropertyKey(kebab2Camel(rawName.slice(1)))
                 const isAttributeValid =
                     analyzeResult.template.validReferenceAttributes.has(attribute)
 
                 if (isComponent) {
-                    if (!camelName) {
+                    if (!property) {
                         continue
                     }
 
                     if (!attribute.equalSign) {
-                        writer.wrapLine().write(camelName, nameRange).write(",")
+                        if (getParsedExpression(attribute)) {
+                            writer.wrapLine().write(property, nameRange).write(",")
+                        }
                         continue
                     }
 
                     if (!isValueValid) {
-                        writer.wrapLine().write(camelName, nameRange).write(": ")
+                        writer.wrapLine().write(property, nameRange).write(": ")
                         writer.write(stringify(rawValue), valueRange).write(",")
                         continue
                     }
@@ -438,7 +446,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         continue
                     }
 
-                    writer.wrapLine().write(camelName, nameRange).write(": ")
+                    writer.wrapLine().write(property, nameRange).write(": ")
                     writer.write(rawValue, valueRange).write(",")
                     continue
                 }
@@ -447,8 +455,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     // SPREAD_TAG and slot tags will also enter
                     if (attribute.equalSign) {
                         writer.wrapLine().write(rawValue, valueRange).write(";")
-                    } else if (camelName) {
-                        writer.wrapLine().write(camelName, nameRange).write(";")
+                    } else if (property) {
+                        writer.wrapLine().write(property, nameRange).write(";")
                     }
                     continue
                 }
@@ -462,7 +470,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         }
                     }
                     if (!attribute.equalSign) {
-                        writer.write(camelName, nameRange)
+                        writer.write(property, nameRange)
                     } else {
                         writer.write(rawValue, valueRange)
                     }

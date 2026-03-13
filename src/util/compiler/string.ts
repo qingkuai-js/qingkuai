@@ -1,6 +1,7 @@
 import type {
     Kebab2CamelFunc,
     Camel2KebabFunc,
+    ToPropertyKeyFunc,
     FindEndBracketFunc,
     FindOutOfLiteralFunc,
     FindOutOfCommentFunc,
@@ -13,16 +14,22 @@ import {
     kebabWholeRE,
     jsValueCharRE,
     nonWhitespaceRE,
+    jsValidIdentifierRE,
     jsStartRegexKeywordsRE,
     jsStringLiteralQuoteRE,
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
+import { stringify } from "../shared/aliases"
 import { escapeRegExpSource } from "../shared/sundry"
 import { isString, isUndefined } from "../shared/assert"
 
 export const findOutOfLiteral: FindOutOfLiteralFunc = findOutOfGen(true, false)
 export const findOutOfComment: FindOutOfCommentFunc = findOutOfGen(false, true)
 export const findOutOfLiteralComment: FindOutOfLiteralCommentFunc = findOutOfGen(true, true)
+
+export const toPropertyKey: ToPropertyKeyFunc = (str: string) => {
+    return jsValidIdentifierRE.test(str) ? str : stringify(str)
+}
 
 export const findEndBracket: FindEndBracketFunc = (str: string) => {
     const endBracket = { "{": "}", "(": ")", "[": "]" }[str[0]]!

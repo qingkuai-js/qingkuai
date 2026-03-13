@@ -72,7 +72,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     if (defaultProps) {
         writer.write(`${contextId}.P = `).writeScriptNode(defaultProps.value).wrapLine()
     }
-    if (writeDelegateEventsRegistration(writer, contextId) || defaultRefs || defaultProps) {
+    if (generateDelegateEventsRegistration(writer, contextId) || defaultRefs || defaultProps) {
         writer.wrapLine()
     }
     writer.write(`const { props, refs, slots } = ${internalId}.init(${contextId})`)
@@ -100,7 +100,7 @@ export function removeEliminatedNodes(editor: CodeEditor) {
 
 // 将需要委托的事件名称列表设置到 context.e
 // Assign the list of event names that need to be delegated to `context.e`.
-function writeDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId: string) {
+function generateDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId: string) {
     const passiveEvents: string[] = []
     const nonPassiveEvents: string[] = []
     const { delegateEvents } = analyzeResult.template

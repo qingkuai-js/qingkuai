@@ -31,6 +31,28 @@ export interface Kebab2CamelFunc {
 }
 
 /**
+ * 将字符串转换为合法的 JavaScript 对象属性键：
+ * - 如果可以作为普通属性（无需引号）使用，则原样返回
+ * - 否则返回字符串字面量（带引号）
+ *
+ * Convert a string to a valid JavaScript object property key.
+ * - If the string can be used as a plain property (unquoted), return it as-is;
+ * - otherwise, return it as a quoted string literal.
+ *
+ * 典型用途：在代码生成或AST实用程序中生成对象键\
+ * Typical use: generating object keys in code generation or AST utilities.
+ *
+ * @param str 要转换的字符串\
+ * The input string to normalize as a property key
+ *
+ * @returns 合法对象属性键（原始字符串或带引号字符串）\
+ * A valid object property key (string or quoted string literal)
+ */
+export interface ToPropertyKeyFunc {
+    (str: string): string
+}
+
+/**
  * 在 Javascript 源码中找到对应关闭括号的索引 \
  * Find the index of the matching closing bracket in Javascript source code
  *
