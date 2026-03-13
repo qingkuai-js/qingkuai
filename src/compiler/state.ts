@@ -53,6 +53,7 @@ function newAnalyzeResult(): AnalyzeResult {
             parsedPatterns: new Map(),
             parsedExpressions: new Map(),
             staticTextContents: new Map(),
+            parsedComponentTags: new Map(),
             compressStrings: newCleanObj(),
             validReferenceAttributes: new Set()
         },

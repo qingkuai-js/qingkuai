@@ -13,7 +13,8 @@ import {
     getParsedExpression,
     getPrevElementContext,
     getNextElementContent,
-    getTemplateNodeContext
+    getTemplateNodeContext,
+    getParsedComponentTag
 } from "../../../util/compiler/template"
 import {
     getAttributeBaseName,
@@ -30,6 +31,7 @@ import { stripTypeExpressions } from "../../estree/sundry"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
+import { getLocByIndex } from "../../../util/compiler/position"
 
 export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: TemplateNode[]) {
     const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
@@ -65,7 +67,7 @@ export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: Templat
             wrapInsertPostfix(generateDirectiveBlock(writer, 0, nodeContext))
         }
         if (node.componentTag) {
-            generateComponentInstantiate(writer, nodeContext)
+            generateComponentCall(writer, nodeContext)
             continue
         }
         if ("slot" === node.tag) {
@@ -351,10 +353,13 @@ function generateRenderEffect(
             // event handlers
             for (const event of nodeContext.eventListeners) {
                 const eventInfo = getParsedEventInfo(event)!
+                const wrapperFlag = eventInfo.wrapperFlag
+                const generalFlag = eventInfo.generalFlag
+                const wrapperFlagNames = wrapperFlag.items.map(item => item.name)
+                const generalFlagNames = wrapperFlag.items.map(item => item.name)
+
                 const expression = getParsedExpression(event)!
                 const baseName = eventInfo.eventName.slice(1)
-                const wrapperFlag = eventInfo.flagInfo.wrapper
-                const generalFlag = eventInfo.flagInfo.general
                 const delegated = DELEGATABLE_EVENTS.has(baseName)
                 const tipComment = inputDescriptor.options.tipComment
                 const stringifiedBaseName = getMaybeReusedString(baseName)
@@ -380,13 +385,13 @@ function generateRenderEffect(
                 }
                 if (wrapperFlag.value) {
                     if ((writer.write(", "), tipComment)) {
-                        writer.write(`/* ${wrapperFlag.names.join(" | ")} */ `)
+                        writer.write(`/* ${wrapperFlagNames.join(" | ")} */ `)
                     }
                     writer.write(wrapperFlag.value.toString()).write(")")
                 }
                 if (generalFlag.value) {
                     if ((writer.write(", "), tipComment)) {
-                        writer.write(`/* ${generalFlag.names.join("| ")} */ `)
+                        writer.write(`/* ${generalFlagNames.join("| ")} */ `)
                     }
                     writer.write(generalFlag.value.toString())
                 }
@@ -522,18 +527,20 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     }
 }
 
-function generateComponentInstantiate(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
+function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
+    const componentTagParts = getParsedComponentTag(nodeContext.node)!
+
+    const hasSlots = nodeContext.node.children.some(child => {
+        return getTemplateNodeContext(child).fragment!.content.length
+    })
     const hasRefs = !!nodeContext.referenceAttributes.length
     const hasStaticAttrs = !!nodeContext.staticAttributes.length
     const hasEventListeners = !!nodeContext.eventListeners.length
     const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length
-    const hasSlots = nodeContext.node.children.some(child => {
-        return getTemplateNodeContext(child).fragment!.content.length
-    })
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
 
     const insertTrailingComma = () => {
@@ -543,7 +550,15 @@ function generateComponentInstantiate(writer: RuntimeCodeWriter, nodeContext: Te
         return ((needInsertComma = true), writer)
     }
 
-    writer.wrapLine().writeParsedExpression(nodeContext.node)
+    writer.wrapLine()
+
+    for (let i = 0; i < componentTagParts.length; i++) {
+        i && writer.write(".")
+        writer.writeTemplateStr(
+            componentTagParts[i].id,
+            getLocByIndex(...componentTagParts[i].sourceRange)
+        )
+    }
 
     if (!(hasSlots || hasProps || hasRefs)) {
         return (writer.write(`(${nodeContext.anchorId})`), undefined)

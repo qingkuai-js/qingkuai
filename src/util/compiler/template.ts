@@ -49,6 +49,10 @@ export function getParsedEventInfo(key: TemplateAttribute) {
     return analyzeResult.template.eventInfos.get(key)
 }
 
+export function getParsedComponentTag(node: TemplateNode) {
+    return analyzeResult.template.parsedComponentTags.get(node)
+}
+
 export function getTemplateContextIdentifiers(node: TemplateNode) {
     return getTemplateNodeContext(node).contextIdentifiers
 }

@@ -1,12 +1,12 @@
-export const tagIsComponentRE = /^[A-Z]|-/
-export const templateCloseCharsRE = /^\/?>/
+export const tagCloseCharsRE = /^\/?>/
+export const tagIsComponentRE = /^[A-Z]|[-.]/
 export const templateAttributeEndRE = /\s|>|$/
 export const templateInvalidAttributeRE = /^[^\s>]+/
 export const templateAttributeNameRE = /^[^\s='"\{\}><\/]+/
 export const templateConditionalCommentRE = /(?:^\[if |<\!\[endif\]$)/
-export const templateTagStructureRE = /<(?:\/?[a-zA-z][a-zA-Z\d\-_.:]*|!--)/
 export const templateEmbeddedLangTagRE = /^lang-([jt]s|css|s[ca]ss|less|stylus|postcss)/
 export const preWhiteSpaceRuleRE = /(?:^\s*|;)white-space:\s*pre(?:-(?:wrap|line))?(?:;|\s*$)/
+export const templateTagStructureRE = /<(?:\/?(?:(?!qk:spread)[a-zA-z][a-zA-Z\d\-_.]*|qk:spread)|!--)/
 
 export const whitespaceRE = /\s/
 export const whitespacesRE = /\s*/
@@ -32,8 +32,7 @@ export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
 export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)(?:Exp)?$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias)$/
-export const intrinsicMethodsRE =
-    /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|default(?:Props|Refs)|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?)$/
+export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|default(?:Props|Refs)|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?)$/
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)

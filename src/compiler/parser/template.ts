@@ -15,10 +15,10 @@ import {
     equalTokenRE,
     startCurlyRE,
     startQuoteRE,
+    tagCloseCharsRE,
     tagIsComponentRE,
     preWhiteSpaceRuleRE,
     templateAttributeEndRE,
-    templateCloseCharsRE,
     startWithTagStructureRE,
     templateAttributeNameRE,
     templateTagStructureRE,
@@ -39,6 +39,7 @@ import {
     UnexpectedToken,
     TagIsNotClosing,
     NoEndTagMatched,
+    InvalidElementTagName,
     InvalidAttributeFormat,
     TagCanNotBeSelfClosing,
     EmptyInterpolationBlock,
@@ -64,6 +65,7 @@ import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/t
 export function newTemplateNode(): TemplateNode {
     return {
         tag: "",
+        rawTag: "",
         next: null,
         prev: null,
         parent: null,
@@ -295,13 +297,13 @@ export function parseTemplate(source: string) {
             tag,
             prev,
             parent,
-            loc: getLocWithDefaultEnd(tagOpenLoc.start.index),
-            componentTag: isComponent ? kebab2Camel(tag, true) : ""
+            componentTag: isComponent ? kebab2Camel(tag) : "",
+            loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })
 
         // 解析当前节点的属性列表
         // parse the attribute list of current node.
-        while (reduceSpaces() && dps && !(startTagCloseMatched = templateCloseCharsRE.exec(dps))) {
+        while (reduceSpaces() && dps && !(startTagCloseMatched = tagCloseCharsRE.exec(dps))) {
             let attrValue = ""
             let endCharIndex = -1
             let valueEndIndex = -1
@@ -328,6 +330,19 @@ export function parseTemplate(source: string) {
             const attrName = attrNameMatched[0]
             const nameEndIndex = reduceSource(attrName.length).index
             const isInterpolatedAttr = interpolatedAttrStartCharRE.test(attrName[0])
+
+            // 属性和开始标签间无空白字符时为无效标签名称
+            // Tag name is invalid when there is no whitespace between the attribute and the start tag
+            if (nameStartIndex === tagOpenLoc.end.index) {
+                InvalidElementTagName(
+                    getLocByIndex(
+                        tagOpenLoc.start.index + 1,
+                        tagOpenLoc.start.index + attrName.length
+                    ),
+                    (templateNode.rawTag = tag + attrName)
+                )
+                continue
+            }
 
             // 插值属性的名长度为1时表示没有指定属性名称
             // An interpolated attribute with a name length of 1 indicates that no attribute name was specified.
@@ -606,7 +621,10 @@ export function parseTemplate(source: string) {
     // 初始化一个模板语法树节点
     // Initialize a AST node for template.
     function initTemplateNode(options: Partial<TemplateNode> = {}): TemplateNode {
-        const templateNode = Object.assign(newTemplateNode(), options)
+        const templateNode = Object.assign(newTemplateNode(), {
+            ...options,
+            rawTag: options.tag
+        })
         if (options.prev) {
             options.prev.next = templateNode
         }

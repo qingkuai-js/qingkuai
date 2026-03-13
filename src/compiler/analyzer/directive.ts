@@ -10,13 +10,13 @@ import {
     TooManyBindingPatterns,
     MissingDirectiveValue,
     MissingPrecedingDirective,
+    InvalidHtmlDirectivePlacement,
     InvalidKeyDirectivePlacement,
     DuplicatePromiseBlockDirectives,
     InvalidSlotDirectivePlacement,
     InvalidTargetDirectivePlacement,
     InvalidContextPatternForDirective,
-    HtmlDirectiveRequiresSingleTextChild,
-    InvalidHtmlDirectivePlacement
+    HtmlDirectiveRequiresSingleTextChild
 } from "../message/error"
 import {
     getLocByIndex,
@@ -77,11 +77,8 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 InvalidSlotDirectivePlacement(nameLoc)
             }
             if (directive.valueEnclosure !== "none") {
-                const { patterns, keywordIndex, base, baseStartSourceIndex } = parseDirectiveValue(
-                    rawValue,
-                    "from",
-                    valueStartSourceIndex
-                )
+                const { patterns, keywordIndex, base, baseStartSourceIndex } =
+                    parseDirectiveValue(directive)!
                 analyzeResult.template.directiveIndos.set(directive, {
                     base,
                     keywordIndex,
@@ -122,11 +119,8 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
         case "#for": {
             if (directive.valueEnclosure !== "none") {
-                const { patterns, keywordIndex, base, baseStartSourceIndex } = parseDirectiveValue(
-                    rawValue,
-                    "of",
-                    valueStartSourceIndex
-                )
+                const { patterns, keywordIndex, base, baseStartSourceIndex } =
+                    parseDirectiveValue(directive)!
                 analyzeResult.template.directiveIndos.set(directive, {
                     base,
                     keywordIndex,

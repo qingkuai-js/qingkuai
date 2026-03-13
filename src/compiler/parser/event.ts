@@ -1,5 +1,5 @@
 import type { ParseEventFlagFunc } from "#type-declarations/compiler-ex"
-import type { ASTLocation, EventFlagInfo } from "#type-declarations/compiler"
+import type { ASTLocation, EventFlagInfo, TemplateAttribute } from "#type-declarations/compiler"
 
 import {
     ConflictingEventFlags,
@@ -9,30 +9,34 @@ import {
 import { inputDescriptor } from "../state"
 import { keyboardEventNamesRE } from "../regular"
 import { newCleanObj } from "../../util/shared/sundry"
-import { getLocByIndex } from "../../util/compiler/position"
 import { CONFLICTING_EVENT_FLAG_MAP, EVENT_FLAGS_MAP } from "../constants"
+import { getLocByIndex, getRangeByLocation } from "../../util/compiler/position"
 import { DuplicateEventFlag, KeyFlagIgnoredOnNonKeyboardEvent } from "../message/warn"
 
-export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0) => {
-    const info: EventFlagInfo = {
-        general: {
-            value: 0,
-            names: []
-        },
-        wrapper: {
-            value: 0,
-            names: []
-        }
+export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => {
+    const generalFlag: EventFlagInfo = {
+        value: 0,
+        items: []
     }
+    const wrapperFlag: EventFlagInfo = {
+        value: 0,
+        items: []
+    }
+
+    const source = event.name.raw
     const flagStartIndex = source.indexOf("|")
+    const startSourceIndex = event.name.loc.start.index
     const existingFlags: Record<string, ASTLocation> = newCleanObj()
     const eventName = -1 === flagStartIndex ? source : source.slice(0, flagStartIndex)
     const sourceFlagsArr = -1 === flagStartIndex ? [] : source.slice(flagStartIndex + 1).split("|")
 
     const updateFlag = (flagName: string, flagNameLoc: ASTLocation, wrapper = false) => {
-        const target = info[wrapper ? "wrapper" : "general"]
+        const target = wrapper ? wrapperFlag : generalFlag
         if (!existingFlags[flagName]) {
-            target.names.push(flagName)
+            target.items.push({
+                name: flagName,
+                sourceRange: getRangeByLocation(flagNameLoc)
+            })
         } else {
             DuplicateEventFlag(flagNameLoc, flagName)
         }
@@ -110,11 +114,13 @@ export const parseEventFlag: ParseEventFlagFunc = (source, startSourceIndex = 0)
         flagNameStartSourceIndex = flagNameLoc.end.index + 1
     }
 
-    return { eventName, flagInfo: info }
+    return { eventName, generalFlag, wrapperFlag }
 }
 
-export const parseEventFlagStandalone: ParseEventFlagFunc = (...args) => {
+export const parseEventFlagStandalone: ParseEventFlagFunc = (event: TemplateAttribute) => {
     const { checkMode } = inputDescriptor.options
-    const ret = parseEventFlag(...args)
+    inputDescriptor.options.checkMode = false
+
+    const ret = parseEventFlag(event)
     return ((inputDescriptor.options.checkMode = checkMode), ret)
 }

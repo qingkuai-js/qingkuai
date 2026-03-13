@@ -14,7 +14,7 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     const nameLoc = event.name.loc
     const rawName = event.name.raw
     const isComponent = !!node.componentTag
-    const parseResult = parseEventFlag(rawName, nameLoc.start.index)
+    const parseResult = parseEventFlag(event)
     analyzeResult.template.eventInfos.set(event, parseResult)
     increaseReusedStringUsedTimes(parseResult.eventName.slice(1))
 
@@ -26,7 +26,7 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
 
     const delegateEventName = parseResult.eventName.slice(1)
     if (!isComponent && DELEGATABLE_EVENTS.has(delegateEventName)) {
-        const passive = parseResult.flagInfo.general.value & EVENT_PASSIVE
+        const passive = parseResult.generalFlag.value & EVENT_PASSIVE
         analyzeResult.template.delegateEvents[passive ? "passive" : "nonPassive"].add(
             delegateEventName
         )

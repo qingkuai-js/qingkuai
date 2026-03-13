@@ -13,6 +13,7 @@ import {
     getParsedEventInfo,
     getStartTagOpenLoc,
     getParsedExpression,
+    getParsedComponentTag,
     getPrevElementContext,
     getTemplateNodeContext
 } from "../../../util/compiler/template"
@@ -244,8 +245,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (node.componentTag) {
-                const tagNameLoc = getStartTagLoc(node)
-                const tagNameRange: Range = [tagNameLoc.start.index, tagNameLoc.end.index]
                 endInserts.push(() => {
                     writer.dedent().write("});")
 
@@ -254,7 +253,16 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                 })
                 writer.wrapLine()
-                writer.write(node.componentTag, tagNameRange)
+
+                if (node.rawTag !== node.tag) {
+                    writer.write(ANY_VALUE)
+                } else {
+                    const componentTagParts = getParsedComponentTag(node)!
+                    for (let i = 0; i < componentTagParts.length; i++) {
+                        i && writer.write(".")
+                        writer.write(componentTagParts[i].id, componentTagParts[i].sourceRange)
+                    }
+                }
                 writer.write("({").indent(false)
             }
 

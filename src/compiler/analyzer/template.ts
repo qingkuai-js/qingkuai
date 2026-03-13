@@ -18,6 +18,7 @@ import { analyzeAttributes } from "./attribute"
 import { analyzeStaticTextContent } from "./text"
 import { newCleanObj } from "../../util/shared/sundry"
 import { UnnecessarySpreadTag } from "../message/warn"
+import { parseComponentTag } from "../parser/component"
 import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
 import { isHtmlDirectiveChild } from "../../util/compiler/assert"
@@ -54,6 +55,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
 
         if (node.componentTag) {
             const startTagLog = getStartTagLoc(node)
+            analyzeResult.template.parsedComponentTags.set(node, parseComponentTag(node))
             analyzeTemplateAsExpression(node, node.componentTag, node, startTagLog, "component")
         }
 

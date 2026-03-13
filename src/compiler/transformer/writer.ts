@@ -230,10 +230,12 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
     writeEditedScript(editor: CodeEditor) {
         const editedContent = editor.intermediateResult
         for (let i = 0; i < editedContent.length; i++) {
+            const isLast = i === editedContent.length - 1
+            const sourceIndex = editor.getSourceIndex(i) ?? -1
             this.writeCharacter(
                 editedContent[i],
-                editor.getSourceIndex(i) ?? -1,
-                i === editedContent.length - 1
+                sourceIndex,
+                isLast && sourceIndex !== -1 ? sourceIndex + 1 : -1
             )
         }
         return this
@@ -241,27 +243,33 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
 
     write(str: string, sourceRange?: Range): this
     write(str: string, startSourceIndex?: number): this
-    write(str: string, indexOrRange?: Range | number) {
-        for (let i = 0; i < str.length; i++) {
-            let sourceIndex = -1
-            if (isNumber(indexOrRange)) {
-                sourceIndex = indexOrRange === -1 ? -1 : indexOrRange + i
-            } else if (indexOrRange) {
-                sourceIndex =
-                    i === str.length - 1
-                        ? indexOrRange[1] - 1
-                        : Math.min(indexOrRange[0] + i, indexOrRange[1] - 1)
+    write(str: string, indexOrRange: Range | number = -1) {
+        if (isNumber(indexOrRange)) {
+            for (let i = 0; i < str.length; i++) {
+                const isLast = i === str.length - 1
+                const sourceIndex = indexOrRange === -1 ? -1 : indexOrRange + i
+                this.writeCharacter(
+                    str[i],
+                    sourceIndex,
+                    isLast && sourceIndex !== -1 ? sourceIndex + 1 : -1
+                )
             }
-            this.writeCharacter(str[i], sourceIndex, i === str.length - 1)
+        } else {
+            for (let i = 0; i < str.length; i++) {
+                const isLast = i === str.length - 1
+                const sourceIndex = Math.min(indexOrRange[0] + i, indexOrRange[1] - 1)
+                this.writeCharacter(str[i], sourceIndex, isLast ? indexOrRange[1] : -1)
+            }
+            for (let i = str.length; i < indexOrRange[1] - indexOrRange[0]; i++) {
+                this.indexMap.stoi[indexOrRange[0] + i] = this.indexMap.itos.length - 1
+            }
         }
         return this
     }
 
-    protected writeCharacter(character: string, sourceIndex: number, isLastCharacter = false) {
+    protected writeCharacter(character: string, sourceIndex: number, nextSourceIndex = -1) {
         if (sourceIndex !== -1) {
-            if (isLastCharacter) {
-                this.nextSourceIndex = sourceIndex + 1
-            }
+            this.nextSourceIndex = nextSourceIndex
         } else if (this.nextSourceIndex !== -1) {
             sourceIndex = this.nextSourceIndex
             this.nextSourceIndex = -1

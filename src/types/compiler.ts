@@ -84,6 +84,7 @@ export interface TemplateAttribute {
 }
 export interface TemplateNode {
     tag: string
+    rawTag: string
     loc: ASTLocation
     componentTag: string
     isEmbedded: boolean
@@ -146,14 +147,15 @@ export interface AnalyzeResult {
     template: TemplateAnalyzeRet
 }
 export interface EventFlagInfo {
-    general: {
-        value: number
-        names: string[]
-    }
-    wrapper: {
-        value: number
-        names: string[]
-    }
+    value: number
+    items: {
+        name: string
+        sourceRange: Range
+    }[]
+}
+export interface ComponentTagPart {
+    id: string
+    sourceRange: Range
 }
 export interface TopLevelIdentifierInfo {
     nodeInfos: {
@@ -201,7 +203,8 @@ export interface TemplateAnalyzeRet {
         TemplateAttribute,
         {
             eventName: string
-            flagInfo: EventFlagInfo
+            generalFlag: EventFlagInfo
+            wrapperFlag: EventFlagInfo
         }
     >
     directiveIndos: Map<
@@ -229,6 +232,7 @@ export interface TemplateAnalyzeRet {
     staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
+    parsedComponentTags: Map<TemplateNode, ComponentTagPart[]>
     parsedPatterns: Map<TemplateAttribute, (ContextPattern | null)[] | undefined>
 }
 export interface ScriptAnalyzeRet {

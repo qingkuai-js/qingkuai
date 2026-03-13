@@ -10,6 +10,12 @@
       "options": {
         "tabWidth": 2
       }
+    },
+    {
+      "files": "regular.ts",
+      "options": {
+        "printWidth": 200
+      }
     }
   ]
 }

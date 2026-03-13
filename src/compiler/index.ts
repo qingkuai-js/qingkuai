@@ -58,5 +58,8 @@ export const constants = {
 export { PositionFlag } from "./enums"
 export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
+export { parseComponentTag } from "./parser/component"
+export { parseDirectiveValue } from "./parser/directive"
 export { compile, compileIntermediate } from "./compile"
+export { parseEventFlagStandalone as parseEventFlag } from "./parser/event"
 export { parseTemplateStandalone as parseTemplate } from "./parser/template"
