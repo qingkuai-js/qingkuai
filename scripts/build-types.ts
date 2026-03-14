@@ -1,26 +1,28 @@
-import fs from "node:fs"
-import url from "node:url"
-import path from "node:path"
-import childProcess from "node:child_process"
+import nodeUrl from "node:url"
+import nodePath from "node:path"
+import { Extractor, ExtractorConfig } from "@microsoft/api-extractor"
 
-const dir = path.dirname(url.fileURLToPath(import.meta.url))
+const dirPath = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url))
 
 ;["runtime/index", "runtime/internal", "compiler/index"].forEach(item => {
-    const envDtsFilePath = path.resolve(dir, "../env.d.ts")
-    const filePath = path.resolve(dir, "../src", item + ".ts")
-    const fileContent = fs.readFileSync(filePath, "utf-8")
-    fs.writeFileSync(
-        filePath,
-        `/// <reference types="${envDtsFilePath}" />\n${fileContent}`,
-        "utf-8"
+    Extractor.invoke(
+        ExtractorConfig.prepare({
+            configObject: {
+                dtsRollup: {
+                    enabled: true,
+                    publicTrimmedFilePath: `dist/types/${item}.d.ts`
+                },
+                compiler: {
+                    tsconfigFilePath: "tsconfig.json"
+                },
+                projectFolder: nodePath.resolve(dirPath, ".."),
+                mainEntryPointFilePath: `dist/temp-types/src/${item}.d.ts`
+            },
+            configObjectFullPath: undefined,
+            packageJsonFullPath: nodePath.resolve(dirPath, "../package.json")
+        }),
+        {
+            localBuild: true
+        }
     )
-
-    try {
-        childProcess.execSync(
-            `npx dts-bundle-generator --project tsconfig.json -o dist/types/${item}.d.ts --export-referenced-types false src/${item}.ts`,
-            { stdio: "inherit" }
-        )
-    } finally {
-        fs.writeFileSync(filePath, fileContent, "utf-8")
-    }
 })

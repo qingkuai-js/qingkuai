@@ -1,10 +1,10 @@
 import type { Identifier } from "@babel/types"
-import type { WalkContext } from "../../../src/compiler/estree/walk"
+import type { EstreeWalkContext } from "#type-declarations/compiler"
 
 import { parse } from "@babel/parser"
 import { expect, test } from "vitest"
 import { any } from "../../../src/util/shared/sundry"
-import { walk } from "../../../src/compiler/estree/walk"
+import { walkEstree } from "../../../src/compiler/estree/walk"
 
 function localParse(source: string) {
     return parse(source, {
@@ -14,7 +14,7 @@ function localParse(source: string) {
     })
 }
 
-const checkShorthandBindingReference = (context: WalkContext<Identifier>) => {
+const checkShorthandBindingReference = (context: EstreeWalkContext<Identifier>) => {
     expect(context.isShorthandIdentifierAccess).toBeTruthy()
     expect(context.isBindingReference).toBe(any(context).parent.value.value === context.value)
 }
@@ -38,7 +38,7 @@ test("Expressions", () => {
         D satisfies string;
         <number>E;
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(node, context) {
             switch (node.name) {
                 case "y": {
@@ -77,7 +77,7 @@ test("Variables", () => {
         interface x{}
         let y: z = 0
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(node, context) {
             switch (node.name) {
                 case "c":
@@ -115,7 +115,7 @@ test("Functions", () => {
         E = (function ([F = G, ...H]){})()
         function I<J, K>(L: M, N = O as P as Q){}
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(node, context) {
             switch (node.name) {
                 case "C": {
@@ -177,7 +177,7 @@ test("Classes", () => {
             K<L, M>(N: O, P = Q as R){}
         }
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(node, context) {
             switch (node.name) {
                 case "d":
@@ -230,7 +230,7 @@ test("Statements", () => {
             ...H
         }){}
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(node, context) {
             switch (node.name) {
                 case "h":

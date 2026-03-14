@@ -4,7 +4,7 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
-import type { WalkContext } from "../estree/walk"
+import type { EstreeWalkContext } from "#type-declarations/compiler"
 import type { Identifier, VariableDeclarator, VariableDeclaration } from "@babel/types"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
@@ -50,7 +50,7 @@ import { PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
-import { walk, walkPatternIdentifiers } from "../estree/walk"
+import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
 import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
@@ -59,7 +59,7 @@ import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
     const program = parseScript(sourceCode)
-    program && walk(program, visitor)
+    program && walkEstree(program, visitor)
     inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
 }
 
@@ -462,7 +462,7 @@ function checkTopLevelIdentifier(name: string, range: Range) {
 
 // 检查编译器内置方法的使用是否合法
 // Validate the usage of compiler intrinsic methods.
-function checkUsageOfIntrinsicMethods(node: Identifier, context: WalkContext<Identifier>) {
+function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkContext<Identifier>) {
     const parent = context.striptTypeOperationsParent!
     if (isIntrinsicCall(parent.value)) {
         const intrinsicCall = parent.value

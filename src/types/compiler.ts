@@ -15,9 +15,17 @@ import type {
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
 import type { Pair } from "#type-declarations/tools"
-import type { WalkContext } from "../compiler/estree/walk"
-import type { CompileError } from "../compiler/message/error"
-import type { CompileWarning } from "../compiler/message/warn"
+
+export interface CompileWarning {
+    loc: ASTLocation
+    code: number
+    message: string
+}
+export interface CompileError extends Error {
+    code: number
+    loc: ASTLocation
+    description: string
+}
 
 export interface ScriptDescriptor {
     code: string
@@ -260,8 +268,30 @@ export interface ScriptAnalyzeRet {
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<VariableDeclarator, WalkContext<Identifier>>
-    importDeclarations: WalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
+    declaratorToIntrinsic: Map<VariableDeclarator, EstreeWalkContext<Identifier>>
+    importDeclarations: EstreeWalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
+}
+
+export interface EstreeWalkContext<T extends AnyNode = AnyNode> {
+    value: T
+    inTopLevel: boolean
+    isScopeBoundary: boolean
+    isBindingReference: boolean
+    inHoistableTopLevel: boolean
+    isComputedIdentifier: boolean
+    isParameterIdentifier: boolean
+    isShorthandIdentifierAccess: boolean
+    isNonHoistableScopeBoundary: boolean
+    isIdentifierAssignmentTarget: boolean
+    scopeIdentifiers: Set<string> | undefined
+    scope: EstreeWalkContext | null
+    parent: EstreeWalkContext | null
+    nonHoistableScope: EstreeWalkContext | null
+    striptTypeOperationsParent: EstreeWalkContext | null
+    findAncestorUntil: <T extends AnyNode["type"]>(
+        type: T
+    ) => EstreeWalkContext<AnyNode & { type: T }> | null
+    walkAncestors: (callback: (context: EstreeWalkContext) => void) => void
 }
 
 export type Range = Pair<number>

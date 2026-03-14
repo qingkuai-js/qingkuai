@@ -12,7 +12,7 @@ import {
     markSourcemapEndFlag,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
-import { walk } from "../estree/walk"
+import { walkEstree } from "../estree/walk"
 import { PositionFlag } from "../enums"
 import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
@@ -52,7 +52,7 @@ export function analyzeInterpolation(
             getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length)
         )
     }
-    walk(expression, {
+    walkEstree(expression, {
         AnyNode(node) {
             markNeedSourcemap(node, startSourceIndex)
         },

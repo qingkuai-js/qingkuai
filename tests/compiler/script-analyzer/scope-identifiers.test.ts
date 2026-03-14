@@ -1,8 +1,9 @@
 import type { Identifier } from "@babel/types"
+import type { EstreeWalkContext } from "#type-declarations/compiler"
 
 import { expect, test } from "vitest"
 import { parse } from "@babel/parser"
-import { walk, WalkContext } from "../../../src/compiler/estree/walk"
+import { walkEstree } from "../../../src/compiler/estree/walk"
 
 function localParse(source: string) {
     return parse(source, {
@@ -12,13 +13,13 @@ function localParse(source: string) {
     })
 }
 
-function checkScopeIdentifiers(context: WalkContext<Identifier>, full: string[][]) {
+function checkScopeIdentifiers(context: EstreeWalkContext<Identifier>, full: string[][]) {
     if (!context.value.name.startsWith("_mark")) {
         return
     }
 
     let size = 0
-    let parentScope: WalkContext
+    let parentScope: EstreeWalkContext
     if (context.isScopeBoundary) {
         parentScope = context.scope!
     } else {
@@ -87,7 +88,7 @@ test("Variable declarations", () => {
         }
     `)
 
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(_, context) {
             checkScopeIdentifiers(context, [
                 ["a", "b", "c", "e", "h", "l", "m", "v"],
@@ -131,7 +132,7 @@ test("Function declarations and function expressions", () => {
             }
         }
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(_, context) {
             checkScopeIdentifiers(context, [
                 ["b", "c", "e", "f", "g", "i", "o", "x", "y"],
@@ -174,7 +175,7 @@ test("Class decalrations and class expressions", () => {
             }
         }
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(_, context) {
             checkScopeIdentifiers(context, [
                 [],
@@ -224,7 +225,7 @@ test("For statements", () => {
             _mark7_
         }
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(_, context) {
             checkScopeIdentifiers(context, [
                 ["a", "b", "d", "g", "h"],
@@ -249,7 +250,7 @@ test("Functions without BlockStatement", () => {
             const m = ([n, o = p, ...q], ...r) => (_mark4_, (s: t = u, ...v) => _mark5_)
         }
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(_, context) {
             checkScopeIdentifiers(context, [
                 ["a", "m"],
@@ -270,7 +271,7 @@ test("For realeated statements without BlockStatement", () => {
         for(const {k = l, m : n = o} of {}) 
             ((p = q, ...r: s) => (_mark6_, t))(_mark7_)
     `)
-    walk(ast, {
+    walkEstree(ast, {
         Identifier(_, context) {
             checkScopeIdentifiers(context, [
                 ["a", "b"],

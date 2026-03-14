@@ -31,7 +31,7 @@ export type {
     IdentifierStatus,
     TemplateAttribute,
     ASTPositionWithFlag
-} from "../types/compiler"
+} from "#type-declarations/compiler"
 
 export type { CompileIntermediateResult } from "./compile"
 

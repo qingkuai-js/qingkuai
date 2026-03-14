@@ -1,3 +1,5 @@
+export type { HtmlBlockOptions } from "#type-declarations/runtime"
+
 export {
     onBeforeMount,
     onAfterMount,
@@ -37,5 +39,3 @@ export { mountApp } from "./component"
 export { toRaw } from "../util/runtime/sundry"
 export { nextTick } from "../util/runtime/sundry"
 export { createStore, toReactive, toShallowReactive } from "./reactivity/value"
-
-export type { HtmlBlockOptions } from "../types/runtime"

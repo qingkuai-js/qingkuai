@@ -1,5 +1,5 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ASTLocation } from "#type-declarations/compiler"
+import type { ASTLocation, CompileError } from "#type-declarations/compiler"
 
 import { inputDescriptor, messages } from "../state"
 import { PRESERVED_IDPREFIX, SPREAD_TAG } from "../constants"
@@ -307,10 +307,10 @@ export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
 })
 
 export function isCompileError(err: Error): err is CompileError {
-    return err instanceof CompileError
+    return err instanceof QingkuaiCompileError
 }
 
-export class CompileError extends Error {
+class QingkuaiCompileError extends Error implements CompileError {
     public description = "The QingKuai compiler encountered a fatal error during execution"
 
     constructor(
@@ -327,7 +327,7 @@ export class CompileError extends Error {
 // in non-check mode, throw the error directly; in check mode, store the error object in `messages`
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function error(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
-        const err = new CompileError(loc, code, fn(...params))
+        const err = new QingkuaiCompileError(loc, code, fn(...params))
 
         if (!inputDescriptor.options.checkMode) {
             throw err

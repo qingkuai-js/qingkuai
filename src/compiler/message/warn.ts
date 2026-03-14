@@ -1,5 +1,5 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ASTLocation, IdentifierStatus } from "#type-declarations/compiler"
+import type { ASTLocation, CompileWarning, IdentifierStatus } from "#type-declarations/compiler"
 
 import { messages } from "../state"
 
@@ -68,17 +68,17 @@ export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
 })
 
 export function isCompileWarning(v: any): v is CompileWarning {
-    return v instanceof CompileWarning
+    return v instanceof QingkuaiCompileWarning
 }
 
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
-        new CompileWarning(loc, code, fn(...params))
+        new QingkuaiCompileWarning(loc, code, fn(...params))
     }
     return warn
 }
 
-export class CompileWarning {
+class QingkuaiCompileWarning implements CompileWarning {
     constructor(
         public loc: ASTLocation,
         public code: number,

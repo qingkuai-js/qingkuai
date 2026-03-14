@@ -1,16 +1,16 @@
 import type { PatternLike } from "@babel/types"
-import type { WalkContext } from "../../../src/compiler/estree/walk"
+import type { EstreeWalkContext } from "#type-declarations/compiler"
 
 import { expect, test } from "vitest"
 import { NOOP } from "../../../src/runtime/constants"
 import { parse, parseExpression } from "@babel/parser"
 import { isLeftValue } from "../../../src/compiler/estree/assert"
-import { walk, walkPatternIdentifiers } from "../../../src/compiler/estree/walk"
+import { walkEstree, walkPatternIdentifiers } from "../../../src/compiler/estree/walk"
 
 function extractIdentifiers(source: string) {
     const result: string[][] = []
 
-    const extract = (node: PatternLike, context: WalkContext<PatternLike>) => {
+    const extract = (node: PatternLike, context: EstreeWalkContext<PatternLike>) => {
         switch (context.striptTypeOperationsParent?.value.type) {
             case "ObjectMethod":
             case "CatchClause":
@@ -32,7 +32,7 @@ function extractIdentifiers(source: string) {
         }
     }
 
-    walk(
+    walkEstree(
         parse(source, {
             sourceType: "module",
             plugins: ["typescript"]

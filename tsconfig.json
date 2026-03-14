@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
-    "noEmit": true,
     "strict": true,
     "target": "ESNext",
     "module": "ESNext",
+    "declaration": true,
     "esModuleInterop": true,
+    "outDir": "dist/temp-types",
+    "emitDeclarationOnly": true,
     "moduleResolution": "Bundler",
     "forceConsistentCasingInFileNames": true,
     "paths": {
@@ -12,5 +14,5 @@
     }
   },
   "exclude": ["node_modules/**/*", "dist"],
-  "include": ["src", "tests", "test-space", "env.d.ts", "scripts"]
+  "include": ["src", "tests", "test-space", "env.d.ts", "scripts", "dist/temp-types"]
 }

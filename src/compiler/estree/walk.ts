@@ -1,4 +1,5 @@
 import type { LVal, Identifier, PatternLike, VariableDeclaration } from "@babel/types"
+import type { EstreeWalkContext as EstreeWalkContextImpl } from "#type-declarations/compiler"
 import type { AnyNode, Visitor, WalkPatternCallback, WithLoc } from "#type-declarations/estree"
 
 import { any } from "../../util/shared/sundry"
@@ -6,13 +7,13 @@ import { isArray, isObject } from "../../util/shared/assert"
 import { intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 import { isBlock, isTypeOperation, willModuleDeclarationEmitsJS } from "./assert"
 
-export class WalkContext<T extends AnyNode = AnyNode> {
+export class EstreeWalkContext<T extends AnyNode = AnyNode> implements EstreeWalkContextImpl {
     inTopLevel = false
     isBindingReference = false
 
     constructor(
         public value: T,
-        public parent: WalkContext | null = null,
+        public parent: EstreeWalkContext | null = null,
         public scopeIdentifiers: Set<string> | undefined = undefined
     ) {
         if (value) {
@@ -105,7 +106,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
 
     // 获取节点所属的作用域
     // Get the scope that the node belongs to.
-    get scope(): WalkContext | null {
+    get scope(): EstreeWalkContext | null {
         let ret: any = null
         this.walkAncestors(current => {
             if (current.isScopeBoundary) {
@@ -117,7 +118,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
 
     // 获取节点所属的不可提升作用域
     // Get the non-hoistable scope that the node belongs to.
-    get nonHoistableScope(): WalkContext | null {
+    get nonHoistableScope(): EstreeWalkContext | null {
         let ret: any = null
         this.walkAncestors(current => {
             if (current.isNonHoistableScopeBoundary) {
@@ -176,18 +177,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         return false
     }
 
-    get outermostTypeOperationAncestor() {
-        let ret: WalkContext = this
-        this.walkAncestors(current => {
-            if (!isTypeOperation(current.value)) {
-                return true
-            }
-            ret = current
-        })
-        return ret
-    }
-
-    get striptTypeOperationsParent(): WalkContext<AnyNode> | null {
+    get striptTypeOperationsParent(): EstreeWalkContext<AnyNode> | null {
         if (!this.parent) {
             return null
         }
@@ -199,7 +189,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
 
     findAncestorUntil<T extends AnyNode["type"]>(
         type: T
-    ): WalkContext<AnyNode & { type: T }> | null {
+    ): EstreeWalkContext<AnyNode & { type: T }> | null {
         let ret: any = null
         this.walkAncestors(current => {
             if (type === current.value.type) {
@@ -209,7 +199,7 @@ export class WalkContext<T extends AnyNode = AnyNode> {
         return ret
     }
 
-    walkAncestors(callback: (context: WalkContext) => any) {
+    walkAncestors(callback: (context: EstreeWalkContext) => any) {
         for (let current = this.parent; current; current = current.parent) {
             if (callback(current)) {
                 break
@@ -218,17 +208,17 @@ export class WalkContext<T extends AnyNode = AnyNode> {
     }
 }
 
-export function walk(node: any, visitor: Visitor, context = new WalkContext(node)) {
+export function walkEstree(node: any, visitor: Visitor, context = new EstreeWalkContext(node)) {
     if (!node) {
         return
     }
 
     const recursive = (child: any) => {
         if (child && child.loc) {
-            walk(
+            walkEstree(
                 child,
                 visitor,
-                new WalkContext(
+                new EstreeWalkContext(
                     child,
                     context,
                     context.scopeIdentifiers && new Set(context.scopeIdentifiers)
@@ -316,11 +306,11 @@ export function walkPatternIdentifiers(pattern: LVal | PatternLike, callback: Wa
 
 // 判断是否为值标识符引用
 // Determine whether this is a value identifier reference.
-function isBindingReference(context: WalkContext) {
+function isBindingReference(context: EstreeWalkContext) {
     const node = context.value
     const parent = context.parent
     const parentNode = parent?.value
-    const assertedContext = context as WalkContext<Identifier>
+    const assertedContext = context as EstreeWalkContext<Identifier>
     if (node.type !== "Identifier") {
         return false
     }
@@ -385,7 +375,7 @@ function isBindingReference(context: WalkContext) {
         case "ObjectProperty": {
             let ret = false
             let isAssignmentTargetPattern = false
-            let patternContext: WalkContext<PatternLike> | undefined
+            let patternContext: EstreeWalkContext<PatternLike> | undefined
             if (parentNode.type !== "ObjectProperty" && parentNode.type !== "RestElement") {
                 patternContext = parent as any
             } else {
@@ -438,14 +428,14 @@ function isBindingReference(context: WalkContext) {
 
 // 记录上下文中含有的作用域标识符
 // Record the scope identifiers present in the context.
-function recordScopeIdentifiers(context: WalkContext) {
+function recordScopeIdentifiers(context: EstreeWalkContext) {
     const node = context.value
     const paramPatterns: PatternLike[] = []
     const declarations: VariableDeclaration[] = []
     const children = isBlock(node) ? node.body : [node]
     const parentNode = context.striptTypeOperationsParent!.value
 
-    const extendScopeIdentifiers = (context: WalkContext, { name }: Identifier) => {
+    const extendScopeIdentifiers = (context: EstreeWalkContext, { name }: Identifier) => {
         if (
             process.env.VITEST === "true" ||
             intrinsicMethodsRE.test(name) ||
@@ -528,7 +518,7 @@ function recordScopeIdentifiers(context: WalkContext) {
     for (const declaration of declarations) {
         for (const declarator of declaration.declarations) {
             walkPatternIdentifiers(declarator.id, identifier => {
-                let scope: WalkContext | null = context
+                let scope: EstreeWalkContext | null = context
                 if (declaration.kind === "var" && !context.isNonHoistableScopeBoundary) {
                     scope = context.nonHoistableScope
                 }

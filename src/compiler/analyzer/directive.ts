@@ -28,7 +28,7 @@ import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
-import { walk, walkPatternIdentifiers } from "../estree/walk"
+import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
@@ -251,7 +251,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         let validIdentifierCount = 0
         if (pattern) {
             if (inputDescriptor.options.sourcemap) {
-                walk(pattern, {
+                walkEstree(pattern, {
                     AnyNode(node) {
                         markNeedSourcemap(node, valueStartSourceIndex)
                     }

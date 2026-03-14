@@ -3,7 +3,7 @@ import type { ContextPattern } from "#type-declarations/estree"
 import type { TemplateAttribute } from "#type-declarations/compiler"
 import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 
-import { walk } from "../estree/walk"
+import { walkEstree } from "../estree/walk"
 import { inputDescriptor } from "../state"
 import { parseContextPattern } from "./script"
 import { findOutOfLiteralComment } from "../../util/compiler/string"
@@ -55,7 +55,7 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
 
             // 由于解析时添加了一个开始中括号前缀，这里需要将每个节点的位置信息向前移动一位
             // Since a prefix '[' was added during parsing, the position of each node needs to be shifted forward by one here.
-            walk(pattern, {
+            walkEstree(pattern, {
                 AnyNode(node) {
                     if (!node.loc.end.column) {
                         node.loc.end.column--

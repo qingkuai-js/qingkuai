@@ -1,13 +1,12 @@
 import type {
     TemplateNode,
     CompileMessage,
+    CompileResult,
     CompileOptions,
     StyleDescriptor,
     ScriptDescriptor,
     IdentifierStatus,
-    TemplateAttribute,
     ASTPositionWithFlag,
-    CompileResult,
     CompileIntermediateOptions
 } from "#type-declarations/compiler"
 import type { PositionFlag } from "./enums"
