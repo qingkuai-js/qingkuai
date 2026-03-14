@@ -8,7 +8,6 @@ import type { VariableDeclarator } from "@babel/types"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
 
 import {
-    getStartTagLoc,
     getParsedPatterns,
     getParsedEventInfo,
     getStartTagOpenLoc,
@@ -254,14 +253,17 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 })
                 writer.wrapLine()
 
-                if (node.rawTag !== node.tag) {
+                if (node.rawTag !== node.tag || !getParsedExpression(node)) {
                     writer.write(ANY_VALUE)
                 } else {
                     const componentTagParts = getParsedComponentTag(node)!
+                    writer.write(`${UTILS}.confirmComponent(`)
+
                     for (let i = 0; i < componentTagParts.length; i++) {
                         i && writer.write(".")
                         writer.write(componentTagParts[i].id, componentTagParts[i].sourceRange)
                     }
+                    writer.write(")")
                 }
                 writer.write("({").indent(false)
             }

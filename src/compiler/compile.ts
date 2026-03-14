@@ -61,7 +61,6 @@ export function compileIntermediate(source: string, options: CompileIntermediate
         writer.indexMap,
         idStatusMap,
         analyzeResult.template.slots,
-        analyzeResult.template.eventInfos,
         analyzeResult.template.nodeContexts
     )
 }
@@ -80,14 +79,9 @@ export class CompileIntermediateResult {
         public indexMap: { itos: number[]; stoi: number[] },
         public identifierStatusMap: Record<string, IdentifierStatus>,
         private slots: (typeof analyzeResult)["template"]["slots"],
-        private eventInfos: (typeof analyzeResult)["template"]["eventInfos"],
         private nodeContexts: (typeof analyzeResult)["template"]["nodeContexts"]
     ) {
         traverseObject(slots, name => this.slotNames.push(name))
-    }
-
-    getEventInfo(event: TemplateAttribute) {
-        return this.eventInfos.get(event)
     }
 
     getTemplateNodeContext(node: TemplateNode) {

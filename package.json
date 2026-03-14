@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@babel/types": "^7.28.1",
+    "@microsoft/api-extractor": "^7.57.7",
     "@types/node": "^24.2.0",
     "dts-bundle-generator": "^9.5.1",
     "rimraf": "^6.1.3",

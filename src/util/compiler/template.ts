@@ -102,7 +102,7 @@ export function getAttributeBaseNameLoc(attribute: TemplateAttribute) {
     return getLocByIndex(attribute.name.loc.start.index, attribute.name.loc.end.index)
 }
 
-export function getStartTagLoc(node: TemplateNode) {
+export function getStartTagNameLoc(node: TemplateNode) {
     return getLocByIndex(node.loc.start.index + 1, node.loc.start.index + 1 + node.tag.length)
 }
 

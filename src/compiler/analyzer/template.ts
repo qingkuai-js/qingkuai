@@ -6,8 +6,8 @@ import type {
 } from "#type-declarations/compiler"
 
 import {
-    getStartTagLoc,
     walkTemplateNodes,
+    getStartTagNameLoc,
     getStartTagOpenLoc,
     getParsedExpression,
     getTemplateNodeContext,
@@ -54,7 +54,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
         )
 
         if (node.componentTag) {
-            const startTagLog = getStartTagLoc(node)
+            const startTagLog = getStartTagNameLoc(node)
             analyzeResult.template.parsedComponentTags.set(node, parseComponentTag(node))
             analyzeTemplateAsExpression(node, node.componentTag, node, startTagLog, "component")
         }
