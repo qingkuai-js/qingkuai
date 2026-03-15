@@ -30,7 +30,8 @@ export type {
     ScriptDescriptor,
     IdentifierStatus,
     TemplateAttribute,
-    ASTPositionWithFlag
+    ASTPositionWithFlag,
+    TemplateNodeContext
 } from "#type-declarations/compiler"
 
 export type { CompileIntermediateResult } from "./compile"

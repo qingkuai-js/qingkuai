@@ -83,6 +83,14 @@ export class CompileIntermediateResult {
         traverseObject(slots, name => this.slotNames.push(name))
     }
 
+    getSourceIndex(interIndex: number) {
+        return this.indexMap.itos[interIndex]
+    }
+
+    getInterIndex(sourceIndex: number) {
+        return this.indexMap.stoi[sourceIndex]
+    }
+
     getTemplateNodeContext(node: TemplateNode) {
         return this.nodeContexts.get(node)!
     }

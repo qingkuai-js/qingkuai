@@ -73,14 +73,14 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     if (isTS) {
         writer.writeLine(`type Props = ${EMPTY_OBJECT}; type Refs = ${EMPTY_OBJECT};`)
         writer.write(
-            `const props: Props = ${ANY_VALUE}, refs: Refs = ${ANY_VALUE}, slots: ${SLOT_NAMES_TYPE} = ${ANY_VALUE};`
+            `const props: Readonly<Props> = ${ANY_VALUE}, refs: Readonly<Refs> = ${ANY_VALUE}, slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`
         )
     } else {
         writer.writeLine(
             `/** @typedef { ${EMPTY_OBJECT} } Refs @typedef { ${EMPTY_OBJECT} } Props */`
         )
         writer.write(
-            `const /** @type { Props } */ props = 0, /** @type { Refs } */ refs = 0, /** @type { ${SLOT_NAMES_TYPE} } */ slots = 0;`
+            `const /** @type { Readonly<Props> } */ props = 0, /** @type { Readonly<Refs> } */ refs = 0, /** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`
         )
     }
 
@@ -107,6 +107,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const isComponent = !!node.componentTag
             const isSpread = SPREAD_TAG === node.tag
             const nodeContext = getTemplateNodeContext(node)
+            const startTagOpenLoc = getStartTagOpenLoc(node)
             const componentInvalidExps: [string, Range][] = []
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
@@ -123,7 +124,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (node.tag && node.parent?.componentTag && !nodeContext.attributesMap["#slot"]) {
                 writer.wrapLine()
-                writer.write('"default"', getRangeByLoc(getStartTagOpenLoc(node)))
+                writer.write("default", getRangeByLoc(startTagOpenLoc))
                 writer.write(": () => ")
                 endInserts.push(() => writer.write(","))
                 indentAndWriteStartEnclosure(false)
@@ -142,7 +143,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const valueRange = getRangeByLoc(directive.value.loc)
                 const directiveInfo = analyzeResult.template.directiveIndos.get(directive)
 
-                if (!expression && rawName !== "#then" && rawName !== "#await") {
+                if (
+                    !expression &&
+                    rawName !== "#then" &&
+                    rawName !== "#await" &&
+                    rawName !== "#slot"
+                ) {
                     const value = directiveInfo?.base ?? rawValue
                     const start = directiveInfo?.baseStartSourceIndex ?? valueRange[0]
                     writer.wrapLine().write(value, start).write(";")
@@ -218,7 +224,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             if (expression) {
                                 writer.write(expression.source, expression.startSourceIndex)
                             } else {
-                                writer.write('"default"', getRangeByLoc(getStartTagOpenLoc(node)))
+                                writer.write("default", getRangeByLoc(startTagOpenLoc))
                             }
                             writer.write(": (")
                             generatePatterns(writer, valueRange[0], directive)
@@ -243,7 +249,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 }
             }
 
-            if (node.componentTag) {
+            if (isComponent) {
                 endInserts.push(() => {
                     writer.dedent().write("});")
 
@@ -265,7 +271,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                     writer.write(")")
                 }
-                writer.write("({").indent(false)
+                writer.write("(").write("{", startTagOpenLoc.start.index).indent(false)
             }
 
             if (isComponent || isSlot) {
@@ -420,7 +426,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (isComponent) {
-                writer.dedent().write("},").wrapLine().write("{").indent(false)
+                writer.dedent().write("}", startTagOpenLoc.end.index - 1)
+                writer.writeLine(",").write("{", startTagOpenLoc.start.index).indent(false)
             }
 
             for (const attribute of nodeContext.referenceAttributes) {
@@ -542,7 +549,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (isComponent) {
-                writer.dedent().write("},").wrapLine().write("{").indent(false)
+                writer.dedent().write("}", startTagOpenLoc.end.index - 1)
+                writer.writeLine(",").write("{").indent(false)
             }
 
             ;(generate(node.children), forEachRight(endInserts, fn => fn()))
@@ -557,14 +565,17 @@ function generatePatterns(
     startSourceIndex: number,
     directive: TemplateAttribute
 ) {
-    const patterns = getParsedPatterns(directive)?.slice(0, 2)
-    if (!patterns?.some(pattern => pattern)) {
-        return (writer.wrapLine(), false)
-    }
-
     const directiveName = directive.name.raw
     const isForDirective = directiveName === "#for"
     const isSlotDirective = directiveName === "#slot"
+    const patterns = getParsedPatterns(directive)?.slice(0, 2)
+    if (!patterns?.some(pattern => pattern)) {
+        if (!isSlotDirective) {
+            writer.wrapLine()
+        }
+        return false
+    }
+
     if (!isSlotDirective) {
         writer.wrapLine().write("const ")
         isForDirective && writer.write("[")
@@ -596,5 +607,5 @@ function forEachRight(arr: any[], cb: ArbitraryFunc) {
 
 function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
     writer.gtdii.push(writer.length)
-    writer.write(`${LANGUAGE_SERVICE_UTIL}.${GET_TYPE_DELAY_MARKING}(`)
+    writer.write(`${GET_TYPE_DELAY_MARKING}(`)
 }

@@ -25,7 +25,7 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
 
     const source = directive.value.raw
     const startSourceIndex = directive.value.loc.start.index
-    const keyword = { "#for": "of", "#slot": "form" }[rawName]
+    const keyword = { "#for": "of", "#slot": "from" }[rawName]
     const [findTarget, findLength] = [` ${keyword} `, keyword.length + 2]
 
     for (let i = 0; true; i += findLength - 1) {
