@@ -1,3 +1,5 @@
+import type { AttributeValueEnclosure } from "#type-declarations/compiler"
+
 import {
     KEY_UP,
     KEY_DOWN,
@@ -83,6 +85,12 @@ export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
     "#if": ["#elif", "#else"],
     "#elif": ["#if", "#else"],
     "#else": ["#if", "#elif"]
+}
+
+export const ATTRIBUTE_VALUE_ENCLOSURE_MAP: Record<string, AttributeValueEnclosure> = {
+    "{": "curly",
+    "'": "single",
+    '"': "double"
 }
 
 export const BLOCK_TAGS: ReadonlySet<string> = new Set([

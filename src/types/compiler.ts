@@ -310,6 +310,8 @@ export type StandaloneParseOptions = Partial<{
     preseveCommentNodes: boolean
     preserveBlankTextNodes: boolean
     checkTemplateStructure: boolean
+    checkEmptyInterpolation: boolean
+    checkAttributeValueEnclosure: boolean
 }>
 
 export interface CompileIntermediateOptions {

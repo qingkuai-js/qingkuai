@@ -24,7 +24,8 @@ import {
     templateTagStructureRE,
     templateEmbeddedLangTagRE,
     templateInvalidAttributeRE,
-    interpolatedAttrStartCharRE
+    interpolatedAttrStartCharRE,
+    jsValidIdentifierRE
 } from "../regular"
 import {
     getPosByIndex,
@@ -62,6 +63,7 @@ import { inputDescriptor, resetCompilerState } from "../state"
 import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
 import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
+import { ATTRIBUTE_VALUE_ENCLOSURE_MAP } from "../constants"
 
 export function newTemplateNode(): TemplateNode {
     return {
@@ -206,9 +208,11 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
                 })
             }
 
-            const lastItem = getLastElem(contentParts)
-            if (lastItem?.isInterpolated && !isNonEmptyExpression(lastItem.value)) {
-                EmptyInterpolationBlock(lastItem.loc)
+            if (options.checkEmptyInterpolation) {
+                const lastItem = getLastElem(contentParts)
+                if (lastItem?.isInterpolated && !isNonEmptyExpression(lastItem.value)) {
+                    EmptyInterpolationBlock(lastItem.loc)
+                }
             }
         }
 
@@ -297,7 +301,11 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
             tag,
             prev,
             parent,
-            componentTag: isComponent ? kebab2Camel(tag) : "",
+            componentTag: isComponent
+                ? jsValidIdentifierRE.test(tag)
+                    ? tag
+                    : kebab2Camel(tag)
+                : "",
             loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })
 
@@ -368,8 +376,9 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
                 // attribute is not enclosed in braces; in check mode, the following consecutive non-whitespace.
                 // characters will be parsed as the attribute value
                 if (
-                    (isInterpolatedAttr && !startCurlyRE.test(dps)) ||
-                    (!isInterpolatedAttr && !startQuoteRE.test(dps))
+                    options.checkAttributeValueEnclosure &&
+                    ((isInterpolatedAttr && !startCurlyRE.test(dps)) ||
+                        (!isInterpolatedAttr && !startQuoteRE.test(dps)))
                 ) {
                     const endIndex = templateAttributeEndRE.exec(dps)!.index
                     const errorLoc = getLocByIndex(
@@ -387,12 +396,15 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
                 } else {
                     fullValueStartIndex = reduceSpaces().index
                     valueStartIndex = fullValueStartIndex + 1
-                    valueEnclosure = isInterpolatedAttr
-                        ? "curly"
-                        : dps[0] === "'"
-                          ? "single"
-                          : "double"
-                    endCharIndex = isInterpolatedAttr ? findEndBracket(dps) : dps.indexOf(dps[0], 1)
+                    valueEnclosure = ATTRIBUTE_VALUE_ENCLOSURE_MAP[dps[0]] ?? "none"
+
+                    // 找到属性值结束字符的位置
+                    // Find the position of the attribute value's closing character
+                    if (valueEnclosure === "curly") {
+                        endCharIndex = findEndBracket(dps)
+                    } else {
+                        endCharIndex = dps.indexOf(dps[0], 1)
+                    }
 
                     // 当属性值的结束字符不存在（右花括号或单双引号）时报错，空插值块也要报错
                     // Report an error when closing character of the attribute value (right brace or quotes)
@@ -408,10 +420,12 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
                             UnclosedInterpolationBlock(unclosedAttributeValueLoc)
                         }
                     } else if (
-                        isInterpolatedAttr &&
+                        valueEnclosure === "curly" &&
                         !isNonEmptyExpression(dps.slice(1, endCharIndex))
                     ) {
-                        EmptyInterpolationBlock(getLocByIndex(index, index + endCharIndex + 1))
+                        if (options.checkEmptyInterpolation) {
+                            EmptyInterpolationBlock(getLocByIndex(index, index + endCharIndex + 1))
+                        }
                     }
 
                     // 完善属性值及其位置信息的相关记录
