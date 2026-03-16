@@ -12,7 +12,7 @@ test("Wheter comment nodes were removed from parse result", () => {
                 <!-- text content -->
             </div>
         `),
-        { reseveCommentNodes: false }
+        { preseveCommentNodes: false }
     )
     matchTemplateNodeList(
         nodeList,
@@ -88,7 +88,7 @@ test("Whether conditional comment nodes were always preserved", () => {
                 This will be displayed in non-IE browsers
             <!-- <![endif]-->
         `),
-        { reseveCommentNodes: false }
+        { preseveCommentNodes: false }
     )
     matchTemplateNodeList(
         nodeList,
@@ -190,7 +190,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
     const parseAndCheckStructure = (source: string) => {
         return parseTemplateStandalone(source, {
             recover: true,
-            structureCheck: true
+            checkTemplateStructure: true
         })
     }
 
@@ -775,7 +775,7 @@ it("Should not cause error when `dt` tag is used as descendant of `dl` of anothe
             `),
         {
             recover: true,
-            structureCheck: true
+            checkTemplateStructure: true
         }
     )
     matchTemplateNodeList(nodeList, {

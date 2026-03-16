@@ -178,7 +178,11 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
 
             if (directive.valueEnclosure !== "none") {
-                const pattern = parseContextPattern(rawValue)
+                let pattern: ContextPattern | null = null
+                try {
+                    pattern = parseContextPattern(rawValue)
+                } catch {}
+
                 if (pattern) {
                     recordContextIdentifiers(pattern)
                 } else {

@@ -21,7 +21,7 @@ describe("Top level", () => {
                 <!-- white-space: pre -->
                 <div></div>
             `),
-            { reseveCommentNodes: false }
+            { preseveCommentNodes: false }
         )
         matchTemplateNodeList(
             nodeList,
@@ -204,7 +204,7 @@ describe("Nesting structure", () => {
                     </p>
                 </div>
             `),
-            { reseveCommentNodes: true }
+            { preseveCommentNodes: true }
         )
 
         matchTemplateNodeList(nodeList, {

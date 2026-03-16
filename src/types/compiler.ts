@@ -307,8 +307,9 @@ export type TopLevelReferences = Record<
 
 export type StandaloneParseOptions = Partial<{
     recover: boolean
-    structureCheck: boolean
-    reseveCommentNodes: boolean
+    preseveCommentNodes: boolean
+    preserveBlankTextNodes: boolean
+    checkTemplateStructure: boolean
 }>
 
 export interface CompileIntermediateOptions {
@@ -327,10 +328,9 @@ export type CompileOptions = Partial<{
     hashId: string
     debug: boolean
     sourcemap: boolean
-    tipComment: boolean
     componentName: string
-    preserveCommentNodes: boolean
-    checkTemplateStructure: boolean
+    interpretiveComments: boolean
+    preserveHtmlComments: boolean
     shorthandDerivedDeclaration: boolean
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"

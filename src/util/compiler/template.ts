@@ -7,18 +7,6 @@ import { analyzeResult } from "../../compiler/state"
 import { SPREAD_TAG } from "../../compiler/constants"
 import { interpolatedAttrStartCharRE } from "../../compiler/regular"
 
-export function getRawContent(node: TemplateNode) {
-    if (!node.content.length) {
-        return ""
-    }
-    return node.content.reduce((ret, cur) => {
-        if (!cur.isInterpolated) {
-            return ret + cur.value
-        }
-        return ret + `{${cur.value}}`
-    }, "")
-}
-
 export function getPrevElementContext(node: TemplateNode) {
     while (node.prev && "" === node.prev.tag) {
         node = node.prev

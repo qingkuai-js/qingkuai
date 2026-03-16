@@ -79,8 +79,8 @@ export function getLocByIndex(start: number, end: number = start): ASTLocation {
     return { start: getPosByIndex(start), end: getPosByIndex(end) }
 }
 
-export function markPositionFlag(flag: PositionFlag, start: number, end = start + 1) {
-    for (let i = start; i < end; i++) {
+export function markPositionFlag(flag: PositionFlag, start: number, end = start) {
+    for (let i = start; i <= end; i++) {
         inputDescriptor.positions[i].flag |= flag
     }
 }

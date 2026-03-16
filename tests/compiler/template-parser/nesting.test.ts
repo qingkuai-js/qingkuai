@@ -306,7 +306,7 @@ test("With comment", () => {
                 name <!-- ... --> age
             </div>
         `),
-        { reseveCommentNodes: true }
+        { preseveCommentNodes: true }
     )
     matchTemplateNodeList(nodeList, {
         tag: "div",
@@ -643,7 +643,7 @@ test("With components", () => {
                 prev: nodeList[0].children[5]
             }
         ],
-        componentTag: "MyComp",
+        componentTag: "myComp",
         loc: getLocByIndex(0, 70),
         startTagEndPos: getPosByIndex(9),
         endTagStartPos: getPosByIndex(60)
@@ -990,7 +990,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                             prev: nodeList[0].children[1]
                         }
                     ],
-                    componentTag: "MyComp",
+                    componentTag: "myComp",
                     loc: getLocByIndex(0, 36),
                     startTagEndPos: getPosByIndex(9),
                     endTagStartPos: getPosByIndex(26)
@@ -1052,7 +1052,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
         matchTemplateNodeListAndMessages(() => {
             const nodeList = parseTemplateStandalone(`<Comp><!-- </Comp>`, {
                 recover: true,
-                reseveCommentNodes: true
+                preseveCommentNodes: true
             })
             return [
                 nodeList,
@@ -1152,7 +1152,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                             endTagStartPos: getPosByIndex(37)
                         }
                     ],
-                    componentTag: "MyComp",
+                    componentTag: "myComp",
                     loc: getLocWithDefaultEnd(0),
                     startTagEndPos: getPosByIndex(9)
                 }

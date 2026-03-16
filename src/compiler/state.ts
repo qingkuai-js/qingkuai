@@ -95,13 +95,12 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             debug: false,
             sourcemap: false,
             checkMode: false,
-            tipComment: false,
+            interpretiveComments: false,
             componentName: "",
             reactivityMode: "reactive",
             typeDeclarationFilePath: "",
             whitespace: "trim-collapse",
-            preserveCommentNodes: false,
-            checkTemplateStructure: true,
+            preserveHtmlComments: false,
             shorthandDerivedDeclaration: true
         }
     }
@@ -112,11 +111,11 @@ function newInputDescriptor(options: Partial<InputOptions>) {
         if (isUndefined(options.sourcemap)) {
             ret.options.sourcemap = true
         }
-        if (isUndefined(options.tipComment)) {
-            ret.options.tipComment = true
+        if (isUndefined(options.interpretiveComments)) {
+            ret.options.interpretiveComments = true
         }
-        if (isUndefined(options.preserveCommentNodes)) {
-            ret.options.preserveCommentNodes = true
+        if (isUndefined(options.preserveHtmlComments)) {
+            ret.options.preserveHtmlComments = true
         }
     }
     return (objectAssign(ret.options, options), ret)

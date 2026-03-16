@@ -1,24 +1,27 @@
-import type { TemplateNode } from "#type-declarations/compiler"
+import type { StandaloneParseOptions, TemplateNode } from "#type-declarations/compiler"
 
 import { inputDescriptor } from "../state"
 import { isEmptyString } from "../../util/shared/assert"
 import { templateConditionalCommentRE } from "../regular"
 import { BLOCK_TAGS, DISALLOWED_TAGS } from "../constants"
+import { isBlankTextNode } from "../../util/compiler/assert"
 import { InvalidTemplateStructure, UsedDisallowedTag } from "../message/error"
 import { getParentTag, getStartTagOpenLoc } from "../../util/compiler/template"
-import { isBlankTextNode } from "../../util/compiler/assert"
 
-export function filterTemplateNodes(node: TemplateNode): boolean {
+export function filterTemplateNodes(node: TemplateNode, options: StandaloneParseOptions): boolean {
+    if (!options.preserveBlankTextNodes && isBlankTextNode(node)) {
+        return false
+    }
     if (DISALLOWED_TAGS.has(node.tag)) {
         return (UsedDisallowedTag(getStartTagOpenLoc(node), node.tag), false)
     }
     if (node.tag === "!") {
         return (
-            inputDescriptor.options.preserveCommentNodes ||
+            inputDescriptor.options.preserveHtmlComments ||
             templateConditionalCommentRE.test(node.children[0]?.content[0]?.value ?? "")
         )
     }
-    return !inputDescriptor.options.checkTemplateStructure || shouldNodeBePreserved(node)
+    return !options.checkTemplateStructure || shouldNodeBePreserved(node)
 }
 
 // 检查节点是否应该被保留：有些不符合 HTML 规范的标签嵌套可能会被修复，导致渲染出的 DOM 结构与预期不符

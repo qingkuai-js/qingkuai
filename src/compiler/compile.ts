@@ -41,9 +41,13 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     ;(analyzeScript(), analyzeTemplate(templateNodes))
 
     const writer = generateIntermediateCode(templateNodes)
-    const idStatusMap: Record<string, IdentifierStatus> = newCleanObj()
+    const idStatusInfo: Record<string, string> = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
-        idStatusMap[name] = info.status
+        if (info.status === "literal" || info.status === "pending") {
+            idStatusInfo[name] = "raw"
+        } else {
+            idStatusInfo[name] = `${info.status}${info.path ? ` -> ${info.path}` : ""}`
+        }
     })
 
     const positions = inputDescriptor.positions
@@ -57,8 +61,8 @@ export function compileIntermediate(source: string, options: CompileIntermediate
         writer.gtdii,
         scriptDescriptor,
         styleDescriptors,
+        idStatusInfo,
         writer.indexMap,
-        idStatusMap,
         analyzeResult.template.slots,
         analyzeResult.template.nodeContexts
     )
@@ -75,8 +79,8 @@ export class CompileIntermediateResult {
         public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],
+        public identifierStatusInfo: Record<string, string>,
         public indexMap: { itos: number[]; stoi: number[] },
-        public identifierStatusMap: Record<string, IdentifierStatus>,
         private slots: (typeof analyzeResult)["template"]["slots"],
         private nodeContexts: (typeof analyzeResult)["template"]["nodeContexts"]
     ) {

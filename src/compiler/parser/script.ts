@@ -10,9 +10,7 @@ import { getPosByIndex } from "../../util/compiler/position"
 import { parse, parseExpression as _parseExpression } from "@babel/parser"
 
 export function parseExpression(source: string) {
-    try {
-        return _parseExpression(source, getParserOptions())
-    } catch {}
+    return _parseExpression(source, getParserOptions())
 }
 
 export function parseScript(source: string) {
@@ -45,23 +43,23 @@ export function parseScript(source: string) {
 }
 
 export function parseContextPattern(source: string): ContextPattern | null {
-    try {
-        const { left: pattern, right } = _parseExpression(source + "=_", {
-            ...getParserOptions(),
-            tokens: true,
-            errorRecovery: false
-        }) as AssignmentExpression
-        switch (pattern.type) {
-            case "Identifier":
-            case "ArrayPattern":
-            case "ObjectPattern": {
-                if (right.type === "Identifier" && right.name === "_") {
-                    return pattern
-                }
+    const { left: pattern, right } = _parseExpression(source + "=_", {
+        ...getParserOptions(),
+        tokens: true,
+        errorRecovery: false
+    }) as AssignmentExpression
+    switch (pattern.type) {
+        case "Identifier":
+        case "ArrayPattern":
+        case "ObjectPattern": {
+            if (right.type === "Identifier" && right.name === "_") {
+                return pattern
             }
         }
-    } catch {}
-    return null
+        default: {
+            return null
+        }
+    }
 }
 
 function getParserOptions(initial: ParserOptions = {}) {

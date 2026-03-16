@@ -361,7 +361,7 @@ function generateRenderEffect(
                 const expression = getParsedExpression(event)!
                 const baseName = eventInfo.eventName.slice(1)
                 const delegated = DELEGATABLE_EVENTS.has(baseName)
-                const tipComment = inputDescriptor.options.tipComment
+                const tipComment = inputDescriptor.options.interpretiveComments
                 const stringifiedBaseName = getMaybeReusedString(baseName)
                 const stripTypeExpressionNode = stripTypeExpressions(expression.node)
                 writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)

@@ -5,8 +5,8 @@ import type {
     TextContentPart,
     ScriptDescriptor,
     TemplateAttribute,
-    AttributeValueEnclosure,
-    StandaloneParseOptions
+    StandaloneParseOptions,
+    AttributeValueEnclosure
 } from "#type-declarations/compiler"
 import type { RegExpExecRet } from "#type-declarations/tools"
 
@@ -32,6 +32,7 @@ import {
     newASTLocation,
     newASTPosition,
     markPositionFlag,
+    getRangeByLocation,
     getLocWithDefaultEnd,
     getPositionOfEachChar
 } from "../../util/compiler/position"
@@ -82,7 +83,7 @@ export function newTemplateNode(): TemplateNode {
     }
 }
 
-export function parseTemplate(source: string) {
+export function parseTemplate(source: string, options: StandaloneParseOptions = {}) {
     let index = 0
     let dps = source // dynamic programming source
 
@@ -108,7 +109,7 @@ export function parseTemplate(source: string) {
     // Filter out invalid nodes and return the final parsing result
     return (function filterParseResult(list: TemplateNode[]) {
         return list.filter(node => {
-            const shouldReserve = filterTemplateNodes(node)
+            const shouldReserve = filterTemplateNodes(node, options)
             if (shouldReserve) {
                 node.children = filterParseResult(node.children)
             } else {
@@ -156,6 +157,12 @@ export function parseTemplate(source: string) {
         const contentStartIndex = index
         const contentParts: TextContentPart[] = []
 
+        const extendContentParts = (part: TextContentPart) => {
+            if ((contentParts.push(part), part.isInterpolated)) {
+                markPositionFlag(PositionFlag.InScript, ...getRangeByLocation(part.loc))
+            }
+        }
+
         // textarea 节点都认作只有一个文本节点
         // A textarea element is treated as having only a single text node.
         if (parent?.tag === "textarea") {
@@ -167,7 +174,7 @@ export function parseTemplate(source: string) {
             const partEndIndex = contentEndRE.exec(dps)?.index ?? dps.length
             if (startBracketIndex === -1 || startBracketIndex > partEndIndex) {
                 if (partEndIndex) {
-                    contentParts.push({
+                    extendContentParts({
                         value: dps.slice(0, partEndIndex),
                         isInterpolated: false,
                         loc: getLocByIndex(index, reduceSource(partEndIndex).index)
@@ -176,7 +183,7 @@ export function parseTemplate(source: string) {
                 break
             }
             if (startBracketIndex > 0) {
-                contentParts.push({
+                extendContentParts({
                     isInterpolated: false,
                     value: dps.slice(0, startBracketIndex),
                     loc: getLocByIndex(index, reduceSource(startBracketIndex).index)
@@ -185,14 +192,14 @@ export function parseTemplate(source: string) {
 
             const endBracketIndex = findEndBracket(dps)
             if (endBracketIndex === -1) {
-                contentParts.push({
+                extendContentParts({
                     isInterpolated: true,
                     value: dps.slice(1),
                     loc: getLocByIndex(index + 1, reduceSource(dps.length).index - 1)
                 })
                 UnclosedInterpolationBlock(getLocByIndex(index + startBracketIndex))
             } else {
-                contentParts.push({
+                extendContentParts({
                     isInterpolated: true,
                     value: dps.slice(1, endBracketIndex),
                     loc: getLocByIndex(index + 1, reduceSource(endBracketIndex + 1).index - 1)
@@ -203,13 +210,6 @@ export function parseTemplate(source: string) {
             if (lastItem?.isInterpolated && !isNonEmptyExpression(lastItem.value)) {
                 EmptyInterpolationBlock(lastItem.loc)
             }
-
-            const interpolationLoc = getLastElem(contentParts)!.loc
-            markPositionFlag(
-                PositionFlag.InScript,
-                interpolationLoc.start.index,
-                interpolationLoc.end.index
-            )
         }
 
         // 内容非空时创建文本内容节点并返回
@@ -654,11 +654,11 @@ export function parseTemplateStandalone(source: string, options: StandaloneParse
     if (options.recover) {
         inputOptions.checkMode = true
     }
-    if (options.structureCheck) {
-        inputOptions.checkTemplateStructure = true
+    if (isUndefined(options.preserveBlankTextNodes)) {
+        options.preserveBlankTextNodes = true
     }
-    if (isUndefined(options.reseveCommentNodes) || options.reseveCommentNodes) {
-        inputOptions.preserveCommentNodes = true
+    if (isUndefined(options.preseveCommentNodes) || options.preseveCommentNodes) {
+        inputOptions.preserveHtmlComments = true
     }
-    return (resetCompilerState(inputOptions), parseTemplate(source))
+    return (resetCompilerState(inputOptions), parseTemplate(source, options))
 }

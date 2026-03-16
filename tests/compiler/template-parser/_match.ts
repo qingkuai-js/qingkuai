@@ -69,7 +69,8 @@ export function matchTemplateNodeList(
         ).toEqual({
             ...newTemplateNode(),
             ...expectedList[i],
-            children: nodeList[i].children
+            children: nodeList[i].children,
+            rawTag: expectedList[i].rawTag ?? expectedList[i].tag
         })
         if (nodeList[i].children.length) {
             matchTemplateNodeList(nodeList[i].children, ...(expectedList[i].children || []))

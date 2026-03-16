@@ -1,19 +1,26 @@
-import type { StringLiteral } from "@babel/types"
-import type { ASTLocation, TemplateNode, TopLevelReferences } from "#type-declarations/compiler"
+import type {
+    Range,
+    ASTLocation,
+    TemplateNode,
+    TopLevelReferences
+} from "#type-declarations/compiler"
+import type { Expression, StringLiteral } from "@babel/types"
 
 import {
     InvalidExpression,
     ExpectedExpression,
     InvalidComponentName,
-    InvalidShorthandAttributeName
+    InvalidShorthandAttributeName,
+    InvalidIntrinsicMethodPlacement
 } from "../message/error"
 import {
     getLocByIndex,
     markSourcemapEndFlag,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
-import { walkEstree } from "../estree/walk"
 import { PositionFlag } from "../enums"
+import { walkEstree } from "../estree/walk"
+import { intrinsicMethodsRE } from "../regular"
 import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
@@ -34,9 +41,16 @@ export function analyzeInterpolation(
         return ExpectedExpression(getLocByIndex(startSourceIndex))
     }
 
-    const expression = parseExpression(source)
+    let expression: Expression
     const stringLiterals: StringLiteral[] = []
     const topLevelReferences: TopLevelReferences = newCleanObj()
+    try {
+        expression = parseExpression(source)
+    } catch {
+        return InvalidExpression(
+            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length)
+        )
+    }
 
     if (expression) {
         analyzeResult.template.parsedExpressions.set(parsingInfoKey, {
@@ -47,11 +61,8 @@ export function analyzeInterpolation(
             startSourceIndex,
             topLevelReferences
         })
-    } else {
-        InvalidExpression(
-            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length)
-        )
     }
+
     walkEstree(expression, {
         AnyNode(node) {
             markNeedSourcemap(node, startSourceIndex)
@@ -67,6 +78,17 @@ export function analyzeInterpolation(
         Identifier({ name, range }, context) {
             const { contextIdentifiers } = getTemplateNodeContext(templateNode)
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
+            if (
+                !topLevelIdentifier &&
+                !contextIdentifiers.has(name) &&
+                intrinsicMethodsRE.test(name)
+            ) {
+                const sourceRange: Range = [
+                    startSourceIndex + range[0],
+                    startSourceIndex + range[1]
+                ]
+                InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), name)
+            }
             if (topLevelIdentifier && context.isBindingReference && !contextIdentifiers.has(name)) {
                 const status = topLevelIdentifier.status
                 if (

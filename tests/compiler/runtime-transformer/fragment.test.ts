@@ -125,7 +125,7 @@ test("Comment tag", () => {
     matchGeneratedFragment(
         "<!-- xxx -->",
         `const _getFragment1 = _.createFragmentGetter(\`<!-- xxx -->\`)`,
-        { preserveCommentNodes: true }
+        { preserveHtmlComments: true }
     )
 
     matchGeneratedFragment(
@@ -137,7 +137,7 @@ test("Comment tag", () => {
             const _compressStrings = ["<!--", "-->"]
             const _getFragment1 = _.createFragmentGetter(\`/0 a /1/0 b /1\`, _compressStrings)
         `,
-        { preserveCommentNodes: true }
+        { preserveHtmlComments: true }
     )
 
     matchGeneratedFragment(
@@ -148,7 +148,7 @@ test("Comment tag", () => {
         `const _getFragment1 = _.createFragmentGetter(\`<!-- a --><!-- b -->\`)`,
         {
             debug: true,
-            preserveCommentNodes: true
+            preserveHtmlComments: true
         }
     )
 })

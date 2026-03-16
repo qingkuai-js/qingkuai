@@ -361,7 +361,7 @@ function inferStatusWithDeclarator(
             // 通过 derivedExp 标记的衍生响应式字面量值无意义，退化为使用原始值
             // Derived reactive literal values marked with `derivedExp` are meaningless and are downgraded to using the raw value.
             if (isLiteralArg) {
-                return (UnnecessaryReactiveMark(initLoc, "derived"), "raw")
+                return (UnnecessaryReactiveMark(declaratorLoc, "derived"), "raw")
             }
             // fallthrough
         }
@@ -382,12 +382,12 @@ function inferStatusWithDeclarator(
             // 通过 raw 标记常量声明的字面量值是冗余的
             // Marking a literal value in a constant declaration with `raw` is redundant.
             if (calleeName === "raw") {
-                return (RedundantRawMark(initLoc), "raw")
+                return (RedundantRawMark(declaratorLoc), "raw")
             }
 
             // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
             // Marking a literal value in a constant declaration with `reactive` or `shallow` is meaningless and is downgraded to using the raw value.
-            return (UnnecessaryReactiveMark(initLoc, status), "raw")
+            return (UnnecessaryReactiveMark(declaratorLoc, status), "raw")
         }
     }
 }

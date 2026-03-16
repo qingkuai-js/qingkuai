@@ -303,37 +303,37 @@ describe("Unnecessary reactive marking", () => {
         localMatchCompileMessages([
             {
                 type: "warning",
-                range: [10, 21],
+                range: [6, 21],
                 value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [32, 42],
+                range: [28, 42],
                 value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [53, 65],
+                range: [49, 65],
                 value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [76, 85],
+                range: [72, 85],
                 value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [96, 110],
+                range: [92, 110],
                 value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [121, 134],
+                range: [117, 134],
                 value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [145, 152],
+                range: [141, 152],
                 value: `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
             }
         ])
@@ -350,27 +350,27 @@ describe("Unnecessary reactive marking", () => {
         localMatchCompileMessages([
             {
                 type: "warning",
-                range: [10, 22],
+                range: [6, 22],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [33, 46],
+                range: [29, 46],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [57, 71],
+                range: [53, 71],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [82, 98],
+                range: [78, 98],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [109, 130],
+                range: [105, 130],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             }
         ])

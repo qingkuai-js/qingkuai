@@ -82,7 +82,7 @@ export function getMaybeReusedString(value: string) {
     if (!(ret = analyzeResult.reusedStrings[value]?.id)) {
         return stringify(value)
     }
-    return `${inputDescriptor.options.tipComment ? `/* ${value} */ ` : ""}${ret}`
+    return `${inputDescriptor.options.interpretiveComments ? `/* ${value} */ ` : ""}${ret}`
 }
 
 export function increaseCompressStringUsedTimes(str: string) {

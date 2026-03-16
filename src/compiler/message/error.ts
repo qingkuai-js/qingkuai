@@ -166,16 +166,16 @@ export const TagCanNotBeSelfClosing = withLocation(1013, (tag: string) => {
     return `The <${tag}> tag cannot be used as self-closing tag.`
 })
 
+export const UnrecognizedEventFlag = withLocation(1045, (name: string) => {
+    return `Unrecognized event flag: "${name}".`
+})
+
 export const InvalidTemplateStructure = withLocation(1015, (msg: string) => {
     return `Invalid template structure: ${msg}.`
 })
 
 export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
     return `Starts with an end tag: </${tag}>.`
-})
-
-export const UnrecognizedEventFlag = withLocation(1045, (name: string) => {
-    return `Unrecognized event flag: "${name}".`
 })
 
 export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
@@ -192,6 +192,10 @@ export const ConflictingEventFlags = withLocation(1046, (a: string, b: string) =
 
 export const InvalidKeyDirectivePlacement = withLocation(1043, () => {
     return `The "#key" directive is only allowed on a tag with the "#for" directive.`
+})
+
+export const InvalidIntrinsicMethodPlacement = withLocation(1061, (name: string) => {
+    return `The compiler intrinsic method "${name}" cannot be used in template.`
 })
 
 export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {

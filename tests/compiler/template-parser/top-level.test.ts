@@ -40,7 +40,7 @@ test("Multiple tags", () => {
 test("Single comment", () => {
     matchTemplateNodeList(
         parseTemplateStandalone("<!---->", {
-            reseveCommentNodes: true
+            preseveCommentNodes: true
         }),
         {
             tag: "!",
@@ -54,7 +54,7 @@ test("Single comment", () => {
 
 test("Multiple comments", () => {
     const nodeList = parseTemplateStandalone("a<!----><div></div><!---->c\n<!---->d", {
-        reseveCommentNodes: true
+        preseveCommentNodes: true
     })
     matchTemplateNodeList(
         nodeList,
@@ -195,7 +195,7 @@ test("Single text content", () => {
 
 test("Mixed source of text contents and tags", () => {
     const nodeList = parseTemplateStandalone(" a\n<p></p>\n<span></span>d<!---->e", {
-        reseveCommentNodes: true
+        preseveCommentNodes: true
     })
     matchTemplateNodeList(
         nodeList,
@@ -421,7 +421,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
         matchTemplateNodeListAndMessages(() => {
             const nodeList = parseTemplateStandalone("<!-- ...\n ...", {
                 recover: true,
-                reseveCommentNodes: true
+                preseveCommentNodes: true
             })
             return [
                 nodeList,
