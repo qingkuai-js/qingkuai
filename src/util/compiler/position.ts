@@ -67,14 +67,6 @@ export function isPositionFlagSetInLoc(flag: PositionFlag, loc: ASTLocation) {
     return true
 }
 
-export function markSourcemapEndFlag(index: number) {
-    markPositionFlag(PositionFlag.Sourcemap | PositionFlag.SourcemapEnd, index)
-}
-
-export function markSourcemapStartFlag(index: number) {
-    markPositionFlag(PositionFlag.Sourcemap | PositionFlag.SourcemapStart, index)
-}
-
 export function getLocByIndex(start: number, end: number = start): ASTLocation {
     return { start: getPosByIndex(start), end: getPosByIndex(end) }
 }

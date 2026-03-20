@@ -1,13 +1,18 @@
+import type {
+    ASTLocation,
+    CompileMessage,
+    EventFlagInfo,
+    TemplateAttribute
+} from "#type-declarations/compiler"
 import type { ParseEventFlagFunc } from "#type-declarations/compiler-ex"
-import type { ASTLocation, EventFlagInfo, TemplateAttribute } from "#type-declarations/compiler"
 
 import {
     ConflictingEventFlags,
     ExpectedEventFlagName,
     UnrecognizedEventFlag
 } from "../message/error"
-import { inputDescriptor } from "../state"
 import { keyboardEventNamesRE } from "../regular"
+import { inputDescriptor, messages } from "../state"
 import { newCleanObj } from "../../util/shared/sundry"
 import { CONFLICTING_EVENT_FLAG_MAP, EVENT_FLAGS_MAP } from "../constants"
 import { getLocByIndex, getRangeByLocation } from "../../util/compiler/position"
@@ -118,9 +123,19 @@ export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => 
 }
 
 export const parseEventFlagStandalone: ParseEventFlagFunc = (event: TemplateAttribute) => {
-    const { checkMode } = inputDescriptor.options
-    inputDescriptor.options.checkMode = false
+    const isCheckMode = inputDescriptor.options.checkMode
+    const originMessageLen = messages.length
+    inputDescriptor.options.checkMode = true
 
     const ret = parseEventFlag(event)
-    return ((inputDescriptor.options.checkMode = checkMode), ret)
+    inputDescriptor.options.checkMode = isCheckMode
+
+    let parseMessages: CompileMessage[] | undefined = undefined
+    if (originMessageLen !== messages.length) {
+        parseMessages = messages.slice(originMessageLen)
+    }
+    return {
+        ...ret,
+        messages: parseMessages
+    }
 }

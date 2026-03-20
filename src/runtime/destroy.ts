@@ -58,8 +58,5 @@ export function createDestruction(instance: ComponentInstance | null = NIL) {
             currentDestruction.c = new Set([destruction])
         }
     }
-    if (instance && __qk_expose_destruction) {
-        instance.d = destruction
-    }
     return setCurrentDestruction(destruction)!
 }

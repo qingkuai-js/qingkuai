@@ -28,7 +28,6 @@ export const [
 
 export function init(context: ComponentContext) {
     const instance: ComponentInstance = {
-        d: NIL,
         u: false,
         h: any([]),
         p: currentInstance

@@ -1,7 +1,8 @@
 import type {
     Range,
-    EventFlagInfo,
     TemplateNode,
+    EventFlagInfo,
+    CompileMessage,
     ComponentTagPart,
     TemplateAttribute
 } from "#type-declarations/compiler"
@@ -220,15 +221,14 @@ export interface ParseEventFlagFunc {
      * @param source 需要解析的事件\
      * The event to be parsed.
      *
-     *
-     * 注意：此方法在遇到冲突、未识别的标志等情况时会抛出错误，需避免程序错误可以考虑使用 try-catch 块捕获此异常\
-     * Note: This method will throw an error when encountering conflicts, unrecognized modifiers, or similar issues.
-     * To prevent runtime errors, consider using a try-catch block to handle this exception.
+     * @returns 包含事件名称、事件标志以及解析错误/警告信息的对象\
+     * An object containing the event name, event flags, and any parsing errors/warnings.
      */
     (event: TemplateAttribute): {
         eventName: string
         generalFlag: EventFlagInfo
         wrapperFlag: EventFlagInfo
+        messages?: CompileMessage[]
     }
 }
 

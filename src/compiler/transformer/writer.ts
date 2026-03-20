@@ -4,16 +4,15 @@ import type { AnyNode, ContextPattern, PartialAnyNode } from "#type-declarations
 import type { ASTLocation, ASTPosition, Range, TemplateNode } from "#type-declarations/compiler"
 
 import {
+    getPosByIndex,
+    markPositionFlag,
+    isPositionFlagSetAtIndex
+} from "../../util/compiler/position"
+import {
     generateContextPattern,
     transformInterpolatedText,
     transformParsedExpression
 } from "./runtime/interpolation"
-import {
-    getPosByIndex,
-    markSourcemapEndFlag,
-    markSourcemapStartFlag,
-    isPositionFlagSetAtIndex
-} from "../../util/compiler/position"
 import { PositionFlag } from "../enums"
 import { inputDescriptor } from "../state"
 import { nonWhitespaceRE } from "../regular"
@@ -98,9 +97,9 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
     }
 
     writeTemplateStr(str: string, sourceLoc: ASTLocation) {
-        markSourcemapEndFlag(sourceLoc.end.index)
-        markSourcemapStartFlag(sourceLoc.start.index)
         this.writeCharacter(str[0], sourceLoc.start.index)
+        markPositionFlag(sourceLoc.end.index, PositionFlag.SourcemapEnd)
+        markPositionFlag(sourceLoc.start.index, PositionFlag.SourcemapStart)
 
         for (let i = 1; i < str.length; i++) {
             this.writeCharacter(str[i], -1)
@@ -244,6 +243,13 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
     write(str: string, sourceRange?: Range): this
     write(str: string, startSourceIndex?: number): this
     write(str: string, indexOrRange: Range | number = -1) {
+        // 未闭合的插值块的结束索引为 -1，此时只需使用开始索引进行映射
+        // The end index of an unclosed interpolation block is -1; in this
+        // case only the start index needs to be used for mapping
+        if (!isNumber(indexOrRange) && indexOrRange[1] === -1) {
+            indexOrRange = indexOrRange[0]
+        }
+
         if (isNumber(indexOrRange)) {
             for (let i = 0; i < str.length; i++) {
                 const isLast = i === str.length - 1

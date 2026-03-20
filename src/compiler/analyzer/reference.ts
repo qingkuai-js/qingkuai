@@ -20,7 +20,7 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
         if (checkResult) {
             analyzeResult.template.validReferenceAttributes.add(attribute)
         }
-        return analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribue")
+        return analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribute")
     }
 
     if (!shouldAnalyzeAttributeValue(attribute)) {

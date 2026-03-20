@@ -76,9 +76,11 @@ const visitor: Visitor = {
                 if (context.inTopLevel) {
                     ExportStatementsAreNotSupported(getScriptLocByRange(node.range))
                 }
+                break
             }
             case "TSModuleDeclaration": {
                 TSModuleDeclarationsAreNotSupported(getScriptLocByRange(node.range))
+                break
             }
             case "CallExpression":
             case "OptionalCallExpression": {
@@ -87,6 +89,7 @@ const visitor: Visitor = {
                 if (callee.type === "Identifier" && intrinsicWatcherMethodsRE.test(callee.name)) {
                     analyzeResult.script.watchers.push(call)
                 }
+                break
             }
         }
         if (node.type !== "Program") {

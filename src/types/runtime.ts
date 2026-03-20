@@ -40,7 +40,6 @@ export interface TraverseInfo {
 
 export interface ComponentInstance {
     u: boolean // updating
-    d: Destruction | null // destruction
     p: ComponentInstance | null // parent
     h: FixedArray<GeneralFunc[] | undefined, 6> // hooks
 }

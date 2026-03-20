@@ -5,7 +5,6 @@ import type {
     CompileOptions,
     StyleDescriptor,
     ScriptDescriptor,
-    IdentifierStatus,
     ASTPositionWithFlag,
     CompileIntermediateOptions
 } from "#type-declarations/compiler"
@@ -27,10 +26,13 @@ export function compile(source: string, options: CompileOptions = {}) {
 
     const writer = generateRuntimeCode(templateNodes)
     return {
+        messages,
         code: writer.code,
         hashId: options.hashId!,
         mappings: writer.mappings,
-        styles: inputDescriptor.styles
+        positions: inputDescriptor.positions,
+        scriptDescriptor: inputDescriptor.script,
+        styleDescriptors: inputDescriptor.styles
     } satisfies CompileResult
 }
 

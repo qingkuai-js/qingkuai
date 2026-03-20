@@ -26,12 +26,15 @@ export type {
     ASTPosition,
     TemplateNode,
     CompileOptions,
+    CompileResult,
     StyleDescriptor,
+    TextContentPart,
     ScriptDescriptor,
     IdentifierStatus,
     TemplateAttribute,
     ASTPositionWithFlag,
-    TemplateNodeContext
+    TemplateNodeContext,
+    CompileIntermediateOptions
 } from "#type-declarations/compiler"
 
 export type { CompileIntermediateResult } from "./compile"

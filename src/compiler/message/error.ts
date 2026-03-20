@@ -102,10 +102,6 @@ export const MissingPrecedingDirective = withLocation(
     }
 )
 
-export const InvalidExpression = withLocation(1029, () => {
-    return "Invalid expression."
-})
-
 export const NestedSlotElement = withLocation(1055, () => {
     return `Nested <slot> elements are not allowed.`
 })
@@ -180,6 +176,10 @@ export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
 
 export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
     return `Directive "${directive}" requires a value.`
+})
+
+export const InvalidDirectiveValue = withLocation(1063, (directive: string) => {
+    return `Invalid value for "${directive}" directive.`
 })
 
 export const ConflictingDirectives = withLocation(1026, (a: string, b: string) => {
@@ -262,6 +262,10 @@ export const InvalidHtmlDirectivePlacement = withLocation(1058, (kind: "slot" | 
     return `The "#html" directive cannot be used on ${kind === "slot" ? "<slot> tags" : "components"}.`
 })
 
+export const ConflictingReactivityModes = withLocation(1062, (tag: string) => {
+    return `Conflicting reactivity modes on <${tag}>: "reactive" and "shallow" cannot be used together.`
+})
+
 export const InvalidParameterForAliasIntrinsic = withLocation(1024, () => {
     return `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
 })
@@ -286,8 +290,8 @@ export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) 
     return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`
 })
 
-export const InvalidShorthandAttributeName = withLocation(1049, (name: string) => {
-    return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier.`
+export const InvalidExpression = withLocation(1029, (endSemi: boolean) => {
+    return `Invalid expression. ${endSemi ? "Expression with ending semicolon will be treated as statement, which is not allowed in interpolation." : ""}`
 })
 
 export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {
@@ -308,6 +312,10 @@ export const AmbiguousReactiveMarking = withLocation(1023, (name: string) => {
 
 export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
     return `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`
+})
+
+export const InvalidShorthandAttributeName = withLocation(1049, (name: string) => {
+    return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
 })
 
 export function isCompileError(err: Error): err is CompileError {

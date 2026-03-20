@@ -9,6 +9,7 @@ import {
     UnrecognizedDirective,
     TooManyBindingPatterns,
     MissingDirectiveValue,
+    InvalidDirectiveValue,
     MissingPrecedingDirective,
     InvalidHtmlDirectivePlacement,
     InvalidKeyDirectivePlacement,
@@ -24,6 +25,7 @@ import {
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
 import { markNeedSourcemap } from "../estree/sundry"
+import { tryToRun } from "../../util/compiler/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
@@ -77,67 +79,87 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 InvalidSlotDirectivePlacement(nameLoc)
             }
             if (directive.valueEnclosure !== "none") {
-                const { patterns, keywordIndex, base, baseStartSourceIndex } =
-                    parseDirectiveValue(directive)!
-                analyzeResult.template.directiveIndos.set(directive, {
-                    base,
-                    keywordIndex,
-                    baseStartSourceIndex
-                })
+                tryToRun(
+                    () => {
+                        const { patterns, keywordIndex, base, baseStartSourceIndex } =
+                            parseDirectiveValue(directive)!
+                        analyzeResult.template.directiveIndos.set(directive, {
+                            base,
+                            keywordIndex,
+                            baseStartSourceIndex
+                        })
 
-                if (patterns.length) {
-                    recordContextIdentifiers(patterns[0])
-                }
-                if (patterns.length > 1) {
-                    const errorLoc = getNonWhitespaceLocByIndex(
-                        valueStartSourceIndex,
-                        valueStartSourceIndex + keywordIndex
-                    )
-                    TooManyBindingPatterns(errorLoc, rawName, 1)
-                }
-                if (!base.trim()) {
-                    return ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
-                }
+                        if (patterns.length) {
+                            recordContextIdentifiers(patterns[0])
+                        }
+                        if (patterns.length > 1) {
+                            const errorLoc = getNonWhitespaceLocByIndex(
+                                valueStartSourceIndex,
+                                valueStartSourceIndex + keywordIndex
+                            )
+                            TooManyBindingPatterns(errorLoc, rawName, 1)
+                        }
+                        if (!base.trim()) {
+                            return ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
+                        }
 
-                // from 关键字后方的插槽名称必须是静态字符串字面量
-                // The slot name following the `from` keyword must be a static string literal.
-                const name = localAnalyzeInterpolation(base, baseStartSourceIndex)
-                if (
-                    name?.type !== "StringLiteral" &&
-                    (name?.type !== "TemplateLiteral" || name.expressions.length)
-                ) {
-                    ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
-                        getNonWhitespaceLocByIndex(
-                            baseStartSourceIndex,
-                            baseStartSourceIndex + base.length
+                        // from 关键字后方的插槽名称必须是静态字符串字面量
+                        // The slot name following the `from` keyword must be a static string literal.
+                        const name = localAnalyzeInterpolation(base, baseStartSourceIndex)
+                        if (
+                            name?.type !== "StringLiteral" &&
+                            (name?.type !== "TemplateLiteral" || name.expressions.length)
+                        ) {
+                            ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
+                                getNonWhitespaceLocByIndex(
+                                    baseStartSourceIndex,
+                                    baseStartSourceIndex + base.length
+                                )
+                            )
+                        }
+                    },
+                    () => {
+                        InvalidDirectiveValue(
+                            getNonWhiteSpaceLocByLoc(directive.value.loc),
+                            rawName
                         )
-                    )
-                }
+                    }
+                )
             }
             return
         }
 
         case "#for": {
             if (directive.valueEnclosure !== "none") {
-                const { patterns, keywordIndex, base, baseStartSourceIndex } =
-                    parseDirectiveValue(directive)!
-                analyzeResult.template.directiveIndos.set(directive, {
-                    base,
-                    keywordIndex,
-                    baseStartSourceIndex
-                })
+                tryToRun(
+                    () => {
+                        const { patterns, keywordIndex, base, baseStartSourceIndex } =
+                            parseDirectiveValue(directive)!
+                        analyzeResult.template.directiveIndos.set(directive, {
+                            base,
+                            keywordIndex,
+                            baseStartSourceIndex
+                        })
 
-                for (const pattern of patterns) {
-                    recordContextIdentifiers(pattern)
-                }
-                if (patterns.length > 2) {
-                    const errorLoc = getNonWhitespaceLocByIndex(
-                        valueStartSourceIndex,
-                        valueStartSourceIndex + keywordIndex
-                    )
-                    TooManyBindingPatterns(errorLoc, rawName, 2)
-                }
-                localAnalyzeInterpolation(base, baseStartSourceIndex)
+                        for (const pattern of patterns) {
+                            recordContextIdentifiers(pattern)
+                        }
+                        if (patterns.length > 2) {
+                            const errorLoc = getNonWhitespaceLocByIndex(
+                                valueStartSourceIndex,
+                                valueStartSourceIndex + keywordIndex
+                            )
+                            TooManyBindingPatterns(errorLoc, rawName, 2)
+                        }
+                        localAnalyzeInterpolation(base, baseStartSourceIndex)
+                    },
+                    () => {
+                        InvalidDirectiveValue(
+                            getNonWhiteSpaceLocByLoc(directive.value.loc),
+                            rawName
+                        )
+                    }
+                )
             }
             return
         }

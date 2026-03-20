@@ -459,8 +459,13 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
                 equalSign: !!equalTokenMatched,
                 loc: getLocWithDefaultEnd(nameStartIndex)
             }
+            markPositionFlag(
+                isInterpolatedAttr
+                    ? PositionFlag.isInterpolatedAttributeStart
+                    : PositionFlag.IsAttributeStart,
+                nameStartIndex
+            )
             templateNode.attributes.push(attributeInfo)
-            markPositionFlag(PositionFlag.IsAttributeStart, nameStartIndex)
 
             if (isNull(equalTokenMatched)) {
                 attributeInfo.loc.end = getPosByIndex(nameEndIndex)
@@ -480,10 +485,10 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
             // The `shallow` attribute on an embedded script language tag requires setting `CompilerOptions.reactivityMode` to `shallow`.
             if (
                 !isInterpolatedAttr &&
-                attrName === "shallow" &&
+                (attrName === "shallow" || attrName === "reactive") &&
                 (templateNode.tag === "lang-js" || templateNode.tag === "lang-ts")
             ) {
-                inputDescriptor.options.reactivityMode = "shallow"
+                inputDescriptor.options.reactivityMode = attrName
             }
         }
 

@@ -109,7 +109,13 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const nodeContext = getTemplateNodeContext(node)
             const startTagOpenLoc = getStartTagOpenLoc(node)
             const componentInvalidExps: [string, Range][] = []
+            const slotNameRange = getRangeByLoc(
+                nodeContext.attributesMap.name?.value.raw
+                    ? nodeContext.attributesMap.name.loc
+                    : startTagOpenLoc
+            )
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
+            const startTagRange: Range = [node.loc.start.index, node.startTagEndPos.index]
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
             const dedentAndWriteEndEnclosure = () => {
@@ -271,7 +277,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                     writer.write(")")
                 }
-                writer.write("(").write("{", startTagOpenLoc.start.index).indent(false)
+                writer.write("(").write("{", startTagRange[0]).indent(false)
             }
 
             if (isComponent || isSlot) {
@@ -293,8 +299,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     } else {
                         writer.wrapLine()
                         startGetTypeDelayMarkingCall(writer)
-                        writer.write(stringify(slotName)).write(", ")
-                        writer.write(stringify(camelName), nameRange).write(`, ${writeValue});`)
+                        writer.write(stringify(slotName), slotNameRange).write(", ")
+                        writer.write(stringify(camelName), nameRange).write(`, `)
+                        writer.write(writeValue, valueRange).write(");")
                     }
                 }
             }
@@ -320,7 +327,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         } else {
                             writer.wrapLine()
                             startGetTypeDelayMarkingCall(writer)
-                            writer.write(stringify(slotName)).write(", ")
+                            writer.write(stringify(slotName), slotNameRange).write(", ")
                             writer.write(stringify(camelName), nameRange).write(", ")
                             writer.write(camelName, valueRange).write(");")
                         }
@@ -351,8 +358,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 if (isSlot) {
                     writer.wrapLine()
                     startGetTypeDelayMarkingCall(writer)
-                    writer.write(stringify(slotName)).write(", ")
-                    writer.write(stringify(camelName), nameRange).write(`, ${rawValue});`)
+                    writer.write(stringify(slotName), slotNameRange).write(", ")
+                    writer.write(stringify(camelName), nameRange).write(`, `)
+                    writer.write(rawValue, valueRange).write(");")
                     continue
                 }
 
@@ -386,6 +394,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 if (!event.equalSign) {
                     if (isComponent && !expression) {
+                        componentInvalidExps.push([property, nameRange])
                         continue
                     }
                     if (property) {
@@ -426,8 +435,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (isComponent) {
-                writer.dedent().write("}", startTagOpenLoc.end.index - 1)
-                writer.writeLine(",").write("{", startTagOpenLoc.start.index).indent(false)
+                writer.dedent().write("}", startTagRange[1] - 1)
+                writer.writeLine(",").write("{", startTagRange[0]).indent(false)
             }
 
             for (const attribute of nodeContext.referenceAttributes) {
@@ -549,7 +558,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (isComponent) {
-                writer.dedent().write("}", startTagOpenLoc.end.index - 1)
+                writer.dedent().write("}", startTagRange[1] - 1)
                 writer.writeLine(",").write("{").indent(false)
             }
 

@@ -13,6 +13,7 @@ export const whitespacesRE = /\s*/
 export const nonWhitespaceRE = /\S/
 export const equalTokenRE = /^\s*=/
 export const startCurlyRE = /^\s*\{/
+export const endSemicolonRE = /;\s*$/
 export const startQuoteRE = /^\s*['"]/
 export const atLeastOneWhitespaceRE = /\s+/g
 export const kebabWholeRE = /^\w|-|(?<=-)\w/g

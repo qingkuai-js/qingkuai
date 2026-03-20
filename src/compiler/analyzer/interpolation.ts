@@ -15,16 +15,16 @@ import {
 } from "../message/error"
 import {
     getLocByIndex,
-    markSourcemapEndFlag,
+    markPositionFlag,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
 import { PositionFlag } from "../enums"
 import { walkEstree } from "../estree/walk"
-import { intrinsicMethodsRE } from "../regular"
 import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
+import { endSemicolonRE, intrinsicMethodsRE } from "../regular"
 import { analyzeResult, inputDescriptor, messages } from "../state"
 import { getParsedExpression, getTemplateNodeContext } from "../../util/compiler/template"
 import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
@@ -48,7 +48,8 @@ export function analyzeInterpolation(
         expression = parseExpression(source)
     } catch {
         return InvalidExpression(
-            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length)
+            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
+            endSemicolonRE.test(source)
         )
     }
 
@@ -116,7 +117,7 @@ export function analyzeTemplateAsExpression(
     name: string,
     parsingKey: any,
     loc: ASTLocation,
-    type: "component" | "attribue"
+    type: "component" | "attribute"
 ) {
     let expression!: ReturnType<typeof analyzeInterpolation>
 
@@ -127,7 +128,7 @@ export function analyzeTemplateAsExpression(
             node,
             parsingKey,
             camelName,
-            loc.start.index + +(type === "attribue")
+            loc.start.index + +(type === "attribute")
         )
     } catch {}
 
@@ -144,16 +145,16 @@ export function analyzeTemplateAsExpression(
     ) {
         return InvalidComponentName(loc, name)
     }
-    if (type === "attribue" && expression?.type !== "Identifier") {
+    if (type === "attribute" && expression?.type !== "Identifier") {
         return InvalidShorthandAttributeName(loc, name)
     }
 
     const nameSub = baseName.length - camelName.length
     if (nameSub > 0) {
         const parsedExpression = getParsedExpression(parsingKey)!
-        const sourcemapEndFlag = PositionFlag.Sourcemap | PositionFlag.SourcemapEnd
-        markSourcemapEndFlag(loc.end.index)
+        inputDescriptor.positions[loc.start.index + camelName.length + 1].flag &=
+            ~PositionFlag.SourcemapEnd
+        markPositionFlag(PositionFlag.SourcemapEnd, loc.end.index)
         parsedExpression.source = " ".repeat(nameSub) + parsedExpression.source
-        inputDescriptor.positions[loc.start.index + camelName.length + 1].flag &= ~sourcemapEndFlag
     }
 }

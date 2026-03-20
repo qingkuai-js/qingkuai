@@ -323,7 +323,10 @@ export interface CompileResult {
     code: string
     hashId: string
     mappings: string
-    styles: StyleDescriptor[]
+    messages: CompileMessage[]
+    positions: ASTPositionWithFlag[]
+    scriptDescriptor: ScriptDescriptor
+    styleDescriptors: StyleDescriptor[]
 }
 
 export type CompileOptions = Partial<{

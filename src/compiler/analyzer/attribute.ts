@@ -3,7 +3,8 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import {
     DuplicateAttributes,
     DisallowedAttributeKind,
-    SlotNameAttributeMustBeStatic
+    SlotNameAttributeMustBeStatic,
+    ConflictingReactivityModes
 } from "../message/error"
 import { analyzeEvent } from "./event"
 import { analyzeDirective } from "./directive"
@@ -19,6 +20,7 @@ import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/
 
 export function analyzeAttributes(node: TemplateNode) {
     const nodeContext = getTemplateNodeContext(node)
+    const isEmbeddedScript = node.tag === "lang-js" || node.tag === "lang-ts"
     const duplicateCheckAttrsMap: Record<string, TemplateAttribute> = newCleanObj()
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
@@ -45,17 +47,31 @@ export function analyzeAttributes(node: TemplateNode) {
             markAttributeNameAsReusedStrings(node, attribute)
         }
 
-        if (node.isEmbedded) {
-            // 嵌入语言标签上只允许静态属性
-            // Only static attributes are allowed on embedded language tags.
-            if (interpolatedAttrStartCharRE.test(rawName[0])) {
-                DisallowedAttributeKind(attribute.loc, node.tag, rawName)
-                continue
-            }
+        // 嵌入语言标签上只允许静态属性
+        // Only static attributes are allowed on embedded language tags.
+        if (node.isEmbedded && interpolatedAttrStartCharRE.test(rawName[0])) {
+            DisallowedAttributeKind(attribute.loc, node.tag, rawName)
+            continue
+        }
 
-            if (/[jt]s$/.test(node.tag) && rawName === "shallow" && attribute.equalSign) {
-                RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
-            }
+        if (
+            isEmbeddedScript &&
+            attribute.equalSign &&
+            (rawName === "shallow" || rawName === "reactive")
+        ) {
+            RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
+        }
+
+        // 嵌入脚本标签上的 reactive 和 shallow 属性不能同时存在
+        // The `reactive` and `shallow` attributes cannot coexist on embedded script tags.
+        if (
+            !duplicateCheckAttrsMap[rawName] &&
+            ((rawName === "shallow" && nodeContext.attributesMap.reactive) ||
+                (rawName === "reactive" && nodeContext.attributesMap.shallow))
+        ) {
+            const existingKey = rawName === "shallow" ? "reactive" : "shallow"
+            ConflictingReactivityModes(attribute.name.loc, node.tag)
+            ConflictingReactivityModes(nodeContext.attributesMap[existingKey].name.loc, node.tag)
         }
 
         // SPREAD_TAG 标签仅允许指令作为属性
@@ -124,7 +140,7 @@ export function analyzeAttributes(node: TemplateNode) {
             }
             case "!": {
                 if (!attribute.equalSign) {
-                    analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribue")
+                    analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribute")
                 }
                 if (shouldAnalyzeAttributeValue(attribute)) {
                     analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)

@@ -39,7 +39,7 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
             nameLoc.start.index,
             nameLoc.start.index + parseResult.eventName.length
         )
-        analyzeTemplateAsExpression(node, parseResult.eventName, event, eventNameLoc, "attribue")
+        analyzeTemplateAsExpression(node, parseResult.eventName, event, eventNameLoc, "attribute")
     }
 
     if (shouldAnalyzeAttributeValue(event)) {
