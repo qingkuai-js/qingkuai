@@ -28,6 +28,7 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
     const keyword = { "#for": "of", "#slot": "from" }[rawName]
     const [findTarget, findLength] = [` ${keyword} `, keyword.length + 2]
 
+    // eslint-disable-next-line no-constant-condition
     for (let i = 0; true; i += findLength - 1) {
         if (-1 === (i = findOutOfLiteralComment(source, findTarget, i))) {
             return {
@@ -85,7 +86,11 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
                             getNonWhitespaceLocByIndex(
                                 element!.start! + startSourceIndex,
                                 element!.end! + startSourceIndex
-                            )
+                            ),
+                            directive.name.raw,
+                            element?.type !== "RestElement"
+                                ? undefined
+                                : "Note that RestElement is not allowed for directive context patterns."
                         )
                     }
                 }

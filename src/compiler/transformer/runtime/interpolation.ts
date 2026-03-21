@@ -1,29 +1,12 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { TemplateNode } from "#type-declarations/compiler"
-import type { ContextPattern } from "#type-declarations/estree"
 
 import { CodeEditor } from "../editor"
+import { analyzeResult } from "../../state"
 import { stringify } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
-import { analyzeResult, inputDescriptor } from "../../state"
 import { getMaybeReusedString } from "../../../util/compiler/sundry"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
-
-export function generateContextPattern(
-    writer: RuntimeCodeWriter,
-    node: ContextPattern,
-    startSourceIndex: number
-) {
-    return writer.writeEditedScript(
-        new CodeEditor(
-            inputDescriptor.source.slice(
-                startSourceIndex + node.start!,
-                startSourceIndex + node.end!
-            ),
-            startSourceIndex + node.start!
-        )
-    )
-}
 
 export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
     const parsedExpression = getParsedExpression(key)!
@@ -45,6 +28,13 @@ export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
             }
         }
     })
+    for (const reference of parsedExpression.reactiveContextReferences) {
+        if (reference.shorthand) {
+            editor.insert(reference.range[1], `: ${reference.reactiveId}.$`)
+        } else {
+            editor.replace(...reference.range, reference.reactiveId + ".$")
+        }
+    }
     return writer.writeEditedScript(editor)
 }
 

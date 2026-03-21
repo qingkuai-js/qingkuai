@@ -26,13 +26,6 @@ export const DuplicateAttributes = withLocation(
     }
 )
 
-export const InvalidContextPatternForDirective = withLocation(1032, (directive?: string) => {
-    if (!directive) {
-        return `Expected a binding pattern.`
-    }
-    return `The value for "${directive}" directive must be a binding pattern.`
-})
-
 export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
     return `The "${directive}" directive accepts at most ${
         count === 1 ? "one" : count === 2 ? "two" : count
@@ -53,6 +46,16 @@ export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: st
         }
     }
 })
+
+export const InvalidContextPatternForDirective = withLocation(
+    1032,
+    (directive: string, explain?: string) => {
+        if (!directive) {
+            return `Expected a binding pattern.`
+        }
+        return `The value for "${directive}" directive must be a binding pattern.${explain ? " " + explain : ""}`
+    }
+)
 
 export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string) => {
     switch (name) {
@@ -178,10 +181,6 @@ export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
     return `Directive "${directive}" requires a value.`
 })
 
-export const InvalidDirectiveValue = withLocation(1063, (directive: string) => {
-    return `Invalid value for "${directive}" directive.`
-})
-
 export const ConflictingDirectives = withLocation(1026, (a: string, b: string) => {
     return `Conflicting directives: "${a}" and "${b}" cannot be used together.`
 })
@@ -248,6 +247,10 @@ export const CannotAliasIdentifier = withLocation(1053, () => {
 
 export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
     return `The embedded language block <${tag}> can only be used in the top level of the template.`
+})
+
+export const InvalidDirectiveValue = withLocation(1063, (directive: string, explain?: string) => {
+    return `Invalid value for "${directive}" directive.${explain ? " " + explain : ""}`
 })
 
 export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {

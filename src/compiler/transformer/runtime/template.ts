@@ -3,10 +3,16 @@ import type {
     TemplateAttribute,
     TemplateNodeContext
 } from "#type-declarations/compiler"
-import type { RuntimeCodeWriter } from "../writer"
 import type { StringLiteral } from "@babel/types"
+import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
 
+import {
+    getAttributeBaseName,
+    getMaybeReusedString,
+    ensureIdWithNumSuffix,
+    shouldExtractCommonString
+} from "../../../util/compiler/sundry"
 import {
     getParsedPatterns,
     getParsedEventInfo,
@@ -16,22 +22,16 @@ import {
     getTemplateNodeContext,
     getParsedComponentTag
 } from "../../../util/compiler/template"
-import {
-    getAttributeBaseName,
-    getMaybeReusedString,
-    ensureIdWithNumSuffix,
-    shouldExtractCommonString
-} from "../../../util/compiler/sundry"
 import { jsValidIdentifierRE } from "../../regular"
 import { isNull } from "../../../util/shared/assert"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { generateFramgmentSelection } from "./fragment"
-import { getLastElem } from "../../../util/shared/arrays"
 import { stripTypeExpressions } from "../../estree/sundry"
+import { getLocByIndex } from "../../../util/compiler/position"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
+import { generateContextDeclaration, writeParsedPatterns } from "./context"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import { getLocByIndex } from "../../../util/compiler/position"
 
 export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: TemplateNode[]) {
     const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
@@ -112,7 +112,7 @@ function generateDirectiveBlock(
 ): GeneralFunc | undefined {
     const node = nodeContext.node
     const internalId = generateIdentifier.internal
-    const getterArg = generateIdentifier.getterArg
+    const getterArgId = generateIdentifier.getterArg
     const directive = nodeContext.sortedDirectives[directiveIndex]
 
     // 跳过 #html 指令的处理，推迟至节点选择完成后生成
@@ -126,11 +126,11 @@ function generateDirectiveBlock(
         case "#html": {
             writer.wrapLine().write(`${internalId}.htmlBlock(`).indent()
             writer.write(getTemplateNodeContext(nodeContext.node.children[0]).id)
-            writer.writeLine(",").write(`${getterArg} => (`)
+            writer.writeLine(",").write(`${getterArgId} => (`)
             writer.writeInterpolatedText(node.children[0]).write(")")
 
             if (directive.equalSign) {
-                writer.writeLine(",").write(`${getterArg} => (`)
+                writer.writeLine(",").write(`${getterArgId} => (`)
                 writer.writeParsedExpression(writer).write(")")
             }
             return (writer.dedent().write(")"), undefined)
@@ -138,7 +138,7 @@ function generateDirectiveBlock(
 
         case "#target": {
             writer.wrapLine().write(`${internalId}.targetBlock(`).indent()
-            writer.write(nodeContext.anchorId).writeLine(",").write(`${getterArg} => (`)
+            writer.write(nodeContext.anchorId).writeLine(",").write(`${getterArgId} => (`)
             writer.writeParsedExpression(directive).writeLine("),")
             return generateDirectiveRender({
                 enclosure() {
@@ -152,7 +152,7 @@ function generateDirectiveBlock(
             // fallthrough
         }
         case "#elif": {
-            writer.write(`${getterArg} => (`)
+            writer.write(`${getterArgId} => (`)
             writer.writeParsedExpression(directive).write("),").wrapLine()
             // fallthrough
         }
@@ -173,7 +173,7 @@ function generateDirectiveBlock(
                 nodeContext.attributesMap["#then"] || nodeContext.attributesMap["#catch"]
             )
             writer.wrapLine().write(`${internalId}.promiseBlock(`).indent()
-            writer.write(`${getterArg} => (`).writeParsedExpression(directive).writeLine("),")
+            writer.write(`${getterArgId} => (`).writeParsedExpression(directive).writeLine("),")
 
             if (noRender) {
                 return (writer.writeLine(`${internalId}.UNDEF,`), generateNextDirective())
@@ -215,47 +215,32 @@ function generateDirectiveBlock(
         }
 
         case "#for": {
+            const patterns = getParsedPatterns(directive)
             const keyDirective = nodeContext.attributesMap["#key"]
+            writer.wrapLine().write(`${internalId}.listBlock(`).indent()
 
-            const generateContextDeclaration = () => {
-                const patterns = getParsedPatterns(directive)
-                if (patterns) {
-                    for (let i = 0; i < patterns.length; i++) {
-                        if (!patterns[i]) {
-                            continue
-                        }
-
-                        const pattern = patterns[i]!
-                        const contextGetterArg = i ? "0" : ""
-                        const contextGetterId = generateIdentifier.contextGetter
-                        const valueStartSourceIndex = directive.value.loc.start.index
-                        const pureMarker = pattern.type === "Identifier" ? "/*#__PURE__*/" : ""
-                        writer.write(`const `).writeContextPattern(pattern, valueStartSourceIndex)
-                        writer.writeLine(` = ${pureMarker}${contextGetterId}(${contextGetterArg})`)
-                    }
-                }
-            }
-
-            if ((writer.wrapLine().write(`${internalId}.listBlock(`).indent(), keyDirective)) {
+            if (keyDirective) {
                 writer.write(nodeContext.anchorId).write(",").wrapLine()
                 nodeContext.anchorId = ensureIdWithNumSuffix("_anchor")
             }
-            writer.write(`${getterArg} => (`)
+            writer.write(`${getterArgId} => (`)
             writer.writeParsedExpression(directive).write("),").wrapLine()
 
             if (keyDirective) {
-                writer.write(`${getterArg} => {`).indent()
-                generateContextDeclaration()
-                writer.write("return (")
-                writer.writeParsedExpression(keyDirective)
-                writer.write(")").dedent().write("},").wrapLine()
+                if (!patterns) {
+                    writer.write(getterArgId)
+                } else {
+                    writer.write("(")
+                    writeParsedPatterns(writer, patterns).write(")")
+                }
+                writer.write(` => (`).writeParsedExpression(keyDirective).writeLine("),")
             }
             return generateDirectiveRender({
-                context() {
-                    generateContextDeclaration()
-                },
                 enclosure() {
                     writer.dedent().write(")")
+                },
+                context() {
+                    generateContextDeclaration(writer, nodeContext, directive)
                 },
                 arg() {
                     if (keyDirective) {
@@ -278,11 +263,11 @@ function generateDirectiveBlock(
         if (insert?.arg) {
             insert.arg()
         } else {
-            writer.write(getterArg)
+            writer.write(getterArgId)
         }
         writer.write(" => {").indent(false)
 
-        const childEnclosure = generateNextDirective()
+        const childEnclosure = (insert?.context?.(), generateNextDirective())
         return () => (childEnclosure?.(), writer.dedent().write("}"), insert?.enclosure?.())
     }
 }
@@ -424,6 +409,7 @@ function generateRenderEffect(
                     }
                     case "&group": {
                         generateBindCall("bindInputGroup", "getter")
+                        break
                     }
                     case "&dom": {
                         generateBindCall("bindDomReceiver", "setter")
@@ -467,7 +453,9 @@ function generateRenderEffect(
         }
     })(nodes)
 
-    withinRenderEffect && writer.dedent().write("})")
+    if (withinRenderEffect) {
+        writer.dedent().write("})")
+    }
 }
 
 function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
@@ -532,6 +520,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
+    const contextGetterId = generateIdentifier.contextGetter
     const componentTagParts = getParsedComponentTag(nodeContext.node)!
 
     const hasSlots = nodeContext.node.children.some(child => {
@@ -553,7 +542,9 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     writer.wrapLine()
 
     for (let i = 0; i < componentTagParts.length; i++) {
-        i && writer.write(".")
+        if (i) {
+            writer.write(".")
+        }
         writer.writeTemplateStr(
             componentTagParts[i].id,
             getLocByIndex(...componentTagParts[i].sourceRange)
@@ -631,19 +622,19 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
                 continue
             }
 
-            const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const slotDirective = childContext.attributesMap["#slot"]
             const expression = slotDirective && getParsedExpression(slotDirective)
             const pattern = slotDirective && getParsedPatterns(slotDirective)?.[0]
+            const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const slotName = expression ? (expression.node as StringLiteral).value : "default"
             insertTrailingComma()
             generateContextKey(slotName, writer).write(`(${anchorId}`)
 
             if (pattern) {
-                const startSourceIndex = slotDirective.value.loc.start.index
-                writer.write(", ").writeContextPattern(pattern, startSourceIndex)
+                writer.write(", ").write(contextGetterId)
             }
             writer.write(") {").indent(false)
+            generateContextDeclaration(writer, childContext, slotDirective)
             generateTemplateRender(writer, [child])
             writer.dedent().write("}")
         }
@@ -651,19 +642,6 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     }
 
     writer.dedent().write("})")
-}
-
-function isLastDirectiveIndex(nodeContext: TemplateNodeContext, index: number) {
-    const directive = nodeContext.sortedDirectives[index]
-    const directiveName = directive.name.raw
-    if (index === nodeContext.sortedDirectives.length - 1) {
-        return true
-    }
-    return (
-        directiveName === "#for" &&
-        index === nodeContext.sortedDirectives.length - 2 &&
-        getLastElem(nodeContext.sortedDirectives)!.name.raw === "#key"
-    )
 }
 
 function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateAttribute) {

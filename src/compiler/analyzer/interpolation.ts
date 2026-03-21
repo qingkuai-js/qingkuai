@@ -2,6 +2,7 @@ import type {
     Range,
     ASTLocation,
     TemplateNode,
+    ContextReference,
     TopLevelReferences
 } from "#type-declarations/compiler"
 import type { Expression, StringLiteral } from "@babel/types"
@@ -23,10 +24,15 @@ import { walkEstree } from "../estree/walk"
 import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
+import { isUndefined } from "../../util/shared/assert"
 import { kebab2Camel } from "../../util/compiler/string"
 import { endSemicolonRE, intrinsicMethodsRE } from "../regular"
 import { analyzeResult, inputDescriptor, messages } from "../state"
-import { getParsedExpression, getTemplateNodeContext } from "../../util/compiler/template"
+import {
+    getParsedExpression,
+    getParsedPatterns,
+    getTemplateNodeContext
+} from "../../util/compiler/template"
 import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
@@ -43,6 +49,8 @@ export function analyzeInterpolation(
 
     let expression: Expression
     const stringLiterals: StringLiteral[] = []
+    const reactiveContextReferences: ContextReference[] = []
+    const nodeContext = getTemplateNodeContext(templateNode)
     const topLevelReferences: TopLevelReferences = newCleanObj()
     try {
         expression = parseExpression(source)
@@ -60,7 +68,8 @@ export function analyzeInterpolation(
             reactive: false,
             node: expression,
             startSourceIndex,
-            topLevelReferences
+            topLevelReferences,
+            reactiveContextReferences
         })
     }
 
@@ -77,20 +86,16 @@ export function analyzeInterpolation(
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
         Identifier({ name, range }, context) {
-            const { contextIdentifiers } = getTemplateNodeContext(templateNode)
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
-            if (
-                !topLevelIdentifier &&
-                !contextIdentifiers.has(name) &&
-                intrinsicMethodsRE.test(name)
-            ) {
+            const isContextIdentifier = !isUndefined(nodeContext.contextIdentifiers[name])
+            if (!topLevelIdentifier && isContextIdentifier && intrinsicMethodsRE.test(name)) {
                 const sourceRange: Range = [
                     startSourceIndex + range[0],
                     startSourceIndex + range[1]
                 ]
                 InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), name)
             }
-            if (topLevelIdentifier && context.isBindingReference && !contextIdentifiers.has(name)) {
+            if (topLevelIdentifier && context.isBindingReference && isContextIdentifier) {
                 const status = topLevelIdentifier.status
                 if (
                     status === "pending" ||
@@ -103,6 +108,23 @@ export function analyzeInterpolation(
                     declared: true,
                     shorthand: context.isShorthandIdentifierAccess
                 })
+            }
+
+            if (context.isBindingReference && nodeContext.contextIdentifiers[name]) {
+                // #key 指令中访问 #for 指令声明的标识符不具有响应性
+                // Identifiers declared by the `#for` directive are not reactive when accessed in the `#key` directive.
+                if (
+                    parsingInfoKey !== nodeContext.attributesMap["#key"] ||
+                    !getParsedPatterns(nodeContext.attributesMap["#for"])?.some(item =>
+                        item.declaredIdentifiers.includes(name)
+                    )
+                ) {
+                    reactiveContextReferences.push({
+                        range,
+                        shorthand: context.isShorthandIdentifierAccess,
+                        reactiveId: nodeContext.contextIdentifiers[name]
+                    })
+                }
             }
             if ((analyzeResult.script.fullIdentifiers.add(name), topLevelIdentifier)) {
                 getParsedExpression(parsingInfoKey)!.reactive ||= true
@@ -130,12 +152,13 @@ export function analyzeTemplateAsExpression(
             camelName,
             loc.start.index + +(type === "attribute")
         )
-    } catch {}
-
-    // 检查模式下无需再报 “无效表达式” 的错误
-    // No need to report "invalid expression" errors in check mode
-    if (inputDescriptor.options.checkMode && !expression) {
-        messages.pop()
+    } catch {
+        // 检查模式下无需再报 “无效表达式” 的错误，转而报下方的 “无效组件名称” 或 “无效属性名称” 错误
+        // In check mode, there is no need to report the "Invalid Expression" error again,
+        // but instead report the "Invalid Component Name" or "Invalid Shorthand Attribute Name" error below.
+        if (inputDescriptor.options.checkMode) {
+            messages.pop()
+        }
     }
 
     if (
