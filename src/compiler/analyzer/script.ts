@@ -59,7 +59,9 @@ import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
     const program = parseScript(sourceCode)
-    program && walkEstree(program, visitor)
+    if (program) {
+        walkEstree(program, visitor)
+    }
     inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
 }
 
@@ -353,7 +355,6 @@ function inferStatusWithDeclarator(
     }
 
     const firstArg = initNode.arguments[0]
-    const initLoc = getScriptLocByRange(initNode.range!)
     const isLiteralArg = isLiteral(firstArg) || isFunctionLiteral(firstArg)
     switch (calleeName) {
         case "alias": {

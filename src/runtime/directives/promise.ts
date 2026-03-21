@@ -21,7 +21,9 @@ export function promiseBlock(
     let destruction: Destruction | null
 
     const changeState = (newState: number, render: ArbitraryFunc | undefined, arg?: any) => {
-        destruction && destroy(destruction)
+        if (destruction) {
+            destroy(destruction)
+        }
         destruction = NIL
         state = newState
 
@@ -34,7 +36,9 @@ export function promiseBlock(
 
     renderEffect(() => {
         if (state != PROMISE_PENDING) {
-            pms && pms.cancel()
+            if (pms) {
+                pms.cancel()
+            }
             changeState(PROMISE_PENDING, renderPending)
         }
         ;(pms = makeCancelablePromise(getValue())).then(

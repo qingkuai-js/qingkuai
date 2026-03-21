@@ -36,9 +36,15 @@ export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {
         const { checked } = elem
         const value = getElementValue(elem)
         if (!isArray(target)) {
-            checked ? target.add(value) : target.delte(value)
+            if (checked) {
+                target.add(value)
+            } else {
+                target.delete(value)
+            }
+        } else if (checked) {
+            target.push(value)
         } else {
-            checked ? target.push(value) : spliceByElem(target, value)
+            spliceByElem(target, value)
         }
     })
     renderEffect(() => setInputGroup(elem, getTarget()))
@@ -59,9 +65,15 @@ export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter) {
                 const { selected } = option
                 const value = getElementValue(option)
                 if (!isArray(target)) {
-                    selected ? target.add(value) : target.delete(value)
+                    if (selected) {
+                        target.add(value)
+                    } else {
+                        target.delete(value)
+                    }
+                } else if (selected) {
+                    target.push(value)
                 } else {
-                    selected ? target.push(value) : spliceByElem(target, value)
+                    spliceByElem(target, value)
                 }
             }
         }

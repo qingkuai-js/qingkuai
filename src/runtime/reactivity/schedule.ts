@@ -101,7 +101,9 @@ export function scheduleUpdate(
             // 若 linkFlag 设置了 LINK_OWN_CHANGED 标志，则触发 OWN_KEYS 订阅
             if (linkFlag & LINK_OWN_CHANGED) {
                 const sub = getSubscription(wrapper, OWN_KEYS, !i)
-                sub && extendSchedulingEffects(sub, linkFlag)
+                if (sub) {
+                    extendSchedulingEffects(sub, linkFlag)
+                }
             }
 
             // 若响应式值类型为 Array、Set、Map 其中之一，则应固定触发 ITERATOR_KEYS 订阅
@@ -111,7 +113,9 @@ export function scheduleUpdate(
                     isIteratorKey(wrapper, property)
                 ) {
                     const sub = getSubscription(wrapper, ITERATOR_KEYS, !i)
-                    sub && extendSchedulingEffects(sub, linkFlag)
+                    if (sub) {
+                        extendSchedulingEffects(sub, linkFlag)
+                    }
                 }
             }
         }
@@ -177,7 +181,7 @@ function getSortedEffects(index: number) {
     const ret = schedulingEffects[index].sort((a, b) => {
         return a.t - b.t || a.i - b.i
     })
-    return resetSchedulingEffects(index), ret
+    return (resetSchedulingEffects(index), ret)
 }
 
 function extendSchedulingEffects(subscription: Subscription, linkFlag: number) {

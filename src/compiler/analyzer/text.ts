@@ -1,11 +1,14 @@
 import type { TemplateNode, TextContentPart } from "#type-declarations/compiler"
 
+import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
 import { atLeastOneWhitespaceRE, nonWhitespaceRE } from "../regular"
 
 export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPart) {
     let str = part.value
 
+    const isFirst = node.content[0] === part
+    const isLast = getLastElem(node.content) === part
     const withInComponent = !!node.parent?.componentTag
     const whitespaceRule = inputDescriptor.options.whitespace
     if (!node.parent?.preWhiteSpace && !withInComponent) {
@@ -17,22 +20,28 @@ export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPa
                 }
                 case "trim":
                 case "trim-collapse": {
-                    str = ""
+                    str = isFirst || isLast ? "" : " "
                     break
                 }
             }
         } else {
             switch (whitespaceRule) {
-                case "trim": {
-                    str = str.trim()
-                    break
-                }
                 case "collapse": {
                     str = str.replace(atLeastOneWhitespaceRE, " ")
                     break
                 }
                 case "trim-collapse": {
-                    str = str.trim().replace(atLeastOneWhitespaceRE, " ")
+                    str = str.replace(atLeastOneWhitespaceRE, " ")
+                    // fallthrough
+                }
+                case "trim": {
+                    if (isFirst) {
+                        str = str.trimStart()
+                    }
+                    if (isLast) {
+                        str = str.trimEnd()
+                    }
+                    break
                 }
             }
         }

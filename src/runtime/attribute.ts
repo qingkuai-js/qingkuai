@@ -42,7 +42,9 @@ export function setAttribute(elem: HTMLElement, name: string, value: any) {
         try {
             any(elem)[name] = value
             return
-        } catch {}
+        } catch {
+            // do nothing
+        }
     }
     if (isBoolean(value)) {
         if (value) {

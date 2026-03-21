@@ -1,9 +1,10 @@
 import type { NodeContext } from "#type-declarations/runtime"
 
+import { objectAssign } from "./internal"
 import { currentDestruction } from "./state"
 import { any, len } from "../util/shared/sundry"
 import { isUndefined } from "../util/shared/assert"
-import { DOCUMENT, NODE_CONTEXT } from "./constants"
+import { DOCUMENT, NODE_CONTEXT, QK_FRAGMENT } from "./constants"
 
 export function newTextNode() {
     return DOCUMENT!.createTextNode("")
@@ -28,6 +29,9 @@ export function getElementValue(elem: HTMLElement) {
 }
 
 export function getChild(node: Element, index = 0) {
+    if ((node as any)[QK_FRAGMENT] && index === 0) {
+        index++
+    }
     return node.childNodes[index]
 }
 
@@ -78,7 +82,7 @@ export function createFragmentGetter(html: string, arr?: string[]) {
         if (currentDestruction) {
             currentDestruction.n = [ret.firstChild, ret.lastChild]
         }
-        return ret
+        return objectAssign(ret, { [QK_FRAGMENT]: true })
     }
 }
 

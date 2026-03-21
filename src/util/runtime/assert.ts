@@ -18,7 +18,6 @@ import {
     REF_PROPERTY_ID,
     WRAPPER_SHALLOW
 } from "../../runtime/reactivity/constants"
-import { notEqual } from "../shared/sundry"
 import { isNonNegativeNumber, isNumberLike, isObject } from "../shared/assert"
 
 export function couldReact(value: any) {

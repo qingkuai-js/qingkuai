@@ -61,9 +61,7 @@ export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => 
     }
 
     for (
-        let i = 0,
-            flagName = "",
-            flagNameStartSourceIndex = eventName.length + startSourceIndex + 1;
+        let i = 0, flagName, flagNameStartSourceIndex = eventName.length + startSourceIndex + 1;
         i < sourceFlagsArr.length;
         i++
     ) {

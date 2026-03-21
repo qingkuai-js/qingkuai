@@ -21,7 +21,7 @@ export function resetCompilerState(options: Partial<InputOptions>) {
     messages = []
     analyzeResult = newAnalyzeResult()
     generateIdentifier = newGenerateIdentifier()
-    inputDescriptor = newInputDescriptor(options)
+    inputDescriptor = newInputDescriptor({ ...options })
 }
 
 function newGenerateIdentifier(): GenerateIdentifier {
@@ -105,17 +105,17 @@ function newInputDescriptor(options: Partial<InputOptions>) {
         }
     }
     if (!options.hashId) {
-        ret.options.hashId = createHashId()
+        options.hashId = createHashId()
     }
     if (options.debug) {
         if (isUndefined(options.sourcemap)) {
-            ret.options.sourcemap = true
+            options.sourcemap = true
         }
         if (isUndefined(options.interpretiveComments)) {
-            ret.options.interpretiveComments = true
+            options.interpretiveComments = true
         }
         if (isUndefined(options.preserveHtmlComments)) {
-            ret.options.preserveHtmlComments = true
+            options.preserveHtmlComments = true
         }
     }
     return (objectAssign(ret.options, options), ret)

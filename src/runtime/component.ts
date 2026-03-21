@@ -6,15 +6,15 @@ import type {
 } from "#type-declarations/runtime"
 
 import { registerEvents } from "./event"
-import { AFTER_MOUNT, NIL } from "./constants"
+import { AFTER_MOUNT } from "./constants"
 import { createDestruction } from "./destroy"
-import { isFunction, isString } from "../util/shared/assert"
 import { isElement } from "../util/runtime/assert"
-import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
 import { stripPrototype } from "../util/shared/sundry"
+import { isFunction, isString } from "../util/shared/assert"
 import { any, createProxy, len, runAll } from "../util/shared/sundry"
+import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
 export const [
@@ -34,7 +34,10 @@ export function init(context: ComponentContext) {
     }
     setCurrentInstance(instance)
     createDestruction(instance)
-    context.e && registerEvents(context.e)
+
+    if (context.e) {
+        registerEvents(context.e)
+    }
     return {
         slots: initSlots(context.s),
         refs: initRefs(context.r, context.R),

@@ -1,25 +1,24 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
 
 import {
-    DOCUMENT,
     KEY_ALT,
     KEY_META,
     KEY_CTRL,
     KEY_SHIFT,
     KEY_EXACT,
-    KEY_FLAG_MAP,
     EVENT_ONCE,
     EVENT_SELF,
     EVENT_STOP,
     EVENT_CAPTURE,
     EVENT_PREVENT,
     EVENT_PASSIVE
-} from "./constants"
+} from "../util/shared/flags"
 import { getNodeContext } from "./dom"
 import { eventRegisterInfo } from "./state"
 import { any, len } from "../util/shared/sundry"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
+import { DOCUMENT, KEY_FLAG_MAP } from "./constants"
 import { call, defineProperties } from "../util/shared/aliases"
 
 // 包装带有键位标志的事件
@@ -50,7 +49,9 @@ export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
                 checkRes = !pair[1]
             }
         }
-        checkRes && call(fn, this, event)
+        if (checkRes) {
+            call(fn, this, event)
+        }
     }
 }
 

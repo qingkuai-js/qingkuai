@@ -12,10 +12,10 @@ import {
 import { destroy } from "../destroy"
 import { insertBefore } from "../dom"
 import { UNDEF, NIL, REFLECT } from "../constants"
+import { len, optc } from "../../util/shared/sundry"
 import { objectAssign } from "../../util/shared/aliases"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { DuplicateKey, NonTraverse } from "../messages/error"
-import { len, notEqual, optc } from "../../util/shared/sundry"
 import { isArray, isNumber, isString } from "../../util/shared/assert"
 import { renderEffect, runAndUpdateEffect } from "../reactivity/effect"
 import { invokeRender, toRaw, walkNodes } from "../../util/runtime/sundry"
@@ -46,7 +46,7 @@ export function keyedListBlock(
         const newDestructions: Record<string, Destruction> = {}
         for (let i = 0, reference = anchor; i < newLength; i++) {
             const oldKey = oldKeys[i]
-            const contextGetter = makeContextGetter(info, i)
+            const contextGetter = makeContextGetter(newInfo, i)
             const newKey = getKey(contextGetter)
             const destructionForNewKey = destructions[newKey]
             for (let j = i; j < oldLength; j++) {
@@ -68,7 +68,7 @@ export function keyedListBlock(
                         insertBefore(reference, node)
                     })
                 } else {
-                    updateBlock(i, info, newInfo, destructionForNewKey)
+                    updateBlock(destructionForNewKey)
                 }
                 newDestructions[newKey] = destructionForNewKey
             }
@@ -101,7 +101,7 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
         const newLength = newInfo.h
         const updateLength = Math.min(oldLength, newLength)
         for (let i = 0; i < updateLength; i++) {
-            updateBlock(i, info, newInfo, destructions[i])
+            updateBlock(destructions[i])
         }
         for (let i = oldLength; i > newLength; i--) {
             destroy(destructions.pop()!)
@@ -109,7 +109,7 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
         for (let i = oldLength; i < newLength; i++) {
             destructions.push(
                 invokeRender(() => {
-                    render(makeContextGetter(info, i))
+                    render(makeContextGetter(newInfo, i))
                 })
             )
         }
@@ -117,28 +117,9 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     })
 }
 
-function updateBlock(
-    index: number,
-    oldInfo: TraverseInfo,
-    newInfo: TraverseInfo,
-    destruction: Destruction
-) {
+function updateBlock(destruction: Destruction) {
     const effect = destruction.e![0]
-    if (effect.l & EFFECT_SCHEDULING) {
-        return
-    }
-
-    // prettier-ignore
-    if (
-        (
-            oldInfo.l & LIST_VALUE &&
-            notEqual(getContext(oldInfo, index), getContext(newInfo, index))
-        ) ||
-        (
-            oldInfo.l & LIST_KEY &&
-            notEqual(getContext(oldInfo, index, 0), getContext(newInfo, index, 0))
-        )
-    ) {
+    if (!(effect.l & EFFECT_SCHEDULING)) {
         runAndUpdateEffect(effect)
     }
 }
@@ -188,7 +169,7 @@ function makeContextGetter(info: TraverseInfo, index: number) {
 }
 
 function getContext(info: TraverseInfo, index: number, getItem: ZeroOrOne = 1, track = false) {
-    const currentKey = info.k![index]
+    const currentKey = info.k?.[index]
     const value = track ? info.v : toRaw(info.v)
     switch (info.t) {
         case TRAVERSE_NUMBER: {

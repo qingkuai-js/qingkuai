@@ -20,11 +20,16 @@ export function conditionBlock(crs: ArbitraryFunc[]) {
             }
             if (i != renderIndex) {
                 renderIndex = i
-                destruction && destroy(destruction)
+
+                if (destruction) {
+                    destroy(destruction)
+                }
                 destruction = invokeRender(crs[i + +!isElse])
             }
             return
         }
-        destruction && destroy(destruction)
+        if (destruction) {
+            destroy(destruction)
+        }
     })
 }

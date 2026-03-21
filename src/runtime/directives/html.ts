@@ -32,7 +32,9 @@ export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
                 matchStr => "&lt;" + matchStr.slice(1)
             )
         }
-        destruction && destroy(destruction)
+        if (destruction) {
+            destroy(destruction)
+        }
         destruction = invokeRender(() => {
             insertBefore(anchor, createFragmentGetter(html!)())
         })

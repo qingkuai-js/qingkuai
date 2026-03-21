@@ -29,7 +29,10 @@ export function destroy(destruction: Destruction) {
         destruction.p.c?.delete(destruction)
     }
     walkNodes(destruction, node => node.remove())
-    destruction.m && runHooks(destruction.m, AFTER_DESTROY)
+
+    if (destruction.m) {
+        runHooks(destruction.m, AFTER_DESTROY)
+    }
 }
 
 export function pushDestructionCleaner(cleaner: ArbitraryFunc) {

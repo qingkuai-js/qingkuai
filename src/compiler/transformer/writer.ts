@@ -1,6 +1,6 @@
 import type { CodeEditor } from "./editor"
+import type { AnyNode, PartialAnyNode } from "#type-declarations/estree"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
-import type { AnyNode, ContextPattern, PartialAnyNode } from "#type-declarations/estree"
 import type { ASTLocation, ASTPosition, Range, TemplateNode } from "#type-declarations/compiler"
 
 import {
@@ -8,16 +8,12 @@ import {
     markPositionFlag,
     isPositionFlagSetAtIndex
 } from "../../util/compiler/position"
-import {
-    generateContextPattern,
-    transformInterpolatedText,
-    transformParsedExpression
-} from "./runtime/interpolation"
 import { PositionFlag } from "../enums"
 import { inputDescriptor } from "../state"
 import { nonWhitespaceRE } from "../regular"
 import { isNumber } from "../../util/shared/assert"
 import { encode } from "@jridgewell/sourcemap-codec"
+import { transformInterpolatedText, transformParsedExpression } from "./runtime/interpolation"
 
 abstract class BaseCodeWriter {
     public abstract write(str: string, startSourceIndex?: number): this
@@ -129,10 +125,6 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return this
     }
 
-    writeContextPattern(node: ContextPattern, startSourceIndex: number) {
-        return (generateContextPattern(this, node, startSourceIndex), this)
-    }
-
     writeEditedScript(editor: CodeEditor) {
         const { isEmbeddedScript } = editor
         const editedContent = editor.result.trimEnd()
@@ -186,7 +178,9 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
             }
         }
         if (((this._code += character), "\n" !== character)) {
-            character && this.generateColumn++
+            if (character) {
+                this.generateColumn++
+            }
         } else {
             this.generateLine++
             this._code += this.indentStr

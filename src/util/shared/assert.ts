@@ -51,7 +51,7 @@ export function isPromise<T = any>(v: any): v is Promise<T> {
 }
 
 export function isNumberLike(v: any) {
-    // @ts-ignore
+    // @ts-expect-error: checks number-like
     return isNumber(v) ? true : isString(v) ? v == +v : false
 }
 
@@ -61,6 +61,6 @@ export function isSpreadable(v: AnyObject) {
 }
 
 export function isArrayLike<T = any>(v: any): v is ArrayLike<T> {
-    // @ts-ignore
+    // @ts-expect-error: len() returns v.length
     return isArray(v) ? true : isObject(v) ? isNumber(len(v)) : false
 }

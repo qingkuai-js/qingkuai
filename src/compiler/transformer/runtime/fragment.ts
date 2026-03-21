@@ -166,9 +166,15 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                         const quote = attribute.valueEnclosure === "double" ? '"' : "'"
                         const couldOmitQuote = omitQuoteAttrValueRE.test(rawValue)
                         fragment.content.push("=")
-                        couldOmitQuote || fragment.content.push(quote)
+
+                        if (!couldOmitQuote) {
+                            fragment.content.push(quote)
+                        }
                         fragment.content.push(rawValue)
-                        couldOmitQuote || fragment.content.push(quote)
+
+                        if (!couldOmitQuote) {
+                            fragment.content.push(quote)
+                        }
                     }
                 }
             }
@@ -182,7 +188,10 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                 selectLastNode(node.tag, nodeContext)
             }
             generate(node.children, fragment, nodeContext)
-            node.isSelfClosing || fragment.content.push(isComment ? "-->" : `</${node.tag}>`)
+
+            if (!node.isSelfClosing) {
+                fragment.content.push(isComment ? "-->" : `</${node.tag}>`)
+            }
         }
     })(nodes, extendFragments(null), null)
 
@@ -283,7 +292,10 @@ export function generateFramgmentSelection(writer: RuntimeCodeWriter, fragment: 
                 selection.parent ?? fragmentId
             }${selection.index ? `, ${selection.index}` : ""})`
         )
-        selection.replaceWithText && writer.write(")")
+
+        if (selection.replaceWithText) {
+            writer.write(")")
+        }
     }
     return writer
 }

@@ -55,6 +55,7 @@ export function parseContextPattern(source: string): ContextPattern | null {
             if (right.type === "Identifier" && right.name === "_") {
                 return pattern
             }
+            // fallthrough
         }
         default: {
             return null

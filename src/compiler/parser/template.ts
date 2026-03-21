@@ -58,12 +58,12 @@ import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
 import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
+import { ATTRIBUTE_VALUE_ENCLOSURE_MAP } from "../constants"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
 import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
 import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
-import { ATTRIBUTE_VALUE_ENCLOSURE_MAP } from "../constants"
 
 export function newTemplateNode(): TemplateNode {
     return {
@@ -99,11 +99,15 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
     // Parsing entry point: recursively execute the parsing process.
     for (let prev: TemplateNode | undefined = undefined; dps.length; ) {
         const textNode = parseContent(null, prev)
-        textNode && astList.push((prev = textNode))
+        if (textNode) {
+            astList.push((prev = textNode))
+        }
 
         if (dps) {
             const templateNode = parseTag(null, prev)
-            templateNode && astList.push((prev = templateNode))
+            if (templateNode) {
+                astList.push((prev = templateNode))
+            }
         }
     }
 
@@ -115,8 +119,12 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
             if (shouldReserve) {
                 node.children = filterParseResult(node.children)
             } else {
-                node.prev && (node.prev.next = node.next)
-                node.next && (node.next.prev = node.prev)
+                if (node.prev) {
+                    node.prev.next = node.next
+                }
+                if (node.next) {
+                    node.next.prev = node.prev
+                }
             }
             return shouldReserve
         })

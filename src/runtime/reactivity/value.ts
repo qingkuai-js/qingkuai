@@ -90,7 +90,6 @@ export function mutualLink(wrapper: ReactivityWrapper, property?: any, flag?: nu
 function reactGen(declarationFlag = 0) {
     return (target: any, debugSetter?: Setter) => {
         let flag = declarationFlag
-        let wrapper: ReactivityWrapper
         let cached: ReactivityWrapper | undefined
         const createWithProxy = flag & WRAPPER_PROXY
         const cache = flag & WRAPPER_SHALLOW ? shallowProxyCache : proxyCache
@@ -103,8 +102,8 @@ function reactGen(declarationFlag = 0) {
             }
             flag |= any(TYPE_FLAG_MAP)[optc(target)] || WRAPPER_OBJECT
         }
-        wrapper = createReactivityWrapper(target, flag, debugSetter)
 
+        const wrapper = createReactivityWrapper(target, flag, debugSetter)
         if (!cached && createWithProxy) {
             cache.set(target, wrapper)
         }

@@ -58,7 +58,9 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
     })
 
-    hasTopExtract && writer.wrapLine()
+    if (hasTopExtract) {
+        writer.wrapLine()
+    }
     removeEliminatedNodes(embeddedScriptEditor)
     replaceStringLiterals(embeddedScriptEditor)
     generateTemplateFragments(writer, templateFragments)
@@ -76,7 +78,10 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         writer.wrapLine()
     }
     writer.write(`const { props, refs, slots } = ${internalId}.init(${contextId})`)
-    hoistWriter.empty || writer.wrapLine().write(hoistWriter.code)
+
+    if (!hoistWriter.empty) {
+        writer.wrapLine().write(hoistWriter.code)
+    }
     writer.writeEditedScript(embeddedScriptEditor)
 
     if (templateFragments.some(item => item.content.length)) {
@@ -121,13 +126,17 @@ function generateDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId
     const seperator = ", " + (shouldWrapLine ? "\n" : "")
     const concatSeperatorCount = passiveLen ? (nonPassiveLen ? 2 : 1) : 0
     writer.write(`${contextId}.e = [`)
-    shouldWrapLine && writer.indent()
 
+    if (shouldWrapLine) {
+        writer.indent()
+    }
     writer.write(nonPassiveEvents.join(seperator))
     writer.write(seperator.repeat(concatSeperatorCount))
     writer.write(passiveEvents.join(seperator))
 
-    shouldWrapLine && writer.dedent()
+    if (shouldWrapLine) {
+        writer.dedent()
+    }
     return (writer.write("]").wrapLine(), true)
 }
 

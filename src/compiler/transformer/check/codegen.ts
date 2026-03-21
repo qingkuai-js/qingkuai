@@ -32,7 +32,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         slotNamesType += stringify(name) + " | "
     })
     slotNamesType = slotNamesType.slice(0, -3)
-    slotNamesType && (slotNamesType = `Record<${slotNamesType}, boolean>`)
+
+    if (slotNamesType) {
+        slotNamesType = `Record<${slotNamesType}, boolean>`
+    }
 
     const isTS = inputDescriptor.script.isTS
     const writer = new IntermediateCodeWriter()
@@ -122,8 +125,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 writer.dedent().write("}")
             }
 
-            const indentAndWriteStartEnclosure = (wrapLine = true) => {
-                wrapLine && writer.wrapLine()
+            const indentAndWriteStartEnclosure = (shouldWrapLine = true) => {
+                if (shouldWrapLine) {
+                    writer.wrapLine()
+                }
                 writer.write("{").indent(false)
                 endInserts.push(dedentAndWriteEndEnclosure)
             }
@@ -272,7 +277,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.write(`${UTILS}.confirmComponent(`)
 
                     for (let i = 0; i < componentTagParts.length; i++) {
-                        i && writer.write(".")
+                        if (i) {
+                            writer.write(".")
+                        }
                         writer.write(componentTagParts[i].id, componentTagParts[i].sourceRange)
                     }
                     writer.write(")")
@@ -538,8 +545,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         continue
                     }
 
-                    // 待办：验证 option 元素的 value 属性是否可以被 select 的 &value 接受
-                    // TODO: Verify whether the `value` attribute of the `option` element can be accepted by `select`'s `&value`
+                    // 待办：验证 option 元素的 value 属性是否可以被 select 元素的 &value 属性接受
+                    // TODO: Verify whether the value attribute of the option element can be accepted by
+                    // the &value attribute of the select element.
                     //
                     // walkOptionChildren(node, optionElement => {
                     //     const optionElementContext = getTemplateNodeContext(optionElement)
@@ -562,7 +570,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 writer.writeLine(",").write("{").indent(false)
             }
 
-            ;(generate(node.children), forEachRight(endInserts, fn => fn()))
+            generate(node.children)
+            forEachRight(endInserts, fn => fn())
         }
     })(nodes)
 
@@ -587,18 +596,26 @@ function generatePatterns(
 
     if (!isSlotDirective) {
         writer.wrapLine().write("const ")
-        isForDirective && writer.write("[")
+
+        if (isForDirective) {
+            writer.write("[")
+        }
     }
     for (let i = 0; i < patterns.length; i++) {
-        if (patterns[i]) {
-            const end = patterns[i]!.end! + startSourceIndex
-            const start = patterns[i]!.start! + startSourceIndex
+        const patternNode = patterns[i]?.node
+        if (patternNode) {
+            const end = patternNode.end! + startSourceIndex
+            const start = patternNode.start! + startSourceIndex
             writer.write(inputDescriptor.source.slice(start, end), start)
         }
-        !i && isForDirective && patterns[i + 1] && writer.write(", ")
+        if (i && isForDirective && patterns[i + 1]) {
+            writer.write(", ")
+        }
     }
     if (!isSlotDirective) {
-        isForDirective && writer.write("]")
+        if (isForDirective) {
+            writer.write("]")
+        }
         writer.write(" = ")
     }
     return true

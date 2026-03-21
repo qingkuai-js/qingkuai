@@ -2,7 +2,7 @@ import { defineConfig } from "rollup"
 
 import esbuild from "rollup-plugin-esbuild"
 
-export default defineConfig(commentLineArgs => {
+export default defineConfig(() => {
     const result = []
 
     const baseOptions = {

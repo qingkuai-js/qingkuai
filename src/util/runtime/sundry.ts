@@ -91,8 +91,9 @@ export function walkNodes(destruction: Destruction, callback: (node: ChildNode) 
     if (start) {
         const end = getSibling(destruction.n[1]!)
         while (start && start !== end) {
+            const next = getSibling(start)
             callback(start)
-            start = getSibling(start)
+            start = next
         }
     }
 }

@@ -1,6 +1,7 @@
+import type { ArbitraryFunc } from "#type-declarations/tools"
+
 import { stringify } from "../shared/aliases"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../compiler/state"
-import { ArbitraryFunc } from "#type-declarations/tools"
 
 export const createHashId = (function () {
     const existing = new Set<string>()
@@ -71,6 +72,7 @@ export function ensureIdWithNumSuffix(name: string, useOrigin = false) {
     if (useOrigin && !generateInfo.originUsed && !fullIdentifiers.has(name)) {
         generateInfo.originUsed = true
     } else {
+        // eslint-disable-next-line no-constant-condition
         for (let i = generateInfo.last, initial = name; true; i++) {
             if (!fullIdentifiers.has((name = initial + i))) {
                 break

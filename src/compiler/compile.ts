@@ -22,7 +22,8 @@ export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
 
     const templateNodes = parseTemplate(source)
-    ;(analyzeScript(), analyzeTemplate(templateNodes))
+    analyzeScript()
+    analyzeTemplate(templateNodes)
 
     const writer = generateRuntimeCode(templateNodes)
     return {
@@ -40,7 +41,8 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     resetCompilerState({ ...options, checkMode: true })
 
     const templateNodes = parseTemplate(source)
-    ;(analyzeScript(), analyzeTemplate(templateNodes))
+    analyzeScript()
+    analyzeTemplate(templateNodes)
 
     const writer = generateIntermediateCode(templateNodes)
     const idStatusInfo: Record<string, string> = newCleanObj()

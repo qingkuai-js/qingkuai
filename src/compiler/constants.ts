@@ -21,7 +21,7 @@ import {
     EVENT_PREVENT,
     EVENT_CAPTURE,
     EVENT_PASSIVE
-} from "../runtime/constants"
+} from "../util/shared/flags"
 import { objectAssign } from "../util/shared/aliases"
 
 export const SPREAD_TAG = "qk:spread"

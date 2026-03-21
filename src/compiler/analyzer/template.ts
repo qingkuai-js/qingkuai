@@ -19,6 +19,7 @@ import { analyzeStaticTextContent } from "./text"
 import { newCleanObj } from "../../util/shared/sundry"
 import { UnnecessarySpreadTag } from "../message/warn"
 import { parseComponentTag } from "../parser/component"
+import { objectAssign } from "../../util/shared/aliases"
 import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
 import { isHtmlDirectiveChild } from "../../util/compiler/assert"
@@ -30,7 +31,7 @@ import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from ".
 export function analyzeTemplate(nodes: TemplateNode[]) {
     walkTemplateNodes(nodes, node => {
         let nodeContext: TemplateNodeContext
-        let parentContextIdentifiers: Set<string> | undefined
+        let parentContextIdentifiers: Record<string, string> | undefined
         if (node.parent) {
             parentContextIdentifiers = getTemplateNodeContext(node.parent)?.contextIdentifiers
         }
@@ -49,7 +50,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 selectableChildCount: 0,
                 shouldBeSelected: false,
                 attributesMap: newCleanObj(),
-                contextIdentifiers: new Set(parentContextIdentifiers)
+                contextIdentifiers: objectAssign(newCleanObj(), parentContextIdentifiers)
             })
         )
 
@@ -95,8 +96,12 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
         }
     })
     walkTemplateNodes(nodes, node => {
-        node.componentTag && checkSlotAssignment(node)
-        inputDescriptor.options.checkMode || evaluateTemplateNodeSelection(node)
+        if (node.componentTag) {
+            checkSlotAssignment(node)
+        }
+        if (!inputDescriptor.options.checkMode) {
+            evaluateTemplateNodeSelection(node)
+        }
     })
 }
 
@@ -125,12 +130,16 @@ function evaluateTemplateNodeSelection(node: TemplateNode) {
     }
 
     if ("slot" === node.tag || node.componentTag) {
-        node.parent && markTemplateNodeShouldBeSelected(node.parent)
+        if (node.parent) {
+            markTemplateNodeShouldBeSelected(node.parent)
+        }
         return
     }
 
     if (getTemplateNodeContext(node).sortedDirectives.length) {
-        node.parent && markTemplateNodeShouldBeSelected(node.parent)
+        if (node.parent) {
+            markTemplateNodeShouldBeSelected(node.parent)
+        }
     }
     if (node.attributes.some(attr => shouldBeSelectedAttrStartCharRE.test(attr.name.raw))) {
         markTemplateNodeShouldBeSelected(node)

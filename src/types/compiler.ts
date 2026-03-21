@@ -155,15 +155,26 @@ export interface AnalyzeResult {
     template: TemplateAnalyzeRet
 }
 export interface EventFlagInfo {
-    value: number
     items: {
         name: string
         sourceRange: Range
     }[]
+    value: number
+}
+export interface ContextReference {
+    range: Range
+    shorthand: boolean
+    reactiveId: string
 }
 export interface ComponentTagPart {
     id: string
     sourceRange: Range
+}
+export interface ParsedPattern {
+    sourceRange: Range
+    reactive: boolean
+    node: ContextPattern | null
+    declaredIdentifiers: string[]
 }
 export interface TopLevelIdentifierInfo {
     nodeInfos: {
@@ -186,13 +197,13 @@ export interface TemplateNodeContext {
     node: TemplateNode
     shouldBeSelected: boolean
     selectableChildCount: number
-    contextIdentifiers: Set<string>
     fragment: TemplateFragment | null
     eventListeners: TemplateAttribute[]
     sortedDirectives: TemplateAttribute[]
     staticAttributes: TemplateAttribute[]
     dynamicAttributes: TemplateAttribute[]
     referenceAttributes: TemplateAttribute[]
+    contextIdentifiers: Record<string, string>
     attributesMap: Record<string, TemplateAttribute>
 }
 export interface TemplateAnalyzeRet {
@@ -232,6 +243,7 @@ export interface TemplateAnalyzeRet {
             startSourceIndex: number
             stringLiterals: StringLiteral[]
             topLevelReferences: TopLevelReferences
+            reactiveContextReferences: ContextReference[]
         }
     >
     compressStringsCount: number
@@ -240,8 +252,8 @@ export interface TemplateAnalyzeRet {
     staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
+    parsedPatterns: Map<TemplateAttribute, ParsedPattern[]>
     parsedComponentTags: Map<TemplateNode, ComponentTagPart[]>
-    parsedPatterns: Map<TemplateAttribute, (ContextPattern | null)[] | undefined>
 }
 export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<

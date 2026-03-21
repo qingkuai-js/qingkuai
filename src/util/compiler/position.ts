@@ -47,6 +47,7 @@ export function getLocWithDefaultEnd(index: number): ASTLocation {
 }
 
 export function getPosByIndex(index: number): ASTPosition {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     return (({ flag, ...rest }) => rest)(inputDescriptor.positions[index])
 }
 
