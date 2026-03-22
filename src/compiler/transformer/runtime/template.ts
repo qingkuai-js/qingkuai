@@ -204,6 +204,15 @@ function generateDirectiveBlock(
                 }
             }
             return generateDirectiveRender({
+                arg() {
+                    const pattern = getParsedPatterns(directive)?.[0]
+                    if (!pattern) {
+                        writer.write(getterArgId)
+                    } else {
+                        writer.write("(")
+                        writeParsedPatterns(writer, [pattern]).write(")")
+                    }
+                },
                 enclosure() {
                     if (doesDirectiveHasContinuousItem(node, directive)) {
                         writer.writeLine(",")
@@ -628,12 +637,12 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const slotName = expression ? (expression.node as StringLiteral).value : "default"
             insertTrailingComma()
-            generateContextKey(slotName, writer).write(`(${anchorId}`)
+            generateContextKey(slotName, writer).write(`: (${anchorId}`)
 
             if (pattern) {
                 writer.write(", ").write(contextGetterId)
             }
-            writer.write(") {").indent(false)
+            writer.write(") => {").indent(false)
             generateContextDeclaration(writer, childContext, slotDirective)
             generateTemplateRender(writer, [child])
             writer.dedent().write("}")

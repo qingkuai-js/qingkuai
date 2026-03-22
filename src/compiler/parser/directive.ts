@@ -2,11 +2,12 @@ import type { ContextPattern } from "#type-declarations/estree"
 import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler"
 import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 
-import { walkEstree } from "../estree/walk"
 import { parseContextPattern } from "./script"
+import { isNull } from "../../util/shared/assert"
+import { isContextPattern } from "../estree/assert"
 import { inputDescriptor, messages } from "../state"
-import { findOutOfLiteralComment } from "../../util/compiler/string"
 import { InvalidContextPattern } from "../message/error"
+import { findOutOfLiteralComment } from "../../util/compiler/string"
 import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 
 // 解析指令值：此方法主要用于解析格式为 模式 + 关键字 + 表达式 的指令值，目前值为此格式的指令有：#slot 和 #for
@@ -40,8 +41,8 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
             return notKeywordReturns
         }
 
-        const pattern = parseContextPattern(`[${rawValue.slice(0, i)}]`)
-        if (pattern?.type !== "ArrayPattern" || !pattern.elements.length) {
+        const pattern = parseContextPattern(rawValue.slice(0, i))
+        if (!pattern?.elements.length) {
             continue
         }
 
@@ -55,42 +56,19 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
             continue
         }
 
-        // 由于解析时添加了一个开始中括号前缀，这里需要将每个节点的位置信息向前移动一位
-        // Since a prefix '[' was added during parsing, the position of each node needs to be shifted forward by one here.
-        walkEstree(pattern, {
-            AnyNode(node) {
-                if (!node.loc.end.column) {
-                    node.loc.end.column--
-                }
-                if (!node.loc.start.column) {
-                    node.loc.start.column--
-                }
-                node.loc.end.index = node.range[1] = --node.end
-                node.loc.start.index = node.range[0] = --node.start
-            }
-        })
-
         // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
         // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
         const patterns: (ContextPattern | null)[] = []
         for (const element of pattern.elements) {
-            switch (element?.type) {
-                case undefined:
-                case "Identifier":
-                case "ArrayPattern":
-                case "ObjectPattern":
-                case "RestElement": {
-                    patterns.push(element)
-                    continue
-                }
-                default: {
-                    InvalidContextPattern(
-                        getNonWhitespaceLocByIndex(
-                            element!.start! + startSourceIndex,
-                            element!.end! + startSourceIndex
-                        )
+            if (isNull(element) || isContextPattern(element)) {
+                patterns.push(element)
+            } else {
+                InvalidContextPattern(
+                    getNonWhitespaceLocByIndex(
+                        element!.start! + startSourceIndex,
+                        element!.end! + startSourceIndex
                     )
-                }
+                )
             }
         }
 

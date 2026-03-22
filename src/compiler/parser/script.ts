@@ -1,9 +1,9 @@
 import type { ParserOptions } from "@babel/parser"
-import type { AssignmentExpression } from "@babel/types"
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ContextPattern } from "#type-declarations/estree"
+import type { ArrayPattern, AssignmentExpression } from "@babel/types"
 
 import { inputDescriptor } from "../state"
+import { walkEstree } from "../estree/walk"
 import { babelErrorLocInfoRE } from "../regular"
 import { isUndefined } from "../../util/shared/assert"
 import { objectAssign } from "../../util/shared/aliases"
@@ -29,26 +29,33 @@ export function parseExpression(source: string, startSourceIndex: number) {
     )
 }
 
-export function parseContextPattern(source: string): ContextPattern | null {
+export function parseContextPattern(source: string): ArrayPattern | null {
     try {
-        const { left: pattern, right } = _parseExpression(source + "=_", {
+        const expression = _parseExpression(`[${source}]=_`, {
             ...getParserOptions(),
             tokens: true,
             errorRecovery: false
         }) as AssignmentExpression
-        switch (pattern.type) {
-            case "Identifier":
-            case "ArrayPattern":
-            case "ObjectPattern": {
-                if (right.type === "Identifier" && right.name === "_") {
-                    return pattern
-                }
-                // fallthrough
-            }
-            default: {
-                return null
-            }
+
+        if (expression.left.type !== "ArrayPattern") {
+            return null
         }
+
+        // 由于解析时添加了一个开始中括号前缀，这里需要将每个节点的位置信息向前移动一位
+        // Since a prefix '[' was added during parsing, the position of each node needs to be shifted forward by one here.
+        walkEstree(expression.left, {
+            AnyNode(node) {
+                if (!node.loc.end.column) {
+                    node.loc.end.column--
+                }
+                if (!node.loc.start.column) {
+                    node.loc.start.column--
+                }
+                node.loc.end.index = node.range[1] = --node.end
+                node.loc.start.index = node.range[0] = --node.start
+            }
+        })
+        return expression.left
     } catch {
         return null
     }

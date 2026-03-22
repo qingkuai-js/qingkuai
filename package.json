@@ -23,7 +23,8 @@
     }
   },
   "scripts": {
-    "test": "vitest",
+    "lint": "eslint",
+    "test": "vitest --run",
     "dev": "rollup -c -w",
     "bundle": "rollup -c",
     "build": "rimraf dist && npm run build-types && npm run bundle",

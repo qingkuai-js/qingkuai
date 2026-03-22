@@ -201,9 +201,19 @@ describe("Invalid usages of intrinsic methods", () => {
                 value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
+                type: "warning",
+                range: [54, 74],
+                value: `The "alias" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
+            },
+            {
                 type: "error",
                 range: [54, 74],
                 value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+            },
+            {
+                type: "warning",
+                range: [99, 114],
+                value: `The "alias" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
             },
             {
                 type: "error",

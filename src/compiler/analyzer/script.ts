@@ -26,7 +26,6 @@ import {
 import {
     CannotAliasIdentifier,
     AmbiguousReactiveMarking,
-    InvalidIntrinsicArgCount,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -34,6 +33,7 @@ import {
     ExportStatementsAreNotSupported,
     ShadowCompilerIntrinsicAtTopLevel,
     InvalidParameterForAliasIntrinsic,
+    InvalidSpreadElementArgForIntrinsic,
     TSModuleDeclarationsAreNotSupported,
     InvalidAliasDestructuringDeclaration,
     IntrinsicNotAllowedInUsingDeclaration
@@ -41,6 +41,7 @@ import {
 import {
     RedundantRawMark,
     UnnecessaryReactiveMark,
+    RedundantArgsForIntrinsic,
     IdentifierMaybeOverwritten,
     DuplicateDefaultDeclaration,
     DeclareDerivedMixedSyntaticForms,
@@ -471,9 +472,9 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkConte
     const parent = context.striptTypeOperationsParent!
     if (isIntrinsicCall(parent.value)) {
         const intrinsicCall = parent.value
+        const firstArg = intrinsicCall.arguments[0]
         const argsLen = intrinsicCall.arguments.length
         const intrinsicCallLoc = getScriptLocByRange(intrinsicCall.range!)
-        const checkArgsLen = !(inputDescriptor.options.checkMode && inputDescriptor.script.isTS)
         switch (node.name) {
             case "watch":
             case "preWatch":
@@ -483,8 +484,8 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkConte
             case "preWatchExp":
             case "postWatchExp":
             case "syncWatchExp": {
-                if (checkArgsLen && argsLen !== 2) {
-                    InvalidIntrinsicArgCount(intrinsicCallLoc, node.name, 2, argsLen)
+                if (argsLen > 2) {
+                    RedundantArgsForIntrinsic(intrinsicCallLoc, node.name, 2, argsLen)
                 }
                 return
             }
@@ -496,8 +497,14 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkConte
                 if (!inputDescriptor.options.checkMode) {
                     analyzeResult.script.eliminatedNodes.add(parent.value)
                 }
-                if (checkArgsLen && argsLen !== 1) {
-                    InvalidIntrinsicArgCount(intrinsicCallLoc, node.name, 1, argsLen)
+                if (firstArg?.type === "SpreadElement") {
+                    InvalidSpreadElementArgForIntrinsic(
+                        getScriptLocByRange(firstArg.range!),
+                        node.name
+                    )
+                }
+                if (argsLen > 1) {
+                    RedundantArgsForIntrinsic(intrinsicCallLoc, node.name, 1, argsLen)
                 }
 
                 let isValidDefinition = true
@@ -535,15 +542,16 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkConte
                 break
             }
 
-            case "derived":
-            case "derivedExp": {
-                if (checkArgsLen && argsLen !== 1) {
-                    InvalidIntrinsicArgCount(intrinsicCallLoc, node.name, 1, argsLen)
-                }
-                // fallthrough
-            }
-
             default: {
+                if (firstArg?.type === "SpreadElement") {
+                    InvalidSpreadElementArgForIntrinsic(
+                        getScriptLocByRange(firstArg.range!),
+                        node.name
+                    )
+                }
+                if (argsLen > 1) {
+                    RedundantArgsForIntrinsic(intrinsicCallLoc, node.name, 1, argsLen)
+                }
                 if (node.name === "alias") {
                     if (
                         parent.value.arguments.length !== 1 ||

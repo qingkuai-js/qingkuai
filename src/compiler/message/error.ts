@@ -73,13 +73,6 @@ export const InvalidReferenceAttribute = withLocation(
     }
 )
 
-export const InvalidIntrinsicArgCount = withLocation(
-    1059,
-    (name: string, expected: number, got: number) => {
-        return `The "${name}" intrinsic requires exactly ${expected} argument${expected === 1 ? "" : "s"}, but got ${got}.`
-    }
-)
-
 export const MissingPrecedingDirective = withLocation(
     1031,
     (directive: string, expectedList: string[], extra = "") => {
@@ -109,6 +102,10 @@ export const ExpectedStringLiteral = withLocation(1042, () => {
 
 export const ExpectedEventFlagName = withLocation(1044, () => {
     return "Expected an event flag name."
+})
+
+export const InvalidContextPattern = withLocation(1032, () => {
+    return `Invalid context pattern.`
 })
 
 export const InvalidAttributeFormat = withLocation(1016, () => {
@@ -223,12 +220,12 @@ export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: st
     return `The "${directive}" directive can only appear once in a promise block.`
 })
 
-export const InvalidContextPattern = withLocation(1032, () => {
-    return `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
-})
-
 export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
     return `Identifiers starting with "${PRESERVED_IDPREFIX}" are reserved for internal use.`
+})
+
+export const InvalidSpreadElementArgForIntrinsic = withLocation(1059, (intrinsic: string) => {
+    return `The intrinsic method "${intrinsic}" does not support spread element as its argument.`
 })
 
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {

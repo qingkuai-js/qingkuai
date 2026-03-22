@@ -96,7 +96,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             return
         }
 
-        if (isFunctionLiteral(stripTypeExpressions(declarator.init!))) {
+        if (declarator.init && isFunctionLiteral(stripTypeExpressions(declarator.init))) {
             embeddedScriptEditor.insert(declarator.init!.end!, ")")
             embeddedScriptEditor.insert(declarator.init!.start!, `${UTILS}.getReturnType(`)
         }
@@ -122,7 +122,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
             const dedentAndWriteEndEnclosure = () => {
-                writer.dedent().write("}")
+                writer.dedent().write("};")
             }
 
             const indentAndWriteStartEnclosure = (shouldWrapLine = true) => {
@@ -176,7 +176,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                     case "#for": {
                         indentAndWriteStartEnclosure()
-                        generatePatterns(writer, valueRange[0], directive)
+                        generatePatterns(writer, directive)
                         writer.write(`${UTILS}.getListPair(`)
                         writer.write(expression!.source, valueEnd - expressionLen)
                         writer.write(");")
@@ -188,27 +188,25 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             nodeContext.attributesMap["#await"] ??
                             getPrevElementContext(node)?.attributesMap["#await"]
                         const awaitDirectiveExp = getParsedExpression(awaitDirective)
-                        indentAndWriteStartEnclosure()
-
-                        if (generatePatterns(writer, valueRange[0], directive)) {
-                            if (!awaitDirectiveExp) {
-                                writer.write(ANY_VALUE).write(";")
-                            } else {
-                                const awaitDirectExpStart = awaitDirective.value.loc.start.index
-                                writer.write(`${UTILS}.getPromiseResolve(`)
-                                writer.write(awaitDirectiveExp.source, awaitDirectExpStart)
-                                writer.write(");")
-                            }
+                        if ((writer.wrapLine(), !awaitDirectiveExp)) {
+                            writer.write(";(").indent(false)
                         } else {
-                            writer.write(rawValue, valueRange)
+                            writer.write(
+                                awaitDirectiveExp.source,
+                                awaitDirective.value.loc.start.index
+                            )
+                            writer.write(".then((").indent(false)
                         }
+                        generatePatterns(writer, directive)
+                        writer.write(") => {")
+                        endInserts.push(() => writer.dedent().write("});"))
                         break
                     }
 
                     case "#catch": {
                         indentAndWriteStartEnclosure()
 
-                        if (generatePatterns(writer, valueRange[0], directive)) {
+                        if (generatePatterns(writer, directive)) {
                             writer.write(ANY_VALUE).write(";")
                         } else {
                             writer.write(rawValue, valueRange)
@@ -238,7 +236,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                                 writer.write("default", getRangeByLoc(startTagOpenLoc))
                             }
                             writer.write(": (")
-                            generatePatterns(writer, valueRange[0], directive)
+                            generatePatterns(writer, directive)
                             writer.write(") => ")
                             endInserts.push(() => writer.write(","))
                             indentAndWriteStartEnclosure(false)
@@ -251,7 +249,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                     default: {
                         if (!isComponent) {
-                            writer.write(rawValue, valueRange)
+                            writer.write(rawValue, valueRange).write(";")
                         } else {
                             componentInvalidExps.push([rawValue, valueRange])
                         }
@@ -578,45 +576,32 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     return writer.write("\n\n;\n\n")
 }
 
-function generatePatterns(
-    writer: IntermediateCodeWriter,
-    startSourceIndex: number,
-    directive: TemplateAttribute
-) {
+function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
     const directiveName = directive.name.raw
     const isForDirective = directiveName === "#for"
-    const isSlotDirective = directiveName === "#slot"
     const patterns = getParsedPatterns(directive)?.slice(0, 2)
     if (!patterns?.some(pattern => pattern)) {
-        if (!isSlotDirective) {
+        if (isForDirective) {
             writer.wrapLine()
         }
         return false
     }
-
-    if (!isSlotDirective) {
-        writer.wrapLine().write("const ")
-
-        if (isForDirective) {
-            writer.write("[")
-        }
+    if (isForDirective) {
+        writer.wrapLine().write("const [")
     }
     for (let i = 0; i < patterns.length; i++) {
-        const patternNode = patterns[i]?.node
-        if (patternNode) {
-            const end = patternNode.end! + startSourceIndex
-            const start = patternNode.start! + startSourceIndex
-            writer.write(inputDescriptor.source.slice(start, end), start)
+        if (patterns[i].node) {
+            writer.write(
+                inputDescriptor.source.slice(...patterns[i].sourceRange),
+                patterns[i].sourceRange[0]
+            )
         }
         if (i && isForDirective && patterns[i + 1]) {
             writer.write(", ")
         }
     }
-    if (!isSlotDirective) {
-        if (isForDirective) {
-            writer.write("]")
-        }
-        writer.write(" = ")
+    if (isForDirective) {
+        writer.write("] = ")
     }
     return true
 }

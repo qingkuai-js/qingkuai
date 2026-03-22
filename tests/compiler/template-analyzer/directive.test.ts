@@ -441,7 +441,7 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [23, 29],
-                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+                value: `Invalid context pattern.`
             }
         ])
 
@@ -449,15 +449,20 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [23, 40],
-                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+                value: `Invalid context pattern.`
             }
         ])
 
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={[],{}}></div>`, [
             {
-                type: "error",
+                type: "warning",
                 range: [23, 28],
-                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+                value: `The "#then" directive expects exactly 1 context pattern, but got 2. The redundant context pattern will be ignored.`
+            },
+            {
+                type: "error",
+                range: [23, 25],
+                value: `The context pattern is empty and does not declare any binding identifiers.`
             }
         ])
     })
@@ -560,23 +565,26 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [24, 29],
-                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+                value: `Invalid context pattern.`
             }
         ])
-
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={a ? b : c}></div>`, [
             {
                 type: "error",
                 range: [24, 33],
-                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+                value: `Invalid context pattern.`
             }
         ])
-
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={[], {}}></div>`, [
             {
-                type: "error",
+                type: "warning",
                 range: [24, 30],
-                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+                value: `The "#catch" directive expects exactly 1 context pattern, but got 2. The redundant context pattern will be ignored.`
+            },
+            {
+                type: "error",
+                range: [24, 26],
+                value: `The context pattern is empty and does not declare any binding identifiers.`
             }
         ])
     })

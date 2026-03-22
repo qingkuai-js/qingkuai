@@ -1,5 +1,5 @@
 import type { TSModuleDeclaration } from "@babel/types"
-import type { AnyNode, PartialAnyNode } from "#type-declarations/estree"
+import type { AnyNode, ContextPattern, PartialAnyNode } from "#type-declarations/estree"
 
 import { stripTypeExpressions } from "./sundry"
 import { getLastElem } from "../../util/shared/arrays"
@@ -77,6 +77,20 @@ export function isBlock(node: AnyNode) {
 
 export function isUndefinedLiteral(node: AnyNode) {
     return node.type === "Identifier" && node.name === "undefined"
+}
+
+export function isContextPattern(node: PartialAnyNode): node is ContextPattern {
+    switch (node?.type) {
+        case "Identifier":
+        case "RestElement":
+        case "ArrayPattern":
+        case "ObjectPattern": {
+            return true
+        }
+        default: {
+            return false
+        }
+    }
 }
 
 export function isIntrinsicCall(node: PartialAnyNode) {

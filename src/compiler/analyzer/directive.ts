@@ -9,20 +9,26 @@ import {
     UnrecognizedDirective,
     TooManyBindingPatterns,
     MissingDirectiveValue,
+    InvalidContextPattern,
     MissingPrecedingDirective,
     InvalidHtmlDirectivePlacement,
     InvalidKeyDirectivePlacement,
     DuplicatePromiseBlockDirectives,
     InvalidSlotDirectivePlacement,
     InvalidTargetDirectivePlacement,
-    HtmlDirectiveRequiresSingleTextChild,
-    InvalidContextPattern
+    HtmlDirectiveRequiresSingleTextChild
 } from "../message/error"
+import {
+    RedundantDirectiveValue,
+    UnnecessaryHtmlDirective,
+    RedundantContextPatternForDirective
+} from "../message/warn"
 import {
     getLocByIndex,
     getNonWhiteSpaceLocByLoc,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
+import { isContextPattern } from "../estree/assert"
 import { markNeedSourcemap } from "../estree/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
@@ -31,7 +37,6 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { ensureIdWithPrefix } from "../../util/compiler/sundry"
 import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
-import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 
@@ -180,8 +185,16 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
             if (directive.valueEnclosure !== "none") {
                 const pattern = parseContextPattern(rawValue)
-                if (pattern) {
-                    recordContextIdentifiers(pattern)
+                if (isContextPattern(pattern?.elements[0])) {
+                    if (pattern.elements.length > 1) {
+                        RedundantContextPatternForDirective(
+                            getNonWhiteSpaceLocByLoc(directive.value.loc),
+                            rawName,
+                            1,
+                            pattern.elements.length
+                        )
+                    }
+                    recordContextIdentifiers(pattern.elements[0])
                 } else {
                     InvalidContextPattern(getNonWhiteSpaceLocByLoc(directive.value.loc))
                 }
