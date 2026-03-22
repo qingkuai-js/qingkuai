@@ -15,7 +15,7 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     const rawName = event.name.raw
     const isComponent = !!node.componentTag
     const parseResult = parseEventFlag(event)
-    analyzeResult.template.eventInfos.set(event, parseResult)
+    analyzeResult.template.parsedEvents.set(event, parseResult)
     increaseReusedStringUsedTimes(parseResult.eventName.slice(1))
 
     if (isComponent && rawName !== parseResult.eventName) {

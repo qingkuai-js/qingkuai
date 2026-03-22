@@ -32,7 +32,7 @@ export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
         if (reference.shorthand) {
             editor.insert(reference.range[1], `: ${reference.reactiveId}.$`)
         } else {
-            editor.replace(...reference.range, reference.reactiveId + ".$")
+            editor.replace(...reference.range, reference.reactiveId + ".$", true)
         }
     }
     return writer.writeEditedScript(editor)

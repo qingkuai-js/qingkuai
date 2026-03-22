@@ -1,10 +1,13 @@
 import type { GeneralFunc } from "#type-declarations/tools"
+import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
 import { objectAssign } from "../shared/aliases"
 import { afterAll, beforeAll, vi } from "vitest"
 import { currentDestruction } from "../../runtime/state"
 import { getLastElem, replaceEachItems } from "../shared/arrays"
+import { PARSER_TEMPLATE_OPTIONS } from "../../compiler/constants"
 import { createDestruction, destroy } from "../../runtime/destroy"
+import { parseTemplateStandalone } from "../../compiler/parser/template"
 import { testingPreWhitespaceRE, testingUselessWhitespaceRE } from "../../compiler/regular"
 
 export function sleep(ms: number) {
@@ -73,4 +76,11 @@ export function formatSourceCode(code: string) {
 
     const uselessIndentStr = testingUselessWhitespaceRE.exec(code)![0]
     return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "")
+}
+
+export function parseTemplateTesting(source: string, options: StandaloneParseTemplateOptions = {}) {
+    return parseTemplateStandalone(source, {
+        ...PARSER_TEMPLATE_OPTIONS,
+        ...options
+    })
 }

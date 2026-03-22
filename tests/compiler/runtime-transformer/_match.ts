@@ -12,9 +12,10 @@ import {
     generateTemplateFragments
 } from "../../../src/compiler/transformer/runtime/fragment"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { parseTemplate } from "../../../src/compiler/parser/template"
 import { CodeEditor } from "../../../src/compiler/transformer/editor"
+import { parseTemplate } from "../../../src/compiler/parser/template"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
+import { PARSER_TEMPLATE_OPTIONS } from "../../../src/compiler/constants"
 import { analyzeTemplate } from "../../../src/compiler/analyzer/template"
 import { RuntimeCodeWriter } from "../../../src/compiler/transformer/writer"
 import { removeEliminatedNodes } from "../../../src/compiler/transformer/runtime/codegen"
@@ -37,7 +38,7 @@ export function matchGeneratedFragment(
     resetCompilerState(options)
 
     const writer = new RuntimeCodeWriter()
-    const templateNodes = parseTemplate(source)
+    const templateNodes = parseTemplate(source, PARSER_TEMPLATE_OPTIONS)
     generateIdentifier.internal = "_"
     ;(analyzeScript(), analyzeTemplate(templateNodes))
     generateTemplateFragments(writer, getTemplateFragments(templateNodes))

@@ -5,7 +5,7 @@ import type {
     ContextReference,
     TopLevelReferences
 } from "#type-declarations/compiler"
-import type { Expression, StringLiteral } from "@babel/types"
+import type { StringLiteral } from "@babel/types"
 
 import {
     InvalidExpression,
@@ -47,19 +47,11 @@ export function analyzeInterpolation(
         return ExpectedExpression(getLocByIndex(startSourceIndex))
     }
 
-    let expression: Expression
     const stringLiterals: StringLiteral[] = []
     const reactiveContextReferences: ContextReference[] = []
     const nodeContext = getTemplateNodeContext(templateNode)
     const topLevelReferences: TopLevelReferences = newCleanObj()
-    try {
-        expression = parseExpression(source)
-    } catch {
-        return InvalidExpression(
-            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
-            endSemicolonRE.test(source)
-        )
-    }
+    const expression = parseExpression(source, startSourceIndex)
 
     if (expression) {
         analyzeResult.template.parsedExpressions.set(parsingInfoKey, {
@@ -71,6 +63,13 @@ export function analyzeInterpolation(
             topLevelReferences,
             reactiveContextReferences
         })
+    } else {
+        InvalidExpression(
+            getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
+            endSemicolonRE.test(source)
+                ? "Expression with ending semicolon will be treated as statement, which is not allowed in interpolation."
+                : ""
+        )
     }
 
     walkEstree(expression, {
@@ -88,14 +87,14 @@ export function analyzeInterpolation(
         Identifier({ name, range }, context) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
             const isContextIdentifier = !isUndefined(nodeContext.contextIdentifiers[name])
-            if (!topLevelIdentifier && isContextIdentifier && intrinsicMethodsRE.test(name)) {
+            if (!topLevelIdentifier && !isContextIdentifier && intrinsicMethodsRE.test(name)) {
                 const sourceRange: Range = [
                     startSourceIndex + range[0],
                     startSourceIndex + range[1]
                 ]
                 InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), name)
             }
-            if (topLevelIdentifier && context.isBindingReference && isContextIdentifier) {
+            if (topLevelIdentifier && context.isBindingReference && !isContextIdentifier) {
                 const status = topLevelIdentifier.status
                 if (
                     status === "pending" ||

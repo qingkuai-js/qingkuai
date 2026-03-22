@@ -50,9 +50,9 @@ import { PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
-import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
+import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 
@@ -230,11 +230,12 @@ const visitor: Visitor = {
                         declaratorToAlias.set(declarator, (aliasInfos = []))
                     }
 
-                    const argSource = inputDescriptor.script.code.slice(
-                        ...stripTypeExpressions(initNode.arguments[0]).range!
-                    )
+                    const firstArg = stripTypeExpressions(initNode.arguments[0])
+                    const argSource = inputDescriptor.script.code.slice(...firstArg.range!)
                     const fullPath = argSource + path
-                    const expression = stripTypeExpressions(parseExpression(fullPath)!)
+                    const expression = stripTypeExpressions(
+                        parseExpression(fullPath, firstArg.start!)!
+                    )
                     if (expression.type === "MemberExpression") {
                         const propertySource = fullPath.slice(...expression.property.range!)
                         aliasInfos.push({

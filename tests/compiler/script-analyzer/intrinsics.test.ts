@@ -4,10 +4,10 @@ import { describe, test } from "vitest"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { analyzeScript } from "../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../src/util/testing/match"
-import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { parseTemplateTesting } from "../../../src/util/testing/sundry"
 
 function localAnalyze(source: string) {
-    parseTemplateStandalone(`<lang-ts>${formatSourceCode(source)}</lang-ts>`, {
+    parseTemplateTesting(`<lang-ts>${formatSourceCode(source)}</lang-ts>`, {
         recover: true
     })
     analyzeScript()

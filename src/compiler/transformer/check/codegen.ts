@@ -152,7 +152,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const valueEnd = directive.value.loc.end.index
                 const expressionLen = expression?.source.length ?? 0
                 const valueRange = getRangeByLoc(directive.value.loc)
-                const directiveInfo = analyzeResult.template.directiveIndos.get(directive)
+                const directiveInfo = analyzeResult.template.parsedDirectives.get(directive)
 
                 if (
                     !expression &&

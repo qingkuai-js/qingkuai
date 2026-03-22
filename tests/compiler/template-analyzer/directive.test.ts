@@ -441,7 +441,7 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [23, 29],
-                value: `The value for "#then" directive must be a binding pattern.`
+                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
             }
         ])
 
@@ -449,7 +449,7 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [23, 40],
-                value: `The value for "#then" directive must be a binding pattern.`
+                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
             }
         ])
 
@@ -457,7 +457,7 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [23, 28],
-                value: `The value for "#then" directive must be a binding pattern.`
+                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
             }
         ])
     })
@@ -560,7 +560,7 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [24, 29],
-                value: `The value for "#catch" directive must be a binding pattern.`
+                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
             }
         ])
 
@@ -568,7 +568,7 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [24, 33],
-                value: `The value for "#catch" directive must be a binding pattern.`
+                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
             }
         ])
 
@@ -576,7 +576,7 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [24, 30],
-                value: `The value for "#catch" directive must be a binding pattern.`
+                value: `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
             }
         ])
     })

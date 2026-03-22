@@ -1,4 +1,7 @@
-import type { AttributeValueEnclosure } from "#type-declarations/compiler"
+import type {
+    AttributeValueEnclosure,
+    StandaloneParseTemplateOptions
+} from "#type-declarations/compiler"
 
 import {
     KEY_UP,
@@ -72,6 +75,13 @@ export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
         [name]: index + 1
     })
 }, {})
+
+export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
+    checkTemplateStructure: true,
+    preserveBlankTextNodes: true,
+    checkEmptyInterpolation: true,
+    checkAttributeValueEnclosure: true
+}
 
 export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
     passive: ["prevent"],

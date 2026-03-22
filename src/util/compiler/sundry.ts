@@ -1,5 +1,3 @@
-import type { ArbitraryFunc } from "#type-declarations/tools"
-
 import { stringify } from "../shared/aliases"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../compiler/state"
 
@@ -35,20 +33,6 @@ export function getAttributeBaseName(name: string) {
         }
     }
     return name
-}
-
-// 尝试执行一个函数，检查模式下发生错误将忽略，非检查模式下将重新抛出错误
-// Try to execute a function, ignoring errors in check mode and rethrowing them in non-check mode.
-export function tryToRun(fn: ArbitraryFunc, recover?: ArbitraryFunc) {
-    try {
-        fn()
-    } catch (err) {
-        if (inputDescriptor.options.checkMode) {
-            recover?.()
-        } else {
-            throw err
-        }
-    }
 }
 
 export function ensureIdWithPrefix(name: string, prefix = "_") {

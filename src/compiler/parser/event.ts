@@ -132,8 +132,8 @@ export const parseEventFlagStandalone: ParseEventFlagFunc = (event: TemplateAttr
     if (originMessageLen !== messages.length) {
         parseMessages = messages.slice(originMessageLen)
     }
-    return {
-        ...ret,
-        messages: parseMessages
+    if (parseMessages?.length) {
+        ret.messages = parseMessages
     }
+    return ret
 }

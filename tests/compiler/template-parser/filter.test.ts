@@ -1,18 +1,18 @@
 import { describe, it, test } from "vitest"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { parseTemplateTesting } from "../../../src/util/testing/sundry"
 import { getLocByIndex, getPosByIndex } from "../../../src/util/compiler/position"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Wheter comment nodes were removed from parse result", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <!-- xxx -->
             <div class="container">
                 <!-- text content -->
             </div>
         `),
-        { preseveCommentNodes: false }
+        { preserveCommentNodes: false }
     )
     matchTemplateNodeList(
         nodeList,
@@ -79,7 +79,7 @@ test("Wheter comment nodes were removed from parse result", () => {
 })
 
 test("Whether conditional comment nodes were always preserved", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <!--[if lte IE 8]>
                 This will be displayed in IE8 or lower
@@ -88,7 +88,7 @@ test("Whether conditional comment nodes were always preserved", () => {
                 This will be displayed in non-IE browsers
             <!-- <![endif]-->
         `),
-        { preseveCommentNodes: false }
+        { preserveCommentNodes: false }
     )
     matchTemplateNodeList(
         nodeList,
@@ -188,7 +188,7 @@ test("Whether conditional comment nodes were always preserved", () => {
 
 describe("Whether invalid template structure will cause parsing error", () => {
     const parseAndCheckStructure = (source: string) => {
-        return parseTemplateStandalone(source, {
+        return parseTemplateTesting(source, {
             recover: true,
             checkTemplateStructure: true
         })
@@ -197,7 +197,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
     test("Disallowed tag is used", () => {
         matchTemplateNodeListAndMessages(
             () => [
-                parseTemplateStandalone(`<html> <frameset></frameset> </html>`, {
+                parseTemplateTesting(`<html> <frameset></frameset> </html>`, {
                     recover: true
                 })
             ],
@@ -765,7 +765,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
 })
 
 it("Should not cause error when `dt` tag is used as descendant of `dl` of another `dt` element", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
                 <dt>
                     <dl>

@@ -34,7 +34,7 @@ export function getTemplateNodeContext(node: TemplateNode) {
 }
 
 export function getParsedEventInfo(key: TemplateAttribute) {
-    return analyzeResult.template.eventInfos.get(key)
+    return analyzeResult.template.parsedEvents.get(key)
 }
 
 export function getParsedComponentTag(node: TemplateNode) {

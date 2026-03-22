@@ -31,11 +31,16 @@ export default defineConfig([
             }
         },
         rules: {
-            "no-useless-escape": "off",
             "no-useless-assignment": "off",
             "project/no-chaotic-imports": "error",
             "@typescript-eslint/no-explicit-any": "off"
         }
+    },
+    {
+        rules: {
+            "no-useless-escape": "off"
+        },
+        files: ["**/regular.ts"]
     }
 ])
 

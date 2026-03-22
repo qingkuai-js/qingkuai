@@ -2,15 +2,14 @@ import { describe, test } from "vitest"
 import {
     getLocByIndex,
     getPosByIndex,
-    getLocWithDefaultEnd,
-    newASTLocation
+    getLocWithDefaultEnd
 } from "../../../src/util/compiler/position"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { parseTemplateTesting } from "../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Single level", () => {
-    const nodeList = parseTemplateStandalone("\n \n<b>  bold  </b>\n")
+    const nodeList = parseTemplateTesting("\n \n<b>  bold  </b>\n")
     matchTemplateNodeList(
         nodeList,
         {
@@ -60,7 +59,7 @@ test("Single level", () => {
 })
 
 test("Muti level", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
                 ...
                 <div>
@@ -192,7 +191,7 @@ test("Muti level", () => {
 })
 
 test("Identical tags", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
                 <div>
                     <div></div>
@@ -299,14 +298,14 @@ test("Identical tags", () => {
 })
 
 test("With comment", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <div>
                 <!-- line comment -->
                 name <!-- ... --> age
             </div>
         `),
-        { preseveCommentNodes: true }
+        { preserveCommentNodes: true }
     )
     matchTemplateNodeList(nodeList, {
         tag: "div",
@@ -404,7 +403,7 @@ test("With comment", () => {
 })
 
 test("With self-closing tags", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <div>
                 <input>
@@ -538,7 +537,7 @@ test("With self-closing tags", () => {
 })
 
 test("With components", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <my-comp>
                 <Test/>
@@ -651,7 +650,7 @@ test("With components", () => {
 })
 
 test("With a text content interpolation block", () => {
-    const nodeList = parseTemplateStandalone("<div>{value}</div>")
+    const nodeList = parseTemplateTesting("<div>{value}</div>")
     matchTemplateNodeList(nodeList, {
         tag: "div",
         children: [
@@ -674,7 +673,7 @@ test("With a text content interpolation block", () => {
 })
 
 test("With multiple text content interpolation blocks", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
                 <p>
                     name:
@@ -839,7 +838,7 @@ test("With multiple text content interpolation blocks", () => {
 })
 
 test("Whether the child elemnts of textarea are parsed as textContent", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <textarea>
                 <p></p>
@@ -869,7 +868,7 @@ test("Whether the child elemnts of textarea are parsed as textContent", () => {
 })
 
 test("Whehter invalid tag structure will be parsed as text content", () => {
-    let nodeList = parseTemplateStandalone(`<div><></></div>`)
+    let nodeList = parseTemplateTesting(`<div><></></div>`)
     matchTemplateNodeList(nodeList, {
         tag: "div",
         children: [
@@ -890,7 +889,7 @@ test("Whehter invalid tag structure will be parsed as text content", () => {
         endTagStartPos: getPosByIndex(10)
     })
 
-    nodeList = parseTemplateStandalone(`<p> <0></0> </p>`)
+    nodeList = parseTemplateTesting(`<p> <0></0> </p>`)
     matchTemplateNodeList(nodeList, {
         tag: "p",
         children: [
@@ -911,7 +910,7 @@ test("Whehter invalid tag structure will be parsed as text content", () => {
         endTagStartPos: getPosByIndex(12)
     })
 
-    nodeList = parseTemplateStandalone(
+    nodeList = parseTemplateTesting(
         formatSourceCode(`
             <Test>
                 <-a> </-a>
@@ -943,7 +942,7 @@ test("Whehter invalid tag structure will be parsed as text content", () => {
 describe("Whether incorrect format for tag will cause parsing error", () => {
     test("Unexpected token inside tag name", () => {
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(
+            const nodeList = parseTemplateTesting(
                 formatSourceCode(`
                     <my-comp>
                         <a=1></a=1>
@@ -1012,7 +1011,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
 
     test("Start tag is not closed", () => {
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(`<p><a </p>`, {
+            const nodeList = parseTemplateTesting(`<p><a </p>`, {
                 recover: true
             })
             return [
@@ -1050,9 +1049,9 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
         ])
 
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(`<Comp><!-- </Comp>`, {
+            const nodeList = parseTemplateTesting(`<Comp><!-- </Comp>`, {
                 recover: true,
-                preseveCommentNodes: true
+                preserveCommentNodes: true
             })
             return [
                 nodeList,
@@ -1102,7 +1101,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
 
     test("End tag is not closed", () => {
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(
+            const nodeList = parseTemplateTesting(
                 formatSourceCode(`
                     <my-comp>
                         <Test>
@@ -1173,7 +1172,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
 
     test("Redundant characters inside end tag", () => {
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(
+            const nodeList = parseTemplateTesting(
                 formatSourceCode(`
                     <div>
                         <p></p bool >
@@ -1236,7 +1235,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
 
     test("Self-closing syntax on non-void element", () => {
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(`<div> <p/> </div>`, {
+            const nodeList = parseTemplateTesting(`<div> <p/> </div>`, {
                 recover: true
             })
             return [
@@ -1293,7 +1292,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
 
     test("Starts with an end tag", () => {
         matchTemplateNodeListAndMessages(() => {
-            const nodeList = parseTemplateStandalone(`<div></Comp></div>`, {
+            const nodeList = parseTemplateTesting(`<div></Comp></div>`, {
                 recover: true
             })
             return [

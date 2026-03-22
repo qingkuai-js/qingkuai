@@ -4,7 +4,8 @@ import type {
     EventFlagInfo,
     CompileMessage,
     ComponentTagPart,
-    TemplateAttribute
+    TemplateAttribute,
+    StandaloneParseTemplateOptions
 } from "#type-declarations/compiler"
 import type { ContextPattern } from "#type-declarations/estree"
 
@@ -193,24 +194,22 @@ export interface FindOutOfLiteralCommentFunc {
 
 export interface ParseDirectiveValueFunc {
     /**
-     * 解析带有上下文模式的指令值，目前需要此方法解析的指令有：`#for` 和 `#slot`\
-     * Parse directive values with contextual patterns. Currently, this is required for directives such as `#for` and `#slot`.
+     * 解析指令值源字符串：分离基础值与上下文模式\
+     * Parse the raw directive value string: separate the base value and its context patterns.
      *
      * @param directive 需要解析的指令\
-     * The directive value to be parsed.
+     * The directive to be parsed.
      *
-     * 注意：此方法在遇到无效（不满足于 ContextPattern 类型）的模式时会抛出错误，需避免程序错误可以考虑使用 try-catch 块捕获此异常\
-     * Note: This method will throw an error when encountering an invalid pattern(i.e., one that does not satisfy the ContextPattern type).
-     * To prevent runtime errors, consider using a try-catch block to handle this exception.
+     * @returns 包含基础值、关键字位置、模式以及解析错误/警告信息的对象\
+     * An object containing the base value, keyword index, patterns, and any parsing errors/warnings.
      */
-    (directive: TemplateAttribute):
-        | {
-              base: string
-              keywordIndex: number
-              baseStartSourceIndex: number
-              patterns: (ContextPattern | null)[]
-          }
-        | undefined
+    (directive: TemplateAttribute): {
+        base: string
+        keywordIndex: number
+        baseStartSourceIndex: number
+        patterns: (ContextPattern | null)[]
+        messages?: CompileMessage[]
+    }
 }
 
 export interface ParseEventFlagFunc {
@@ -254,4 +253,68 @@ export interface ParseComponentTagFunc {
      *
      */
     (componentNode: TemplateNode): ComponentTagPart[]
+}
+
+export interface ParseTemplateFunc {
+    /**
+     * 解析模板源代码为模板AST节点树\
+     * Parse template source code into a tree of template AST nodes.
+     *
+     * 将输入的模板源代码递归解析为模板AST节点树。此方法会自动根据配置项进行相应的检查和过滤处理。
+     * 当 recover 为 true 时，解析器会在遇到错误时 继续解析，而不是立即抛出异常，最后统一收集并报告所有错误。
+     *
+     * Recursively parses the input template source code into a tree of template AST nodes.
+     * This method automatically performs corresponding checks and filtering based on configuration items.
+     * When recover is true, the parser will continue parsing when errors are encountered instead of
+     * throwing immediately, and will collect and report all errors at the end.
+     *
+     * @param source - 模板源代码字符串\
+     * The template source code string to be parsed
+     *
+     * @param options - 解析选项配置对象\
+     * Template parsing options configuration object
+     *
+     * @param options.recover - 是否在遇到错误时继续解析，默认为false。
+     * 设为true会启用检查模式，收集所有错误后继续解析过程\
+     * Whether to continue parsing when errors are encountered, defaults to false.
+     * Setting to true enables check mode to collect all errors and continue parsing
+     *
+     * @param options.preserveBlankTextNodes - 是否保留空白文本节点，默认为true\
+     * Whether to preserve blank text nodes, defaults to true
+     *
+     * @param options.preserveCommentNodes - 是否保留HTML注释节点，默认为false\
+     * Whether to preserve HTML comment nodes, defaults to false
+     *
+     * @param options.checkEmptyInterpolation - 是否检查并报告空的插值表达式块\
+     * Whether to check and report empty interpolation expression blocks
+     *
+     * @param options.checkAttributeValueEnclosure - 是否检查属性值是否正确被引号/花括号包裹\
+     * Whether to check if attribute values are properly enclosed with quotes or braces
+     *
+     * @returns 解析后的模板AST节点数组，已过滤无效节点\
+     * Array of parsed template AST nodes with invalid nodes filtered out
+     *
+     * @example
+     * ```typescript
+     * // Basic usage
+     * const source = '<div #for={item, index of arr}>{ count }</div>';
+     * const ast = parseTemplateStandalone(source);
+     *
+     * // Enable error recovery mode
+     * const astWithRecovery = parseTemplateStandalone(source, {
+     *   recover: true,
+     *   checkEmptyInterpolation: true
+     * });
+     *
+     * // Custom filtering options
+     * const astCustom = parseTemplateStandalone(source, {
+     *   preserveBlankTextNodes: false,
+     *   preserveCommentNodes: true
+     * });
+     * ```
+     *
+     * @throws 在非恢复模式下，会抛出首个遇到的解析错误\
+     * In non-recovery mode, throws the first parsing error encountered
+     */
+    (source: string, options?: StandaloneParseTemplateOptions): TemplateNode[]
 }

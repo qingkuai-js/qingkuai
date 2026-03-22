@@ -1,11 +1,11 @@
 import { test } from "vitest"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { parseTemplateTesting } from "../../../src/util/testing/sundry"
 import { getLocByIndex, getPosByIndex } from "../../../src/util/compiler/position"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Single embedded script language block", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <lang-js>
                 let name = "World"
@@ -40,7 +40,7 @@ test("Single embedded script language block", () => {
 })
 
 test("Single embedded style language block", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <lang-css>
                 .container {
@@ -75,7 +75,7 @@ test("Single embedded style language block", () => {
 
 test("Whether multiple embedded script language block will cause parsing error", () => {
     matchTemplateNodeListAndMessages(() => {
-        const nodeList = parseTemplateStandalone(
+        const nodeList = parseTemplateTesting(
             formatSourceCode(`
                 <lang-js></lang-js>
                 <lang-ts></lang-ts>
@@ -125,7 +125,7 @@ test("Whether multiple embedded script language block will cause parsing error",
 })
 
 test("Whether multiple embedded style language blocks will not cause parsing error", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <lang-css></lang-css>
             <lang-scss></lang-scss>
@@ -167,7 +167,7 @@ test("Whether multiple embedded style language blocks will not cause parsing err
 })
 
 test("Whether <script> and <style> element will not be parsed as embedded language block", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <script>
                 console.log()

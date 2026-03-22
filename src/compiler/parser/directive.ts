@@ -1,13 +1,12 @@
-import type { ArrayPattern } from "@babel/types"
 import type { ContextPattern } from "#type-declarations/estree"
-import type { TemplateAttribute } from "#type-declarations/compiler"
+import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler"
 import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 
 import { walkEstree } from "../estree/walk"
-import { inputDescriptor } from "../state"
 import { parseContextPattern } from "./script"
+import { inputDescriptor, messages } from "../state"
 import { findOutOfLiteralComment } from "../../util/compiler/string"
-import { InvalidContextPatternForDirective } from "../message/error"
+import { InvalidContextPattern } from "../message/error"
 import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 
 // 解析指令值：此方法主要用于解析格式为 模式 + 关键字 + 表达式 的指令值，目前值为此格式的指令有：#slot 和 #for
@@ -19,95 +18,109 @@ import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 // if the pattern before the keyword can be correctly parsed; otherwise, the entire directive value is treated as an expression.
 export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: TemplateAttribute) => {
     const rawName = directive.name.raw
-    if (rawName !== "#for" && rawName !== "#slot") {
-        return
+    const rawValue = directive.value.raw
+    const startSourceIndex = directive.value.loc.start.index
+
+    const notKeywordReturns = {
+        base: rawValue,
+        patterns: [],
+        keywordIndex: -1,
+        baseStartSourceIndex: startSourceIndex
     }
 
-    const source = directive.value.raw
-    const startSourceIndex = directive.value.loc.start.index
+    if (rawName !== "#for" && rawName !== "#slot") {
+        return notKeywordReturns
+    }
+
     const keyword = { "#for": "of", "#slot": "from" }[rawName]
     const [findTarget, findLength] = [` ${keyword} `, keyword.length + 2]
 
-    // eslint-disable-next-line no-constant-condition
-    for (let i = 0; true; i += findLength - 1) {
-        if (-1 === (i = findOutOfLiteralComment(source, findTarget, i))) {
-            return {
-                base: source,
-                patterns: [],
-                keywordIndex: -1,
-                baseStartSourceIndex: startSourceIndex
+    for (let i = 0; i < rawValue.length; i += findLength - 1) {
+        if (-1 === (i = findOutOfLiteralComment(rawValue, findTarget, i))) {
+            return notKeywordReturns
+        }
+
+        const pattern = parseContextPattern(`[${rawValue.slice(0, i)}]`)
+        if (pattern?.type !== "ArrayPattern" || !pattern.elements.length) {
+            continue
+        }
+
+        const baseStartIndex = i + findLength
+        const base = rawValue.slice(baseStartIndex)
+        if (
+            pattern.extra &&
+            "trailingComma" in pattern.extra &&
+            base.trimStart().startsWith(keyword)
+        ) {
+            continue
+        }
+
+        // 由于解析时添加了一个开始中括号前缀，这里需要将每个节点的位置信息向前移动一位
+        // Since a prefix '[' was added during parsing, the position of each node needs to be shifted forward by one here.
+        walkEstree(pattern, {
+            AnyNode(node) {
+                if (!node.loc.end.column) {
+                    node.loc.end.column--
+                }
+                if (!node.loc.start.column) {
+                    node.loc.start.column--
+                }
+                node.loc.end.index = node.range[1] = --node.end
+                node.loc.start.index = node.range[0] = --node.start
+            }
+        })
+
+        // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
+        // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
+        const patterns: (ContextPattern | null)[] = []
+        for (const element of pattern.elements) {
+            switch (element?.type) {
+                case undefined:
+                case "Identifier":
+                case "ArrayPattern":
+                case "ObjectPattern":
+                case "RestElement": {
+                    patterns.push(element)
+                    continue
+                }
+                default: {
+                    InvalidContextPattern(
+                        getNonWhitespaceLocByIndex(
+                            element!.start! + startSourceIndex,
+                            element!.end! + startSourceIndex
+                        )
+                    )
+                }
             }
         }
-        const pattern = parseContextPattern(`[${source.slice(0, i)}]`) as ArrayPattern | null
-        if (pattern) {
-            if (!pattern.elements.length) {
-                continue
-            }
 
-            const baseStartIndex = i + findLength
-            const base = source.slice(baseStartIndex)
-            if (
-                pattern.extra &&
-                "trailingComma" in pattern.extra &&
-                base.trimStart().startsWith(keyword)
-            ) {
-                continue
-            }
-
-            // 由于解析时添加了一个开始中括号前缀，这里需要将每个节点的位置信息向前移动一位
-            // Since a prefix '[' was added during parsing, the position of each node needs to be shifted forward by one here.
-            walkEstree(pattern, {
-                AnyNode(node) {
-                    if (!node.loc.end.column) {
-                        node.loc.end.column--
-                    }
-                    if (!node.loc.start.column) {
-                        node.loc.start.column--
-                    }
-                    node.loc.end.index = node.range[1] = --node.end
-                    node.loc.start.index = node.range[0] = --node.start
-                }
-            })
-
-            // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
-            // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
-            const patterns: (ContextPattern | null)[] = []
-            for (const element of pattern.elements) {
-                switch (element?.type) {
-                    case undefined:
-                    case "Identifier":
-                    case "ArrayPattern":
-                    case "ObjectPattern": {
-                        patterns.push(element)
-                        continue
-                    }
-                    default: {
-                        InvalidContextPatternForDirective(
-                            getNonWhitespaceLocByIndex(
-                                element!.start! + startSourceIndex,
-                                element!.end! + startSourceIndex
-                            ),
-                            directive.name.raw,
-                            element?.type !== "RestElement"
-                                ? undefined
-                                : "Note that RestElement is not allowed for directive context patterns."
-                        )
-                    }
-                }
-            }
-
-            return {
-                base,
-                patterns,
-                keywordIndex: i,
-                baseStartSourceIndex: startSourceIndex + baseStartIndex
-            }
+        return {
+            base,
+            patterns,
+            keywordIndex: i,
+            baseStartSourceIndex: startSourceIndex + baseStartIndex
         }
     }
+
+    return notKeywordReturns
 }
 
-export const parseDirectiveValueStandalone: ParseDirectiveValueFunc = (...args) => {
-    const { checkMode } = inputDescriptor.options
-    const ret = parseDirectiveValue(...args)
-    return ((inputDescriptor.options.checkMode = checkMode), ret)
+export const parseDirectiveValueStandalone: ParseDirectiveValueFunc = (
+    directive: TemplateAttribute
+) => {
+    const isCheckMode = inputDescriptor.options.checkMode
+    const originMessageLen = messages.length
+    inputDescriptor.options.checkMode = true
+
+    const ret = parseDirectiveValue(directive)
+    inputDescriptor.options.checkMode = isCheckMode
+
+    let parseMessages: CompileMessage[] | undefined = undefined
+    if (originMessageLen !== messages.length) {
+        parseMessages = messages.slice(originMessageLen)
+    }
+    if (parseMessages?.length) {
+        ret.messages = parseMessages
+    }
+    return ret
 }

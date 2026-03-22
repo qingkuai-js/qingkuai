@@ -1,12 +1,12 @@
 import { describe, test } from "vitest"
 import { matchTemplateNodeList } from "./_match"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { parseTemplateTesting } from "../../../src/util/testing/sundry"
 import { getLocByIndex, getPosByIndex } from "../../../src/util/compiler/position"
 
 describe("Top level", () => {
     test("Whether the preWhiteSpace property for pre element is true", () => {
-        matchTemplateNodeList(parseTemplateStandalone("<pre></pre>"), {
+        matchTemplateNodeList(parseTemplateTesting("<pre></pre>"), {
             tag: "pre",
             preWhiteSpace: true,
             loc: getLocByIndex(0, 11),
@@ -16,12 +16,12 @@ describe("Top level", () => {
     })
 
     test("Modify the display property of the element to be pre related through comments", () => {
-        const nodeList = parseTemplateStandalone(
+        const nodeList = parseTemplateTesting(
             formatSourceCode(`
                 <!-- white-space: pre -->
                 <div></div>
             `),
-            { preseveCommentNodes: false }
+            { preserveCommentNodes: false }
         )
         matchTemplateNodeList(
             nodeList,
@@ -49,7 +49,7 @@ describe("Top level", () => {
 
     test("Modify the display property of the element to be pre related through style attribute", () => {
         matchTemplateNodeList(
-            parseTemplateStandalone(
+            parseTemplateTesting(
                 formatSourceCode(`
                     <div
                         style="box-sizing:border-box;white-space:pre-line;"
@@ -84,7 +84,7 @@ describe("Top level", () => {
 
 describe("Nesting structure", () => {
     test("Whether the preWhiteSpace property for pre element is true", () => {
-        const nodeList = parseTemplateStandalone(
+        const nodeList = parseTemplateTesting(
             formatSourceCode(`
                 <div>
                     <pre>
@@ -192,8 +192,8 @@ describe("Nesting structure", () => {
         })
     })
 
-    test("Modify the display property of the element to be pre related through comments", () => {
-        const nodeList = parseTemplateStandalone(
+    test("Nesting structure with preWhiteSpace property modified through comments", () => {
+        const nodeList = parseTemplateTesting(
             formatSourceCode(`
                 <div>
                     <!--white-space:pre-wrap-->
@@ -204,7 +204,7 @@ describe("Nesting structure", () => {
                     </p>
                 </div>
             `),
-            { preseveCommentNodes: true }
+            { preserveCommentNodes: true }
         )
 
         matchTemplateNodeList(nodeList, {
@@ -341,7 +341,7 @@ describe("Nesting structure", () => {
     })
 
     test("Modify the display property of the element to be pre related through style attribute", () => {
-        const nodeList = parseTemplateStandalone(
+        const nodeList = parseTemplateTesting(
             formatSourceCode(`
                 <div>
                     <p style="white-space: pre">

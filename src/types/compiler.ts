@@ -218,7 +218,7 @@ export interface TemplateAnalyzeRet {
         passive: Set<string>
         nonPassive: Set<string>
     }
-    eventInfos: Map<
+    parsedEvents: Map<
         TemplateAttribute,
         {
             eventName: string
@@ -226,7 +226,7 @@ export interface TemplateAnalyzeRet {
             wrapperFlag: EventFlagInfo
         }
     >
-    directiveIndos: Map<
+    parsedDirectives: Map<
         TemplateAttribute,
         {
             base: string
@@ -317,15 +317,6 @@ export type TopLevelReferences = Record<
     }[]
 >
 
-export type StandaloneParseOptions = Partial<{
-    recover: boolean
-    preseveCommentNodes: boolean
-    preserveBlankTextNodes: boolean
-    checkTemplateStructure: boolean
-    checkEmptyInterpolation: boolean
-    checkAttributeValueEnclosure: boolean
-}>
-
 export interface CompileIntermediateOptions {
     typeDeclarationFilePath: string
     shorthandDerivedDeclaration?: boolean
@@ -340,6 +331,15 @@ export interface CompileResult {
     scriptDescriptor: ScriptDescriptor
     styleDescriptors: StyleDescriptor[]
 }
+
+export type StandaloneParseTemplateOptions = Partial<{
+    recover: boolean
+    preserveCommentNodes: boolean
+    preserveBlankTextNodes: boolean
+    checkTemplateStructure: boolean
+    checkEmptyInterpolation: boolean
+    checkAttributeValueEnclosure: boolean
+}>
 
 export type CompileOptions = Partial<{
     hashId: string

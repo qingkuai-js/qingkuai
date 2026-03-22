@@ -96,13 +96,13 @@ export function analyzeAttributes(node: TemplateNode) {
         }
 
         // mappedKey 用于检查属性是否被重复传递
-        // 对于组件标签：静态属性，动态属性及事件的基础名称不能重复
-        // 对于非组件标签：静态属性，动态属性及引用属性的基础名称不能重复，但 class 和 !class 可同时存在
+        // - 对于组件标签：静态属性，动态属性及事件的基础名称不能重复
+        // - 对于非组件标签：静态属性，动态属性及引用属性的基础名称不能重复，但 class 和 !class 可同时存在
         //
         // `mappedKey` is used to check whether a attribute has been passed multiple times.
-        // For component tags: the base names of static props, dynamic props, and events must not be duplicated.
-        // For non-component tags: the base names of static props, dynamic props, and reference props must not be duplicated,
-        // but `class` and `!class` may coexist.
+        // - For component tags: the base names of static props, dynamic props, and events must not be duplicated.
+        // - For non-component tags: the base names of static props, dynamic props, and reference props must not be duplicated,
+        //   but `class` and `!class` may coexist.
         if (
             isDirective ||
             (isComponent && isReference) ||

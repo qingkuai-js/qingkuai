@@ -6,11 +6,11 @@ import {
     getLocWithDefaultEnd
 } from "../../../src/util/compiler/position"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
-import { parseTemplateStandalone } from "../../../src/compiler/parser/template"
+import { parseTemplateTesting } from "../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Simple pasing", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         `<a class="link" href="https://qingkuai.dev"> Documentation </a>`
     )
     matchTemplateNodeList(nodeList, {
@@ -63,7 +63,7 @@ test("Simple pasing", () => {
 })
 
 test("Within self-closing tag", () => {
-    matchTemplateNodeList(parseTemplateStandalone(`<input type="button" value="Click Me" />`), {
+    matchTemplateNodeList(parseTemplateTesting(`<input type="button" value="Click Me" />`), {
         tag: "input",
         attributes: [
             {
@@ -100,7 +100,7 @@ test("Within self-closing tag", () => {
 })
 
 test("With directives", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <ul>
                 <li #for={item of 3}> {item} </li>
@@ -189,48 +189,45 @@ test("With directives", () => {
 })
 
 test("With dynamic attributes", () => {
-    matchTemplateNodeList(
-        parseTemplateStandalone(`<div class="container" !id={dynamicId}></div>`),
-        {
-            tag: "div",
-            attributes: [
-                {
-                    name: {
-                        raw: "class",
-                        loc: getLocByIndex(5, 10)
-                    },
-                    value: {
-                        raw: "container",
-                        loc: getLocByIndex(12, 21)
-                    },
-                    equalSign: true,
-                    valueEnclosure: "double",
-                    loc: getLocByIndex(5, 22)
+    matchTemplateNodeList(parseTemplateTesting(`<div class="container" !id={dynamicId}></div>`), {
+        tag: "div",
+        attributes: [
+            {
+                name: {
+                    raw: "class",
+                    loc: getLocByIndex(5, 10)
                 },
-                {
-                    name: {
-                        raw: "!id",
-                        loc: getLocByIndex(23, 26)
-                    },
-                    value: {
-                        raw: "dynamicId",
-                        loc: getLocByIndex(28, 37)
-                    },
-                    equalSign: true,
-                    valueEnclosure: "curly",
-                    loc: getLocByIndex(23, 38)
-                }
-            ],
-            loc: getLocByIndex(0, 45),
-            startTagEndPos: getPosByIndex(39),
-            endTagStartPos: getPosByIndex(39)
-        }
-    )
+                value: {
+                    raw: "container",
+                    loc: getLocByIndex(12, 21)
+                },
+                equalSign: true,
+                valueEnclosure: "double",
+                loc: getLocByIndex(5, 22)
+            },
+            {
+                name: {
+                    raw: "!id",
+                    loc: getLocByIndex(23, 26)
+                },
+                value: {
+                    raw: "dynamicId",
+                    loc: getLocByIndex(28, 37)
+                },
+                equalSign: true,
+                valueEnclosure: "curly",
+                loc: getLocByIndex(23, 38)
+            }
+        ],
+        loc: getLocByIndex(0, 45),
+        startTagEndPos: getPosByIndex(39),
+        endTagStartPos: getPosByIndex(39)
+    })
 })
 
 test("With reference attributes", () => {
     matchTemplateNodeList(
-        parseTemplateStandalone(
+        parseTemplateTesting(
             formatSourceCode(`
                 <span
                     !id={ dynamicId }
@@ -276,7 +273,7 @@ test("With reference attributes", () => {
 })
 
 test("With event listeners", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <button
                 @click={
@@ -340,7 +337,7 @@ test("With event listeners", () => {
 })
 
 test("Within nested structure", () => {
-    const nodeList = parseTemplateStandalone(
+    const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <div !class={ dynamicClass }>
                 <input
@@ -466,7 +463,7 @@ test("Within nested structure", () => {
 
 describe("Whether incorrect format for attribute will cause parsing error", () => {
     const parseRecover = (source: string) => {
-        return parseTemplateStandalone(source, { recover: true })
+        return parseTemplateTesting(source, { recover: true })
     }
 
     test("Unexpected token in the starting of attribute name", () => {

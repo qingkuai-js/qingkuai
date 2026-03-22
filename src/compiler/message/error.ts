@@ -47,16 +47,6 @@ export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: st
     }
 })
 
-export const InvalidContextPatternForDirective = withLocation(
-    1032,
-    (directive: string, explain?: string) => {
-        if (!directive) {
-            return `Expected a binding pattern.`
-        }
-        return `The value for "${directive}" directive must be a binding pattern.${explain ? " " + explain : ""}`
-    }
-)
-
 export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string) => {
     switch (name) {
         case "watch":
@@ -161,6 +151,10 @@ export const InvalidElementTagName = withLocation(1060, (tag: string) => {
     return `Invalid element tag name "${tag}".`
 })
 
+export const InvalidExpression = withLocation(1029, (explain?: string) => {
+    return `Invalid expression.${explain ? " " + explain : ""}`
+})
+
 export const TagCanNotBeSelfClosing = withLocation(1013, (tag: string) => {
     return `The <${tag}> tag cannot be used as self-closing tag.`
 })
@@ -229,6 +223,10 @@ export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: st
     return `The "${directive}" directive can only appear once in a promise block.`
 })
 
+export const InvalidContextPattern = withLocation(1032, () => {
+    return `Invalid context pattern. Expected a valid JavaScript/typescript binding pattern.`
+})
+
 export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
     return `Identifiers starting with "${PRESERVED_IDPREFIX}" are reserved for internal use.`
 })
@@ -247,10 +245,6 @@ export const CannotAliasIdentifier = withLocation(1053, () => {
 
 export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
     return `The embedded language block <${tag}> can only be used in the top level of the template.`
-})
-
-export const InvalidDirectiveValue = withLocation(1063, (directive: string, explain?: string) => {
-    return `Invalid value for "${directive}" directive.${explain ? " " + explain : ""}`
 })
 
 export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
@@ -291,10 +285,6 @@ export const DuplicateSlotName = withLocation(1050, (name: string) => {
 
 export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) => {
     return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`
-})
-
-export const InvalidExpression = withLocation(1029, (endSemi: boolean) => {
-    return `Invalid expression. ${endSemi ? "Expression with ending semicolon will be treated as statement, which is not allowed in interpolation." : ""}`
 })
 
 export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {

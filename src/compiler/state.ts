@@ -45,11 +45,11 @@ function newAnalyzeResult(): AnalyzeResult {
                 nonPassive: new Set()
             },
             slots: newCleanObj(),
-            eventInfos: new Map(),
+            parsedEvents: new Map(),
             nodeContexts: new Map(),
             componentFragment: null,
             compressStringsCount: 0,
-            directiveIndos: new Map(),
+            parsedDirectives: new Map(),
             parsedPatterns: new Map(),
             parsedExpressions: new Map(),
             staticTextContents: new Map(),

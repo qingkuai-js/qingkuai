@@ -1,4 +1,4 @@
-import type { StandaloneParseOptions, TemplateNode } from "#type-declarations/compiler"
+import type { StandaloneParseTemplateOptions, TemplateNode } from "#type-declarations/compiler"
 
 import { inputDescriptor } from "../state"
 import { isEmptyString } from "../../util/shared/assert"
@@ -8,7 +8,7 @@ import { isBlankTextNode } from "../../util/compiler/assert"
 import { InvalidTemplateStructure, UsedDisallowedTag } from "../message/error"
 import { getParentTag, getStartTagOpenLoc } from "../../util/compiler/template"
 
-export function filterTemplateNodes(node: TemplateNode, options: StandaloneParseOptions): boolean {
+export function filterTemplateNodes(node: TemplateNode, options: StandaloneParseTemplateOptions): boolean {
     if (!options.preserveBlankTextNodes && isBlankTextNode(node)) {
         return false
     }

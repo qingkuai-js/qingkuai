@@ -5,10 +5,10 @@ import type {
     TextContentPart,
     ScriptDescriptor,
     TemplateAttribute,
-    StandaloneParseOptions,
     AttributeValueEnclosure
 } from "#type-declarations/compiler"
 import type { RegExpExecRet } from "#type-declarations/tools"
+import type { ParseTemplateFunc } from "#type-declarations/compiler-ex"
 
 import {
     whitespacesRE,
@@ -58,12 +58,26 @@ import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
 import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
-import { ATTRIBUTE_VALUE_ENCLOSURE_MAP } from "../constants"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
 import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
 import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
+import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS } from "../constants"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
+
+export const parseTemplateStandalone: ParseTemplateFunc = (source, options = {}) => {
+    const inputOptions: Partial<InputOptions> = {}
+    if (options.recover) {
+        inputOptions.checkMode = true
+    }
+    if (isUndefined(options.preserveBlankTextNodes)) {
+        options.preserveBlankTextNodes = true
+    }
+    if (isUndefined(options.preserveCommentNodes) || options.preserveCommentNodes) {
+        inputOptions.preserveHtmlComments = true
+    }
+    return (resetCompilerState(inputOptions), parseTemplate(source, options))
+}
 
 export function newTemplateNode(): TemplateNode {
     return {
@@ -85,7 +99,7 @@ export function newTemplateNode(): TemplateNode {
     }
 }
 
-export function parseTemplate(source: string, options: StandaloneParseOptions = {}) {
+export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS) {
     let index = 0
     let dps = source // dynamic programming source
 
@@ -671,21 +685,4 @@ export function parseTemplate(source: string, options: StandaloneParseOptions = 
         }
         return (options.parent?.children.push(templateNode), templateNode)
     }
-}
-
-// 独立调用的 parseTemplate 方法，参数 recover 表示遇到错误时是否继续解析
-// The standalone parseTemplate method; the `recover` parameter
-// indicates whether to continue parsing when an error is encountered.
-export function parseTemplateStandalone(source: string, options: StandaloneParseOptions = {}) {
-    const inputOptions: Partial<InputOptions> = {}
-    if (options.recover) {
-        inputOptions.checkMode = true
-    }
-    if (isUndefined(options.preserveBlankTextNodes)) {
-        options.preserveBlankTextNodes = true
-    }
-    if (isUndefined(options.preseveCommentNodes) || options.preseveCommentNodes) {
-        inputOptions.preserveHtmlComments = true
-    }
-    return (resetCompilerState(inputOptions), parseTemplate(source, options))
 }
