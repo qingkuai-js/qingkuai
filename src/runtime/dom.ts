@@ -28,7 +28,7 @@ export function getElementValue(elem: HTMLElement) {
 }
 
 export function getChild(node: Element, index = 0) {
-    if ((node as any)[QK_FRAGMENT] && index === 0) {
+    if ((node as any)[QK_FRAGMENT]) {
         index++
     }
     return node.childNodes[index]

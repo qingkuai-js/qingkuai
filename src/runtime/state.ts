@@ -1,4 +1,3 @@
-import type { FixedArray } from "#type-declarations/tools"
 import type { ComponentInstance, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "./constants"
@@ -8,7 +7,7 @@ export let currentInstance: ComponentInstance | null = NIL
 
 export const aliasSetterToTarget = new WeakMap()
 export const aliasTargetDescriptors = new WeakMap()
-export const eventRegisterInfo: Record<string, FixedArray<boolean, 2>> = {}
+export const eventRegisterInfo: Record<string, boolean[]> = {}
 
 export function backToParentDestruction() {
     if (!currentDestruction) {

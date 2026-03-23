@@ -1,10 +1,5 @@
-import type {
-    Destruction,
-    Traversable,
-    TraverseContext,
-    KeyedTraverseInfo
-} from "#type-declarations/runtime"
-import type { ArbitraryFunc, Getter, ZeroOrOne } from "#type-declarations/tools"
+import type { ArbitraryFunc, Getter, Setter, ZeroOrOne } from "#type-declarations/tools"
+import type { Traversable, TraverseContext, TraverseInfo } from "#type-declarations/runtime"
 
 import {
     TRAVERSE_SET,
@@ -15,7 +10,7 @@ import {
 } from "./constants"
 import { destroy } from "../destroy"
 import { insertBefore } from "../dom"
-import { NIL, REFLECT } from "../constants"
+import { NIL, REFLECT, UNDEF } from "../constants"
 import { arrayFrom } from "../../util/shared/arrays"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { reactiveNotEqual } from "../../util/runtime/sundry"
@@ -33,7 +28,7 @@ export function keyedListBlock(
 ) {
     let oldKeys: string[] = []
     let traversable!: Traversable
-    let oldInfos: Record<string, KeyedTraverseInfo> = newCleanObj()
+    let oldInfos: Record<string, TraverseInfo> = newCleanObj()
 
     renderEffect(() => {
         const oldLength = traversable?.l ?? 0
@@ -41,15 +36,12 @@ export function keyedListBlock(
 
         const newLength = traversable.l
         const newKeys: string[] = Array(newLength)
-        const newInfos: Record<string, KeyedTraverseInfo> = newCleanObj()
+        const newInfos: Record<string, TraverseInfo> = newCleanObj()
         for (let i = 0; i < newLength; i++) {
-            const newContext: TraverseContext = {
-                x: getContext(traversable, i, 0),
-                m: getContext(traversable, i, 1)
-            }
+            const newContext = getContext(traversable, i)
             const newKey = getKey(newContext.m, newContext.x)
             const oldKey = oldKeys[i] as string | undefined
-            const oldInfoForNewKey = oldInfos[newKey] as KeyedTraverseInfo | undefined
+            const oldInfoForNewKey = oldInfos[newKey] as TraverseInfo | undefined
 
             let reference = anchor
             for (let j = i; j < oldLength; j++) {
@@ -65,11 +57,14 @@ export function keyedListBlock(
             newKeys[i] = newKey
 
             if (!oldInfoForNewKey) {
+                let setter: Setter | undefined = UNDEF
+                const destruction = invokeRender(() => {
+                    setter = render(reference, newContext)
+                })
                 newInfos[newKey] = {
+                    s: setter,
                     c: newContext,
-                    d: invokeRender(() => {
-                        render(reference, newContext)
-                    })
+                    d: destruction
                 }
             } else {
                 if (oldKey != newKey) {
@@ -77,11 +72,8 @@ export function keyedListBlock(
                         insertBefore(reference, node)
                     })
                 }
-                newInfos[newKey] = {
-                    c: newContext,
-                    d: oldInfoForNewKey.d
-                }
-                updateBlock(oldInfoForNewKey.d, oldInfoForNewKey.c, newContext)
+                newInfos[newKey] = oldInfoForNewKey
+                updateBlock(oldInfoForNewKey, newContext)
             }
         }
         for (let i = 0; i < oldLength; i++) {
@@ -96,8 +88,7 @@ export function keyedListBlock(
 
 export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     let traversable!: Traversable
-    const contexts: TraverseContext[] = []
-    const destructions: Destruction[] = []
+    const infos: TraverseInfo[] = []
 
     renderEffect(() => {
         const oldLength = traversable?.l ?? 0
@@ -106,29 +97,22 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
         const newLength = traversable.l
         const updateLength = Math.min(oldLength, newLength)
         for (let i = 0; i < updateLength; i++) {
-            const oldContext = contexts[i]
-            const newContext: TraverseContext = {
-                x: getContext(traversable, i, 0),
-                m: getContext(traversable, i, 1)
-            }
-            contexts[i] = newContext
-            updateBlock(destructions[i], oldContext, newContext)
+            updateBlock(infos[i], getContext(traversable, i))
         }
         for (let i = oldLength; i > newLength; i--) {
-            contexts.pop()
-            destroy(destructions.pop()!)
+            destroy(infos.pop()!.d)
         }
         for (let i = oldLength; i < newLength; i++) {
-            const newContext: TraverseContext = {
-                x: getContext(traversable, i, 0),
-                m: getContext(traversable, i, 1)
-            }
-            destructions.push(
-                invokeRender(() => {
-                    render(newContext)
-                })
-            )
-            contexts.push(newContext)
+            let setter: Setter | undefined = UNDEF
+            const newContext = getContext(traversable, i)
+            const destruction = invokeRender(() => {
+                setter = render(newContext)
+            })
+            infos.push({
+                s: setter,
+                c: newContext,
+                d: destruction
+            })
         }
     })
 }
@@ -172,41 +156,40 @@ function normalizeTraversable(value: any): Traversable {
     return NonTraverse()
 }
 
-// kind: 0 for get key, 1 for get value
-function getContext(info: Traversable, index: number, kind: ZeroOrOne) {
-    const currentKey = info.k?.[index]
-    switch (info.t) {
-        case TRAVERSE_SET: {
-            return currentKey
-        }
-        case TRAVERSE_NUMBER: {
-            return index + kind
-        }
-        case TRAVERSE_ARRAYLIKE: {
-            return kind ? info.v[index] : index
-        }
-        case TRAVERSE_OBJECT: {
-            return kind ? info.v[currentKey] : currentKey
-        }
-        default: {
-            return kind ? info.v.get(currentKey) : currentKey
+function getContext(info: Traversable, index: number): TraverseContext {
+    const get = (kind: ZeroOrOne) => {
+        const currentKey = info.k?.[index]
+        switch (info.t) {
+            case TRAVERSE_SET: {
+                return currentKey
+            }
+            case TRAVERSE_NUMBER: {
+                return index + kind
+            }
+            case TRAVERSE_ARRAYLIKE: {
+                return kind ? info.v[index] : index
+            }
+            case TRAVERSE_OBJECT: {
+                return kind ? info.v[currentKey] : currentKey
+            }
+            default: {
+                return kind ? info.v.get(currentKey) : currentKey
+            }
         }
     }
+    return { m: get(1), x: get(0) }
 }
 
-function updateBlock(
-    destruction: Destruction,
-    oldContext: TraverseContext,
-    context: TraverseContext
-) {
-    const effect = destruction.e![0]
-
+function updateBlock(oldInfo: TraverseInfo, newContext: TraverseContext) {
+    const effect = oldInfo.d.e?.[0]
     if (
+        effect &&
         !(effect.l & EFFECT_SCHEDULING) &&
-        (reactiveNotEqual(oldContext.m, context.m) || reactiveNotEqual(oldContext.x, context.x))
+        (reactiveNotEqual(oldInfo.c.m, newContext.m) || reactiveNotEqual(oldInfo.c.x, newContext.x))
     ) {
-        oldContext.m = context.m
-        oldContext.x = context.x
+        oldInfo.s?.(newContext)
+        oldInfo.c.m = newContext.m
+        oldInfo.c.x = newContext.x
         runAndUpdateEffect(effect)
     }
 }

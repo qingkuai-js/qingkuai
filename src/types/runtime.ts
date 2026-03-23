@@ -1,5 +1,6 @@
 import type {
     Getter,
+    Setter,
     AnyObject,
     FixedArray,
     ObjectKeys,
@@ -32,9 +33,10 @@ export interface TraverseContext {
     x: any // current key/index
 }
 
-export interface KeyedTraverseInfo {
+export interface TraverseInfo {
     d: Destruction
     c: TraverseContext
+    s: Setter | undefined
 }
 
 export interface ComponentInstance {

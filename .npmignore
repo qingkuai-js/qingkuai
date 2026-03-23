@@ -16,3 +16,5 @@ memorandum.md
 qingkuai-*.tgz
 pnpm-lock.yaml
 rollup.config.js
+exlint.config.js
+vitest.config.ts

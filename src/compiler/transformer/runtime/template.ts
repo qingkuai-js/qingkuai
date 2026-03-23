@@ -227,7 +227,8 @@ function generateDirectiveBlock(
             const parsedDirective = getParsedDirective(directive)!
             const patterns = parsedDirective.patterns
             const keyDirective = nodeContext.attributesMap["#key"]
-            writer.wrapLine().write(`${internalId}.listBlock(`).indent()
+            const fn = keyDirective ? "keyedListBlock" : "listBlock"
+            writer.wrapLine().write(`${internalId}.${fn}(`).indent()
 
             if (keyDirective) {
                 writer.write(nodeContext.anchorId).write(",").wrapLine()
@@ -252,9 +253,16 @@ function generateDirectiveBlock(
                 },
                 arg() {
                     if (!patterns.length) {
-                        writer.write(getterArgId)
+                        if (!keyDirective) {
+                            writer.write(getterArgId)
+                        } else {
+                            writer.write(nodeContext.anchorId)
+                        }
                     } else {
-                        writer.write(parsedDirective.context!.argId)
+                        if (keyDirective) {
+                            writer.write(`(${nodeContext.anchorId}, `)
+                        }
+                        writer.write(parsedDirective.context!.argId).write(keyDirective ? ")" : "")
                     }
                 },
                 context() {

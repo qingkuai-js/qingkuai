@@ -5,6 +5,12 @@
   "type": "module",
   "version": "1.0.49",
   "sideEffects": false,
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "exports": {
     ".": {
       "types": "./dist/types/runtime/index.d.ts",

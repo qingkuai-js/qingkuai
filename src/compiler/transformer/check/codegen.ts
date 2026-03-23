@@ -18,7 +18,7 @@ import {
 } from "../../../util/compiler/template"
 import { CodeEditor } from "../editor"
 import { IntermediateCodeWriter } from "../writer"
-import { isFunctionLiteral } from "../../estree/assert"
+import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { stringify } from "../../../util/shared/aliases"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { traverseObject } from "../../../util/shared/sundry"
@@ -436,7 +436,13 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 } else {
                     writer.wrapLine().write(property, nameRange).write(": ")
                 }
-                writer.write(rawValue, valueRange).write(isComponent ? "," : ");")
+
+                const isInline = isInlineEventHandler(expression.node)
+                if (isInline) {
+                    writer.write("$arg", nameRange).write(" => (")
+                }
+                writer.write(rawValue, valueRange)
+                writer.write(`${isInline ? ")" : ""}${isComponent ? "," : ");"}`)
             }
 
             if (isComponent) {

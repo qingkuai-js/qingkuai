@@ -30,12 +30,19 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
     const setterId = (parsedDirective.context!.returnsId = ensureIdWithNumSuffix("_S"))
     writer.wrapLine().write(`let ${declaredIds.join(", ")};`)
     writer.wrapLine().write(`const ${setterId} = ${setterArgId} => (`)
-    writer.write(multiPatterns ? "[" : "(")
+    writer.write(multiPatterns ? "[" : "")
     writeContextPatterns(writer, patterns, true)
-    writer.write(multiPatterns ? "]" : ")").write(` = ${setterArgId})`)
-    return writer.writeLine(
-        `\n${setterId}(${contextId}.m${patterns.length > 1 ? `, ${contextId}.x` : ""})`
-    )
+    writer.write(multiPatterns ? "]" : "").write(` = `)
+    writer.write(multiPatterns ? "[" : "")
+
+    for (let i = 0; i < patterns.length; i++) {
+        writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}`)
+
+        if (i < patterns.length - 1) {
+            writer.write(", ")
+        }
+    }
+    return writer.writeLine(multiPatterns ? "])" : ")") .writeLine(`${setterId}(${contextId})`)
 }
 
 export function writeContextPatterns(

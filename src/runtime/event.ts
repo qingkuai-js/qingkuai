@@ -66,7 +66,7 @@ export function registerEvents(registration: string[]) {
             passive = true
             continue
         }
-        if (eventRegisterInfo[eventName][registeIndex]) {
+        if ((eventRegisterInfo[eventName] ??= [])[registeIndex]) {
             continue
         }
         DOCUMENT!.addEventListener(
