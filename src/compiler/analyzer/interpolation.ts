@@ -3,7 +3,8 @@ import type {
     ASTLocation,
     TemplateNode,
     ContextReference,
-    TopLevelReferences
+    TopLevelReferences,
+    TemplateNodeContext
 } from "#type-declarations/compiler"
 import type { StringLiteral } from "@babel/types"
 
@@ -19,20 +20,19 @@ import {
     markPositionFlag,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
+import {
+    getParsedDirective,
+    getParsedExpression,
+    getTemplateNodeContext
+} from "../../util/compiler/template"
 import { PositionFlag } from "../enums"
 import { walkEstree } from "../estree/walk"
 import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
-import { isUndefined } from "../../util/shared/assert"
 import { kebab2Camel } from "../../util/compiler/string"
 import { endSemicolonRE, intrinsicMethodsRE } from "../regular"
 import { analyzeResult, inputDescriptor, messages } from "../state"
-import {
-    getParsedExpression,
-    getParsedPatterns,
-    getTemplateNodeContext
-} from "../../util/compiler/template"
 import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
@@ -61,7 +61,7 @@ export function analyzeInterpolation(
             node: expression,
             startSourceIndex,
             topLevelReferences,
-            reactiveContextReferences
+            contextReferences: reactiveContextReferences
         })
     } else {
         InvalidExpression(
@@ -85,16 +85,16 @@ export function analyzeInterpolation(
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
         Identifier({ name, range }, context) {
+            const parsedDirective = nodeContext.contextIdentifiers[name]
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
-            const isContextIdentifier = !isUndefined(nodeContext.contextIdentifiers[name])
-            if (!topLevelIdentifier && !isContextIdentifier && intrinsicMethodsRE.test(name)) {
+            if (!topLevelIdentifier && !parsedDirective && intrinsicMethodsRE.test(name)) {
                 const sourceRange: Range = [
                     startSourceIndex + range[0],
                     startSourceIndex + range[1]
                 ]
                 InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), name)
             }
-            if (topLevelIdentifier && context.isBindingReference && !isContextIdentifier) {
+            if (topLevelIdentifier && context.isBindingReference && !parsedDirective) {
                 const status = topLevelIdentifier.status
                 if (
                     status === "pending" ||
@@ -109,21 +109,19 @@ export function analyzeInterpolation(
                 })
             }
 
-            if (context.isBindingReference && nodeContext.contextIdentifiers[name]) {
-                // #key 指令中访问 #for 指令声明的标识符不具有响应性
-                // Identifiers declared by the `#for` directive are not reactive when accessed in the `#key` directive.
-                if (
-                    parsingInfoKey !== nodeContext.attributesMap["#key"] ||
-                    !getParsedPatterns(nodeContext.attributesMap["#for"])?.some(item =>
-                        item.declaredIdentifiers.includes(name)
-                    )
-                ) {
-                    reactiveContextReferences.push({
-                        range,
-                        shorthand: context.isShorthandIdentifierAccess,
-                        reactiveId: nodeContext.contextIdentifiers[name]
-                    })
-                }
+            if (
+                parsedDirective &&
+                context.isBindingReference &&
+                shouldContextIdentifierBeTransformed(name, parsingInfoKey, nodeContext)
+            ) {
+                const pattern = parsedDirective.patterns.find(parsedPattern => {
+                    return parsedPattern.declaredIdentifiers.has(name)
+                })!
+                reactiveContextReferences.push({
+                    range,
+                    pattern,
+                    shorthand: context.isShorthandIdentifierAccess
+                })
             }
             if ((analyzeResult.script.fullIdentifiers.add(name), topLevelIdentifier)) {
                 getParsedExpression(parsingInfoKey)!.reactive ||= true
@@ -179,4 +177,27 @@ export function analyzeTemplateAsExpression(
         markPositionFlag(PositionFlag.SourcemapEnd, loc.end.index)
         parsedExpression.source = " ".repeat(nameSub) + parsedExpression.source
     }
+}
+
+// #key 指令中访问 #for 指令声明的标识符不需要转换
+// Identifiers declared by the `#for` directive accessed in the `#key` directive do not need to be transformed.
+function shouldContextIdentifierBeTransformed(
+    identifierName: string,
+    parsingInfoKey: any,
+    nodeContext: TemplateNodeContext
+) {
+    const keyDirective = nodeContext.attributesMap["#key"]
+    if (!keyDirective || parsingInfoKey !== keyDirective) {
+        return true
+    }
+
+    const forDirective = nodeContext.attributesMap["#for"]
+    const parsedForDirective = forDirective && getParsedDirective(forDirective)
+    if (!parsedForDirective) {
+        return true
+    }
+
+    return !parsedForDirective.patterns.some(parsedPattern => {
+        return parsedPattern.declaredIdentifiers.has(identifierName)
+    })
 }

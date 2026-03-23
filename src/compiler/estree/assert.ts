@@ -81,6 +81,7 @@ export function isUndefinedLiteral(node: AnyNode) {
 
 export function isContextPattern(node: PartialAnyNode): node is ContextPattern {
     switch (node?.type) {
+        case undefined:
         case "Identifier":
         case "RestElement":
         case "ArrayPattern":

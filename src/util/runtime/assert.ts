@@ -1,7 +1,6 @@
 import type {
     Effect,
     RefProperty,
-    WatchEffect,
     ProxyWrapper,
     ReactiveValue,
     ReactivityWrapper
@@ -18,7 +17,7 @@ import {
     REF_PROPERTY_ID,
     WRAPPER_SHALLOW
 } from "../../runtime/reactivity/constants"
-import { isNonNegativeNumber, isNumberLike, isObject } from "../shared/assert"
+import { isObject } from "../shared/assert"
 
 export function couldReact(value: any) {
     return !isReactive(value) && isObject(value)
@@ -37,7 +36,15 @@ export function isIteratorKey(wrapper: ReactivityWrapper, key: any) {
         return !isRefProperty(key)
     }
     if (wrapper.l & WRAPPER_ARRAY) {
-        return isNumberLike(key) && isNonNegativeNumber(+key)
+        switch (typeof key) {
+            case "string": {
+                key = +key
+                // fallthrough
+            }
+            case "number": {
+                return key >= 0
+            }
+        }
     }
     return false
 }
@@ -46,7 +53,7 @@ export function isRefProperty(property: any): property is RefProperty {
     return property?.[0] === REF_PROPERTY_ID
 }
 
-export function isWatchEffect(effect: Effect): effect is WatchEffect {
+export function isWatchEffect(effect: Effect): effect is Required<Effect> {
     return !!(effect.l & EFFECT_WATCH)
 }
 

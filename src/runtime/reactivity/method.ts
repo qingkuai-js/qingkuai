@@ -13,7 +13,7 @@ import {
 } from "./constants"
 import { scheduleUpdate } from "./schedule"
 import { constReact, mutualLink } from "./value"
-import { len, notEqual } from "../../util/shared/sundry"
+import { notEqual } from "../../util/shared/sundry"
 import { isReactive, isShallow, couldReact } from "../../util/runtime/assert"
 import { batchAndNoTracking, batchUpdateWithRaw, batchUpdating } from "./optimization"
 import { ensureGetRefProperty, reverse, reactiveNotEqual } from "../../util/runtime/sundry"
@@ -180,7 +180,7 @@ function _concat(wrapper: ReactivityWrapper, ...items: any) {
             if (itemWrapper.l & WRAPPER_ARRAY) {
                 mutualLink(itemWrapper, ITERATOR_KEYS, linkFlag)
             } else if (isArrayLike(item)) {
-                for (let i = 0; i < len(item); i++) {
+                for (let i = 0; i < item.length; i++) {
                     mutualLink(itemWrapper, "" + i, linkFlag)
                 }
             }
@@ -219,7 +219,7 @@ function _iterator(wrapper: ReactivityWrapper, funcName: ObjectKeys) {
             return nextRet
         }
     }
-    return mutualLink(wrapper, ITERATOR_KEYS, LINK_VALUE_CHANGED | linkFlag), iterator
+    return (mutualLink(wrapper, ITERATOR_KEYS, LINK_VALUE_CHANGED | linkFlag), iterator)
 }
 
 // Implements for: sort, toSorted
@@ -352,7 +352,10 @@ function _has(wrapper: ReactivityWrapper, key: any, track = false): boolean {
     if (!result && !isShallow(wrapper) && isObject(key)) {
         result = wrapper.r.has(reverse(key))
     }
-    return track && mutualLink(wrapper, key, LINK_HAS_CHANGED), result
+    if (track) {
+        mutualLink(wrapper, key, LINK_HAS_CHANGED)
+    }
+    return result
 }
 
 function _addOrDelete(wrapper: ReactivityWrapper, value: any, method: "add" | "delete") {

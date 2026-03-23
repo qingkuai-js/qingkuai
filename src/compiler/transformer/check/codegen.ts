@@ -8,10 +8,10 @@ import type { VariableDeclarator } from "@babel/types"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
 
 import {
-    getParsedPatterns,
+    getParsedExpression,
     getParsedEventInfo,
     getStartTagOpenLoc,
-    getParsedExpression,
+    getParsedDirective,
     getParsedComponentTag,
     getPrevElementContext,
     getTemplateNodeContext
@@ -579,8 +579,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
     const directiveName = directive.name.raw
     const isForDirective = directiveName === "#for"
-    const patterns = getParsedPatterns(directive)?.slice(0, 2)
-    if (!patterns?.some(pattern => pattern)) {
+    const patterns = getParsedDirective(directive)!.patterns
+    if (!patterns.some(pattern => pattern)) {
         if (isForDirective) {
             writer.wrapLine()
         }
@@ -596,7 +596,7 @@ function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAtt
                 patterns[i].sourceRange[0]
             )
         }
-        if (i && isForDirective && patterns[i + 1]) {
+        if (i < patterns.length - 1) {
             writer.write(", ")
         }
     }

@@ -56,7 +56,7 @@ export function destructuringDerived(
         }
         ret.push(isDebugging ? wrapper : [wrapper, UNDEF])
     }
-    return ret
+    return ((effect.g = getter), ret)
 }
 
 export function derived(fn: Getter, debugSetter?: Setter) {

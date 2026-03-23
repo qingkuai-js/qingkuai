@@ -157,7 +157,12 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 27],
-                    value: `The "#slot" directive accepts at most one binding pattern.`
+                    value: `The "#slot" directive accepts at most 1 context pattern, but got 2.`
+                },
+                {
+                    type: "error",
+                    range: [25, 27],
+                    value: `The context pattern is empty and does not declare any binding identifiers.`
                 }
             ]
         )
@@ -172,7 +177,7 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 28],
-                    value: `The "#slot" directive accepts at most one binding pattern.`
+                    value: `The "#slot" directive accepts at most 1 context pattern, but got 2.`
                 }
             ]
         )
@@ -310,7 +315,7 @@ describe(`#for`, () => {
             {
                 type: "error",
                 range: [12, 19],
-                value: `The "#for" directive accepts at most two binding patterns.`
+                value: `The "#for" directive accepts at most 2 context patterns, but got 3.`
             }
         ])
     })
@@ -455,13 +460,18 @@ describe("#then", () => {
 
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={[],{}}></div>`, [
             {
-                type: "warning",
+                type: "error",
                 range: [23, 28],
-                value: `The "#then" directive expects exactly 1 context pattern, but got 2. The redundant context pattern will be ignored.`
+                value: `The "#then" directive accepts at most 1 context pattern, but got 2.`
             },
             {
                 type: "error",
                 range: [23, 25],
+                value: `The context pattern is empty and does not declare any binding identifiers.`
+            },
+            {
+                type: "error",
+                range: [26, 28],
                 value: `The context pattern is empty and does not declare any binding identifiers.`
             }
         ])
@@ -577,13 +587,18 @@ describe("#catch", () => {
         ])
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={[], {}}></div>`, [
             {
-                type: "warning",
+                type: "error",
                 range: [24, 30],
-                value: `The "#catch" directive expects exactly 1 context pattern, but got 2. The redundant context pattern will be ignored.`
+                value: `The "#catch" directive accepts at most 1 context pattern, but got 2.`
             },
             {
                 type: "error",
                 range: [24, 26],
+                value: `The context pattern is empty and does not declare any binding identifiers.`
+            },
+            {
+                type: "error",
+                range: [28, 30],
                 value: `The context pattern is empty and does not declare any binding identifiers.`
             }
         ])

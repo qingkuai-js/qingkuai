@@ -44,17 +44,17 @@ export const batchUpdateWithRaw = updateWithRawGen(true)
 
 export function noTracking<R>(fn: ArbitraryFunc<R>) {
     const result = (pauseTracking(), fn())
-    return resumeTracking(), result
+    return (resumeTracking(), result)
 }
 
 export function noUpdating<R>(fn: ArbitraryFunc<R>) {
     const result = (pauseUpdating(), fn())
-    return resumeUpdating(), result
+    return (resumeUpdating(), result)
 }
 
 export function batchUpdating<R>(fn: ArbitraryFunc<R>) {
     const result = (startBatchUpdating(), fn())
-    return stopBatchUpdating(), scheduleUpdate(), result
+    return (stopBatchUpdating(), scheduleUpdate(), result)
 }
 
 export function batchAndNoTracking<R>(fn: ArbitraryFunc<R>) {
@@ -219,7 +219,7 @@ function updateWithRawGen(batchSync?: boolean) {
                 let linkFlagForSchedule = LINK_VALUE_CHANGED
                 if (getIteratorKeysCount() == iteratorKeysCount) {
                     if (isArray) {
-                        for (let i = 0; i < len(rawValue); i++) {
+                        for (let i = 0; i < rawValue.length; i++) {
                             if (isChanged(rawValue[i], shallowCopiedArr[i])) {
                                 forceScheduleIteratorKeys = true
                                 break
@@ -241,7 +241,7 @@ function updateWithRawGen(batchSync?: boolean) {
             if (forceScheduleOwnKeys) {
                 const ownKeys = REFLECT.ownKeys(rawValue)
                 if (len(ownKeys) != len(wrapper.o)) {
-                    for (let i = 0; i < len(ownKeys); i++) {
+                    for (let i = 0; i < ownKeys.length; i++) {
                         if (ownKeys[i] != wrapper.o![i]) {
                             forceScheduleOwnKeys = false
                             break

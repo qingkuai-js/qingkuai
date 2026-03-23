@@ -1,8 +1,9 @@
 import type {
     ASTLocation,
     TemplateNode,
+    ParsedDirective,
     TemplateAttribute,
-    TemplateNodeContext
+    TemplateNodeContext,
 } from "#type-declarations/compiler"
 
 import {
@@ -31,7 +32,7 @@ import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from ".
 export function analyzeTemplate(nodes: TemplateNode[]) {
     walkTemplateNodes(nodes, node => {
         let nodeContext: TemplateNodeContext
-        let parentContextIdentifiers: Record<string, string> | undefined
+        let parentContextIdentifiers: Record<string, ParsedDirective> | undefined
         if (node.parent) {
             parentContextIdentifiers = getTemplateNodeContext(node.parent)?.contextIdentifiers
         }

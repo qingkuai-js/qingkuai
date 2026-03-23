@@ -103,12 +103,13 @@ describe("Not destructuring", () => {
         let valid = true
         let effect: Effect
         const a = react(1)
-        const value2 = derived(() => {
+        const getter = () => {
             if ((invokeMarker(), valid)) {
                 return a.$++
             }
             return -1
-        })
+        }
+        const value2 = derived(getter)
         expect(value2.$).toBe(1)
         expect(invokeMarker).toHaveBeenCalledTimes(1)
         expect(warningMatcher).toHaveBeenCalledTimes(1)
@@ -124,7 +125,7 @@ describe("Not destructuring", () => {
         effect = getCurrentEffect()
         expect(value2.$).toBe(-1)
         expect(getCurrentEffect()).toBeUndefined()
-        expect(warningMatcher.args[2]).toBe(effect.f)
+        expect(warningMatcher.args[2]).toBe(getter)
         expect(invokeMarker).toHaveBeenCalledTimes(3)
         expect(warningMatcher).toHaveBeenCalledTimes(2)
         expect(warningMatcher.args[1].includes("derived reactive value")).toBeTruthy()

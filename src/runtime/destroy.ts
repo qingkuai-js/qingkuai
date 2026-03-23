@@ -5,6 +5,7 @@ import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
 import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
+import { spliceByElem } from "../util/shared/arrays"
 import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
 import { currentDestruction, setCurrentDestruction } from "./state"
 
@@ -25,8 +26,8 @@ export function destroy(destruction: Destruction) {
             disposeEffect(effect, true)
         }
     }
-    if (destruction.p) {
-        destruction.p.c?.delete(destruction)
+    if (destruction.p?.c) {
+        spliceByElem(destruction.p.c, destruction, false)
     }
     walkNodes(destruction, node => node.remove())
 
@@ -55,11 +56,7 @@ export function createDestruction(instance: ComponentInstance | null = NIL) {
         p: currentDestruction
     }
     if (currentDestruction) {
-        if (currentDestruction.c) {
-            currentDestruction.c.add(destruction)
-        } else {
-            currentDestruction.c = new Set([destruction])
-        }
+        ;(currentDestruction.c ??= []).push(destruction)
     }
     return setCurrentDestruction(destruction)!
 }

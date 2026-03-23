@@ -2,7 +2,7 @@ import type { ArbitraryFunc } from "#type-declarations/tools"
 
 import { isArray } from "../../util/shared/assert"
 
-export const WatchEffectDependantNoReactiveValue = withCode(
+export const EffectOrWatchHasNoDependecies = withCode(
     8001,
     (fn: ArbitraryFunc, by: string) => {
         return [

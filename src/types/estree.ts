@@ -62,7 +62,7 @@ export type PartialAnyNode = Node | undefined | null
 export type DeclarationKind = VariableDeclaration["kind"] | ""
 export type ScopeNode = BlockStatement | TSModuleBlock | Program
 export type IntrinsicCall = CallExpression | OptionalCallExpression
-export type ContextPattern = Identifier | ObjectPattern | ArrayPattern | RestElement
 export type WalkPatternCallback = (identifier: WithLoc<Identifier>, path: string) => void
+export type ContextPattern = Identifier | ObjectPattern | ArrayPattern | RestElement | null
 
 type VisitorTrapFunc<T extends AnyNode> = (node: WithLoc<T>, context: EstreeWalkContext<T>) => void

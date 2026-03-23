@@ -21,8 +21,8 @@ export function getNextElementContent(node: TemplateNode) {
     return node.next && getTemplateNodeContext(node.next)
 }
 
-export function getParsedPatterns(key: any) {
-    return analyzeResult.template.parsedPatterns.get(key)
+export function getParsedDirective(key: TemplateAttribute) {
+    return analyzeResult.template.parsedDirectives.get(key)
 }
 
 export function getParsedExpression(key: any) {

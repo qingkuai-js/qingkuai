@@ -21,16 +21,14 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     let hasTopExtract = false
 
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
-    const getterArgId = inputDescriptor.options.debug ? ensureIdWithPrefix("_") : "()"
     const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
     objectAssign(generateIdentifier, {
-        getterArg: getterArgId,
         internal: ensureIdWithPrefix("_"),
+        getterArg: ensureIdWithPrefix("_"),
         setterArg: ensureIdWithPrefix("v"),
-        anchor: ensureIdWithPrefix("_anchor"),
-        context: ensureIdWithPrefix("_context"),
-        contextGetter: ensureIdWithPrefix("_ctx")
+        context: ensureIdWithPrefix("_ctx"),
+        anchor: ensureIdWithPrefix("_anchor")
     } satisfies Partial<GenerateIdentifier>)
 
     const writer = new RuntimeCodeWriter(true)

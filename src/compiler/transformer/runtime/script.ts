@@ -544,8 +544,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
     function generateHoistGetter(returns: string) {
         const getterId = ensureIdWithNumSuffix("_G")
-        const getterArg = generateIdentifier.getterArg || "()"
-        return (hoistWriter.write(`const ${getterId} = ${getterArg} => (${returns})\n`), getterId)
+        const getterArgId = generateIdentifier.getterArg
+        return (hoistWriter.write(`const ${getterId} = ${getterArgId} => (${returns})\n`), getterId)
     }
 
     function generateHoistSetter(target: string) {

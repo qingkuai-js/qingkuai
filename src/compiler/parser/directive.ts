@@ -3,7 +3,6 @@ import type { CompileMessage, TemplateAttribute } from "#type-declarations/compi
 import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 
 import { parseContextPattern } from "./script"
-import { isNull } from "../../util/shared/assert"
 import { isContextPattern } from "../estree/assert"
 import { inputDescriptor, messages } from "../state"
 import { InvalidContextPattern } from "../message/error"
@@ -58,15 +57,15 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
 
         // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
         // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
-        const patterns: (ContextPattern | null)[] = []
+        const patterns: ContextPattern[] = []
         for (const element of pattern.elements) {
-            if (isNull(element) || isContextPattern(element)) {
+            if (isContextPattern(element)) {
                 patterns.push(element)
             } else {
                 InvalidContextPattern(
                     getNonWhitespaceLocByIndex(
-                        element!.start! + startSourceIndex,
-                        element!.end! + startSourceIndex
+                        element.start! + startSourceIndex,
+                        element.end! + startSourceIndex
                     )
                 )
             }

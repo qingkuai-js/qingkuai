@@ -1,8 +1,7 @@
 import type { NodeContext } from "#type-declarations/runtime"
 
-import { objectAssign } from "./internal"
+import { any } from "../util/shared/sundry"
 import { currentDestruction } from "./state"
-import { any, len } from "../util/shared/sundry"
 import { isUndefined } from "../util/shared/assert"
 import { DOCUMENT, NODE_CONTEXT, QK_FRAGMENT } from "./constants"
 
@@ -82,14 +81,14 @@ export function createFragmentGetter(html: string, arr?: string[]) {
         if (currentDestruction) {
             currentDestruction.n = [ret.firstChild, ret.lastChild]
         }
-        return objectAssign(ret, { [QK_FRAGMENT]: true })
+        return (((ret as any)[QK_FRAGMENT] = true), ret)
     }
 }
 
 // 将压缩后的 HTML 字符串恢复原貌
 // Restore the compressed HTML string to its original form
 function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
-    for (let i = 0; i < len(html); ) {
+    for (let i = 0; i < html.length; ) {
         if (html.charCodeAt(i) !== 47) {
             ret += html[i++]
             continue

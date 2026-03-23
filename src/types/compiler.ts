@@ -139,7 +139,6 @@ export interface GenerateIdentifier {
     internal: string
     getterArg: string
     setterArg: string
-    contextGetter: string
     prefix: Record<string, number>
 }
 
@@ -164,7 +163,7 @@ export interface EventFlagInfo {
 export interface ContextReference {
     range: Range
     shorthand: boolean
-    reactiveId: string
+    pattern: ParsedPattern
 }
 export interface ComponentTagPart {
     id: string
@@ -172,9 +171,19 @@ export interface ComponentTagPart {
 }
 export interface ParsedPattern {
     sourceRange: Range
-    reactive: boolean
-    node: ContextPattern | null
-    declaredIdentifiers: string[]
+    node: ContextPattern
+    directive: ParsedDirective
+    declaredIdentifiers: Set<string>
+}
+export interface ParsedDirective {
+    context?: {
+        argId: string
+        returnsId: string
+    }
+    base: string
+    keywordIndex: number
+    patterns: ParsedPattern[]
+    baseStartSourceIndex: number
 }
 export interface TopLevelIdentifierInfo {
     nodeInfos: {
@@ -203,8 +212,8 @@ export interface TemplateNodeContext {
     staticAttributes: TemplateAttribute[]
     dynamicAttributes: TemplateAttribute[]
     referenceAttributes: TemplateAttribute[]
-    contextIdentifiers: Record<string, string>
     attributesMap: Record<string, TemplateAttribute>
+    contextIdentifiers: Record<string, ParsedDirective>
 }
 export interface TemplateAnalyzeRet {
     compressStrings: Record<
@@ -226,14 +235,6 @@ export interface TemplateAnalyzeRet {
             wrapperFlag: EventFlagInfo
         }
     >
-    parsedDirectives: Map<
-        TemplateAttribute,
-        {
-            base: string
-            keywordIndex: number
-            baseStartSourceIndex: number
-        }
-    >
     parsedExpressions: Map<
         any,
         {
@@ -242,8 +243,8 @@ export interface TemplateAnalyzeRet {
             reactive: boolean
             startSourceIndex: number
             stringLiterals: StringLiteral[]
+            contextReferences: ContextReference[]
             topLevelReferences: TopLevelReferences
-            reactiveContextReferences: ContextReference[]
         }
     >
     compressStringsCount: number
@@ -252,7 +253,7 @@ export interface TemplateAnalyzeRet {
     staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
-    parsedPatterns: Map<TemplateAttribute, ParsedPattern[]>
+    parsedDirectives: Map<TemplateAttribute, ParsedDirective>
     parsedComponentTags: Map<TemplateNode, ComponentTagPart[]>
 }
 export interface ScriptAnalyzeRet {

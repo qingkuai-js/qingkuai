@@ -3,7 +3,6 @@ import type { TemplateNode } from "#type-declarations/compiler"
 
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
-import { stringify } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
 import { getMaybeReusedString } from "../../../util/compiler/sundry"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
@@ -28,11 +27,23 @@ export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
             }
         }
     })
-    for (const reference of parsedExpression.reactiveContextReferences) {
+    for (const reference of parsedExpression.contextReferences) {
+        const parsedPattern = reference.pattern
+        if (!parsedPattern || parsedPattern.node!.type !== "Identifier") {
+            continue
+        }
+
+        const parsedDirective = parsedPattern.directive
+        if (!parsedDirective.context) {
+            continue
+        }
+
+        const contextKey = parsedPattern === parsedDirective.patterns[0] ? "m" : "x"
+        const transformed = `${parsedDirective.context.argId}.${contextKey}`
         if (reference.shorthand) {
-            editor.insert(reference.range[1], `: ${reference.reactiveId}.$`)
+            editor.insert(reference.range[1], `: ${transformed}`)
         } else {
-            editor.replace(...reference.range, reference.reactiveId + ".$", true)
+            editor.replace(...reference.range, `${transformed}`, true)
         }
     }
     return writer.writeEditedScript(editor)
@@ -42,17 +53,23 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
     if (!node.content.length) {
         return getMaybeReusedString("")
     }
-    if (node.content[0].isInterpolated) {
-        writer.write(getMaybeReusedString("") + " + ")
-    }
-    for (const part of node.content) {
-        if (part !== node.content[0]) {
-            writer.write(" + ")
-        }
+    for (let i = 0, j = 0; i < node.content.length; i++) {
+        const part = node.content[i]
         if (part.isInterpolated) {
+            if (!j++) {
+                writer.write(getMaybeReusedString(""))
+            }
+            writer.write(" + ")
             transformParsedExpression(writer, part)
         } else {
-            writer.write(stringify(getGeneratedStaticTextContent(part)))
+            const generated = getGeneratedStaticTextContent(part)
+            if (!generated) {
+                continue
+            }
+            if (j++) {
+                writer.write(" + ")
+            }
+            writer.write(getMaybeReusedString(generated))
         }
     }
 }

@@ -1,8 +1,6 @@
 import type {
     Link,
     Effect,
-    BaseEffect,
-    EffectExtra,
     GeneralEffectFunc,
     WatchEffectCallback
 } from "#type-declarations/runtime"
@@ -30,12 +28,10 @@ import {
 import { NIL, UNDEF } from "../constants"
 import { getSubscription } from "./schedule"
 import { any, len } from "../../util/shared/sundry"
-import { isUndefined } from "../../util/shared/assert"
-import { objectAssign } from "../../util/shared/aliases"
 import { isWatchEffect } from "../../util/runtime/assert"
 import { currentInstance, currentDestruction } from "../state"
+import { EffectOrWatchHasNoDependecies } from "../messages/warn"
 import { spliceByElem, swapDelete } from "../../util/shared/arrays"
-import { WatchEffectDependantNoReactiveValue } from "../messages/warn"
 
 export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
 export const [effect, preEffect, postEffect, syncEffect] = reactiveEffectFuncGen()
@@ -103,21 +99,8 @@ function createEffect(
     fn: ArbitraryFunc,
     watchCallback?: WatchEffectCallback<any>
 ): Effect {
-    let extra: EffectExtra
-    const notWatch = isUndefined(watchCallback)
-    if (notWatch) {
-        extra = {
-            f: fn
-        }
-    } else {
-        extra = {
-            g: fn,
-            v: UNDEF,
-            f: watchCallback
-        }
-    }
-
-    const effect: Effect = objectAssign<EffectExtra, BaseEffect>(extra, {
+    const effect: Effect = {
+        f: fn,
         k: [],
         c: NIL,
         l: flag,
@@ -125,7 +108,12 @@ function createEffect(
         d: currentDestruction,
         i: getIncrementEffectId(),
         m: flag & EFFECT_RENDER ? currentInstance : NIL
-    })
+    }
+    if (watchCallback) {
+        effect.g = fn
+        effect.v = UNDEF
+        effect.f = watchCallback
+    }
 
     const res = runEffectCollector(effect)
     if (isWatchEffect(effect)) {
@@ -182,7 +170,7 @@ function unlink(effect: Effect) {
         //
         // If the `link` is not at the end of `link.s.k`, update the `i` property of the original tail element.
         // For example, given [a, b, c, d], removing `b` results in [a, d, c], so `d.i` needs to be updated to `b.i`.
-        if ((swapDelete(link.s.k, link.i), link.i < len(link.s.k))) {
+        if ((swapDelete(link.s.k, link.i), link.i < link.s.k.length)) {
             link.s.k[link.i].i = link.i
         }
     }
@@ -196,7 +184,7 @@ function runEffectCollector(effect: Effect) {
     pushRunninEffectStack(effect)
 
     const isWatch = isWatchEffect(effect)
-    const res = (isWatch ? effect.g : effect.f)()
+    const res = (isWatch ? effect.g! : effect.f)()
     if ((popRunningEffectStack(), len(effect.k))) {
         for (const link of effect.k) {
             if (activeEffect) {
@@ -232,14 +220,12 @@ function checkAndDestroyInvalidEffect(effect: Effect) {
     }
 
     if (!isValid) {
+        const isWatch = isWatchEffect(effect)
+        const isDerived = effect.l & EFFECT_DERIVED
         disposeEffect(effect)
-        WatchEffectDependantNoReactiveValue(
-            isWatchEffect(effect) ? effect.g : effect.f,
-            isWatchEffect(effect)
-                ? "watcher"
-                : effect.l & EFFECT_DERIVED
-                ? "derived reactive value"
-                : ""
+        EffectOrWatchHasNoDependecies(
+            isWatch || isDerived ? effect.g! : effect.f,
+            isWatch ? "watcher" : effect.l & EFFECT_DERIVED ? "derived reactive value" : ""
         )
     }
     return isValid

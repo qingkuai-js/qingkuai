@@ -74,13 +74,6 @@ export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
     return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 })
 
-export const RedundantContextPatternForDirective = withLocation(
-    9015,
-    (directive: string, expected: number, got: number) => {
-        return `The "${directive}" directive expects exactly ${expected} context pattern${expected > 1 ? "s" : ""}, but got ${got}. The redundant context pattern will be ignored.`
-    }
-)
-
 export function isCompileWarning(v: any): v is CompileWarning {
     return v instanceof QingkuaiCompileWarning
 }

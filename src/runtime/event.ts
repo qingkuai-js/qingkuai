@@ -14,8 +14,8 @@ import {
     EVENT_PASSIVE
 } from "../util/shared/flags"
 import { getNodeContext } from "./dom"
+import { any } from "../util/shared/sundry"
 import { eventRegisterInfo } from "./state"
-import { any, len } from "../util/shared/sundry"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { DOCUMENT, KEY_FLAG_MAP } from "./constants"
@@ -59,7 +59,7 @@ export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
 // Register native event listeners on the root node, registering separately
 // for different `passive` option (only one will be registered for per type)
 export function registerEvents(registration: string[]) {
-    for (let i = 0, passive = false; i < len(registration); i++) {
+    for (let i = 0, passive = false; i < registration.length; i++) {
         const registeIndex = +!passive
         const eventName = registration[i]
         if (isUndefined(eventName)) {
@@ -146,7 +146,7 @@ function dispatch(event: Event, passive: boolean) {
         call(delegateEvent[0], elem, event)
     }
 
-    for (let i = len(path) - 1; i >= 0; i--) {
+    for (let i = path.length - 1; i >= 0; i--) {
         const elem = any(path[i])
         const delegateEvent = getNodeContext(elem).e[type]
         if (!delegateEvent) {

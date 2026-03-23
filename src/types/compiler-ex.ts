@@ -207,7 +207,7 @@ export interface ParseDirectiveValueFunc {
         base: string
         keywordIndex: number
         baseStartSourceIndex: number
-        patterns: (ContextPattern | null)[]
+        patterns: ContextPattern[]
         messages?: CompileMessage[]
     }
 }

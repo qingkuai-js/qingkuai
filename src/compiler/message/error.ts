@@ -26,12 +26,6 @@ export const DuplicateAttributes = withLocation(
     }
 )
 
-export const TooManyBindingPatterns = withLocation(1037, (directive: string, count: number) => {
-    return `The "${directive}" directive accepts at most ${
-        count === 1 ? "one" : count === 2 ? "two" : count
-    } binding pattern${count === 1 ? "" : "s"}.`
-})
-
 export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
     const gotDescription = `, but got ${getSpecialAttrDescription(name, true)}: "${name}".`
     switch (tag) {
@@ -279,6 +273,13 @@ export const InvalidComponentName = withLocation(1057, (name: string) => {
 export const DuplicateSlotName = withLocation(1050, (name: string) => {
     return `Duplicate slot name: "${name}". Consider using a different value for the "name" attribute on one of the <slot> tags.`
 })
+
+export const TooManyBindingPatterns = withLocation(
+    1037,
+    (directive: string, expected: number, got: number) => {
+        return `The "${directive}" directive accepts at most ${expected} context pattern${expected === 1 ? "" : "s"}, but got ${got}.`
+    }
+)
 
 export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) => {
     return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`

@@ -70,6 +70,7 @@ function localTransform(source: string, options: CompileOptions) {
     const hoistEmbeddedScriptWriter = new RuntimeCodeWriter()
     generateIdentifier.internal = "_"
     generateIdentifier.setterArg = "v"
+    generateIdentifier.getterArg = "__"
     removeEliminatedNodes(embeddedScriptEditor)
     transformEmbeddedScript(hoistEmbeddedScriptWriter, embeddedScriptEditor)
 

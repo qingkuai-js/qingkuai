@@ -9,16 +9,6 @@ import type {
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
 
-interface WatchEffectExtra {
-    v: any // target value
-    g: Getter // getter getter
-    f: WatchEffectCallback<any>
-}
-
-interface GeneralEffectExtra {
-    f: GeneralEffectFunc
-}
-
 interface CancelablePromiseExtra {
     cancel: GeneralFunc
     [CANCELABLE]: boolean
@@ -30,12 +20,21 @@ export interface PropertyInfo {
     k: number // link flag
 }
 
-export interface TraverseInfo {
+export interface Traversable {
     v: any // base value
-    l: number // flag
     t: number // type
-    h: number // length
+    l: number // length
     k: any[] | null // keys
+}
+
+export interface TraverseContext {
+    m: any // current item
+    x: any // current key/index
+}
+
+export interface KeyedTraverseInfo {
+    d: Destruction
+    c: TraverseContext
 }
 
 export interface ComponentInstance {
@@ -49,7 +48,8 @@ export interface NodeContext {
     e: Record<string, [ArbitraryFunc, number?]> // delegated events
 }
 
-export interface BaseEffect {
+export interface Effect {
+    f: ArbitraryFunc
     i: number // id
     l: number // flag
     t: number // timing
@@ -57,13 +57,15 @@ export interface BaseEffect {
     d: Destruction | null // destruction
     m: ComponentInstance | null // component
     c: GeneralFunc | null // cleaner between two runs
+    g?: Getter // getter (WatchEffect)
+    v?: any // value (WatchEffect)
 }
 
 export interface Destruction {
     e: Effect[] | null // effects
     p: Destruction | null // parent
     l: GeneralFunc[] | null // cleaners
-    c: Set<Destruction> | null // children
+    c: Destruction[] | null // children
     m: ComponentInstance | null // component
     n: FixedArray<ChildNode | null, 2> // start and end nodes
 }
@@ -121,10 +123,7 @@ export type DestructuringFunc = (target: any) => any[]
 export type HookFunc = (callback: GeneralFunc) => void
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
-export type Effect = BaseEffect & EffectExtra
-export type WatchEffect = BaseEffect & WatchEffectExtra
 export type GeneralEffectFunc = () => void | GeneralFunc
-export type EffectExtra = GeneralEffectExtra | WatchEffectExtra
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
 export interface ComponentContext {

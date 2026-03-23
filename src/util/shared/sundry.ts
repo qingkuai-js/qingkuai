@@ -1,7 +1,7 @@
 import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
 
-import { setPrototypeOf } from "./aliases"
 import { objectKeys } from "../shared/aliases"
+import { objectAssign, setPrototypeOf } from "./aliases"
 import { NIL, OBJECT_PROTO } from "../../runtime/constants"
 
 export function any(v: any) {
@@ -26,6 +26,10 @@ export function escapeRegExpSource(s: string) {
 
 export function hasOwn(o: AnyObject, key: ObjectKeys) {
     return OBJECT_PROTO.hasOwnProperty.call(o, key)
+}
+
+export function cloneObject<T extends AnyObject>(o: T): T {
+    return objectAssign({}, o)
 }
 
 export function runAll<T extends ArbitraryFunc>(fns: T[]) {

@@ -1,5 +1,10 @@
+import type {
+    TemplateNode,
+    ParsedPattern,
+    ParsedDirective,
+    TemplateAttribute
+} from "#type-declarations/compiler"
 import type { ContextPattern } from "#type-declarations/estree"
-import type { TemplateAttribute, TemplateNode, Range } from "#type-declarations/compiler"
 
 import {
     InvalidSlotName,
@@ -7,9 +12,9 @@ import {
     EmptyContextPattern,
     ExpectedStringLiteral,
     UnrecognizedDirective,
-    TooManyBindingPatterns,
     MissingDirectiveValue,
     InvalidContextPattern,
+    TooManyBindingPatterns,
     MissingPrecedingDirective,
     InvalidHtmlDirectivePlacement,
     InvalidKeyDirectivePlacement,
@@ -18,11 +23,6 @@ import {
     InvalidTargetDirectivePlacement,
     HtmlDirectiveRequiresSingleTextChild
 } from "../message/error"
-import {
-    RedundantDirectiveValue,
-    UnnecessaryHtmlDirective,
-    RedundantContextPatternForDirective
-} from "../message/warn"
 import {
     getLocByIndex,
     getNonWhiteSpaceLocByLoc,
@@ -34,9 +34,10 @@ import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
-import { ensureIdWithPrefix } from "../../util/compiler/sundry"
+import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
 import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
+import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 
@@ -85,40 +86,41 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (directive.valueEnclosure !== "none") {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!
-                analyzeResult.template.parsedDirectives.set(directive, {
+                const parsedDirective: ParsedDirective = {
                     base,
                     keywordIndex,
+                    patterns: [],
                     baseStartSourceIndex
-                })
-
-                if (patterns.length) {
-                    recordContextIdentifiers(patterns[0], true)
                 }
+                analyzeResult.template.parsedDirectives.set(directive, parsedDirective)
+
+                // from 关键字后方的插槽名称必须是静态字符串字面量
+                // The slot name following the `from` keyword must be a static string literal.
+                if (!base.trim()) {
+                    ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
+                } else {
+                    const expression = localAnalyzeInterpolation(base, baseStartSourceIndex)
+                    if (
+                        expression?.type !== "StringLiteral" &&
+                        (expression?.type !== "TemplateLiteral" || expression.expressions.length)
+                    ) {
+                        ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
+                            getNonWhitespaceLocByIndex(
+                                baseStartSourceIndex,
+                                baseStartSourceIndex + base.length
+                            )
+                        )
+                    }
+                }
+
                 if (patterns.length > 1) {
                     const errorLoc = getNonWhitespaceLocByIndex(
                         valueStartSourceIndex,
                         valueStartSourceIndex + keywordIndex
                     )
-                    TooManyBindingPatterns(errorLoc, rawName, 1)
+                    TooManyBindingPatterns(errorLoc, rawName, 1, patterns.length)
                 }
-                if (!base.trim()) {
-                    return ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
-                }
-
-                // from 关键字后方的插槽名称必须是静态字符串字面量
-                // The slot name following the `from` keyword must be a static string literal.
-                const name = localAnalyzeInterpolation(base, baseStartSourceIndex)
-                if (
-                    name?.type !== "StringLiteral" &&
-                    (name?.type !== "TemplateLiteral" || name.expressions.length)
-                ) {
-                    ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
-                        getNonWhitespaceLocByIndex(
-                            baseStartSourceIndex,
-                            baseStartSourceIndex + base.length
-                        )
-                    )
-                }
+                recordContextPatterns(parsedDirective, patterns)
             }
             return
         }
@@ -127,23 +129,27 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (directive.valueEnclosure !== "none") {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!
-                analyzeResult.template.parsedDirectives.set(directive, {
+                const parsedDirective: ParsedDirective = {
+                    context: {
+                        returnsId: "",
+                        argId: ensureIdWithNumSuffix("_ctx")
+                    },
                     base,
                     keywordIndex,
+                    patterns: [],
                     baseStartSourceIndex
-                })
-
-                for (const pattern of patterns) {
-                    recordContextIdentifiers(pattern, true)
                 }
+                localAnalyzeInterpolation(base, baseStartSourceIndex)
+                analyzeResult.template.parsedDirectives.set(directive, parsedDirective)
+
                 if (patterns.length > 2) {
                     const errorLoc = getNonWhitespaceLocByIndex(
                         valueStartSourceIndex,
                         valueStartSourceIndex + keywordIndex
                     )
-                    TooManyBindingPatterns(errorLoc, rawName, 2)
+                    TooManyBindingPatterns(errorLoc, rawName, 2, patterns.length)
                 }
-                localAnalyzeInterpolation(base, baseStartSourceIndex)
+                recordContextPatterns(parsedDirective, patterns)
             }
             return
         }
@@ -184,20 +190,50 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
 
             if (directive.valueEnclosure !== "none") {
-                const pattern = parseContextPattern(rawValue)
-                if (isContextPattern(pattern?.elements[0])) {
-                    if (pattern.elements.length > 1) {
-                        RedundantContextPatternForDirective(
-                            getNonWhiteSpaceLocByLoc(directive.value.loc),
-                            rawName,
-                            1,
-                            pattern.elements.length
-                        )
-                    }
-                    recordContextIdentifiers(pattern.elements[0])
-                } else {
-                    InvalidContextPattern(getNonWhiteSpaceLocByLoc(directive.value.loc))
+                const patterns: ContextPattern[] = []
+                const parseResult = parseContextPattern(rawValue)
+
+                const reportInvalidPattern = (start: number, end: number) => {
+                    InvalidContextPattern(getNonWhitespaceLocByIndex(start, end))
                 }
+
+                if (!parseResult) {
+                    reportInvalidPattern(
+                        valueStartSourceIndex,
+                        valueStartSourceIndex + rawValue.length
+                    )
+                } else {
+                    for (const element of parseResult.elements) {
+                        if (isContextPattern(element)) {
+                            patterns.push(element)
+                        } else {
+                            reportInvalidPattern(
+                                valueStartSourceIndex + element.start!,
+                                valueStartSourceIndex + element.end!
+                            )
+                        }
+                    }
+                }
+                if (!patterns.length) {
+                    return
+                }
+                if (patterns.length > 1) {
+                    TooManyBindingPatterns(
+                        getNonWhiteSpaceLocByLoc(directive.value.loc),
+                        rawName,
+                        1,
+                        patterns.length
+                    )
+                }
+
+                const parsedDirective: ParsedDirective = {
+                    base: "",
+                    patterns: [],
+                    keywordIndex: -1,
+                    baseStartSourceIndex: valueStartSourceIndex
+                }
+                recordContextPatterns(parsedDirective, patterns)
+                analyzeResult.template.parsedDirectives.set(directive, parsedDirective)
             }
             return
         }
@@ -256,55 +292,46 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         localAnalyzeInterpolation(rawValue, valueStartSourceIndex)
     }
 
-    // 将指令产生的上下边标识符记录到节点
-    // Record the upper and lower edge identifiers generated by the directive on the node.
-    function recordContextIdentifiers(pattern: ContextPattern | null, reactive = false) {
-        let sourceRange: Range = [valueStartSourceIndex, valueStartSourceIndex]
+    function recordContextPatterns(
+        parsedDirective: ParsedDirective,
+        patternNodes: ContextPattern[]
+    ) {
+        for (const patternNode of patternNodes) {
+            const validIdentifiers = new Set<string>()
+            const parsedPattern: ParsedPattern = {
+                node: patternNode,
+                directive: parsedDirective,
+                declaredIdentifiers: validIdentifiers,
+                sourceRange: [valueStartSourceIndex, valueStartSourceIndex]
+            }
+            parsedDirective.patterns.push(parsedPattern)
 
-        const validIdentifiers: string[] = []
-        if (pattern) {
-            if (inputDescriptor.options.sourcemap) {
-                walkEstree(pattern, {
-                    AnyNode(node) {
-                        markNeedSourcemap(node, valueStartSourceIndex)
-                    }
+            if (patternNode) {
+                if (inputDescriptor.options.sourcemap) {
+                    walkEstree(patternNode, {
+                        AnyNode(node) {
+                            markNeedSourcemap(node, valueStartSourceIndex)
+                        }
+                    })
+                }
+                parsedPattern.sourceRange = [
+                    valueStartSourceIndex + patternNode.start!,
+                    valueStartSourceIndex + patternNode.end!
+                ]
+                walkPatternIdentifiers(patternNode, ({ name }) => {
+                    validIdentifiers.add(name)
+                    analyzeResult.script.fullIdentifiers.add(name)
+                    nodeContext.contextIdentifiers[name] = parsedDirective
                 })
             }
-            sourceRange = [
-                valueStartSourceIndex + pattern.start!,
-                valueStartSourceIndex + pattern.end!
-            ]
-            walkPatternIdentifiers(pattern, ({ name }) => {
-                validIdentifiers.push(name)
-                analyzeResult.script.fullIdentifiers.add(name)
-
-                if (!reactive) {
-                    nodeContext.contextIdentifiers[name] = ""
-                } else if (!inputDescriptor.options.debug) {
-                    nodeContext.contextIdentifiers[name] = name
-                } else {
-                    nodeContext.contextIdentifiers[name] = ensureIdWithPrefix(name)
-                }
-            })
-        }
-        if (pattern && !validIdentifiers.length) {
-            EmptyContextPattern(
-                getNonWhitespaceLocByIndex(
-                    valueStartSourceIndex + pattern.start!,
-                    valueStartSourceIndex + pattern.end!
+            if (patternNode && validIdentifiers.size === 0) {
+                EmptyContextPattern(
+                    getNonWhitespaceLocByIndex(
+                        valueStartSourceIndex + patternNode.start!,
+                        valueStartSourceIndex + patternNode.end!
+                    )
                 )
-            )
+            }
         }
-
-        const { parsedPatterns } = analyzeResult.template
-        if (!parsedPatterns.has(directive)) {
-            parsedPatterns.set(directive, [])
-        }
-        parsedPatterns.get(directive)?.push({
-            reactive,
-            sourceRange,
-            node: pattern,
-            declaredIdentifiers: validIdentifiers
-        })
     }
 }

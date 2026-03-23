@@ -24,11 +24,12 @@ export function matchGlobalError(pattern: string | RegExp, isRejection = false) 
 // 匹配验证编译消息列表
 // Match and validate the compile message list
 export function matchCompileMessages(expectedMessages: ExpectedCompileMessage[]) {
+    expect(messages.length).toBe(expectedMessages.length)
+
     for (let i = 0; i < messages.length; i++) {
         const [item, expected] = [messages[i], expectedMessages[i]]
-        expect(item.type).toBe(expected.type)
-        expect(item.value.message).toBe(expected.value)
-        expect([item.value.loc.start.index, item.value.loc.end.index]).toEqual(expected.range)
+        expect(expected.type).toBe(item.type)
+        expect(expected.value).toBe(item.value.message)
+        expect(expected.range).toEqual([item.value.loc.start.index, item.value.loc.end.index])
     }
-    expect(messages.length).toBe(expectedMessages.length)
 }

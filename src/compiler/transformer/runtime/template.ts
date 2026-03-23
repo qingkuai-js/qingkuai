@@ -14,13 +14,13 @@ import {
     shouldExtractCommonString
 } from "../../../util/compiler/sundry"
 import {
-    getParsedPatterns,
     getParsedEventInfo,
     getParsedExpression,
     getPrevElementContext,
     getNextElementContent,
     getTemplateNodeContext,
-    getParsedComponentTag
+    getParsedComponentTag,
+    getParsedDirective
 } from "../../../util/compiler/template"
 import { jsValidIdentifierRE } from "../../regular"
 import { isNull } from "../../../util/shared/assert"
@@ -29,7 +29,7 @@ import { generateFramgmentSelection } from "./fragment"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
-import { generateContextDeclaration, writeParsedPatterns } from "./context"
+import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
@@ -94,14 +94,14 @@ export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: Templat
         }
 
         if ((generateTemplateRender(writer, node.children), hasFragmentContent)) {
-            generateFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!.id)
+            writeFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!.id)
         }
 
         insertPostfix?.()
     }
 
     if (byComponent) {
-        generateFragmentAttachment(writer, generateIdentifier.anchor, componentFragment!.id)
+        writeFragmentAttachment(writer, generateIdentifier.anchor, componentFragment!.id)
     }
 }
 
@@ -205,12 +205,12 @@ function generateDirectiveBlock(
             }
             return generateDirectiveRender({
                 arg() {
-                    const pattern = getParsedPatterns(directive)?.[0]
-                    if (!pattern) {
+                    const patterns = getParsedDirective(directive)?.patterns
+                    if (!patterns) {
                         writer.write(getterArgId)
                     } else {
                         writer.write("(")
-                        writeParsedPatterns(writer, [pattern]).write(")")
+                        writeContextPatterns(writer, patterns).write(")")
                     }
                 },
                 enclosure() {
@@ -224,7 +224,8 @@ function generateDirectiveBlock(
         }
 
         case "#for": {
-            const patterns = getParsedPatterns(directive)
+            const parsedDirective = getParsedDirective(directive)!
+            const patterns = parsedDirective.patterns
             const keyDirective = nodeContext.attributesMap["#key"]
             writer.wrapLine().write(`${internalId}.listBlock(`).indent()
 
@@ -236,48 +237,60 @@ function generateDirectiveBlock(
             writer.writeParsedExpression(directive).write("),").wrapLine()
 
             if (keyDirective) {
-                if (!patterns) {
+                if (!patterns.length) {
                     writer.write(getterArgId)
                 } else {
                     writer.write("(")
-                    writeParsedPatterns(writer, patterns).write(")")
+                    writeContextPatterns(writer, patterns).write(")")
                 }
-                writer.write(` => (`).writeParsedExpression(keyDirective).writeLine("),")
+                writer.write(" => {").indent().write("return ")
+                writer.writeParsedExpression(keyDirective).dedent().writeLine("},")
             }
             return generateDirectiveRender({
                 enclosure() {
                     writer.dedent().write(")")
                 },
-                context() {
-                    generateContextDeclaration(writer, nodeContext, directive)
-                },
                 arg() {
-                    if (keyDirective) {
-                        writer.write(
-                            `(${nodeContext.anchorId}, ${generateIdentifier.contextGetter})`
-                        )
+                    if (!patterns.length) {
+                        writer.write(getterArgId)
                     } else {
-                        writer.write(generateIdentifier.contextGetter)
+                        writer.write(parsedDirective.context!.argId)
+                    }
+                },
+                context() {
+                    writeContextDeclaration(writer, directive)
+                },
+                returns() {
+                    if (parsedDirective.context?.returnsId) {
+                        writer.wrapLine().write(`return ${parsedDirective.context.returnsId}`)
                     }
                 }
             })
         }
     }
 
-    function generateDirectiveRender(insert?: {
-        arg?: GeneralFunc
-        context?: GeneralFunc
-        enclosure?: GeneralFunc
-    }): GeneralFunc {
+    function generateDirectiveRender(
+        insert?: Partial<{
+            arg: GeneralFunc
+            context: GeneralFunc
+            returns: GeneralFunc
+            enclosure: GeneralFunc
+        }>
+    ): GeneralFunc {
         if (insert?.arg) {
             insert.arg()
         } else {
             writer.write(getterArgId)
         }
         writer.write(" => {").indent(false)
+        insert?.context?.()
 
-        const childEnclosure = (insert?.context?.(), generateNextDirective())
-        return () => (childEnclosure?.(), writer.dedent().write("}"), insert?.enclosure?.())
+        return () => {
+            generateNextDirective()
+            insert?.returns?.()
+            writer.dedent().write("}")
+            insert?.enclosure?.()
+        }
     }
 }
 
@@ -452,6 +465,7 @@ function generateRenderEffect(
                 generateSetAttributeCall(attribute, true)
             }
 
+            // text contents
             if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
                 generateRenderEffectCall().wrapLine()
                 writer.write(`${internalId}.setText(`)
@@ -482,7 +496,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
 
     const generateSlotName = () => {
         const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
-        return generateContextKey(slotName, writer)
+        return writeContextKey(slotName, writer)
     }
     if (!hasDefaultContent) {
         writer.wrapLine().write(`${contextId}.s?.`)
@@ -504,7 +518,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
             for (const attribute of nodeContext.dynamicAttributes) {
                 const baseName = getAttributeBaseName(attribute.name.raw)
                 insertTrailingComma()
-                generateContextKey(baseName, writer)
+                writeContextKey(baseName, writer)
                 writer.write(": ").writeParsedExpression(attribute)
             }
             for (const attribute of nodeContext.staticAttributes) {
@@ -513,7 +527,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
                     continue
                 }
                 insertTrailingComma()
-                generateContextKey(attribute.name.raw, writer).write(": ")
+                writeContextKey(attribute.name.raw, writer).write(": ")
                 writer.write(
                     attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true"
                 )
@@ -529,7 +543,6 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
-    const contextGetterId = generateIdentifier.contextGetter
     const componentTagParts = getParsedComponentTag(nodeContext.node)!
 
     const hasSlots = nodeContext.node.children.some(child => {
@@ -570,7 +583,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.staticAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            generateContextKey(baseName, writer).write(": ")
+            writeContextKey(baseName, writer).write(": ")
 
             if (!attribute.equalSign) {
                 writer.write("true")
@@ -585,7 +598,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = getParsedExpression(event)!
             const baseName = getParsedEventInfo(event)!.eventName.slice(1)
             insertTrailingComma()
-            generateContextKey(baseName, writer)
+            writeContextKey(baseName, writer)
             writer.write(": ").write(`${getterArgId} => (`)
 
             if (isInlineEventHandler(expression.node)) {
@@ -600,7 +613,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.dynamicAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            generateContextKey(baseName, writer).write(": ")
+            writeContextKey(baseName, writer).write(": ")
             writer.write(`${getterArgId} => (`).writeParsedExpression(attribute).write(")")
         }
 
@@ -612,7 +625,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             if (attribute !== nodeContext.referenceAttributes[0]) {
                 insertTrailingComma()
             }
-            generateContextKey(getAttributeBaseName(attribute.name.raw), writer)
+            writeContextKey(getAttributeBaseName(attribute.name.raw), writer)
             writer.write(": [").indent().write(`${getterArgId} => (`)
             writer.write(getParsedExpression(attribute)!.source).writeLine("),")
             writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
@@ -633,17 +646,17 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
             const slotDirective = childContext.attributesMap["#slot"]
             const expression = slotDirective && getParsedExpression(slotDirective)
-            const pattern = slotDirective && getParsedPatterns(slotDirective)?.[0]
             const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
+            const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
             const slotName = expression ? (expression.node as StringLiteral).value : "default"
             insertTrailingComma()
-            generateContextKey(slotName, writer).write(`: (${anchorId}`)
+            writeContextKey(slotName, writer).write(`: (${anchorId}`)
 
-            if (pattern) {
-                writer.write(", ").write(contextGetterId)
+            if (patterns.length) {
+                writer.write(", ")
+                writeContextPatterns(writer, patterns)
             }
             writer.write(") => {").indent(false)
-            generateContextDeclaration(writer, childContext, slotDirective)
             generateTemplateRender(writer, [child])
             writer.dedent().write("}")
         }
@@ -685,17 +698,13 @@ function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
     return getParsedExpression(attribute)!.reactive
 }
 
-function generateContextKey(str: string, writer: RuntimeCodeWriter) {
+function writeContextKey(str: string, writer: RuntimeCodeWriter) {
     if (jsValidIdentifierRE.test(str) && !shouldExtractCommonString(str)) {
         return writer.write(str)
     }
     return writer.write(`[${getMaybeReusedString(str)}]`)
 }
 
-function generateFragmentAttachment(
-    writer: RuntimeCodeWriter,
-    anchorId: string,
-    fragmentId: string
-) {
-    writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
+function writeFragmentAttachment(writer: RuntimeCodeWriter, anchorId: string, fragmentId: string) {
+    return writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
 }

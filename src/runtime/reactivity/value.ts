@@ -115,7 +115,7 @@ function destructuringReactGen(reactFn: ReturnType<typeof reactGen>) {
     return (dfn: DestructuringFunc, target: any, debugSetters?: Setter[]) => {
         const ret: any[] = []
         const values = dfn(target)
-        for (let i = 0; i < len(values); i += 2) {
+        for (let i = 0; i < values.length; i += 2) {
             ret.push(values[i + 1] ? reactFn(values[i], debugSetters?.[i / 2]) : values[i])
         }
         return ret
@@ -213,7 +213,7 @@ function createReactivityWrapper(target: any, flag: number, debugSetter: Setter 
 
                         // 修改数组的 length 属性时，需以被删除的索引调度更新
                         if (originElems) {
-                            for (let i = 0; i < len(originElems); i++) {
+                            for (let i = 0; i < originElems.length; i++) {
                                 let scheduleFlag = LINK_OWN_CHANGED
                                 const index = i + value
                                 if (!(i in target)) {

@@ -31,7 +31,6 @@ function newGenerateIdentifier(): GenerateIdentifier {
         internal: "",
         getterArg: "",
         setterArg: "",
-        contextGetter: "",
         suffix: newCleanObj(),
         prefix: newCleanObj()
     }
@@ -50,7 +49,6 @@ function newAnalyzeResult(): AnalyzeResult {
             componentFragment: null,
             compressStringsCount: 0,
             parsedDirectives: new Map(),
-            parsedPatterns: new Map(),
             parsedExpressions: new Map(),
             staticTextContents: new Map(),
             parsedComponentTags: new Map(),
