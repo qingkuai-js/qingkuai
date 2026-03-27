@@ -1,5 +1,3 @@
-import { len } from "./sundry"
-
 export const arrayFrom: typeof Array.from = (...args: [any]) => {
     return Array.from(...args)
 }
@@ -8,16 +6,12 @@ export function emptyArr(arr: any[]) {
     arr.length = 0
 }
 
-export function getLastIndex(arr: ArrayLike<any>) {
-    return len(arr) - 1
-}
-
 export function swapDelete(arr: any[], index: number) {
     if (index < 0) {
         return
     }
 
-    const lastIndex = getLastIndex(arr)
+    const lastIndex = arr.length - 1
     if (lastIndex < 0) {
         return
     } else if (lastIndex > 0) {
@@ -29,7 +23,7 @@ export function swapDelete(arr: any[], index: number) {
 }
 
 export function getLastElem<T>(arr: ArrayLike<T>): T | undefined {
-    return arr[getLastIndex(arr)]
+    return arr[arr.length - 1]
 }
 
 // 修改数组为另一个数组，与直接赋值不同的是此方法将会保留对原数组的引用

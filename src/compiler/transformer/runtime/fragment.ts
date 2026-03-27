@@ -6,20 +6,24 @@ import type {
 import type { RuntimeCodeWriter } from "../writer"
 
 import {
+    omitQuoteAttrValueRE,
+    atLeastOneWhitespaceRE,
+    interpolatedAttrStartCharRE
+} from "../../regular"
+import {
     getTemplateNodeContext,
     getGeneratedStaticTextContent
 } from "../../../util/compiler/template"
-import {
-    ensureIdWithPrefix,
-    getMaybeReusedString,
-    ensureIdWithNumSuffix,
-    increaseCompressStringUsedTimes
-} from "../../../util/compiler/sundry"
 import { getLastElem } from "../../../util/shared/arrays"
+import { newCleanObj } from "../../../util/shared/sundry"
+import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { CREATE_ANCHOR_DIRECTIVES, SPREAD_TAG } from "../../constants"
-import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import { interpolatedAttrStartCharRE, omitQuoteAttrValueRE } from "../../regular"
+import {
+    FRAG_LEADING_ANCHOR,
+    FRAG_ORPHAN_CONTENT,
+    FRAG_WHOLE_CONTENT
+} from "../../../util/shared/flags"
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
     if (!nodes.length) {
@@ -33,6 +37,7 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
         const fragment: TemplateFragment = {
             id: "",
             content: [],
+            nodeContext,
             getterId: "",
             selections: [],
             getWith: undefined,
@@ -155,10 +160,15 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             } else {
                 fragment.content.push(`<${node.tag}`)
             }
+
             for (const attribute of node.attributes) {
                 const rawName = attribute.name.raw
                 const rawValue = attribute.value.raw
-                if (!interpolatedAttrStartCharRE.test(rawName[0])) {
+                const isStaticClass = rawName === "class"
+                if (
+                    !interpolatedAttrStartCharRE.test(rawName[0]) &&
+                    (!isStaticClass || !nodeContext.attributesMap["!class"])
+                ) {
                     fragment.content.push(" ")
                     fragment.content.push(rawName)
 
@@ -170,8 +180,20 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                         if (!couldOmitQuote) {
                             fragment.content.push(quote)
                         }
-                        fragment.content.push(rawValue)
-
+                        if (isStaticClass) {
+                            const className = rawValue.replaceAll(atLeastOneWhitespaceRE, " ")
+                            const classList = className.trim().split(" ")
+                            for (let i = 0; i < classList.length; i++) {
+                                if (classList[i]) {
+                                    fragment.content.push(classList[i])
+                                }
+                                if (i !== classList.length - 1) {
+                                    fragment.content.push(" ")
+                                }
+                            }
+                        } else {
+                            fragment.content.push(rawValue)
+                        }
                         if (!couldOmitQuote) {
                             fragment.content.push(quote)
                         }
@@ -197,99 +219,91 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
 
     for (const fragment of fragments) {
         const joinedContent = fragment.content.join("")
-        if ((fragment.getWith = existingFragmentContentMap[joinedContent])) {
-            continue
+        const existingFragment = existingFragmentContentMap[joinedContent]
+        if (existingFragment) {
+            fragment.getWith = existingFragment
         } else {
             existingFragmentContentMap[joinedContent] = fragment
-        }
-        for (const str of fragment.content) {
-            increaseCompressStringUsedTimes(str)
         }
     }
     return fragments
 }
 
-export function generateTemplateFragments(
+export function writeFragmentGetterDeclarations(
     writer: RuntimeCodeWriter,
     fragments: TemplateFragment[]
 ) {
-    let compressStringsId = ""
-    let hasDeclaration = false
-
-    const validCompressStrings: string[] = []
-    const internalId = generateIdentifier.internal
-
-    traverseObject(analyzeResult.template.compressStrings, (key, value) => {
-        if (value.times > 1) {
-            analyzeResult.template.compressStrings[key].index = validCompressStrings.length
-            validCompressStrings.push(getMaybeReusedString(key))
-        }
-    })
-
-    // 生成压缩字符串数组声明
-    // Generate the declaration for the compressed strings array.
-    if (validCompressStrings.length) {
-        compressStringsId = ensureIdWithPrefix("_compressStrings")
-
-        if (validCompressStrings.length > 10) {
-            for (let i = 0; i < validCompressStrings.length; i++) {
-                if (i === 0) {
-                    writer.write(`const ${compressStringsId} = [`).indent()
-                }
-                writer.write(
-                    `${validCompressStrings[i]},${i === validCompressStrings.length - 1 ? "" : "\n"}`
-                )
-            }
-            writer.dedent().writeLine("]")
-        } else {
-            writer.writeLine(`const ${compressStringsId} = [${validCompressStrings.join(", ")}]`)
-        }
-    }
-
-    // 生成 FragmentGetter 声明
-    // Generate the FragmentGetter declaration
+    let hasFragmentGetterDeclaration = false
     for (const fragment of fragments) {
         if (!fragment.content.length) {
             continue
         }
-
-        let joinedContent = fragment.content.reduce((ret, cur) => {
-            const info = analyzeResult.template.compressStrings[cur]
-            if (!info || info.index === -1) {
-                return ret + cur
-            }
-            return ((fragment.usedCompressString = true), ret + "/" + info.index)
-        }, "")
-        hasDeclaration = true
-        joinedContent = joinedContent.replaceAll("`", "\\`")
-
-        if (inputDescriptor.options.debug) {
-            joinedContent = joinedContent.replaceAll("\n", "\\n")
-        }
         if (fragment.getWith) {
-            fragment.getterId = fragment.getWith.getterId
+            fragment.getterId = fragment.getWith!.getterId
         } else {
-            const arg =
-                validCompressStrings.length && fragment.usedCompressString
-                    ? `, ${compressStringsId}`
-                    : ""
-            writer.write(`const ${(fragment.getterId = ensureIdWithNumSuffix("_getFragment"))}`)
-            writer.write(` = ${internalId}.createFragmentGetter(\`${joinedContent}\`${arg})\n`)
+            const internalId = generateIdentifier.internal
+            const joinedContent = fragment.content.join("")
+            const compressStringsId = generateIdentifier.compressStrings
+            const fragmentGetterId = ensureIdWithNumSuffix("_getFragment")
+            fragment.getterId = fragmentGetterId
+            writer.write(`const ${fragmentGetterId} = `)
+            writer.write(`${internalId}.createFragmentGetter(`)
+
+            let stringifiedContent = `\`${joinedContent.replaceAll("`", "\\`")}\``
+            if (inputDescriptor.options.debug) {
+                stringifiedContent = stringifiedContent.replaceAll("\n", "\\n")
+            }
+            writer.write(stringifiedContent)
+
+            if (fragment.usedCompressString) {
+                writer.write(`, ${compressStringsId}`)
+            }
+            writer.writeLine(")")
+            hasFragmentGetterDeclaration = true
         }
     }
-    return (hasDeclaration && writer.wrapLine(), writer)
+    if (hasFragmentGetterDeclaration) {
+        writer.wrapLine()
+    }
+    return writer
 }
 
-export function generateFramgmentSelection(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
+export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
+    let fragmentFlag = 0
+    const flagInterpretive: string[] = []
+    const isOrphan = fragment.directChildrenCount === 1
+    if (isFragmentWholeContent(fragment)) {
+        fragmentFlag |= FRAG_WHOLE_CONTENT
+        flagInterpretive.push("WHOLE_CONTENT")
+    }
+    if (isFragmentNeedLeadingAnchor(fragment)) {
+        fragmentFlag |= FRAG_LEADING_ANCHOR
+        flagInterpretive.push("LEADING_ANCHOR")
+    }
+    if (isOrphan) {
+        fragmentFlag |= FRAG_ORPHAN_CONTENT
+        flagInterpretive.push("ORPHAN_CONTENT")
+        fragment.id = fragment.selections[0]?.id ?? ""
+    }
+    if (!fragment.id) {
+        fragment.id = ensureIdWithNumSuffix("_fragment")
+    }
     const internalId = generateIdentifier.internal
-    const fragmentId = (fragment.id = ensureIdWithNumSuffix("_fragment"))
-    writer.wrapLine().write(`const ${fragmentId} = ${fragment.getterId}()`)
+    const interpretiveComment =
+        fragmentFlag && inputDescriptor.options.interpretiveComments
+            ? `/* ${flagInterpretive.join(" | ")} */ `
+            : ""
+    writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`)
+    writer.write(`${fragmentFlag ? `${interpretiveComment}${fragmentFlag}` : ""})`)
 
     for (const selection of fragment.selections) {
+        if (isOrphan && selection === fragment.selections[0]) {
+            continue
+        }
         writer.wrapLine().write(`const ${selection.id} = `)
         writer.write(
             `${internalId}.getChild${selection.replaceWithText ? "AsText" : ""}(${
-                selection.parent ?? fragmentId
+                selection.parent ?? fragment.id
             }${selection.index ? `, ${selection.index}` : ""})`
         )
 
@@ -324,4 +338,47 @@ function getPrevHasDirectiveSibling(node: TemplateNode) {
         node = node.prev
     }
     return node.prev
+}
+
+function isFragmentWholeContent(fragment: TemplateFragment) {
+    const nodeContext = fragment.nodeContext
+    if (!nodeContext?.node.parent) {
+        return false
+    }
+
+    for (const sibling of nodeContext.node.parent.children) {
+        const siblingContext = getTemplateNodeContext(sibling)
+        if (siblingContext === nodeContext) {
+            continue
+        }
+        if (siblingContext.fragment) {
+            return false
+        }
+        switch (sibling.tag) {
+            case "slot": {
+                return false
+            }
+            case SPREAD_TAG: {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+function isFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
+    const nodeContext = fragment.nodeContext
+    if (!nodeContext) {
+        return false
+    }
+    return nodeContext.node.children.some(child => {
+        if (child.tag === SPREAD_TAG) {
+            return true
+        }
+
+        const childContext = getTemplateNodeContext(child)
+        return childContext.sortedDirectives.some(directive => {
+            return directive.name.raw !== "#slot"
+        })
+    })
 }

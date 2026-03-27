@@ -1,6 +1,6 @@
 import type { ArbitraryFunc, Getter, Setter } from "#type-declarations/tools"
 
-import { len, newCleanObj } from "../util/shared/sundry"
+import { newCleanObj } from "../util/shared/sundry"
 import { aliasSetterToTarget, aliasTargetDescriptors } from "./state"
 import { defineProperties, getOwnPropertyDescriptor } from "../util/shared/aliases"
 
@@ -10,7 +10,7 @@ export function alias(getter: Getter, setter: Setter) {
 
 export const destructuringAlias = stripErrorStack((getters: Getter[], setters: Setter[]) => {
     const ret: any[] = []
-    for (let i = 0; i < len(getters); i++) {
+    for (let i = 0; i < getters.length; i++) {
         const acceesor: any = {}
         const [target, key] = getters[i]()
 

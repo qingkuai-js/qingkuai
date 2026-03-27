@@ -7,7 +7,7 @@ import {
     KEY_ENTER,
     KEY_ESCAPE,
     KEY_SPACE,
-    KEY_DELETE,
+    KEY_DELETE
 } from "../util/shared/flags"
 
 // aliases
@@ -43,5 +43,5 @@ export const KEY_FLAG_MAP = {
 }
 
 // symbols
-export const QK_FRAGMENT = Symbol("qk:fragment")
-export const NODE_CONTEXT = Symbol("qk:node_context")
+export const NODE_CONTEXT = Symbol("qk: nodecontext")
+export const FRAGMENT_FLAG = Symbol("qk: fragment flag")

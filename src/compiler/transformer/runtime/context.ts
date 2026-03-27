@@ -19,7 +19,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
     const setterArgId = generateIdentifier.setterArg
     const isDebugMode = inputDescriptor.options.debug
     for (const pattern of patterns) {
-        if (isDebugMode || (pattern.node && pattern.node.type !== "Identifier")) {
+        if (isDebugMode || pattern.node) {
             declaredIds.push(...pattern.declaredIdentifiers)
         }
     }
@@ -27,43 +27,59 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
         return writer
     }
 
+    if (!isDebugMode) {
+        const hasDestructuring = patterns.some(
+            pattern => pattern.node && pattern.node.type !== "Identifier"
+        )
+        if (!hasDestructuring) {
+            return writer
+        }
+    }
+
     const setterId = (parsedDirective.context!.returnsId = ensureIdWithNumSuffix("_S"))
     writer.wrapLine().write(`let ${declaredIds.join(", ")};`)
     writer.wrapLine().write(`const ${setterId} = ${setterArgId} => (`)
     writer.write(multiPatterns ? "[" : "")
-    writeContextPatterns(writer, patterns, true)
+    writeContextPatterns(writer, patterns, true, !isDebugMode)
     writer.write(multiPatterns ? "]" : "").write(` = `)
     writer.write(multiPatterns ? "[" : "")
 
     for (let i = 0; i < patterns.length; i++) {
-        writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}`)
-
-        if (i < patterns.length - 1) {
+        const pattern = patterns[i]
+        const shouldWrite = isDebugMode || (pattern.node && pattern.node.type !== "Identifier")
+        if (i && shouldWrite) {
             writer.write(", ")
         }
+        if (shouldWrite) {
+            writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}`)
+        }
     }
-    return writer.writeLine(multiPatterns ? "])" : ")") .writeLine(`${setterId}(${contextId})`)
+    return writer.writeLine(multiPatterns ? "])" : ")").writeLine(`${setterId}(${contextId})`)
 }
 
 export function writeContextPatterns(
     writer: RuntimeCodeWriter,
     patterns: ParsedPattern[],
-    omitNull = false
+    omitNull = false,
+    destructuring = false
 ) {
     for (let i = 0; i < patterns.length; i++) {
         const pattern = patterns[i]
+        const shouldWrite = !destructuring || pattern.node?.type !== "Identifier"
+        if (i && shouldWrite) {
+            writer.write(", ")
+        }
         if (pattern.node) {
-            writer.writeEditedScript(
-                new CodeEditor(
-                    inputDescriptor.source.slice(...pattern.sourceRange),
-                    pattern.sourceRange[0]
+            if (shouldWrite) {
+                writer.writeEditedScript(
+                    new CodeEditor(
+                        inputDescriptor.source.slice(...pattern.sourceRange),
+                        pattern.sourceRange[0]
+                    )
                 )
-            )
+            }
         } else if (!omitNull) {
             writer.write(generateIdentifier.getterArg)
-        }
-        if (i < patterns.length - 1) {
-            writer.write(", ")
         }
     }
     return writer

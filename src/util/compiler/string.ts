@@ -14,12 +14,12 @@ import {
     kebabWholeRE,
     jsValueCharRE,
     nonWhitespaceRE,
-    jsValidIdentifierRE,
     jsStartRegexKeywordsRE,
     jsStringLiteralQuoteRE,
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
 import { stringify } from "../shared/aliases"
+import { isValidIdentifier } from "@babel/types"
 import { escapeRegExpSource } from "../shared/sundry"
 import { isString, isUndefined } from "../shared/assert"
 
@@ -28,7 +28,7 @@ export const findOutOfComment: FindOutOfCommentFunc = findOutOfGen(false, true)
 export const findOutOfLiteralComment: FindOutOfLiteralCommentFunc = findOutOfGen(true, true)
 
 export const toPropertyKey: ToPropertyKeyFunc = (str: string) => {
-    return jsValidIdentifierRE.test(str) ? str : stringify(str)
+    return isValidIdentifier(str, true) ? str : stringify(str)
 }
 
 export const findEndBracket: FindEndBracketFunc = (str: string) => {
@@ -54,7 +54,7 @@ export const camel2Kebab: Camel2KebabFunc = (str: string, allowFullLower = true)
 }
 
 export const kebab2Camel: Kebab2CamelFunc = (str: string, startWithUppercase = false) => {
-    return str.replace(startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE, s => {
+    return str.replaceAll(startWithUppercase ? kebabWholeRE : kebabWithoutFirstLetterRE, s => {
         return s === "-" ? "" : s.toUpperCase()
     })
 }

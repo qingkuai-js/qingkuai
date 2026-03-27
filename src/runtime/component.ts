@@ -4,6 +4,7 @@ import type {
     ComponentContext,
     ComponentInstance
 } from "#type-declarations/runtime"
+import type { AnyObject } from "#type-declarations/tools"
 
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
@@ -13,7 +14,7 @@ import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
 import { stripPrototype } from "../util/shared/sundry"
 import { isFunction, isString } from "../util/shared/assert"
-import { any, createProxy, len, runAll } from "../util/shared/sundry"
+import { any, createProxy, runAll } from "../util/shared/sundry"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
@@ -46,7 +47,7 @@ export function init(context: ComponentContext) {
 }
 
 export function runHooks(instance: ComponentInstance, index: number) {
-    if (len(instance.h[index])) {
+    if (instance.h[index]?.length) {
         runAll(instance.h[index]!)
     }
 }
@@ -84,7 +85,7 @@ function hooksRegisterGen() {
     return hookRegisters
 }
 
-function initRefs(transformed: any, defaults: any) {
+function initRefs(transformed: AnyObject | undefined, defaults: any) {
     if (transformed && stripPrototype(transformed)) {
         return createProxy(
             {},
@@ -110,7 +111,7 @@ function initRefs(transformed: any, defaults: any) {
     }
 }
 
-function initProps(transformed: any, defaults: any) {
+function initProps(transformed: AnyObject | undefined, defaults: any) {
     if (transformed && stripPrototype(transformed)) {
         createProxy(
             {},
@@ -133,7 +134,7 @@ function initProps(transformed: any, defaults: any) {
     }
 }
 
-function initSlots(transformed: any) {
+function initSlots(transformed: AnyObject | undefined) {
     if (transformed && stripPrototype(transformed)) {
         return createProxy(
             {},

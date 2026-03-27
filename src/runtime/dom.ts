@@ -2,8 +2,9 @@ import type { NodeContext } from "#type-declarations/runtime"
 
 import { any } from "../util/shared/sundry"
 import { currentDestruction } from "./state"
-import { isUndefined } from "../util/shared/assert"
-import { DOCUMENT, NODE_CONTEXT, QK_FRAGMENT } from "./constants"
+import { isString, isUndefined } from "../util/shared/assert"
+import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG } from "./constants"
+import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
 
 export function newTextNode() {
     return DOCUMENT!.createTextNode("")
@@ -13,13 +14,12 @@ export function selectElement(selector: string) {
     return DOCUMENT!.querySelector(selector)
 }
 
-export function setText(text: Text, content: any) {
-    const context = getNodeContext(text, false)
-    if (((content = "" + content), context)) {
-        context.a.v = content
+export function setText(text: any, content: any) {
+    if (!isString(content)) {
+        content = "" + content
     }
-    if ((!context || context.a.d) && text.nodeValue != content) {
-        text.nodeValue = content
+    if (content !== text[NODE_CONTEXT]) {
+        text[NODE_CONTEXT] = text.nodeValue = content
     }
 }
 
@@ -28,10 +28,17 @@ export function getElementValue(elem: HTMLElement) {
 }
 
 export function getChild(node: Element, index = 0) {
-    if ((node as any)[QK_FRAGMENT]) {
+    if (((node as any)[FRAGMENT_FLAG] ?? 0) & FRAG_LEADING_ANCHOR) {
         index++
     }
     return node.childNodes[index]
+}
+
+export function getNodeContext(elem: any): NodeContext {
+    return (elem[NODE_CONTEXT] ??= {
+        a: {},
+        e: {}
+    })
 }
 
 export function appendChild(target: Element, node: Node) {
@@ -44,6 +51,7 @@ export function getSibling(node: ChildNode, distance = 1) {
     }
     return node
 }
+
 export function getChildAsText(target: Element, index = 0) {
     const textNode = newTextNode()
     const child = getChild(target, index)
@@ -54,34 +62,33 @@ export function insertBefore(reference: ChildNode, node: Node) {
     reference.before(node)
 }
 
-export function getNodeContext(elem: any, create = true): NodeContext {
-    if (create) {
-        elem[NODE_CONTEXT] ??= {
-            a: {},
-            e: {}
-        }
-    }
-    return elem[NODE_CONTEXT]
-}
-
 // 创建一个 HTML 片段获取器，重复获取时返回原片段的克隆副本以降低开销
 // Create an HTML fragment getter that returns a cloned instance
 // of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
-    let fragment: DocumentFragment | undefined
-    const template = DOCUMENT!.createElement("template")
-    return () => {
-        if (isUndefined(fragment)) {
+    let content: ChildNode | DocumentFragment | undefined
+    return (flag = 0) => {
+        const isOrphan = flag & FRAG_ORPHAN_CONTENT
+        if (isUndefined(content)) {
+            const template = DOCUMENT!.createElement("template")
             template.innerHTML = arr ? restoreHtmlForFragment(html, arr) : html
-            fragment = template.content
-            fragment.prepend(newTextNode())
+
+            const fragmentContent = template.content
+            if (flag & FRAG_LEADING_ANCHOR) {
+                ;(content = fragmentContent).prepend(newTextNode())
+            } else {
+                content = isOrphan ? fragmentContent.firstChild! : fragmentContent
+            }
         }
 
-        const ret = fragment.cloneNode(true) as DocumentFragment
-        if (currentDestruction) {
-            currentDestruction.n = [ret.firstChild, ret.lastChild]
+        const ret = content.cloneNode(true) as any
+        if (flag) {
+            ret[FRAGMENT_FLAG] = flag
         }
-        return (((ret as any)[QK_FRAGMENT] = true), ret)
+        if (currentDestruction) {
+            currentDestruction.r = ret
+        }
+        return ret
     }
 }
 
@@ -97,6 +104,7 @@ function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
         const nextCode = html.charCodeAt(++i)
         if (nextCode === 47) {
             ret += "/"
+            i++
             continue
         }
 

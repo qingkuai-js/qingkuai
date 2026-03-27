@@ -9,7 +9,7 @@ import {
 } from "../../../src/compiler/state"
 import {
     getTemplateFragments,
-    generateTemplateFragments
+    writeFragmentGetterDeclarations
 } from "../../../src/compiler/transformer/runtime/fragment"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { CodeEditor } from "../../../src/compiler/transformer/editor"
@@ -41,7 +41,7 @@ export function matchGeneratedFragment(
     const templateNodes = parseTemplate(source, PARSER_TEMPLATE_OPTIONS)
     generateIdentifier.internal = "_"
     ;(analyzeScript(), analyzeTemplate(templateNodes))
-    generateTemplateFragments(writer, getTemplateFragments(templateNodes))
+    writeFragmentGetterDeclarations(writer, getTemplateFragments(templateNodes))
     expect(writer.code.trim()).toBe(formatSourceCode(expected))
     return templateNodes
 }

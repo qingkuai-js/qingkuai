@@ -9,25 +9,32 @@ import { any, notEqual, optc } from "../util/shared/sundry"
 import { isArray, isBoolean, isString } from "../util/shared/assert"
 
 export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
-    const classList: string[] = []
+    let className = ""
     const attributes = getNodeContext(elem).a
     if (isString(value)) {
-        classList.push(value)
+        className = value
     } else if (isArray(value)) {
-        for (const item of value) {
-            if (isString(item)) {
-                classList.push(item)
+        for (let i = 0; i < value.length; i++) {
+            if (isString(value[i])) {
+                className += value[i]
             } else {
-                classList.push(getClassNameWithObject(item))
+                className += getClassNameWithObject(value[i])
+            }
+            if (i < value.length - 1) {
+                className += " "
             }
         }
     } else {
-        classList.push(getClassNameWithObject(value))
+        className += getClassNameWithObject(value)
     }
 
-    const className = classList.join(" ")
     if (className != attributes.class) {
-        attributes.class = elem.className = className
+        if (!className) {
+            elem.removeAttribute("class")
+        } else {
+            elem.className = className
+        }
+        attributes.class = className
     }
 }
 
@@ -98,11 +105,11 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
 }
 
 function getClassNameWithObject(o: AnyObject) {
-    const classList: string[] = []
+    let className = ""
     for (const key of objectKeys(o)) {
         if (isString(key) && o[key]) {
-            classList.push(key)
+            className += (className ? " " : "") + key
         }
     }
-    return classList.join(" ")
+    return className
 }

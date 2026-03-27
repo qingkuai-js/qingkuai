@@ -1,5 +1,5 @@
-import { stringify } from "../shared/aliases"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../compiler/state"
+import {} from "../shared/aliases"
+import { analyzeResult, generateIdentifier } from "../../compiler/state"
 
 export const createHashId = (function () {
     const existing = new Set<string>()
@@ -64,41 +64,4 @@ export function ensureIdWithNumSuffix(name: string, useOrigin = false) {
         }
     }
     return (fullIdentifiers.add(name), name)
-}
-
-export function increaseReusedStringUsedTimes(value: string) {
-    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
-        return
-    }
-    ;(analyzeResult.reusedStrings[value] ??= { id: "", times: 0 }).times++
-}
-
-export function shouldExtractCommonString(value: string) {
-    const count = analyzeResult.reusedStrings[value]?.times ?? 0
-    return count <= 1 ? false : count === 2 ? value.length > 4 : true
-}
-
-export function getMaybeReusedString(value: string) {
-    let ret: string | undefined
-    if (!(ret = analyzeResult.reusedStrings[value]?.id)) {
-        return stringify(value)
-    }
-    return `${inputDescriptor.options.interpretiveComments ? `/* ${value} */ ` : ""}${ret}`
-}
-
-export function increaseCompressStringUsedTimes(str: string) {
-    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
-        return
-    }
-    if (str.length > Math.floor(analyzeResult.template.compressStringsCount / 10) + 1) {
-        if (!analyzeResult.template.compressStrings[str]) {
-            analyzeResult.template.compressStrings[str] = {
-                times: 0,
-                index: -1
-            }
-            increaseReusedStringUsedTimes(str)
-            analyzeResult.template.compressStringsCount++
-        }
-        analyzeResult.template.compressStrings[str].times++
-    }
 }

@@ -1,7 +1,5 @@
 import type { AnyObject, ArbitraryFunc } from "#type-declarations/tools"
 
-import { len } from "./sundry"
-
 export function isNull(v: any): v is null {
     return v === null
 }
@@ -61,6 +59,5 @@ export function isSpreadable(v: AnyObject) {
 }
 
 export function isArrayLike<T = any>(v: any): v is ArrayLike<T> {
-    // @ts-expect-error: len() returns v.length
-    return isArray(v) ? true : isObject(v) ? isNumber(len(v)) : false
+    return isArray(v) ? true : isObject(v) ? isNumber(v.length) : false
 }

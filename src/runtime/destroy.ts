@@ -3,47 +3,17 @@ import type { ComponentInstance, Destruction } from "#type-declarations/runtime"
 
 import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
-import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
 import { spliceByElem } from "../util/shared/arrays"
-import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
+import { FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
 import { currentDestruction, setCurrentDestruction } from "./state"
-
-export function destroy(destruction: Destruction) {
-    if (destruction.m) {
-        runHooks(destruction.m, BEFORE_DESTROY)
-    }
-    if (destruction.l) {
-        runAll(destruction.l)
-    }
-    if (destruction.c) {
-        for (const child of destruction.c) {
-            destroy(child)
-        }
-    }
-    if (destruction.e) {
-        for (const effect of destruction.e) {
-            disposeEffect(effect, true)
-        }
-    }
-    if (destruction.p?.c) {
-        spliceByElem(destruction.p.c, destruction, false)
-    }
-    walkNodes(destruction, node => node.remove())
-
-    if (destruction.m) {
-        runHooks(destruction.m, AFTER_DESTROY)
-    }
-}
+import { AFTER_DESTROY, BEFORE_DESTROY, FRAGMENT_FLAG, NIL } from "./constants"
 
 export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     if (!currentDestruction) {
         return
     }
-    if (!currentDestruction.l) {
-        currentDestruction.l = []
-    }
-    currentDestruction.l.push(cleaner)
+    ;(currentDestruction.l ??= []).push(cleaner)
 }
 
 export function createDestruction(instance: ComponentInstance | null = NIL) {
@@ -51,12 +21,53 @@ export function createDestruction(instance: ComponentInstance | null = NIL) {
         e: NIL,
         c: NIL,
         l: NIL,
+        r: NIL,
         m: instance,
-        n: [NIL, NIL],
         p: currentDestruction
     }
     if (currentDestruction) {
         ;(currentDestruction.c ??= []).push(destruction)
     }
     return setCurrentDestruction(destruction)!
+}
+
+export function destroy(destruction: Destruction, detachNodes = true, detachFromParent = true) {
+    const instance = destruction.m
+    const cleaners = destruction.l
+    const children = destruction.c
+    const effects = destruction.e
+    if (instance) {
+        runHooks(instance, BEFORE_DESTROY)
+    }
+    if (cleaners) {
+        runAll(cleaners)
+    }
+    if (children) {
+        for (let i = 0; i < children.length; i++) {
+            destroy(children[i], detachNodes, false)
+        }
+    }
+    if (effects) {
+        for (let i = 0; i < effects.length; i++) {
+            disposeEffect(effects[i], true)
+        }
+    }
+    if (destruction.p?.c && detachFromParent) {
+        spliceByElem(destruction.p.c, destruction, false)
+    }
+    if (destruction.r && detachNodes) {
+        if ((destruction.r as any)[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
+            ;(destruction.r as ChildNode).remove()
+        } else {
+            const root = destruction.r as DocumentFragment
+            for (let node = root.firstChild; node; node = root.firstChild) {
+                node.remove()
+            }
+        }
+    }
+    if (instance) {
+        runHooks(instance, AFTER_DESTROY)
+    }
+    destruction.c = destruction.l = destruction.e = NIL
+    destruction.r = destruction.m = destruction.p = NIL
 }

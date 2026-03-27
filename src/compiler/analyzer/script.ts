@@ -54,7 +54,6 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
 import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
-import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 
 export function analyzeScript() {
@@ -97,13 +96,6 @@ const visitor: Visitor = {
         }
         if (node.type !== "Program") {
             markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
-        }
-    },
-
-    StringLiteral(node, context) {
-        if (context.parent?.value.type !== "ImportDeclaration") {
-            increaseReusedStringUsedTimes(node.value)
-            analyzeResult.script.stringLiterals.push(node)
         }
     },
 

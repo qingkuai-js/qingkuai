@@ -7,6 +7,7 @@ import type {
     GeneralFunc,
     ArbitraryFunc
 } from "#type-declarations/tools"
+import { FRAGMENT_FLAG } from "../runtime/constants"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
 
@@ -56,6 +57,7 @@ export interface Effect {
     l: number // flag
     t: number // timing
     k: Link[] // dependencies
+    x: number // index in Destruction.e
     d: Destruction | null // destruction
     m: ComponentInstance | null // component
     c: GeneralFunc | null // cleaner between two runs
@@ -66,10 +68,10 @@ export interface Effect {
 export interface Destruction {
     e: Effect[] | null // effects
     p: Destruction | null // parent
+    r: BlockRoot | null // root node
     l: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
     m: ComponentInstance | null // component
-    n: FixedArray<ChildNode | null, 2> // start and end nodes
 }
 
 export interface BaseWrapper {
@@ -106,6 +108,15 @@ export interface ProxyWrapperExtra {
     a: Map<any, Subscription> | null // async subscriptions
 }
 
+export type ComponentContext = Partial<{
+    r: AnyObject // refs
+    p: AnyObject // props
+    s: AnyObject // slots
+    R: any // default refs
+    P: any // default props
+    e: string[] // delegated events
+}>
+
 export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper
 }
@@ -121,6 +132,9 @@ export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 
+export type BlockRoot = (DocumentFragment | ChildNode) & {
+    [FRAGMENT_FLAG]: number
+}
 export type DestructuringFunc = (target: any) => any[]
 export type HookFunc = (callback: GeneralFunc) => void
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
@@ -128,14 +142,6 @@ export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 export type GeneralEffectFunc = () => void | GeneralFunc
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
-export interface ComponentContext {
-    r: any[] // refs
-    p: any[] // props
-    s: any[] // slots
-    R?: any // default refs
-    P?: any // default props
-    e?: string[] // delegated events
-}
 export type HtmlBlockOptions = Partial<{
     escapeTags: string[]
     escapeStyle: boolean

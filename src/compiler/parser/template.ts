@@ -15,8 +15,8 @@ import {
     equalTokenRE,
     startCurlyRE,
     startQuoteRE,
+    componentTagRE,
     tagCloseCharsRE,
-    tagIsComponentRE,
     preWhiteSpaceRuleRE,
     templateAttributeEndRE,
     startWithTagStructureRE,
@@ -24,8 +24,7 @@ import {
     templateTagStructureRE,
     templateEmbeddedLangTagRE,
     templateInvalidAttributeRE,
-    interpolatedAttrStartCharRE,
-    jsValidIdentifierRE
+    interpolatedAttrStartCharRE
 } from "../regular"
 import {
     getPosByIndex,
@@ -56,6 +55,7 @@ import {
 } from "../message/error"
 import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
+import { isValidIdentifier } from "@babel/types"
 import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
@@ -315,7 +315,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         const tag = tagOpenStr.slice(1)
         const langMatched = templateEmbeddedLangTagRE.exec(tag)
-        const isComponent = !langMatched && tagIsComponentRE.test(tag)
+        const isComponent = !langMatched && componentTagRE.test(tag)
 
         // 初始化一个用于返回的 TemplateNode 节点
         // Initialize a TemplateNode to be returned.
@@ -324,7 +324,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             prev,
             parent,
             componentTag: isComponent
-                ? jsValidIdentifierRE.test(tag)
+                ? isValidIdentifier(tag, false)
                     ? tag
                     : kebab2Camel(tag)
                 : "",

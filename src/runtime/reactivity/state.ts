@@ -3,7 +3,6 @@ import type { ObjectKeys, FixedArray } from "#type-declarations/tools"
 
 import { NIL } from "../constants"
 import { SUB_SCHEDULING } from "./constants"
-import { len } from "../../util/shared/sundry"
 import { getLastElem } from "../../util/shared/arrays"
 
 let incrementEffectId = 1
@@ -70,13 +69,13 @@ export function pushTrackingStack(tracking = false) {
 export function popTrackingStack() {
     trackingStack.pop()
 
-    if (!len(trackingStack)) {
+    if (!trackingStack.length) {
         return (shouldTracking = true)
     }
     return (shouldTracking = getLastElem(trackingStack)!)
 }
 
-export function pushRunninEffectStack(effect: Effect) {
+export function pushRunningEffectStack(effect: Effect) {
     pushTrackingStack(true)
     runningEffectStack.push((activeEffect = effect))
 }
@@ -85,7 +84,7 @@ export function popRunningEffectStack() {
     popTrackingStack()
     runningEffectStack.pop()
 
-    if (!len(runningEffectStack)) {
+    if (!runningEffectStack.length) {
         return (activeEffect = NIL)
     }
     return (activeEffect = getLastElem(runningEffectStack)!)

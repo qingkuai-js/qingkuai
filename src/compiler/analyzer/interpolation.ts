@@ -3,10 +3,10 @@ import type {
     ASTLocation,
     TemplateNode,
     ContextReference,
+    ParsedExpression,
     TopLevelReferences,
     TemplateNodeContext
 } from "#type-declarations/compiler"
-import type { StringLiteral } from "@babel/types"
 
 import {
     InvalidExpression,
@@ -32,8 +32,8 @@ import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
 import { endSemicolonRE, intrinsicMethodsRE } from "../regular"
+import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { analyzeResult, inputDescriptor, messages } from "../state"
-import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
@@ -47,22 +47,21 @@ export function analyzeInterpolation(
         return ExpectedExpression(getLocByIndex(startSourceIndex))
     }
 
-    const stringLiterals: StringLiteral[] = []
+    let parsedExpression: ParsedExpression | undefined
     const reactiveContextReferences: ContextReference[] = []
     const nodeContext = getTemplateNodeContext(templateNode)
     const topLevelReferences: TopLevelReferences = newCleanObj()
     const expression = parseExpression(source, startSourceIndex)
 
     if (expression) {
-        analyzeResult.template.parsedExpressions.set(parsingInfoKey, {
+        parsedExpression = {
             source,
-            stringLiterals,
             reactive: false,
             node: expression,
             startSourceIndex,
             topLevelReferences,
             contextReferences: reactiveContextReferences
-        })
+        }
     } else {
         InvalidExpression(
             getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
@@ -75,11 +74,6 @@ export function analyzeInterpolation(
     walkEstree(expression, {
         AnyNode(node) {
             markNeedSourcemap(node, startSourceIndex)
-        },
-
-        StringLiteral(node) {
-            stringLiterals.push(node)
-            increaseReusedStringUsedTimes(node.value)
         },
 
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
@@ -123,11 +117,15 @@ export function analyzeInterpolation(
                     shorthand: context.isShorthandIdentifierAccess
                 })
             }
-            if ((analyzeResult.script.fullIdentifiers.add(name), topLevelIdentifier)) {
-                getParsedExpression(parsingInfoKey)!.reactive ||= true
+            if (topLevelIdentifier || parsedDirective) {
+                parsedExpression!.reactive ||= true
             }
+            analyzeResult.script.fullIdentifiers.add(name)
         }
     })
+    if (parsedExpression) {
+        analyzeResult.template.parsedExpressions.set(parsingInfoKey, parsedExpression)
+    }
     return expression
 }
 

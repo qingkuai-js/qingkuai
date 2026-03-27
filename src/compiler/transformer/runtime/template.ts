@@ -8,30 +8,26 @@ import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
 
 import {
-    getAttributeBaseName,
-    getMaybeReusedString,
-    ensureIdWithNumSuffix,
-    shouldExtractCommonString
-} from "../../../util/compiler/sundry"
-import {
     getParsedEventInfo,
+    getParsedDirective,
     getParsedExpression,
+    getParsedComponentTag,
     getPrevElementContext,
     getNextElementContent,
-    getTemplateNodeContext,
-    getParsedComponentTag,
-    getParsedDirective
+    getTemplateNodeContext
 } from "../../../util/compiler/template"
-import { jsValidIdentifierRE } from "../../regular"
+import { isValidIdentifier } from "@babel/types"
+import { getMaybeReusedString } from "./compress"
 import { isNull } from "../../../util/shared/assert"
 import { DELEGATABLE_EVENTS } from "../../constants"
-import { generateFramgmentSelection } from "./fragment"
+import { writeFragmentSelections } from "./fragment"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
+import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
 export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: TemplateNode[]) {
     const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
@@ -39,7 +35,7 @@ export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: Templat
     const byComponent = isTopLevelNodes && componentFragment?.content.length
 
     if (byComponent) {
-        generateFramgmentSelection(writer, componentFragment)
+        writeFragmentSelections(writer, componentFragment)
         generateRenderEffect(writer, nodes, null)
     }
 
@@ -74,7 +70,7 @@ export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: Templat
             wrapInsertPostfix(generateSlotCall(writer, nodeContext))
         }
         if (hasFragmentContent) {
-            generateFramgmentSelection(writer, nodeContext.fragment!)
+            writeFragmentSelections(writer, nodeContext.fragment!)
             generateRenderEffect(writer, [node], node)
         }
 
@@ -114,13 +110,6 @@ function generateDirectiveBlock(
     const internalId = generateIdentifier.internal
     const getterArgId = generateIdentifier.getterArg
     const directive = nodeContext.sortedDirectives[directiveIndex]
-
-    // 跳过 #html 指令的处理，推迟至节点选择完成后生成
-    // Skip processing the `#html` directive; generate it after node selection is completed
-    const generateNextDirective = () => {
-        const delta = nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1
-        return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext)
-    }
 
     switch (directive?.name.raw) {
         case "#html": {
@@ -293,12 +282,20 @@ function generateDirectiveBlock(
         writer.write(" => {").indent(false)
         insert?.context?.()
 
+        const childEnclosure = generateNextDirective()
         return () => {
-            generateNextDirective()
+            childEnclosure?.()
             insert?.returns?.()
             writer.dedent().write("}")
             insert?.enclosure?.()
         }
+    }
+
+    // 跳过 #html 指令的处理，推迟至节点选择完成后生成
+    // Skip processing the `#html` directive; generate it after node selection is completed
+    function generateNextDirective() {
+        const delta = nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1
+        return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext)
     }
 }
 
@@ -320,49 +317,88 @@ function generateRenderEffect(
         return writer
     }
 
-    ;(function generate(nodes: TemplateNode[]) {
-        for (const node of nodes) {
-            const nodeContext = getTemplateNodeContext(node)
-            if (nodeContext.fragment && skipCheckNode !== node) {
-                continue
-            }
-            if (node.componentTag || "slot" === node.tag) {
-                generate(node.children)
-                continue
-            }
+    const generate = (nodes: TemplateNode[], index: number, createRenderEffect: boolean) => {
+        const node = nodes[index]
+        const nodeContext = getTemplateNodeContext(node)
+        const textContentHasRenderEffect = doesTextContentHasRenderEffect(node)
 
-            const generateSetAttributeCall = (
-                attribute: TemplateAttribute,
-                renderEffect = false
-            ) => {
-                const baseName = getAttributeBaseName(attribute.name.raw)
-                if ((renderEffect && generateRenderEffectCall(), baseName === "class")) {
-                    const staticClassAttr = nodeContext.attributesMap["class"]
-                    if ((writer.wrapLine().write(`${internalId}.setClassName(`), staticClassAttr)) {
-                        writer.write("[")
-                        writer.writeTemplateStr(
-                            getMaybeReusedString(staticClassAttr.value.raw),
-                            staticClassAttr.value.loc
-                        )
-                        writer.write(", ")
-                    }
-                    writer.writeParsedExpression(attribute)
-                    writer.write(`${staticClassAttr ? "]" : ""})`)
-                    return
-                }
-                if (baseName === "value" && node.tag === "select") {
-                    writer.wrapLine().write(`${internalId}.`)
-                    writer.write(`setSelectValue(${nodeContext.id}, `)
-                    writer.writeParsedExpression(attribute).write(")")
-                    return
-                }
+        const dfs = () => {
+            if (node.children.length) {
+                generate(node.children, 0, createRenderEffect)
+            }
+            if (nodes[index + 1]) {
+                generate(nodes, index + 1, createRenderEffect)
+            }
+        }
 
-                const isXlinkAttr = baseName.startsWith("xlink:")
-                const attrName = isXlinkAttr ? baseName.slice(6) : baseName
-                const method = isXlinkAttr ? "setXlinkAttribute" : "setAttribute"
-                writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
-                writer.write(`${getMaybeReusedString(attrName)}, `)
+        if (
+            node.componentTag ||
+            "slot" === node.tag ||
+            (nodeContext.fragment && skipCheckNode !== node)
+        ) {
+            return generate(nodes, index + 1, createRenderEffect)
+        }
+
+        const generateSetAttributeCall = (attribute: TemplateAttribute) => {
+            const baseName = getAttributeBaseName(attribute.name.raw)
+            if (createRenderEffect) {
+                generateRenderEffectCall()
+            }
+            if (baseName === "class") {
+                const staticClassAttr = nodeContext.attributesMap["class"]
+                writer.wrapLine().write(`${internalId}.setClassName(`)
+                writer.write(nodeContext.id).write(", ")
+
+                if (staticClassAttr) {
+                    writer.write("[")
+                    writer.writeTemplateStr(
+                        getMaybeReusedString(staticClassAttr.value.raw),
+                        staticClassAttr.value.loc
+                    )
+                    writer.write(", ")
+                }
+                writer.writeParsedExpression(attribute)
+                writer.write(`${staticClassAttr ? "]" : ""})`)
+                return
+            }
+            if (baseName === "value" && node.tag === "select") {
+                writer.wrapLine().write(`${internalId}.`)
+                writer.write(`setSelectValue(${nodeContext.id}, `)
                 writer.writeParsedExpression(attribute).write(")")
+                return
+            }
+
+            const isXlinkAttr = baseName.startsWith("xlink:")
+            const attrName = isXlinkAttr ? baseName.slice(6) : baseName
+            const method = isXlinkAttr ? "setXlinkAttribute" : "setAttribute"
+            writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
+            writer.write(`${getMaybeReusedString(attrName)}, `)
+            writer.writeParsedExpression(attribute).write(")")
+        }
+
+        const writeSetTextCall = () => {
+            if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
+                if (createRenderEffect) {
+                    generateRenderEffectCall()
+                }
+                writer.wrapLine().write(`${internalId}.setText(`)
+                writer.write(`${nodeContext.id}, `).writeInterpolatedText(node).write(")")
+            }
+        }
+
+        // dynamic attributes
+        const dynamicAttrsWithEffect: TemplateAttribute[] = []
+        const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
+        for (const attribute of nodeContext.dynamicAttributes) {
+            if (doesAttributeHasRenderEffect(attribute)) {
+                dynamicAttrsWithEffect.push(attribute)
+            } else {
+                dynamicAttrsWithoutEffect.push(attribute)
+            }
+        }
+        if (!createRenderEffect) {
+            for (const attribute of dynamicAttrsWithoutEffect) {
+                generateSetAttributeCall(attribute)
             }
 
             // event handlers
@@ -371,14 +407,14 @@ function generateRenderEffect(
                 const wrapperFlag = eventInfo.wrapperFlag
                 const generalFlag = eventInfo.generalFlag
                 const wrapperFlagNames = wrapperFlag.items.map(item => item.name)
-                const generalFlagNames = wrapperFlag.items.map(item => item.name)
+                const generalFlagNames = generalFlag.items.map(item => item.name)
 
                 const expression = getParsedExpression(event)!
                 const baseName = eventInfo.eventName.slice(1)
                 const delegated = DELEGATABLE_EVENTS.has(baseName)
-                const tipComment = inputDescriptor.options.interpretiveComments
                 const stringifiedBaseName = getMaybeReusedString(baseName)
                 const stripTypeExpressionNode = stripTypeExpressions(expression.node)
+                const insertInterpretiveComment = inputDescriptor.options.interpretiveComments
                 writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
                 writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
 
@@ -399,13 +435,13 @@ function generateRenderEffect(
                     writer.dedent().write("}")
                 }
                 if (wrapperFlag.value) {
-                    if ((writer.write(", "), tipComment)) {
+                    if ((writer.write(", "), insertInterpretiveComment)) {
                         writer.write(`/* ${wrapperFlagNames.join(" | ")} */ `)
                     }
                     writer.write(wrapperFlag.value.toString()).write(")")
                 }
                 if (generalFlag.value) {
-                    if ((writer.write(", "), tipComment)) {
+                    if ((writer.write(", "), insertInterpretiveComment)) {
                         writer.write(`/* ${generalFlagNames.join("| ")} */ `)
                     }
                     writer.write(generalFlag.value.toString())
@@ -456,33 +492,25 @@ function generateRenderEffect(
                 }
             }
 
-            // dynamic attributes
-            const dynamicAttrsWithEffect: TemplateAttribute[] = []
-            const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
-            for (const attribute of nodeContext.dynamicAttributes) {
-                if (doesAttributeHasRenderEffect(attribute)) {
-                    dynamicAttrsWithEffect.push(attribute)
-                } else {
-                    dynamicAttrsWithoutEffect.push(attribute)
-                }
+            if (!textContentHasRenderEffect) {
+                writeSetTextCall()
             }
-            for (const attribute of dynamicAttrsWithoutEffect) {
+            dfs()
+        }
+
+        if (createRenderEffect) {
+            for (const attribute of dynamicAttrsWithEffect) {
                 generateSetAttributeCall(attribute)
             }
-            for (const attribute of dynamicAttrsWithEffect) {
-                generateSetAttributeCall(attribute, true)
+            if (textContentHasRenderEffect) {
+                writeSetTextCall()
             }
-
-            // text contents
-            if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
-                generateRenderEffectCall().wrapLine()
-                writer.write(`${internalId}.setText(`)
-                writer.write(`${nodeContext.id}, `)
-                writer.writeInterpolatedText(node).write(")")
-            }
-            generate(node.children)
+            dfs()
         }
-    })(nodes)
+    }
+    for (let i = 0; i < 2; i++) {
+        generate(nodes, 0, !!i)
+    }
 
     if (withinRenderEffect) {
         writer.dedent().write("})")
@@ -660,7 +688,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             insertTrailingComma()
             writeContextKey(slotName, writer).write(`: (${anchorId}`)
 
-            if (patterns.length) {
+            if (patterns?.length) {
                 writer.write(", ")
                 writeContextPatterns(writer, patterns)
             }
@@ -702,17 +730,25 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
     return false
 }
 
-function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
-    return getParsedExpression(attribute)!.reactive
-}
-
 function writeContextKey(str: string, writer: RuntimeCodeWriter) {
-    if (jsValidIdentifierRE.test(str) && !shouldExtractCommonString(str)) {
+    const reusedStringInfo = analyzeResult.reusedStrings[str]
+    if (
+        isValidIdentifier(str, true) &&
+        (str.length < 3 || !reusedStringInfo || reusedStringInfo.times < 2)
+    ) {
         return writer.write(str)
     }
-    return writer.write(`[${getMaybeReusedString(str)}]`)
+    return writer.write(getMaybeReusedString(str))
 }
 
 function writeFragmentAttachment(writer: RuntimeCodeWriter, anchorId: string, fragmentId: string) {
     return writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
+}
+
+function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
+    return getParsedExpression(attribute)!.reactive
+}
+
+function doesTextContentHasRenderEffect(node: TemplateNode) {
+    return node.content.some(part => part.isInterpolated && getParsedExpression(part)!.reactive)
 }

@@ -1,35 +1,30 @@
 import type { GenerateIdentifier, TemplateNode } from "#type-declarations/compiler"
 
-import {
-    ensureIdWithPrefix,
-    getMaybeReusedString,
-    ensureIdWithNumSuffix,
-    shouldExtractCommonString
-} from "../../../util/compiler/sundry"
-import { RuntimeCodeWriter } from "../writer"
 import { CodeEditor } from "../editor"
+import { RuntimeCodeWriter } from "../writer"
 import { transformEmbeddedScript } from "./script"
 import { generateTemplateRender } from "./template"
 import { arrayFrom } from "../../../util/shared/arrays"
+import { objectAssign } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
+import { ensureIdWithPrefix } from "../../../util/compiler/sundry"
 import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
-import { getTemplateFragments, generateTemplateFragments } from "./fragment"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import { objectAssign, objectKeys, stringify } from "../../../util/shared/aliases"
+import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragment"
+import { writeStringLiteralsDeclarations, getMaybeReusedString } from "./compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
-    let hasTopExtract = false
-
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
     const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
-    objectAssign(generateIdentifier, {
+    objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifier, {
         internal: ensureIdWithPrefix("_"),
         getterArg: ensureIdWithPrefix("_"),
         setterArg: ensureIdWithPrefix("v"),
         context: ensureIdWithPrefix("_ctx"),
-        anchor: ensureIdWithPrefix("_anchor")
-    } satisfies Partial<GenerateIdentifier>)
+        anchor: ensureIdWithPrefix("_anchor"),
+        compressStrings: ensureIdWithPrefix("compressStrings")
+    })
 
     const writer = new RuntimeCodeWriter(true)
     const hoistWriter = new RuntimeCodeWriter()
@@ -44,24 +39,9 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         writer.writeScriptNode(declaration.value).wrapLine()
     }
     writer.write(`import * as ${internalId} from "qingkuai/internal"`).wrapLine(2)
-
-    // 重复使用的字符串字面量将被声明为常量，这里用于确定其标识符名称
-    // Reused string literals will be declared as constants; this is used to determine their identifier names.
-    traverseObject(analyzeResult.reusedStrings, (key, value) => {
-        if (!shouldExtractCommonString(key)) {
-            return
-        }
-        hasTopExtract = true
-        value.id = ensureIdWithNumSuffix("_s")
-        writer.write(`const ${value.id} = ${stringify(key)};`).wrapLine()
-    })
-
-    if (hasTopExtract) {
-        writer.wrapLine()
-    }
     removeEliminatedNodes(embeddedScriptEditor)
-    replaceStringLiterals(embeddedScriptEditor)
-    generateTemplateFragments(writer, templateFragments)
+    writeStringLiteralsDeclarations(writer, templateFragments)
+    writeFragmentGetterDeclarations(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
     writer.write(`export default function ${componentName}(`)
     writer.write(`${anchorId}, ${contextId} = {}) {`).indent()
@@ -136,15 +116,4 @@ function generateDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId
         writer.dedent()
     }
     return (writer.write("]").wrapLine(), true)
-}
-
-function replaceStringLiterals(editor: CodeEditor) {
-    if (!objectKeys(analyzeResult.reusedStrings).length) {
-        return
-    }
-    for (const item of analyzeResult.script.stringLiterals) {
-        if (analyzeResult.reusedStrings[item.value]?.id) {
-            editor.replace(...item.range!, analyzeResult.reusedStrings[item.value].id, true)
-        }
-    }
 }

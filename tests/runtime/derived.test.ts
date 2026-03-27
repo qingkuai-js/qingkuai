@@ -1,6 +1,5 @@
 import type { Effect } from "#type-declarations/runtime"
 
-import { len } from "../../src/util/shared/sundry"
 import { currentDestruction } from "../../src/runtime/state"
 import { constReact, react } from "../../src/runtime/internal"
 import { beforeEach, describe, expect, test, vi } from "vitest"
@@ -138,8 +137,8 @@ describe("Not destructuring", () => {
         const d2 = derived(() => d1.$ + a.$)
         expect(d1.$).toBe(3)
         expect(d2.$).toBe(4)
-        expect(len(a[WRAPPER].s.k)).toBe(2)
-        expect(len(b[WRAPPER].s.k)).toBe(2)
+        expect(a[WRAPPER].s.k.length).toBe(2)
+        expect(b[WRAPPER].s.k.length).toBe(2)
 
         const c = react(3)
         const d = react(4)
@@ -147,8 +146,8 @@ describe("Not destructuring", () => {
         const d4 = derived(() => c.$ + d.$ + d3.$)
         expect(d3.$).toBe(7)
         expect(d4.$).toBe(14)
-        expect(len(a[WRAPPER].s.k)).toBe(2)
-        expect(len(b[WRAPPER].s.k)).toBe(2)
+        expect(a[WRAPPER].s.k.length).toBe(2)
+        expect(b[WRAPPER].s.k.length).toBe(2)
     })
 })
 

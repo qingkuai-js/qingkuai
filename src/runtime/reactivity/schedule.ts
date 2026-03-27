@@ -2,11 +2,11 @@ import type { Subscription, ComponentInstance, ReactivityWrapper } from "#type-d
 
 import {
     WRAPPER_MAP,
-    ITERATOR_KEYS,
     OWN_KEYS,
     WRAPPER_SET,
     WRAPPER_ARRAY,
     TIMING_SYNC,
+    ITERATOR_KEYS,
     SUB_SCHEDULING,
     EFFECT_DISABLED,
     EFFECT_SCHEDULING,
@@ -28,7 +28,6 @@ import {
 } from "./state"
 import { runHooks } from "../component"
 import { runAndUpdateEffect } from "./effect"
-import { len } from "../../util/shared/sundry"
 import { nextTick } from "../../util/runtime/sundry"
 import { MaximumUpdateDepthExceeded } from "../messages/error"
 import { RESOLVED, AFTER_UPDATE, BEFORE_UPDATE } from "../constants"
@@ -122,7 +121,7 @@ export function scheduleUpdate(
     }
 
     // 同步调度，若设置了 SCHEDULER_SYNC_PILE 标志，同步副作用将阻塞至此标志位被移除时运行
-    if (len(schedulingEffects[0]) && !batchSyncDepth) {
+    if (schedulingEffects[0].length && !batchSyncDepth) {
         for (const effect of getSortedEffects(0)) {
             runAndUpdateEffect(effect)
         }
@@ -130,7 +129,7 @@ export function scheduleUpdate(
 
     // 异步调度器处于空闲状态时，创建微任务执行更新调度
     // When the async scheduler is idle, create a microtask to perform the update scheduling
-    if (asyncSchedulerIsIdle && len(schedulingEffects[1])) {
+    if (asyncSchedulerIsIdle && schedulingEffects[1].length) {
         setAsyncSchedulerIsIdle(false)
         RESOLVED.then(update)
     }
@@ -157,7 +156,7 @@ function update() {
         runHooks(component, AFTER_UPDATE)
     }
 
-    if (!len(schedulingEffects[1])) {
+    if (!schedulingEffects[1].length) {
         return resetSchedulerState()
     }
 
@@ -185,7 +184,7 @@ function getSortedEffects(index: number) {
 }
 
 function extendSchedulingEffects(subscription: Subscription, linkFlag: number) {
-    if (!subscription || !len(subscription.k) || subscription.l & SUB_SCHEDULING) {
+    if (!subscription || !subscription.k.length || subscription.l & SUB_SCHEDULING) {
         return
     }
 
@@ -201,7 +200,7 @@ function extendSchedulingEffects(subscription: Subscription, linkFlag: number) {
         }
         schedulePendingEffectCount++
     }
-    if (schedulePendingEffectCount === len(subscription.k)) {
+    if (schedulePendingEffectCount === subscription.k.length) {
         subscription.l |= SUB_SCHEDULING
         schedulingSubscriptions[index].push(subscription)
     }

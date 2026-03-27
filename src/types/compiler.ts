@@ -2,7 +2,6 @@ import type {
     Identifier,
     Expression,
     SpreadElement,
-    StringLiteral,
     ImportDeclaration,
     VariableDeclarator,
     TSImportEqualsDeclaration
@@ -72,6 +71,7 @@ export interface TemplateFragment {
     usedCompressString: boolean
     directChildrenCount: number
     getWith: TemplateFragment | undefined
+    nodeContext: TemplateNodeContext | null
 }
 
 export interface TextContentPart {
@@ -139,6 +139,7 @@ export interface GenerateIdentifier {
     internal: string
     getterArg: string
     setterArg: string
+    compressStrings: string
     prefix: Record<string, number>
 }
 
@@ -185,6 +186,14 @@ export interface ParsedDirective {
     patterns: ParsedPattern[]
     baseStartSourceIndex: number
 }
+export interface ParsedExpression {
+    source: string
+    node: Expression
+    reactive: boolean
+    startSourceIndex: number
+    contextReferences: ContextReference[]
+    topLevelReferences: TopLevelReferences
+}
 export interface TopLevelIdentifierInfo {
     nodeInfos: {
         id: Identifier
@@ -216,13 +225,6 @@ export interface TemplateNodeContext {
     contextIdentifiers: Record<string, ParsedDirective>
 }
 export interface TemplateAnalyzeRet {
-    compressStrings: Record<
-        string,
-        {
-            index: number
-            times: number
-        }
-    >
     delegateEvents: {
         passive: Set<string>
         nonPassive: Set<string>
@@ -235,21 +237,9 @@ export interface TemplateAnalyzeRet {
             wrapperFlag: EventFlagInfo
         }
     >
-    parsedExpressions: Map<
-        any,
-        {
-            source: string
-            node: Expression
-            reactive: boolean
-            startSourceIndex: number
-            stringLiterals: StringLiteral[]
-            contextReferences: ContextReference[]
-            topLevelReferences: TopLevelReferences
-        }
-    >
-    compressStringsCount: number
     slots: Record<string, TemplateNode>
     componentFragment: TemplateFragment | null
+    parsedExpressions: Map<any, ParsedExpression>
     staticTextContents: Map<TextContentPart, string>
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
@@ -277,7 +267,6 @@ export interface ScriptAnalyzeRet {
     watchers: IntrinsicCall[]
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<AnyNode>
-    stringLiterals: StringLiteral[]
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>

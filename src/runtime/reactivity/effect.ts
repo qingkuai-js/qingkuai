@@ -23,15 +23,14 @@ import {
     activeEffect,
     getIncrementEffectId,
     popRunningEffectStack,
-    pushRunninEffectStack
+    pushRunningEffectStack
 } from "./state"
 import { NIL, UNDEF } from "../constants"
 import { getSubscription } from "./schedule"
-import { any, len } from "../../util/shared/sundry"
-import { isWatchEffect } from "../../util/runtime/assert"
+import { any } from "../../util/shared/sundry"
 import { currentInstance, currentDestruction } from "../state"
 import { EffectOrWatchHasNoDependecies } from "../messages/warn"
-import { spliceByElem, swapDelete } from "../../util/shared/arrays"
+import { getLastElem, swapDelete } from "../../util/shared/arrays"
 
 export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
 export const [effect, preEffect, postEffect, syncEffect] = reactiveEffectFuncGen()
@@ -52,44 +51,58 @@ export function runAndUpdateEffect(effect: Effect) {
     const res = (effect.c?.(), runEffectCollector(effect))
     effect.l &= ~EFFECT_SCHEDULING
 
+    const isWatch = !!(effect.l & EFFECT_WATCH)
+
     // 对于非监视器副作用：res 就是用户自定义的清理方法
     // For non-watcher effect: `res` is the user-defined cleanup function.
 
     // 对于监视器副作用：res 是监视目标的最新值，回调 effect.f 的返回值才是用户自定义的清理方法
     // For watcher effect: `res` is the latest value of the watched target,
     // `effect.f` is the callback, and its return value is the user-defined cleanup function.
-    effect.c = (isWatchEffect(effect) ? effect.f(effect.v, (effect.v = res)) : res) || NIL
+    effect.c = (isWatch ? effect.f(effect.v, (effect.v = res)) : res) || NIL
 
     checkAndDestroyInvalidEffect(effect)
 }
 
 export function appendLinksToActiveEffect(from: Effect) {
-    if (!activeEffect || activeEffect.l & EFFECT_DISPOSED) {
+    const current = activeEffect
+    if (!current || current.l & EFFECT_DISPOSED) {
         return
     }
-    for (const link of from.k) {
-        const isSync = any(activeEffect.t == TIMING_SYNC) // avoid a ts bug
+    const isSync = any(current.t == TIMING_SYNC) // avoid a ts bug
+    const fromLinks = from.k
+    for (let i = 0; i < fromLinks.length; i++) {
+        const link = fromLinks[i]
         const toSub = getSubscription(link.s.w, link.s.p, isSync, true)!
-        if (toSub.k[toSub.a]?.e !== activeEffect) {
+        if (toSub.k[toSub.a]?.e !== current) {
             const newLink: Link = {
-                e: activeEffect,
+                e: current,
                 s: toSub,
                 l: link.l,
-                i: len(toSub.k)
+                i: toSub.k.length
             }
             toSub.a = newLink.i
             toSub.k.push(newLink)
-            activeEffect.k.push(newLink)
+            current.k.push(newLink)
         }
     }
 }
 
 export function disposeEffect(effect: Effect, byDestruction = false) {
-    if (!byDestruction && effect.d?.e) {
-        spliceByElem(effect.d.e, effect, false)
+    const destructionEffects = effect.d?.e
+    if (!byDestruction && effect.x >= 0 && destructionEffects?.length) {
+        getLastElem(destructionEffects)!.x = effect.x
+        swapDelete(destructionEffects, effect.x)
     }
     effect.c?.()
-    unlink(effect)
+    effect.c = NIL
+    if (effect.k.length) {
+        unlink(effect)
+    }
+    effect.x = -1
+    effect.d = NIL
+    effect.m = NIL
+    effect.v = UNDEF
     effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED
 }
 
@@ -102,6 +115,7 @@ function createEffect(
     const effect: Effect = {
         f: fn,
         k: [],
+        x: -1,
         c: NIL,
         l: flag,
         t: timing,
@@ -116,7 +130,7 @@ function createEffect(
     }
 
     const res = runEffectCollector(effect)
-    if (isWatchEffect(effect)) {
+    if (watchCallback) {
         effect.v = res
     } else if (res) {
         effect.c = res
@@ -125,7 +139,9 @@ function createEffect(
     // 将副作用记录到 Destruction
     // Record the effect onto `Destruction`
     if (checkAndDestroyInvalidEffect(effect) && currentDestruction) {
-        ;(currentDestruction.e ??= []).push(effect)
+        const effects = (currentDestruction.e ??= [])
+        effect.x = effects.length
+        effects.push(effect)
     }
 
     return effect
@@ -164,7 +180,9 @@ function watchEffectFuncGen() {
 }
 
 function unlink(effect: Effect) {
-    for (let i = 0, link = effect.k[0]; link; link = effect.k[++i]) {
+    const links = effect.k
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i]
         // 若 link 不处于 link.s.k 末尾，需要更新原来末尾元素的 i 属性
         // 例如：对于 [a, b, c, d]，删除 b 后变为 [a, d, c]，那么需要将 d.i 修改为 b.i
         //
@@ -174,26 +192,32 @@ function unlink(effect: Effect) {
             link.s.k[link.i].i = link.i
         }
     }
+    // Reuse the same array instance to avoid allocations and release stale link references.
+    links.length = 0
 }
 
 function runEffectCollector(effect: Effect) {
-    if (len(effect.k)) {
+    if (effect.k.length) {
         unlink(effect)
-        effect.k = []
     }
-    pushRunninEffectStack(effect)
+    pushRunningEffectStack(effect)
 
-    const isWatch = isWatchEffect(effect)
-    const res = (isWatch ? effect.g! : effect.f)()
-    if ((popRunningEffectStack(), len(effect.k))) {
-        for (const link of effect.k) {
-            if (activeEffect) {
+    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
+    popRunningEffectStack()
+
+    const collectedLinks = effect.k
+    const collectedLen = collectedLinks.length
+    if (collectedLen) {
+        const current = activeEffect
+        for (let i = 0; i < collectedLen; i++) {
+            const link = collectedLinks[i]
+            if (current) {
                 link.s.a--
             } else {
                 link.s.a = -1
             }
         }
-        if (activeEffect && !(effect.l & EFFECT_RENDER)) {
+        if (current && !(effect.l & EFFECT_RENDER)) {
             appendLinksToActiveEffect(effect)
         }
     }
@@ -207,7 +231,7 @@ function checkAndDestroyInvalidEffect(effect: Effect) {
         return true
     }
 
-    let isValid = len(effect.k) > 0
+    let isValid = effect.k.length > 0
     if (effect.l & EFFECT_DERIVED) {
         const isReading = effect.l & EFFECT_DERIVED_READING
         if (isReading) {
@@ -220,7 +244,7 @@ function checkAndDestroyInvalidEffect(effect: Effect) {
     }
 
     if (!isValid) {
-        const isWatch = isWatchEffect(effect)
+        const isWatch = effect.l & EFFECT_WATCH
         const isDerived = effect.l & EFFECT_DERIVED
         disposeEffect(effect)
         EffectOrWatchHasNoDependecies(

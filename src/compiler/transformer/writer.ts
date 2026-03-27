@@ -94,8 +94,8 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
 
     writeTemplateStr(str: string, sourceLoc: ASTLocation) {
         this.writeCharacter(str[0], sourceLoc.start.index)
-        markPositionFlag(sourceLoc.end.index, PositionFlag.SourcemapEnd)
-        markPositionFlag(sourceLoc.start.index, PositionFlag.SourcemapStart)
+        markPositionFlag(PositionFlag.SourcemapEnd, sourceLoc.end.index)
+        markPositionFlag(PositionFlag.SourcemapStart, sourceLoc.start.index)
 
         for (let i = 1; i < str.length; i++) {
             this.writeCharacter(str[i], -1)

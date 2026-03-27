@@ -4,17 +4,12 @@ import type { TemplateNode } from "#type-declarations/compiler"
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
 import { traverseObject } from "../../../util/shared/sundry"
-import { getMaybeReusedString } from "../../../util/compiler/sundry"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
+import { getMaybeReusedString } from "./compress"
 
 export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
     const parsedExpression = getParsedExpression(key)!
     const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
-    for (const literal of parsedExpression.stringLiterals) {
-        if (analyzeResult.reusedStrings[literal.value]?.id) {
-            editor.replace(...literal.range!, analyzeResult.reusedStrings[literal.value].id, true)
-        }
-    }
     traverseObject(parsedExpression.topLevelReferences, (key, value) => {
         const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[key]
         if (topLevelIdentifier && topLevelIdentifier.transofrmedTo) {
@@ -53,6 +48,27 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
     if (!node.content.length) {
         return getMaybeReusedString("")
     }
+
+    let partCount = 0
+    let singlePart = node.content[0]
+    for (let i = 0; i < node.content.length; i++) {
+        const part = node.content[i]
+        if (part.isInterpolated || getGeneratedStaticTextContent(part)) {
+            partCount++
+            singlePart = part
+            if (partCount > 1) {
+                break
+            }
+        }
+    }
+
+    if (partCount === 1) {
+        if (singlePart.isInterpolated) {
+            return transformParsedExpression(writer, singlePart)
+        }
+        return writer.write(getMaybeReusedString(getGeneratedStaticTextContent(singlePart)!))
+    }
+
     for (let i = 0, j = 0; i < node.content.length; i++) {
         const part = node.content[i]
         if (part.isInterpolated) {

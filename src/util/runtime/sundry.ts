@@ -9,13 +9,13 @@ import {
 } from "../../runtime/reactivity/constants"
 import { isRefProperty } from "./assert"
 import { isFunction } from "../shared/assert"
-import { getSibling } from "../../runtime/dom"
 import { any, notEqual } from "../shared/sundry"
-import { RESOLVED } from "../../runtime/constants"
 import { constReact } from "../../runtime/internal"
+import { FRAG_ORPHAN_CONTENT } from "../shared/flags"
 import { createDestruction } from "../../runtime/destroy"
 import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
+import { FRAGMENT_FLAG, RESOLVED } from "../../runtime/constants"
 
 export function toRaw<T>(v: T): T {
     const wrapper = any(v)?.[WRAPPER]
@@ -42,18 +42,19 @@ export function walkWrapperChildren(
 }
 
 export function reactiveNotEqual(a: any, b: any) {
+    if (!notEqual(a, b)) {
+        return false
+    }
+
     const awrapper = a?.[WRAPPER]
     const bwrapper = b?.[WRAPPER]
-    if (awrapper && bwrapper) {
-        return notEqual(a, b)
+    if (!awrapper) {
+        return bwrapper ? notEqual(a, bwrapper.r) : notEqual(a, b)
     }
-    if (awrapper) {
-        a = awrapper.r
+    if (!bwrapper) {
+        return notEqual(awrapper.r, b)
     }
-    if (bwrapper) {
-        b = bwrapper.r
-    }
-    return notEqual(a, b)
+    return notEqual(awrapper.r, bwrapper.r)
 }
 
 export function nextTick(fn?: ArbitraryFunc) {
@@ -87,13 +88,14 @@ export function getRefProperty(wrapperFlag: number, property: ObjectKeys) {
 }
 
 export function walkNodes(destruction: Destruction, callback: (node: ChildNode) => void) {
-    let start = destruction.n[0]
-    if (start) {
-        const end = getSibling(destruction.n[1]!)
-        while (start && start !== end) {
-            const next = getSibling(start)
-            callback(start)
-            start = next
+    if (!destruction.r) {
+        return
+    }
+    if (destruction.r[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
+        callback(destruction.r as ChildNode)
+    } else {
+        for (const node of (destruction.r as DocumentFragment).childNodes) {
+            callback(node)
         }
     }
 }

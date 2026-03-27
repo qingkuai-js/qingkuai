@@ -1,5 +1,11 @@
-import type { ArbitraryFunc, Getter, Setter, ZeroOrOne } from "#type-declarations/tools"
-import type { Traversable, TraverseContext, TraverseInfo } from "#type-declarations/runtime"
+import type {
+    Effect,
+    Destruction,
+    Traversable,
+    TraverseInfo,
+    TraverseContext
+} from "#type-declarations/runtime"
+import type { ArbitraryFunc, Getter, Setter } from "#type-declarations/tools"
 
 import {
     TRAVERSE_SET,
@@ -9,16 +15,17 @@ import {
     TRAVERSE_ARRAYLIKE
 } from "./constants"
 import { destroy } from "../destroy"
-import { insertBefore } from "../dom"
-import { NIL, REFLECT, UNDEF } from "../constants"
+import { appendChild, insertBefore } from "../dom"
 import { arrayFrom } from "../../util/shared/arrays"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { reactiveNotEqual } from "../../util/runtime/sundry"
+import { newCleanObj, optc } from "../../util/shared/sundry"
 import { DuplicateKey, NonTraverse } from "../messages/error"
-import { len, newCleanObj, optc } from "../../util/shared/sundry"
+import { FRAGMENT_FLAG, NIL, REFLECT, UNDEF } from "../constants"
 import { invokeRender, walkNodes } from "../../util/runtime/sundry"
 import { isArray, isNumber, isString } from "../../util/shared/assert"
 import { renderEffect, runAndUpdateEffect } from "../reactivity/effect"
+import { FRAG_ORPHAN_CONTENT, FRAG_WHOLE_CONTENT } from "../../util/shared/flags"
 
 export function keyedListBlock(
     anchor: ChildNode,
@@ -37,49 +44,87 @@ export function keyedListBlock(
         const newLength = traversable.l
         const newKeys: string[] = Array(newLength)
         const newInfos: Record<string, TraverseInfo> = newCleanObj()
+        const wholeContent = oldLength && isWholeContentDestruction(oldInfos[oldKeys[0]].d)
+        const detachWhole = !!(wholeContent && newLength === 0)
         for (let i = 0; i < newLength; i++) {
             const newContext = getContext(traversable, i)
-            const newKey = getKey(newContext.m, newContext.x)
-            const oldKey = oldKeys[i] as string | undefined
-            const oldInfoForNewKey = oldInfos[newKey] as TraverseInfo | undefined
+            const newKey = "" + getKey(newContext.m, newContext.x)
 
-            let reference = anchor
-            for (let j = i; j < oldLength; j++) {
-                if (newInfos[oldKeys[j]]) {
-                    continue
-                }
-                reference = oldInfos[oldKeys[j]]!.d.n[0]!
-                break
-            }
+            newKeys[i] = newKey
             if (newInfos[newKey]) {
                 DuplicateKey(newKey)
             }
-            newKeys[i] = newKey
 
+            const oldInfoForNewKey = oldInfos[newKey]
             if (!oldInfoForNewKey) {
-                let setter: Setter | undefined = UNDEF
-                const destruction = invokeRender(() => {
-                    setter = render(reference, newContext)
-                })
                 newInfos[newKey] = {
-                    s: setter,
-                    c: newContext,
-                    d: destruction
-                }
+                    d: NIL,
+                    s: NIL,
+                    c: newContext
+                } as any
             } else {
-                if (oldKey != newKey) {
-                    walkNodes(oldInfoForNewKey.d, node => {
-                        insertBefore(reference, node)
-                    })
-                }
                 newInfos[newKey] = oldInfoForNewKey
-                updateBlock(oldInfoForNewKey, newContext)
             }
         }
-        for (let i = 0; i < oldLength; i++) {
-            if (!newInfos[oldKeys[i]]) {
-                destroy(oldInfos[oldKeys[i]].d)
+
+        let start = 0
+        let oldEnd = oldLength - 1
+        let newEnd = newLength - 1
+        for (; start < oldLength && start < newLength; start++) {
+            const oldKey = oldKeys[start]
+            const newKey = newKeys[start]
+            if (oldKey !== newKey) {
+                break
             }
+            updateBlock(oldInfos[oldKey], traversable, start)
+        }
+        for (; oldEnd >= start && newEnd >= start; oldEnd--, newEnd--) {
+            const oldKey = oldKeys[oldEnd]
+            const newKey = newKeys[newEnd]
+            if (oldKey !== newKey) {
+                break
+            }
+            updateBlock(oldInfos[oldKey], traversable, newEnd)
+        }
+
+        for (let i = newEnd; i >= start; i--) {
+            const oldKey = oldKeys[i]
+            const newKey = newKeys[i]
+            const oldInfo = oldInfos[oldKey]
+            const newInfo = newInfos[newKey]
+            if (oldKey === newKey) {
+                updateBlock(oldInfo, traversable, i)
+                continue
+            }
+
+            let reference = anchor
+            if (i < newLength - 1) {
+                reference = getFirstNodeOfDestruction(newInfos[newKeys[i + 1]].d) ?? anchor
+            }
+            if (newInfo.d) {
+                walkNodes(newInfo.d, node => {
+                    insertBefore(reference, node)
+                })
+                updateBlock(newInfo, traversable, i)
+            } else {
+                newInfo.d = invokeRender(() => {
+                    newInfo.s = render(reference, newInfo.c)
+                })
+            }
+        }
+
+        for (let i = start, nodesDetached = false; i <= oldEnd; i++) {
+            const oldKey = oldKeys[i]
+            if (newInfos[oldKey]) {
+                continue
+            }
+
+            const destruction = oldInfos[oldKey].d
+            if (detachWhole && !nodesDetached) {
+                detachWholeContent(destruction)
+                nodesDetached = true
+            }
+            destroy(destruction, !nodesDetached)
         }
         oldKeys = newKeys
         oldInfos = newInfos
@@ -96,11 +141,18 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
 
         const newLength = traversable.l
         const updateLength = Math.min(oldLength, newLength)
+        const wholeContent = oldLength && isWholeContentDestruction(infos[0].d)
+        const detachWhole = !!(wholeContent && newLength === 0)
         for (let i = 0; i < updateLength; i++) {
-            updateBlock(infos[i], getContext(traversable, i))
+            updateBlock(infos[i], traversable, i)
         }
-        for (let i = oldLength; i > newLength; i--) {
-            destroy(infos.pop()!.d)
+        for (let i = oldLength, nodesDetached = false; i > newLength; i--) {
+            const destruction = infos.pop()!.d
+            if (detachWhole && !nodesDetached) {
+                detachWholeContent(destruction)
+                nodesDetached = true
+            }
+            destroy(destruction, !nodesDetached)
         }
         for (let i = oldLength; i < newLength; i++) {
             let setter: Setter | undefined = UNDEF
@@ -129,7 +181,7 @@ function normalizeTraversable(value: any): Traversable {
         return ret
     }
     if (isArray(value) || isString(value)) {
-        ret.l = len(value)
+        ret.l = value.length
         ret.t = TRAVERSE_ARRAYLIKE
         return ret
     }
@@ -149,47 +201,85 @@ function normalizeTraversable(value: any): Traversable {
         }
         case "Object": {
             ret.t = TRAVERSE_OBJECT
-            ret.l = len((ret.k = REFLECT.ownKeys(value)))
+            ret.l = (ret.k = REFLECT.ownKeys(value)).length
             return ret
         }
     }
     return NonTraverse()
 }
 
-function getContext(info: Traversable, index: number): TraverseContext {
-    const get = (kind: ZeroOrOne) => {
-        const currentKey = info.k?.[index]
-        switch (info.t) {
-            case TRAVERSE_SET: {
-                return currentKey
-            }
-            case TRAVERSE_NUMBER: {
-                return index + kind
-            }
-            case TRAVERSE_ARRAYLIKE: {
-                return kind ? info.v[index] : index
-            }
-            case TRAVERSE_OBJECT: {
-                return kind ? info.v[currentKey] : currentKey
-            }
-            default: {
-                return kind ? info.v.get(currentKey) : currentKey
-            }
-        }
-    }
-    return { m: get(1), x: get(0) }
+function detachWholeContent(destruction: Destruction) {
+    const parent = destruction.r!.parentElement!
+    const anchor = parent.lastChild!
+    parent.textContent = ""
+    appendChild(parent, anchor)
 }
 
-function updateBlock(oldInfo: TraverseInfo, newContext: TraverseContext) {
-    const effect = oldInfo.d.e?.[0]
-    if (
-        effect &&
-        !(effect.l & EFFECT_SCHEDULING) &&
-        (reactiveNotEqual(oldInfo.c.m, newContext.m) || reactiveNotEqual(oldInfo.c.x, newContext.x))
-    ) {
-        oldInfo.s?.(newContext)
-        oldInfo.c.m = newContext.m
-        oldInfo.c.x = newContext.x
-        runAndUpdateEffect(effect)
+function getFirstNodeOfDestruction(destruction: Destruction) {
+    if (!destruction.r) {
+        return NIL
     }
+    if (destruction.r[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
+        return destruction.r as ChildNode
+    }
+    return destruction.r.firstChild as ChildNode
+}
+
+function isWholeContentDestruction(destruction: Destruction) {
+    return !!((destruction.r?.[FRAGMENT_FLAG] ?? 0) & FRAG_WHOLE_CONTENT)
+}
+
+function getContext(traversable: Traversable, index: number): TraverseContext {
+    const context: TraverseContext = { m: NIL, x: NIL }
+    return (fillContext(traversable, index, context), context)
+}
+
+function updateBlock(oldInfo: TraverseInfo, traversable: Traversable, index: number) {
+    const context = oldInfo.c
+    const oldM = context.m
+    const oldX = context.x
+    fillContext(traversable, index, context)
+
+    if (reactiveNotEqual(oldM, context.m) || reactiveNotEqual(oldX, context.x)) {
+        oldInfo.s?.(context)
+
+        const effect = oldInfo.d.e?.[0] as Effect | undefined
+        if (effect && !(effect.l & EFFECT_SCHEDULING)) {
+            runAndUpdateEffect(effect)
+        }
+    }
+}
+
+function fillContext(traversable: Traversable, index: number, context: TraverseContext) {
+    switch (traversable.t) {
+        case TRAVERSE_SET: {
+            const key = traversable.k?.[index]
+            context.x = key
+            context.m = key
+            return
+        }
+        case TRAVERSE_NUMBER: {
+            context.x = index
+            context.m = index + 1
+            return
+        }
+        case TRAVERSE_ARRAYLIKE: {
+            context.x = index
+            context.m = traversable.v[index]
+            return
+        }
+        case TRAVERSE_OBJECT: {
+            const key = traversable.k?.[index]
+            context.x = key
+            context.m = traversable.v[key]
+            return
+        }
+        case TRAVERSE_MAP: {
+            const key = traversable.k?.[index]
+            context.x = key
+            context.m = traversable.v.get(key)
+            return
+        }
+    }
+    context.x = context.m = NIL
 }

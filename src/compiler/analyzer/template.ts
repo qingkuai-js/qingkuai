@@ -25,7 +25,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
 import { isHtmlDirectiveChild } from "../../util/compiler/assert"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
-import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
+import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from "../message/error"
 

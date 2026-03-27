@@ -7,7 +7,7 @@ import { RedundantEventFlags } from "../message/warn"
 import { EVENT_PASSIVE } from "../../util/shared/flags"
 import { getLocByIndex } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
+import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 
 export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {

@@ -11,8 +11,10 @@ import {
     disposeEffect
 } from "../../src/runtime/reactivity/effect"
 import {
-    TIMINGS,
     WRAPPER,
+    TIMING_PRE,
+    TIMING_POST,
+    TIMING_SYNC,
     ITERATOR_KEYS,
     TIMING_UNSET,
     EFFECT_DISABLED,
@@ -42,6 +44,7 @@ const invokeMarker = vi.fn()
 const warningMatcher = createWarningMatcher()
 const watchEffectFuncs = [watch, preWatch, postWatch, syncWatch]
 const reactiveEffectFuncs = [effect, preEffect, postEffect, syncEffect]
+const timings = [TIMING_UNSET, TIMING_PRE, TIMING_POST, TIMING_SYNC]
 
 const cleanup = () => {
     emptyArr(arr)
@@ -101,7 +104,7 @@ test("Functions of reactive effect", async () => {
         const effect = getCurrentEffect()
         checkEffectDependaceManager(effect, {
             destroyed: false,
-            timing: TIMINGS[i],
+            timing: timings[i],
             cleaner: invokeMarker,
             dependencies: [value],
             destruction: currentDestruction
@@ -187,7 +190,7 @@ test("Functions of watch effect", async () => {
         checkEffectDependaceManager(effect, {
             cleaner: null,
             destroyed: false,
-            timing: TIMINGS[i],
+            timing: timings[i],
             dependencies: [[map, 1]],
             destruction: currentDestruction
         })

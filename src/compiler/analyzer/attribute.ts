@@ -12,11 +12,12 @@ import { newCleanObj } from "../../util/shared/sundry"
 import { analyzeReferenceAttribute } from "./reference"
 import { interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
+import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
 import { getTemplateNodeContext } from "../../util/compiler/template"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
-import { getAttributeBaseName, increaseReusedStringUsedTimes } from "../../util/compiler/sundry"
 
 export function analyzeAttributes(node: TemplateNode) {
     const nodeContext = getTemplateNodeContext(node)

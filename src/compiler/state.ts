@@ -31,6 +31,7 @@ function newGenerateIdentifier(): GenerateIdentifier {
         internal: "",
         getterArg: "",
         setterArg: "",
+        compressStrings: "",
         suffix: newCleanObj(),
         prefix: newCleanObj()
     }
@@ -47,18 +48,15 @@ function newAnalyzeResult(): AnalyzeResult {
             parsedEvents: new Map(),
             nodeContexts: new Map(),
             componentFragment: null,
-            compressStringsCount: 0,
             parsedDirectives: new Map(),
             parsedExpressions: new Map(),
             staticTextContents: new Map(),
             parsedComponentTags: new Map(),
-            compressStrings: newCleanObj(),
             validReferenceAttributes: new Set()
         },
         script: {
             watchers: [],
             defaultItems: {},
-            stringLiterals: [],
             importDeclarations: [],
             eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),

@@ -1,5 +1,4 @@
 import type {
-    Effect,
     RefProperty,
     ProxyWrapper,
     ReactiveValue,
@@ -9,7 +8,6 @@ import type { AnyObject } from "#type-declarations/tools"
 
 import {
     WRAPPER,
-    EFFECT_WATCH,
     WRAPPER_SET,
     WRAPPER_MAP,
     WRAPPER_ARRAY,
@@ -51,10 +49,6 @@ export function isIteratorKey(wrapper: ReactivityWrapper, key: any) {
 
 export function isRefProperty(property: any): property is RefProperty {
     return property?.[0] === REF_PROPERTY_ID
-}
-
-export function isWatchEffect(effect: Effect): effect is Required<Effect> {
-    return !!(effect.l & EFFECT_WATCH)
 }
 
 export function isReactive<T extends AnyObject>(v: any): v is ReactiveValue<T> {

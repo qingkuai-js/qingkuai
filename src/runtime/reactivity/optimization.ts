@@ -28,7 +28,7 @@ import {
 } from "./state"
 import { REFLECT } from "../constants"
 import { scheduleUpdate } from "./schedule"
-import { hasOwn, len, notEqual } from "../../util/shared/sundry"
+import { hasOwn, notEqual } from "../../util/shared/sundry"
 import { getRawProperty, toRaw, reactiveNotEqual } from "../../util/runtime/sundry"
 import { isShallow, isReactive, isRefProperty, isProxyWrapper } from "../../util/runtime/assert"
 
@@ -98,7 +98,7 @@ function updateWithRawGen(batchSync?: boolean) {
 
         const getIteratorKeysCount = () => {
             if (isArray) {
-                return len(rawValue)
+                return rawValue.length
             }
             return rawValue.size
         }
@@ -186,6 +186,10 @@ function updateWithRawGen(batchSync?: boolean) {
 
                 // 下方判断条件有些复杂，拆分为内外两个 if 以便阅读：
                 // 外层用于判断副作用是否会被某项变化触发，内层用于判断该项变化是否发生
+                //
+                // The following conditions are a bit complex, so they are split into two layers of if statements for better readability:
+                // The outer layer is used to determine whether the effect will be triggered by a certain change,
+                // and the inner layer is used to determine whether that change has occurred.
                 if (info.k & LINK_OWN_CHANGED) {
                     if (!!(info.l & PROP_OWN) != hasOwn(rawValue, rawKey)) {
                         forceScheduleOwnKeys = false
@@ -240,7 +244,7 @@ function updateWithRawGen(batchSync?: boolean) {
 
             if (forceScheduleOwnKeys) {
                 const ownKeys = REFLECT.ownKeys(rawValue)
-                if (len(ownKeys) != len(wrapper.o)) {
+                if (ownKeys.length != wrapper.o?.length) {
                     for (let i = 0; i < ownKeys.length; i++) {
                         if (ownKeys[i] != wrapper.o![i]) {
                             forceScheduleOwnKeys = false
