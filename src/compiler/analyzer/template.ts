@@ -12,7 +12,7 @@ import {
     getStartTagOpenLoc,
     getParsedExpression,
     getTemplateNodeContext,
-    getGeneratedStaticTextContent
+    doesNodeHasValidTextContentPart
 } from "../../util/compiler/template"
 import { SPREAD_TAG } from "../constants"
 import { analyzeAttributes } from "./attribute"
@@ -162,7 +162,7 @@ function checkSlotAssignment(node: TemplateNode) {
     }
 
     for (const child of node.children) {
-        if ("" === child.tag && !willTextNodeGenerateFragment(child)) {
+        if ("" === child.tag && !doesNodeHasValidTextContentPart(child)) {
             continue
         }
         const directive = getTemplateNodeContext(child).attributesMap["#slot"]
@@ -199,8 +199,4 @@ function recordSlotName(node: TemplateNode, attribute?: TemplateAttribute) {
     const existringAttr = getTemplateNodeContext(existing).attributesMap.name
     DuplicateSlotName(attribute?.loc ?? getStartTagOpenLoc(node), name)
     DuplicateSlotName(existringAttr?.loc ?? getStartTagOpenLoc(existing), name)
-}
-
-function willTextNodeGenerateFragment(node: TemplateNode) {
-    return node.content.some(part => part.isInterpolated || getGeneratedStaticTextContent(part))
 }

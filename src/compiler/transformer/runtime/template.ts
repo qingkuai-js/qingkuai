@@ -14,7 +14,8 @@ import {
     getParsedComponentTag,
     getPrevElementContext,
     getNextElementContent,
-    getTemplateNodeContext
+    getTemplateNodeContext,
+    getValidTextContentParts
 } from "../../../util/compiler/template"
 import { isValidIdentifier } from "@babel/types"
 import { getMaybeReusedString } from "./compress"
@@ -25,9 +26,9 @@ import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
-import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
+import { isExpressionEqual, isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 
 export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: TemplateNode[]) {
     const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
@@ -390,7 +391,10 @@ function generateRenderEffect(
         const dynamicAttrsWithEffect: TemplateAttribute[] = []
         const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
         for (const attribute of nodeContext.dynamicAttributes) {
-            if (doesAttributeHasRenderEffect(attribute)) {
+            if (
+                getParsedExpression(attribute)!.reactive &&
+                !equalsWithKeyDirectiveValue(nodeContext, attribute)
+            ) {
                 dynamicAttrsWithEffect.push(attribute)
             } else {
                 dynamicAttrsWithoutEffect.push(attribute)
@@ -741,14 +745,61 @@ function writeContextKey(str: string, writer: RuntimeCodeWriter) {
     return writer.write(getMaybeReusedString(str))
 }
 
+function doesTextContentHasRenderEffect(node: TemplateNode) {
+    if (
+        !node.content.some(part => {
+            return part.isInterpolated && getParsedExpression(part)!.reactive
+        })
+    ) {
+        return false
+    }
+
+    const validContentParts = getValidTextContentParts(node)
+    return !(
+        validContentParts.length === 1 &&
+        validContentParts[0].isInterpolated &&
+        equalsWithKeyDirectiveValue(getTemplateNodeContext(node), validContentParts[0])
+    )
+}
+
 function writeFragmentAttachment(writer: RuntimeCodeWriter, anchorId: string, fragmentId: string) {
     return writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
 }
 
-function doesAttributeHasRenderEffect(attribute: TemplateAttribute) {
-    return getParsedExpression(attribute)!.reactive
-}
+// 优化：当文本内容仅包含一个插值表达式，且该表达式与同一节点上的 #key 指令的表达式相等时，不为该文本内容生成 render effect
+// Optimization: When the text content contains only one interpolated expression, and that expression is equal
+// to the expression of the #key directive on the same node, do not generate a render effect for that text content
+function equalsWithKeyDirectiveValue(nodeContext: TemplateNodeContext, parsedExpressionKey: any) {
+    const parsedExpression = getParsedExpression(parsedExpressionKey)
+    if (!parsedExpression?.node) {
+        return false
+    }
 
-function doesTextContentHasRenderEffect(node: TemplateNode) {
-    return node.content.some(part => part.isInterpolated && getParsedExpression(part)!.reactive)
+    let contextIdentifier: string | undefined
+    const expNode = stripTypeExpressions(parsedExpression.node)
+    switch (expNode.type) {
+        case "Identifier": {
+            contextIdentifier = expNode.name
+            break
+        }
+        case "MemberExpression":
+        case "OptionalMemberExpression": {
+            if (expNode.object.type === "Identifier") {
+                contextIdentifier = expNode.object.name
+            }
+            break
+        }
+    }
+
+    const parsedDirective = nodeContext.contextIdentifiers[contextIdentifier!]
+    if (parsedDirective?.src.directive.name.raw !== "#for") {
+        return false
+    }
+
+    const keyDirective = parsedDirective.src.nodeContext.attributesMap["#key"]
+    const parsedExpOfKeyDirective = keyDirective && getParsedExpression(keyDirective)
+    if (!parsedExpOfKeyDirective?.node) {
+        return false
+    }
+    return isExpressionEqual(parsedExpression.node, parsedExpOfKeyDirective.node)
 }

@@ -1,6 +1,7 @@
 import type { TSModuleDeclaration } from "@babel/types"
 import type { AnyNode, ContextPattern, PartialAnyNode } from "#type-declarations/estree"
 
+import { any } from "../../util/shared/sundry"
 import { stripTypeExpressions } from "./sundry"
 import { getLastElem } from "../../util/shared/arrays"
 
@@ -69,6 +70,56 @@ export function isInlineEventHandler(node: AnyNode) {
             return true
         }
     }
+}
+
+export function isExpressionEqual(a: AnyNode, b: AnyNode): boolean {
+    ;[a, b] = [a, b].map(stripTypeExpressions)
+
+    if (a.type !== b.type) {
+        return false
+    }
+
+    switch (a.type) {
+        case "Identifier": {
+            return a.name === any(b).name
+        }
+        case "MemberExpression":
+        case "OptionalMemberExpression": {
+            return (
+                isExpressionEqual(a.object, any(b).object) &&
+                isPropertyEqual(a.property, any(b).property)
+            )
+        }
+
+        default: {
+            return false
+        }
+    }
+}
+
+export function isPropertyEqual(a: AnyNode, b: AnyNode): boolean {
+    const [x, y] = [a, b].map(node => {
+        switch ((node = stripTypeExpressions(node)).type) {
+            case "Identifier": {
+                return node.name
+            }
+            case "StringLiteral":
+            case "NumericLiteral":
+            case "NumberLiteral": {
+                return String(node.value)
+            }
+            case "TemplateLiteral": {
+                if (node.expressions.length === 0) {
+                    return node.quasis[0].value.cooked ?? ""
+                }
+                // fallthrough
+            }
+            default: {
+                return null
+            }
+        }
+    })
+    return x !== null && y !== null && x === y
 }
 
 export function isBlock(node: AnyNode) {

@@ -41,6 +41,16 @@ export function getParsedComponentTag(node: TemplateNode) {
     return analyzeResult.template.parsedComponentTags.get(node)
 }
 
+export function getValidTextContentParts(node: TemplateNode) {
+    return node.content.filter(part => {
+        if (part.isInterpolated) {
+            return true
+        }
+        const staticContent = getGeneratedStaticTextContent(part)
+        return staticContent && !isEmptyString(staticContent)
+    })
+}
+
 export function getTemplateContextIdentifiers(node: TemplateNode) {
     return getTemplateNodeContext(node).contextIdentifiers
 }
@@ -88,6 +98,12 @@ export function getAttributeBaseNameLoc(attribute: TemplateAttribute) {
         return attribute.name.loc
     }
     return getLocByIndex(attribute.name.loc.start.index, attribute.name.loc.end.index)
+}
+
+export function doesNodeHasValidTextContentPart(node: TemplateNode) {
+    return node.content.some(
+        part => part.isInterpolated || !isEmptyString(getGeneratedStaticTextContent(part))
+    )
 }
 
 export function getStartTagNameLoc(node: TemplateNode) {

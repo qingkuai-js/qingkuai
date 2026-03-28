@@ -29,9 +29,9 @@ export function compile(source: string, options: CompileOptions = {}) {
     return {
         messages,
         code: writer.code,
-        hashId: options.hashId!,
         mappings: writer.mappings,
         positions: inputDescriptor.positions,
+        hashId: inputDescriptor.options.hashId!,
         scriptDescriptor: inputDescriptor.script,
         styleDescriptors: inputDescriptor.styles
     } satisfies CompileResult

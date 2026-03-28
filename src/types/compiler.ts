@@ -181,6 +181,10 @@ export interface ParsedDirective {
         argId: string
         returnsId: string
     }
+    src: {
+        directive: TemplateAttribute
+        nodeContext: TemplateNodeContext
+    }
     base: string
     keywordIndex: number
     patterns: ParsedPattern[]

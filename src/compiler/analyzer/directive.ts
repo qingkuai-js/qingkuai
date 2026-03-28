@@ -87,6 +87,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!
                 const parsedDirective: ParsedDirective = {
+                    src: {
+                        directive,
+                        nodeContext
+                    },
                     base,
                     keywordIndex,
                     patterns: [],
@@ -130,6 +134,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!
                 const parsedDirective: ParsedDirective = {
+                    src: {
+                        directive,
+                        nodeContext
+                    },
                     context: {
                         returnsId: "",
                         argId: ensureIdWithNumSuffix("_ctx")
@@ -227,6 +235,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 }
 
                 const parsedDirective: ParsedDirective = {
+                    src: {
+                        directive,
+                        nodeContext
+                    },
                     base: "",
                     patterns: [],
                     keywordIndex: -1,
