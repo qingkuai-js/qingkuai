@@ -1,22 +1,41 @@
-export {
-    onAfterMount,
-    onAfterUpdate,
-    onAfterDestroy,
-    onBeforeMount,
-    onBeforeUpdate,
-    onBeforeDestroy
-} from "./instance"
+export type { HtmlBlockOptions } from "#type-declarations/runtime"
 
-// prettier-ignore
 export {
-    watch, 
-    effect, 
-    preWatch, 
-    preEffect, 
-    syncWatch, 
-    syncEffect
+    onBeforeMount,
+    onAfterMount,
+    onBeforeUpdate,
+    onAfterUpdate,
+    onBeforeDestroy,
+    onAfterDestroy
+} from "./component"
+
+export {
+    watch,
+    effect,
+    preEffect,
+    postEffect,
+    syncEffect,
+    preWatch,
+    postWatch,
+    syncWatch
 } from "./reactivity/effect"
 
-export { mountApp } from "./h"
-export { nextTick } from "./schedule"
-export { raw, createStore, updateWithRaw } from "./reactivity/value"
+export {
+    noTracking,
+    noUpdating,
+    updateWithRaw,
+    pauseTracking,
+    pauseUpdating,
+    resumeTracking,
+    resumeUpdating,
+    batchUpdating,
+    stopBatchUpdating,
+    startBatchUpdating,
+    batchUpdateWithRaw,
+    batchAndNoTracking
+} from "./reactivity/optimization"
+
+export { mountApp } from "./component"
+export { toRaw } from "../util/runtime/sundry"
+export { nextTick } from "../util/runtime/sundry"
+export { createStore, toReactive, toShallowReactive } from "./reactivity/value"

@@ -1,53 +1,69 @@
 import {
+    SPREAD_TAG,
+    PRESERVED_IDPREFIX,
+    LANGUAGE_SERVICE_UTIL,
+    GET_TYPE_DELAY_MARKING
+} from "./constants"
+
+import {
     isSelfClosingTag,
-    isBannedIdentifier,
-    isEmbededLanguageTag,
-    mustDirectiveHasValue,
-    getContextIdentifiers
-} from "../util/compiler/sundry"
+    isEmbeddedLanguageTag,
+    isRequiredValueDirective
+} from "../util/compiler/assert"
+
 import {
     camel2Kebab,
     kebab2Camel,
+    toPropertyKey,
     findEndBracket,
-    findOutOfString,
     findOutOfComment,
-    findOutOfStringComment
-} from "../util/compiler/strings"
-import { parseTemplateStandalone } from "./parser/template"
+    findOutOfLiteral,
+    findOutOfLiteralComment
+} from "../util/compiler/string"
 
 export type {
-    SlotInfo,
     ASTLocation,
     ASTPosition,
     TemplateNode,
-    CompileResult,
     CompileOptions,
+    CompileResult,
     StyleDescriptor,
+    TextContentPart,
     ScriptDescriptor,
+    IdentifierStatus,
     TemplateAttribute,
-    ASTPositionWithFlag
-} from "./types"
+    ASTPositionWithFlag,
+    TemplateNodeContext,
+    CompileIntermediateOptions
+} from "#type-declarations/compiler"
 
-export { compile } from "./compile"
-export { commonMessage } from "./message/common"
-export { isCompileError } from "./message/error"
-export { isCompileWarning } from "./message/warn"
-export { PositionFlag } from "../util/shared/flag"
+export type { CompileIntermediateResult } from "./compile"
 
 export const util = {
-    kebab2Camel,
     camel2Kebab,
+    kebab2Camel,
+    toPropertyKey,
     findEndBracket,
-    findOutOfString,
     findOutOfComment,
+    findOutOfLiteral,
     isSelfClosingTag,
-    isBannedIdentifier,
-    isEmbededLanguageTag,
-    getContextIdentifiers,
-    mustDirectiveHasValue,
-    findOutOfStringComment
+    isEmbeddedLanguageTag,
+    findOutOfLiteralComment,
+    isRequiredValueDirective
 }
-export const parseTemplate = parseTemplateStandalone
 
-// types
-export type { PositionFlagKeys } from "../util/types"
+export const constants = {
+    SPREAD_TAG,
+    PRESERVED_IDPREFIX,
+    LANGUAGE_SERVICE_UTIL,
+    GET_TYPE_DELAY_MARKING
+}
+
+export { PositionFlag } from "./enums"
+export { isCompileError } from "./message/error"
+export { isCompileWarning } from "./message/warn"
+export { parseComponentTag } from "./parser/component"
+export { parseDirectiveValue } from "./parser/directive"
+export { compile, compileIntermediate } from "./compile"
+export { parseEventFlagStandalone as parseEventFlag } from "./parser/event"
+export { parseTemplateStandalone as parseTemplate } from "./parser/template"

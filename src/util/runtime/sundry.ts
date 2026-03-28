@@ -1,48 +1,101 @@
-import type { QingKuaiNodeStruct } from "../../runtime/types"
-import type { EventListenerFlagKeys, EventWrapperFlagKeys } from "../types"
+import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime"
+import type { ArbitraryFunc, GeneralFunc, ObjectKeys } from "#type-declarations/tools"
 
-import { isReactive } from "./assert"
-import { notEqual } from "../shared/sundry"
-import { isArray, isSet } from "../shared/assert"
-import { RAW_VALUE } from "../../runtime/constants"
-import { EventListenerFlag, EventWrapperFlag } from "../shared/flag"
+import {
+    WRAPPER,
+    WRAPPER_MAP,
+    WRAPPER_SET,
+    REF_PROPERTY_ID
+} from "../../runtime/reactivity/constants"
+import { isRefProperty } from "./assert"
+import { isFunction } from "../shared/assert"
+import { any, notEqual } from "../shared/sundry"
+import { constReact } from "../../runtime/internal"
+import { FRAG_ORPHAN_CONTENT } from "../shared/flags"
+import { createDestruction } from "../../runtime/destroy"
+import { backToParentDestruction } from "../../runtime/state"
+import { refProperties } from "../../runtime/reactivity/state"
+import { FRAGMENT_FLAG, RESOLVED } from "../../runtime/constants"
 
-// 获取原始值
-export function getRawValue<T>(v: T) {
-    return isReactive(v) ? v[RAW_VALUE] : v
+export function toRaw<T>(v: T): T {
+    const wrapper = any(v)?.[WRAPPER]
+    return wrapper ? wrapper.r : v
 }
 
-// 根据不同类型的选中项容器（select value、&group）生成检查是否被选中的方法
-export function groupCheckerGen(container: any) {
-    if (isArray(container) || isSet(container)) {
-        return (v: any) => {
-            for (const item of container.values()) {
-                if (!notEqual(v, getRawValue(item))) {
-                    return true
-                }
-            }
-            return false
+export function reverse(v: any) {
+    const wrapper = v?.[WRAPPER]
+    return wrapper ? wrapper.r : constReact(v)
+}
+
+export function walkWrapperChildren(
+    wrapper: ReactivityWrapper,
+    callback: (child: ReactivityWrapper) => boolean
+) {
+    if (!wrapper.c) {
+        return
+    }
+    for (const child of wrapper.c) {
+        if (callback(child)) {
+            walkWrapperChildren(child, callback)
         }
     }
-    if (isArray(container)) {
-        return (v: any) => container.includes(v)
+}
+
+export function reactiveNotEqual(a: any, b: any) {
+    if (!notEqual(a, b)) {
+        return false
     }
-    if (isSet(container)) {
-        return (v: any) => container.has(v)
+
+    const awrapper = a?.[WRAPPER]
+    const bwrapper = b?.[WRAPPER]
+    if (!awrapper) {
+        return bwrapper ? notEqual(a, bwrapper.r) : notEqual(a, b)
     }
-    return (v: any) => !notEqual(container, v)
+    if (!bwrapper) {
+        return notEqual(awrapper.r, b)
+    }
+    return notEqual(awrapper.r, bwrapper.r)
 }
 
-// velf means Verify Event Listener Flag
-export function velf(flag: number, key: EventListenerFlagKeys) {
-    return (EventListenerFlag[key] & flag) === EventListenerFlag[key]
+export function nextTick(fn?: ArbitraryFunc) {
+    return isFunction(fn) ? RESOLVED.then(fn) : RESOLVED
 }
 
-// vewf meas Verify Event Wrapper Flag
-export function vewf(flag: number, key: EventWrapperFlagKeys) {
-    return (EventWrapperFlag[key] & flag) === EventWrapperFlag[key]
+export function getRawProperty(property: any) {
+    return isRefProperty(property) ? property[1] : property
 }
 
-export function getValueFallback(qkNode: QingKuaiNodeStruct) {
-    return "value" in qkNode.attrs ? qkNode.attrs.value : (qkNode as any).n.value
+export function invokeRender(render: GeneralFunc) {
+    const destruction = createDestruction()
+    return (render(), backToParentDestruction(), destruction)
+}
+
+export function ensureGetRefProperty(property: ObjectKeys) {
+    return getRefProperty(WRAPPER_SET, property)
+}
+
+export function getRefProperty(wrapperFlag: number, property: ObjectKeys) {
+    if (!(wrapperFlag & (WRAPPER_SET | WRAPPER_MAP))) {
+        return property
+    }
+
+    let result: unknown[] | undefined
+    if (!(result = refProperties.get(property))) {
+        result = [REF_PROPERTY_ID, property]
+        refProperties.set(property, result)
+    }
+    return result
+}
+
+export function walkNodes(destruction: Destruction, callback: (node: ChildNode) => void) {
+    if (!destruction.r) {
+        return
+    }
+    if (destruction.r[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
+        callback(destruction.r as ChildNode)
+    } else {
+        for (const node of (destruction.r as DocumentFragment).childNodes) {
+            callback(node)
+        }
+    }
 }

@@ -1,119 +1,101 @@
 // 注意：双向链表在当前版本中未被用到，在早期的版本中，响应式依赖的更新函数和销毁方法
 // 通过双向链表记录，但是这种方式会导致浏览器的devtool分析内存占用十分缓慢。
 // 当前版本使用Set替代了早期的双向链表，如若之后持续用不到此结构请考虑移除此文件。
-
-// Note: this data struct is not used for current version
+//
+// Note: this data struct is not used for current version.
 // In an earlier version，update functions of dependency and destruction structs are
 // recorded by LinkedList, but it causes browser devtools to analyze memory chains very slowly.
 // In current version, it was replaced by Set, if this structure is sure to be unused in future versions,
 // consider deleting this file please.
 
+import { NIL, UNDEF } from "../constants"
+
+export type LinkedListNode<T> = {
+    data: T
+    prev: PartialLinkedListNode<T>
+    next: PartialLinkedListNode<T>
+}
+export type PartialLinkedListNode<T> = LinkedListNode<T> | null
+
 // 双向链表
 // Bidirectional Linked List
 export class LinkedList<T> {
-    size = 0
-    id = Symbol("id")
-    head: PartialLinkedListNode<T> = null
-    tail: PartialLinkedListNode<T> = null
+    private _size = 0
+    private _head: PartialLinkedListNode<T> = NIL
+    private _tail: PartialLinkedListNode<T> = NIL
 
-    add(data: T) {
-        return this.append(data, this.tail)
+    get size() {
+        return this._size
     }
 
-    get(index: number) {
-        let i = 0
-        let cur = this.head
-        while (i++ < index) {
-            if (!cur) {
-                throw TypeError("Node is not exist.")
-            } else {
-                cur = cur.next
-            }
+    get head() {
+        return this._head
+    }
+
+    get tail() {
+        return this._tail
+    }
+
+    toArray() {
+        const result: T[] = []
+        for (const node of this) {
+            result.push(node.data)
         }
-        return cur
+        return result
     }
 
-    append(data: T, reference: PartialLinkedListNode<T>) {
-        const newNode = {
+    insert(data: T, before: PartialLinkedListNode<T> = NIL) {
+        const newNode: LinkedListNode<T> = {
             data,
-            id: this.id,
-            pre: reference,
-            next: null
+            next: before ?? NIL,
+            prev: before ? before.prev : this.tail
         }
+        if (before) {
+            before.prev = newNode
+        } else {
+            this._tail = newNode
+        }
+        if (newNode.prev) {
+            newNode.prev.next = newNode
+        }
+        if (!this.head || before === this.head) {
+            this._head = newNode
+        }
+        this._size++
+    }
 
-        if (reference) {
-            this.check(reference, "Reference node")
-            if (reference !== this.tail) {
-                reference.next = newNode
-            } else {
-                this.tail = reference.next = newNode
+    remove(node: PartialLinkedListNode<T> | undefined) {
+        if (!node) {
+            return
+        }
+        if (node.prev) {
+            node.prev.next = node.next
+        } else {
+            this._head = node.next
+        }
+        if (node.next) {
+            node.next.prev = node.prev
+        } else {
+            this._tail = node.prev
+        }
+        node.prev = node.next = NIL
+        this._size--
+    }
+
+    [Symbol.iterator]() {
+        let current: PartialLinkedListNode<T> = this.head
+        return {
+            next(): IteratorResult<LinkedListNode<T>> {
+                if (current) {
+                    const value = current
+                    current = current.next
+                    return { value, done: false }
+                }
+                return { done: true, value: UNDEF }
             }
-        } else if (this.tail) {
-            this.tail.next = newNode
-        } else {
-            this.head = this.tail = newNode
-        }
-
-        this.size++
-
-        return newNode
-    }
-
-    each(callback: (item: T, index: number) => void) {
-        eachFrom(this.head, callback)
-    }
-
-    remove(item: LinkedListNode<T>) {
-        this.check(item, "Node")
-        if (item.pre) {
-            item.pre.next = item.next
-        } else {
-            this.head = item.next
-        }
-        if (item.next) {
-            item.next.pre = item.pre
-        } else {
-            this.tail = item.pre
-        }
-        this.size--
-    }
-
-    check(item: LinkedListNode<T>, prefix: string) {
-        if (item.id !== this.id) {
-            throw TypeError(`${prefix} does not belong to this LinkedList.`)
         }
     }
 
     // 其他方法暂未用到
     // other mthods are not used for the moment...
 }
-
-// 从指定节点向后遍历
-// traverse from a specific node
-export function eachFrom<T>(
-    start: PartialLinkedListNode<T>,
-    callback: (item: T, index: number) => void
-) {
-    for (let index = 0; start; ) {
-        callback(start.data, index++)
-        start = start.next
-    }
-}
-
-// 将链表转换为数组，这个方法是在QingKuai开发过程用方便查看执行效果使用的，未导出
-// transform linked list to array, this method is used for QingKuai developement, it's not exported
-export function linkedListToArray<T>(list: LinkedList<T>) {
-    const ret: T[] = []
-    list.each(node => {
-        ret.push(node)
-    })
-    return ret
-}
-
-export type LinkedListNode<T> = {
-    data: T
-    id: Symbol
-    pre: PartialLinkedListNode<T>
-    next: PartialLinkedListNode<T>
-}
-export type PartialLinkedListNode<T> = LinkedListNode<T> | null

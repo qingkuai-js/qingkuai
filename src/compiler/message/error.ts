@@ -1,285 +1,369 @@
-/**
- * 为了整个文件可读性，应尽量将较少代码的错误方法放在靠前的位置，但这样会导致错误代码
- * 不能与方法的顺序保持一致，所以这里在文件头记录了最后一个使用的错误代码（在下方的
- * last-error-code处）每次添加错误方法并使用新的错误代码时，需要将本次使用的错误
- * 代码更新到文件的头部注释中（约定：新错误代码为 last-error-code + 1）
- *
- * For the sake of the overall readability of this file, we should try
- * put the error method with less code in the front, however this results
- * in error codes can not conform to the order of the methods.
- * So, the last error code used is recorded in the file header comment
- * (at last-error-code below), each time you add a new error method and use a
- * new error code, you need update the error code you used this time to the header
- * comment of this file. (Convention: the new error code is: last-error-code + 1)
- *
- * last-error-code: 1045
- *
- * 错误代码解释：以数字1开头的代码表示这是一个编译器致命错误
- * Error Code Explanation: code begining with the number 1 indicates that this is a compiler fatal error
- */
+import type { ArbitraryFunc } from "#type-declarations/tools"
+import type { ASTLocation, CompileError } from "#type-declarations/compiler"
 
-import type { ASTLocation } from "../types"
-import type { GeneralFunc, NumNum } from "../../util/types"
-
-import { commonMessage } from "./common"
-import { SPREAD_TAG } from "../constants"
-import { tagIsComponentRE } from "../regular"
-import { lastElem } from "../../util/shared/sundry"
-import { isNumber } from "../../util/shared/assert"
 import { inputDescriptor, messages } from "../state"
-import { getLocByIndex } from "../../util/compiler/locations"
+import { PRESERVED_IDPREFIX, SPREAD_TAG } from "../constants"
 
-// prettier-ignore
-export const BadExportRelatedStatement = withLocation(
-    ...commonMessage.BadExportRelatedStatement
-)
-
-export const WatchCompilerFuncMissingArg = withLocation(
-    ...commonMessage.WatchCompilerFuncMissingArg
-)
-
-export const TopLevelAwaitNotBeSupported = withLocation(
-    ...commonMessage.TopLevelAwaitNotBeSupported
-)
-
-export const BadValueToReferenceAttribute = withLocation(
-    ...commonMessage.BadValueToReferenceAttribute
-)
-
-export const IdentifierFormatIsNotAllowed = withLocation(
-    ...commonMessage.IdentifierFormatIsNotAllowed
-)
-
-export const DestructureReactFuncWithNoArg = withLocation(
-    ...commonMessage.DestructureReactFuncWithNoArg
-)
-
-export const ReactCompilerFuncNotInTopScope = withLocation(
-    ...commonMessage.ReactCompilerFuncNotInTopScope
-)
-
-export const RegisterExsitingIdentifierName = withLocation(
-    ...commonMessage.RegisterExsitingIdentifierName
-)
-
-export const ConvenientDerivedWithOtherReactFunc = withLocation(
-    ...commonMessage.ConvenientDerivedWithOtherReactFunc
-)
-
-export const ReactCompilerFuncWithoutVariableDeclaration = withLocation(
-    ...commonMessage.ReactCompilerFuncWithoutVariableDeclaration
-)
-
-export const UnexpectedToken = withLocation(1002, (char: string) => {
-    return `Unexpected token: ${char}`
+export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false) => {
+    return `The ${
+        tag === "#comment"
+            ? "comment tag"
+            : `${isEndTag ? "end" : "start"} tag <${isEndTag ? "/" : ""}${tag}>`
+    } is not closed.`
 })
 
-export const BadValueToForDirective = withLocation(1036, () => {
-    return `Bad value to the #for directive.`
+export const DuplicateAttributes = withLocation(
+    1028,
+    (a: string, b: string, isComponent: boolean) => {
+        if (a === b) {
+            return `Duplicate ${getSpecialAttrDescription(a)}s: "${a}".`
+        }
+        return `Duplicate attributes: the ${getSpecialAttrDescription(
+            a
+        )} "${a}" and the ${getSpecialAttrDescription(b)} "${b}" resolve to the same ${
+            isComponent ? "prop" : "attribute"
+        }.`
+    }
+)
+
+export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: string) => {
+    const gotDescription = `, but got ${getSpecialAttrDescription(name, true)}: "${name}".`
+    switch (tag) {
+        case SPREAD_TAG: {
+            return `The <qk:spread> tag can only accept directives${gotDescription}`
+        }
+        case "slot": {
+            return `The <slot> tag does not support reference attributes or event listeners${gotDescription}`
+        }
+        default: {
+            return `The <${tag}> tag can only accept static attributes${gotDescription}`
+        }
+    }
 })
 
-export const UnclosedNormalAttributeValue = withLocation(1005, () => {
-    return "Unclosed attribute value."
+export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string) => {
+    switch (name) {
+        case "watch":
+        case "preWatch":
+        case "postWatch":
+        case "syncWatch": {
+            return `The compiler intrinsic "${name}" can only be used as a function call.`
+        }
+        case "defaultRefs":
+        case "defaultProps": {
+            return `The compiler intrinsic "${name}" must be called as a standalone expression at top-level scope.`
+        }
+    }
+    return `The compiler intrinsic "${name}" must be called at top-level scope to mark the variable initializer.`
 })
 
-export const DynamicNameAttrForSlot = withLocation(1019, () => {
-    return `Dynamic name attribute(!name) for slot tag is not allowed.`
+export const InvalidReferenceAttribute = withLocation(
+    1047,
+    (tag: string, name: string, allowedList: string[]) => {
+        if (allowedList.length !== 1) {
+            return `Invalid reference attribute "${name}" on <${tag}>.`
+        }
+        return `The <${tag}> tag only supports "${allowedList[0]}" as a reference attribute, but got: "${name}".`
+    }
+)
+
+export const MissingPrecedingDirective = withLocation(
+    1031,
+    (directive: string, expectedList: string[], extra = "") => {
+        const expected = expectedList.reduce(
+            (ret, cur, index) => `${ret}${index === 0 ? "" : ", "}"${cur}"`,
+            ""
+        )
+        if (expectedList[0] !== "#if") {
+            return `The "${directive}" directive requires one of the following preceding directives: ${expected}.${extra}`
+        } else {
+            return `The "${directive}" directive requires a preceding sibling element with one of the following directives: ${expected}.${extra}`
+        }
+    }
+)
+
+export const NestedSlotElement = withLocation(1055, () => {
+    return `Nested <slot> elements are not allowed.`
 })
 
-export const UnclosedInterpolationExpression = withLocation(1003, () => {
-    return "Unclosed interpolation expression."
+export const ExpectedExpression = withLocation(1041, () => {
+    return "Expected an expression."
 })
 
-export const InvalidSlotAttr = withLocation(1031, (typeChar: string) => {
-    const description = typeChar === "!" ? "Dynamic" : "Reference"
-    return `${description} slot attribute(${typeChar}slot) is not allowed.`
+export const ExpectedStringLiteral = withLocation(1042, () => {
+    return "Expected a string literal."
 })
 
-export const InvalidIdentifierName = withLocation(1004, (name: string) => {
-    return `The identifier name(${name}) is invalid.`
+export const ExpectedEventFlagName = withLocation(1044, () => {
+    return "Expected an event flag name."
 })
 
-export const NoEndTagMatched = withLocation(1034, (tag: string) => {
-    return `The <${tag}> tag does not have a matched end tag(</${tag}>)`
+export const InvalidContextPattern = withLocation(1032, () => {
+    return `Invalid context pattern.`
 })
 
-export const EmptyInterpolationExpression = withLocation(1001, () => {
+export const InvalidAttributeFormat = withLocation(1016, () => {
+    return "Invalid format for attributes."
+})
+
+export const EmptyInterpolationBlock = withLocation(1001, () => {
     return "Empty interpolation expression block is not allowed."
 })
 
-export const EmbeddedScriptBlockOutOfLimit = withLocation(1009, () => {
-    return `The embedded script block is out of limit(only one is allowed)`
+export const UnclosedInterpolationBlock = withLocation(1003, () => {
+    return "Unclosed interpolation expression block."
 })
 
-export const TagCanNotBeSelfClosing = withLocation(1010, (tag: string) => {
-    return `The tag(${tag}) can not be used as self closing tag.`
+export const TopLevelAwaitNotBeSupported = withLocation(1018, () => {
+    return "Top-level await expressions are not supported."
 })
 
-export const HtmlDirectiveWithChildElement = withLocation(1042, () => {
-    return "The tag with #html directive must accept one text node as child."
+export const UnclosedStaticAttributeValue = withLocation(1008, () => {
+    return "Unclosed static attribute value."
 })
 
-export const UseKeyDirectiveWithoutForDirective = withLocation(1011, () => {
-    return "Key directive could not be used without #for directive."
+export const ExportStatementsAreNotSupported = withLocation(1019, () => {
+    return "Export statements are not supported."
 })
 
-export const TemplateStartsWithEndTag = withLocation(1007, (text: string) => {
-    return `Starts with an end tag: ${text}`
+export const SlotNameAttributeMustBeStatic = withLocation(1039, () => {
+    return `The "name" attribute on <slot> tag must be static.`
 })
 
-export const MustPassValueForDirective = withLocation(1015, (name: string) => {
-    return `The directive(${name}) must have a value.`
+export const NoEndTagMatched = withLocation(1012, (tag: string) => {
+    return `The <${tag}> tag does not have a matched end tag: </${tag}>.`
 })
 
-export const EmptyInterpolationAttrName = withLocation(1008, (char: string) => {
-    const itemDescription = getSpecialAttrDescription(char)
-    return `The ${itemDescription!} must be specified a name.`
+export const EmbeddedScriptBlockOutOfLimit = withLocation(1011, () => {
+    return `The embedded script block is out of limit: only one is allowed.`
 })
 
-export const NoBracketForAttributeInterpolation = withLocation(1016, () => {
-    return "The interpolation attribute value must be wrapped with curly bracket."
+export const InvalidElementTagName = withLocation(1060, (tag: string) => {
+    return `Invalid element tag name "${tag}".`
 })
 
-export const EmbeddedLangNotInTopScope = withLocation(1035, (tag: string) => {
-    return `The embedded language block(${tag}) can only be used in the top scope.`
+export const InvalidExpression = withLocation(1029, (explain?: string) => {
+    return `Invalid expression.${explain ? " " + explain : ""}`
 })
 
-export const AttributeValueIsNotQuoted = withLocation(1017, () => {
-    return "The normal attribute value must be quoted with single or double quote."
+export const TagCanNotBeSelfClosing = withLocation(1013, (tag: string) => {
+    return `The <${tag}> tag cannot be used as self-closing tag.`
 })
 
-export const DirectivesCantCoexist = withLocation(1018, (directives: string[]) => {
-    return `Directives(${directives.join(", ")}) can not be used simultaneously.`
+export const UnrecognizedEventFlag = withLocation(1045, (name: string) => {
+    return `Unrecognized event flag: "${name}".`
 })
 
-export const MissingStartDirective = withLocation(1022, (d: string, pd: string) => {
-    return `The ${d} directive must be used after ${pd} directive.`
+export const InvalidTemplateStructure = withLocation(1015, (msg: string) => {
+    return `Invalid template structure: ${msg}.`
 })
 
-export const TagIsNotClosing = withLocation(1006, (tag: string, isEndTag: boolean) => {
-    return `The ${isEndTag ? "end" : "start"} tag(${tag}) is not closing.`
+export const TemplateStartsWithEndTag = withLocation(1004, (tag: string) => {
+    return `Starts with an end tag: </${tag}>.`
 })
 
-export const BasSlotDirectiveCarrier = withLocation(1012, () => {
-    return `Slot directive(#slot) can only be used on the direct child element(first-level)`
+export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
+    return `Directive "${directive}" requires a value.`
 })
 
-export const CanNotAcceptRefAttribute = withLocation(1014, (key: string, tag: string) => {
-    return `The normal tag(${tag}) can only accept &dom reference attribute, but got &${key}.`
+export const ConflictingDirectives = withLocation(1026, (a: string, b: string) => {
+    return `Conflicting directives: "${a}" and "${b}" cannot be used together.`
 })
 
-export const DuplicateAttributeKey = withLocation(1021, (tag: string, a: string, b: string) => {
-    let description = ""
-    const isComponent = tagIsComponentRE.test(tag)
-    if (a[0] === "#") {
-        return `The directive(${a}) of <${tag}> tag is duplicate.`
+export const ConflictingEventFlags = withLocation(1046, (a: string, b: string) => {
+    return `Conflicting event flags: "${a}" and "${b}" cannot be used together.`
+})
+
+export const InvalidKeyDirectivePlacement = withLocation(1043, () => {
+    return `The "#key" directive is only allowed on a tag with the "#for" directive.`
+})
+
+export const InvalidIntrinsicMethodPlacement = withLocation(1061, (name: string) => {
+    return `The compiler intrinsic method "${name}" cannot be used in template.`
+})
+
+export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {
+    return "The value for static attribute must be quoted with single or double quote."
+})
+
+export const EmptyContextPattern = withLocation(1034, () => {
+    return `The context pattern is empty and does not declare any binding identifiers.`
+})
+
+export const NoNameForInterpolatedAttribute = withLocation(1005, (char: string) => {
+    return `The ${getSpecialAttrDescription(char)} must be specified a name.`
+})
+
+export const ShadowCompilerIntrinsicAtTopLevel = withLocation(1020, (name: string) => {
+    return `Compiler intrinsic identifier "${name}" cannot be shadowed at top-level scope.`
+})
+
+export const InvalidAliasDestructuringDeclaration = withLocation(1025, (kind: string) => {
+    return `${kind} are not allowed in destructuring pattern of alias declarations.`
+})
+
+export const HtmlDirectiveRequiresSingleTextChild = withLocation(1035, () => {
+    return `A tag with the "#html" directive must have exactly one text node as its child.`
+})
+
+export const UnexpectedToken = withLocation(1002, (str: string, expected?: string) => {
+    return `Unexpected token: ${str}${expected ? `, expected: ${expected}.` : ""}`
+})
+
+export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: string) => {
+    return `The "${directive}" directive can only appear once in a promise block.`
+})
+
+export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
+    return `Identifiers starting with "${PRESERVED_IDPREFIX}" are reserved for internal use.`
+})
+
+export const InvalidSpreadElementArgForIntrinsic = withLocation(1059, (intrinsic: string) => {
+    return `The intrinsic method "${intrinsic}" does not support spread element as its argument.`
+})
+
+export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
+    return `The "#slot" directive can only be used on direct child elements of a component node.`
+})
+
+export const InvalidSlotName = withLocation(1038, () => {
+    return `The "#slot" directive requires a string literal slot name after "from" keyword.`
+})
+
+export const CannotAliasIdentifier = withLocation(1053, () => {
+    return `The "alias" intrinsic cannot be used to create an alias for a standalone identifier.`
+})
+
+export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
+    return `The embedded language block <${tag}> can only be used in the top level of the template.`
+})
+
+export const InvalidValueEnclosureForInterpolatedAttribute = withLocation(1007, (name: string) => {
+    return `The value for ${getSpecialAttrDescription(name)} must be wrapped with curly bracket.`
+})
+
+export const InvalidReferenceAttributeValue = withLocation(1048, () => {
+    return `The value of a reference attribute must be either an identifier or a member expression.`
+})
+
+export const InvalidHtmlDirectivePlacement = withLocation(1058, (kind: "slot" | "component") => {
+    return `The "#html" directive cannot be used on ${kind === "slot" ? "<slot> tags" : "components"}.`
+})
+
+export const ConflictingReactivityModes = withLocation(1062, (tag: string) => {
+    return `Conflicting reactivity modes on <${tag}>: "reactive" and "shallow" cannot be used together.`
+})
+
+export const InvalidParameterForAliasIntrinsic = withLocation(1024, () => {
+    return `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+})
+
+export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrinsic: string) => {
+    return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
+})
+
+export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
+    return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`
+})
+
+export const InvalidComponentName = withLocation(1057, (name: string) => {
+    return `Invalid component name: "${name}". It cannot be converted into a valid JavaScript identifier or member expression.`
+})
+
+export const DuplicateSlotName = withLocation(1050, (name: string) => {
+    return `Duplicate slot name: "${name}". Consider using a different value for the "name" attribute on one of the <slot> tags.`
+})
+
+export const TooManyBindingPatterns = withLocation(
+    1037,
+    (directive: string, expected: number, got: number) => {
+        return `The "${directive}" directive accepts at most ${expected} context pattern${expected === 1 ? "" : "s"}, but got ${got}.`
     }
-    if (a === b) {
-        description = `${getSpecialAttrDescription(a[0])}(${a})`
-    } else {
-        description = `${getSpecialAttrDescription(a[0])}(${a})`
-        description += ` and ${getSpecialAttrDescription(b[0])}(${b})`
-    }
-    tag = `${isComponent ? "component" : "normal tag"}(${tag})`
-    return `The name for ${description} of ${tag} is duplicate.`
+)
+
+export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) => {
+    return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`
 })
 
-export const DuplicateNameAttrForSlot = withLocation(1032, (value: string) => {
-    return `Multiple <slot> tags use the same name attribute value(${value}) is not allowed.`
+export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {
+    return `Multiple nodes are assigned to the same slot("${name}") in <${component}>. Consider using a different slot name in the "#slot" directive.`
 })
 
-export const DuplicateSlotAttr = withLocation(1013, (name: string, component: string) => {
-    return `Multiple elements used as slot in component(${component}) have the same name(${name})`
+export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
+    return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
 })
 
-export const BadEventListenerForSlotTag = withLocation(1039, (attr: string) => {
-    return `For clearer semanticals, the <slot> tag can not accept any event listener, but got ${attr}.`
+export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
+    return `Namespace declarations are not allowed in component embedded scripts because the embedded script block are wrapped inside a component function.`
 })
 
-export const BadTargetForHtmlDirective = withLocation(1043, () => {
-    return `Bad target for #html directive: it can not be used with in component, slot and self-closing tag.`
+export const AmbiguousReactiveMarking = withLocation(1023, (name: string) => {
+    return `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("${name}") method is ambiguous.`
 })
 
-export const RefuseReferenceAttribute = withLocation(1024, (tag: string, attr: string) => {
-    return `The <${tag}> tag with dynamic ${attr} attribute(!${attr}) can only accept &dom as reference attribute.`
+export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
+    return `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`
 })
 
-export const ContextIdentifierUsedAsReferenceTarget = withLocation(1033, (name: string) => {
-    return `The context identifier(${name}) can not be used as a target for reference passing, as it is a constant.`
+export const InvalidShorthandAttributeName = withLocation(1049, (name: string) => {
+    return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
 })
 
-export const UnkonwDirective = withLocation(1026, (name: string) => {
-    return `An attribute name begining with # is considered a directive, but the given item(${name}) is an unknow directive.`
-})
-
-export const BadTargetForReferenceDom = withLocation(1044, () => {
-    return `The &dom reference attribute can not be used on slot and ${SPREAD_TAG} tag, as they have no corresponding DOM Node.`
-})
-
-export const BadValueToContextGenDirective = withLocation(1041, (directive: string) => {
-    return `Bad value for ${directive} directive, it expectes the following three node types: Identifier, ArrayExpression or ObjectExpression.`
-})
-
-export const InvalidRefAttr = withLocation(1030, (tag: string, attr: string, given: string) => {
-    return `Normal tag(${tag}) can only accept specific reference attribute(${attr}), and the given item(&${given}) is not allowed.`
-})
-
-// 判断错误类型是会否是QingKuai编译错误
 export function isCompileError(err: Error): err is CompileError {
-    return err instanceof CompileError
+    return err instanceof QingkuaiCompileError
 }
 
-export class CompileError extends Error {
+class QingkuaiCompileError extends Error implements CompileError {
     public description = "The QingKuai compiler encountered a fatal error during execution"
 
-    constructor(public loc: ASTLocation, public code: number, msg: string) {
+    constructor(
+        public loc: ASTLocation,
+        public code: number,
+        msg: string
+    ) {
         super(msg)
-
-        // 非检查模式下直接抛出错误，检查模式下将错误对象存放在messages中
-        if (!inputDescriptor.options.check) {
-            throw this
-        } else {
-            messages.push({
-                value: this,
-                type: "error"
-            })
-        }
     }
 }
 
-// 为返回错误描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的错误描述抛出，
-// 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
-function withLocation<T extends GeneralFunc>(code: number, fn: T) {
-    function error(...args: [...Parameters<T>, loc: ASTLocation]): void
-    function error(...args: [...Parameters<T>, startIndex: number, endIndex: number]): void
-    function error(
-        ...args: [...Parameters<T>, locOrStartIndex: ASTLocation | number, endIndex?: number]
-    ) {
-        let errorLoc: ASTLocation
-        let errorMethodArgs: [...Parameters<T>]
-        if (isNumber(lastElem(args))) {
-            errorMethodArgs = args.slice(0, -2) as any
-            errorLoc = getLocByIndex(...(args.slice(-2) as NumNum))
-        } else {
-            errorLoc = lastElem(args) as ASTLocation
-            errorMethodArgs = args.slice(0, -1) as any
+// 为原始方法添加一个位置信息参数，且进行包装：非检查模式下直接抛出错误，检查模式下存放错误对象
+// Add a location parameter(ASTLocation) to the original error-reporting method and wrap it:
+// in non-check mode, throw the error directly; in check mode, store the error object in `messages`
+function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
+    function error(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
+        const err = new QingkuaiCompileError(loc, code, fn(...params))
+
+        if (!inputDescriptor.options.checkMode) {
+            throw err
         }
-        new CompileError(errorLoc, code, fn(...errorMethodArgs))
+        messages.push({
+            value: err,
+            type: "error"
+        })
     }
     return error
 }
 
-// 获取特殊属性的描述（指令、事件、动态即引用属性）
-function getSpecialAttrDescription(tc: string) {
-    switch (tc) {
-        case "#":
-            return "directive"
-        case "@":
-            return "event listener"
-        case "!":
-            return "dynamic attribute"
-        case "&":
-            return "reference attribute"
-    }
-    return "normal attribute"
+// 获取特殊属性的描述（指令、事件、动态或引用属性）
+// Retrieve the description of a special attribute (such as directives, events, or dynamic/reference attributes)
+function getSpecialAttrDescription(name: string, article = false) {
+    const segments = (() => {
+        switch (name[0]) {
+            case "#": {
+                return ["a", "directive"]
+            }
+            case "@": {
+                return ["an", "event listener"]
+            }
+            case "!": {
+                return ["a", "dynamic attribute"]
+            }
+            case "&": {
+                return ["a", "reference attribute"]
+            }
+            default: {
+                return ["a", "static attribute"]
+            }
+        }
+    })()
+    return article ? segments.join(" ") : segments[1]
 }

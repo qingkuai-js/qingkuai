@@ -1,22 +1,47 @@
-import type { Opportunity, Noop } from "./types"
+import {
+    KEY_UP,
+    KEY_TAB,
+    KEY_LEFT,
+    KEY_DOWN,
+    KEY_RIGHT,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_SPACE,
+    KEY_DELETE
+} from "../util/shared/flags"
 
+// aliases
 export const NIL = null
-export const UNDEF = void 0
+export const NOOP = () => {}
+export const UNDEF = undefined
+export const TOARRAY = (v: any) => [v]
+
+export const OBJECT = Object
 export const REFLECT = Reflect
-export const NOOP: Noop = () => {}
+export const RESOLVED = Promise.resolve()
+export const OBJECT_PROTO = OBJECT.prototype
+export const DOCUMENT = typeof document === "undefined" ? UNDEF : document
 
-// unique symbols
-export const WRAPPER = Symbol()
-export const IS_PROXY = Symbol()
-export const RAW_VALUE = Symbol()
-export const IS_MODULE_FUNC = Symbol()
-export const INSTANTIATE_BY_H = Symbol()
-export const IS_WITH_REFERENCE_RET = Symbol()
+export const BEFORE_MOUNT = 0
+export const AFTER_MOUNT = 1
+export const BEFORE_UPDATE = 2
+export const AFTER_UPDATE = 3
+export const BEFORE_DESTROY = 4
+export const AFTER_DESTROY = 5
 
-export const OPPORTUNITIES: Opportunity[] = ["sync", "pre", "post"]
+// sundry
+export const KEY_FLAG_MAP = {
+    " ": KEY_SPACE,
+    Tab: KEY_TAB,
+    Enter: KEY_ENTER,
+    Delete: KEY_DELETE,
+    Escape: KEY_ESCAPE,
+    ArrowUp: KEY_UP,
+    ArrowDown: KEY_DOWN,
+    ArrowLeft: KEY_LEFT,
+    ArrowRight: KEY_RIGHT
+}
 
-// 以下常量更合适的表达是使用对象映射或enum，但为了压缩运行时编译体积而采用普通常量
-export const ALIAS_MODULE_KIND = 1
-
-export const BAD_TARGET_MOUNT_KIND = 1
-export const BAD_TAEGET_DIRECTIVE_KIND = 2
+// symbols
+export const NODE_CONTEXT = Symbol("qk: nodecontext")
+export const FRAGMENT_FLAG = Symbol("qk: fragment flag")

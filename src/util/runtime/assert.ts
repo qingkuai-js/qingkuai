@@ -1,27 +1,60 @@
-import type { AnyObject } from "../types"
-import type { ModuleFunc } from "../../runtime/types"
+import type {
+    RefProperty,
+    ProxyWrapper,
+    ReactiveValue,
+    ReactivityWrapper
+} from "#type-declarations/runtime"
+import type { AnyObject } from "#type-declarations/tools"
 
-import { QingKuaiComponent } from "../../runtime/instance"
-import { IS_MODULE_FUNC, IS_PROXY, RAW_VALUE } from "../../runtime/constants"
+import {
+    WRAPPER,
+    WRAPPER_SET,
+    WRAPPER_MAP,
+    WRAPPER_ARRAY,
+    WRAPPER_PROXY,
+    REF_PROPERTY_ID,
+    WRAPPER_SHALLOW
+} from "../../runtime/reactivity/constants"
+import { isObject } from "../shared/assert"
 
-export function isNode(v: any) {
-    return v instanceof Node
+export function couldReact(value: any) {
+    return !isReactive(value) && isObject(value)
 }
 
-// 判断值是否为响应式值
-export function isReactive<T extends AnyObject>(
-    v: any
-): v is T & {
-    [RAW_VALUE]: T
-} {
-    return v?.[IS_PROXY] === true
+export function isElement(v: any): v is Element {
+    return v?.nodeType === 1
 }
 
-// 判断是否是ModuleFunc类型
-export function isModuleFunc(v: any): v is ModuleFunc {
-    return !!v?.[IS_MODULE_FUNC]
+export function isShallow(wrapper: ReactivityWrapper) {
+    return !!(wrapper.l & WRAPPER_SHALLOW)
 }
 
-export function isComponent(v: any) {
-    return Object.getPrototypeOf(v) === QingKuaiComponent
+export function isIteratorKey(wrapper: ReactivityWrapper, key: any) {
+    if (wrapper.l & (WRAPPER_SET | WRAPPER_MAP)) {
+        return !isRefProperty(key)
+    }
+    if (wrapper.l & WRAPPER_ARRAY) {
+        switch (typeof key) {
+            case "string": {
+                key = +key
+                // fallthrough
+            }
+            case "number": {
+                return key >= 0
+            }
+        }
+    }
+    return false
+}
+
+export function isRefProperty(property: any): property is RefProperty {
+    return property?.[0] === REF_PROPERTY_ID
+}
+
+export function isReactive<T extends AnyObject>(v: any): v is ReactiveValue<T> {
+    return !!v?.[WRAPPER]
+}
+
+export function isProxyWrapper(wrapper: ReactivityWrapper): wrapper is ProxyWrapper {
+    return !!(wrapper.l & WRAPPER_PROXY)
 }

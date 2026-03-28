@@ -4,13 +4,15 @@
     "target": "ESNext",
     "module": "ESNext",
     "declaration": true,
-    "skipLibCheck": true,
     "esModuleInterop": true,
-    "emitDeclarationOnly": true,
     "outDir": "dist/temp-types",
+    "emitDeclarationOnly": true,
     "moduleResolution": "Bundler",
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "#type-declarations/*": ["./src/types/*"]
+    }
   },
-  "include": ["src", "conf.env.d.ts"],
-  "exclude": ["node_modules/**/*", "dist", "src/tests"]
+  "exclude": ["node_modules/**/*", "dist"],
+  "include": ["src", "tests", "test-space", "env.d.ts", "scripts", "dist/temp-types"]
 }

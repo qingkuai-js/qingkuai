@@ -1,51 +1,53 @@
-import * as rollup from "rollup"
-import dts from "rollup-plugin-dts"
+import { defineConfig } from "rollup"
+
 import esbuild from "rollup-plugin-esbuild"
 
-export default rollup.defineConfig(commentLineArgs => {
+export default defineConfig(() => {
     const result = []
-    const isWatchMode = commentLineArgs.watch
 
-    const inputOptions = {
-        external: ["@babel/parser", "@jridgewell/sourcemap-codec", "node:crypto", "entities"],
+    const baseOptions = {
         input: {
             "runtime/index": "./src/runtime/index.ts",
             "compiler/index": "./src/compiler/index.ts",
             "runtime/internal": "./src/runtime/internal.ts"
         },
-        output: {
-            dir: "dist/esm",
-            format: "es",
-            chunkFileNames: "chunks/[name].js"
+        onwarn(warning) {
+            if (warning.code === "CIRCULAR_DEPENDENCY") {
+                return
+            }
         },
-        plugins: [esbuild()]
+        plugins: [esbuild()],
+        external: ["@babel/parser", "@jridgewell/sourcemap-codec"]
     }
 
     result.push(
-        inputOptions,
-        Object.assign({}, inputOptions, {
-            output: {
-                dir: "dist/cjs",
-                format: "cjs",
-                entryFileNames: "[name].cjs",
-                chunkFileNames: "chunks/[name].cjs"
-            }
-        })
+        {
+            ...baseOptions,
+            output: getOutput("es", "dist/esm")
+        },
+        {
+            ...baseOptions,
+            output: getOutput("cjs", "dist/cjs")
+        }
     )
-
-    if (!isWatchMode) {
-        ;["runtime/index", "compiler/index", "runtime/internal"].forEach(folder => {
-            result.push({
-                input: `./dist/temp-types/${folder}.d.ts`,
-                output: {
-                    format: "es",
-                    inlineDynamicImports: true,
-                    file: `dist/types/${folder}.d.ts`
-                },
-                plugins: [dts()]
-            })
-        })
-    }
-
     return result
 })
+
+function getOutput(format, dir) {
+    const ext = format === "cjs" ? ".cjs" : ".js"
+    return {
+        dir,
+        format,
+        entryFileNames: `[name]${ext}`,
+        chunkFileNames(info) {
+            for (const id of info.moduleIds) {
+                if (id.includes("/src/runtime/constants")) {
+                    return `chunks/shared${ext}`
+                }
+                if (id.includes("/src/runtime")) {
+                    return `runtime/chunk${ext}`
+                }
+            }
+        }
+    }
+}

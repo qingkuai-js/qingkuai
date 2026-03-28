@@ -1,5 +1,6 @@
 src
 tests
+scripts
 test-space
 node_modules
 
@@ -9,8 +10,11 @@ node_modules
 .gitignore
 .prettierrc
 
+env.d.ts
+tsconfig.json
+memorandum.md
 qingkuai-*.tgz
 pnpm-lock.yaml
-tsconfig.json
-conf.env.d.ts
 rollup.config.js
+exlint.config.js
+vitest.config.ts

@@ -1,89 +1,113 @@
-import type { CompileOptions, CompileResult } from "./types"
+import type {
+    TemplateNode,
+    CompileMessage,
+    CompileResult,
+    CompileOptions,
+    StyleDescriptor,
+    ScriptDescriptor,
+    ASTPositionWithFlag,
+    CompileIntermediateOptions
+} from "#type-declarations/compiler"
+import type { PositionFlag } from "./enums"
 
-import { isString } from "../util/shared/assert"
-import { parseTemplate } from "./parser/template"
 import { analyzeScript } from "./analyzer/script"
+import { parseTemplate } from "./parser/template"
 import { analyzeTemplate } from "./analyzer/template"
-import { createHashId } from "../util/compiler/sundry"
-import { transformScript } from "./transformer/script"
-import { transformTemplate } from "./transformer/template"
-import { compressCompileSize } from "./optimizer/compile-size"
-import { generateInterResult, generateCompileResult } from "./codegen"
-import { inputDescriptor, messages, resetCompilerState } from "./state"
+import { generateRuntimeCode } from "./transformer/runtime/codegen"
+import { newCleanObj, traverseObject } from "../util/shared/sundry"
+import { generateIntermediateCode } from "./transformer/check/codegen"
+import { analyzeResult, inputDescriptor, messages, resetCompilerState } from "./state"
 
-export function compile(source: string, options: CompileOptions): CompileResult {
+export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
-    inputDescriptor.source = source
 
     const templateNodes = parseTemplate(source)
-    const hashId = options.hashId || createHashId()
-    const componentName = options.componentName ?? "_"
-    const scriptSourceCode = inputDescriptor.script.code
-    const typeRefStatement = options.typeRefStatement ?? ""
+    analyzeScript()
+    analyzeTemplate(templateNodes)
 
-    // 关于检查模式：检查模式表示仅用来检查编译错误的情况，这种情况下遇到编译错误时不会中断编译器的解析和执行
-    // 如果传入了typeRefStatement，那么编译器只会生成一种用于语法检查的typescript中间代码（不能正确运行）
-    //
-    // 检查模式下无需分析script代码，这样可以避免@babel/parser解析script代码的性能损耗，
-    // 在需要诊断嵌入脚本时，typescript-qingkuai-plugin会复用vscode内置的typescript语言服务的
-    // SourceFile AST进行诊断，诊断完成后会将诊断结果通过该插件独立启动的ipc服务器通知给qingkuai语言服务器
-    if (!options.check) {
-        analyzeScript(scriptSourceCode)
-    }
-
-    // 分析模板部分的代码，非检查模式下它需要在分析完脚本代码之后执行
-    const templateAnalysisRet = analyzeTemplate(templateNodes)
-
-    // 检查模式下仅生成用于js/ts语言服务的中间代码，无需执行正常编译模式的转换操作
-    const basicResult = {
-        interIndexMap: {
-            stoi: [],
-            itos: []
-        },
-        hashId,
-        messages,
-        templateNodes,
-        inputDescriptor,
-        typeDeclarationLen: 0
-    }
-    if (options.check) {
-        if (!options.typeRefStatement) {
-            return {
-                code: "",
-                mappings: "",
-                ...basicResult
-            }
-        }
-        return exchangeInterIndexOfSlotInfo({
-            mappings: "",
-            ...basicResult,
-            ...generateInterResult(source, typeRefStatement)
-        })
-    }
-
-    // 转换脚本代码并确定编译结果中可压缩代码体积的地方（相同字符串、冗余字符等）
-    const scriptTranformedRet = transformScript(scriptSourceCode, 1)
-    compressCompileSize(templateAnalysisRet)
-
+    const writer = generateRuntimeCode(templateNodes)
     return {
-        ...basicResult,
-        ...generateCompileResult(
-            hashId,
-            componentName,
-            scriptTranformedRet,
-            transformTemplate(templateAnalysisRet, [inputDescriptor.script.lineCount, 0])
-        )
-    }
+        messages,
+        code: writer.code,
+        mappings: writer.mappings,
+        positions: inputDescriptor.positions,
+        hashId: inputDescriptor.options.hashId!,
+        scriptDescriptor: inputDescriptor.script,
+        styleDescriptors: inputDescriptor.styles
+    } satisfies CompileResult
 }
 
-// 将slotInfo-properties中每项的第三个元素（源码索引）转换为中间代码索引，参考: file://./types.ts
-function exchangeInterIndexOfSlotInfo(interCompileRes: CompileResult) {
-    const { slotInfo } = inputDescriptor
-    const { stoi } = interCompileRes.interIndexMap
-    Object.keys(slotInfo).forEach(slotName => {
-        slotInfo[slotName].properties.forEach(property => {
-            !isString(property[2]) && (property[2] = stoi[property[2]])
-        })
+export function compileIntermediate(source: string, options: CompileIntermediateOptions) {
+    resetCompilerState({ ...options, checkMode: true })
+
+    const templateNodes = parseTemplate(source)
+    analyzeScript()
+    analyzeTemplate(templateNodes)
+
+    const writer = generateIntermediateCode(templateNodes)
+    const idStatusInfo: Record<string, string> = newCleanObj()
+    traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
+        if (info.status === "literal" || info.status === "pending") {
+            idStatusInfo[name] = "raw"
+        } else {
+            idStatusInfo[name] = `${info.status}${info.path ? ` -> ${info.path}` : ""}`
+        }
     })
-    return interCompileRes
+
+    const positions = inputDescriptor.positions
+    const scriptDescriptor = inputDescriptor.script
+    const styleDescriptors = inputDescriptor.styles
+    return new CompileIntermediateResult(
+        writer.code,
+        messages,
+        templateNodes,
+        positions,
+        writer.gtdii,
+        scriptDescriptor,
+        styleDescriptors,
+        idStatusInfo,
+        writer.indexMap,
+        analyzeResult.template.slots,
+        analyzeResult.template.nodeContexts
+    )
+}
+
+export class CompileIntermediateResult {
+    public slotNames: string[] = []
+
+    constructor(
+        public code: string,
+        public messages: CompileMessage[],
+        public templateNodes: TemplateNode[],
+        public positions: ASTPositionWithFlag[],
+        public getTypeDelayInterIndexes: number[],
+        public scriptDescriptor: ScriptDescriptor,
+        public styleDescriptors: StyleDescriptor[],
+        public identifierStatusInfo: Record<string, string>,
+        public indexMap: { itos: number[]; stoi: number[] },
+        private slots: (typeof analyzeResult)["template"]["slots"],
+        private nodeContexts: (typeof analyzeResult)["template"]["nodeContexts"]
+    ) {
+        traverseObject(slots, name => this.slotNames.push(name))
+    }
+
+    getSourceIndex(interIndex: number) {
+        return this.indexMap.itos[interIndex]
+    }
+
+    getInterIndex(sourceIndex: number) {
+        return this.indexMap.stoi[sourceIndex]
+    }
+
+    getTemplateNodeContext(node: TemplateNode) {
+        return this.nodeContexts.get(node)!
+    }
+
+    getSlotTemplateNode(name: string): TemplateNode | undefined {
+        return this.slots[name]
+    }
+
+    isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
+        return !!(this.positions[index].flag & flag)
+    }
 }

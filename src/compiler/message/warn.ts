@@ -1,107 +1,96 @@
-/**
- * 为了整个文件可读性，应尽量将较少代码的警告方法放在靠前的位置，但这样会导致警告代码
- * 不能与方法的顺序保持一致，所以这里在文件头记录了最后一个使用的警告代码（在下方的
- * last-error-code处）每次添加警告方法并使用新的警告代码时，需要将本次使用的警告
- * 代码更新到文件的头部注释中（约定：新警告代码为 last-error-code + 1）
- *
- * For the sake of the overall readability of this file, we should try
- * put the warn method with less code in the front, however this results
- * in warn codes can not conform to the order of the methods.
- * So, the last warn code used is recorded in the file header comment
- * (at last-warn-code below), each time you add a new warn method and use a
- * new warn code, you need update the warn code you used this time to the header
- * comment of this file. (Convention: the new warn code is: last-warn-code + 1)
- *
- * last-warn-code: 9011
- *
- * 警告代码解释：以数字9开头的代码表示这是一个编译器警告
- * Warning Code Explanation: Code beginning with the number 9 indicates that this is a compiler warning
- */
-
-import type { ASTLocation } from "../types"
-import type { GeneralFunc, NumNum } from "../../util/types"
+import type { ArbitraryFunc } from "#type-declarations/tools"
+import type { ASTLocation, CompileWarning, IdentifierStatus } from "#type-declarations/compiler"
 
 import { messages } from "../state"
-import { commonMessage } from "./common"
-import { isNumber } from "../../util/shared/assert"
-import { lastElem } from "../../util/shared/sundry"
-import { getLocByIndex } from "../../util/compiler/locations"
 
-// prettier-ignore
-export const MixTwoSyntaxOfDerived = withLocation(
-    ...commonMessage.MixTwoSyntaxOfDerived
+export const UnnecessarySpreadTag = withLocation(9014, (without: string) => {
+    return `The <qk:spread> tag without ${without} is unnecessary.`
+})
+
+export const DuplicateEventFlag = withLocation(9011, (name: string) => {
+    return `Duplicate event flag "${name}" is redundant and will be ignored.`
+})
+
+export const RedundantEventFlags = withLocation(9009, () => {
+    return `Event flags for component event listeners are redundant and will be ignored.`
+})
+
+export const UnnecessaryReactiveMark = withLocation(9001, (status: IdentifierStatus) => {
+    return `This value will never change, so marking it ${
+        status === "reactive" ? "" : status + " "
+    }reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+})
+
+export const DeclareDerivedMixedSyntaticForms = withLocation(9003, () => {
+    return "Mixing two syntactic forms to declare derived reactive value is not recommended."
+})
+
+export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scope: string) => {
+    return `Top-level scope identifier "${name}" will be overwrittern in ${scope}.`
+})
+
+export const RedundantRawMark = withLocation(9005, () => {
+    return `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
+})
+
+export const UnnecessaryHtmlDirective = withLocation(9008, () => {
+    return `The "#html" directive without a value has no effect because the element content is entirely static.`
+})
+
+export const RedundantDirectiveValue = withLocation(9006, (directive: string) => {
+    return `The "${directive}" directive does not need a value, and the redundant directive value will be ignored.`
+})
+
+export const RedundantArgsForIntrinsic = withLocation(
+    9016,
+    (intrinsic: string, expected: number, got: number) => {
+        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
+    }
 )
 
-// prettier-ignore
-export const IdentifierMaybeOverwritten = withLocation(
-    ...commonMessage.IdentifierMaybeOverwritten
+export const DuplicateDefaultDeclaration = withLocation(9013, (subject: string) => {
+    return `This default value definition for "${subject}" is ignored because it is overridden by a later one.`
+})
+
+export const DomRerferenceAttributeOnComponent = withLocation(9012, () => {
+    return `Using "&dom" on a component will not assign the DOM element to the target. It behaves like a normal reference attribute.`
+})
+
+export const RedundantBooleanAttributeValue = withLocation(
+    9007,
+    (tag: string, attribute: string) => {
+        return `The "${attribute}" attribute on <${tag}> tag is a boolean attribute, and the redundant attribute value will be ignored.`
+    }
 )
 
-export const RedundantArgsForCompilerFunc = withLocation(
-    ...commonMessage.RedundantArgsForCompilerFunc
+export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
+    9010,
+    (name: string, eventName: string) => {
+        return `The event flag "${name}" only valid on keyboard events ("keyup", "keydown", "keypress"). It has no effect on "${eventName}" and will be ignored.`
+    }
 )
 
-export const SlotAttrIsEmpty = withLocation(9011, () => {
-    return "The slot attribute is empty, and the default value(default) is adopted."
+export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
+    return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 })
 
-export const DirectiveValueIsIgnored = withLocation(9009, (d: string) => {
-    return `The ${d} directive does not need a value, and the value has been ignored.`
-})
-
-export const InvalidEventFlag = withLocation(9004, (flagName: string, eventName: string) => {
-    return `Invalid flag(${flagName}) for event(@${eventName}) and it has been ignored.`
-})
-
-export const DuplicateEventFlags = withLocation(9008, (flags: string[], eventName: string) => {
-    return `There are some duplicate flags(${flags.join(", ")}) on ${eventName} event.`
-})
-
-export const NameAttrForSlotIsEmpty = withLocation(9010, () => {
-    return "The name attribute of slot tag is empty, and the default value(default) is adopted."
-})
-
-export const InvalidComposeFlag = withLocation(9006, (eventName: string) => {
-    return `The event flag(compose) is not valid for ${eventName} even, it can only be used for input event.`
-})
-
-export const InvalidEventFlagForComponent = withLocation(9005, (flagDescription: string) => {
-    return `The event parameter for component can not accept any flag(${flagDescription}), and they has been ignored.`
-})
-
-export const InvalidKeyRelatedFlag = withLocation(9007, (flag: string, eventName: string) => {
-    return `The event flag(${flag}) is not valid for ${eventName} even, it can only be used for these events: keyup, keydown, keypress.`
-})
-
-// 检查参数是否是QingKuai编译器警告
 export function isCompileWarning(v: any): v is CompileWarning {
-    return v instanceof CompileWarning
+    return v instanceof QingkuaiCompileWarning
 }
 
-// 为返回警告描述信息的方法添加位置参数，它返回的是一个重载函数，这个重载函数会将原函数返回的警告信息发出，
-// 并为原方法添加接受一个ASTLocation或两个number（开始位置和结束位置）参数用来描述错误位置
-function withLocation<T extends GeneralFunc>(code: number, fn: T) {
-    function warn(...args: [...Parameters<T>, loc: ASTLocation]): void
-    function warn(...args: [...Parameters<T>, startIndex: number, endIndex: number]): void
-    function warn(
-        ...args: [...Parameters<T>, locOrStartIndex: ASTLocation | number, endIndex?: number]
-    ) {
-        let warnLoc: ASTLocation
-        let warnMethodArgs: [...Parameters<T>]
-        if (isNumber(lastElem(args))) {
-            warnMethodArgs = args.slice(0, -2) as any
-            warnLoc = getLocByIndex(...(args.slice(-2) as NumNum))
-        } else {
-            warnLoc = lastElem(args) as ASTLocation
-            warnMethodArgs = args.slice(0, -1) as any
-        }
-        new CompileWarning(warnLoc, code, fn(...warnMethodArgs))
+function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
+    function warn(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
+        new QingkuaiCompileWarning(loc, code, fn(...params))
     }
     return warn
 }
 
-export class CompileWarning {
-    constructor(public loc: ASTLocation, public code: number, public message: string) {
+class QingkuaiCompileWarning implements CompileWarning {
+    constructor(
+        public loc: ASTLocation,
+        public code: number,
+        public message: string
+    ) {
         messages.push({
             value: this,
             type: "warning"

@@ -5,6 +5,7 @@ dist
 test-space
 node_modules
 
-backup.md
+memorandum.md
+.vscode/launch.json
 
 qingkuai-*.tgz

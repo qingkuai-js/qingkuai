@@ -12,9 +12,20 @@ Qingkuai is a lightweight, fast, and developer-friendly frontend framework desig
 | `qingkuai/compiler` | Compiler for transforming component files        |
 | `qingkuai/internal` | Internal helpers used by the compiler (no types) |
 
-## Development
+## Getting started
 
-To set up this repo for local development:
+To quickly try QingKuai in a new project, run:
+
+```shell
+npm create qingkuai -- "my-qingkuai-app"
+cd ./my-qingkuai-app
+npm install
+npm run dev
+```
+
+## Contributes
+
+To contribute to QingKuai itself, clone the repository and start the development server:
 
 ```shell
 git clone https://github.com/qingkuai-js/qingkuai.git

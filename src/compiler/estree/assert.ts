@@ -1,124 +1,188 @@
-import type {
-    AnyNode,
-    EsPattern,
-    PartialAnyNode,
-    TraverseParent,
-    TypeOperationExpression
-} from "./types"
-import type { Identifier } from "@babel/types"
+import type { TSModuleDeclaration } from "@babel/types"
+import type { AnyNode, ContextPattern, PartialAnyNode } from "#type-declarations/estree"
 
-// 节点类型断言
+import { any } from "../../util/shared/sundry"
+import { stripTypeExpressions } from "./sundry"
+import { getLastElem } from "../../util/shared/arrays"
+
+export function isLeftValue(node: AnyNode) {
+    switch ((node = stripTypeExpressions(node)).type) {
+        case "MemberExpression": {
+            return true
+        }
+        case "Identifier": {
+            return node.name !== "undefined"
+        }
+    }
+    return false
+}
+
 export function is<T extends AnyNode["type"]>(
     node: PartialAnyNode,
     type: T
-): node is { type: T } & AnyNode {
+): node is AnyNode & { type: T } {
     return node?.type === type
 }
 
-// 判断表达式是否是内联事件处理器
+export function isTypeOperation(node: AnyNode) {
+    return (
+        node.type === "TSAsExpression" ||
+        node.type === "TSTypeAssertion" ||
+        node.type === "TSNonNullExpression" ||
+        node.type === "TSSatisfiesExpression"
+    )
+}
+
+export function isLiteral(node: PartialAnyNode) {
+    switch (node?.type) {
+        case undefined:
+        case "NullLiteral":
+        case "RegexLiteral":
+        case "RegExpLiteral":
+        case "BigIntLiteral":
+        case "StringLiteral":
+        case "NumberLiteral":
+        case "NumericLiteral":
+        case "BooleanLiteral":
+        case "TemplateLiteral": {
+            return true
+        }
+        case "Identifier": {
+            return node.name === "undefined"
+        }
+        case "SequenceExpression": {
+            return isLiteral(getLastElem(node.expressions))
+        }
+    }
+    return false
+}
+
 export function isInlineEventHandler(node: AnyNode) {
-    return !(
-        isFunctionNode(node) ||
-        is(node, "Identifier") ||
-        is(node, "MemberExpression") ||
-        is(node, "OptionalMemberExpression") ||
-        is(node, "OptionalIndexedAccessType")
-    )
-}
-
-// 判断是否是函数节点
-export function isFunctionNode(node: PartialAnyNode) {
-    return (
-        is(node, "FunctionDeclaration") ||
-        is(node, "FunctionExpression") ||
-        is(node, "ArrowFunctionExpression")
-    )
-}
-
-export function findAncestorUntil<T extends AnyNode["type"]>(
-    tp: TraverseParent,
-    type: T
-): (AnyNode & { type: T }) | undefined {
-    if (!tp.v) {
-        return undefined
+    switch (stripTypeExpressions(node).type) {
+        case "Identifier":
+        case "MemberExpression":
+        case "FunctionExpression":
+        case "ArrowFunctionExpression":
+        case "OptionalMemberExpression": {
+            return false
+        }
+        default: {
+            return true
+        }
     }
-    if (tp.v.type === type) {
-        return tp.v as any
-    }
-    if (!tp.parent) {
-        return undefined
-    }
-    return findAncestorUntil(tp.parent, type)
 }
 
-// 判断节点是否为可赋值目标（左值）
-export function isAssignable(node: AnyNode) {
-    return is(node, "Identifier") || is(node, "MemberExpression")
-}
+export function isExpressionEqual(a: AnyNode, b: AnyNode): boolean {
+    ;[a, b] = [a, b].map(stripTypeExpressions)
 
-// 判断是否estree pattern，用来过滤一些ts节点类型
-export function isEsPattern(node: AnyNode): node is EsPattern {
-    return (
-        is(node, "Identifier") ||
-        is(node, "RestElement") ||
-        is(node, "ArrayPattern") ||
-        is(node, "ObjectPattern") ||
-        is(node, "MemberExpression") ||
-        is(node, "AssignmentPattern")
-    )
-}
-
-// 判断是否ts类型操作语法节点
-export function isTypeOperationExpression(node: PartialAnyNode): node is TypeOperationExpression {
-    return (
-        is(node, "TSAsExpression") ||
-        is(node, "TSTypeAssertion") ||
-        is(node, "TSNonNullExpression") ||
-        is(node, "TSSatisfiesExpression")
-    )
-}
-
-// 识别标识符是否是引用
-// 调用此方法只需传入原始节点和TraverseParent即可，无需将parent向上遍历查找es节点，这里已经考虑了ts节点的情况
-export function identifierIsReference(node: Identifier, tp: TraverseParent): boolean {
-    const notReferenceWhenParentIs = new Set<AnyNode["type"]>([
-        "CatchClause",
-        "ArrayPattern",
-        "BreakStatement",
-        "ClassExpression",
-        "ClassDeclaration",
-        "LabeledStatement",
-        "ContinueStatement",
-        "FunctionExpression",
-        "FunctionDeclaration"
-    ])
-
-    if (!tp.v) {
-        return true
-    }
-    if (tp.v.type.startsWith("TS")) {
+    if (a.type !== b.type) {
         return false
     }
 
-    switch (tp.v.type) {
-        case "VariableDeclarator":
-            return tp.v.id !== node
-        case "ClassMethod":
-        case "ObjectMethod":
-            return tp.v.computed
-        case "ObjectProperty":
-            if (findAncestorUntil(tp, "ObjectPattern")) {
-                return false
-            }
-            if (tp.v.shorthand) {
-                return node !== tp.v.key
-            }
-            return tp.v.computed || tp.v.key !== node
-        case "ClassProperty":
-            return tp.v.computed || tp.v.key !== node
+    switch (a.type) {
+        case "Identifier": {
+            return a.name === any(b).name
+        }
         case "MemberExpression":
-            return tp.v.computed || tp.v.property !== node
-        default:
-            return !notReferenceWhenParentIs.has(tp.v.type)
+        case "OptionalMemberExpression": {
+            return (
+                isExpressionEqual(a.object, any(b).object) &&
+                isPropertyEqual(a.property, any(b).property)
+            )
+        }
+
+        default: {
+            return false
+        }
     }
+}
+
+export function isPropertyEqual(a: AnyNode, b: AnyNode): boolean {
+    const [x, y] = [a, b].map(node => {
+        switch ((node = stripTypeExpressions(node)).type) {
+            case "Identifier": {
+                return node.name
+            }
+            case "StringLiteral":
+            case "NumericLiteral":
+            case "NumberLiteral": {
+                return String(node.value)
+            }
+            case "TemplateLiteral": {
+                if (node.expressions.length === 0) {
+                    return node.quasis[0].value.cooked ?? ""
+                }
+                // fallthrough
+            }
+            default: {
+                return null
+            }
+        }
+    })
+    return x !== null && y !== null && x === y
+}
+
+export function isBlock(node: AnyNode) {
+    return is(node, "BlockStatement") || is(node, "TSModuleBlock")
+}
+
+export function isUndefinedLiteral(node: AnyNode) {
+    return node.type === "Identifier" && node.name === "undefined"
+}
+
+export function isContextPattern(node: PartialAnyNode): node is ContextPattern {
+    switch (node?.type) {
+        case undefined:
+        case "Identifier":
+        case "RestElement":
+        case "ArrayPattern":
+        case "ObjectPattern": {
+            return true
+        }
+        default: {
+            return false
+        }
+    }
+}
+
+export function isIntrinsicCall(node: PartialAnyNode) {
+    return node?.type === "CallExpression" || node?.type === "OptionalCallExpression"
+}
+
+// 暂未使用的方法：组件中不支持命名空间声明（若确定未来不会提供支持，可考虑移除此方法）
+//
+// Currently unused method: namespace declarations are not supported in components
+// (if support is confirmed to be unnecessary in the future, consider removing this method).
+//
+// 判断 TSModuleDeclaration (typescript namespace) 是否会生成 JS 标识符
+// 例如：对于没有内容的命名空间声明或只有类型声明的命名空间标识符，在生成的 JS 文件中不存在
+//
+// Determine whether a TSModuleDeclaration (TypeScript namespace) generates a JavaScript identifier.
+// For example, a namespace declaration with no contents or only type declarations will not produce
+// a corresponding identifier in the generated JavaScript output.
+export function willModuleDeclarationEmitsJS(declaration: TSModuleDeclaration) {
+    if (declaration.id.type === "StringLiteral" || declaration.declare) {
+        return false
+    }
+    if (declaration.body.type === "TSModuleDeclaration") {
+        return willModuleDeclarationEmitsJS(declaration.body)
+    }
+    return declaration.body.body.some(statement => {
+        switch (statement.type) {
+            case "ClassDeclaration":
+            case "TSEnumDeclaration":
+            case "VariableDeclaration":
+            case "FunctionDeclaration": {
+                return true
+            }
+            case "ExportNamedDeclaration": {
+                return statement.exportKind === "value"
+            }
+        }
+        return false
+    })
+}
+
+export function isFunctionLiteral(node: PartialAnyNode) {
+    return node && (node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression")
 }

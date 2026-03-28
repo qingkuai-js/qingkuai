@@ -1,146 +1,118 @@
 import type {
-    TemplateNode,
-    MessageItem,
-    DebuggingInfo,
-    SourceMapInfo,
-    CompileOptions,
-    StringConstant,
-    EliminateRanges,
-    ReplacementInfo,
+    InputOptions,
+    AnalyzeResult,
+    CompileMessage,
     InputDescriptor,
-    ScriptDescriptor,
-    InterCodeSnippets,
-    TempStoredImportInfo
-} from "./types"
+    GenerateIdentifier
+} from "#type-declarations/compiler"
 
 import { isUndefined } from "../util/shared/assert"
-import { newASTLocation } from "../util/compiler/structure"
+import { newCleanObj } from "../util/shared/sundry"
+import { objectAssign } from "../util/shared/aliases"
+import { createHashId } from "../util/compiler/sundry"
+import { newASTLocation } from "../util/compiler/position"
 
-export let cacheId = 0
-export const getCacheId = () => cacheId++
+export let analyzeResult: AnalyzeResult
+export let messages: CompileMessage[] = []
+export let inputDescriptor: InputDescriptor
+export let generateIdentifier: GenerateIdentifier
 
-export let sourceMapInfo = newSourceMapInfo()
-export let inputDescriptor = newInputDescriptor()
-
-export let debuggingInfo = newDebuggingInfo()
-export let replacementInfo = newReplacementInfo()
-export let interCodeSnippets = newInterCodeSnippets()
-
-export let messages: MessageItem[] = []
-export let tempStoredImportInfos: TempStoredImportInfo[] = []
-
-export let usedInitItems = new Set<string>()
-export let usedRuntimeItems = new Set<string>()
-export let importedIdentifiers = new Set<string>()
-export let allExistingIdentifiers = new Set<string>()
-export let eliminateRanges: EliminateRanges = new Set()
-
-export let aliases = new Map<string, string>()
-export let stringConstants = new Map<string, StringConstant>()
-export let stringConstantsSourceMap = new Map<string, string>()
-export let templateNodeToContextIdentifiers = new WeakMap<TemplateNode, Set<string>>()
-
-// 重置编译器状态
-export function resetCompilerState(options: CompileOptions) {
-    cacheId = 0
+export function resetCompilerState(options: Partial<InputOptions>) {
     messages = []
-    tempStoredImportInfos = []
-    debuggingInfo = newDebuggingInfo()
-    sourceMapInfo = newSourceMapInfo()
-    inputDescriptor = newInputDescriptor()
-    replacementInfo = newReplacementInfo()
-    interCodeSnippets = newInterCodeSnippets()
-
-    aliases = new Map()
-    usedInitItems = new Set()
-    stringConstants = new Map()
-    eliminateRanges = new Set()
-    usedRuntimeItems = new Set()
-    importedIdentifiers = new Set()
-    allExistingIdentifiers = new Set()
-    stringConstantsSourceMap = new Map()
-    templateNodeToContextIdentifiers = new Map()
-
-    // 调试模式下未指定是否生成sourcemap时默认生成sourcemap
-    if (options.debug && isUndefined(options.sourcemap)) {
-        options.sourcemap = true
-    }
-
-    // 检查模式下需要保留所有注释节点
-    if (options.check) {
-        options.reserveTemplateComment = true
-    }
-    Object.assign(inputDescriptor.options, options)
+    analyzeResult = newAnalyzeResult()
+    generateIdentifier = newGenerateIdentifier()
+    inputDescriptor = newInputDescriptor({ ...options })
 }
 
-// 生成新的sourcemap信息结构
-function newSourceMapInfo(): SourceMapInfo {
+function newGenerateIdentifier(): GenerateIdentifier {
     return {
-        mappings: [],
-        hasScript: false,
-        preaddedLineCount: 0,
-        removedLine: new Set(),
-        tempStoredImportStartLine: 0,
-        positionShouldNotBeMapped: [],
-        existingSourceIndex: new Set(),
-        columnOffsetOfFirstTemplateLine: 0
+        anchor: "",
+        context: "",
+        internal: "",
+        getterArg: "",
+        setterArg: "",
+        compressStrings: "",
+        suffix: newCleanObj(),
+        prefix: newCleanObj()
     }
 }
 
-// 生成新的调试信息结构
-function newDebuggingInfo(): DebuggingInfo {
+function newAnalyzeResult(): AnalyzeResult {
     return {
-        setters: new Map(),
-        constIdentifiers: new Set()
-    }
-}
-
-// 生成新的文本替换信息解构
-function newReplacementInfo(): ReplacementInfo {
-    return {
-        count: 0,
-        map: new Map()
-    }
-}
-
-function newScriptDescriptor(): ScriptDescriptor {
-    return {
-        code: "",
-        isTS: false,
-        lineCount: 0,
-        existing: false,
-        loc: newASTLocation(),
-        generatedOffset: [0, 0],
-        startTagNameRange: [-1, -1]
+        template: {
+            delegateEvents: {
+                passive: new Set(),
+                nonPassive: new Set()
+            },
+            slots: newCleanObj(),
+            parsedEvents: new Map(),
+            nodeContexts: new Map(),
+            componentFragment: null,
+            parsedDirectives: new Map(),
+            parsedExpressions: new Map(),
+            staticTextContents: new Map(),
+            parsedComponentTags: new Map(),
+            validReferenceAttributes: new Set()
+        },
+        script: {
+            watchers: [],
+            defaultItems: {},
+            importDeclarations: [],
+            eliminatedNodes: new Set(),
+            fullIdentifiers: new Set(),
+            declaratorToAliasInfos: new Map(),
+            declaratorToIntrinsic: new Map(),
+            topLevelReferences: newCleanObj(),
+            topLevelIdentifiers: newCleanObj(),
+            preMutatedTopLevelIdentifiers: new Set()
+        },
+        reusedStrings: newCleanObj()
     }
 }
 
 // 生成一个新的输入源状态描述符
-function newInputDescriptor(): InputDescriptor {
-    return {
+// Generate a new input source descriptor
+function newInputDescriptor(options: Partial<InputOptions>) {
+    const ret: InputDescriptor = {
+        indent: "",
         source: "",
         styles: [],
-        slotInfo: {},
         positions: [],
-        indentSpaceCount: 0,
-        stringConstantCount: 0,
-        refAttrValueStartIndexes: [],
-        script: newScriptDescriptor(),
+        script: {
+            code: "",
+            lineCount: 0,
+            isTS: false,
+            existing: false,
+            loc: newASTLocation(),
+            startTagOpenRange: [-1, -1]
+        },
         options: {
-            componentName: "",
             hashId: "",
             debug: false,
-            check: false,
-            comment: true,
             sourcemap: false,
-            typeRefStatement: "",
-            reserveTemplateComment: false,
-            convenientDerivedDeclaration: true
+            checkMode: false,
+            componentName: "",
+            reactivityMode: "reactive",
+            interpretiveComments: false,
+            typeDeclarationFilePath: "",
+            whitespace: "trim-collapse",
+            preserveHtmlComments: false,
+            shorthandDerivedDeclaration: true
         }
     }
-}
-
-function newInterCodeSnippets(): InterCodeSnippets {
-    const ret: InterCodeSnippets = [] as any
-    return (ret.charCount = 0), ret
+    if (!options.hashId) {
+        options.hashId = createHashId()
+    }
+    if (options.debug) {
+        if (isUndefined(options.sourcemap)) {
+            options.sourcemap = true
+        }
+        if (isUndefined(options.interpretiveComments)) {
+            options.interpretiveComments = true
+        }
+        if (isUndefined(options.preserveHtmlComments)) {
+            options.preserveHtmlComments = true
+        }
+    }
+    return (objectAssign(ret.options, options), ret)
 }

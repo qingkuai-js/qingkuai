@@ -1,121 +1,178 @@
-import type {
-    EventStructure,
-    SetterWithContext,
-    QingKuaiNodeStruct,
-    RefEventHandlerGetterGen
-} from "./types"
+import type { ArbitraryFunc } from "#type-declarations/tools"
 
-import { attribute, selectOptions } from "./dom"
-import { raw } from "./reactivity/value"
-import { getValueFallback, groupCheckerGen, vewf } from "../util/runtime/sundry"
-import { IS_WITH_REFERENCE_RET } from "./constants"
-import { EventWrapperFlagKeys } from "../util/types"
-import { isArray, isSet } from "../util/shared/assert"
-import { EventListenerFlag } from "../util/shared/flag"
-import { emptyArr, notEqual } from "../util/shared/sundry"
+import {
+    KEY_ALT,
+    KEY_META,
+    KEY_CTRL,
+    KEY_SHIFT,
+    KEY_EXACT,
+    EVENT_ONCE,
+    EVENT_SELF,
+    EVENT_STOP,
+    EVENT_CAPTURE,
+    EVENT_PREVENT,
+    EVENT_PASSIVE
+} from "../util/shared/flags"
+import { getNodeContext } from "./dom"
+import { any } from "../util/shared/sundry"
+import { eventRegisterInfo } from "./state"
+import { pushDestructionCleaner } from "./destroy"
+import { isUndefined } from "../util/shared/assert"
+import { DOCUMENT, KEY_FLAG_MAP } from "./constants"
+import { call, defineProperties } from "../util/shared/aliases"
 
-const Arrow = "Arrow"
-const keyTypes = ["keydown", "keyup", "keypress"]
-
-// 事件处理器包装器，用以支持按键标志
-// Wrapper of Event Handler, to support key related flags
-export function eventWrapper(
-    fn: EventListener,
-    flag: number = 0,
-    other: string = ""
-): EventListener {
-    return function (this: any, event) {
-        let code = ""
-        let shouldInvokeHandler = true
-        const keyRelated = keyTypes.includes(event.type)
-
-        const verify = (fk: EventWrapperFlagKeys, ...pks: string[]) => {
-            if (!shouldInvokeHandler) {
-                return
-            }
-            if (vewf(flag, fk)) {
-                // @ts-ignore
-                shouldInvokeHandler = pks.includes(code) || event[fk + "Key"]
-            }
+// 包装带有键位标志的事件
+// Wrap events with key flags.
+export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
+    return function (this: EventTarget, event: KeyboardEvent) {
+        let checkRes: boolean | undefined = true
+        if (event.type.startsWith("key")) {
+            checkRes = !!(flag && any(KEY_FLAG_MAP)[event.key])
+        }
+        if (!checkRes) {
+            return
         }
 
-        if (keyRelated) {
-            code = (event as KeyboardEvent).code
-            verify("tab", "Tab")
-            verify("esc", "Escape")
-            verify("space", "Space")
-            verify("up", Arrow + "Up")
-            verify("down", Arrow + "Down")
-            verify("left", Arrow + "Left")
-            verify("right", Arrow + "Right")
-            verify("del", "Delete", "Backspace")
-            verify("enter", "Enter", "NumpadEnter")
-            if (shouldInvokeHandler && other) {
-                shouldInvokeHandler = code === other
+        const pairs: [number, boolean][] = [
+            [flag & KEY_ALT, event.altKey],
+            [flag & KEY_META, event.metaKey],
+            [flag & KEY_CTRL, event.ctrlKey],
+            [flag & KEY_SHIFT, event.shiftKey]
+        ]
+        for (const pair of pairs) {
+            if (!checkRes) {
+                break
+            }
+            if (pair[0]) {
+                checkRes = pair[1]
+            } else if (flag & KEY_EXACT) {
+                checkRes = !pair[1]
             }
         }
-
-        verify("alt", ...withLR("Alt"))
-        verify("meta", ...withLR("Meta"))
-        verify("shift", ...withLR("Shift"))
-        verify("ctrl", ...withLR("Control"))
-
-        shouldInvokeHandler && fn.call(this, event)
+        if (checkRes) {
+            call(fn, this, event)
+        }
     }
 }
 
-// 生成原生标签引用属性使用的事件结构
-export function withReference(
-    eventName: string,
-    attrName: string,
-    value: any,
-    setter?: SetterWithContext
-): EventStructure {
-    const handlerGen: RefEventHandlerGetterGen = (ctx, qkNode, invokeGetter, attachUpdate) => {
-        const target = qkNode.n as HTMLElement
-        const targetAny = target as any
-        const isSelect = target.tagName === "SELECT"
-        const attrKey = attrName as keyof typeof target
-
-        const updateAttribute = () => {
-            const gotValue = raw(invokeGetter(value))
-            if (isSelect) {
-                return selectOptions(targetAny, gotValue)
-            }
-            return attribute(qkNode, attrKey, gotValue, true)
+// 在根节点注册原生事件监听器，不同的 passive 属性独立注册（同类型只注册一个）
+// Register native event listeners on the root node, registering separately
+// for different `passive` option (only one will be registered for per type)
+export function registerEvents(registration: string[]) {
+    for (let i = 0, passive = false; i < registration.length; i++) {
+        const registeIndex = +!passive
+        const eventName = registration[i]
+        if (isUndefined(eventName)) {
+            passive = true
+            continue
         }
+        if ((eventRegisterInfo[eventName] ??= [])[registeIndex]) {
+            continue
+        }
+        DOCUMENT!.addEventListener(
+            eventName,
+            event => {
+                dispatch(event, passive)
+            },
+            {
+                passive,
+                capture: true
+            }
+        )
+        eventRegisterInfo[eventName][registeIndex] = true
+    }
+}
 
-        // 初始化属性值并将更新属性值的方法添加到响应式值的effect中
-        updateAttribute(), attachUpdate(updateAttribute)
+export function listen(elem: HTMLElement, type: string, handler: ArbitraryFunc, flag = 0) {
+    const capture = !!(flag & EVENT_CAPTURE)
+    const wrappedHandler = function (this: EventTarget, event: Event) {
+        if (flag & EVENT_SELF && event.target !== elem) {
+            return
+        }
+        if ((call(handler, this, event), flag & EVENT_STOP)) {
+            event.stopPropagation()
+        }
+        if (flag & EVENT_PREVENT) {
+            event.preventDefault()
+        }
+    }
+    elem.addEventListener(type, wrappedHandler, {
+        capture,
+        once: !!(flag & EVENT_ONCE),
+        passive: !!(flag & EVENT_PASSIVE)
+    })
+    pushDestructionCleaner(() => {
+        elem.removeEventListener(type, wrappedHandler, capture)
+    })
+}
 
-        return () => {
-            if (setter) {
-                if (!isSelect) {
-                    return setter(targetAny[attrKey], ctx)
+export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?: number) {
+    getNodeContext(elem).e[type] = [handler, flag]
+}
+
+function dispatch(event: Event, passive: boolean) {
+    const type = event.type
+    const bubblings: [EventTarget, number][] = []
+    const path = event.composedPath().slice(0, -4)
+
+    const excuteEventHandler = (elem: EventTarget) => {
+        const delegatedEvents = getNodeContext(elem).e
+        const delegateEvent = delegatedEvents[type]
+        const flag = delegateEvent[1] ?? 0
+        if (flag & EVENT_PREVENT) {
+            event.preventDefault()
+        }
+        if (flag & EVENT_ONCE) {
+            delete delegatedEvents[type]
+        }
+        defineProperties(event, {
+            currentTarget: {
+                get() {
+                    return elem
                 }
-                return setter(getValueFallback(targetAny.selectedOptions[0]._qkNode), ctx)
+            },
+            eventPhase: {
+                get() {
+                    if (elem === event.target) {
+                        return Event.AT_TARGET
+                    }
+                    if (flag & EVENT_CAPTURE) {
+                        return Event.CAPTURING_PHASE
+                    }
+                    return Event.BUBBLING_PHASE
+                }
             }
-
-            const gotValue = invokeGetter(value)
-            const gotValueIsArray = isArray(gotValue)
-            gotValueIsArray ? emptyArr(gotValue) : gotValue.clear()
-            for (const option of (targetAny as HTMLSelectElement).selectedOptions) {
-                const optionValue = getValueFallback((option as any)._qkNode)
-                gotValueIsArray ? gotValue.push(optionValue) : gotValue.add(optionValue)
-            }
-        }
+        })
+        call(delegateEvent[0], elem, event)
     }
 
-    // 标记返回值为withReference方法的返回值，在h方法中处理事件监听时，会识别
-    // withReference的返回值，并调用它的返回值（即handlerGen)以设置属性的初始值，
-    // 并记录更新属性的方法到依赖的响应性值的effect中
-    handlerGen[IS_WITH_REFERENCE_RET] = true
+    for (let i = path.length - 1; i >= 0; i--) {
+        const elem = any(path[i])
+        const delegateEvent = getNodeContext(elem).e[type]
+        if (!delegateEvent) {
+            continue
+        }
 
-    // 返回eventStructure，这里设置了compose标志，这样做是为了在输入合成过程中让setter随着
-    // 输入的进行被实时调用并更新响应性值（setter是一个仅包含赋值操作的单语句函数，执行开销非常小）
-    return [eventName, handlerGen, EventListenerFlag.compose]
-}
+        const flag = delegateEvent[1] ?? 0
+        if (!!(flag & EVENT_PASSIVE) != passive) {
+            continue
+        }
 
-function withLR(code: string): [string, string] {
-    return [code + "Left", code + "Right"]
+        const isTarget = elem === event.target
+        if (flag & EVENT_SELF && !isTarget) {
+            continue
+        }
+        if (!isTarget && !(flag & EVENT_CAPTURE)) {
+            bubblings.push([elem, flag])
+            continue
+        }
+        if ((excuteEventHandler(elem), flag & EVENT_STOP)) {
+            break
+        }
+    }
+    for (const [elem, flag] of bubblings) {
+        if ((excuteEventHandler(elem), flag & EVENT_STOP)) {
+            break
+        }
+    }
 }

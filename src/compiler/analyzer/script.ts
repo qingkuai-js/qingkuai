@@ -1,783 +1,580 @@
-import type { NumNum } from "../../util/types"
-import type { ASTLocation, ReplacementItem, ReplacementStatus } from "../types"
-import type { Pattern, CallExpression, VariableDeclaration, Identifier } from "@babel/types"
-import type { ASTVisitor, EsPattern, RequiredPosition, TraverseParent } from "../estree/types"
+import type {
+    Visitor,
+    IntrinsicCall,
+    TopLevelDeclaratorNode,
+    TopLevelDeclarationNode
+} from "#type-declarations/estree"
+import type { EstreeWalkContext } from "#type-declarations/compiler"
+import type { Identifier, VariableDeclarator, VariableDeclaration } from "@babel/types"
+import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import {
-    sourceMapInfo,
-    replacementInfo,
-    eliminateRanges,
-    inputDescriptor,
-    importedIdentifiers,
-    tempStoredImportInfos,
-    allExistingIdentifiers
-} from "../state"
+    isLiteral,
+    isLeftValue,
+    isIntrinsicCall,
+    isTypeOperation,
+    isFunctionLiteral
+} from "../estree/assert"
 import {
-    MixTwoSyntaxOfDerived,
-    IdentifierMaybeOverwritten,
-    RedundantArgsForCompilerFunc
-} from "../message/warn"
+    indentSpacesRE,
+    intrinsicMethodsRE,
+    intrinsicVariableRE,
+    cannotRedeclareStatusRE,
+    intrinsicWatcherMethodsRE,
+    intrinsicReactiveMethodsRE
+} from "../regular"
 import {
-    parse,
-    getEsNode,
-    markExcludes,
-    isInTopScope,
-    hasTopLevelAwait,
-    getEsNodeOfParent,
-    extendReplacement,
-    initReplacementItem,
-    functionMarkExcludes,
-    getIdentifiersFromPattern
-} from "../../util/compiler/estree"
-import {
-    BadExportRelatedStatement,
-    WatchCompilerFuncMissingArg,
-    ReactCompilerFuncNotInTopScope,
-    IdentifierFormatIsNotAllowed,
-    DestructureReactFuncWithNoArg,
-    RegisterExsitingIdentifierName,
-    ConvenientDerivedWithOtherReactFunc,
-    ReactCompilerFuncWithoutVariableDeclaration,
-    TopLevelAwaitNotBeSupported
+    CannotAliasIdentifier,
+    AmbiguousReactiveMarking,
+    TopLevelAwaitNotBeSupported,
+    UsedForbiddenIdentifierFormat,
+    IdentifierCannotBeRedeclared,
+    InvalidUsageForIntrinsicMethods,
+    ExportStatementsAreNotSupported,
+    ShadowCompilerIntrinsicAtTopLevel,
+    InvalidParameterForAliasIntrinsic,
+    InvalidSpreadElementArgForIntrinsic,
+    TSModuleDeclarationsAreNotSupported,
+    InvalidAliasDestructuringDeclaration,
+    IntrinsicNotAllowedInUsingDeclaration
 } from "../message/error"
 import {
-    getGeneratedScriptLine,
-    getSourceLocByScriptLoc,
-    getSourceIndexByScriptIndex
-} from "../../util/compiler/locations"
-import { walk } from "../estree/walk"
-import { COMPILER_FUNCS } from "../constants"
-import { lastElem } from "../../util/shared/sundry"
-import { recordMappingWithNoOffset } from "../sourcemap"
-import { findOutOfStringComment } from "../../util/compiler/strings"
-import { confirmQingKuaiIdentifierAliases, getAlias } from "./alias"
-import { is, isFunctionNode, identifierIsReference } from "../estree/assert"
-import { getSetterIdentifier, isBannedIdentifier } from "../../util/compiler/sundry"
-import { reactCompilerFuncRE, watchCompilerFuncRE, scriptSourceIndentSpaceCount } from "../regular"
+    RedundantRawMark,
+    UnnecessaryReactiveMark,
+    RedundantArgsForIntrinsic,
+    IdentifierMaybeOverwritten,
+    DuplicateDefaultDeclaration,
+    DeclareDerivedMixedSyntaticForms,
+    UnnecessaryMutableDerivedDeclaration
+} from "../message/warn"
+import { PRESERVED_IDPREFIX } from "../constants"
+import { stringify } from "../../util/shared/aliases"
+import { getLastElem } from "../../util/shared/arrays"
+import { analyzeResult, inputDescriptor } from "../state"
+import { parseExpression, parseScript } from "../parser/script"
+import { getScriptLocByRange } from "../../util/compiler/position"
+import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
+import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 
-const visitor: ASTVisitor = {
-    VariableDeclaration(node, parent) {
-        analyzeReactivity(node, parent)
-    },
+export function analyzeScript() {
+    const sourceCode = inputDescriptor.script.code
+    const program = parseScript(sourceCode)
+    if (program) {
+        walkEstree(program, visitor)
+    }
+    inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
+}
 
-    TSEnumDeclaration(node, parent) {
-        if (isInTopScope(parent)) {
-            checkTopScopeIdentifier(node.id.name, node.id.loc!)
+const visitor: Visitor = {
+    AnyNode(node, context) {
+        switch (node.type) {
+            case "TSExportAssignment":
+            case "ExportSpecifier":
+            case "ExportAllDeclaration":
+            case "ExportDefaultSpecifier":
+            case "ExportNamedDeclaration":
+            case "ExportDefaultDeclaration":
+            case "ExportNamespaceSpecifier": {
+                if (context.inTopLevel) {
+                    ExportStatementsAreNotSupported(getScriptLocByRange(node.range))
+                }
+                break
+            }
+            case "TSModuleDeclaration": {
+                TSModuleDeclarationsAreNotSupported(getScriptLocByRange(node.range))
+                break
+            }
+            case "CallExpression":
+            case "OptionalCallExpression": {
+                const call = node as IntrinsicCall
+                const callee = stripTypeExpressions(call.callee)
+                if (callee.type === "Identifier" && intrinsicWatcherMethodsRE.test(callee.name)) {
+                    analyzeResult.script.watchers.push(call)
+                }
+                break
+            }
+        }
+        if (node.type !== "Program") {
+            markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
         }
     },
 
-    TSModuleDeclaration(node, parent) {
-        if (is(node.id, "Identifier") && isInTopScope(parent)) {
-            checkTopScopeIdentifier(node.id.name, node.id.loc!)
+    AwaitExpression(node, context) {
+        if (context.inTopLevel) {
+            TopLevelAwaitNotBeSupported(getScriptLocByRange(node.range))
         }
     },
 
-    FunctionDeclaration(node, parent) {
-        if (node.id && isInTopScope(parent)) {
-            checkTopScopeIdentifier(node.id.name, node.id.loc!)
+    Identifier(node, context) {
+        if (node.name.startsWith(PRESERVED_IDPREFIX)) {
+            UsedForbiddenIdentifierFormat(getScriptLocByRange(node.range))
         }
-        functionMarkExcludes(node, parent.excludes)
+
+        // 记录所有引用顶部标识符的位置信息
+        // Record the source ranges of all references to top-level identifiers.
+        if (!context.scopeIdentifiers?.has(node.name) && context.isBindingReference) {
+            const { preMutatedTopLevelIdentifiers } = analyzeResult.script
+            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[node.name]
+            ;(analyzeResult.script.topLevelReferences[node.name] ??= []).push({
+                range: node.range,
+                declared: !!topLevelIdentifier,
+                shorthand: context.isShorthandIdentifierAccess
+            })
+            if (
+                // prettier-ignore
+                (
+                    topLevelIdentifier?.status === "literal" ||
+                    (!topLevelIdentifier && !preMutatedTopLevelIdentifiers.has(node.name))
+                ) &&
+                context.isIdentifierAssignmentTarget
+            ) {
+                if (topLevelIdentifier) {
+                    topLevelIdentifier.status = "pending"
+                } else {
+                    preMutatedTopLevelIdentifiers.add(node.name)
+                }
+            }
+            if (intrinsicMethodsRE.test(node.name)) {
+                checkUsageOfIntrinsicMethods(node, context)
+            }
+        }
+        analyzeResult.script.fullIdentifiers.add(node.name)
     },
 
-    ClassDeclaration(node, parent) {
-        if (!node.id) {
+    ClassDeclaration(node, context) {
+        if (context.inTopLevel && node.id) {
+            updateTopLevelIdentifiers(node.id, false, true, "literal", node, node)
+        }
+    },
+
+    FunctionDeclaration(node, context) {
+        if (context.inTopLevel && node.id) {
+            updateTopLevelIdentifiers(node.id, true, true, "literal", node, node)
+        }
+    },
+
+    TSEnumDeclaration(node, context) {
+        if (context.inTopLevel) {
+            updateTopLevelIdentifiers(node.id, false, true, "pending", node, node)
+        }
+    },
+
+    VariableDeclaration(node, context) {
+        if (node.kind === "var" ? !context.inHoistableTopLevel : !context.inTopLevel) {
             return
         }
+        for (const declarator of node.declarations) {
+            const destructuringIdentifierNames: string[] | undefined =
+                declarator.id.type === "Identifier" ? undefined : []
+            const status = inferStatusWithDeclarator(declarator, node)
+            const { topLevelIdentifiers, declaratorToAliasInfos: declaratorToAlias } =
+                analyzeResult.script
+            const patternInfo = walkPatternIdentifiers(declarator.id, (identifier, path) => {
+                const initNode = declarator.init
 
-        const name = node.id?.name
-        const isDebug = inputDescriptor.options.debug
-        const id = isDebug ? `[__w__${name}, ${name}]` : name
-
-        const getReactFunc = () => {
-            return getAlias("react")
-        }
-
-        const getSetterArg = () => {
-            return isDebug ? ", " + getSetterIdentifier(name) : name
-        }
-
-        if (isInTopScope(parent)) {
-            checkTopScopeIdentifier(name, node.id.loc!)
-        }
-
-        if (is(parent.v, "Program") && name) {
-            extendReplacement(name, false, true, [
-                initReplacementItem({
-                    index: node.start,
-                    text: () => `let ${id} = ${getReactFunc()}(`
-                }),
-                initReplacementItem({
-                    index: node.end,
-                    text: () => `${getSetterArg()})`
-                })
-            ])
-        }
-        markExcludes(parent.excludes, getIdentifiersFromPattern(node.id))
-    },
-
-    CallExpression(node, parent) {
-        const callee = getEsNode(node.callee)
-        const esParent = getEsNodeOfParent(parent)?.v
-        const nodeSourceLoc = getSourceLocByScriptLoc(node.loc)
-
-        if (
-            is(callee, "Identifier") &&
-            COMPILER_FUNCS.has(callee.name) &&
-            !parent.excludes.has(callee.name)
-        ) {
-            if (watchCompilerFuncRE.test(callee.name)) {
-                analyzeWatchCompilerFuncCall(node)
-            } else if (reactCompilerFuncRE.test(callee.name)) {
-                if (!isInTopScope(parent)) {
-                    ReactCompilerFuncNotInTopScope(nodeSourceLoc)
+                // let/var 声明对衍生响应式值无意义，它不可被修改
+                // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
+                if (status === "derived" && node.kind !== "const") {
+                    UnnecessaryMutableDerivedDeclaration(getScriptLocByRange(declarator.range!))
                 }
-                if (!is(esParent, "VariableDeclarator")) {
-                    ReactCompilerFuncWithoutVariableDeclaration(nodeSourceLoc)
+
+                // 衍生响应式值/别名 标识符不能重复声明（使用 var 关键字时可能导致此问题）
+                // Derived reactive value or alias identifiers must not be declared more than once (this may occur when using the `var` keyword).
+                if (topLevelIdentifiers[identifier.name]) {
+                    const existing = topLevelIdentifiers[identifier.name]
+                    const existingCannotBeRedeclared = cannotRedeclareStatusRE.test(existing.status)
+                    if (existingCannotBeRedeclared || cannotRedeclareStatusRE.test(status)) {
+                        if (!existingCannotBeRedeclared) {
+                            IdentifierCannotBeRedeclared(
+                                getScriptLocByRange(getLastElem(existing.nodeInfos)!.id.range!),
+                                status
+                            )
+                        } else {
+                            IdentifierCannotBeRedeclared(
+                                getScriptLocByRange(identifier.range),
+                                existing!.status
+                            )
+                        }
+                    }
+                }
+
+                const hoist = node.kind === "var"
+                const implicit = status === "pending" || status === "literal"
+                updateTopLevelIdentifiers(
+                    identifier,
+                    hoist,
+                    implicit,
+                    status,
+                    declarator,
+                    node,
+                    destructuringIdentifierNames
+                )
+
+                // status 为 alias 时记录标识符别名的访问路径
+                // When the status is `alias`, record the access path of the identifier alias.
+                if (
+                    status === "alias" &&
+                    initNode?.type === "CallExpression" &&
+                    initNode.arguments.length &&
+                    isLeftValue(initNode.arguments[0])
+                ) {
+                    let aliasInfos = declaratorToAlias.get(declarator)
+                    if (!aliasInfos) {
+                        declaratorToAlias.set(declarator, (aliasInfos = []))
+                    }
+
+                    const firstArg = stripTypeExpressions(initNode.arguments[0])
+                    const argSource = inputDescriptor.script.code.slice(...firstArg.range!)
+                    const fullPath = argSource + path
+                    const expression = stripTypeExpressions(
+                        parseExpression(fullPath, firstArg.start!)!
+                    )
+                    if (expression.type === "MemberExpression") {
+                        const propertySource = fullPath.slice(...expression.property.range!)
+                        aliasInfos.push({
+                            id: identifier.name,
+                            property: expression.computed
+                                ? propertySource
+                                : stringify(propertySource),
+                            target: fullPath.slice(0, expression.object.end!)
+                        })
+                        topLevelIdentifiers[identifier.name].path = fullPath
+                    }
+                }
+
+                // 记录解构声明的标识符名称列表
+                // Record the list of identifier names declared by a destructuring declaration.
+                topLevelIdentifiers[identifier.name].destructuringIdentifierNames =
+                    destructuringIdentifierNames
+                destructuringIdentifierNames?.push(identifier.name)
+            })
+
+            // 别名绑定搭配解构语法时不允许指定默认值或剩余元素语法
+            // Alias bindings are not allowed to specify default values or use rest elements when combined with destructuring syntax.
+            if (status === "alias") {
+                const errorLoc = getScriptLocByRange(declarator.range!)
+                if (!inputDescriptor.options.debug) {
+                    if (node.declarations.length === 1) {
+                        analyzeResult.script.eliminatedNodes.add(node)
+                    } else {
+                        analyzeResult.script.eliminatedNodes.add(declarator)
+                    }
+                }
+                if (patternInfo.hasRestElement) {
+                    InvalidAliasDestructuringDeclaration(errorLoc, "Rest elements")
+                }
+                if (patternInfo.specifiedDefaultValue) {
+                    InvalidAliasDestructuringDeclaration(errorLoc, "Default values")
                 }
             }
         }
     },
 
-    Identifier(node, parent) {
-        const { name } = node
-        const grand = parent.parent
-        const esParent = getEsNodeOfParent(parent)
-        const isDebug = inputDescriptor.options.debug
-        const replacementItem = replacementInfo.map.get(name)
-        const accessByDotDollar = replacementItem?.useDollar && !parent.excludes.has(name)
+    TSImportEqualsDeclaration(node, context) {
+        checkTopLevelIdentifier(node.id.name, node.id.range!)
+        analyzeResult.script.importDeclarations.push(context)
+    },
 
-        // 检查是否是被禁止的标识符格式
-        if (isBannedIdentifier(name)) {
-            IdentifierFormatIsNotAllowed(name, getSourceLocByScriptLoc(node.loc))
+    ImportDeclaration(node, context) {
+        if (!node.importKind || node.importKind === "value") {
+            for (const specifier of node.specifiers) {
+                checkTopLevelIdentifier(specifier.local.name, specifier.local.range!)
+            }
+        }
+        if (!inputDescriptor.options.checkMode) {
+            analyzeResult.script.eliminatedNodes.add(node)
+        }
+        analyzeResult.script.importDeclarations.push(context)
+    }
+}
+
+// 推断顶级作用域标识符的响应式状态
+// Infer the reactive status of top-level scope identifiers.
+function inferStatusWithDeclarator(
+    declarator: VariableDeclarator,
+    declaration: VariableDeclaration
+): IdentifierStatus {
+    if (declaration.kind === "using" || declaration.kind === "await using") {
+        return "raw"
+    }
+
+    const isShorthandDerived =
+        declarator.id.type === "Identifier" &&
+        declarator.id.name.startsWith("$") &&
+        inputDescriptor.options.shorthandDerivedDeclaration
+    const isConst = declaration.kind === "const"
+    const isDestructuring = declarator.id.type !== "Identifier"
+    const declaratorLoc = getScriptLocByRange(declarator.range!)
+    const initNode = declarator.init && stripTypeExpressions(declarator.init)
+
+    if (!isIntrinsicCall(initNode)) {
+        const isLiteralInit = isLiteral(initNode)
+        if (isShorthandDerived) {
+            if (!isLiteralInit) {
+                return "derived"
+            }
+
+            // 初始值为字面量值的简写衍生响应式声明无意义，退化为使用原始值
+            // Shorthand derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
+            return (UnnecessaryReactiveMark(declaratorLoc, "derived"), "raw")
         }
 
-        // 记录所有的标识符，用于确定导入项和init解构标识符别名
-        allExistingIdentifiers.add(name)
+        // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
+        // Constant declarations with literal initial values have no reactive semantics and are downgraded to using the raw value.
+        if (!isDestructuring && (isLiteralInit || isFunctionLiteral(initNode))) {
+            return isConst ? "raw" : "literal"
+        }
 
-        // 需要通过.$访问的标识符
-        if (identifierIsReference(node, parent)) {
-            // ObjectProperty中的shorthand声明，
-            // 将其格式转换为 propertyName: (__w__)propertyName(.$)
-            if (accessByDotDollar && is(esParent?.v, "ObjectProperty") && esParent.v.shorthand) {
-                if (grand && is(getEsNodeOfParent(grand)!.v, "ObjectExpression")) {
-                    replacementInfo.map.get(name)!.items.push(
-                        initReplacementItem({
-                            index: node.end,
-                            text: `: ${isDebug ? "__w__" : ""}${name}.$`
-                        })
-                    )
+        return "pending"
+    }
+
+    const callee = stripTypeExpressions(initNode.callee)
+    if (callee.type !== "Identifier") {
+        return "pending"
+    }
+
+    const calleeName = callee.name
+    if (!intrinsicReactiveMethodsRE.test(calleeName)) {
+        return "pending"
+    }
+
+    // 检查是否混用了简洁衍生响应式声明语法和标记响应式声明语法
+    // Check whether concise derived reactive declarations and marked reactive declarations are mixed.
+    if (isShorthandDerived) {
+        if (calleeName === "derived" || calleeName === "derivedExp") {
+            DeclareDerivedMixedSyntaticForms(declaratorLoc)
+        } else {
+            AmbiguousReactiveMarking(declaratorLoc, calleeName)
+        }
+    }
+
+    const firstArg = initNode.arguments[0]
+    const isLiteralArg = isLiteral(firstArg) || isFunctionLiteral(firstArg)
+    switch (calleeName) {
+        case "alias": {
+            return "alias"
+        }
+
+        case "derivedExp": {
+            // 通过 derivedExp 标记的衍生响应式字面量值无意义，退化为使用原始值
+            // Derived reactive literal values marked with `derivedExp` are meaningless and are downgraded to using the raw value.
+            if (isLiteralArg) {
+                return (UnnecessaryReactiveMark(declaratorLoc, "derived"), "raw")
+            }
+            // fallthrough
+        }
+        case "derived": {
+            return "derived"
+        }
+
+        default: {
+            if (isShorthandDerived) {
+                return "derived"
+            }
+
+            const status = calleeName as ReactiveIntrinsics
+            if (isDestructuring || !isConst || !isLiteralArg) {
+                return status
+            }
+
+            // 通过 raw 标记常量声明的字面量值是冗余的
+            // Marking a literal value in a constant declaration with `raw` is redundant.
+            if (calleeName === "raw") {
+                return (RedundantRawMark(declaratorLoc), "raw")
+            }
+
+            // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
+            // Marking a literal value in a constant declaration with `reactive` or `shallow` is meaningless and is downgraded to using the raw value.
+            return (UnnecessaryReactiveMark(declaratorLoc, status), "raw")
+        }
+    }
+}
+
+// 更新顶级作用域标识符信息
+// Update top-level scope identifier information.
+function updateTopLevelIdentifiers(
+    id: Identifier,
+    hoist: boolean,
+    implicit: boolean,
+    status: IdentifierStatus,
+    declarator: TopLevelDeclaratorNode,
+    declaration: TopLevelDeclarationNode,
+    destructuringIdentifierNames?: string[]
+) {
+    const existing = analyzeResult.script.topLevelIdentifiers[id.name]
+    const nodeInfo = { id, declarator, declaration, destructuringIdentifierNames }
+    if (status === "literal" && analyzeResult.script.preMutatedTopLevelIdentifiers.has(id.name)) {
+        status = "pending"
+    }
+    if (existing) {
+        if (status !== "pending" && status !== "literal") {
+            existing.status = status
+            existing.implicit = false
+        }
+        if (existing.status === "literal") {
+            existing.status = "pending"
+        }
+        existing.nodeInfos.push(nodeInfo)
+    } else {
+        let accessor: boolean
+        if (!(accessor = declaration.type !== "VariableDeclaration")) {
+            switch (status) {
+                case "derived": {
+                    accessor = true
+                    break
+                }
+                case "alias": {
+                    accessor = !inputDescriptor.options.debug
+                    break
+                }
+                default: {
+                    accessor = declaration.kind === "let" || declaration.kind === "var"
+                    break
+                }
+            }
+        }
+        analyzeResult.script.topLevelIdentifiers[id.name] = {
+            status,
+            hoist,
+            implicit,
+            accessor,
+            path: "",
+            transofrmedTo: "",
+            nodeInfos: [nodeInfo]
+        }
+    }
+    checkTopLevelIdentifier(id.name, id.range!)
+}
+
+// 检查顶级作用域标识符格式
+// Validate top-level scope identifier formatting.
+function checkTopLevelIdentifier(name: string, range: Range) {
+    const sourceLoc = getScriptLocByRange(range)
+    if (intrinsicMethodsRE.test(name) || intrinsicVariableRE.test(name)) {
+        ShadowCompilerIntrinsicAtTopLevel(sourceLoc, name)
+    }
+    if (name === "$arg") {
+        IdentifierMaybeOverwritten(sourceLoc, name, "inline event handler")
+    }
+}
+
+// 检查编译器内置方法的使用是否合法
+// Validate the usage of compiler intrinsic methods.
+function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkContext<Identifier>) {
+    const parent = context.striptTypeOperationsParent!
+    if (isIntrinsicCall(parent.value)) {
+        const intrinsicCall = parent.value
+        const firstArg = intrinsicCall.arguments[0]
+        const argsLen = intrinsicCall.arguments.length
+        const intrinsicCallLoc = getScriptLocByRange(intrinsicCall.range!)
+        switch (node.name) {
+            case "watch":
+            case "preWatch":
+            case "postWatch":
+            case "syncWatch":
+            case "watchExp":
+            case "preWatchExp":
+            case "postWatchExp":
+            case "syncWatchExp": {
+                if (argsLen > 2) {
+                    RedundantArgsForIntrinsic(intrinsicCallLoc, node.name, 2, argsLen)
                 }
                 return
             }
-
-            if (accessByDotDollar) {
-                if (isDebug) {
-                    replacementItem.items.push(
-                        initReplacementItem({
-                            text: "__w__",
-                            index: node.start
-                        })
+            case "defaultRefs":
+            case "defaultProps": {
+                if (!parent.inTopLevel) {
+                    break
+                }
+                if (!inputDescriptor.options.checkMode) {
+                    analyzeResult.script.eliminatedNodes.add(parent.value)
+                }
+                if (firstArg?.type === "SpreadElement") {
+                    InvalidSpreadElementArgForIntrinsic(
+                        getScriptLocByRange(firstArg.range!),
+                        node.name
                     )
                 }
-                replacementItem.items.push(
-                    initReplacementItem({
-                        order: 1,
-                        text: ".$",
-                        index: node.end
-                    })
-                )
-            }
-        }
-    },
-
-    ImportDeclaration(node, parent) {
-        const { start, end } = node
-        const scriptSource = inputDescriptor.script.code
-        eliminateRanges.add([start, end])
-        tempStoredImportInfos.push({
-            mappingLine: [],
-            startColumn: node.loc.start.column,
-            code: scriptSource.slice(start, end)
-        })
-        node.specifiers.forEach(specifier => {
-            importedIdentifiers.add(specifier.local.name)
-        })
-        if (isInTopScope(parent)) {
-            node.specifiers.forEach(specifier => {
-                checkTopScopeIdentifier(specifier.local.name, specifier.loc!)
-            })
-        }
-    },
-
-    FunctionExpression(node, parent) {
-        functionMarkExcludes(node, parent.excludes)
-    },
-
-    ClassExpression(node, parent) {
-        markExcludes(parent.excludes, getIdentifiersFromPattern(node.id))
-    },
-
-    AwaitExpression(node, parent) {
-        if (hasTopLevelAwait(parent)) {
-            TopLevelAwaitNotBeSupported(getSourceLocByScriptLoc(node.loc))
-        }
-    },
-
-    // 任意节点都将被捕获进入，此捕获组主要用来记录sourcemap信息，具体分为下面几种情况：
-    // 1. 非import语句（且不是Program）节点时，统一记录sourcemap信息
-    // 2. import语句的sourcemap信息单独记录，因为import语句会被提升到生成代码的顶部
-    // 3. 当处于调试模式时，需要将变量声明关键字的结束位置添加到映射，因为标识符名称可能会添加__w__前缀
-    AnyNode(node, parent) {
-        if (
-            is(node, "ExportAllDeclaration") ||
-            is(node, "ExportDefaultDeclaration") ||
-            is(node, "ExportNamedDeclaration")
-        ) {
-            BadExportRelatedStatement(getSourceLocByScriptLoc(node.loc))
-        } else if (inputDescriptor.options.sourcemap) {
-            if (
-                is(node, "ImportDeclaration") ||
-                is(parent.v, "ImportSpecifier") ||
-                is(parent.v, "ImportDeclaration") ||
-                is(parent.v, "ImportDefaultSpecifier")
-            ) {
-                const curInfo = lastElem(tempStoredImportInfos)
-                const { startColumn, mappingLine } = curInfo
-                const { line, column } = node.loc.start
-                const generatedColumn = column - startColumn
-                const sourceLine = getGeneratedScriptLine(line)
-                mappingLine.push([generatedColumn, 0, sourceLine - 1, column])
-            } else {
-                if (!is(node, "Program")) {
-                    recordMappingWithNoOffset(node.loc.start)
-                    recordMappingWithNoOffset(node.loc.end)
+                if (argsLen > 1) {
+                    RedundantArgsForIntrinsic(intrinsicCallLoc, node.name, 1, argsLen)
                 }
-            }
-        }
-    }
-}
 
-export function analyzeScript(source: string) {
-    // 确认源文件采用的缩进对应的空格数量
-    const indentSpaceCount = scriptSourceIndentSpaceCount.exec(source)?.[1].length || 2
-    inputDescriptor.indentSpaceCount = indentSpaceCount
-
-    // 初始化replacement
-    // 用来存储那些不需要依赖所属标识符项状态的替换项
-    // 这里的items是一定要执行替换的，在replacement中它的键是空字符串
-    replacementInfo.map.set("", {
-        createSetter: false,
-        useDollar: false,
-        status: "rea",
-        items: []
-    })
-
-    walk(parse(source, 0, getSourceIndexByScriptIndex(0)), visitor)
-    confirmQingKuaiIdentifierAliases()
-}
-
-// 分析reactivity相关编译助手函数调用
-function analyzeReactivity(node: VariableDeclaration & RequiredPosition, parent: TraverseParent) {
-    let reactFunc: string
-    let idRange: NumNum
-    let initRange: NumNum
-    let firstArgRange: NumNum
-
-    let hasInit = false
-    let hasFnArg = false
-    let hasFnCall = false
-    let isDerived = false
-    let useLetKeyword = false
-    let isDestructuring = false
-    let derInitTransToFunc = false
-    let destructuringIdentifierArr: string[] = []
-
-    const isConst = node.kind === "const"
-    const esParent = getEsNodeOfParent(parent)
-    const isDebug = inputDescriptor.options.debug
-    const isInTopScope = is(esParent!.v, "Program")
-    const scriptSource = inputDescriptor.script.code
-
-    const extend = (names: string[]) => {
-        let arg = "("
-        let useDollar = true
-        let internalReactFunc = ""
-        let status: ReplacementStatus = "pending"
-
-        const derTransParentheses = ["", ""]
-        const createSetter = isDerived || !isConst
-        const replacementItems: ReplacementItem[] = []
-        const valueRange = hasFnCall ? firstArgRange : initRange
-        const noInitOrNoArg = (hasFnCall && !hasFnArg) || (!hasFnCall && !hasInit)
-
-        const getReactFunc = () => {
-            return `${getAlias(internalReactFunc)}(`
-        }
-
-        if (isDerived || reactFunc === "rea") {
-            status = "rea"
-        }
-        if (reactFunc === "stc") {
-            status = "stc"
-            useDollar = false
-            internalReactFunc = ""
-            arg = hasFnArg ? "" : "void 0"
-        } else {
-            if (isDerived) {
-                if (!isDestructuring) {
-                    internalReactFunc = "derived"
-                } else {
-                    internalReactFunc = "destructuringDerived"
-                }
-            } else {
-                if (!hasFnArg) {
-                    arg += "void 0"
-                }
-                if (!isConst) {
-                    if (!isDestructuring) {
-                        internalReactFunc = "react"
-                    } else {
-                        internalReactFunc = "destructuringReact"
+                let isValidDefinition = true
+                parent.walkAncestors(({ value }) => {
+                    if (
+                        !isTypeOperation(value) &&
+                        value.type !== "Program" &&
+                        value.type !== "ExpressionStatement"
+                    ) {
+                        return !(isValidDefinition = false)
                     }
-                } else {
-                    if (!isDestructuring) {
-                        internalReactFunc = "constReact"
-                    } else {
-                        internalReactFunc = "constDestructuringReact"
-                    }
-                }
-            }
-        }
-
-        // stc调用且未传递参数
-        if (!internalReactFunc && !hasFnArg) {
-            replacementItems.push(
-                initReplacementItem({
-                    index: initRange[1],
-                    text: "void 0"
                 })
-            )
-        }
-
-        // 处理衍生响应性变量声明
-        // 将$开头简便声明或der编译器助手函数转换为derived方法调用
-        // 根据derInitTransToFunc判断是否要将init或der的参数转换为函数
-        // 如果是解构声明语法需要在derived方法调用后添加.$以访问被包装的初始值
-        if (isDerived) {
-            const getSetterArg = () => {
-                return `, ${getSetterIdentifier(names[0])}`
-            }
-
-            if (useLetKeyword) {
-                useLetKeyword = false
-                replacementItems.push(
-                    initReplacementItem({
-                        index: idRange[0],
-                        text: "let "
-                    })
-                )
-            }
-            if (isDebug && !isDestructuring) {
-                replacementItems.push(
-                    initReplacementItem({
-                        index: idRange[0],
-                        text: "[__w__"
-                    }),
-                    initReplacementItem({
-                        index: idRange[1],
-                        text: `, ${names[0]}]`
-                    })
-                )
-            }
-
-            // 非调试模式并且需要将初始值或参数值转换成函数时，需要判断返回值是否需要使用圆括号包裹
-            if (derInitTransToFunc) {
-                if (noInitOrNoArg) {
-                    const equalToken = hasFnCall ? "" : " = "
-                    const gsa = () => (isDebug ? getSetterArg() : "")
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: hasFnCall ? initRange[1] : idRange[1],
-                            text: () => `${equalToken}${getReactFunc()}_ => void 0${gsa()})`
-                        })
-                    )
-                } else if (scriptSource[valueRange[0]] === "{") {
-                    ;[derTransParentheses[0], derTransParentheses[1]] = ["(", ")"]
-                }
-            }
-
-            // 此时一定存在初始值($前缀便捷声明)或至少一个参数（der调用）
-            if (!noInitOrNoArg) {
-                if (isDestructuring) {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: initRange[0],
-                            text: () => {
-                                return `${derInitTransToFunc ? "_ => " : ""}${
-                                    derTransParentheses[0]
-                                }`
-                            }
-                        })
-                    )
-                } else {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: initRange[0],
-                            text: () => {
-                                const arrowFuncStr = derInitTransToFunc ? "_ => " : ""
-                                return `${getReactFunc()}${arrowFuncStr}${derTransParentheses[0]}`
-                            }
-                        })
-                    )
-                    if (isDebug) {
-                        replacementItems.push(
-                            initReplacementItem({
-                                index: valueRange[1],
-                                text: () => `${getSetterArg()})`
-                            })
-                        )
-                    } else {
-                        replacementItems.push(
-                            initReplacementItem({
-                                index: valueRange[1],
-                                text: ")"
-                            })
+                if (isValidDefinition) {
+                    const key = node.name === "defaultProps" ? "props" : "refs"
+                    const existing = analyzeResult.script.defaultItems[key]
+                    if (existing) {
+                        DuplicateDefaultDeclaration(
+                            getScriptLocByRange(existing.intrinsicId.range!),
+                            node.name.slice(7).toLowerCase()
                         )
                     }
-                }
-            }
-        }
-
-        // 处理非衍生响应性变量声明
-        // 当变量声明语句需要转换为响应性声明时标记文本替换，这里需要区分是否解构语法
-        // 调试模式时，为非const声明的标识符添加__w__前缀，并记录所有原始标识符名称，这些原始标识符
-        // 名称会在生成代码的底部被声明，并由响应性声明方法接受的setter参数进行赋值
-        if (!isDerived && internalReactFunc && !isDestructuring) {
-            const getSetterArg = (ret = "") => {
-                if (isDebug) {
-                    if (isConst) {
-                        ret = getAlias("NOOP")
+                    if (
+                        parent.value.arguments.length &&
+                        parent.value.arguments[0].type !== "ArgumentPlaceholder"
+                    ) {
+                        analyzeResult.script.defaultItems[key] = {
+                            intrinsicId: node,
+                            value: parent.value.arguments[0]
+                        }
                     } else {
-                        ret = getSetterIdentifier(names[0])
+                        analyzeResult.script.defaultItems[key] = undefined
                     }
+                    return
                 }
-                return ret ? ", " + ret : ret
+                break
             }
 
-            if (isDebug) {
-                replacementItems.push(
-                    initReplacementItem({
-                        index: idRange[0],
-                        text: "[__w__"
-                    }),
-                    initReplacementItem({
-                        index: idRange[1],
-                        text: () => `, ${names[0]}]`
-                    })
-                )
-            }
-            if (noInitOrNoArg) {
-                const equalToken = hasFnCall ? "" : " = "
-                replacementItems.push(
-                    initReplacementItem({
-                        index: hasFnCall ? initRange[1] : idRange[1],
-                        text: () => `${equalToken}${getReactFunc()}void 0${getSetterArg()})`
-                    })
-                )
-            } else {
-                replacementItems.push(
-                    initReplacementItem({
-                        index: initRange[0],
-                        text: () => getReactFunc()
-                    })
-                )
-                if (isDebug) {
-                    replacementItems.push(
-                        initReplacementItem({
-                            index: valueRange[1],
-                            text: () => getSetterArg()
-                        })
+            default: {
+                if (firstArg?.type === "SpreadElement") {
+                    InvalidSpreadElementArgForIntrinsic(
+                        getScriptLocByRange(firstArg.range!),
+                        node.name
                     )
                 }
-                replacementItems.push(
-                    initReplacementItem({
-                        index: initRange[1],
-                        text: ")"
-                    })
-                )
-            }
-        }
-
-        if (isDestructuring && reactFunc !== "stc") {
-            const id = `[${destructuringIdentifierArr.join(", ")}]`
-            const equalTokenIndex = findOutOfStringComment(scriptSource, "=", idRange[1])[0]
-            const lengthArg = isDerived ? `, ${destructuringIdentifierArr.length}` : ""
-            const markReplacementCommon = (idStr: string) => {
-                replacementItems.push(
-                    initReplacementItem({
-                        index: idRange[0],
-                        text: () => `${idStr} = ${getReactFunc()}[(`
-                    }),
-                    initReplacementItem({
-                        index: idRange[1],
-                        text: ")"
-                    }),
-                    initReplacementItem({
-                        index: initRange[1],
-                        text: `)${derTransParentheses[1]}`
-                    })
-                )
-            }
-            if (!isDebug) {
-                markReplacementCommon(id)
-                replacementItems.push(
-                    initReplacementItem({
-                        index: equalTokenIndex + 1,
-                        text: `> ${id}${lengthArg}],`
-                    })
-                )
-            } else {
-                const ddIdentifierArr = destructuringIdentifierArr.map(item => {
-                    return `[__w__${item}, ${item}]`
-                })
-                markReplacementCommon(`[${ddIdentifierArr.join(", ")}]`)
-                replacementItems.push(
-                    initReplacementItem({
-                        index: equalTokenIndex + 1,
-                        text: () => {
-                            const setters = destructuringIdentifierArr.map(identifier => {
-                                if (isConst && !isDerived) {
-                                    return getAlias("NOOP")
-                                } else {
-                                    return getSetterIdentifier(identifier)
-                                }
-                            })
-                            return `> ${id}${lengthArg}, ${setters.join(", ")}],`
-                        }
-                    })
-                )
-            }
-        }
-
-        if (replacementItems.length) {
-            extendReplacement(names, useDollar, createSetter, replacementItems, status)
-        }
-    }
-
-    node.declarations.forEach(({ id, init, end }, index) => {
-        let initEnd = init?.end ?? end!
-        let initStart = init?.start ?? end!
-
-        const esInit = init ? getEsNode(init) : init
-
-        // 断言为方法调用节点的init，使用前需确保hasFnCall为true
-        const assertedCalleeInit = esInit as CallExpression
-
-        const idTypeAnnotation = (id as Pattern).typeAnnotation
-        const names = getIdentifiersFromPattern(id as EsPattern)
-        const { convenientDerivedDeclaration: cdd } = inputDescriptor.options
-        const shortHandDerived = cdd && is(id, "Identifier") && id.name.startsWith("$")
-        const esCallee = is(esInit, "CallExpression") ? getEsNode(esInit.callee) : null
-        const esIdentifierCalleeName = is(esCallee, "Identifier") ? esCallee.name : ""
-        const declarationSourceLoc = getSourceLocByScriptLoc(node.declarations[index].loc!)
-
-        // 非顶部作用域声明
-        if (!isInTopScope) {
-            return names.forEach(name => {
-                parent.parent?.excludes.add(name)
-            })
-        }
-
-        // 去除类型注释
-        if (idTypeAnnotation) {
-            const { start, end } = idTypeAnnotation
-            eliminateRanges.add([start!, end!])
-        }
-
-        // 去除非空断言
-        if (is(id, "Identifier") && inputDescriptor.script.isTS) {
-            const nameEndIndex = id.start! + id.name.length
-            const m = /^\s*\!/.exec(inputDescriptor.script.code.slice(nameEndIndex))
-            m && eliminateRanges.add([nameEndIndex, nameEndIndex + m[0].length])
-        }
-
-        // 状态标记
-        hasInit = Boolean(init)
-        idRange = [id.start!, id.end!]
-        initRange = [initStart, initEnd]
-        hasFnCall = reactCompilerFuncRE.test(esIdentifierCalleeName)
-        reactFunc = hasFnCall ? esIdentifierCalleeName : ""
-        hasFnArg = hasFnCall && assertedCalleeInit.arguments.length > 0
-        isDerived = shortHandDerived || (hasFnCall && esIdentifierCalleeName === "der")
-
-        // 检查是否混用了der和$前缀两种衍生响应性状态声明方式（警告）
-        // 检查是否使用了$前缀搭配了其他响应性声明编译助手函数（rea、stc）（报错）
-        if (shortHandDerived && hasFnCall) {
-            if (esIdentifierCalleeName === "der") {
-                MixTwoSyntaxOfDerived(declarationSourceLoc)
-            } else {
-                ConvenientDerivedWithOtherReactFunc(esIdentifierCalleeName, declarationSourceLoc)
-            }
-        }
-
-        // 标记是否解构声明语法，解构且未使用编译器助手函数时标记id开始的位置至init开始的位置无需映射
-        if ((isDestructuring = is(id, "ObjectPattern") || is(id, "ArrayPattern"))) {
-            destructuringIdentifierArr = getIdentifiersFromPattern(id)
-            !hasFnCall && markSegmentShouldNotBeMapped(idRange[0], initRange[0])
-        }
-
-        // 检查是否是编译助手函数调用，是的话需要标记相关信息
-        if (hasFnCall) {
-            const cinit = init as CallExpression
-            const [firstArg, secondArg] = cinit.arguments
-            const [cs, ce] = [cinit.callee.start!, cinit.end!]
-            if (hasFnArg) {
-                const argLen = cinit.arguments.length
-                const [_, se] = [secondArg?.start, secondArg?.end]
-                const [fs, fe] = (firstArgRange = [firstArg.start!, firstArg.end!])
-
-                // 以下是用于报错/警告的一些源码位置
-                const sfe = getSourceIndexByScriptIndex(fe)
-                const sse = getSourceIndexByScriptIndex(se!)
-                const sle = getSourceIndexByScriptIndex(cinit.arguments[argLen - 1].end!)
-
-                // 函数调用开始括号的索引
-                // end index of callee start parentheses
-                const ps = findOutOfStringComment(scriptSource, "(", init!.start!)[0] + 1
-
-                // 解构时，将id的开始位置至第一个参数开始的位置标记为无需映射
-                if (isDestructuring) {
-                    markSegmentShouldNotBeMapped(idRange[0], fs)
+                if (argsLen > 1) {
+                    RedundantArgsForIntrinsic(intrinsicCallLoc, node.name, 1, argsLen)
+                }
+                if (node.name === "alias") {
+                    if (
+                        parent.value.arguments.length !== 1 ||
+                        !isLeftValue(parent.value.arguments[0])
+                    ) {
+                        InvalidParameterForAliasIntrinsic(getScriptLocByRange(parent.value.range!))
+                    }
                 }
 
-                switch (esIdentifierCalleeName) {
-                    case "stc":
-                        eliminateRanges.add([cs, ps])
-                        eliminateRanges.add([fe, ce])
-                        if (argLen > 1) {
-                            RedundantArgsForCompilerFunc("stc", 1, sfe, sle)
-                        }
-                        break
-                    case "rea":
-                        eliminateRanges.add([cs, ps])
-                        if (argLen > 2) {
-                            eliminateRanges.add([se!, ce])
-                            RedundantArgsForCompilerFunc("rea", 2, sse, sle)
-                        } else {
-                            eliminateRanges.add([ce - 1, ce])
-                        }
-                        break
-                    case "der":
-                        isDerived = true
-                        eliminateRanges.add([cs, ps])
-                        if (argLen > 1) {
-                            eliminateRanges.add([fe, ce])
-                            RedundantArgsForCompilerFunc("der", 1, sfe, sle)
-                        } else {
-                            eliminateRanges.add([ce - 1, ce])
-                        }
-                        break
+                const grandParent = parent.striptTypeOperationsParent!
+                if (parent.inTopLevel && grandParent.value.type === "VariableDeclarator") {
+                    const declaration = grandParent.parent!.value as VariableDeclaration
+                    if (
+                        node.name === "alias" &&
+                        grandParent.value.id.type === "Identifier" &&
+                        parent.value.arguments[0]?.type === "Identifier"
+                    ) {
+                        CannotAliasIdentifier(getScriptLocByRange(parent.value.range!))
+                    }
+                    if (declaration.kind === "using" || declaration.kind === "await using") {
+                        IntrinsicNotAllowedInUsingDeclaration(
+                            getScriptLocByRange(grandParent.value.range!),
+                            node.name
+                        )
+                    } else {
+                        analyzeResult.script.declaratorToIntrinsic.set(grandParent.value, context)
+                    }
+                    return
                 }
-            } else {
-                eliminateRanges.add(initRange)
-
-                // 编译助手函数+解构声明且无参数时报错（其他情况如计算后的undefined、null等）会在运行时报错
-                isDestructuring && DestructureReactFuncWithNoArg(reactFunc, declarationSourceLoc)
-            }
-        }
-
-        // 衍生响应性状态声明时标记是否需要转换为函数（非函数节点都需要转换为函数）
-        // 调试模式下的const衍生响应性状态声明要改用let关键字，因为setter中要修改调试标识符的值
-        if (isDerived) {
-            if (isDebug && isConst && index === 0) {
-                useLetKeyword = true
-                eliminateRanges.add([node.start, idRange[0]])
-            }
-            if (!hasFnCall) {
-                derInitTransToFunc = !isFunctionNode(init)
-            } else {
-                derInitTransToFunc = !isFunctionNode(assertedCalleeInit.arguments[0])
-            }
-        }
-
-        extend(names)
-        names.forEach(name => checkTopScopeIdentifier(name, id.loc!))
-    })
-}
-
-// 标记某个片段不需要被映射
-function markSegmentShouldNotBeMapped(start: number, end: number) {
-    if (inputDescriptor.options.debug) {
-        for (let i = start; i < end; i++) {
-            sourceMapInfo.positionShouldNotBeMapped[i] = true
-        }
-    }
-}
-
-// 检查script部分顶部作用域中的标识符是否合法：
-// 1. rea、stc、der及props是保留标识符名称，在顶部作用域中不能重复声明（报错）
-// 2. 在内联事件中$event（非组件）和$param(组件)会覆盖顶部作用域中的同名标识符（警告）
-function checkTopScopeIdentifier(name: string, loc: ASTLocation) {
-    const sourceLoc = getSourceLocByScriptLoc(loc)
-
-    if (COMPILER_FUNCS.has(name) || name === "props" || name === "refs") {
-        RegisterExsitingIdentifierName(name, sourceLoc)
-    }
-
-    if (name === "$arg") {
-        IdentifierMaybeOverwritten(name, sourceLoc)
-    }
-}
-
-// 分析watch相关编译器助手函数调用，如果用户已经从qingkuai/runtime导入了watch相关方法，助手函数转换
-// 后不会使用同名标识符，而是会从qingkuai/internal重新导入一份，由于两种导入方式实际都来自同一个chunk，
-// 因此不会导致打包结果中存在重复代码，这样的好处是从编译结果中可以区分用户在源码中对watch相关方法的调用方式
-function analyzeWatchCompilerFuncCall(node: CallExpression & RequiredPosition) {
-    const transMap = new Map([
-        ["waT", "watch"],
-        ["Wat", "preWatch"],
-        ["wat", "syncWatch"]
-    ])
-    const argsLen = node.arguments.length
-    const calleeName = (node.callee as Identifier).name
-    const emptyStringReplacement = replacementInfo.map.get("")!
-
-    // 检查参数数量
-    if (argsLen < 2) {
-        WatchCompilerFuncMissingArg(calleeName, argsLen, getSourceLocByScriptLoc(node.loc))
-    } else if (argsLen > 2) {
-        RedundantArgsForCompilerFunc(calleeName, 2, node.arguments[1].end!, node.end - 1)
-    }
-
-    // 转换watch相关编译助手函数调用
-    emptyStringReplacement.items.push(
-        initReplacementItem({
-            index: node.start,
-            text: () => getAlias(transMap.get(calleeName)!)
-        })
-    )
-    eliminateRanges.add([node.callee.start!, node.callee.end!])
-
-    // 首个参数非函数节点时转换为getter
-    if (argsLen > 0) {
-        const firstArg = node.arguments[0]
-        const [fs, fe] = [firstArg.start!, firstArg.end!]
-        const wrwp = inputDescriptor.script.code[fs] === "{" // Wrap Return value With Parentheses
-        if (!isFunctionNode(getEsNode(firstArg))) {
-            emptyStringReplacement.items.push(
-                initReplacementItem({
-                    index: fs,
-                    text: () => `_ => ${wrwp ? "(" : ""}`
-                })
-            )
-            if (wrwp) {
-                emptyStringReplacement.items.push(
-                    initReplacementItem({
-                        index: fe,
-                        text: ")"
-                    })
-                )
             }
         }
     }
+    InvalidUsageForIntrinsicMethods(getScriptLocByRange(node.range!), node.name)
 }

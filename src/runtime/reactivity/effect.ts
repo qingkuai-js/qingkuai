@@ -1,142 +1,256 @@
 import type {
-    Getter,
-    Opportunity,
-    WatchStruct,
-    EffectStruct,
-    EffectListItem,
-    RuntimeWatchFunc,
-    WatchEffectStruct
-} from "../types"
-import { GeneralFunc } from "../../util/types"
+    Link,
+    Effect,
+    GeneralEffectFunc,
+    WatchEffectCallback
+} from "#type-declarations/runtime"
+import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
-import { isNull } from "../../util/shared/assert"
-import { OPPORTUNITIES, NIL } from "../constants"
-import { len, values } from "../../util/shared/sundry"
-import { getRawValue } from "../../util/runtime/sundry"
-import { asyncWatchEffectList, usedEffectList } from "./state"
-import { WatchEffectDependentNoReactiveValue } from "../message/warn"
+import {
+    TIMINGS,
+    TIMING_UNSET,
+    TIMING_SYNC,
+    EFFECT_WATCH,
+    EFFECT_RENDER,
+    EFFECT_DERIVED,
+    EFFECT_DISPOSED,
+    EFFECT_DISABLED,
+    EFFECT_SCHEDULING,
+    EFFECT_DERIVED_DIRTY,
+    EFFECT_DERIVED_READING
+} from "./constants"
+import {
+    activeEffect,
+    getIncrementEffectId,
+    popRunningEffectStack,
+    pushRunningEffectStack
+} from "./state"
+import { NIL, UNDEF } from "../constants"
+import { getSubscription } from "./schedule"
+import { any } from "../../util/shared/sundry"
+import { currentInstance, currentDestruction } from "../state"
+import { EffectOrWatchHasNoDependecies } from "../messages/warn"
+import { getLastElem, swapDelete } from "../../util/shared/arrays"
 
-// 执行同步的effect，并将异步effect放入执行队列
-export function runSyncEffect(list: EffectListItem[1]) {
-    list?.forEach(item => {
-        if (item.type === "sync") {
-            runWatchEffect(item)
-        } else {
-            asyncWatchEffectList.add(item)
-        }
-    })
+export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
+export const [effect, preEffect, postEffect, syncEffect] = reactiveEffectFuncGen()
+
+export function renderEffect(fn: GeneralEffectFunc) {
+    return createEffect(EFFECT_RENDER, TIMING_UNSET, fn)
 }
 
-// 执行异步的watch和effect回调
-export function flushWatchEffect(type: Opportunity) {
-    asyncWatchEffectList.forEach(item => {
-        if (item.type === type) {
-            runWatchEffect(item)
-            asyncWatchEffectList.delete(item)
-        }
-    })
+export function derivedEffect(fn: ArbitraryFunc) {
+    return createEffect(EFFECT_DERIVED | EFFECT_DERIVED_DIRTY, TIMING_SYNC, fn)
 }
 
-// 执行单个watch相关的effect
-function runWatchEffect(stu: WatchEffectStruct) {
-    const isWatch = "cur" in stu
-    if (!isWatch) {
-        stu.fn()
-    } else {
-        const value = stu.getter()
-        const raw = getRawValue(value)
-        if (stu.cur === raw) {
-            return
-        }
-        stu.fn(stu.cur, (stu.cur = raw))
+export function runAndUpdateEffect(effect: Effect) {
+    if (effect.l & EFFECT_DISABLED) {
+        return
     }
+
+    const res = (effect.c?.(), runEffectCollector(effect))
+    effect.l &= ~EFFECT_SCHEDULING
+
+    const isWatch = !!(effect.l & EFFECT_WATCH)
+
+    // 对于非监视器副作用：res 就是用户自定义的清理方法
+    // For non-watcher effect: `res` is the user-defined cleanup function.
+
+    // 对于监视器副作用：res 是监视目标的最新值，回调 effect.f 的返回值才是用户自定义的清理方法
+    // For watcher effect: `res` is the latest value of the watched target,
+    // `effect.f` is the callback, and its return value is the user-defined cleanup function.
+    effect.c = (isWatch ? effect.f(effect.v, (effect.v = res)) : res) || NIL
+
+    checkAndDestroyInvalidEffect(effect)
 }
 
-// 创建watch相关的effect
-function createWatchEffect(effectList: EffectListItem[], stu: WatchEffectStruct) {
-    effectList.forEach(item => {
-        if (isNull(item[1])) {
-            item[1] = new Set()
-        }
-        item[1].add(stu)
-    })
-
-    return (fn?: GeneralFunc) => {
-        effectList.forEach(item => {
-            item[1]!.delete(stu)
-            if (item[1]!.size === 0) {
-                item[1] = NIL
+export function appendLinksToActiveEffect(from: Effect) {
+    const current = activeEffect
+    if (!current || current.l & EFFECT_DISPOSED) {
+        return
+    }
+    const isSync = any(current.t == TIMING_SYNC) // avoid a ts bug
+    const fromLinks = from.k
+    for (let i = 0; i < fromLinks.length; i++) {
+        const link = fromLinks[i]
+        const toSub = getSubscription(link.s.w, link.s.p, isSync, true)!
+        if (toSub.k[toSub.a]?.e !== current) {
+            const newLink: Link = {
+                e: current,
+                s: toSub,
+                l: link.l,
+                i: toSub.k.length
             }
-        })
-        fn?.()
+            toSub.a = newLink.i
+            toSub.k.push(newLink)
+            current.k.push(newLink)
+        }
     }
 }
 
-// 初始化watch相关运行时函数
-function initWatch(getter: Getter, fn: WatchStruct["fn"], type: Opportunity) {
-    const value = getter()
-    const raw = getRawValue(value)
-    const effectList = values(usedEffectList)
-    const watchStruct: WatchStruct = {
-        fn,
-        type,
-        getter,
-        cur: raw
+export function disposeEffect(effect: Effect, byDestruction = false) {
+    const destructionEffects = effect.d?.e
+    if (!byDestruction && effect.x >= 0 && destructionEffects?.length) {
+        getLastElem(destructionEffects)!.x = effect.x
+        swapDelete(destructionEffects, effect.x)
     }
-    if (len(effectList) === 0) {
-        const funcName = type === "post" ? "watch" : type + "Watch"
-        WatchEffectDependentNoReactiveValue(funcName, false)
+    effect.c?.()
+    effect.c = NIL
+    if (effect.k.length) {
+        unlink(effect)
     }
-    return createWatchEffect(effectList, watchStruct)
+    effect.x = -1
+    effect.d = NIL
+    effect.m = NIL
+    effect.v = UNDEF
+    effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED
 }
 
-// 初始化reactiveRun相关运行时函数
-function initEffect(fn: GeneralFunc, type: Opportunity, initEffectList?: EffectListItem[] | null) {
-    let effectList: EffectListItem[]
-    const isRuntime = isNull(initEffectList)
-    const reactiveRunStruct: EffectStruct = {
-        fn,
-        type
+function createEffect(
+    flag: number,
+    timing: number,
+    fn: ArbitraryFunc,
+    watchCallback?: WatchEffectCallback<any>
+): Effect {
+    const effect: Effect = {
+        f: fn,
+        k: [],
+        x: -1,
+        c: NIL,
+        l: flag,
+        t: timing,
+        d: currentDestruction,
+        i: getIncrementEffectId(),
+        m: flag & EFFECT_RENDER ? currentInstance : NIL
     }
-    if (initEffectList) {
-        effectList = initEffectList
-    } else {
-        fn()
-        effectList = values(usedEffectList)
+    if (watchCallback) {
+        effect.g = fn
+        effect.v = UNDEF
+        effect.f = watchCallback
     }
-    if (isRuntime && len(effectList) === 0) {
-        const funcName = type === "post" ? "effect" : type + "Effect"
-        WatchEffectDependentNoReactiveValue(funcName, true)
+
+    const res = runEffectCollector(effect)
+    if (watchCallback) {
+        effect.v = res
+    } else if (res) {
+        effect.c = res
     }
-    return createWatchEffect(effectList, reactiveRunStruct)
+
+    // 将副作用记录到 Destruction
+    // Record the effect onto `Destruction`
+    if (checkAndDestroyInvalidEffect(effect) && currentDestruction) {
+        const effects = (currentDestruction.e ??= [])
+        effect.x = effects.length
+        effects.push(effect)
+    }
+
+    return effect
 }
 
-// 产生watch相关运行时函数的方法
-function watchFuncGen(type: Opportunity): RuntimeWatchFunc {
-    return (target: any, callback: any) => {
-        return initWatch(target, callback, type)
+function createEffectWithHandle(...args: Parameters<typeof createEffect>) {
+    const effect = createEffect(...args)
+    return {
+        stop: () => {
+            disposeEffect(effect)
+        },
+        pause: () => {
+            effect.l |= EFFECT_DISABLED
+        },
+        resume: () => {
+            if (effect.l & EFFECT_DISPOSED) {
+                return
+            }
+            effect.l &= ~EFFECT_DISABLED
+        }
     }
 }
 
-// 产生effect相关运行时函数的方法，它返回的方法不接受初始副作用列表
-function runtimeEffectFuncGen(type: Opportunity) {
-    return (callback: () => void) => {
-        return initEffect(callback, type, NIL)
-    }
+function reactiveEffectFuncGen() {
+    return TIMINGS.map(timing => {
+        return (fn: GeneralEffectFunc) => createEffectWithHandle(0, timing, fn)
+    })
 }
 
-// 产生effect相关内部函数的方法，它返回的方法可以接受初始副作用列表
-function internalEffectFuncGen(type: Opportunity) {
-    return (callback: GeneralFunc, initEffectList?: EffectListItem[]) => {
-        return initEffect(callback, type, initEffectList)
-    }
+function watchEffectFuncGen() {
+    return TIMINGS.map(timing => {
+        return <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
+            return createEffectWithHandle(EFFECT_WATCH, timing, getter, callback)
+        }
+    })
 }
 
-// prettier-ignore
-export const [
-    [syncWatch, preWatch, watch],
-    [syncEffect, preEffect, effect],
-    [internalSyncEffect, internalPreEffect, internalEffect]
-] = [watchFuncGen, runtimeEffectFuncGen, internalEffectFuncGen].map<any>(generator => {
-    return OPPORTUNITIES.map(opportunity => generator(opportunity))
-}) as [RuntimeWatchFunc[], ReturnType<typeof runtimeEffectFuncGen>[], ReturnType<typeof internalEffectFuncGen>[]]
+function unlink(effect: Effect) {
+    const links = effect.k
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i]
+        // 若 link 不处于 link.s.k 末尾，需要更新原来末尾元素的 i 属性
+        // 例如：对于 [a, b, c, d]，删除 b 后变为 [a, d, c]，那么需要将 d.i 修改为 b.i
+        //
+        // If the `link` is not at the end of `link.s.k`, update the `i` property of the original tail element.
+        // For example, given [a, b, c, d], removing `b` results in [a, d, c], so `d.i` needs to be updated to `b.i`.
+        if ((swapDelete(link.s.k, link.i), link.i < link.s.k.length)) {
+            link.s.k[link.i].i = link.i
+        }
+    }
+    // Reuse the same array instance to avoid allocations and release stale link references.
+    links.length = 0
+}
+
+function runEffectCollector(effect: Effect) {
+    if (effect.k.length) {
+        unlink(effect)
+    }
+    pushRunningEffectStack(effect)
+
+    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
+    popRunningEffectStack()
+
+    const collectedLinks = effect.k
+    const collectedLen = collectedLinks.length
+    if (collectedLen) {
+        const current = activeEffect
+        for (let i = 0; i < collectedLen; i++) {
+            const link = collectedLinks[i]
+            if (current) {
+                link.s.a--
+            } else {
+                link.s.a = -1
+            }
+        }
+        if (current && !(effect.l & EFFECT_RENDER)) {
+            appendLinksToActiveEffect(effect)
+        }
+    }
+    return res
+}
+
+// 检查并卸载无效的副作用：未依赖任何响应式值的副作用永远不会被再次触发
+// Check and dispose invalid effects: effects that do not depend on any reactive values will never be triggered again.
+function checkAndDestroyInvalidEffect(effect: Effect) {
+    if (effect.l & EFFECT_RENDER) {
+        return true
+    }
+
+    let isValid = effect.k.length > 0
+    if (effect.l & EFFECT_DERIVED) {
+        const isReading = effect.l & EFFECT_DERIVED_READING
+        if (isReading) {
+            effect.l &= ~EFFECT_DERIVED_READING
+        }
+
+        // 不脏的 DerivedEffect 或非读取状态时无需检查依赖项数量
+        // No need to check dependency count when the DerivedEffect is not dirty or is not being read.
+        isValid ||= !isReading || !(effect.l & EFFECT_DERIVED_DIRTY)
+    }
+
+    if (!isValid) {
+        const isWatch = effect.l & EFFECT_WATCH
+        const isDerived = effect.l & EFFECT_DERIVED
+        disposeEffect(effect)
+        EffectOrWatchHasNoDependecies(
+            isWatch || isDerived ? effect.g! : effect.f,
+            isWatch ? "watcher" : effect.l & EFFECT_DERIVED ? "derived reactive value" : ""
+        )
+    }
+    return isValid
+}

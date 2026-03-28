@@ -1,297 +1,352 @@
-import type {
-    Setter,
-    PGetHandler,
-    PSetHandler,
-    ReactiveTarget,
-    EffectListItem,
-    PDeleteHandler,
-    DestructuringFunc
-} from "../types"
+import type { AnyObject, ArbitraryFunc, Setter } from "#type-declarations/tools"
+import type { Link, DestructuringFunc, ReactivityWrapper } from "#type-declarations/runtime"
 
 import {
-    isNull,
-    isArray,
-    isNumber,
-    isThenable,
-    isFunction,
-    isUndefined
-} from "../../util/shared/assert"
-import { usedEffectList } from "./state"
-import { runSyncEffect } from "./effect"
-import { scheduleUpdate } from "../schedule"
-import { getCurrentInstance } from "../instance"
-import { isReactive } from "../../util/runtime/assert"
-import { notEqual, optc } from "../../util/shared/sundry"
-import { AssignToConstant, BadReactivityLevel } from "../message/error"
-import { NIL, UNDEF, NOOP, REFLECT, WRAPPER, IS_PROXY, RAW_VALUE } from "../constants"
+    OWN_KEYS,
+    WRAPPER,
+    PROTO_MAP,
+    TIMING_SYNC,
+    WRAPPER_SET,
+    WRAPPER_MAP,
+    WRAPPER_PROXY,
+    TYPE_FLAG_MAP,
+    WRAPPER_ARRAY,
+    WRAPPER_OBJECT,
+    WRAPPER_SHALLOW,
+    EFFECT_DISPOSED,
+    LINK_IN_CHANGED,
+    LINK_OWN_CHANGED,
+    LINK_VALUE_CHANGED
+} from "./constants"
+import {
+    toRaw,
+    getRefProperty,
+    reactiveNotEqual,
+    walkWrapperChildren,
+    ensureGetRefProperty
+} from "../../util/runtime/sundry"
+import { reactiveMethods } from "./method"
+import { NIL, UNDEF, REFLECT } from "../constants"
+import { activeEffect, shouldTracking } from "./state"
+import { getPrototypeOf } from "../../util/shared/aliases"
+import { getSubscription, scheduleUpdate } from "./schedule"
+import { couldReact, isReactive } from "../../util/runtime/assert"
+import { isFunction, isUndefined } from "../../util/shared/assert"
+import { batchUpdateWithRaw, batchUpdating } from "./optimization"
+import { any, createProxy, hasOwn, notEqual, optc } from "../../util/shared/sundry"
 
-const react = reactGen()
-const constReact = reactGen(1)
-const destructuringReact = destructuringReactGen()
-const constDestructuringReact = destructuringReactGen(true)
+export const proxyCache = new WeakMap<AnyObject, ReactivityWrapper>()
+export const shallowProxyCache = new WeakMap<AnyObject, ReactivityWrapper>()
 
-export class ReactivityWrapper {
-    declare proxy: any
-
-    constructor(
-        public raw: any,
-        public level: number,
-        public typeFlag: number,
-        public debugSetter: Setter,
-        public effect: EffectListItem,
-        public isConstDeclaration: boolean
-    ) {
-        this.proxy = new Proxy(raw, this)
-    }
-
-    get: PGetHandler = (target, property, receiver) => {
-        // 特殊属性读取
-        if (property === IS_PROXY) {
-            return true
-        }
-        if (property === WRAPPER) {
-            return this
-        }
-        if (property === RAW_VALUE) {
-            return this.raw
-        }
-
-        const { effect, typeFlag, level } = this
-        const propValue = REFLECT.get(target, property, receiver)
-
-        // 再次将某个子属性值包装为代理值，层级-1，共享副作用列表
-        const reactAgain = (nextTarget: any) => {
-            return react(nextTarget, level - 1, effect)
-        }
-
-        // 记录响应性值的副作用
-        usedEffectList.add(effect)
-
-        // 捕获Set、Map类型，它们的读写操作都在这里完成代理兼容
-        if (typeFlag & 6) {
-            if (!isFunction(propValue)) {
-                return propValue
-            }
-
-            return (...args: any) => {
-                const getResultOfMethodCall = () => {
-                    return target[property](...args)
-                }
-
-                if (property === "forEach") {
-                    const [oriCallback, thisArg] = args
-                    return target[property]((ck: any, cv: any, cs: any) => {
-                        oriCallback(reactAgain(ck), reactAgain(cv), cs)
-                    }, thisArg)
-                }
-
-                if (property === "keys" || property === "values" || property === "entries") {
-                    const iterator = getResultOfMethodCall()
-                    const oriIteratorNext = iterator.next
-                    iterator.next = () => {
-                        const nextRet = oriIteratorNext.call(iterator)
-                        if (!nextRet.done) {
-                            nextRet.value = reactAgain(nextRet.value)
-                        }
-                        return nextRet
-                    }
-                    return iterator
-                }
-
-                const [key, value] = args
-                const oriSize = target.size
-                const isSet = !(typeFlag & 4)
-                const result = getResultOfMethodCall()
-                const isMapSet = !isSet && property === "set"
-                const preValue = isMapSet ? target.get(key) : UNDEF
-                const valueChanged = isMapSet && notEqual(preValue, value)
-                if (
-                    property === "clear" ||
-                    property === "delete" ||
-                    property === (isSet ? "add" : "set")
-                ) {
-                    if (target.size !== oriSize || valueChanged) {
-                        processEffect(effect)
-                    }
-                }
-                return result
-            }
-        }
-        return reactAgain(propValue)
-    }
-
-    set: PSetHandler = (target, property, value, receiver) => {
-        const { debugSetter, effect, isConstDeclaration } = this
-        if (notEqual(target[property], value)) {
-            if (isConstDeclaration) {
-                AssignToConstant()
-            }
-            if (debugSetter !== NOOP) {
-                debugSetter(value)
-            }
-            const ret = REFLECT.set(target, property, value, receiver)
-            return processEffect(effect), ret
-        }
-        return true
-    }
-
-    deleteProperty: PDeleteHandler = (target, property) => {
-        processEffect(this.effect)
-        return REFLECT.deleteProperty(target, property)
-    }
+export function constReact(target: any) {
+    return reactWithProxy(target)
 }
 
-// 获取代理值的原始值
-export function raw<T>(v: T): T {
-    return (isReactive(v) ? v[RAW_VALUE] : v) as any
+export function shallowConstReact(target: any) {
+    return reactWithProxy(target, WRAPPER_SHALLOW)
 }
 
-export function createStore<T extends ReactiveTarget>(value: T): T {
-    return constReact(value).$
+export function react(target: any, debugSetter?: Setter) {
+    return reactWithAncestor(target, 0, debugSetter, constReact)
 }
 
-// 使用原始值更新：当需要频繁更新响应式值时，可在此方法回调中操作原始值，回调结束后
-// 响应式值的副作用列表会被调用，避免频繁更新时频繁运算ReactivityWrapper中的逻辑
-export function updateWithRaw<T>(value: T, cb: (raw: T) => Promise<any> | void) {
-    if (!isReactive(value)) {
-        cb(value)
+export function shallowReact(target: any, debugSetter?: Setter) {
+    return reactWithAncestor(target, WRAPPER_SHALLOW, debugSetter)
+}
+
+export function destructuringShallowReact(
+    dfn: DestructuringFunc,
+    target: any,
+    debugSetters?: Setter[]
+) {
+    return baseDestructuringReact(target, dfn, shallowReact, debugSetters)
+}
+
+export function destructuringConstReact(dfn: DestructuringFunc, target: any) {
+    return baseDestructuringReact(target, dfn, constReact)
+}
+
+export function destructuringShallowConstReact(dfn: DestructuringFunc, target: any) {
+    return baseDestructuringReact(target, dfn, shallowConstReact)
+}
+
+export function destructuringReact(dfn: DestructuringFunc, target: any, debugSetters?: Setter[]) {
+    return baseDestructuringReact(target, dfn, react, debugSetters)
+}
+
+export function toReactive<T extends AnyObject>(value: T): T {
+    return proxyCache.get(toRaw(value))?.p ?? value
+}
+
+export function toShallowReactive<T extends AnyObject>(value: T): T {
+    return shallowProxyCache.get(value)?.p ?? value
+}
+
+export function createStore<T extends AnyObject>(value: T, shallow = false): T {
+    return (shallow ? shallowConstReact : constReact)(value)
+}
+
+export function mutualLink(wrapper: ReactivityWrapper, property?: any, flag?: number) {
+    if (!activeEffect || !shouldTracking || activeEffect.l & EFFECT_DISPOSED) {
         return
     }
-
-    const process = () => {
-        processEffect(value[WRAPPER].effect)
+    if (isUndefined(flag)) {
+        flag = LINK_VALUE_CHANGED
     }
 
-    const ret = cb(raw(value))
-    isThenable(ret) ? ret.then(process) : process()
-}
-
-// 生成reactivity和constReact的方法
-// levelDown表示需要降低的层级，const声明时为1，var、let声明时为0，因为var和let声明
-// 会被作为最外层对象的$属性值，所以通过主动降低const的层级可以使用户侧层级参数的作用表现一致
-//
-// 该方法返回声明响应性依赖的方法，参数1是需要Proxy包装的目标
-// 第二和第三个参数分三种情况：1.非调试模式响应性声明、 2.调试模式响应性声明、3.递归调用
-// 参数2在上述三种情况下分别表示：响应层级、为调试变量赋值的setter方法、响应层级
-// 参数3在上述三种情况下分别表示：固定为undefined、响应层级、来自父响应性依赖的副作用（子代共享）
-// 当参数2为undefined或number类型时可以确定处于情况1，参数2为function类型时可以确定处于情况2，否则处于情况3
-//
-// los means Level or debug Setter, eol means init Effect or Level
-function reactGen(levelDown = 0) {
-    return (target?: any, los?: number | Setter, eol?: EffectListItem | number) => {
-        let level = Infinity
-        let debugSetter: Setter = NOOP
-        let effect: EffectListItem | undefined = UNDEF
-
-        const isDebug = isFunction(los)
-        const eolIsNumber = isNumber(eol)
-        const eolIsUndefined = isUndefined(eol)
-        const isDeclaration = isDebug || eolIsNumber || eolIsUndefined
-
-        if (isDeclaration) {
-            if (!isDebug) {
-                if (!isUndefined(los)) {
-                    level = los
-                }
-            } else {
-                debugSetter = los
-                if (!eolIsUndefined) {
-                    level = eol as number
-                }
-            }
-            if (level - levelDown < 0) {
-                BadReactivityLevel(level)
-            }
-            level -= levelDown
-
-            if (isReactive(target)) {
-                effect = target[WRAPPER].effect
-                target = target[RAW_VALUE]
-            }
-
-            // 声明响应式变量时需要将其作为对象的$属性
-            target = {
-                $: target
-            }
-        } else {
-            level = los as number
-            effect = eol as EffectListItem
+    const subscription = getSubscription(wrapper, property, activeEffect.t == TIMING_SYNC, true)!
+    const activeLink = subscription.k[subscription.a]
+    if (activeLink?.e === activeEffect) {
+        activeLink.l |= flag
+    } else {
+        const link: Link = {
+            l: flag,
+            e: activeEffect,
+            s: subscription,
+            i: subscription.k.length
         }
-
-        const typeFlag = getTypeFlag(target)
-        if (!typeFlag || level < 0) {
-            return target
-        }
-
-        const ret = new ReactivityWrapper(
-            target,
-            level,
-            typeFlag,
-            debugSetter,
-            effect || [new Set(), NIL],
-            isDeclaration && levelDown === 1
-        )
-        if (isDeclaration) {
-            if (__qk_expose_dependencies__) {
-                const component = getCurrentInstance()
-                component && component.__.deps.push(ret)
-            }
-        }
-
-        // debug模式下的let声明会返回代理包装和原始值组成的数组
-        return isDebug ? [ret.proxy, ret.proxy.$] : ret.proxy
+        subscription.a = link.i
+        activeEffect.k.push(link)
+        subscription.k.push(link)
     }
 }
 
-// 解构语法响应性声明，将解构出的每一个标识符都声明为响应性变量，生成方法
-// 的第一个参数是一个数组，它的第一个元素是解构函数，其余的元素是每个解构
-// 出来的标识符setter（调试模式下修改调试标识符时调用以修改原始标识符的值）
-export function destructuringReactGen(isConst = false) {
-    const reactFn = isConst ? constReact : react
-    return (dfnAndSetters: [DestructuringFunc, ...Setter[]], value: any, level = Infinity) => {
-        const [dfn, ...setters] = dfnAndSetters
-        const isDebug = !isUndefined(dfnAndSetters[1])
+function reactWithAncestor(
+    target: any,
+    flag: number,
+    debugSetter?: Setter,
+    reactAgain?: ArbitraryFunc
+) {
+    const cached = getCachedWrapper(target, flag)
+    if (cached) {
+        return debugSetter ? [cached, toRaw(cached)] : cached
+    }
 
-        // 非调试模式
-        if (!isDebug) {
-            return dfn(value).map(v => {
-                return reactFn(v, level)
+    const isChanged = flag & WRAPPER_SHALLOW ? notEqual : reactiveNotEqual
+    const wrapper = newReactivityWrapper(target, flag)
+    wrapper.p = {
+        [WRAPPER]: wrapper,
+
+        get $() {
+            mutualLink(wrapper)
+            return reactAgain ? reactAgain(target) : target
+        },
+
+        set $(value) {
+            if (isChanged(target, value)) {
+                debugSetter?.(value)
+                wrapper.r = target = value
+                scheduleUpdate(wrapper)
+            }
+        }
+    }
+    return debugSetter ? [wrapper.p, target] : wrapper.p
+}
+
+function reactWithProxy(target: any, flag = 0): any {
+    if (isReactive(target)) {
+        return target
+    }
+
+    const cached = getCachedWrapper(target, flag)
+    if (cached) {
+        return cached
+    }
+
+    if (!couldReact(target)) {
+        return target
+    }
+
+    const isShallow = flag & WRAPPER_SHALLOW
+    const isChanged = isShallow ? notEqual : reactiveNotEqual
+    const typeFlag = TYPE_FLAG_MAP[optc(target)] ?? WRAPPER_OBJECT
+    const wrapper = newReactivityWrapper(target, (flag |= WRAPPER_PROXY | typeFlag))
+
+    const proxy: any = createProxy(target, {
+        get(target, property, receiver) {
+            if (property === WRAPPER) {
+                return wrapper
+            }
+
+            const isSetMap = flag & (WRAPPER_SET | WRAPPER_MAP)
+            const prototypeKey = isSetMap | (flag & WRAPPER_ARRAY)
+            const propValue = REFLECT.get(target, property, isSetMap ? target : receiver)
+            mutualLink(wrapper, isSetMap ? ensureGetRefProperty(property) : property)
+
+            // 访问 Array、Set、Map 的原型方法时，返回方法包装器
+            // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
+            if (prototypeKey && isFunction(propValue)) {
+                const origin = any(PROTO_MAP[prototypeKey])[property]
+                if (origin === target[property]) {
+                    return reactiveMethods[prototypeKey][property] || origin
+                }
+            }
+            return isShallow ? propValue : constReact(propValue)
+        },
+
+        set(target, property, value, receiver) {
+            if (property === "__proto__") {
+                return this.setPrototypeOf!(target, value)
+            }
+
+            let originElems: any[] | undefined
+            let hasChangedChildren: ReactivityWrapper[] | undefined
+            let linkFlagForSchedule = !hasOwn(target, property) ? LINK_OWN_CHANGED : 0
+
+            const originValue = target[property]
+            const isArray = flag & WRAPPER_ARRAY
+            const scheduleProp = getRefProperty(flag, property)
+            if (!(property in target)) {
+                walkWrapperChildren(wrapper, child => {
+                    const notHas = !(property in child)
+                    if (notHas) {
+                        ;(hasChangedChildren ??= []).push(child)
+                    }
+                    return notHas
+                })
+                linkFlagForSchedule |= LINK_IN_CHANGED
+            }
+            if (isArray && property === "length" && value < originValue) {
+                originElems = target.slice(value)
+            }
+            return batchUpdating(() => {
+                const result = REFLECT.set(target, property, value, receiver)
+                if (isChanged(originValue, value)) {
+                    linkFlagForSchedule |= LINK_VALUE_CHANGED
+
+                    // 修改数组的 length 属性时，需以被删除的索引调度更新
+                    if (originElems) {
+                        for (let i = 0; i < originElems.length; i++) {
+                            let scheduleFlag = LINK_OWN_CHANGED
+                            const index = i + value
+                            if (!(i in target)) {
+                                scheduleFlag |= LINK_IN_CHANGED
+                            }
+                            if (!isUndefined(originElems[i])) {
+                                scheduleFlag |= LINK_VALUE_CHANGED
+                            }
+                            scheduleUpdate(wrapper, "" + index, scheduleFlag)
+                        }
+                    }
+                }
+                if (isArray && linkFlagForSchedule & LINK_OWN_CHANGED) {
+                    scheduleUpdate(wrapper, "length")
+                }
+                if (hasChangedChildren) {
+                    for (const child of hasChangedChildren) {
+                        scheduleUpdate(child, property, LINK_IN_CHANGED)
+                    }
+                }
+                return (scheduleUpdate(wrapper, scheduleProp, linkFlagForSchedule), result)
             })
+        },
+
+        deleteProperty(target, property) {
+            let linkFlagForSchedule = 0
+            let hasChangedChildren: ReactivityWrapper[] | undefined
+            if (hasOwn(target, property)) {
+                if (!(property in getPrototypeOf(target))) {
+                    walkWrapperChildren(wrapper, child => {
+                        const notHas = !(property in child)
+                        if (notHas) {
+                            ;(hasChangedChildren ??= []).push(child)
+                        }
+                        return notHas
+                    })
+                    linkFlagForSchedule |= LINK_IN_CHANGED
+                }
+                linkFlagForSchedule |= LINK_OWN_CHANGED
+            }
+            if (!isUndefined(target[property])) {
+                linkFlagForSchedule |= LINK_VALUE_CHANGED
+            }
+            return batchUpdating(() => {
+                const refProp = getRefProperty(flag, property)
+                const result = REFLECT.deleteProperty(target, property)
+                if (hasChangedChildren) {
+                    for (const child of hasChangedChildren) {
+                        scheduleUpdate(child, property, LINK_IN_CHANGED)
+                    }
+                }
+                return (scheduleUpdate(wrapper, refProp, linkFlagForSchedule), result)
+            })
+        },
+
+        getPrototypeOf(target) {
+            const proto = REFLECT.getPrototypeOf(target)
+            const refProp = getRefProperty(flag, "__proto__")
+            if ((mutualLink(wrapper, refProp), !proto)) {
+                return proto
+            }
+            return (wrapper.b = constReact(proto)[WRAPPER]).p
+        },
+
+        setPrototypeOf(_, value) {
+            if ((wrapper.b = constReact(value)?.[WRAPPER])) {
+                ;(wrapper.b.c ??= new Set()).add(wrapper)
+            }
+            return batchUpdateWithRaw(wrapper.p, raw => {
+                return REFLECT.setPrototypeOf(raw, value)
+            })
+        },
+
+        ownKeys(target) {
+            mutualLink(wrapper, OWN_KEYS, LINK_OWN_CHANGED)
+            return (wrapper.o = REFLECT.ownKeys(target))
+        },
+
+        has(_, property) {
+            let currentWrapper: ReactivityWrapper | undefined = wrapper
+            mutualLink(currentWrapper, getRefProperty(flag, property), LINK_IN_CHANGED)
+
+            while (currentWrapper && !hasOwn(currentWrapper.r, property)) {
+                const parent: ReactivityWrapper | undefined = constReact(
+                    getPrototypeOf(currentWrapper.r)
+                )?.[WRAPPER]
+                if (!parent) {
+                    return false
+                }
+                ;(parent.c ??= new Set()).add(currentWrapper)
+                currentWrapper.b = currentWrapper = parent
+            }
+            return !!currentWrapper
         }
+    })
 
-        // 调试模式
-        return dfn(value).map((v, i) => {
-            return reactFn(v, setters[i], level)
-        })
+    return (cacheWrapper(target, wrapper), (wrapper.p = proxy))
+}
+
+function newReactivityWrapper(target: any, flag: number): ReactivityWrapper {
+    return {
+        b: NIL,
+        c: NIL,
+        s: NIL,
+        a: NIL,
+        o: NIL,
+        l: flag,
+        p: UNDEF,
+        r: target
     }
 }
 
-// 运行同步副作用，调度更新
-// run sync effects and scheduling update
-function processEffect(effect: EffectListItem) {
-    runSyncEffect(effect[1])
-    scheduleUpdate(effect[0])
+function getCachedWrapper(target: any, flag: number) {
+    return (flag & WRAPPER_SHALLOW ? shallowProxyCache : proxyCache).get(target)?.p
 }
 
-// 获取传入值的类型位掩码，这里采用二进制位的方法是为了在Proxy中可以快速判断多种类型的组合
-function getTypeFlag(v: any) {
-    if (typeof v !== "object" || isNull(v)) {
-        return 0
-    }
-
-    if (isArray(v)) {
-        return 1
-    }
-
-    const vt = optc(v)
-    const referenceTypes = ["Object", "Set", "Map"]
-    for (let i = 0; i < 3; i++) {
-        if (vt === referenceTypes[i]) {
-            return 1 << i
-        }
-    }
-
-    return 0
+function cacheWrapper(target: any, wrapper: ReactivityWrapper) {
+    ;(wrapper.l & WRAPPER_SHALLOW ? shallowProxyCache : proxyCache).set(target, wrapper)
 }
 
-export { react, constReact, destructuringReact, constDestructuringReact }
+function baseDestructuringReact(
+    target: any,
+    dfn: DestructuringFunc,
+    reactFunc: ArbitraryFunc,
+    debugSetters?: Setter[]
+) {
+    const ret: any[] = []
+    const values = dfn(target)
+    for (let i = 0; i < values.length; i += 2) {
+        ret.push(values[i + 1] ? reactFunc(values[i], debugSetters?.[i / 2]) : values[i])
+    }
+    return ret
+}
