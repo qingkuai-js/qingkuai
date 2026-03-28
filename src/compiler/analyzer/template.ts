@@ -3,7 +3,7 @@ import type {
     TemplateNode,
     ParsedDirective,
     TemplateAttribute,
-    TemplateNodeContext,
+    TemplateNodeContext
 } from "#type-declarations/compiler"
 
 import {
@@ -25,7 +25,6 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
 import { isHtmlDirectiveChild } from "../../util/compiler/assert"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
-import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from "../message/error"
 
@@ -76,9 +75,6 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                     if (!part.isInterpolated) {
                         analyzeStaticTextContent(node, part)
                     } else {
-                        if (part === node.content[0]) {
-                            increaseReusedStringUsedTimes("")
-                        }
                         analyzeInterpolation(node, part, part.value, part.loc.start.index)
                     }
                 }

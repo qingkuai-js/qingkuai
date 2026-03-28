@@ -23,7 +23,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         setterArg: ensureIdWithPrefix("v"),
         context: ensureIdWithPrefix("_ctx"),
         anchor: ensureIdWithPrefix("_anchor"),
-        compressStrings: ensureIdWithPrefix("compressStrings")
+        compressStrings: ensureIdWithPrefix("_compressStrings")
     })
 
     const writer = new RuntimeCodeWriter(true)

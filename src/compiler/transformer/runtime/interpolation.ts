@@ -56,6 +56,7 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
         if (part.isInterpolated || getGeneratedStaticTextContent(part)) {
             partCount++
             singlePart = part
+
             if (partCount > 1) {
                 break
             }

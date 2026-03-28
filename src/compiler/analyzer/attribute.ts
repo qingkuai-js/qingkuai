@@ -3,8 +3,8 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import {
     DuplicateAttributes,
     DisallowedAttributeKind,
-    SlotNameAttributeMustBeStatic,
-    ConflictingReactivityModes
+    ConflictingReactivityModes,
+    SlotNameAttributeMustBeStatic
 } from "../message/error"
 import { analyzeEvent } from "./event"
 import { analyzeDirective } from "./directive"
@@ -44,7 +44,7 @@ export function analyzeAttributes(node: TemplateNode) {
         const isComponent = !!node.componentTag
         const baseName = getAttributeBaseName(rawName)
 
-        if (!isDirective && !node.isEmbedded) {
+        if (!node.isEmbedded && (isDynamic || (isReference && isComponent))) {
             markAttributeNameAsReusedStrings(node, attribute)
         }
 
@@ -160,19 +160,9 @@ export function analyzeAttributes(node: TemplateNode) {
 function markAttributeNameAsReusedStrings(node: TemplateNode, attribute: TemplateAttribute) {
     const rawName = attribute.name.raw
     const baseName = getAttributeBaseName(rawName)
-
-    // 事件名称可能包含标志，推迟至事件分析中标记
-    // Event names may include flags; defer marking them until event analysis.
-    if (rawName[0] === "@") {
-        return
-    }
     if (node.componentTag) {
-        if (baseName.length >= 3) {
-            increaseReusedStringUsedTimes(baseName)
-        }
-        return
-    }
-    if (rawName[0] === "!" && rawName !== "!class") {
+        increaseReusedStringUsedTimes(baseName, true)
+    } else if (rawName !== "!class") {
         if (!baseName.startsWith("xlink:")) {
             increaseReusedStringUsedTimes(baseName)
         } else {

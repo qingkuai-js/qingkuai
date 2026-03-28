@@ -3,7 +3,6 @@ import type { TemplateNode, TextContentPart } from "#type-declarations/compiler"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
 import { atLeastOneWhitespaceRE, nonWhitespaceRE } from "../regular"
-import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 
 export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPart) {
     let str = part.value
@@ -49,9 +48,6 @@ export function analyzeStaticTextContent(node: TemplateNode, part: TextContentPa
     }
     if (withInComponent && !str.trim()) {
         str = ""
-    }
-    if (str) {
-        increaseReusedStringUsedTimes(str)
     }
     analyzeResult.template.staticTextContents.set(part, str)
 }

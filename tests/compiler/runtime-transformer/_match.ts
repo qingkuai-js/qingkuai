@@ -11,6 +11,7 @@ import {
     getTemplateFragments,
     writeFragmentGetterDeclarations
 } from "../../../src/compiler/transformer/runtime/fragment"
+import { isUndefined } from "../../../src/util/shared/assert"
 import { formatSourceCode } from "../../../src/util/testing/sundry"
 import { CodeEditor } from "../../../src/compiler/transformer/editor"
 import { parseTemplate } from "../../../src/compiler/parser/template"
@@ -20,6 +21,7 @@ import { analyzeTemplate } from "../../../src/compiler/analyzer/template"
 import { RuntimeCodeWriter } from "../../../src/compiler/transformer/writer"
 import { removeEliminatedNodes } from "../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../src/compiler/transformer/runtime/script"
+import { writeStringLiteralsDeclarations } from "../../../src/compiler/transformer/runtime/compress"
 
 export function matchTransformedScript(
     source: string,
@@ -35,13 +37,20 @@ export function matchGeneratedFragment(
     expected: string,
     options: CompileOptions = {}
 ) {
+    if (isUndefined(options.debug)) {
+        options.debug = true
+    }
     resetCompilerState(options)
 
     const writer = new RuntimeCodeWriter()
     const templateNodes = parseTemplate(source, PARSER_TEMPLATE_OPTIONS)
-    generateIdentifier.internal = "_"
     ;(analyzeScript(), analyzeTemplate(templateNodes))
-    writeFragmentGetterDeclarations(writer, getTemplateFragments(templateNodes))
+    generateIdentifier.internal = "_"
+    generateIdentifier.compressStrings = "_compressStrings"
+
+    const fragments = getTemplateFragments(templateNodes)
+    writeStringLiteralsDeclarations(writer, fragments)
+    writeFragmentGetterDeclarations(writer, fragments)
     expect(writer.code.trim()).toBe(formatSourceCode(expected))
     return templateNodes
 }

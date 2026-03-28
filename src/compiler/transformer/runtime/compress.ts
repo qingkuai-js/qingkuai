@@ -4,9 +4,9 @@ import type { TemplateFragment } from "#type-declarations/compiler"
 import { isValidIdentifier } from "@babel/types"
 import { stringify } from "../../../util/shared/aliases"
 import { isUndefined } from "../../../util/shared/assert"
+import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import { ensureIdWithNumSuffix, ensureIdWithPrefix } from "../../../util/compiler/sundry"
 
 export function writeStringLiteralsDeclarations(
     writer: RuntimeCodeWriter,
@@ -34,12 +34,23 @@ export function writeStringLiteralsDeclarations(
     for (const fragment of fragments) {
         for (let i = 0; i < fragment.content.length; i++) {
             const compressStringIndex = compressStringIndexMap.get(fragment.content[i])
-            if (isUndefined(compressStringIndex)) {
-                fragment.content[i] = fragment.content[i].replaceAll("/", "//")
-                continue
+            if (!isUndefined(compressStringIndex)) {
+                fragment.usedCompressString = true
+                break
             }
-            fragment.usedCompressString = true
-            fragment.content[i] = "/" + compressStringIndex
+        }
+
+        if (fragment.usedCompressString) {
+            for (let i = 0; i < fragment.content.length; i++) {
+                const str = fragment.content[i]
+                const compressStringIndex = compressStringIndexMap.get(str)
+                fragment.content[i] = fragment.content[i].replaceAll("/", "//")
+
+                if (!isUndefined(compressStringIndex)) {
+                    increaseReusedStringUsedTimes(str)
+                    fragment.content[i] = "/" + compressStringIndex
+                }
+            }
         }
     }
     for (const [str] of compressStringIndexMap) {
@@ -60,15 +71,20 @@ export function writeStringLiteralsDeclarations(
     }
 
     const shouldWrapLine = compressStringIndexMap.size > 8
-    const compressStringId = ensureIdWithPrefix("compressStrings")
-    writer.write(`const ${(generateIdentifier.compressStrings = compressStringId)} = [`)
+    writer.write(`const ${generateIdentifier.compressStrings} = [`)
 
     if (shouldWrapLine) {
         writer.indent()
     }
-    for (const [str] of compressStringIndexMap) {
-        writer.write(`${getMaybeReusedString(str)},${shouldWrapLine ? "\n" : " "}`)
-    }
+    compressStringIndexMap.forEach((index, str) => {
+        writer.write(getMaybeReusedString(str))
+        if (index !== compressStringIndexMap.size - 1) {
+            writer.write(", ")
+        }
+        if (shouldWrapLine) {
+            writer.write("\n")
+        }
+    })
     if (shouldWrapLine) {
         writer.dedent()
     }

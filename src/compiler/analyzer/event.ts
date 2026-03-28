@@ -16,7 +16,7 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     const isComponent = !!node.componentTag
     const parseResult = parseEventFlag(event)
     analyzeResult.template.parsedEvents.set(event, parseResult)
-    increaseReusedStringUsedTimes(parseResult.eventName.slice(1))
+    increaseReusedStringUsedTimes(parseResult.eventName.slice(1), isComponent)
 
     if (isComponent && rawName !== parseResult.eventName) {
         RedundantEventFlags(
