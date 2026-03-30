@@ -1,3 +1,5 @@
+import type { HtmlBlockOptions } from "#type-declarations/runtime"
+
 import {
     KEY_UP,
     KEY_TAB,
@@ -40,6 +42,12 @@ export const KEY_FLAG_MAP = {
     ArrowDown: KEY_DOWN,
     ArrowLeft: KEY_LEFT,
     ArrowRight: KEY_RIGHT
+}
+
+export const DESTRUCT_HTML: HtmlBlockOptions = {
+    escapeStyle: true,
+    escapeScript: true,
+    escapeTags: ["link", "iframe", "form"]
 }
 
 // symbols

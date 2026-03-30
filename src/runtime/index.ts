@@ -23,7 +23,6 @@ export {
 export {
     noTracking,
     noUpdating,
-    updateWithRaw,
     pauseTracking,
     pauseUpdating,
     resumeTracking,
@@ -31,11 +30,11 @@ export {
     batchUpdating,
     stopBatchUpdating,
     startBatchUpdating,
-    batchUpdateWithRaw,
     batchAndNoTracking
 } from "./reactivity/optimization"
 
 export { mountApp } from "./component"
+export { DESTRUCT_HTML } from "./constants"
 export { toRaw } from "../util/runtime/sundry"
 export { nextTick } from "../util/runtime/sundry"
 export { createStore, toReactive, toShallowReactive } from "./reactivity/value"

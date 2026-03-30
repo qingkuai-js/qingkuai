@@ -98,7 +98,7 @@ export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => 
             case "down":
             case "left":
             case "right": {
-                if (keyboardEventNamesRE.test(eventName)) {
+                if (keyboardEventNamesRE.test(eventName.slice(1))) {
                     updateFlag(flagName, flagNameLoc, true)
                 } else {
                     KeyFlagIgnoredOnNonKeyboardEvent(flagNameLoc, flagName, eventName)

@@ -2,7 +2,8 @@ import type {
     Range,
     ASTLocation,
     TemplateNode,
-    TemplateAttribute
+    TemplateAttribute,
+    ParsedExpression
 } from "#type-declarations/compiler"
 import type { VariableDeclarator } from "@babel/types"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
@@ -18,12 +19,12 @@ import {
 } from "../../../util/compiler/template"
 import { CodeEditor } from "../editor"
 import { IntermediateCodeWriter } from "../writer"
-import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { stringify } from "../../../util/shared/aliases"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
+import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { GET_TYPE_DELAY_MARKING, LANGUAGE_SERVICE_UTIL, SPREAD_TAG } from "../../constants"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
@@ -146,25 +147,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     continue
                 }
 
-                const rawName = directive.name.raw
                 const rawValue = directive.value.raw
-                const expression = getParsedExpression(directive)
                 const valueEnd = directive.value.loc.end.index
-                const expressionLen = expression?.source.length ?? 0
                 const valueRange = getRangeByLoc(directive.value.loc)
+                const parsedExpression = getParsedExpression(directive)
+                const expressionLen = parsedExpression?.source.length ?? 0
                 const directiveInfo = analyzeResult.template.parsedDirectives.get(directive)
-
-                if (
-                    !expression &&
-                    rawName !== "#then" &&
-                    rawName !== "#await" &&
-                    rawName !== "#slot"
-                ) {
-                    const value = directiveInfo?.base ?? rawValue
-                    const start = directiveInfo?.baseStartSourceIndex ?? valueRange[0]
-                    writer.wrapLine().write(value, start).write(";")
-                    continue
-                }
 
                 switch (directive.name.raw) {
                     case "#if":
@@ -176,10 +164,22 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                     case "#for": {
                         indentAndWriteStartEnclosure()
-                        generatePatterns(writer, directive)
-                        writer.write(`${UTILS}.getListPair(`)
-                        writer.write(expression!.source, valueEnd - expressionLen)
-                        writer.write(");")
+
+                        if (directiveInfo && !parsedExpression) {
+                            writeInvalidExpression(
+                                writer,
+                                directiveInfo.base,
+                                directiveInfo.baseStartSourceIndex
+                            )
+                        }
+                        if (generatePatterns(writer, directive)) {
+                            writer.write(`${UTILS}.getListPair(`)
+
+                            if (parsedExpression) {
+                                writer.write(parsedExpression.source, valueEnd - expressionLen)
+                            }
+                            writer.write(");")
+                        }
                         break
                     }
 
@@ -209,20 +209,28 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (generatePatterns(writer, directive)) {
                             writer.write(ANY_VALUE).write(";")
                         } else {
-                            writer.write(rawValue, valueRange)
+                            writeInvalidExpression(writer, rawValue, valueRange)
                         }
                         break
                     }
 
                     case "#html": {
-                        writer.wrapLine().write(`${UTILS}.validateHtmlBlockOptions(`)
-                        writer.write(rawValue, valueRange).write(");")
+                        if (!parsedExpression) {
+                            writeInvalidExpression(writer, rawValue, valueRange)
+                        } else {
+                            writer.wrapLine().write(`${UTILS}.validateHtmlBlockOptions(`)
+                            writer.write(rawValue, valueRange).write(");")
+                        }
                         break
                     }
 
                     case "#target": {
-                        writer.wrapLine().write(`${UTILS}.validateTargetDirectiveValue(`)
-                        writer.write(rawValue, valueRange).write(");")
+                        if (!parsedExpression) {
+                            writeInvalidExpression(writer, rawValue, valueRange)
+                        } else {
+                            writer.wrapLine().write(`${UTILS}.validateTargetDirectiveValue(`)
+                            writer.write(rawValue, valueRange).write(");")
+                        }
                         break
                     }
 
@@ -230,8 +238,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (node.parent?.componentTag) {
                             writer.wrapLine()
 
-                            if (expression) {
-                                writer.write(expression.source, expression.startSourceIndex)
+                            if (parsedExpression) {
+                                writeParsedExpression(writer, parsedExpression)
                             } else {
                                 writer.write("default", getRangeByLoc(startTagOpenLoc))
                             }
@@ -240,9 +248,17 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             writer.write(") => ")
                             endInserts.push(() => writer.write(","))
                             indentAndWriteStartEnclosure(false)
-                        } else if (expression) {
+
+                            if (directiveInfo && !parsedExpression) {
+                                writeInvalidExpression(
+                                    writer,
+                                    directiveInfo.base,
+                                    directiveInfo.baseStartSourceIndex
+                                )
+                            }
+                        } else if (parsedExpression) {
                             writer.wrapLine()
-                            writer.write(expression.source, expression.startSourceIndex).write(";")
+                            writeParsedExpression(writer, parsedExpression).write(";")
                         }
                         break
                     }
@@ -263,7 +279,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.dedent().write("});")
 
                     for (const [str, range] of componentInvalidExps) {
-                        writer.wrapLine().write(str, range).write(";")
+                        writeInvalidExpression(writer, str, range)
                     }
                 })
                 writer.wrapLine()
@@ -300,7 +316,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                     if (isComponent) {
                         writer.wrapLine().write(property, nameRange)
-                        writer.write(": ").write(writeValue, valueRange)
+                        writer.write(": ").write(writeValue, valueRange).write(",")
                     } else {
                         writer.wrapLine()
                         startGetTypeDelayMarkingCall(writer)
@@ -369,7 +385,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     continue
                 }
 
-                writer.wrapLine().write(rawValue, valueRange).write(";")
+                writeOrphanExpression(writer, rawValue, valueRange)
             }
 
             for (const event of nodeContext.eventListeners) {
@@ -582,36 +598,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     return writer.write("\n\n;\n\n")
 }
 
-function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
-    const directiveName = directive.name.raw
-    const isForDirective = directiveName === "#for"
-    const patterns = getParsedDirective(directive)!.patterns
-    if (!patterns.some(pattern => pattern)) {
-        if (isForDirective) {
-            writer.wrapLine()
-        }
-        return false
-    }
-    if (isForDirective) {
-        writer.wrapLine().write("const [")
-    }
-    for (let i = 0; i < patterns.length; i++) {
-        if (patterns[i].node) {
-            writer.write(
-                inputDescriptor.source.slice(...patterns[i].sourceRange),
-                patterns[i].sourceRange[0]
-            )
-        }
-        if (i < patterns.length - 1) {
-            writer.write(", ")
-        }
-    }
-    if (isForDirective) {
-        writer.write("] = ")
-    }
-    return true
-}
-
 function getRangeByLoc(loc: ASTLocation): Range {
     return [loc.start.index, loc.end.index]
 }
@@ -625,4 +611,59 @@ function forEachRight(arr: any[], cb: ArbitraryFunc) {
 function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
     writer.gtdii.push(writer.length)
     writer.write(`${GET_TYPE_DELAY_MARKING}(`)
+}
+
+function writeOrphanExpression(
+    writer: IntermediateCodeWriter,
+    expression: string,
+    sourceIndexOrRange: number | Range
+) {
+    writer.wrapLine().write("void(")
+
+    // @ts-expect-error: match the overload
+    return writer.write(expression, sourceIndexOrRange).write(");")
+}
+
+function writeInvalidExpression(
+    writer: IntermediateCodeWriter,
+    str: string,
+    sourceIndexOrRange: number | Range
+) {
+    // @ts-expect-error: match the overload
+    return writer.wrapLine().write(str, sourceIndexOrRange).write(";")
+}
+
+function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
+    const directiveName = directive.name.raw
+    const isForDirective = directiveName === "#for"
+    const isCatchDirective = directiveName === "#catch"
+    const patterns = getParsedDirective(directive)?.patterns
+    if (!patterns?.some(pattern => pattern)) {
+        if (isForDirective || isCatchDirective) {
+            writer.wrapLine()
+        }
+        return false
+    }
+    if (isForDirective || isCatchDirective) {
+        writer.wrapLine().write("const " + (isForDirective ? "[" : ""))
+    }
+    for (let i = 0; i < patterns.length; i++) {
+        if (patterns[i].node) {
+            writer.write(
+                inputDescriptor.source.slice(...patterns[i].sourceRange),
+                patterns[i].sourceRange[0]
+            )
+        }
+        if (i < patterns.length - 1) {
+            writer.write(", ")
+        }
+    }
+    if (isForDirective || isCatchDirective) {
+        writer.write(isCatchDirective ? " = " : "] = ")
+    }
+    return true
+}
+
+function writeParsedExpression(writer: IntermediateCodeWriter, parsedExpression: ParsedExpression) {
+    return writer.write(parsedExpression.source, parsedExpression.startSourceIndex)
 }
