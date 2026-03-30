@@ -19,7 +19,7 @@ import {
     kebabWithoutFirstLetterRE
 } from "../../compiler/regular"
 import { stringify } from "../shared/aliases"
-import { isValidIdentifier } from "@babel/types"
+import { isValidIdentifierName } from "./assert"
 import { escapeRegExpSource } from "../shared/sundry"
 import { isString, isUndefined } from "../shared/assert"
 
@@ -28,7 +28,7 @@ export const findOutOfComment: FindOutOfCommentFunc = findOutOfGen(false, true)
 export const findOutOfLiteralComment: FindOutOfLiteralCommentFunc = findOutOfGen(true, true)
 
 export const toPropertyKey: ToPropertyKeyFunc = (str: string) => {
-    return isValidIdentifier(str, true) ? str : stringify(str)
+    return isValidIdentifierName(str) ? str : stringify(str)
 }
 
 export const findEndBracket: FindEndBracketFunc = (str: string) => {

@@ -27,6 +27,7 @@ export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 export const jsValueCharRE = /[A-Za-z0-9_$]/
 export const jsStringLiteralQuoteRE = /[`'"]/
 export const jsDestructuringEqualTokenRE = /\s*=\s*/
+export const jsValidIdentifierRE = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
 
 export const intrinsicVariableRE = /^(?:props|refs|slots)$/

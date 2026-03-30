@@ -1,10 +1,10 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { TemplateFragment } from "#type-declarations/compiler"
 
-import { isValidIdentifier } from "@babel/types"
 import { stringify } from "../../../util/shared/aliases"
 import { isUndefined } from "../../../util/shared/assert"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
+import { isValidIdentifierName } from "../../../util/compiler/assert"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
@@ -106,7 +106,7 @@ export function increaseReusedStringUsedTimes(value: string, isPropertyName = fa
     if (
         inputDescriptor.options.debug ||
         inputDescriptor.options.checkMode ||
-        (isPropertyName && isValidIdentifier(value, true) && value.length < 3)
+        (isPropertyName && isValidIdentifierName(value, true) && value.length < 3)
     ) {
         return
     }

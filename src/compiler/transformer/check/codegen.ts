@@ -77,14 +77,14 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     if (isTS) {
         writer.writeLine(`type Props = ${EMPTY_OBJECT}; type Refs = ${EMPTY_OBJECT};`)
         writer.write(
-            `const props: Readonly<Props> = ${ANY_VALUE}, refs: Readonly<Refs> = ${ANY_VALUE}, slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`
+            `const props: Readonly<Props> = ${ANY_VALUE}, refs: Refs = ${ANY_VALUE}, slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`
         )
     } else {
         writer.writeLine(
             `/** @typedef { ${EMPTY_OBJECT} } Refs @typedef { ${EMPTY_OBJECT} } Props */`
         )
         writer.write(
-            `const /** @type { Readonly<Props> } */ props = 0, /** @type { Readonly<Refs> } */ refs = 0, /** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`
+            `const /** @type { Readonly<Props> } */ props = 0, /** @type { Refs } */ refs = 0, /** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`
         )
     }
 

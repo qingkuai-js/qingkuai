@@ -17,7 +17,6 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
-import { isValidIdentifier } from "@babel/types"
 import { getMaybeReusedString } from "./compress"
 import { isNull } from "../../../util/shared/assert"
 import { DELEGATABLE_EVENTS } from "../../constants"
@@ -25,6 +24,7 @@ import { writeFragmentSelections } from "./fragment"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
+import { isValidIdentifierName } from "../../../util/compiler/assert"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
@@ -737,7 +737,7 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
 function writeContextKey(str: string, writer: RuntimeCodeWriter) {
     const reusedStringInfo = analyzeResult.reusedStrings[str]
     if (
-        isValidIdentifier(str, true) &&
+        isValidIdentifierName(str) &&
         (str.length < 3 || !reusedStringInfo || reusedStringInfo.times < 2)
     ) {
         return writer.write(str)

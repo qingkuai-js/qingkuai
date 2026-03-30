@@ -55,11 +55,11 @@ import {
 } from "../message/error"
 import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
-import { isValidIdentifier } from "@babel/types"
 import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
+import { isValidIdentifierName } from "../../util/compiler/assert"
 import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
 import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
 import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS } from "../constants"
@@ -324,7 +324,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             prev,
             parent,
             componentTag: isComponent
-                ? isValidIdentifier(tag, false)
+                ? isValidIdentifierName(tag, true)
                     ? tag
                     : kebab2Camel(tag)
                 : "",
