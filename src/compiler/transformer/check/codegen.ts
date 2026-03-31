@@ -122,16 +122,15 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const startTagRange: Range = [node.loc.start.index, node.startTagEndPos.index]
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
-            const dedentAndWriteEndEnclosure = () => {
-                writer.dedent().write("};")
-            }
-
-            const indentAndWriteStartEnclosure = (shouldWrapLine = true) => {
+            const indentAndWriteStartEnclosure = (
+                shouldWrapLine = true,
+                closeWithSemicolon = true
+            ) => {
                 if (shouldWrapLine) {
                     writer.wrapLine()
                 }
                 writer.write("{").indent(false)
-                endInserts.push(dedentAndWriteEndEnclosure)
+                endInserts.push(() => writer.dedent().write(closeWithSemicolon ? "};" : "}"))
             }
 
             if (node.tag && node.parent?.componentTag && !nodeContext.attributesMap["#slot"]) {
@@ -139,7 +138,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 writer.write("default", getRangeByLoc(startTagOpenLoc))
                 writer.write(": () => ")
                 endInserts.push(() => writer.write(","))
-                indentAndWriteStartEnclosure(false)
+                indentAndWriteStartEnclosure(false, false)
             }
 
             for (const directive of nodeContext.sortedDirectives) {
@@ -247,7 +246,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             generatePatterns(writer, directive)
                             writer.write(") => ")
                             endInserts.push(() => writer.write(","))
-                            indentAndWriteStartEnclosure(false)
+                            indentAndWriteStartEnclosure(false, false)
 
                             if (directiveInfo && !parsedExpression) {
                                 writeInvalidExpression(

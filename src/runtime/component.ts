@@ -52,11 +52,14 @@ export function runHooks(instance: ComponentInstance, index: number) {
     }
 }
 
-export function mount(anchor: Element, fragment: DocumentFragment) {
+export function mount(anchor?: Element, fragment?: DocumentFragment) {
     backToParentDestruction()
-    insertBefore(anchor, fragment)
-    setCurrentInstance(currentInstance!.p)
+
+    if (anchor && fragment) {
+        insertBefore(anchor, fragment)
+    }
     runHooks(currentInstance!, AFTER_MOUNT)
+    setCurrentInstance(currentInstance!.p)
 }
 
 export function mountApp(render: ComponentFunc, target: Element | string) {
@@ -113,7 +116,7 @@ function initRefs(transformed: AnyObject | undefined, defaults: any) {
 
 function initProps(transformed: AnyObject | undefined, defaults: any) {
     if (transformed && stripPrototype(transformed)) {
-        createProxy(
+        return createProxy(
             {},
             {
                 get(_, property) {

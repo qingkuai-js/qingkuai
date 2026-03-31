@@ -92,7 +92,7 @@ export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => 
             case "tab":
             case "enter":
             case "delete":
-            case "escape":
+            case "esc":
             case "space":
             case "up":
             case "down":

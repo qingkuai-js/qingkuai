@@ -43,7 +43,7 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     tab: KEY_TAB,
     enter: KEY_ENTER,
     delete: KEY_DELETE,
-    escape: KEY_ESCAPE,
+    esc: KEY_ESCAPE,
     space: KEY_SPACE,
     up: KEY_UP,
     down: KEY_DOWN,

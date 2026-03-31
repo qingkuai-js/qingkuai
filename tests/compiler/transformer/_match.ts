@@ -32,7 +32,18 @@ export function matchTransformedScript(
     expect(hoist ? `${hoist}\n${edieted}` : edieted).toBe(expected)
 }
 
-export function matchGeneratedFragment(
+export function matchGeneratedFragmentNonDebug(
+    source: string,
+    expected: string,
+    options: CompileOptions = {}
+) {
+    if (isUndefined(options.debug)) {
+        options.debug = false
+    }
+    return localMatchGeneratedFragment(source, expected, options)
+}
+
+export function matchGeneratedFragmentDebug(
     source: string,
     expected: string,
     options: CompileOptions = {}
@@ -40,19 +51,7 @@ export function matchGeneratedFragment(
     if (isUndefined(options.debug)) {
         options.debug = true
     }
-    resetCompilerState(options)
-
-    const writer = new RuntimeCodeWriter()
-    const templateNodes = parseTemplate(source, PARSER_TEMPLATE_OPTIONS)
-    ;(analyzeScript(), analyzeTemplate(templateNodes))
-    generateIdentifier.internal = "_"
-    generateIdentifier.compressStrings = "_compressStrings"
-
-    const fragments = getTemplateFragments(templateNodes)
-    writeStringLiteralsDeclarations(writer, fragments)
-    writeFragmentGetterDeclarations(writer, fragments)
-    expect(writer.code.trim()).toBe(formatSourceCode(expected))
-    return templateNodes
+    return localMatchGeneratedFragment(source, expected, options)
 }
 
 export function matchTemplateNodesRuntimeId(data: [TemplateNode, string][]) {
@@ -87,4 +86,20 @@ function localTransform(source: string, options: CompileOptions) {
         edieted: formatSourceCode(embeddedScriptEditor.result),
         hoist: formatSourceCode(hoistEmbeddedScriptWriter.code)
     }
+}
+
+function localMatchGeneratedFragment(source: string, expected: string, options: CompileOptions) {
+    resetCompilerState(options)
+
+    const writer = new RuntimeCodeWriter()
+    const templateNodes = parseTemplate(source, PARSER_TEMPLATE_OPTIONS)
+    ;(analyzeScript(), analyzeTemplate(templateNodes))
+    generateIdentifier.internal = "_"
+    generateIdentifier.compressStrings = "_compressStrings"
+
+    const fragments = getTemplateFragments(templateNodes)
+    writeStringLiteralsDeclarations(writer, fragments)
+    writeFragmentGetterDeclarations(writer, fragments)
+    expect(writer.code.trim()).toBe(formatSourceCode(expected))
+    return templateNodes
 }

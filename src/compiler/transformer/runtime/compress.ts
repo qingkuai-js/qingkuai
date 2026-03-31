@@ -20,6 +20,9 @@ export function writeStringLiteralsDeclarations(
     const compressStringIndexMap = new Map<string, number>()
     const fragmentContentPartUsedTimes: Record<string, number> = newCleanObj()
     for (const fragment of fragments) {
+        if (fragment.getWith) {
+            continue
+        }
         for (let i = 0; i < fragment.content.length; i++) {
             const str = fragment.content[i]
             fragmentContentPartUsedTimes[str] = (fragmentContentPartUsedTimes[str] ?? 0) + 1
@@ -32,6 +35,10 @@ export function writeStringLiteralsDeclarations(
     })
 
     for (const fragment of fragments) {
+        if (fragment.getWith) {
+            continue
+        }
+
         for (let i = 0; i < fragment.content.length; i++) {
             const compressStringIndex = compressStringIndexMap.get(fragment.content[i])
             if (!isUndefined(compressStringIndex)) {
@@ -52,9 +59,6 @@ export function writeStringLiteralsDeclarations(
                 }
             }
         }
-    }
-    for (const [str] of compressStringIndexMap) {
-        increaseReusedStringUsedTimes(str)
     }
     traverseObject(analyzeResult.reusedStrings, (str, info) => {
         if (info.times > 1) {
