@@ -1,4 +1,5 @@
 export type { HtmlBlockOptions } from "#type-declarations/runtime"
+export type { QingkuaiComponent, Sign } from "#type-declarations/runtime"
 
 export {
     onBeforeMount,

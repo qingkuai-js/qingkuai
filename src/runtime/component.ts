@@ -1,8 +1,8 @@
 import type {
     HookFunc,
-    ComponentFunc,
     ComponentContext,
-    ComponentInstance
+    ComponentInstance,
+    QingkuaiComponent
 } from "#type-declarations/runtime"
 import type { AnyObject } from "#type-declarations/tools"
 
@@ -62,7 +62,7 @@ export function mount(anchor?: Element, fragment?: DocumentFragment) {
     setCurrentInstance(currentInstance!.p)
 }
 
-export function mountApp(render: ComponentFunc, target: Element | string) {
+export function mountApp(render: QingkuaiComponent<any, any, any>, target: Element | string) {
     if (isString(target)) {
         target = selectElement(target) as Element
     }
@@ -72,7 +72,7 @@ export function mountApp(render: ComponentFunc, target: Element | string) {
 
     const anchor = newTextNode()
     appendChild(target, anchor)
-    render(anchor)
+    any(render)(anchor)
 }
 
 // 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法

@@ -116,8 +116,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // Transform watcher creation calls
     for (const call of analyzeResult.script.watchers) {
         const firstArg = call.arguments[0]
-        const callee = stripTypeExpressions(call.callee) as Identifier
-        if (callee.name.endsWith("Exp") && shouldNodeWrapAsGetter(firstArg)) {
+        if (shouldNodeWrapAsGetter(firstArg)) {
             editor.insert(firstArg.end!, ")")
             editor.insert(firstArg.start!, `() => (`)
         }

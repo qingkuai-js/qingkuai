@@ -760,7 +760,7 @@ function writeContextKey(str: string, writer: RuntimeCodeWriter) {
     ) {
         return writer.write(str)
     }
-    return writer.write(getMaybeReusedString(str))
+    return writer.write(`[${getMaybeReusedString(str)}]`)
 }
 
 function doesTextContentHasRenderEffect(node: TemplateNode) {

@@ -474,10 +474,6 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkConte
         const argsLen = intrinsicCall.arguments.length
         const intrinsicCallLoc = getScriptLocByRange(intrinsicCall.range!)
         switch (node.name) {
-            case "watch":
-            case "preWatch":
-            case "postWatch":
-            case "syncWatch":
             case "watchExp":
             case "preWatchExp":
             case "postWatchExp":

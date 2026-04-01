@@ -27,6 +27,7 @@ export {
     bindInputChecked
 } from "./reference"
 
+
 export { alias } from "./debug"
 export { init, mount } from "./component"
 export { htmlBlock } from "./directives/html"
@@ -38,5 +39,6 @@ export { conditionBlock } from "./directives/condition"
 export { objectAssign, call } from "../util/shared/aliases"
 export { listBlock, keyedListBlock } from "./directives/list"
 export { derived, destructuringDerived } from "./reactivity/derived"
+export { watch, preWatch, postWatch, syncWatch } from "./reactivity/effect"
 export { listen, createEventWrapper, registerEvents, delegate } from "./event"
 export { setAttribute, setClassName, setSelectValue, setXlinkAttribute } from "./attribute"

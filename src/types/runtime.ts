@@ -15,6 +15,8 @@ interface CancelablePromiseExtra {
     [CANCELABLE]: boolean
 }
 
+export declare const Sign: unique symbol
+
 export interface PropertyInfo {
     v: any // value
     l: number // flag
@@ -145,5 +147,13 @@ export type HtmlBlockOptions = Partial<{
     escapeStyle: boolean
     escapeScript: boolean
 }>
+
+export type QingkuaiComponent<P, R, S> = {
+    props: P
+    refs: R
+    slosts: S
+    [Sign]: never
+}
+
 export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string
