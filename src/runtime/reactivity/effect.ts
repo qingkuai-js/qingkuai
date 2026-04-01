@@ -1,10 +1,12 @@
 import type {
     Link,
     Effect,
+    EffectHandle,
     GeneralEffectFunc,
     WatchEffectCallback
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
+import type { CreateEffect, CreateWatcher } from "#type-declarations/runtime-ex"
 
 import {
     TIMINGS,
@@ -147,35 +149,17 @@ function createEffect(
     return effect
 }
 
-function createEffectWithHandle(...args: Parameters<typeof createEffect>) {
-    const effect = createEffect(...args)
-    return {
-        stop: () => {
-            disposeEffect(effect)
-        },
-        pause: () => {
-            effect.l |= EFFECT_DISABLED
-        },
-        resume: () => {
-            if (effect.l & EFFECT_DISPOSED) {
-                return
-            }
-            effect.l &= ~EFFECT_DISABLED
-        }
-    }
-}
-
-function reactiveEffectFuncGen() {
-    return TIMINGS.map(timing => {
-        return (fn: GeneralEffectFunc) => createEffectWithHandle(0, timing, fn)
-    })
-}
-
 function watchEffectFuncGen() {
-    return TIMINGS.map(timing => {
+    return TIMINGS.map<CreateWatcher>(timing => {
         return <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
             return createEffectWithHandle(EFFECT_WATCH, timing, getter, callback)
         }
+    })
+}
+
+function reactiveEffectFuncGen() {
+    return TIMINGS.map<CreateEffect>(timing => {
+        return (callback: GeneralEffectFunc) => createEffectWithHandle(0, timing, callback)
     })
 }
 
@@ -253,4 +237,22 @@ function checkAndDestroyInvalidEffect(effect: Effect) {
         )
     }
     return isValid
+}
+
+function createEffectWithHandle(...args: Parameters<typeof createEffect>): EffectHandle {
+    const effect = createEffect(...args)
+    return {
+        stop: () => {
+            disposeEffect(effect)
+        },
+        pause: () => {
+            effect.l |= EFFECT_DISABLED
+        },
+        resume: () => {
+            if (effect.l & EFFECT_DISPOSED) {
+                return
+            }
+            effect.l &= ~EFFECT_DISABLED
+        }
+    }
 }

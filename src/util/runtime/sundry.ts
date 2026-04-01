@@ -1,5 +1,6 @@
+import type { GeneralFunc, ObjectKeys } from "#type-declarations/tools"
+import type { NextTickFunc, ToRawFunc } from "#type-declarations/runtime-ex"
 import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime"
-import type { ArbitraryFunc, GeneralFunc, ObjectKeys } from "#type-declarations/tools"
 
 import {
     WRAPPER,
@@ -17,9 +18,13 @@ import { createDestruction } from "../../runtime/destroy"
 import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
 
-export function toRaw<T>(v: T): T {
+export const toRaw: ToRawFunc = v => {
     const wrapper = any(v)?.[WRAPPER]
     return wrapper ? wrapper.r : v
+}
+
+export const nextTick: NextTickFunc = callback => {
+    return isFunction(callback) ? RESOLVED.then(callback) : RESOLVED
 }
 
 export function reverse(v: any) {
@@ -55,10 +60,6 @@ export function reactiveNotEqual(a: any, b: any) {
         return notEqual(awrapper.r, b)
     }
     return notEqual(awrapper.r, bwrapper.r)
-}
-
-export function nextTick(fn?: ArbitraryFunc) {
-    return isFunction(fn) ? RESOLVED.then(fn) : RESOLVED
 }
 
 export function getRawProperty(property: any) {

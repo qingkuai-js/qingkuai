@@ -1,4 +1,4 @@
-import type { HtmlBlockOptions } from "#type-declarations/runtime"
+import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 
 import {
     KEY_UP,

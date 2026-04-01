@@ -136,22 +136,16 @@ export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 
 export type DestructuringFunc = (target: any) => any[]
-export type HookFunc = (callback: GeneralFunc) => void
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
 export type GeneralEffectFunc = () => void | GeneralFunc
+export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
-
-export type HtmlBlockOptions = Partial<{
-    escapeTags: string[]
-    escapeStyle: boolean
-    escapeScript: boolean
-}>
 
 export type QingkuaiComponent<P, R, S> = {
     props: P
     refs: R
-    slosts: S
+    slots: S
     [Sign]: never
 }
 

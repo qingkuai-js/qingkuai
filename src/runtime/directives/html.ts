@@ -1,5 +1,6 @@
 import type { Getter } from "#type-declarations/tools"
-import type { Destruction, HtmlBlockOptions } from "#type-declarations/runtime"
+import type { Destruction } from "#type-declarations/runtime"
+import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 
 import { destroy } from "../destroy"
 import { renderEffect } from "../reactivity/effect"

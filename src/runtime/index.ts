@@ -1,4 +1,4 @@
-export type { HtmlBlockOptions } from "#type-declarations/runtime"
+export type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 export type { QingkuaiComponent, Sign } from "#type-declarations/runtime"
 
 export {
@@ -38,4 +38,4 @@ export { mountApp } from "./component"
 export { DESTRUCT_HTML } from "./constants"
 export { toRaw } from "../util/runtime/sundry"
 export { nextTick } from "../util/runtime/sundry"
-export { createStore, toReactive, toShallowReactive } from "./reactivity/value"
+export { createStore, createShallowStore, toReactive, toShallowReactive } from "./reactivity/value"
