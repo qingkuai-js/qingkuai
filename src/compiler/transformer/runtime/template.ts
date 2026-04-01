@@ -29,6 +29,7 @@ import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { isExpressionEqual, isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
+import { writeParsedExpression } from "./interpolation"
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
@@ -682,8 +683,10 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             }
             writeContextKey(getAttributeBaseName(attribute.name.raw), writer)
             writer.write(": [").indent().write(`${getterArgId} => (`)
-            writer.write(getParsedExpression(attribute)!.source).writeLine("),")
-            writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
+            writeParsedExpression(writer, attribute, false)
+            writer.writeLine("),")
+            writer.write(`${setterArgId} => (`)
+            writer.writeParsedExpression(attribute)
             writer.write(` = ${setterArgId})`).dedent().write("]")
         }
         writer.dedent().write("}")

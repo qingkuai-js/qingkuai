@@ -12,10 +12,10 @@ import { isFunction } from "../shared/assert"
 import { any, notEqual } from "../shared/sundry"
 import { constReact } from "../../runtime/internal"
 import { FRAG_ORPHAN_CONTENT } from "../shared/flags"
+import { NIL, RESOLVED } from "../../runtime/constants"
 import { createDestruction } from "../../runtime/destroy"
 import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
-import { FRAGMENT_FLAG, RESOLVED } from "../../runtime/constants"
 
 export function toRaw<T>(v: T): T {
     const wrapper = any(v)?.[WRAPPER]
@@ -88,14 +88,16 @@ export function getRefProperty(wrapperFlag: number, property: ObjectKeys) {
 }
 
 export function walkNodes(destruction: Destruction, callback: (node: ChildNode) => void) {
-    if (!destruction.r) {
+    if (!destruction.s || !destruction.n) {
         return
     }
-    if (destruction.r[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
-        callback(destruction.r as ChildNode)
+    if (destruction.f & FRAG_ORPHAN_CONTENT) {
+        callback(destruction.s)
     } else {
-        for (const node of (destruction.r as DocumentFragment).childNodes) {
-            callback(node)
+        for (let node: ChildNode | null = destruction.s; node; ) {
+            const current: ChildNode = node
+            node = current === destruction.n ? NIL : current.nextSibling
+            callback(current)
         }
     }
 }

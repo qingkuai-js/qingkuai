@@ -271,6 +271,8 @@ export interface ScriptAnalyzeRet {
     watchers: IntrinsicCall[]
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<AnyNode>
+    usedIntrinsicVars: Set<string>
+    importIdentifiers: Set<string>
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
@@ -339,7 +341,6 @@ export type CompileOptions = Partial<{
     hashId: string
     debug: boolean
     sourcemap: boolean
-    componentName: string
     interpretiveComments: boolean
     preserveHtmlComments: boolean
     shorthandDerivedDeclaration: boolean

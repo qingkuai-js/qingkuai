@@ -7,7 +7,6 @@ import type {
     GeneralFunc,
     ArbitraryFunc
 } from "#type-declarations/tools"
-import { FRAGMENT_FLAG } from "../runtime/constants"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
 
@@ -66,9 +65,11 @@ export interface Effect {
 }
 
 export interface Destruction {
+    f: number // fragment flag
     e: Effect[] | null // effects
     p: Destruction | null // parent
-    r: BlockRoot | null // root node
+    n: ChildNode | null // end node
+    s: ChildNode | null // start node
     l: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
     m: ComponentInstance | null // component
@@ -132,9 +133,6 @@ export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 
-export type BlockRoot = (DocumentFragment | ChildNode) & {
-    [FRAGMENT_FLAG]: number
-}
 export type DestructuringFunc = (target: any) => any[]
 export type HookFunc = (callback: GeneralFunc) => void
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra

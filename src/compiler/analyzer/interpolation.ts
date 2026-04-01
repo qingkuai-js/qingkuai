@@ -31,9 +31,9 @@ import { parseExpression } from "../parser/script"
 import { markNeedSourcemap } from "../estree/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
-import { endSemicolonRE, intrinsicMethodsRE } from "../regular"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { analyzeResult, inputDescriptor, messages } from "../state"
+import { endSemicolonRE, intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
@@ -88,21 +88,25 @@ export function analyzeInterpolation(
                 ]
                 InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), name)
             }
-            if (topLevelIdentifier && context.isBindingReference && !parsedDirective) {
-                const status = topLevelIdentifier.status
-                if (
-                    status === "pending" ||
-                    (status === "literal" && context.isIdentifierAssignmentTarget)
-                ) {
-                    topLevelIdentifier.status = inputDescriptor.options.reactivityMode
+            if (context.isBindingReference && !parsedDirective) {
+                if (intrinsicVariableRE.test(name)) {
+                    analyzeResult.script.usedIntrinsicVars.add(name)
                 }
-                ;(topLevelReferences[name] ??= []).push({
-                    range,
-                    declared: true,
-                    shorthand: context.isShorthandIdentifierAccess
-                })
+                if (topLevelIdentifier) {
+                    const status = topLevelIdentifier.status
+                    if (
+                        status === "pending" ||
+                        (status === "literal" && context.isIdentifierAssignmentTarget)
+                    ) {
+                        topLevelIdentifier.status = inputDescriptor.options.reactivityMode
+                    }
+                    ;(topLevelReferences[name] ??= []).push({
+                        range,
+                        declared: true,
+                        shorthand: context.isShorthandIdentifierAccess
+                    })
+                }
             }
-
             if (
                 parsedDirective &&
                 context.isBindingReference &&
@@ -117,7 +121,13 @@ export function analyzeInterpolation(
                     shorthand: context.isShorthandIdentifierAccess
                 })
             }
-            if (topLevelIdentifier || parsedDirective) {
+            if (
+                parsedDirective ||
+                analyzeResult.script.importIdentifiers.has(name) ||
+                (topLevelIdentifier &&
+                    topLevelIdentifier.status !== "literal" &&
+                    topLevelIdentifier.status !== "pending")
+            ) {
                 parsedExpression!.reactive ||= true
             }
             analyzeResult.script.fullIdentifiers.add(name)

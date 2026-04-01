@@ -15,17 +15,17 @@ import {
     TRAVERSE_ARRAYLIKE
 } from "./constants"
 import { destroy } from "../destroy"
+import { NIL, REFLECT, UNDEF } from "../constants"
 import { appendChild, insertBefore } from "../dom"
 import { arrayFrom } from "../../util/shared/arrays"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { reactiveNotEqual } from "../../util/runtime/sundry"
 import { newCleanObj, optc } from "../../util/shared/sundry"
+import { FRAG_WHOLE_CONTENT } from "../../util/shared/flags"
 import { DuplicateKey, NonTraverse } from "../messages/error"
-import { FRAGMENT_FLAG, NIL, REFLECT, UNDEF } from "../constants"
 import { invokeRender, walkNodes } from "../../util/runtime/sundry"
 import { isArray, isNumber, isString } from "../../util/shared/assert"
 import { renderEffect, runAndUpdateEffect } from "../reactivity/effect"
-import { FRAG_ORPHAN_CONTENT, FRAG_WHOLE_CONTENT } from "../../util/shared/flags"
 
 export function keyedListBlock(
     anchor: ChildNode,
@@ -209,24 +209,21 @@ function normalizeTraversable(value: any): Traversable {
 }
 
 function detachWholeContent(destruction: Destruction) {
-    const parent = destruction.r!.parentElement!
+    const parent = destruction.s!.parentElement!
     const anchor = parent.lastChild!
     parent.textContent = ""
     appendChild(parent, anchor)
 }
 
 function getFirstNodeOfDestruction(destruction: Destruction) {
-    if (!destruction.r) {
+    if (!destruction.s) {
         return NIL
     }
-    if (destruction.r[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
-        return destruction.r as ChildNode
-    }
-    return destruction.r.firstChild as ChildNode
+    return destruction.s
 }
 
 function isWholeContentDestruction(destruction: Destruction) {
-    return !!((destruction.r?.[FRAGMENT_FLAG] ?? 0) & FRAG_WHOLE_CONTENT)
+    return !!(destruction.f & FRAG_WHOLE_CONTENT)
 }
 
 function getContext(traversable: Traversable, index: number): TraverseContext {

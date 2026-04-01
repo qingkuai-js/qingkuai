@@ -1,5 +1,5 @@
-import { toRaw } from "../../../src/util/runtime/sundry"
 import { beforeEach, expect, test, vi } from "vitest"
+import { toRaw } from "../../../src/util/runtime/sundry"
 import { emptyArr } from "../../../src/util/shared/arrays"
 import { syncEffect } from "../../../src/runtime/reactivity/effect"
 import { constReact, react } from "../../../src/runtime/reactivity/value"

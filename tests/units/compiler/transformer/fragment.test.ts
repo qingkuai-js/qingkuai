@@ -6,7 +6,8 @@ import {
     matchGeneratedFragmentDebug,
     matchGeneratedFragmentNonDebug
 } from "./_match"
-import { describe, test } from "vitest"
+import { describe, expect, test } from "vitest"
+import { compile } from "../../../../src/compiler/compile"
 import { formatSourceCode } from "../../../../src/util/testing/sundry"
 
 function getRandomDirective() {
@@ -232,6 +233,18 @@ describe("debug mode", () => {
             [nodeList[1].children[1], "_p1"],
             [nodeList[1].children[1].children[0], "_text3"]
         ])
+    })
+
+    test("Top-level directive root keeps anchor in fragment", () => {
+        const input = formatSourceCode(`
+            <div #for={item of [1, 2]}>{item}</div>
+        `)
+        const { code } = compile(input, { debug: false })
+
+        expect(code).toContain("const _fragment1 = _getFragment1()")
+        expect(code).toContain("const _text1 = _.getChild(_fragment1)")
+        expect(code).toContain("_.mount(_anchor, _fragment1)")
+        expect(code).not.toContain("const _text1 = _getFragment1(4)")
     })
 
     test("Directives on spread tag", () => {

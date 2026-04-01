@@ -86,7 +86,14 @@ export function createFragmentGetter(html: string, arr?: string[]) {
             ret[FRAGMENT_FLAG] = flag
         }
         if (currentDestruction) {
-            currentDestruction.r = ret
+            currentDestruction.f = flag
+            if (isOrphan) {
+                currentDestruction.s = ret
+                currentDestruction.n = ret
+            } else {
+                currentDestruction.s = ret.firstChild
+                currentDestruction.n = ret.lastChild
+            }
         }
         return ret
     }

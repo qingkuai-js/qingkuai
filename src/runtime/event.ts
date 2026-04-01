@@ -14,12 +14,12 @@ import {
     EVENT_PASSIVE
 } from "../util/shared/flags"
 import { getNodeContext } from "./dom"
-import { any } from "../util/shared/sundry"
+import { any, createProxy } from "../util/shared/sundry"
 import { eventRegisterInfo } from "./state"
+import { call } from "../util/shared/aliases"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { DOCUMENT, KEY_FLAG_MAP } from "./constants"
-import { call, defineProperties } from "../util/shared/aliases"
 
 // 包装带有键位标志的事件
 // Wrap events with key flags.
@@ -125,14 +125,12 @@ function dispatch(event: Event, passive: boolean) {
         if (flag & EVENT_ONCE) {
             delete delegatedEvents[type]
         }
-        defineProperties(event, {
-            currentTarget: {
-                get() {
+        const proxiedEvent = createProxy(event, {
+            get(target, property: keyof Event) {
+                if (property === "currentTarget") {
                     return elem
                 }
-            },
-            eventPhase: {
-                get() {
+                if (property === "eventPhase") {
                     if (elem === event.target) {
                         return Event.AT_TARGET
                     }
@@ -141,9 +139,10 @@ function dispatch(event: Event, passive: boolean) {
                     }
                     return Event.BUBBLING_PHASE
                 }
+                return target[property]
             }
         })
-        call(delegateEvent[0], elem, event)
+        call(delegateEvent[0], elem, proxiedEvent)
     }
 
     for (let i = path.length - 1; i >= 0; i--) {
