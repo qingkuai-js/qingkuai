@@ -59,13 +59,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         "derivedExp",
         "reactive",
         "shallow",
-        "watch",
         "watchExp",
-        "preWatch",
         "preWatchExp",
-        "postWatch",
         "postWatchExp",
-        "syncWatch",
         "syncWatchExp",
         "defaultRefs",
         "defaultProps"
