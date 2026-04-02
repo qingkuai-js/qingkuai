@@ -43,10 +43,10 @@ export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: st
 
 export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string) => {
     switch (name) {
-        case "watch":
-        case "preWatch":
-        case "postWatch":
-        case "syncWatch": {
+        case "watchExp":
+        case "preWatchExp":
+        case "postWatchExp":
+        case "syncWatchExp": {
             return `The compiler intrinsic "${name}" can only be used as a function call.`
         }
         case "defaultRefs":

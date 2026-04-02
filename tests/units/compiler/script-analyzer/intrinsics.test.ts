@@ -150,34 +150,34 @@ describe("Invalid usages of intrinsic methods", () => {
 
     test("Not be used as a function call", () => {
         localAnalyze(`
-            watch
-            condition ? preWatch : postWatch
-            if(syncWatch){}
+            watchExp
+            condition ? preWatchExp : postWatchExp
+            if(syncWatchExp){}
 
-            const handler = watch()
-            test(condition ? preWatch() : postWatch())
-            if(syncWatch()){}
+            const handler = watchExp()
+            test(condition ? preWatchExp() : postWatchExp())
+            if(syncWatchExp()){}
         `)
         localMatchCompileMessages([
             {
                 type: "error",
-                range: [0, 5],
-                value: `The compiler intrinsic "watch" can only be used as a function call.`
+                range: [0, 8],
+                value: `The compiler intrinsic "watchExp" can only be used as a function call.`
             },
             {
                 type: "error",
-                range: [18, 26],
-                value: `The compiler intrinsic "preWatch" can only be used as a function call.`
+                range: [21, 32],
+                value: `The compiler intrinsic "preWatchExp" can only be used as a function call.`
             },
             {
                 type: "error",
-                range: [29, 38],
-                value: `The compiler intrinsic "postWatch" can only be used as a function call.`
+                range: [35, 47],
+                value: `The compiler intrinsic "postWatchExp" can only be used as a function call.`
             },
             {
                 type: "error",
-                range: [42, 51],
-                value: `The compiler intrinsic "syncWatch" can only be used as a function call.`
+                range: [51, 63],
+                value: `The compiler intrinsic "syncWatchExp" can only be used as a function call.`
             }
         ])
     })
@@ -435,9 +435,9 @@ test("Shadow compiler intrinsic identifiers", () => {
                 class derived {}
                 function defaultProps() {}
                 enum defaultRefs {}
-                import watch from ""
-                import { postWatch } from ""
-                import { ___ as syncWatch } from ""
+                import watchExp from ""
+                import { postWatchExp } from ""
+                import { ___ as syncWatchExp } from ""
             `)
     localMatchCompileMessages([
         {
@@ -487,18 +487,18 @@ test("Shadow compiler intrinsic identifiers", () => {
         },
         {
             type: "error",
-            range: [239, 244],
-            value: `Compiler intrinsic identifier "watch" cannot be shadowed at top-level scope.`
+            range: [239, 247],
+            value: `Compiler intrinsic identifier "watchExp" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [262, 271],
-            value: `Compiler intrinsic identifier "postWatch" cannot be shadowed at top-level scope.`
+            range: [265, 277],
+            value: `Compiler intrinsic identifier "postWatchExp" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [298, 307],
-            value: `Compiler intrinsic identifier "syncWatch" cannot be shadowed at top-level scope.`
+            range: [304, 316],
+            value: `Compiler intrinsic identifier "syncWatchExp" cannot be shadowed at top-level scope.`
         }
     ])
 })

@@ -68,35 +68,37 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
     }
 
-    traverseObject(topLevelIdentifiers, (key, value) => {
-        switch (value.status) {
+    traverseObject(topLevelIdentifiers, (name, info) => {
+        switch (info.status) {
             case "pending": {
                 return
             }
             case "raw":
             case "literal": {
-                return transformRawDecalration(value)
+                return transformRawDecalration(info)
             }
             case "derived": {
-                transformDerivedDeclaration(key, value)
-                value.transofrmedTo = `${identifierMap[key] ?? key}.$`
-                break
+                transformDerivedDeclaration(name, info)
+                return (info.transofrmedTo = `${identifierMap[name] ?? name}.$`)
             }
             case "alias": {
-                transformAliasDeclaration(key, value)
-                value.transofrmedTo = debugMode ? `${identifierMap[key]}.$` : value.path
-                break
+                transformAliasDeclaration(name, info)
+                return (info.transofrmedTo = debugMode ? `${identifierMap[name]}.$` : info.path)
             }
             case "shallow":
             case "reactive": {
-                transformReactiveDeclaration(key, value)
-                value.transofrmedTo = `${identifierMap[key] ?? key}${value.accessor ? ".$" : ""}`
-                break
+                transformReactiveDeclaration(name, info)
+                return (info.transofrmedTo = `${identifierMap[name] ?? name}${info.accessor ? ".$" : ""}`)
             }
         }
-        if (topLevelReferences[key]) {
-            for (const reference of topLevelReferences[key]) {
-                const { hoist, transofrmedTo, status } = value
+    })
+
+    // 转换响应式标识符引用
+    // Transform reactive identifier references
+    traverseObject(topLevelIdentifiers, (name, info) => {
+        if (topLevelReferences[name]) {
+            for (const reference of topLevelReferences[name]) {
+                const { hoist, transofrmedTo, status } = info
                 if (!transofrmedTo) {
                     continue
                 }

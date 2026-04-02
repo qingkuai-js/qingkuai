@@ -7,7 +7,7 @@ import { invokeRender } from "../../util/runtime/sundry"
 
 // crs: Conditions and Renders
 export function conditionBlock(crs: ArbitraryFunc[]) {
-    let renderIndex: number | undefined
+    let renderIndex = -1
     let destruction: Destruction | undefined
     const crsCount = crs.length
     const hasElse = crsCount % 2
@@ -28,6 +28,7 @@ export function conditionBlock(crs: ArbitraryFunc[]) {
             return
         }
         if (destruction) {
+            renderIndex = -1
             destroy(destruction)
         }
     })

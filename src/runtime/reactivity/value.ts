@@ -178,9 +178,13 @@ function reactWithProxy(target: any, flag = 0): any {
             const propValue = REFLECT.get(target, property, isSetMap ? target : receiver)
             mutualLink(wrapper, isSetMap ? ensureGetRefProperty(property) : property)
 
-            // 访问 Array、Set、Map 的原型方法时，返回方法包装器
-            // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
-            if (prototypeKey && isFunction(propValue)) {
+            if (isFunction(propValue)) {
+                if (!prototypeKey) {
+                    return propValue.bind(target)
+                }
+
+                // 访问 Array、Set、Map 的原型方法时，返回方法包装器
+                // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
                 const origin = any(PROTO_MAP[prototypeKey])[property]
                 if (origin === target[property]) {
                     return reactiveMethods[prototypeKey][property] || origin
