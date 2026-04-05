@@ -44,6 +44,7 @@ import {
     InvalidAttributeFormat,
     TagCanNotBeSelfClosing,
     EmptyInterpolationBlock,
+    UnclosedGenericParameter,
     EmbeddedLangNotInTopLevel,
     TemplateStartsWithEndTag,
     UnclosedInterpolationBlock,
@@ -91,6 +92,7 @@ export function newTemplateNode(): TemplateNode {
         attributes: [],
         componentTag: "",
         isEmbedded: false,
+        typeArgument: null,
         isSelfClosing: false,
         preWhiteSpace: false,
         loc: newASTLocation(),
@@ -330,6 +332,25 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 : "",
             loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })
+
+        // 解析泛型参数
+        // Parse generic parameters.
+        if (isComponent && dps.startsWith("<")) {
+            const genericEndIndex = findEndBracket(dps)
+            if (genericEndIndex !== -1) {
+                templateNode.typeArgument = {
+                    raw: dps.slice(1, genericEndIndex),
+                    loc: getLocByIndex(index + 1, index + genericEndIndex + 1)
+                }
+                markPositionFlag(
+                    PositionFlag.InScript,
+                    ...getRangeByLocation(templateNode.typeArgument.loc)
+                )
+            } else {
+                UnclosedGenericParameter(getLocByIndex(index, index + dps.length))
+            }
+            reduceSource(genericEndIndex === -1 ? dps.length : genericEndIndex + 1)
+        }
 
         // 解析当前节点的属性列表
         // parse the attribute list of current node.

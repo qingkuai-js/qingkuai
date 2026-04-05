@@ -140,9 +140,9 @@ export interface FindEndBracketFunc {
      * other bracketed source fragments while skipping strings, regular
      * expressions, and comments.
      *
-     * @param str 待查找的字符串，其首字符必须是 `(`、`{` 或 `[` 之一。\
+     * @param str 待查找的字符串，其首字符必须是 `(`、`{`、 `[` 或 `<` 之一。\
      * The source string to inspect. Its first character must be `(`, `{`,
-     * or `[`.
+     * `[`, or `<`.
      *
      * @returns 与首字符匹配的关闭括号索引；若未找到则返回 `-1`。\
      * The index of the closing bracket that matches the first character,
@@ -383,9 +383,9 @@ export interface ParseDirectiveValueFunc {
      *
      * Examples:
      * ```ts
-    * // Assume `directive` represents `#for={item of list}`.
-    * // Its value is `item of list`.
-    * const directive: TemplateAttribute = getForDirective()
+     * // Assume `directive` represents `#for={item of list}`.
+     * // Its value is `item of list`.
+     * const directive: TemplateAttribute = getForDirective()
      *
      * const result = parseDirectiveValue(directive)
      * console.log(result.base) // 'list'
@@ -426,8 +426,8 @@ export interface ParseEventFlagFunc {
      *
      * Examples:
      * ```ts
-    * // Assume `event` represents `@click|once|stop`.
-    * const event: TemplateAttribute = getClickEventAttribute()
+     * // Assume `event` represents `@click|once|stop`.
+     * const event: TemplateAttribute = getClickEventAttribute()
      *
      * const result = parseEventFlag(event)
      * console.log(result.eventName) // '@click'
@@ -465,10 +465,10 @@ export interface ParseComponentTagFunc {
      *
      * Examples:
      * ```ts
-    * // Assume `componentNode.tag` is `foo-bar.baz-qux`.
-    * const componentNode: TemplateNode = getComponentNode()
+     * // Assume `componentNode.tag` is `foo-bar.baz-qux`.
+     * const componentNode: TemplateNode = getComponentNode()
      *
-    * const parts = parseComponentTag(componentNode)
+     * const parts = parseComponentTag(componentNode)
      * console.log(parts.map(part => part.id))
      * // => ['fooBar', 'bazQux']
      * ```

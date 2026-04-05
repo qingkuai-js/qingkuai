@@ -314,6 +314,20 @@ test("Multiple text content interpolation blocks", () => {
     })
 })
 
+test("Type arguments for components", () => {
+    matchTemplateNodeList(parseTemplateTesting(`<Comp<Foo | Bar>></Comp>`), {
+        tag: "Comp",
+        componentTag: "Comp",
+        typeArgument: {
+            raw: "Foo | Bar",
+            loc: getLocByIndex(6, 16)
+        },
+        loc: getLocByIndex(0, 24),
+        startTagEndPos: getPosByIndex(17),
+        endTagStartPos: getPosByIndex(17)
+    })
+})
+
 test("Whehter invalid tag structure will be parsed as text content", () => {
     matchTemplateNodeList(parseTemplateTesting(`<></>`), {
         content: [

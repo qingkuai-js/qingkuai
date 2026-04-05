@@ -79,6 +79,10 @@ export interface TextContentPart {
     loc: ASTLocation
     isInterpolated: boolean
 }
+export interface TemplateTypeArgument {
+    raw: string
+    loc: ASTLocation
+}
 export interface AttributeNameValue {
     raw: string
     loc: ASTLocation
@@ -106,6 +110,7 @@ export interface TemplateNode {
     next: TemplateNode | null
     parent: TemplateNode | null
     attributes: TemplateAttribute[]
+    typeArgument: TemplateTypeArgument | null
 }
 
 export interface CompileMessage {

@@ -1,8 +1,8 @@
 import { test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/testing/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
+import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 
 test("Single embedded script language block", () => {
     const nodeList = parseTemplateTesting(

@@ -14,6 +14,12 @@ import {
     getTemplateNodeContext,
     doesNodeHasValidTextContentPart
 } from "../../util/compiler/template"
+import {
+    DuplicateSlotName,
+    NestedSlotElement,
+    DuplicateSlotAssignment,
+    ComponentTypeArgumentNeedsTS
+} from "../message/error"
 import { SPREAD_TAG } from "../constants"
 import { analyzeAttributes } from "./attribute"
 import { analyzeStaticTextContent } from "./text"
@@ -24,9 +30,8 @@ import { objectAssign } from "../../util/shared/aliases"
 import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
 import { isHtmlDirectiveChild } from "../../util/compiler/assert"
-import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
-import { DuplicateSlotAssignment, DuplicateSlotName, NestedSlotElement } from "../message/error"
+import { getLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
     walkTemplateNodes(nodes, node => {
@@ -56,6 +61,14 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
 
         if (node.componentTag) {
             const startTagLog = getStartTagNameLoc(node)
+            if (node.typeArgument && !inputDescriptor.script.isTS) {
+                ComponentTypeArgumentNeedsTS(
+                    getLocByIndex(
+                        node.typeArgument.loc.start.index - 1,
+                        node.typeArgument.loc.end.index + 1
+                    )
+                )
+            }
             analyzeResult.template.parsedComponentTags.set(node, parseComponentTag(node))
             analyzeTemplateAsExpression(node, node.componentTag, node, startTagLog, "component")
         }

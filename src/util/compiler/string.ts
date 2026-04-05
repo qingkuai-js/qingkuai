@@ -32,7 +32,7 @@ export const toPropertyKey: ToPropertyKeyFunc = (str: string) => {
 }
 
 export const findEndBracket: FindEndBracketFunc = (str: string) => {
-    const endBracket = { "{": "}", "(": ")", "[": "]" }[str[0]]!
+    const endBracket = { "{": "}", "(": ")", "[": "]", "<": ">" }[str[0]]!
     for (let startIndex = 0; startIndex < str.length; ) {
         const endBracketIndex = findOutOfLiteralComment(str, endBracket, startIndex)
         const startBracketIndex = findOutOfLiteralComment(str, str[0], startIndex + 1)

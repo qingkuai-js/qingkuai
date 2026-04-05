@@ -293,6 +293,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                     writer.write(")")
                 }
+                if (node.typeArgument) {
+                    const typeArgumentRange = getRangeByLoc(node.typeArgument.loc)
+                    writer.write("<").write(node.typeArgument.raw, typeArgumentRange).write(">")
+                }
                 writer.write("(").write("{").indent()
                 writer.write("props: ").write("{", startTagRange[0]).indent(false)
             }

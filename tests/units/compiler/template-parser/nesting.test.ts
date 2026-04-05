@@ -837,6 +837,62 @@ test("With multiple text content interpolation blocks", () => {
     )
 })
 
+test("Type arguments for components", () => {
+    const nodeList = parseTemplateTesting(
+        formatSourceCode(`
+            <div>
+                <Comp<Array<Item>>/>
+            </div>
+        `)
+    )
+    matchTemplateNodeList(nodeList, {
+        tag: "div",
+        children: [
+            {
+                content: [
+                    {
+                        value: "\n    ",
+                        isInterpolated: false,
+                        loc: getLocByIndex(5, 10)
+                    }
+                ],
+                parent: nodeList[0],
+                loc: getLocByIndex(5, 10),
+                next: nodeList[0].children[1]
+            },
+            {
+                tag: "Comp",
+                parent: nodeList[0],
+                isSelfClosing: true,
+                componentTag: "Comp",
+                typeArgument: {
+                    raw: "Array<Item>",
+                    loc: getLocByIndex(16, 28)
+                },
+                prev: nodeList[0].children[0],
+                next: nodeList[0].children[2],
+                loc: getLocByIndex(10, 30),
+                startTagEndPos: getPosByIndex(30)
+            },
+            {
+                content: [
+                    {
+                        value: "\n",
+                        isInterpolated: false,
+                        loc: getLocByIndex(30, 31)
+                    }
+                ],
+                parent: nodeList[0],
+                loc: getLocByIndex(30, 31),
+                prev: nodeList[0].children[1]
+            }
+        ],
+        loc: getLocByIndex(0, 37),
+        startTagEndPos: getPosByIndex(5),
+        endTagStartPos: getPosByIndex(31)
+    })
+})
+
 test("Whether the child elemnts of textarea are parsed as textContent", () => {
     const nodeList = parseTemplateTesting(
         formatSourceCode(`
