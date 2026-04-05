@@ -1,10 +1,18 @@
 import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
+import {
+    nonWhitespaceRE,
+    jsValidIdentifierRE,
+    templateEmbeddedLangTagRE
+} from "../../compiler/regular"
+import {
+    SELF_CLOSING_TAGS,
+    JS_RESERVED_KEYWORDS,
+    REQUIRED_VALUE_DIRECTIVES
+} from "../../compiler/constants"
 import { findOutOfComment } from "./string"
 import { isEmptyString } from "../shared/assert"
 import { getTemplateNodeContext } from "./template"
-import { nonWhitespaceRE, templateEmbeddedLangTagRE } from "../../compiler/regular"
-import { REQUIRED_VALUE_DIRECTIVES, SELF_CLOSING_TAGS } from "../../compiler/constants"
 
 export function isSelfClosingTag(tag: string) {
     return SELF_CLOSING_TAGS.has(tag)
@@ -43,4 +51,8 @@ export function isHtmlDirectiveChild(node: TemplateNode) {
         return false
     }
     return !!getTemplateNodeContext(node.parent).attributesMap["#html"]
+}
+
+export function isValidIdentifierName(name: string, allowReserved = false) {
+    return jsValidIdentifierRE.test(name) && (allowReserved || !JS_RESERVED_KEYWORDS.has(name))
 }

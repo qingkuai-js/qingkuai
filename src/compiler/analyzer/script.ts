@@ -120,6 +120,10 @@ const visitor: Visitor = {
                 declared: !!topLevelIdentifier,
                 shorthand: context.isShorthandIdentifierAccess
             })
+
+            if (intrinsicVariableRE.test(node.name)) {
+                analyzeResult.script.usedIntrinsicVars.add(node.name)
+            }
             if (
                 // prettier-ignore
                 (
@@ -273,11 +277,13 @@ const visitor: Visitor = {
     TSImportEqualsDeclaration(node, context) {
         checkTopLevelIdentifier(node.id.name, node.id.range!)
         analyzeResult.script.importDeclarations.push(context)
+        analyzeResult.script.importIdentifiers.add(node.id.name)
     },
 
     ImportDeclaration(node, context) {
         if (!node.importKind || node.importKind === "value") {
             for (const specifier of node.specifiers) {
+                analyzeResult.script.importIdentifiers.add(specifier.local.name)
                 checkTopLevelIdentifier(specifier.local.name, specifier.local.range!)
             }
         }
@@ -468,10 +474,6 @@ function checkUsageOfIntrinsicMethods(node: Identifier, context: EstreeWalkConte
         const argsLen = intrinsicCall.arguments.length
         const intrinsicCallLoc = getScriptLocByRange(intrinsicCall.range!)
         switch (node.name) {
-            case "watch":
-            case "preWatch":
-            case "postWatch":
-            case "syncWatch":
             case "watchExp":
             case "preWatchExp":
             case "postWatchExp":

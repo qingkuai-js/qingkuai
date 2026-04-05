@@ -1,7 +1,8 @@
 import type {
     TemplateNode,
     TemplateAttribute,
-    TemplateNodeContext
+    TemplateNodeContext,
+    TemplateFragment
 } from "#type-declarations/compiler"
 import type { StringLiteral } from "@babel/types"
 import type { RuntimeCodeWriter } from "../writer"
@@ -17,25 +18,27 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
-import { isValidIdentifier } from "@babel/types"
 import { getMaybeReusedString } from "./compress"
-import { isNull } from "../../../util/shared/assert"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
+import { isValidIdentifierName } from "../../../util/compiler/assert"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { isExpressionEqual, isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
+import { writeParsedExpression } from "./interpolation"
 
-export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: TemplateNode[]) {
-    const isTopLevelNodes = nodes[0] && isNull(nodes[0].parent)
+export function generateTemplateRender(
+    writer: RuntimeCodeWriter,
+    nodes: TemplateNode[],
+    isRoot = true
+) {
     const componentFragment = analyzeResult.template.componentFragment
-    const byComponent = isTopLevelNodes && componentFragment?.content.length
 
-    if (byComponent) {
+    if (isRoot && componentFragment?.content.length) {
         writeFragmentSelections(writer, componentFragment)
         generateRenderEffect(writer, nodes, null)
     }
@@ -65,6 +68,7 @@ export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: Templat
         }
         if (node.componentTag) {
             generateComponentCall(writer, nodeContext)
+            insertPostfix?.()
             continue
         }
         if ("slot" === node.tag) {
@@ -90,15 +94,19 @@ export function generateTemplateRender(writer: RuntimeCodeWriter, nodes: Templat
             generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext)
         }
 
-        if ((generateTemplateRender(writer, node.children), hasFragmentContent)) {
-            writeFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!.id)
+        if ((generateTemplateRender(writer, node.children, false), hasFragmentContent)) {
+            writeFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!)
         }
 
         insertPostfix?.()
     }
 
-    if (byComponent) {
-        writeFragmentAttachment(writer, generateIdentifier.anchor, componentFragment!.id)
+    if (isRoot) {
+        if (!componentFragment?.content.length) {
+            writer.write(`\n${generateIdentifier.internal}.mount()`)
+        } else {
+            writeFragmentAttachment(writer, generateIdentifier.anchor, componentFragment)
+        }
     }
 }
 
@@ -121,7 +129,7 @@ function generateDirectiveBlock(
 
             if (directive.equalSign) {
                 writer.writeLine(",").write(`${getterArgId} => (`)
-                writer.writeParsedExpression(writer).write(")")
+                writer.writeParsedExpression(directive).write(")")
             }
             return (writer.dedent().write(")"), undefined)
         }
@@ -319,6 +327,10 @@ function generateRenderEffect(
     }
 
     const generate = (nodes: TemplateNode[], index: number, createRenderEffect: boolean) => {
+        if (!nodes[index]) {
+            return
+        }
+
         const node = nodes[index]
         const nodeContext = getTemplateNodeContext(node)
         const textContentHasRenderEffect = doesTextContentHasRenderEffect(node)
@@ -462,10 +474,14 @@ function generateRenderEffect(
                         writer.write(`${getterArgId} => (`)
                         writer.writeParsedExpression(attribute).write(")")
                     }
-                    if ((type === "both" && writer.write(", "), type !== "getter")) {
+                    if (type === "both") {
+                        writer.write(", ")
+                    }
+                    if (type !== "getter") {
                         writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
                         writer.write(` = ${setterArgId}`).write(")")
                     }
+                    writer.write(")")
                 }
 
                 switch (attribute.name.raw) {
@@ -543,11 +559,11 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
         generateSlotName().write(`(${nodeContext.anchorId}`)
     } else {
         writer.wrapLine().write(`;(${contextId}.s?.`)
-        generateSlotName().write(" ?? () => {").indent(false)
+        generateSlotName().write(" ?? (() => {").indent(false)
     }
     return () => {
         if (hasDefaultContent) {
-            writer.dedent().write(`})(${nodeContext.anchorId}`)
+            writer.dedent().write(`}))(${nodeContext.anchorId}`)
         }
         if (
             nodeContext.dynamicAttributes.length ||
@@ -667,8 +683,10 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             }
             writeContextKey(getAttributeBaseName(attribute.name.raw), writer)
             writer.write(": [").indent().write(`${getterArgId} => (`)
-            writer.write(getParsedExpression(attribute)!.source).writeLine("),")
-            writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
+            writeParsedExpression(writer, attribute, false)
+            writer.writeLine("),")
+            writer.write(`${setterArgId} => (`)
+            writer.writeParsedExpression(attribute)
             writer.write(` = ${setterArgId})`).dedent().write("]")
         }
         writer.dedent().write("}")
@@ -697,7 +715,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
                 writeContextPatterns(writer, patterns)
             }
             writer.write(") => {").indent(false)
-            generateTemplateRender(writer, [child])
+            generateTemplateRender(writer, [child], false)
             writer.dedent().write("}")
         }
         writer.dedent().write("}")
@@ -737,15 +755,19 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
 function writeContextKey(str: string, writer: RuntimeCodeWriter) {
     const reusedStringInfo = analyzeResult.reusedStrings[str]
     if (
-        isValidIdentifier(str, true) &&
+        isValidIdentifierName(str) &&
         (str.length < 3 || !reusedStringInfo || reusedStringInfo.times < 2)
     ) {
         return writer.write(str)
     }
-    return writer.write(getMaybeReusedString(str))
+    return writer.write(`[${getMaybeReusedString(str)}]`)
 }
 
 function doesTextContentHasRenderEffect(node: TemplateNode) {
+    if (!node?.content?.length) {
+        return false
+    }
+
     if (
         !node.content.some(part => {
             return part.isInterpolated && getParsedExpression(part)!.reactive
@@ -762,8 +784,13 @@ function doesTextContentHasRenderEffect(node: TemplateNode) {
     )
 }
 
-function writeFragmentAttachment(writer: RuntimeCodeWriter, anchorId: string, fragmentId: string) {
-    return writer.write(`\n${generateIdentifier.internal}.insertBefore(${anchorId}, ${fragmentId})`)
+function writeFragmentAttachment(
+    writer: RuntimeCodeWriter,
+    anchorId: string,
+    fragment: TemplateFragment
+) {
+    const method = fragment === analyzeResult.template.componentFragment ? "mount" : "insertBefore"
+    return writer.write(`\n${generateIdentifier.internal}.${method}(${anchorId}, ${fragment.id})`)
 }
 
 // 优化：当文本内容仅包含一个插值表达式，且该表达式与同一节点上的 #key 指令的表达式相等时，不为该文本内容生成 render effect

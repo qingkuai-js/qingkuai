@@ -1,5 +1,6 @@
+import type { GeneralFunc, ObjectKeys } from "#type-declarations/tools"
+import type { NextTickFunc, ToRawFunc } from "#type-declarations/runtime-ex"
 import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime"
-import type { ArbitraryFunc, GeneralFunc, ObjectKeys } from "#type-declarations/tools"
 
 import {
     WRAPPER,
@@ -12,14 +13,18 @@ import { isFunction } from "../shared/assert"
 import { any, notEqual } from "../shared/sundry"
 import { constReact } from "../../runtime/internal"
 import { FRAG_ORPHAN_CONTENT } from "../shared/flags"
+import { NIL, RESOLVED } from "../../runtime/constants"
 import { createDestruction } from "../../runtime/destroy"
 import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
-import { FRAGMENT_FLAG, RESOLVED } from "../../runtime/constants"
 
-export function toRaw<T>(v: T): T {
+export const toRaw: ToRawFunc = v => {
     const wrapper = any(v)?.[WRAPPER]
     return wrapper ? wrapper.r : v
+}
+
+export const nextTick: NextTickFunc = callback => {
+    return isFunction(callback) ? RESOLVED.then(callback) : RESOLVED
 }
 
 export function reverse(v: any) {
@@ -57,10 +62,6 @@ export function reactiveNotEqual(a: any, b: any) {
     return notEqual(awrapper.r, bwrapper.r)
 }
 
-export function nextTick(fn?: ArbitraryFunc) {
-    return isFunction(fn) ? RESOLVED.then(fn) : RESOLVED
-}
-
 export function getRawProperty(property: any) {
     return isRefProperty(property) ? property[1] : property
 }
@@ -88,14 +89,16 @@ export function getRefProperty(wrapperFlag: number, property: ObjectKeys) {
 }
 
 export function walkNodes(destruction: Destruction, callback: (node: ChildNode) => void) {
-    if (!destruction.r) {
+    if (!destruction.s || !destruction.n) {
         return
     }
-    if (destruction.r[FRAGMENT_FLAG] & FRAG_ORPHAN_CONTENT) {
-        callback(destruction.r as ChildNode)
+    if (destruction.f & FRAG_ORPHAN_CONTENT) {
+        callback(destruction.s)
     } else {
-        for (const node of (destruction.r as DocumentFragment).childNodes) {
-            callback(node)
+        for (let node: ChildNode | null = destruction.s; node; ) {
+            const current: ChildNode = node
+            node = current === destruction.n ? NIL : current.nextSibling
+            callback(current)
         }
     }
 }

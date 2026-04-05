@@ -29,8 +29,14 @@ import { objectAssign } from "../util/shared/aliases"
 
 export const SPREAD_TAG = "qk:spread"
 export const PRESERVED_IDPREFIX = "__qk__"
-export const LANGUAGE_SERVICE_UTIL = PRESERVED_IDPREFIX + "lsu"
-export const GET_TYPE_DELAY_MARKING = LANGUAGE_SERVICE_UTIL + ".getTypeDelayMarking"
+
+// Language Service Constants
+export const LSC = {
+    UTIL: PRESERVED_IDPREFIX + "lsu",
+    CONTEXT: PRESERVED_IDPREFIX + "context",
+    COMPONENT: PRESERVED_IDPREFIX + "component",
+    GET_TYPE_DELAY_MARKING: PRESERVED_IDPREFIX + "lsu.getTypeDelayMarking"
+}
 
 export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     once: EVENT_ONCE,
@@ -43,7 +49,7 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     tab: KEY_TAB,
     enter: KEY_ENTER,
     delete: KEY_DELETE,
-    escape: KEY_ESCAPE,
+    esc: KEY_ESCAPE,
     space: KEY_SPACE,
     up: KEY_UP,
     down: KEY_DOWN,
@@ -248,4 +254,51 @@ export const REQUIRED_VALUE_DIRECTIVES: ReadonlySet<string> = new Set([
     "#key",
     "#slot",
     "#target"
+])
+
+export const JS_RESERVED_KEYWORDS: ReadonlySet<string> = new Set([
+    "break",
+    "case",
+    "catch",
+    "continue",
+    "debugger",
+    "default",
+    "do",
+    "else",
+    "finally",
+    "for",
+    "function",
+    "if",
+    "return",
+    "switch",
+    "throw",
+    "try",
+    "var",
+    "const",
+    "while",
+    "with",
+    "new",
+    "this",
+    "super",
+    "class",
+    "extends",
+    "export",
+    "import",
+    "null",
+    "true",
+    "false",
+    "in",
+    "instanceof",
+    "typeof",
+    "void",
+    "delete",
+    "implements",
+    "interface",
+    "let",
+    "package",
+    "private",
+    "protected",
+    "public",
+    "static",
+    "yield"
 ])

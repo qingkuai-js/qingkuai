@@ -1,3 +1,4 @@
+import type { createStoreFunc, ToReactiveFunc } from "#type-declarations/runtime-ex"
 import type { AnyObject, ArbitraryFunc, Setter } from "#type-declarations/tools"
 import type { Link, DestructuringFunc, ReactivityWrapper } from "#type-declarations/runtime"
 
@@ -38,6 +39,22 @@ import { any, createProxy, hasOwn, notEqual, optc } from "../../util/shared/sund
 export const proxyCache = new WeakMap<AnyObject, ReactivityWrapper>()
 export const shallowProxyCache = new WeakMap<AnyObject, ReactivityWrapper>()
 
+export const toReactive: ToReactiveFunc = value => {
+    return proxyCache.get(toRaw(value))?.p ?? value
+}
+
+export const toShallowReactive: ToReactiveFunc = value => {
+    return shallowProxyCache.get(value)?.p ?? value
+}
+
+export const createStore: createStoreFunc = value => {
+    return constReact(value)
+}
+
+export const createShallowStore: createStoreFunc = value => {
+    return shallowConstReact(value)
+}
+
 export function constReact(target: any) {
     return reactWithProxy(target)
 }
@@ -72,18 +89,6 @@ export function destructuringShallowConstReact(dfn: DestructuringFunc, target: a
 
 export function destructuringReact(dfn: DestructuringFunc, target: any, debugSetters?: Setter[]) {
     return baseDestructuringReact(target, dfn, react, debugSetters)
-}
-
-export function toReactive<T extends AnyObject>(value: T): T {
-    return proxyCache.get(toRaw(value))?.p ?? value
-}
-
-export function toShallowReactive<T extends AnyObject>(value: T): T {
-    return shallowProxyCache.get(value)?.p ?? value
-}
-
-export function createStore<T extends AnyObject>(value: T, shallow = false): T {
-    return (shallow ? shallowConstReact : constReact)(value)
 }
 
 export function mutualLink(wrapper: ReactivityWrapper, property?: any, flag?: number) {
@@ -173,9 +178,13 @@ function reactWithProxy(target: any, flag = 0): any {
             const propValue = REFLECT.get(target, property, isSetMap ? target : receiver)
             mutualLink(wrapper, isSetMap ? ensureGetRefProperty(property) : property)
 
-            // 访问 Array、Set、Map 的原型方法时，返回方法包装器
-            // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
-            if (prototypeKey && isFunction(propValue)) {
+            if (isFunction(propValue)) {
+                if (!prototypeKey) {
+                    return propValue.bind(target)
+                }
+
+                // 访问 Array、Set、Map 的原型方法时，返回方法包装器
+                // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
                 const origin = any(PROTO_MAP[prototypeKey])[property]
                 if (origin === target[property]) {
                     return reactiveMethods[prototypeKey][property] || origin

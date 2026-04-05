@@ -3,6 +3,7 @@
 
 dist
 test-space
+test-results
 node_modules
 
 memorandum.md

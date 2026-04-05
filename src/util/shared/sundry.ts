@@ -1,8 +1,18 @@
+import type { FormatSourceCodeFunc } from "#type-declarations/compiler-ex"
 import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
 
 import { objectKeys } from "../shared/aliases"
 import { objectAssign, setPrototypeOf } from "./aliases"
 import { NIL, OBJECT_PROTO } from "../../runtime/constants"
+import { formattingPreWhitespaceRE, formattingUselessWhitespaceRE } from "../../compiler/regular"
+
+export const formatSourceCode: FormatSourceCodeFunc = (code: string) => {
+    code = code.trimEnd()
+    code = code.replace(formattingPreWhitespaceRE, "")
+
+    const uselessIndentStr = formattingUselessWhitespaceRE.exec(code)![0]
+    return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "")
+}
 
 export function any(v: any) {
     return v

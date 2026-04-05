@@ -43,10 +43,10 @@ export const DisallowedAttributeKind = withLocation(1030, (tag: string, name: st
 
 export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string) => {
     switch (name) {
-        case "watch":
-        case "preWatch":
-        case "postWatch":
-        case "syncWatch": {
+        case "watchExp":
+        case "preWatchExp":
+        case "postWatchExp":
+        case "syncWatchExp": {
             return `The compiler intrinsic "${name}" can only be used as a function call.`
         }
         case "defaultRefs":
@@ -108,6 +108,10 @@ export const InvalidAttributeFormat = withLocation(1016, () => {
 
 export const EmptyInterpolationBlock = withLocation(1001, () => {
     return "Empty interpolation expression block is not allowed."
+})
+
+export const UnclosedGenericParameter = withLocation(1063, () => {
+    return `Unclosed generic parameter.`
 })
 
 export const UnclosedInterpolationBlock = withLocation(1003, () => {
@@ -248,6 +252,10 @@ export const InvalidReferenceAttributeValue = withLocation(1048, () => {
 
 export const InvalidHtmlDirectivePlacement = withLocation(1058, (kind: "slot" | "component") => {
     return `The "#html" directive cannot be used on ${kind === "slot" ? "<slot> tags" : "components"}.`
+})
+
+export const ComponentTypeArgumentNeedsTS = withLocation(1064, () => {
+    return `Component type arguments are only allowed when the embedded script block uses TypeScript.`
 })
 
 export const ConflictingReactivityModes = withLocation(1062, (tag: string) => {

@@ -3,11 +3,11 @@ import type { TemplateNode } from "#type-declarations/compiler"
 
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
+import { getMaybeReusedString } from "./compress"
 import { traverseObject } from "../../../util/shared/sundry"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
-import { getMaybeReusedString } from "./compress"
 
-export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
+export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourcemap = true) {
     const parsedExpression = getParsedExpression(key)!
     const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
     traverseObject(parsedExpression.topLevelReferences, (key, value) => {
@@ -41,7 +41,11 @@ export function transformParsedExpression(writer: RuntimeCodeWriter, key: any) {
             editor.replace(...reference.range, `${transformed}`, true)
         }
     }
-    return writer.writeEditedScript(editor)
+    if (sourcemap) {
+        return writer.writeEditedScript(editor)
+    } else {
+        return writer.write(editor.result)
+    }
 }
 
 export function transformInterpolatedText(writer: RuntimeCodeWriter, node: TemplateNode) {
@@ -65,7 +69,7 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
 
     if (partCount === 1) {
         if (singlePart.isInterpolated) {
-            return transformParsedExpression(writer, singlePart)
+            return writeParsedExpression(writer, singlePart)
         }
         return writer.write(getMaybeReusedString(getGeneratedStaticTextContent(singlePart)!))
     }
@@ -77,7 +81,7 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
                 writer.write(getMaybeReusedString(""))
             }
             writer.write(" + ")
-            transformParsedExpression(writer, part)
+            writeParsedExpression(writer, part)
         } else {
             const generated = getGeneratedStaticTextContent(part)
             if (!generated) {

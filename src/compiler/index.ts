@@ -1,15 +1,11 @@
-import {
-    SPREAD_TAG,
-    PRESERVED_IDPREFIX,
-    LANGUAGE_SERVICE_UTIL,
-    GET_TYPE_DELAY_MARKING
-} from "./constants"
+import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants"
 
 import {
     isSelfClosingTag,
     isEmbeddedLanguageTag,
     isRequiredValueDirective
 } from "../util/compiler/assert"
+import { formatSourceCode } from "../util/shared/sundry"
 
 import {
     camel2Kebab,
@@ -47,16 +43,16 @@ export const util = {
     findOutOfComment,
     findOutOfLiteral,
     isSelfClosingTag,
+    formatSourceCode,
     isEmbeddedLanguageTag,
     findOutOfLiteralComment,
     isRequiredValueDirective
 }
 
 export const constants = {
+    LSC,
     SPREAD_TAG,
-    PRESERVED_IDPREFIX,
-    LANGUAGE_SERVICE_UTIL,
-    GET_TYPE_DELAY_MARKING
+    PRESERVED_IDPREFIX
 }
 
 export { PositionFlag } from "./enums"

@@ -1,10 +1,6 @@
-import type {
-    HookFunc,
-    ComponentFunc,
-    ComponentContext,
-    ComponentInstance
-} from "#type-declarations/runtime"
 import type { AnyObject } from "#type-declarations/tools"
+import type { ComponentContext, ComponentInstance } from "#type-declarations/runtime"
+import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
 
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
@@ -26,6 +22,19 @@ export const [
     onBeforeDestroy,
     onAfterDestroy
 ] = hooksRegisterGen()
+
+export const mountApp: MountAppFunc = (component, target) => {
+    if (isString(target)) {
+        target = selectElement(target) as Element
+    }
+    if (!isElement(target)) {
+        InvalidElementNode('"mountApp"')
+    }
+
+    const anchor = newTextNode()
+    appendChild(target, anchor)
+    any(component)(anchor)
+}
 
 export function init(context: ComponentContext) {
     const instance: ComponentInstance = {
@@ -52,31 +61,21 @@ export function runHooks(instance: ComponentInstance, index: number) {
     }
 }
 
-export function mount(anchor: Element, fragment: DocumentFragment) {
+export function mount(anchor?: Element, fragment?: DocumentFragment) {
     backToParentDestruction()
-    insertBefore(anchor, fragment)
-    setCurrentInstance(currentInstance!.p)
+
+    if (anchor && fragment) {
+        insertBefore(anchor, fragment)
+    }
     runHooks(currentInstance!, AFTER_MOUNT)
-}
-
-export function mountApp(render: ComponentFunc, target: Element | string) {
-    if (isString(target)) {
-        target = selectElement(target) as Element
-    }
-    if (!isElement(target)) {
-        InvalidElementNode('"mountApp"')
-    }
-
-    const anchor = newTextNode()
-    appendChild(target, anchor)
-    render(anchor)
+    setCurrentInstance(currentInstance!.p)
 }
 
 // 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法
 // Component lifecycle callbacks are stored as elements at different indices
 // in `ComponentInstance.h`; this method generates functions for registering them
-function hooksRegisterGen() {
-    const hookRegisters: HookFunc[] = []
+function hooksRegisterGen(): LifecycleHookRegister[] {
+    const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 0; i < 6; i++) {
         hookRegisters.push(callback => {
             ;(currentInstance!.h[i] ??= []).push(callback)
@@ -113,7 +112,7 @@ function initRefs(transformed: AnyObject | undefined, defaults: any) {
 
 function initProps(transformed: AnyObject | undefined, defaults: any) {
     if (transformed && stripPrototype(transformed)) {
-        createProxy(
+        return createProxy(
             {},
             {
                 get(_, property) {

@@ -269,9 +269,9 @@ export function writeFragmentGetterDeclarations(
 }
 
 export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
+    let isOrphan = false
     let fragmentFlag = 0
     const flagInterpretive: string[] = []
-    const isOrphan = fragment.directChildrenCount === 1
     if (isFragmentWholeContent(fragment)) {
         fragmentFlag |= FRAG_WHOLE_CONTENT
         flagInterpretive.push("WHOLE_CONTENT")
@@ -279,8 +279,8 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
     if (isFragmentNeedLeadingAnchor(fragment)) {
         fragmentFlag |= FRAG_LEADING_ANCHOR
         flagInterpretive.push("LEADING_ANCHOR")
-    }
-    if (isOrphan) {
+    } else if (isFragmentOrphan(fragment)) {
+        isOrphan = true
         fragmentFlag |= FRAG_ORPHAN_CONTENT
         flagInterpretive.push("ORPHAN_CONTENT")
         fragment.id = fragment.selections[0]?.id ?? ""
@@ -306,10 +306,6 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
                 selection.parent ?? fragment.id
             }${selection.index ? `, ${selection.index}` : ""})`
         )
-
-        if (selection.replaceWithText) {
-            writer.write(")")
-        }
     }
     return writer
 }
@@ -381,4 +377,24 @@ function isFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
             return directive.name.raw !== "#slot"
         })
     })
+}
+
+function isFragmentOrphan(fragment: TemplateFragment) {
+    if (isFragmentNeedLeadingAnchor(fragment) || fragment.directChildrenCount !== 1) {
+        return false
+    }
+    if (fragment !== analyzeResult.template.componentFragment) {
+        return true
+    }
+
+    const rootAnchorId = fragment.selections[0]?.id
+    if (!rootAnchorId) {
+        return true
+    }
+    for (const nodeContext of analyzeResult.template.nodeContexts.values()) {
+        if (nodeContext.anchorId === rootAnchorId) {
+            return false
+        }
+    }
+    return true
 }

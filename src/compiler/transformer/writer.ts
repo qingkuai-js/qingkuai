@@ -13,7 +13,7 @@ import { inputDescriptor } from "../state"
 import { nonWhitespaceRE } from "../regular"
 import { isNumber } from "../../util/shared/assert"
 import { encode } from "@jridgewell/sourcemap-codec"
-import { transformInterpolatedText, transformParsedExpression } from "./runtime/interpolation"
+import { transformInterpolatedText, writeParsedExpression } from "./runtime/interpolation"
 
 abstract class BaseCodeWriter {
     public abstract write(str: string, startSourceIndex?: number): this
@@ -85,7 +85,7 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
     }
 
     writeParsedExpression(key: any) {
-        return (transformParsedExpression(this, key), this)
+        return (writeParsedExpression(this, key), this)
     }
 
     writeInterpolatedText(node: TemplateNode) {
@@ -216,7 +216,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
                 startSourceIndex + node.start!,
                 startSourceIndex + node.end!
             ),
-            node.start!
+            startSourceIndex + node.start!
         )
     }
 
@@ -228,7 +228,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
             this.writeCharacter(
                 editedContent[i],
                 sourceIndex,
-                isLast && sourceIndex !== -1 ? sourceIndex + 1 : -1
+                isLast && sourceIndex === -1 ? -1 : sourceIndex + 1
             )
         }
         return this
@@ -251,7 +251,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
                 this.writeCharacter(
                     str[i],
                     sourceIndex,
-                    isLast && sourceIndex !== -1 ? sourceIndex + 1 : -1
+                    isLast && sourceIndex === -1 ? -1 : sourceIndex + 1
                 )
             }
         } else {

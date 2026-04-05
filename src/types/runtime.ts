@@ -7,9 +7,10 @@ import type {
     GeneralFunc,
     ArbitraryFunc
 } from "#type-declarations/tools"
-import { FRAGMENT_FLAG } from "../runtime/constants"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
+
+declare const Render: unique symbol
 
 interface CancelablePromiseExtra {
     cancel: GeneralFunc
@@ -66,9 +67,11 @@ export interface Effect {
 }
 
 export interface Destruction {
+    f: number // fragment flag
     e: Effect[] | null // effects
     p: Destruction | null // parent
-    r: BlockRoot | null // root node
+    n: ChildNode | null // end node
+    s: ChildNode | null // start node
     l: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
     m: ComponentInstance | null // component
@@ -132,20 +135,16 @@ export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 
-export type BlockRoot = (DocumentFragment | ChildNode) & {
-    [FRAGMENT_FLAG]: number
-}
 export type DestructuringFunc = (target: any) => any[]
-export type HookFunc = (callback: GeneralFunc) => void
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
 export type GeneralEffectFunc = () => void | GeneralFunc
+export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
-export type HtmlBlockOptions = Partial<{
-    escapeTags: string[]
-    escapeStyle: boolean
-    escapeScript: boolean
-}>
+export type QingkuaiComponent<F extends ArbitraryFunc> = {
+    [Render]: F
+}
+
 export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

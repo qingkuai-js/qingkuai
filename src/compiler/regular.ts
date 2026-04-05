@@ -27,18 +27,19 @@ export const kebabWithoutFirstLetterRE = /-|(?<=-)\w/g
 export const jsValueCharRE = /[A-Za-z0-9_$]/
 export const jsStringLiteralQuoteRE = /[`'"]/
 export const jsDestructuringEqualTokenRE = /\s*=\s*/
+export const jsValidIdentifierRE = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
 
 export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
-export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)(?:Exp)?$/
+export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)Exp$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias)$/
-export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|default(?:Props|Refs)|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?)$/
+export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|default(?:Props|Refs)|(?:watch|(?:pre|post|sync|)Watch)Exp)$/
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
 
-export const testingPreWhitespaceRE = /^\n?[\s]*\n/
-export const testingUselessWhitespaceRE = /^[ \t]*/
+export const formattingPreWhitespaceRE = /^\n?[\s]*\n/
+export const formattingUselessWhitespaceRE = /^[ \t]*/
 
 export const babelErrorLocInfoRE = /\(\d+:\d+\)$/

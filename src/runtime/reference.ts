@@ -27,7 +27,7 @@ export function bindInputNumber(elem: HTMLInputElement, getTarget: Getter, setVa
 
 export function bindInputChecked(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
     listen(elem, "change", () => setValue(elem.checked))
-    renderEffect(() => setAttribute(elem, "value", getTarget()))
+    renderEffect(() => setAttribute(elem, "checked", getTarget()))
 }
 
 export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {

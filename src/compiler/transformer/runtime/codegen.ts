@@ -14,6 +14,7 @@ import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragmen
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "./compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
+    const { usedIntrinsicVars } = analyzeResult.script
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
     const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
@@ -32,7 +33,6 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const contextId = generateIdentifier.context
     const internalId = generateIdentifier.internal
     const templateFragments = getTemplateFragments(nodes)
-    const componentName = inputDescriptor.options.componentName
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
     for (const declaration of analyzeResult.script.importDeclarations) {
@@ -43,8 +43,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writeStringLiteralsDeclarations(writer, templateFragments)
     writeFragmentGetterDeclarations(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
-    writer.write(`export default function ${componentName}(`)
-    writer.write(`${anchorId}, ${contextId} = {}) {`).indent()
+    writer.write(`export default function (${anchorId}, ${contextId} = {}) {`).indent()
 
     if (defaultRefs) {
         writer.write(`${contextId}.R = `).writeScriptNode(defaultRefs.value).wrapLine()
@@ -55,7 +54,11 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     if (generateDelegateEventsRegistration(writer, contextId) || defaultRefs || defaultProps) {
         writer.wrapLine()
     }
-    writer.write(`const { props, refs, slots } = ${internalId}.init(${contextId})`)
+
+    if (usedIntrinsicVars.size) {
+        writer.write(`const { ${arrayFrom(usedIntrinsicVars).join(", ")} } = `)
+    }
+    writer.write(`${internalId}.init(${contextId})`)
 
     if (!hoistWriter.empty) {
         writer.wrapLine().write(hoistWriter.code)

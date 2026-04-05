@@ -2,7 +2,8 @@ import type {
     Range,
     ASTLocation,
     TemplateNode,
-    TemplateAttribute
+    TemplateAttribute,
+    ParsedExpression
 } from "#type-declarations/compiler"
 import type { VariableDeclarator } from "@babel/types"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
@@ -17,14 +18,14 @@ import {
     getTemplateNodeContext
 } from "../../../util/compiler/template"
 import { CodeEditor } from "../editor"
+import { LSC, SPREAD_TAG } from "../../constants"
 import { IntermediateCodeWriter } from "../writer"
-import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 import { stringify } from "../../../util/shared/aliases"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
-import { GET_TYPE_DELAY_MARKING, LANGUAGE_SERVICE_UTIL, SPREAD_TAG } from "../../constants"
+import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
     let slotNamesType = ""
@@ -43,49 +44,45 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.code,
         inputDescriptor.script.loc.start.index
     )
+    const scriptDescriptor = inputDescriptor.script
     const { typeDeclarationFilePath } = inputDescriptor.options
+    const exportSourceRange: Range | undefined = inputDescriptor.script.existing
+        ? [scriptDescriptor.startTagOpenRange[0] + 1, scriptDescriptor.startTagOpenRange[1]]
+        : undefined
 
-    const UTILS = LANGUAGE_SERVICE_UTIL
-    const ANY_VALUE = `${UTILS}.anyValue`
-    const EMPTY_OBJECT = `${UTILS}.EmptyObject`
-    const SLOT_NAMES_TYPE = slotNamesType || EMPTY_OBJECT
+    const ANY_VALUE = `${LSC.UTIL}.anyValue`
+    const SLOT_NAMES_TYPE = slotNamesType || `${LSC.UTIL}.EmptyObject`
+    const COMPONENT_TYPE = `${LSC.UTIL}.QingkuaiComponent<ReturnType<typeof ${LSC.COMPONENT}>>`
 
     const needImportItems: string[] = [
-        UTILS,
+        LSC.UTIL,
         "raw",
         "alias",
         "derived",
         "derivedExp",
         "reactive",
         "shallow",
-        "watch",
         "watchExp",
-        "preWatch",
         "preWatchExp",
-        "postWatch",
         "postWatchExp",
-        "syncWatch",
         "syncWatchExp",
         "defaultRefs",
         "defaultProps"
     ]
     writer.writeLine(`import { ${needImportItems.join(", ")} } from "${typeDeclarationFilePath}";`)
 
-    // 声明内置标识符及其默认类型
-    // Declare built-in identifiers and their default types
-    if (isTS) {
-        writer.writeLine(`type Props = ${EMPTY_OBJECT}; type Refs = ${EMPTY_OBJECT};`)
-        writer.write(
-            `const props: Readonly<Props> = ${ANY_VALUE}, refs: Readonly<Refs> = ${ANY_VALUE}, slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`
-        )
-    } else {
-        writer.writeLine(
-            `/** @typedef { ${EMPTY_OBJECT} } Refs @typedef { ${EMPTY_OBJECT} } Props */`
-        )
-        writer.write(
-            `const /** @type { Readonly<Props> } */ props = 0, /** @type { Readonly<Refs> } */ refs = 0, /** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`
-        )
+    for (const importDeclaration of analyzeResult.script.importDeclarations) {
+        embeddedScriptEditor.remove(...importDeclaration.value.range!)
+        writer.writeScriptNode(importDeclaration.value).writeLine(";")
     }
+    writer.write("\nfunction __qk__component(){").indent()
+
+    if (isTS) {
+        writer.writeLine(`const slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`)
+    } else {
+        writer.writeLine(`/** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`)
+    }
+    writer.dedent(false)
 
     traverseObject(analyzeResult.script.topLevelIdentifiers, (_, info) => {
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
@@ -98,10 +95,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
         if (declarator.init && isFunctionLiteral(stripTypeExpressions(declarator.init))) {
             embeddedScriptEditor.insert(declarator.init!.end!, ")")
-            embeddedScriptEditor.insert(declarator.init!.start!, `${UTILS}.getReturnType(`)
+            embeddedScriptEditor.insert(declarator.init!.start!, `${LSC.UTIL}.getReturnType(`)
         }
     })
-    writer.wrapLine().writeEditedScript(embeddedScriptEditor).writeLine("\n\n;")
+    writer.wrapLine().writeEditedScript(embeddedScriptEditor).indent().writeLine(";\n")
 
     //
     ;(function generate(nodes: TemplateNode[]) {
@@ -121,16 +118,15 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const startTagRange: Range = [node.loc.start.index, node.startTagEndPos.index]
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
-            const dedentAndWriteEndEnclosure = () => {
-                writer.dedent().write("};")
-            }
-
-            const indentAndWriteStartEnclosure = (shouldWrapLine = true) => {
+            const indentAndWriteStartEnclosure = (
+                shouldWrapLine = true,
+                closeWithSemicolon = true
+            ) => {
                 if (shouldWrapLine) {
                     writer.wrapLine()
                 }
                 writer.write("{").indent(false)
-                endInserts.push(dedentAndWriteEndEnclosure)
+                endInserts.push(() => writer.dedent().write(closeWithSemicolon ? "};" : "}"))
             }
 
             if (node.tag && node.parent?.componentTag && !nodeContext.attributesMap["#slot"]) {
@@ -138,7 +134,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 writer.write("default", getRangeByLoc(startTagOpenLoc))
                 writer.write(": () => ")
                 endInserts.push(() => writer.write(","))
-                indentAndWriteStartEnclosure(false)
+                indentAndWriteStartEnclosure(false, false)
             }
 
             for (const directive of nodeContext.sortedDirectives) {
@@ -146,25 +142,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     continue
                 }
 
-                const rawName = directive.name.raw
                 const rawValue = directive.value.raw
-                const expression = getParsedExpression(directive)
                 const valueEnd = directive.value.loc.end.index
-                const expressionLen = expression?.source.length ?? 0
                 const valueRange = getRangeByLoc(directive.value.loc)
+                const parsedExpression = getParsedExpression(directive)
+                const expressionLen = parsedExpression?.source.length ?? 0
                 const directiveInfo = analyzeResult.template.parsedDirectives.get(directive)
-
-                if (
-                    !expression &&
-                    rawName !== "#then" &&
-                    rawName !== "#await" &&
-                    rawName !== "#slot"
-                ) {
-                    const value = directiveInfo?.base ?? rawValue
-                    const start = directiveInfo?.baseStartSourceIndex ?? valueRange[0]
-                    writer.wrapLine().write(value, start).write(";")
-                    continue
-                }
 
                 switch (directive.name.raw) {
                     case "#if":
@@ -176,10 +159,22 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                     case "#for": {
                         indentAndWriteStartEnclosure()
-                        generatePatterns(writer, directive)
-                        writer.write(`${UTILS}.getListPair(`)
-                        writer.write(expression!.source, valueEnd - expressionLen)
-                        writer.write(");")
+
+                        if (directiveInfo && !parsedExpression) {
+                            writeInvalidExpression(
+                                writer,
+                                directiveInfo.base,
+                                directiveInfo.baseStartSourceIndex
+                            )
+                        }
+                        if (generatePatterns(writer, directive)) {
+                            writer.write(`${LSC.UTIL}.getListPair(`)
+
+                            if (parsedExpression) {
+                                writer.write(parsedExpression.source, valueEnd - expressionLen)
+                            }
+                            writer.write(");")
+                        }
                         break
                     }
 
@@ -209,20 +204,28 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (generatePatterns(writer, directive)) {
                             writer.write(ANY_VALUE).write(";")
                         } else {
-                            writer.write(rawValue, valueRange)
+                            writeInvalidExpression(writer, rawValue, valueRange)
                         }
                         break
                     }
 
                     case "#html": {
-                        writer.wrapLine().write(`${UTILS}.validateHtmlBlockOptions(`)
-                        writer.write(rawValue, valueRange).write(");")
+                        if (!parsedExpression) {
+                            writeInvalidExpression(writer, rawValue, valueRange)
+                        } else {
+                            writer.wrapLine().write(`${LSC.UTIL}.validateHtmlBlockOptions(`)
+                            writer.write(rawValue, valueRange).write(");")
+                        }
                         break
                     }
 
                     case "#target": {
-                        writer.wrapLine().write(`${UTILS}.validateTargetDirectiveValue(`)
-                        writer.write(rawValue, valueRange).write(");")
+                        if (!parsedExpression) {
+                            writeInvalidExpression(writer, rawValue, valueRange)
+                        } else {
+                            writer.wrapLine().write(`${LSC.UTIL}.validateTargetDirectiveValue(`)
+                            writer.write(rawValue, valueRange).write(");")
+                        }
                         break
                     }
 
@@ -230,8 +233,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (node.parent?.componentTag) {
                             writer.wrapLine()
 
-                            if (expression) {
-                                writer.write(expression.source, expression.startSourceIndex)
+                            if (parsedExpression) {
+                                writeParsedExpression(writer, parsedExpression)
                             } else {
                                 writer.write("default", getRangeByLoc(startTagOpenLoc))
                             }
@@ -239,10 +242,18 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             generatePatterns(writer, directive)
                             writer.write(") => ")
                             endInserts.push(() => writer.write(","))
-                            indentAndWriteStartEnclosure(false)
-                        } else if (expression) {
+                            indentAndWriteStartEnclosure(false, false)
+
+                            if (directiveInfo && !parsedExpression) {
+                                writeInvalidExpression(
+                                    writer,
+                                    directiveInfo.base,
+                                    directiveInfo.baseStartSourceIndex
+                                )
+                            }
+                        } else if (parsedExpression) {
                             writer.wrapLine()
-                            writer.write(expression.source, expression.startSourceIndex).write(";")
+                            writeParsedExpression(writer, parsedExpression).write(";")
                         }
                         break
                     }
@@ -260,10 +271,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent) {
                 endInserts.push(() => {
-                    writer.dedent().write("});")
+                    writer.dedent().write("}").dedent().write("});")
 
                     for (const [str, range] of componentInvalidExps) {
-                        writer.wrapLine().write(str, range).write(";")
+                        writeInvalidExpression(writer, str, range)
                     }
                 })
                 writer.wrapLine()
@@ -272,7 +283,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.write(ANY_VALUE)
                 } else {
                     const componentTagParts = getParsedComponentTag(node)!
-                    writer.write(`${UTILS}.confirmComponent(`)
+                    writer.write(`${LSC.UTIL}.confirmComponent(`)
 
                     for (let i = 0; i < componentTagParts.length; i++) {
                         if (i) {
@@ -282,7 +293,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                     writer.write(")")
                 }
-                writer.write("(").write("{", startTagRange[0]).indent(false)
+                if (node.typeArgument) {
+                    const typeArgumentRange = getRangeByLoc(node.typeArgument.loc)
+                    writer.write("<").write(node.typeArgument.raw, typeArgumentRange).write(">")
+                }
+                writer.write("(").write("{").indent()
+                writer.write("props: ").write("{", startTagRange[0]).indent(false)
             }
 
             if (isComponent || isSlot) {
@@ -300,7 +316,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                     if (isComponent) {
                         writer.wrapLine().write(property, nameRange)
-                        writer.write(": ").write(writeValue, valueRange)
+                        writer.write(": ").write(writeValue, valueRange).write(",")
                     } else {
                         writer.wrapLine()
                         startGetTypeDelayMarkingCall(writer)
@@ -369,7 +385,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     continue
                 }
 
-                writer.wrapLine().write(rawValue, valueRange).write(";")
+                writeOrphanExpression(writer, rawValue, valueRange)
             }
 
             for (const event of nodeContext.eventListeners) {
@@ -384,7 +400,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     event.name.loc.start.index,
                     event.name.loc.start.index + eventInfo.eventName.length
                 ]
-                const validatorCall = `${UTILS}.validateEventHandler("${baseName}", `
+                const validatorCall = `${LSC.UTIL}.validateEventHandler("${baseName}", `
 
                 if (isSpread || isSlot) {
                     writer.wrapLine()
@@ -447,7 +463,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent) {
                 writer.dedent().write("}", startTagRange[1] - 1)
-                writer.writeLine(",").write("{", startTagRange[0]).indent(false)
+                writer.writeLine(",").write("refs: ").write("{", startTagRange[0]).indent(false)
             }
 
             for (const attribute of nodeContext.referenceAttributes) {
@@ -500,7 +516,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 const writeValue = (vname?: string, vparm?: string, ending = "") => {
                     if ((writer.wrapLine(), vname)) {
-                        writer.write(`${UTILS}.validate${vname}(`)
+                        writer.write(`${LSC.UTIL}.validate${vname}(`)
 
                         if (vparm) {
                             writer.write(vparm + ", ")
@@ -571,7 +587,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent) {
                 writer.dedent().write("}", startTagRange[1] - 1)
-                writer.writeLine(",").write("{").indent(false)
+                writer.writeLine(",").write("slots: {").indent(false)
             }
 
             generate(node.children)
@@ -579,37 +595,16 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
     })(nodes)
 
-    return writer.write("\n\n;\n\n")
-}
+    writer.write(`\n\nreturn (_) => {}`).dedent().write("}\n\n")
 
-function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
-    const directiveName = directive.name.raw
-    const isForDirective = directiveName === "#for"
-    const patterns = getParsedDirective(directive)!.patterns
-    if (!patterns.some(pattern => pattern)) {
-        if (isForDirective) {
-            writer.wrapLine()
-        }
-        return false
+    if (isTS) {
+        writer.write(`export `)
+        writer.write("default", exportSourceRange)
+        return writer.write(` ${ANY_VALUE} as ${COMPONENT_TYPE};`)
     }
-    if (isForDirective) {
-        writer.wrapLine().write("const [")
-    }
-    for (let i = 0; i < patterns.length; i++) {
-        if (patterns[i].node) {
-            writer.write(
-                inputDescriptor.source.slice(...patterns[i].sourceRange),
-                patterns[i].sourceRange[0]
-            )
-        }
-        if (i < patterns.length - 1) {
-            writer.write(", ")
-        }
-    }
-    if (isForDirective) {
-        writer.write("] = ")
-    }
-    return true
+    writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `)
+    writer.write("default", exportSourceRange)
+    return writer.write(` ${ANY_VALUE};`)
 }
 
 function getRangeByLoc(loc: ASTLocation): Range {
@@ -624,5 +619,60 @@ function forEachRight(arr: any[], cb: ArbitraryFunc) {
 
 function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
     writer.gtdii.push(writer.length)
-    writer.write(`${GET_TYPE_DELAY_MARKING}(`)
+    writer.write(`${LSC.GET_TYPE_DELAY_MARKING}(`)
+}
+
+function writeOrphanExpression(
+    writer: IntermediateCodeWriter,
+    expression: string,
+    sourceIndexOrRange: number | Range
+) {
+    writer.wrapLine().write("void(")
+
+    // @ts-expect-error: match the overload
+    return writer.write(expression, sourceIndexOrRange).write(");")
+}
+
+function writeInvalidExpression(
+    writer: IntermediateCodeWriter,
+    str: string,
+    sourceIndexOrRange: number | Range
+) {
+    // @ts-expect-error: match the overload
+    return writer.wrapLine().write(str, sourceIndexOrRange).write(";")
+}
+
+function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
+    const directiveName = directive.name.raw
+    const isForDirective = directiveName === "#for"
+    const isCatchDirective = directiveName === "#catch"
+    const patterns = getParsedDirective(directive)?.patterns
+    if (!patterns?.some(pattern => pattern)) {
+        if (isForDirective || isCatchDirective) {
+            writer.wrapLine()
+        }
+        return false
+    }
+    if (isForDirective || isCatchDirective) {
+        writer.wrapLine().write("const " + (isForDirective ? "[" : ""))
+    }
+    for (let i = 0; i < patterns.length; i++) {
+        if (patterns[i].node) {
+            writer.write(
+                inputDescriptor.source.slice(...patterns[i].sourceRange),
+                patterns[i].sourceRange[0]
+            )
+        }
+        if (i < patterns.length - 1) {
+            writer.write(", ")
+        }
+    }
+    if (isForDirective || isCatchDirective) {
+        writer.write(isCatchDirective ? " = " : "] = ")
+    }
+    return true
+}
+
+function writeParsedExpression(writer: IntermediateCodeWriter, parsedExpression: ParsedExpression) {
+    return writer.write(parsedExpression.source, parsedExpression.startSourceIndex)
 }
