@@ -18,6 +18,7 @@ import {
     getTemplateNodeContext
 } from "../../../util/compiler/template"
 import { CodeEditor } from "../editor"
+import { LSC, SPREAD_TAG } from "../../constants"
 import { IntermediateCodeWriter } from "../writer"
 import { stringify } from "../../../util/shared/aliases"
 import { stripTypeExpressions } from "../../estree/sundry"
@@ -25,7 +26,6 @@ import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
 import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
-import { GET_TYPE_DELAY_MARKING, LANGUAGE_SERVICE_UTIL, SPREAD_TAG } from "../../constants"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
     let slotNamesType = ""
@@ -44,15 +44,18 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.code,
         inputDescriptor.script.loc.start.index
     )
+    const scriptDescriptor = inputDescriptor.script
     const { typeDeclarationFilePath } = inputDescriptor.options
+    const exportSourceRange: Range | undefined = inputDescriptor.script.existing
+        ? [scriptDescriptor.startTagOpenRange[0] + 1, scriptDescriptor.startTagOpenRange[1]]
+        : undefined
 
-    const UTILS = LANGUAGE_SERVICE_UTIL
-    const ANY_VALUE = `${UTILS}.anyValue`
-    const EMPTY_OBJECT = `${UTILS}.EmptyObject`
-    const SLOT_NAMES_TYPE = slotNamesType || EMPTY_OBJECT
+    const ANY_VALUE = `${LSC.UTIL}.anyValue`
+    const SLOT_NAMES_TYPE = slotNamesType || `${LSC.UTIL}.EmptyObject`
+    const COMPONENT_TYPE = `${LSC.UTIL}.QingkuaiComponent<ReturnType<typeof ${LSC.COMPONENT}>>`
 
     const needImportItems: string[] = [
-        UTILS,
+        LSC.UTIL,
         "raw",
         "alias",
         "derived",
@@ -68,21 +71,18 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     ]
     writer.writeLine(`import { ${needImportItems.join(", ")} } from "${typeDeclarationFilePath}";`)
 
-    // 声明内置标识符及其默认类型
-    // Declare built-in identifiers and their default types
-    if (isTS) {
-        writer.writeLine(`type Props = ${EMPTY_OBJECT}; type Refs = ${EMPTY_OBJECT};`)
-        writer.write(
-            `const props: Readonly<Props> = ${ANY_VALUE}, refs: Refs = ${ANY_VALUE}, slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`
-        )
-    } else {
-        writer.writeLine(
-            `/** @typedef { ${EMPTY_OBJECT} } Refs @typedef { ${EMPTY_OBJECT} } Props */`
-        )
-        writer.write(
-            `const /** @type { Readonly<Props> } */ props = 0, /** @type { Refs } */ refs = 0, /** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`
-        )
+    for (const importDeclaration of analyzeResult.script.importDeclarations) {
+        embeddedScriptEditor.remove(...importDeclaration.value.range!)
+        writer.writeScriptNode(importDeclaration.value).writeLine(";")
     }
+    writer.write("\nfunction __qk__component(){").indent()
+
+    if (isTS) {
+        writer.writeLine(`const slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`)
+    } else {
+        writer.writeLine(`/** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`)
+    }
+    writer.dedent(false)
 
     traverseObject(analyzeResult.script.topLevelIdentifiers, (_, info) => {
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
@@ -95,10 +95,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
         if (declarator.init && isFunctionLiteral(stripTypeExpressions(declarator.init))) {
             embeddedScriptEditor.insert(declarator.init!.end!, ")")
-            embeddedScriptEditor.insert(declarator.init!.start!, `${UTILS}.getReturnType(`)
+            embeddedScriptEditor.insert(declarator.init!.start!, `${LSC.UTIL}.getReturnType(`)
         }
     })
-    writer.wrapLine().writeEditedScript(embeddedScriptEditor).writeLine("\n\n;")
+    writer.wrapLine().writeEditedScript(embeddedScriptEditor).indent().writeLine(";\n")
 
     //
     ;(function generate(nodes: TemplateNode[]) {
@@ -168,7 +168,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             )
                         }
                         if (generatePatterns(writer, directive)) {
-                            writer.write(`${UTILS}.getListPair(`)
+                            writer.write(`${LSC.UTIL}.getListPair(`)
 
                             if (parsedExpression) {
                                 writer.write(parsedExpression.source, valueEnd - expressionLen)
@@ -213,7 +213,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (!parsedExpression) {
                             writeInvalidExpression(writer, rawValue, valueRange)
                         } else {
-                            writer.wrapLine().write(`${UTILS}.validateHtmlBlockOptions(`)
+                            writer.wrapLine().write(`${LSC.UTIL}.validateHtmlBlockOptions(`)
                             writer.write(rawValue, valueRange).write(");")
                         }
                         break
@@ -223,7 +223,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (!parsedExpression) {
                             writeInvalidExpression(writer, rawValue, valueRange)
                         } else {
-                            writer.wrapLine().write(`${UTILS}.validateTargetDirectiveValue(`)
+                            writer.wrapLine().write(`${LSC.UTIL}.validateTargetDirectiveValue(`)
                             writer.write(rawValue, valueRange).write(");")
                         }
                         break
@@ -271,7 +271,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent) {
                 endInserts.push(() => {
-                    writer.dedent().write("});")
+                    writer.dedent().write("}").dedent().write("});")
 
                     for (const [str, range] of componentInvalidExps) {
                         writeInvalidExpression(writer, str, range)
@@ -283,7 +283,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.write(ANY_VALUE)
                 } else {
                     const componentTagParts = getParsedComponentTag(node)!
-                    writer.write(`${UTILS}.confirmComponent(`)
+                    writer.write(`${LSC.UTIL}.confirmComponent(`)
 
                     for (let i = 0; i < componentTagParts.length; i++) {
                         if (i) {
@@ -293,7 +293,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                     writer.write(")")
                 }
-                writer.write("(").write("{", startTagRange[0]).indent(false)
+                writer.write("(").write("{").indent()
+                writer.write("props: ").write("{", startTagRange[0]).indent(false)
             }
 
             if (isComponent || isSlot) {
@@ -395,7 +396,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     event.name.loc.start.index,
                     event.name.loc.start.index + eventInfo.eventName.length
                 ]
-                const validatorCall = `${UTILS}.validateEventHandler("${baseName}", `
+                const validatorCall = `${LSC.UTIL}.validateEventHandler("${baseName}", `
 
                 if (isSpread || isSlot) {
                     writer.wrapLine()
@@ -458,7 +459,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent) {
                 writer.dedent().write("}", startTagRange[1] - 1)
-                writer.writeLine(",").write("{", startTagRange[0]).indent(false)
+                writer.writeLine(",").write("refs: ").write("{", startTagRange[0]).indent(false)
             }
 
             for (const attribute of nodeContext.referenceAttributes) {
@@ -511,7 +512,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 const writeValue = (vname?: string, vparm?: string, ending = "") => {
                     if ((writer.wrapLine(), vname)) {
-                        writer.write(`${UTILS}.validate${vname}(`)
+                        writer.write(`${LSC.UTIL}.validate${vname}(`)
 
                         if (vparm) {
                             writer.write(vparm + ", ")
@@ -582,7 +583,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (isComponent) {
                 writer.dedent().write("}", startTagRange[1] - 1)
-                writer.writeLine(",").write("{").indent(false)
+                writer.writeLine(",").write("slots: {").indent(false)
             }
 
             generate(node.children)
@@ -590,7 +591,16 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
     })(nodes)
 
-    return writer.write("\n\n;\n\n")
+    writer.write(`\n\nreturn (_) => {}`).dedent().write("}\n\n")
+
+    if (isTS) {
+        writer.write(`export `)
+        writer.write("default", exportSourceRange)
+        return writer.write(` ${ANY_VALUE} as ${COMPONENT_TYPE};`)
+    }
+    writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `)
+    writer.write("default", exportSourceRange)
+    return writer.write(` ${ANY_VALUE};`)
 }
 
 function getRangeByLoc(loc: ASTLocation): Range {
@@ -605,7 +615,7 @@ function forEachRight(arr: any[], cb: ArbitraryFunc) {
 
 function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
     writer.gtdii.push(writer.length)
-    writer.write(`${GET_TYPE_DELAY_MARKING}(`)
+    writer.write(`${LSC.GET_TYPE_DELAY_MARKING}(`)
 }
 
 function writeOrphanExpression(

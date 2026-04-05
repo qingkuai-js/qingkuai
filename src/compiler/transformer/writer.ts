@@ -216,7 +216,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
                 startSourceIndex + node.start!,
                 startSourceIndex + node.end!
             ),
-            node.start!
+            startSourceIndex + node.start!
         )
     }
 
@@ -228,7 +228,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
             this.writeCharacter(
                 editedContent[i],
                 sourceIndex,
-                isLast && sourceIndex !== -1 ? sourceIndex + 1 : -1
+                isLast && sourceIndex === -1 ? -1 : sourceIndex + 1
             )
         }
         return this
@@ -251,7 +251,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
                 this.writeCharacter(
                     str[i],
                     sourceIndex,
-                    isLast && sourceIndex !== -1 ? sourceIndex + 1 : -1
+                    isLast && sourceIndex === -1 ? -1 : sourceIndex + 1
                 )
             }
         } else {

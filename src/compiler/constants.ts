@@ -29,8 +29,14 @@ import { objectAssign } from "../util/shared/aliases"
 
 export const SPREAD_TAG = "qk:spread"
 export const PRESERVED_IDPREFIX = "__qk__"
-export const LANGUAGE_SERVICE_UTIL = PRESERVED_IDPREFIX + "lsu"
-export const GET_TYPE_DELAY_MARKING = LANGUAGE_SERVICE_UTIL + ".getTypeDelayMarking"
+
+// Language Service Constants
+export const LSC = {
+    UTIL: PRESERVED_IDPREFIX + "lsu",
+    CONTEXT: PRESERVED_IDPREFIX + "context",
+    COMPONENT: PRESERVED_IDPREFIX + "component",
+    GET_TYPE_DELAY_MARKING: PRESERVED_IDPREFIX + "lsu.getTypeDelayMarking"
+}
 
 export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     once: EVENT_ONCE,

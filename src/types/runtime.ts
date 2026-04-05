@@ -10,12 +10,12 @@ import type {
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
 
+declare const Render: unique symbol
+
 interface CancelablePromiseExtra {
     cancel: GeneralFunc
     [CANCELABLE]: boolean
 }
-
-export declare const Sign: unique symbol
 
 export interface PropertyInfo {
     v: any // value
@@ -142,11 +142,8 @@ export type GeneralEffectFunc = () => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
-export type QingkuaiComponent<P, R, S> = {
-    props: P
-    refs: R
-    slots: S
-    [Sign]: never
+export type QingkuaiComponent<F extends ArbitraryFunc> = {
+    [Render]: F
 }
 
 export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void

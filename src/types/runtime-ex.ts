@@ -190,7 +190,7 @@ export interface MountAppFunc {
      * mountApp(App, "#app")
      * ```
      */
-    (component: QingkuaiComponent<any, any, any>, target: Element | string): void
+    (component: QingkuaiComponent<any>, target: Element | string): void
 }
 
 export interface ToRawFunc {
