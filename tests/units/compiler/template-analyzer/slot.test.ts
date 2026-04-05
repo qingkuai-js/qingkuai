@@ -1,6 +1,6 @@
 import { describe, test } from "vitest"
 import { analyzeTemplateAndMatchMessages } from "./_match"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 
 describe("Duplicate slot name", () => {
     test("Without name attribute", () => {

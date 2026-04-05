@@ -1,5 +1,5 @@
 import { describe, it } from "vitest"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { matchTransformedScript as _matchTransformedScript } from "./_match"
 
 describe("Production", () => {

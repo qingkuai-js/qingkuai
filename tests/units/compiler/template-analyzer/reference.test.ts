@@ -1,6 +1,6 @@
 import { test } from "vitest"
 import { analyzeTemplateAndMatchMessages } from "./_match"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 
 test("input", () => {
     analyzeTemplateAndMatchMessages(`<input &dom />`)

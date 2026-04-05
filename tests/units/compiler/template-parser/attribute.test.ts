@@ -5,7 +5,7 @@ import {
     newASTLocation,
     getLocWithDefaultEnd
 } from "../../../../src/util/compiler/position"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 

@@ -1,6 +1,6 @@
 import { describe, test } from "vitest"
 import { analyzeTemplateAndMatchMessages } from "./_match"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 
 describe("Template-level checks", () => {
     test("Component type argument requires TypeScript embedded script", () => {

@@ -1,7 +1,7 @@
 import type { ExpectedCompileMessage } from "#type-declarations/testing"
 
 import { describe, test } from "vitest"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { analyzeScript } from "../../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"

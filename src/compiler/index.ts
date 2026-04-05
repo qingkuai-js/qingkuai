@@ -5,6 +5,7 @@ import {
     isEmbeddedLanguageTag,
     isRequiredValueDirective
 } from "../util/compiler/assert"
+import { formatSourceCode } from "../util/shared/sundry"
 
 import {
     camel2Kebab,
@@ -42,6 +43,7 @@ export const util = {
     findOutOfComment,
     findOutOfLiteral,
     isSelfClosingTag,
+    formatSourceCode,
     isEmbeddedLanguageTag,
     findOutOfLiteralComment,
     isRequiredValueDirective

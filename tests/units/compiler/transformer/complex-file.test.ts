@@ -2,8 +2,8 @@ import nodeFs from "node:fs"
 
 import { test, expect } from "vitest"
 import { parse } from "@babel/parser"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { compile, compileIntermediate } from "../../../../src/compiler/compile"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
 
 const complexFileInput = nodeFs.readFileSync(new URL("./_input.qk", import.meta.url), "utf8")
 

@@ -1,6 +1,6 @@
 import { describe, test } from "vitest"
 import { matchTemplateNodeList } from "./_match"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 

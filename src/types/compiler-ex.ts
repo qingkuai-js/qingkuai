@@ -547,3 +547,38 @@ export interface ParseTemplateFunc {
      */
     (source: string, options?: StandaloneParseTemplateOptions): TemplateNode[]
 }
+
+export interface FormatSourceCodeFunc {
+    /**
+     * 对模板字符串中书写的代码文本进行缩进规范化处理。\
+     * Normalize indentation in code text written inside template strings.
+     *
+     * 用模板字符串书写代码时，缩进层级会受到当前文件位置的影响，导致
+     * 生成的代码字符串中出现多余的前导空格。此方法以首行前导空格数为
+     * 基准，对全文统一移除等量的前导空格。开头和结尾处的空白行也会被
+     * 一并移除。\
+     * When writing code inside a template string, the indentation is
+     * affected by the file position and may introduce unwanted leading
+     * spaces. This method removes all leading spaces from the first line
+     * and strips the same amount from each remaining line. Blank lines
+     * at the beginning and end are also removed.
+     *
+     * @param source 代码文本字符串。\
+     * The code text string to normalize.
+     *
+     * @returns 缩进规范化后的代码字符串。\
+     * The normalized code string with adjusted indentation.
+     *
+     * Examples:
+     * ```ts
+     * // Strip indentation from a template string code block.
+     * const code = formatSourceCode(`
+     *     function foo() {
+     *         return 1
+     *     }
+     * `)
+     * // => "function foo() {\n    return 1\n}"
+     * ```
+     */
+    (source: string): string
+}

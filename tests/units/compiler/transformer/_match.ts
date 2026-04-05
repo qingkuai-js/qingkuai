@@ -12,7 +12,7 @@ import {
     writeFragmentGetterDeclarations
 } from "../../../../src/compiler/transformer/runtime/fragment"
 import { isUndefined } from "../../../../src/util/shared/assert"
-import { formatSourceCode } from "../../../../src/util/testing/sundry"
+import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { CodeEditor } from "../../../../src/compiler/transformer/editor"
 import { parseTemplate } from "../../../../src/compiler/parser/template"
 import { analyzeScript } from "../../../../src/compiler/analyzer/script"

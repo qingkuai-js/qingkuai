@@ -39,7 +39,7 @@ export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alia
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
 
-export const testingPreWhitespaceRE = /^\n?[\s]*\n/
-export const testingUselessWhitespaceRE = /^[ \t]*/
+export const formattingPreWhitespaceRE = /^\n?[\s]*\n/
+export const formattingUselessWhitespaceRE = /^[ \t]*/
 
 export const babelErrorLocInfoRE = /\(\d+:\d+\)$/

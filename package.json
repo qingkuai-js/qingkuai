@@ -3,7 +3,7 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.56",
+  "version": "1.0.57",
   "sideEffects": false,
   "files": [
     "dist",
@@ -18,7 +18,6 @@
       "require": "./dist/cjs/runtime/index.cjs"
     },
     "./internal": {
-      "types": "./dist/types/runtime/internal.d.ts",
       "import": "./dist/esm/runtime/internal.js",
       "require": "./dist/cjs/runtime/internal.cjs"
     },
