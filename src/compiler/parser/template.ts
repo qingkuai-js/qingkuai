@@ -482,7 +482,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                         fullValueEndIndex = reduceSource(endCharIndex + 1).index
                     }
                 }
-                if (isInterpolatedAttr) {
+                if (isInterpolatedAttr && valueEnclosure === "curly") {
                     markPositionFlag(PositionFlag.InScript, valueStartIndex, valueEndIndex)
                 }
             }

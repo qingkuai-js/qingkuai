@@ -95,7 +95,6 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             checkMode: false,
             reactivityMode: "reactive",
             interpretiveComments: false,
-            typeDeclarationFilePath: "",
             whitespace: "trim-collapse",
             preserveHtmlComments: false,
             shorthandDerivedDeclaration: true

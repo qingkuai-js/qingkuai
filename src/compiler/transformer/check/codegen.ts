@@ -45,7 +45,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.loc.start.index
     )
     const scriptDescriptor = inputDescriptor.script
-    const { typeDeclarationFilePath } = inputDescriptor.options
     const exportSourceRange: Range | undefined = inputDescriptor.script.existing
         ? [scriptDescriptor.startTagOpenRange[0] + 1, scriptDescriptor.startTagOpenRange[1]]
         : undefined
@@ -69,7 +68,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         "defaultRefs",
         "defaultProps"
     ]
-    writer.writeLine(`import { ${needImportItems.join(", ")} } from "${typeDeclarationFilePath}";`)
+    writer.writeLine(`import { ${needImportItems.join(", ")} } from "qingkuai/language-service";`)
 
     for (const importDeclaration of analyzeResult.script.importDeclarations) {
         embeddedScriptEditor.remove(...importDeclaration.value.range!)

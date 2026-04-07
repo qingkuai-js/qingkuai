@@ -29,16 +29,16 @@ function compileRuntimeAndAssertNoErrors(source: string, label: string) {
 }
 
 function compileIntermediateAndAssertNoErrors(source: string, label: string) {
-	const result = compileIntermediate(source, { typeDeclarationFilePath: "qingkuai/internal" })
+    const result = compileIntermediate(source, )
 
-	expect(result.messages.filter(msg => msg.type === "error")).toEqual([])
-	expectValidESMSyntax(result.code, `${label}-intermediate`)
+    expect(result.messages.filter(msg => msg.type === "error")).toEqual([])
+    expectValidESMSyntax(result.code, `${label}-intermediate`)
 
-	return result
+    return result
 }
 
 test("Runtime: complex file broad syntax coverage and generated-code sanity", () => {
-	const source = complexFileInput
+    const source = complexFileInput
 
     const { prod, dev } = compileRuntimeAndAssertNoErrors(source, "complex-runtime")
 
@@ -75,7 +75,7 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
 })
 
 test("Runtime regression: slot fallback generates valid nullish-coalesced call syntax", () => {
-	const source = formatSourceCode(`
+    const source = formatSourceCode(`
 		<lang-js>
 			let label = "fallback"
 		</lang-js>
@@ -102,7 +102,7 @@ test("Runtime regression: slot fallback generates valid nullish-coalesced call s
 })
 
 test("Runtime regression: component branch keeps condition block branches separated", () => {
-	const source = formatSourceCode(`
+    const source = formatSourceCode(`
 		<lang-js>
 			let showPanel = true
 			let error = ""
@@ -172,7 +172,7 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
     const result = compileIntermediateAndAssertNoErrors(complexFileInput, "complex")
     const mainSlotNode = result.getSlotTemplateNode("main")
 
-    expect(result.code).toContain('import { __qk__lsu')
+    expect(result.code).toContain("import { __qk__lsu")
     expect(result.code).toContain('from "qingkuai/internal"')
     expect(result.code).toContain('Readonly<Record<"main", boolean>>')
     expect(result.code).toContain("__qk__lsu.confirmComponent(Comp)")

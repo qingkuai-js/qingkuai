@@ -33,7 +33,6 @@ export const PRESERVED_IDPREFIX = "__qk__"
 // Language Service Constants
 export const LSC = {
     UTIL: PRESERVED_IDPREFIX + "lsu",
-    CONTEXT: PRESERVED_IDPREFIX + "context",
     COMPONENT: PRESERVED_IDPREFIX + "component",
     GET_TYPE_DELAY_MARKING: PRESERVED_IDPREFIX + "lsu.getTypeDelayMarking"
 }

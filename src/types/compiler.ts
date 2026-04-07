@@ -319,7 +319,6 @@ export type TopLevelReferences = Record<
 >
 
 export interface CompileIntermediateOptions {
-    typeDeclarationFilePath: string
     shorthandDerivedDeclaration?: boolean
 }
 
