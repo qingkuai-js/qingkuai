@@ -361,6 +361,12 @@ export type IdentifierStatus =
     | "alias"
     | "literal"
 
+export type SelectionCacheItem = {
+    id: string
+    index: number
+}
+export type SelectionCache = Record<string, SelectionCacheItem[]>
+
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean
 }

@@ -11,7 +11,7 @@ import { ensureIdWithPrefix } from "../../../util/compiler/sundry"
 import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragment"
-import { writeStringLiteralsDeclarations, getMaybeReusedString } from "./compress"
+import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
     const { usedIntrinsicVars } = analyzeResult.script

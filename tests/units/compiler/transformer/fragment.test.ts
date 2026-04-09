@@ -9,6 +9,9 @@ import {
 import { describe, expect, test } from "vitest"
 import { compile } from "../../../../src/compiler/compile"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer"
+import { resetCompilerState, generateIdentifier } from "../../../../src/compiler/state"
+import { writeFragmentSelections } from "../../../../src/compiler/transformer/runtime/fragment"
 
 function getRandomDirective() {
     return ["#if={bool}", "#for={3}", "#target={document.body}", "#await={promise}"][
@@ -245,6 +248,46 @@ describe("debug mode", () => {
         expect(code).toContain("const _text1 = _.getChild(_fragment1)")
         expect(code).toContain("_.mount(_anchor, _fragment1)")
         expect(code).not.toContain("const _text1 = _getFragment1(4)")
+    })
+
+    test("replaceWithText selection should not be rewritten to getSibling", () => {
+        resetCompilerState({ debug: false })
+        generateIdentifier.internal = "_"
+
+        const writer = new RuntimeCodeWriter()
+        writeFragmentSelections(writer, {
+            id: "_fragment1",
+            getterId: "_getFragment1",
+            nodeContext: null,
+            content: [" ", "<!>", " "],
+            getWith: undefined,
+            directChildrenCount: 3,
+            usedCompressString: false,
+            selections: [
+                {
+                    id: "_text1",
+                    parent: "_fragment1",
+                    replaceWithText: false,
+                    index: 0
+                },
+                {
+                    id: "_text2",
+                    parent: "_fragment1",
+                    replaceWithText: true,
+                    index: 1
+                },
+                {
+                    id: "_text3",
+                    parent: "_fragment1",
+                    replaceWithText: false,
+                    index: 2
+                }
+            ]
+        })
+
+        const code = formatSourceCode(writer.code)
+        expect(code).toContain("const _text2 = _.getSiblingAsText(_text1)")
+        expect(code).toContain("const _text3 = _.getSibling(_text2)")
     })
 
     test("Directives on spread tag", () => {

@@ -62,17 +62,14 @@
     "vitest": "^3.2.4"
   },
   "keywords": [
-    "qingkuai",
-    "qingkuaijs",
     "ui",
     "framework",
     "reactive",
+    "compiler",
     "templates",
     "component",
-    "compiler",
     "typescript",
-    "performance",
-    "optimization"
+    "performance"
   ],
   "description": "A lighteight(Qing) and fast(Kuai) front end framework, it will make you development work easier(QingKuai)."
 }

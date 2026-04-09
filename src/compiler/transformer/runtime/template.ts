@@ -9,6 +9,12 @@ import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
 
 import {
+    isExpressionEqual,
+    isFunctionLiteral,
+    isInlineEventHandler,
+    isSimpleHandlerReference
+} from "../../estree/assert"
+import {
     getParsedEventInfo,
     getParsedDirective,
     getParsedExpression,
@@ -18,18 +24,17 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
-import { getMaybeReusedString } from "./compress"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
+import { writeParsedExpression } from "./interpolation"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
+import { getMaybeReusedString } from "../../optimizer/compress"
 import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
 import { isValidIdentifierName } from "../../../util/compiler/assert"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
-import { isExpressionEqual, isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
-import { writeParsedExpression } from "./interpolation"
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
@@ -429,7 +434,7 @@ function generateRenderEffect(
                 const baseName = eventInfo.eventName.slice(1)
                 const delegated = DELEGATABLE_EVENTS.has(baseName)
                 const stringifiedBaseName = getMaybeReusedString(baseName)
-                const stripTypeExpressionNode = stripTypeExpressions(expression.node)
+                const stripedTypeExpressionNode = stripTypeExpressions(expression.node)
                 const insertInterpretiveComment = inputDescriptor.options.interpretiveComments
                 writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
                 writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
@@ -437,9 +442,14 @@ function generateRenderEffect(
                 if (wrapperFlag.value) {
                     writer.write(`${internalId}.createEventWrapper(`)
                 }
-                if (isFunctionLiteral(stripTypeExpressionNode)) {
+                if (
+                    !isInlineEventHandler(stripedTypeExpressionNode) &&
+                    isSimpleHandlerReference(stripedTypeExpressionNode)
+                ) {
                     writer.writeParsedExpression(event)
-                } else if (!isInlineEventHandler(stripTypeExpressionNode)) {
+                } else if (isFunctionLiteral(stripedTypeExpressionNode)) {
+                    writer.writeParsedExpression(event)
+                } else if (!isInlineEventHandler(stripedTypeExpressionNode)) {
                     writer.write(`function ($arg){`).indent()
                     writer.write(`${internalId}.call(`)
                     writer.writeParsedExpression(event)

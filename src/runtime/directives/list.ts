@@ -106,9 +106,12 @@ export function keyedListBlock(
         }
 
         if (oldLength === 0) {
+            const keyContext: TraverseContext = {
+                m: NIL,
+                x: NIL
+            }
             const newKeys: string[] = Array(newLength)
             const keyVisited: Record<string, number> = newCleanObj()
-            const keyContext: TraverseContext = { m: NIL, x: NIL }
             for (let i = 0; i < newLength; i++) {
                 fillContext(traversable, i, keyContext)
                 const key = "" + getKey(keyContext.m, keyContext.x)
@@ -143,9 +146,12 @@ export function keyedListBlock(
             return
         }
 
+        const keyContext: TraverseContext = {
+            m: NIL,
+            x: NIL
+        }
         const newKeys: string[] = Array(newLength)
         const keyToNewIndex: Record<string, number> = newCleanObj()
-        const keyContext: TraverseContext = { m: NIL, x: NIL }
         for (let i = 0; i < newLength; i++) {
             fillContext(traversable, i, keyContext)
 

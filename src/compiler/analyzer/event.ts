@@ -6,8 +6,8 @@ import { DELEGATABLE_EVENTS } from "../constants"
 import { RedundantEventFlags } from "../message/warn"
 import { EVENT_PASSIVE } from "../../util/shared/flags"
 import { getLocByIndex } from "../../util/compiler/position"
+import { increaseReusedStringUsedTimes } from "../optimizer/compress"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 
 export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {

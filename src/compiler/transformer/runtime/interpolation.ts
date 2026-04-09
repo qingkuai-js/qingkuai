@@ -3,8 +3,8 @@ import type { TemplateNode } from "#type-declarations/compiler"
 
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
-import { getMaybeReusedString } from "./compress"
 import { traverseObject } from "../../../util/shared/sundry"
+import { getMaybeReusedString } from "../../optimizer/compress"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
 
 export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourcemap = true) {
