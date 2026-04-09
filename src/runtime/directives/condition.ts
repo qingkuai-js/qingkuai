@@ -1,6 +1,7 @@
 import type { Destruction } from "#type-declarations/runtime"
 import type { ArbitraryFunc } from "#type-declarations/tools"
 
+import { UNDEF } from "../constants"
 import { destroy } from "../destroy"
 import { renderEffect } from "../reactivity/effect"
 import { invokeRender } from "../../util/runtime/sundry"
@@ -30,6 +31,7 @@ export function conditionBlock(crs: ArbitraryFunc[]) {
         if (destruction) {
             renderIndex = -1
             destroy(destruction)
+            destruction = UNDEF
         }
     })
 }

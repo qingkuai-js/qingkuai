@@ -1,10 +1,8 @@
-import type { NodeContext } from "#type-declarations/runtime"
-
 import { any } from "../util/shared/sundry"
 import { currentDestruction } from "./state"
 import { isString, isUndefined } from "../util/shared/assert"
-import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG } from "./constants"
 import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
+import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, ATTRIBUTE_PREFIX } from "./constants"
 
 export function newTextNode() {
     return DOCUMENT!.createTextNode("")
@@ -21,24 +19,6 @@ export function setText(text: any, content: any) {
     if (content !== text[NODE_CONTEXT]) {
         text[NODE_CONTEXT] = text.nodeValue = content
     }
-}
-
-export function getElementValue(elem: HTMLElement) {
-    return getNodeContext(elem).a?.value ?? any(elem).value
-}
-
-export function getChild(node: Element, index = 0) {
-    if (((node as any)[FRAGMENT_FLAG] ?? 0) & FRAG_LEADING_ANCHOR) {
-        index++
-    }
-    return node.childNodes[index]
-}
-
-export function getNodeContext(elem: any): NodeContext {
-    return (elem[NODE_CONTEXT] ??= {
-        a: {},
-        e: {}
-    })
 }
 
 export function appendChild(target: Element, node: Node) {
@@ -60,6 +40,28 @@ export function getChildAsText(target: Element, index = 0) {
 
 export function insertBefore(reference: ChildNode, node: Node) {
     reference.before(node)
+}
+
+export function getSiblingAsText(node: ChildNode, distance = 1) {
+    const textNode = newTextNode()
+    const child = getSibling(node, distance)
+    return (child.replaceWith(textNode), textNode)
+}
+
+export function getElementValue(elem: HTMLElement) {
+    return any(elem)[ATTRIBUTE_PREFIX + "value"] ?? any(elem).value
+}
+
+export function getChild(node: Element, index = 0) {
+    if (((node as any)[FRAGMENT_FLAG] ?? 0) & FRAG_LEADING_ANCHOR) {
+        index++
+    }
+
+    let child = node.firstChild as ChildNode
+    while (index-- > 0) {
+        child = child.nextSibling as ChildNode
+    }
+    return child
 }
 
 // 创建一个 HTML 片段获取器，重复获取时返回原片段的克隆副本以降低开销

@@ -6,6 +6,11 @@ export const TIMING_UNSET = 2
 export const TIMING_POST = 3
 export const TIMING_SYNC = 4
 
+export const WRAPPER = "__qk__r_wrapper"
+export const OWN_KEYS = "__qk__r_own_keys"
+export const ITERATOR_KEYS = "__qk__r_iterator_keys"
+export const REF_PROPERTY_ID = "__qk__r_ref_property_id"
+
 // flags
 export const PROP_IN = 1 << 0
 export const PROP_HAS = 1 << 1
@@ -35,12 +40,6 @@ export const LINK_IN_CHANGED = 1 << 0
 export const LINK_OWN_CHANGED = 1 << 1
 export const LINK_HAS_CHANGED = 1 << 2
 export const LINK_VALUE_CHANGED = 1 << 3
-
-// symbols
-export const WRAPPER = Symbol("qk:wrapper")
-export const OWN_KEYS = Symbol("qk:own_keys")
-export const ITERATOR_KEYS = Symbol("qk:iterator_keys")
-export const REF_PROPERTY_ID = Symbol("qk:ref_property_id")
 
 // sundry
 export const PROTO_MAP: AnyObject = {

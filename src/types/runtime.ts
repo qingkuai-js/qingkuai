@@ -47,11 +47,6 @@ export interface ComponentInstance {
     h: FixedArray<GeneralFunc[] | undefined, 6> // hooks
 }
 
-export interface NodeContext {
-    a: Record<string, any> // attributes
-    e: Record<string, [ArbitraryFunc, number?]> // delegated events
-}
-
 export interface Effect {
     f: ArbitraryFunc
     i: number // id

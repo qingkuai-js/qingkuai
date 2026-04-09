@@ -1,11 +1,12 @@
 import type { Getter, Setter } from "#type-declarations/tools"
 
+import { getElementValue } from "./dom"
 import { setInputGroup } from "./attribute"
+import { ATTRIBUTE_PREFIX } from "./constants"
 import { isArray } from "../util/shared/assert"
-import { notEqual } from "../util/shared/sundry"
 import { pushDestructionCleaner } from "./destroy"
 import { spliceByElem } from "../util/shared/arrays"
-import { getElementValue, getNodeContext } from "./dom"
+import { any, notEqual } from "../util/shared/sundry"
 import { listen, renderEffect, setAttribute, setSelectValue } from "./internal"
 
 export function bindDomReceiver(elem: any, setter: Setter) {
@@ -57,7 +58,7 @@ export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter) {
             for (const option of elem.options) {
                 const value = getElementValue(option)
                 if (!notEqual(target, value)) {
-                    target((getNodeContext(elem).a.value = value))
+                    target((any(option)[ATTRIBUTE_PREFIX + "value"] = value))
                 }
             }
         } else {

@@ -13,13 +13,12 @@ import {
     EVENT_PREVENT,
     EVENT_PASSIVE
 } from "../util/shared/flags"
-import { getNodeContext } from "./dom"
-import { any, createProxy } from "../util/shared/sundry"
 import { eventRegisterInfo } from "./state"
 import { call } from "../util/shared/aliases"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
-import { DOCUMENT, KEY_FLAG_MAP } from "./constants"
+import { any, createProxy } from "../util/shared/sundry"
+import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP } from "./constants"
 
 // 包装带有键位标志的事件
 // Wrap events with key flags.
@@ -107,23 +106,27 @@ export function listen(elem: HTMLElement, type: string, handler: ArbitraryFunc, 
 }
 
 export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?: number) {
-    getNodeContext(elem).e[type] = [handler, flag]
+    if (flag) {
+        any(elem)[EVENT_FLAG + type] = flag
+    }
+    any(elem)[DELEGATE_PREFIX + type] = handler
 }
 
 function dispatch(event: Event, passive: boolean) {
-    const type = event.type
+    const flagKey = EVENT_FLAG + event.type
     const bubblings: [EventTarget, number][] = []
     const path = event.composedPath().slice(0, -4)
+    const handlerKey = DELEGATE_PREFIX + event.type
 
     const excuteEventHandler = (elem: EventTarget) => {
-        const delegatedEvents = getNodeContext(elem).e
-        const delegateEvent = delegatedEvents[type]
-        const flag = delegateEvent[1] ?? 0
+        const handler = any(elem)[handlerKey]
+        const flag = any(elem)[flagKey] ?? 0
         if (flag & EVENT_PREVENT) {
             event.preventDefault()
         }
         if (flag & EVENT_ONCE) {
-            delete delegatedEvents[type]
+            delete any(elem)[flagKey]
+            delete any(elem)[handlerKey]
         }
         const proxiedEvent = createProxy(event, {
             get(target, property: keyof Event) {
@@ -142,17 +145,17 @@ function dispatch(event: Event, passive: boolean) {
                 return target[property]
             }
         })
-        call(delegateEvent[0], elem, proxiedEvent)
+        call(handler, elem, proxiedEvent)
     }
 
     for (let i = path.length - 1; i >= 0; i--) {
         const elem = any(path[i])
-        const delegateEvent = getNodeContext(elem).e[type]
-        if (!delegateEvent) {
+        const handler = elem[handlerKey]
+        if (!handler) {
             continue
         }
 
-        const flag = delegateEvent[1] ?? 0
+        const flag = elem[flagKey] ?? 0
         if (!!(flag & EVENT_PASSIVE) != passive) {
             continue
         }
