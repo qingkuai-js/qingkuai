@@ -44,6 +44,7 @@ function newAnalyzeResult(): AnalyzeResult {
                 passive: new Set(),
                 nonPassive: new Set()
             },
+            keyedSelectorInfos: new Map(),
             slots: newCleanObj(),
             parsedEvents: new Map(),
             nodeContexts: new Map(),

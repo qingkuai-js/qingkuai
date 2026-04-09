@@ -51,15 +51,12 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     if (defaultProps) {
         writer.write(`${contextId}.P = `).writeScriptNode(defaultProps.value).wrapLine()
     }
-    if (generateDelegateEventsRegistration(writer, contextId) || defaultRefs || defaultProps) {
-        writer.wrapLine()
-    }
+    generateDelegateEventsRegistration(writer, contextId)
+    writer.writeLine(`${internalId}.init(${contextId})`)
 
     if (usedIntrinsicVars.size) {
         writer.write(`const { ${arrayFrom(usedIntrinsicVars).join(", ")} } = `)
     }
-    writer.write(`${internalId}.init(${contextId})`)
-
     if (!hoistWriter.empty) {
         writer.wrapLine().write(hoistWriter.code)
     }

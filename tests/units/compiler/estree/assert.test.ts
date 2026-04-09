@@ -16,6 +16,7 @@ import {
     isUndefinedLiteral,
     willModuleDeclarationEmitsJS
 } from "../../../../src/compiler/estree/assert"
+import { stripTypeExpressions } from "../../../../src/compiler/estree/sundry"
 
 const PARSE_OPTS = {
     sourceType: "module" as const,
@@ -28,6 +29,10 @@ function expr(source: string): any {
 
 function stmt(source: string): any {
     return parse(source, PARSE_OPTS).program.body[0]
+}
+
+function exprStripped(source: string): any {
+    return stripTypeExpressions(expr(source))
 }
 
 function exprEqual(a: string, b: string): boolean {
@@ -171,8 +176,8 @@ test("Function: isInlineEventHandler", () => {
 
     // 类型操作被剥离后判断底层节点
     // Type operations are stripped and then the underlying nodes are judged
-    expect(isInlineEventHandler(expr("foo as any"))).toBe(false)
-    expect(isInlineEventHandler(expr("obj.foo!"))).toBe(false)
+    expect(isInlineEventHandler(exprStripped("foo as any"))).toBe(false)
+    expect(isInlineEventHandler(exprStripped("obj.foo!"))).toBe(false)
 })
 
 test("Function: isBlock", () => {

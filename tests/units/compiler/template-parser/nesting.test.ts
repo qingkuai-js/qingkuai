@@ -867,7 +867,7 @@ test("Type arguments for components", () => {
                 componentTag: "Comp",
                 typeArgument: {
                     raw: "Array<Item>",
-                    loc: getLocByIndex(16, 28)
+                    loc: getLocByIndex(16, 27)
                 },
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],

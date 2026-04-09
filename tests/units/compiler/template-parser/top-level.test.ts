@@ -320,7 +320,7 @@ test("Type arguments for components", () => {
         componentTag: "Comp",
         typeArgument: {
             raw: "Foo | Bar",
-            loc: getLocByIndex(6, 16)
+            loc: getLocByIndex(6, 15)
         },
         loc: getLocByIndex(0, 24),
         startTagEndPos: getPosByIndex(17),

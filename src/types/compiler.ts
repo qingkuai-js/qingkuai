@@ -203,6 +203,19 @@ export interface ParsedExpression {
     contextReferences: ContextReference[]
     topLevelReferences: TopLevelReferences
 }
+export interface GeneratedSelectorInfo {
+    id: string
+    expressionKey: any
+    operation: SelectorOperation
+    topLevelTransformedTo: string
+    topLevelIdentifierName: string
+    keyDirective: TemplateAttribute
+    forNodeContext: TemplateNodeContext
+    targetNodeContext: TemplateNodeContext
+
+    targetTextPart?: TextContentPart
+    targetAttribute?: TemplateAttribute
+}
 export interface TopLevelIdentifierInfo {
     nodeInfos: {
         id: Identifier
@@ -233,11 +246,13 @@ export interface TemplateNodeContext {
     attributesMap: Record<string, TemplateAttribute>
     contextIdentifiers: Record<string, ParsedDirective>
 }
+
 export interface TemplateAnalyzeRet {
     delegateEvents: {
         passive: Set<string>
         nonPassive: Set<string>
     }
+    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>
     parsedEvents: Map<
         TemplateAttribute,
         {
@@ -360,6 +375,23 @@ export type IdentifierStatus =
     | "pending"
     | "alias"
     | "literal"
+
+export type SelectorOperation =
+    | {
+          method: "setText"
+      }
+    | {
+          method: "setAttribute"
+          attrName: string
+      }
+    | {
+          method: "setXlinkAttribute"
+          attrName: string
+      }
+    | {
+          method: "setClassName"
+          staticClassAttr?: TemplateAttribute
+      }
 
 export type SelectionCacheItem = {
     id: string

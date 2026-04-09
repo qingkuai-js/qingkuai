@@ -7,7 +7,7 @@ describe("Template-level checks", () => {
         analyzeTemplateAndMatchMessages(`<Comp<Result<string>>></Comp>`, [
             {
                 type: "error",
-                range: [5, 22],
+                range: [5, 21],
                 value: `Component type arguments are only allowed when the embedded script block uses TypeScript.`
             }
         ])

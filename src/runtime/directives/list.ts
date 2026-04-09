@@ -311,6 +311,14 @@ export function keyedListBlock(
             holesCount = 0
         }
     })
+
+    return (key: any) => {
+        const info = infos["" + key]
+        if (!info) {
+            return UNDEF
+        }
+        return getFirstNodeOfDestruction(info.d) ?? UNDEF
+    }
 }
 
 export function listBlock(getValue: Getter, render: ArbitraryFunc) {
