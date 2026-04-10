@@ -3,6 +3,7 @@ import type { ComponentInstance, Destruction } from "#type-declarations/runtime"
 
 import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
+import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
 import { spliceByElem } from "../util/shared/arrays"
 import { FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
@@ -62,10 +63,7 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         if (destruction.f & FRAG_ORPHAN_CONTENT) {
             destruction.s.remove()
         } else {
-            const range = new Range()
-            range.setStartBefore(destruction.s)
-            range.setEndAfter(destruction.n)
-            range.deleteContents()
+            walkNodes(destruction, node => node.remove())
         }
     }
     if (instance) {

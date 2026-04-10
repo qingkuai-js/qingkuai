@@ -6,7 +6,7 @@
   "trailingComma": "none",
   "overrides": [
     {
-      "files": [".*rc", "*.json"],
+      "files": [".*rc", "*.json", "*.yml", "*.yaml"],
       "options": {
         "tabWidth": 2
       }
