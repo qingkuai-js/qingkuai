@@ -3,6 +3,7 @@ import type { ComponentInstance, Destruction } from "#type-declarations/runtime"
 
 import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
+import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
 import { spliceByElem } from "../util/shared/arrays"
 import { FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
@@ -34,10 +35,10 @@ export function createDestruction(instance: ComponentInstance | null = NIL) {
 }
 
 export function destroy(destruction: Destruction, detachNodes = true, detachFromParent = true) {
+    const effects = destruction.e
     const instance = destruction.m
     const cleaners = destruction.l
     const children = destruction.c
-    const effects = destruction.e
     if (instance) {
         runHooks(instance, BEFORE_DESTROY)
     }
@@ -55,23 +56,19 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
             disposeEffect(effects[i], true)
         }
     }
-    if (destruction.p?.c && detachFromParent) {
+    if (detachFromParent && destruction.p?.c) {
         spliceByElem(destruction.p.c, destruction, false)
     }
-    if (destruction.s && destruction.n && detachNodes) {
+    if (detachNodes && destruction.s && destruction.n) {
         if (destruction.f & FRAG_ORPHAN_CONTENT) {
             destruction.s.remove()
         } else {
-            const range = new Range()
-            range.setStartBefore(destruction.s)
-            range.setEndAfter(destruction.n)
-            range.deleteContents()
+            walkNodes(destruction, node => node.remove())
         }
     }
     if (instance) {
         runHooks(instance, AFTER_DESTROY)
     }
-    destruction.f = 0
     destruction.c = destruction.l = destruction.e = NIL
     destruction.s = destruction.n = destruction.m = destruction.p = NIL
 }

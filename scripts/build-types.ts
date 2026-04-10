@@ -1,5 +1,7 @@
+import fsExtra from "fs-extra"
 import nodeUrl from "node:url"
 import nodePath from "node:path"
+
 import { Extractor, ExtractorConfig } from "@microsoft/api-extractor"
 
 const dirPath = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url))
@@ -26,3 +28,20 @@ const dirPath = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url))
         }
     )
 })
+
+const languageSrviceDtsTargetPath = nodePath.resolve(
+    dirPath,
+    "../dist/types/language-service/qingkuai.d.ts"
+)
+const languageServiceDtsSourceContent = fsExtra.readFileSync(
+    nodePath.resolve(dirPath, "../src/types/qingkuai.d.ts"),
+    "utf-8"
+)
+fsExtra.createFileSync(languageSrviceDtsTargetPath)
+fsExtra.writeFileSync(
+    languageSrviceDtsTargetPath,
+    languageServiceDtsSourceContent.replace(
+        /(['"])#type-declarations\/runtime(?:-ex)?\1/g,
+        "$1../runtime/index$1"
+    )
+)

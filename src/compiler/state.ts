@@ -44,6 +44,7 @@ function newAnalyzeResult(): AnalyzeResult {
                 passive: new Set(),
                 nonPassive: new Set()
             },
+            keyedSelectorInfos: new Map(),
             slots: newCleanObj(),
             parsedEvents: new Map(),
             nodeContexts: new Map(),
@@ -95,7 +96,6 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             checkMode: false,
             reactivityMode: "reactive",
             interpretiveComments: false,
-            typeDeclarationFilePath: "",
             whitespace: "trim-collapse",
             preserveHtmlComments: false,
             shorthandDerivedDeclaration: true

@@ -340,7 +340,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             if (genericEndIndex !== -1) {
                 templateNode.typeArgument = {
                     raw: dps.slice(1, genericEndIndex),
-                    loc: getLocByIndex(index + 1, index + genericEndIndex + 1)
+                    loc: getLocByIndex(index + 1, index + genericEndIndex)
                 }
                 markPositionFlag(
                     PositionFlag.InScript,
@@ -482,7 +482,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                         fullValueEndIndex = reduceSource(endCharIndex + 1).index
                     }
                 }
-                if (isInterpolatedAttr) {
+                if (isInterpolatedAttr && valueEnclosure === "curly") {
                     markPositionFlag(PositionFlag.InScript, valueStartIndex, valueEndIndex)
                 }
             }

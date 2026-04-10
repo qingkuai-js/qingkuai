@@ -1,16 +1,16 @@
 import type { AnyObject } from "#type-declarations/tools"
 import type { ClassAttrValue } from "#type-declarations/runtime"
 
+import { getElementValue } from "./dom"
+import { ATTRIBUTE_PREFIX } from "./constants"
 import { NotArrayOrSet } from "./messages/error"
 import { objectKeys } from "../util/shared/aliases"
-import { getElementValue, getNodeContext } from "./dom"
 import { reactiveNotEqual } from "../util/runtime/sundry"
 import { any, notEqual, optc } from "../util/shared/sundry"
 import { isArray, isBoolean, isString } from "../util/shared/assert"
 
 export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
     let className = ""
-    const attributes = getNodeContext(elem).a
     if (isString(value)) {
         className = value
     } else if (isArray(value)) {
@@ -28,22 +28,21 @@ export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
         className += getClassNameWithObject(value)
     }
 
-    if (className != attributes.class) {
+    if (className != any(elem)[ATTRIBUTE_PREFIX + "class"]) {
         if (!className) {
             elem.removeAttribute("class")
         } else {
             elem.className = className
         }
-        attributes.class = className
+        any(elem)[ATTRIBUTE_PREFIX + "class"] = className
     }
 }
 
 export function setAttribute(elem: HTMLElement, name: string, value: any) {
-    const attributes = getNodeContext(elem).a
-    if (!reactiveNotEqual(attributes[name], value)) {
+    if (!reactiveNotEqual(any(elem)[ATTRIBUTE_PREFIX + name], value)) {
         return
     }
-    attributes[name] = value
+    any(elem)[ATTRIBUTE_PREFIX + name] = value
 
     if (name in elem) {
         try {
@@ -87,7 +86,7 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
             for (const option of elem.options) {
                 option.selected = !notEqual(target, getElementValue(option))
             }
-            getNodeContext(elem).a.value = target
+            any(elem)[ATTRIBUTE_PREFIX + "value"] = target
         }
     } else {
         const containerIsArray = isArray(target)

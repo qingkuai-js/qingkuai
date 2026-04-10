@@ -1,12 +1,12 @@
-import type { RuntimeCodeWriter } from "../writer"
+import type { RuntimeCodeWriter } from "../transformer/writer"
 import type { TemplateFragment } from "#type-declarations/compiler"
 
-import { stringify } from "../../../util/shared/aliases"
-import { isUndefined } from "../../../util/shared/assert"
-import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
-import { isValidIdentifierName } from "../../../util/compiler/assert"
-import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
+import { stringify } from "../../util/shared/aliases"
+import { isUndefined } from "../../util/shared/assert"
+import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
+import { isValidIdentifierName } from "../../util/compiler/assert"
+import { newCleanObj, traverseObject } from "../../util/shared/sundry"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../state"
 
 export function writeStringLiteralsDeclarations(
     writer: RuntimeCodeWriter,

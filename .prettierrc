@@ -6,13 +6,13 @@
   "trailingComma": "none",
   "overrides": [
     {
-      "files": [".*rc", "*.json"],
+      "files": [".*rc", "*.json", "*.yml", "*.yaml"],
       "options": {
         "tabWidth": 2
       }
     },
     {
-      "files": "regular.ts",
+      "files": ["regular.ts", "src/types/qingkuai.d.ts"],
       "options": {
         "printWidth": 200
       }

@@ -10,12 +10,13 @@ export {
 } from "./reactivity/value"
 
 export {
+    setText,
     getChild,
     getSibling,
-    setText,
     newTextNode,
     insertBefore,
     getChildAsText,
+    getSiblingAsText,
     createFragmentGetter
 } from "./dom"
 

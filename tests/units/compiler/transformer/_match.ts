@@ -21,7 +21,7 @@ import { analyzeTemplate } from "../../../../src/compiler/analyzer/template"
 import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer"
 import { removeEliminatedNodes } from "../../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../../src/compiler/transformer/runtime/script"
-import { writeStringLiteralsDeclarations } from "../../../../src/compiler/transformer/runtime/compress"
+import { writeStringLiteralsDeclarations } from "../../../../src/compiler/optimizer/compress"
 
 export function matchTransformedScript(
     source: string,

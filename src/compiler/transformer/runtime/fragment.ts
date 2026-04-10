@@ -1,6 +1,8 @@
 import type {
     TemplateNode,
+    SelectionCache,
     TemplateFragment,
+    SelectionCacheItem,
     TemplateNodeContext
 } from "#type-declarations/compiler"
 import type { RuntimeCodeWriter } from "../writer"
@@ -11,6 +13,11 @@ import {
     interpolatedAttrStartCharRE
 } from "../../regular"
 import {
+    FRAG_LEADING_ANCHOR,
+    FRAG_ORPHAN_CONTENT,
+    FRAG_WHOLE_CONTENT
+} from "../../../util/shared/flags"
+import {
     getTemplateNodeContext,
     getGeneratedStaticTextContent
 } from "../../../util/compiler/template"
@@ -19,11 +26,6 @@ import { newCleanObj } from "../../../util/shared/sundry"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { CREATE_ANCHOR_DIRECTIVES, SPREAD_TAG } from "../../constants"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import {
-    FRAG_LEADING_ANCHOR,
-    FRAG_ORPHAN_CONTENT,
-    FRAG_WHOLE_CONTENT
-} from "../../../util/shared/flags"
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
     if (!nodes.length) {
@@ -272,6 +274,7 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
     let isOrphan = false
     let fragmentFlag = 0
     const flagInterpretive: string[] = []
+    const selectionCache: SelectionCache = newCleanObj()
     if (isFragmentWholeContent(fragment)) {
         fragmentFlag |= FRAG_WHOLE_CONTENT
         flagInterpretive.push("WHOLE_CONTENT")
@@ -288,6 +291,7 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
     if (!fragment.id) {
         fragment.id = ensureIdWithNumSuffix("_fragment")
     }
+
     const internalId = generateIdentifier.internal
     const interpretiveComment =
         fragmentFlag && inputDescriptor.options.interpretiveComments
@@ -300,12 +304,46 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
         if (isOrphan && selection === fragment.selections[0]) {
             continue
         }
-        writer.wrapLine().write(`const ${selection.id} = `)
-        writer.write(
-            `${internalId}.getChild${selection.replaceWithText ? "AsText" : ""}(${
-                selection.parent ?? fragment.id
-            }${selection.index ? `, ${selection.index}` : ""})`
-        )
+
+        const index = selection.index ?? 0
+        const parentId = selection.parent ?? fragment.id
+        const methodSuffis = selection.replaceWithText ? "AsText" : ""
+        let selectExpression = `${internalId}.getChild${methodSuffis}(${parentId}`
+        if (index) {
+            const sameParentSelections = selectionCache[parentId]
+            if (sameParentSelections?.length) {
+                let closest: SelectionCacheItem | null = null
+                for (let i = sameParentSelections.length - 1; i >= 0; i--) {
+                    const item = sameParentSelections[i]
+                    if (item.index <= index) {
+                        closest = item
+                        break
+                    }
+                }
+                if (closest) {
+                    const distance = index - closest.index
+                    if (distance) {
+                        const getSiblingMethod = `getSibling${methodSuffis}`
+                        selectExpression =
+                            `${internalId}.${getSiblingMethod}` +
+                            `(${closest.id}${distance > 1 ? `, ${distance}` : ""})`
+                    }
+                } else {
+                    selectExpression += `, ${index}`
+                }
+            } else {
+                selectExpression += `, ${index}`
+            }
+        }
+        if (selectExpression.startsWith(`${internalId}.getChild`)) {
+            selectExpression += ")"
+        }
+
+        writer.wrapLine().write(`const ${selection.id} = ${selectExpression}`)
+        ;(selectionCache[parentId] ??= []).push({
+            id: selection.id,
+            index
+        })
     }
     return writer
 }

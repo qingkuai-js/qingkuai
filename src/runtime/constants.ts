@@ -18,6 +18,12 @@ export const NOOP = () => {}
 export const UNDEF = undefined
 export const TOARRAY = (v: any) => [v]
 
+export const ATTRIBUTE_PREFIX = "__qk__attr"
+export const EVENT_FLAG = "__qk__event_flag"
+export const DELEGATE_PREFIX = "__qk__delegate"
+export const NODE_CONTEXT = "__qk__node_context"
+export const FRAGMENT_FLAG = "__qk__fragment_flag"
+
 export const OBJECT = Object
 export const REFLECT = Reflect
 export const RESOLVED = Promise.resolve()
@@ -49,7 +55,3 @@ export const DESTRUCT_HTML: HtmlBlockOptions = {
     escapeScript: true,
     escapeTags: ["link", "iframe", "form"]
 }
-
-// symbols
-export const NODE_CONTEXT = Symbol("qk: nodecontext")
-export const FRAGMENT_FLAG = Symbol("qk: fragment flag")

@@ -6,6 +6,7 @@
 	let rawHtml = "<strong>dynamic html</strong>"
 	let rawText = "fallback text"
 	let fallbackText = "N/A"
+	let selected
 	let mount = document.body
 	let list = [
 		{ id: 1, text: "A", ok: true },
@@ -19,6 +20,10 @@
 	function onItemClick(item, index) {
 		item.ok = !item.ok
 		title = item.text + index
+	}
+
+	function select(item) {
+		selected = item
 	}
 </lang-js>
 
@@ -47,4 +52,9 @@
 	<section #catch={err}>fail: {err?.message}</section>
 
 	<div #html={rawHtml}>{rawText}</div>
+
+	<div #for={item of 3} #key={item}>
+		<div !class={selected === item ? "danger" : ""}></div>
+		<button @click={select(item)}></button>
+	</div>
 </div>

@@ -58,7 +58,7 @@ export function isLiteral(node: PartialAnyNode) {
 }
 
 export function isInlineEventHandler(node: AnyNode) {
-    switch (stripTypeExpressions(node).type) {
+    switch (node.type) {
         case "Identifier":
         case "MemberExpression":
         case "FunctionExpression":
@@ -68,6 +68,19 @@ export function isInlineEventHandler(node: AnyNode) {
         }
         default: {
             return true
+        }
+    }
+}
+
+export function isSimpleHandlerReference(node: AnyNode) {
+    switch (node.type) {
+        case "Identifier":
+        case "MemberExpression":
+        case "OptionalMemberExpression": {
+            return true
+        }
+        default: {
+            return false
         }
     }
 }

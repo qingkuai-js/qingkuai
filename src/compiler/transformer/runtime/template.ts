@@ -1,13 +1,25 @@
 import type {
     TemplateNode,
+    TemplateFragment,
     TemplateAttribute,
-    TemplateNodeContext,
-    TemplateFragment
+    TemplateNodeContext
 } from "#type-declarations/compiler"
 import type { StringLiteral } from "@babel/types"
 import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
 
+import {
+    isExpressionEqual,
+    isFunctionLiteral,
+    isInlineEventHandler,
+    isSimpleHandlerReference
+} from "../../estree/assert"
+import {
+    hasSelectorForAttribute,
+    hasSelectorForTextNode,
+    writeSelectorDeclaration,
+    getForBlockSelectorInfos
+} from "../../optimizer/selector"
 import {
     getParsedEventInfo,
     getParsedDirective,
@@ -18,24 +30,26 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
-import { getMaybeReusedString } from "./compress"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
+import { writeParsedExpression } from "./interpolation"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { getLocByIndex } from "../../../util/compiler/position"
-import { isHtmlDirectiveChild } from "../../../util/compiler/assert"
-import { isValidIdentifierName } from "../../../util/compiler/assert"
+import { getMaybeReusedString } from "../../optimizer/compress"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
+import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
-import { isExpressionEqual, isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
-import { writeParsedExpression } from "./interpolation"
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
     nodes: TemplateNode[],
     isRoot = true
 ) {
+    if (isRoot) {
+        analyzeResult.template.keyedSelectorInfos.clear()
+    }
+
     const componentFragment = analyzeResult.template.componentFragment
 
     if (isRoot && componentFragment?.content.length) {
@@ -225,8 +239,22 @@ function generateDirectiveBlock(
             const parsedDirective = getParsedDirective(directive)!
             const patterns = parsedDirective.patterns
             const keyDirective = nodeContext.attributesMap["#key"]
+            const selectorInfos =
+                keyDirective && !inputDescriptor.options.debug
+                    ? getForBlockSelectorInfos(nodeContext)
+                    : []
             const fn = keyDirective ? "keyedListBlock" : "listBlock"
-            writer.wrapLine().write(`${internalId}.${fn}(`).indent()
+            const nodeGetterId = selectorInfos.length ? ensureIdWithNumSuffix("_getNodeByKey") : ""
+
+            if (keyDirective) {
+                analyzeResult.template.keyedSelectorInfos.set(nodeContext, selectorInfos)
+            }
+            writer.wrapLine()
+
+            if (nodeGetterId) {
+                writer.write(`const ${nodeGetterId} = `)
+            }
+            writer.write(`${internalId}.${fn}(`).indent()
 
             if (keyDirective) {
                 writer.write(nodeContext.anchorId).write(",").wrapLine()
@@ -246,8 +274,24 @@ function generateDirectiveBlock(
                 writer.writeParsedExpression(keyDirective).dedent().writeLine("},")
             }
             return generateDirectiveRender({
+                context() {
+                    writeContextDeclaration(writer, directive)
+                },
                 enclosure() {
                     writer.dedent().write(")")
+
+                    if (nodeGetterId) {
+                        for (const selectorInfo of selectorInfos) {
+                            writeSelectorDeclaration(writer, selectorInfo, nodeGetterId)
+                        }
+
+                        writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false)
+                        for (const selectorInfo of selectorInfos) {
+                            writer.wrapLine().write(`${selectorInfo.id}(`)
+                            writer.write(`${selectorInfo.topLevelTransformedTo})`)
+                        }
+                        writer.dedent().write("})")
+                    }
                 },
                 arg() {
                     if (!patterns.length) {
@@ -262,9 +306,6 @@ function generateDirectiveBlock(
                         }
                         writer.write(parsedDirective.context!.argId).write(keyDirective ? ")" : "")
                     }
-                },
-                context() {
-                    writeContextDeclaration(writer, directive)
                 },
                 returns() {
                     if (parsedDirective.context?.returnsId) {
@@ -333,7 +374,10 @@ function generateRenderEffect(
 
         const node = nodes[index]
         const nodeContext = getTemplateNodeContext(node)
-        const textContentHasRenderEffect = doesTextContentHasRenderEffect(node)
+        const selectorInfos = getActiveSelectorInfos(nodeContext)
+        const textContentManagedBySelector = hasSelectorForTextNode(selectorInfos, nodeContext)
+        const textContentHasRenderEffect =
+            !textContentManagedBySelector && doesTextContentHasRenderEffect(node)
 
         const dfs = () => {
             if (node.children.length) {
@@ -403,6 +447,9 @@ function generateRenderEffect(
         const dynamicAttrsWithEffect: TemplateAttribute[] = []
         const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
         for (const attribute of nodeContext.dynamicAttributes) {
+            if (hasSelectorForAttribute(selectorInfos, nodeContext, attribute)) {
+                continue
+            }
             if (
                 getParsedExpression(attribute)!.reactive &&
                 !equalsWithKeyDirectiveValue(nodeContext, attribute)
@@ -429,7 +476,7 @@ function generateRenderEffect(
                 const baseName = eventInfo.eventName.slice(1)
                 const delegated = DELEGATABLE_EVENTS.has(baseName)
                 const stringifiedBaseName = getMaybeReusedString(baseName)
-                const stripTypeExpressionNode = stripTypeExpressions(expression.node)
+                const stripedTypeExpressionNode = stripTypeExpressions(expression.node)
                 const insertInterpretiveComment = inputDescriptor.options.interpretiveComments
                 writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
                 writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
@@ -437,9 +484,14 @@ function generateRenderEffect(
                 if (wrapperFlag.value) {
                     writer.write(`${internalId}.createEventWrapper(`)
                 }
-                if (isFunctionLiteral(stripTypeExpressionNode)) {
+                if (
+                    !isInlineEventHandler(stripedTypeExpressionNode) &&
+                    isSimpleHandlerReference(stripedTypeExpressionNode)
+                ) {
                     writer.writeParsedExpression(event)
-                } else if (!isInlineEventHandler(stripTypeExpressionNode)) {
+                } else if (isFunctionLiteral(stripedTypeExpressionNode)) {
+                    writer.writeParsedExpression(event)
+                } else if (!isInlineEventHandler(stripedTypeExpressionNode)) {
                     writer.write(`function ($arg){`).indent()
                     writer.write(`${internalId}.call(`)
                     writer.writeParsedExpression(event)
@@ -512,7 +564,7 @@ function generateRenderEffect(
                 }
             }
 
-            if (!textContentHasRenderEffect) {
+            if (!textContentHasRenderEffect && !textContentManagedBySelector) {
                 writeSetTextCall()
             }
             dfs()
@@ -791,6 +843,18 @@ function writeFragmentAttachment(
 ) {
     const method = fragment === analyzeResult.template.componentFragment ? "mount" : "insertBefore"
     return writer.write(`\n${generateIdentifier.internal}.${method}(${anchorId}, ${fragment.id})`)
+}
+
+function getActiveSelectorInfos(nodeContext: TemplateNodeContext) {
+    for (let currentNode: TemplateNode | null = nodeContext.node; currentNode; ) {
+        const currentContext = getTemplateNodeContext(currentNode)
+        const selectorInfos = analyzeResult.template.keyedSelectorInfos.get(currentContext)
+        if (selectorInfos?.length) {
+            return selectorInfos
+        }
+        currentNode = currentNode.parent
+    }
+    return []
 }
 
 // 优化：当文本内容仅包含一个插值表达式，且该表达式与同一节点上的 #key 指令的表达式相等时，不为该文本内容生成 render effect

@@ -10,12 +10,12 @@ import type {
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
 
-declare const Render: unique symbol
-
 interface CancelablePromiseExtra {
     cancel: GeneralFunc
     [CANCELABLE]: boolean
 }
+
+declare const RENDER: unique symbol
 
 export interface PropertyInfo {
     v: any // value
@@ -45,11 +45,6 @@ export interface ComponentInstance {
     u: boolean // updating
     p: ComponentInstance | null // parent
     h: FixedArray<GeneralFunc[] | undefined, 6> // hooks
-}
-
-export interface NodeContext {
-    a: Record<string, any> // attributes
-    e: Record<string, [ArbitraryFunc, number?]> // delegated events
 }
 
 export interface Effect {
@@ -124,6 +119,10 @@ export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper
 }
 
+export type QingkuaiComponent<F extends ArbitraryFunc> = {
+    [RENDER]: F
+}
+
 export type ReactiveMethods = Record<
     number,
     Record<ObjectKeys, ArbitraryFunc> & { [WRAPPER]?: any }
@@ -141,10 +140,6 @@ export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 export type GeneralEffectFunc = () => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
-
-export type QingkuaiComponent<F extends ArbitraryFunc> = {
-    [Render]: F
-}
 
 export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

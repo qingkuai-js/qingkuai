@@ -37,7 +37,7 @@ export function compile(source: string, options: CompileOptions = {}) {
     } satisfies CompileResult
 }
 
-export function compileIntermediate(source: string, options: CompileIntermediateOptions) {
+export function compileIntermediate(source: string, options: CompileIntermediateOptions = {}) {
     resetCompilerState({ ...options, checkMode: true })
 
     const templateNodes = parseTemplate(source)

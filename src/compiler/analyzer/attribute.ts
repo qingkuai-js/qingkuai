@@ -15,8 +15,8 @@ import { RedundantBooleanAttributeValue } from "../message/warn"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
 import { getTemplateNodeContext } from "../../util/compiler/template"
+import { increaseReusedStringUsedTimes } from "../optimizer/compress"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { increaseReusedStringUsedTimes } from "../transformer/runtime/compress"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {

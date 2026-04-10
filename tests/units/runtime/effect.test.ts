@@ -29,7 +29,6 @@ import {
 import { NOOP } from "../../../src/runtime/constants"
 import { checkEffectDependaceManager } from "./_match"
 import { isReactive } from "../../../src/util/runtime/assert"
-import { currentDestruction } from "../../../src/runtime/state"
 import { matchGlobalError } from "../../../src/util/testing/match"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { isArray, isNumber } from "../../../src/util/shared/assert"
@@ -38,6 +37,8 @@ import { createWarningMatcher } from "../../../src/util/testing/sundry"
 import { constReact, react } from "../../../src/runtime/reactivity/value"
 import { MaximumUpdateDepthExceeded } from "../../../src/runtime/messages/error"
 import { getRefProperty, toRaw, nextTick } from "../../../src/util/runtime/sundry"
+import { backToParentDestruction, currentDestruction } from "../../../src/runtime/state"
+import { createDestruction, destroy, pushDestructionCleaner } from "../../../src/runtime/destroy"
 
 const arr: any[] = []
 const invokeMarker = vi.fn()
@@ -58,6 +59,40 @@ beforeEach(cleanup)
 function makeConsecutiveNumbersArr(length: number) {
     return arrayFrom({ length }, (_, i) => i)
 }
+
+test("destroy should disconnect destruction from parent/effects", () => {
+    const parent = currentDestruction!
+    const nested = createDestruction()
+    const cleaner = vi.fn()
+    pushDestructionCleaner(cleaner)
+
+    const nestedEffect = renderEffect(NOOP)
+
+    createDestruction()
+    const nestedChildEffect = renderEffect(NOOP)
+
+    backToParentDestruction()
+    backToParentDestruction()
+
+    expect(currentDestruction).toBe(parent)
+    expect(parent.c?.includes(nested)).toBeTruthy()
+
+    destroy(nested, false)
+
+    expect(cleaner).toHaveBeenCalledTimes(1)
+    expect(nestedEffect.d).toBeNull()
+    expect(nestedChildEffect.d).toBeNull()
+    expect(parent.c?.includes(nested)).toBeFalsy()
+    expect(nested.f).toBe(0)
+    expect(nested.e).toBeNull()
+    expect(nested.c).toBeNull()
+    expect(nested.l).toBeNull()
+    expect(nested.m).toBeNull()
+    expect(nested.p).toBeNull()
+    expect(nested.s).toBeNull()
+    expect(nested.n).toBeNull()
+    expect(currentDestruction).toBe(parent)
+})
 
 test("Functions of render effect", async () => {
     const value = react(1)
