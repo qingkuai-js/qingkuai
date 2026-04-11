@@ -6,6 +6,7 @@ const todoMvcScenario: E2EScenario = {
     name: "todo-mvc",
     title: "TodoMVC",
     readySelector: "[data-page='todo-mvc']",
+    compileOptions: { whitespace: "collapse" },
     input: formatSourceCode(`
         <lang-js>
             import { nextTick } from "qingkuai"
@@ -101,16 +102,19 @@ const todoMvcScenario: E2EScenario = {
             </header>
             <main
                 class="main"
-                !hidden={!todos.length || filterKind === "completed"}
+                !hidden={!filtered.length}
             >
-                <input
-                    id="toggle-all"
-                    type="checkbox"
-                    class="toggle-all"
-                    @change={handleToggleAllTodos}
-                    !checked={!filter.active.length}
-                />
-                <label for="toggle-all">Mark all as complete</label>
+                <div !hidden={filterKind === "completed"}>
+                    <input
+                        id="toggle-all"
+                        type="checkbox"
+                        class="toggle-all"
+                        @change={handleToggleAllTodos}
+                        !checked={!filter.active.length}
+                        !disabled={!todos.length}
+                    />
+                    <label for="toggle-all">Mark all as completed</label>
+                </div>
                 <ul class="todo-list">
                     <li
                         class="todo"

@@ -105,15 +105,20 @@ export function createFragmentGetter(html: string, arr?: string[]) {
 // Restore the compressed HTML string to its original form
 function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
     for (let i = 0; i < html.length; ) {
-        if (html.charCodeAt(i) !== 47) {
+        if (html.charCodeAt(i) !== 124) {
             ret += html[i++]
             continue
         }
 
         const nextCode = html.charCodeAt(++i)
-        if (nextCode === 47) {
-            ret += "/"
+        if (nextCode === 124) {
+            ret += "|"
             i++
+            continue
+        }
+
+        if (nextCode < 48 || nextCode > 57) {
+            ret += "|"
             continue
         }
 

@@ -54,6 +54,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByRange } from "../../util/compiler/position"
 import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
+import { collectReusedStringReference } from "../optimizer/compress"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
 
 export function analyzeScript() {
@@ -96,6 +97,7 @@ const visitor: Visitor = {
         }
         if (node.type !== "Program") {
             markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
+            collectReusedStringReference(node, context, analyzeResult.script.reusedStringReferences)
         }
     },
 

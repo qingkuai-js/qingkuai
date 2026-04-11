@@ -195,6 +195,16 @@ export interface ParsedDirective {
     patterns: ParsedPattern[]
     baseStartSourceIndex: number
 }
+export interface StringLiteralDetail {
+    value: string
+    computed: boolean
+    propertyName: boolean
+}
+export interface ReusedStringReference {
+    range: Range
+    value: string
+    computed: boolean
+}
 export interface ParsedExpression {
     source: string
     node: Expression
@@ -202,6 +212,7 @@ export interface ParsedExpression {
     startSourceIndex: number
     contextReferences: ContextReference[]
     topLevelReferences: TopLevelReferences
+    reusedStringReferences: ReusedStringReference[]
 }
 export interface GeneratedSelectorInfo {
     id: string
@@ -294,6 +305,7 @@ export interface ScriptAnalyzeRet {
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     topLevelReferences: TopLevelReferences
+    reusedStringReferences: ReusedStringReference[]
     preMutatedTopLevelIdentifiers: Set<string>
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<VariableDeclarator, EstreeWalkContext<Identifier>>

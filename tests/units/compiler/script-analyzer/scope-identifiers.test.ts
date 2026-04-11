@@ -145,7 +145,7 @@ test("Function declarations and function expressions", () => {
     })
 })
 
-test("Class decalrations and class expressions", () => {
+test("Class declarations and class expressions", () => {
     const ast = localParse(`
         class a {
             _mark1_
@@ -263,7 +263,7 @@ test("Functions without BlockStatement", () => {
     })
 })
 
-test("For realeated statements without BlockStatement", () => {
+test("For related statements without BlockStatement", () => {
     const ast = localParse(`
         for (let a, b; _mark1_; ) _mark2_;
         for (const { c, d: e = f, ...g } of _mark3_)

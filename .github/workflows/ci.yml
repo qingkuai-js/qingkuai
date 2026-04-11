@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   push:
   pull_request:
@@ -25,6 +28,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Run typecheck
+        run: pnpm run typecheck
 
       - name: Run lint
         run: pnpm run lint

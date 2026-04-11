@@ -58,7 +58,7 @@ test("Single level", () => {
     )
 })
 
-test("Muti level", () => {
+test("Multi level", () => {
     const nodeList = parseTemplateTesting(
         formatSourceCode(`
                 ...
@@ -893,7 +893,7 @@ test("Type arguments for components", () => {
     })
 })
 
-test("Whether the child elemnts of textarea are parsed as textContent", () => {
+test("Whether the child elements of textarea are parsed as textContent", () => {
     const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <textarea>
@@ -923,7 +923,7 @@ test("Whether the child elemnts of textarea are parsed as textContent", () => {
     })
 })
 
-test("Whehter invalid tag structure will be parsed as text content", () => {
+test("Whether invalid tag structure will be parsed as text content", () => {
     let nodeList = parseTemplateTesting(`<div><></></div>`)
     matchTemplateNodeList(nodeList, {
         tag: "div",

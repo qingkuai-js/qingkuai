@@ -9,7 +9,7 @@ import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
-test("Simple pasing", () => {
+test("Simple parsing", () => {
     const nodeList = parseTemplateTesting(
         `<a class="link" href="https://qingkuai.dev"> Documentation </a>`
     )

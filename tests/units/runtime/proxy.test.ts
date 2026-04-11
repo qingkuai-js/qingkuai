@@ -291,7 +291,7 @@ describe("Destructuring", () => {
     })
 })
 
-test("The attched property for Set and Map should be reactive", () => {
+test("The attached property for Set and Map should be reactive", () => {
     const set = react(new Set())
     const map = constReact(new Map())
     const shallowSet = shallowConstReact(new Set())

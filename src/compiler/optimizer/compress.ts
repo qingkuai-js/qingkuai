@@ -1,6 +1,15 @@
+import type {
+    EstreeWalkContext,
+    StringLiteralDetail,
+    ReusedStringReference
+} from "#type-declarations/compiler"
+import type { CodeEditor } from "../transformer/editor"
 import type { RuntimeCodeWriter } from "../transformer/writer"
+import type { AnyNode, WithLoc } from "#type-declarations/estree"
+import type { StringLiteral, TemplateLiteral } from "@babel/types"
 import type { TemplateFragment } from "#type-declarations/compiler"
 
+import { any } from "../../util/shared/sundry"
 import { stringify } from "../../util/shared/aliases"
 import { isUndefined } from "../../util/shared/assert"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
@@ -51,11 +60,11 @@ export function writeStringLiteralsDeclarations(
             for (let i = 0; i < fragment.content.length; i++) {
                 const str = fragment.content[i]
                 const compressStringIndex = compressStringIndexMap.get(str)
-                fragment.content[i] = fragment.content[i].replaceAll("/", "//")
+                fragment.content[i] = fragment.content[i].replaceAll("|", "||")
 
                 if (!isUndefined(compressStringIndex)) {
                     increaseReusedStringUsedTimes(str)
-                    fragment.content[i] = "/" + compressStringIndex
+                    fragment.content[i] = "|" + compressStringIndex
                 }
             }
         }
@@ -106,6 +115,40 @@ export function getMaybeReusedString(value: string) {
     return `/* ${value} */ ${literalId}`
 }
 
+export function collectReusedStringReference(
+    node: WithLoc<AnyNode>,
+    context: EstreeWalkContext,
+    references: ReusedStringReference[]
+) {
+    const detail = getTransformableStringLiteralValue(node, context)
+    if (isUndefined(detail)) {
+        return
+    }
+
+    increaseReusedStringUsedTimes(detail.value, detail.propertyName)
+    references.push({
+        value: detail.value,
+        range: node.range!,
+        computed: detail.computed
+    })
+}
+
+export function replaceReusedStringReferences(
+    editor: CodeEditor,
+    references: ReusedStringReference[]
+) {
+    for (const reference of references) {
+        const literalId = analyzeResult.reusedStrings[reference.value]?.id
+        if (literalId) {
+            editor.replace(
+                ...reference.range,
+                reference.computed ? `[${literalId}]` : literalId,
+                true
+            )
+        }
+    }
+}
+
 export function increaseReusedStringUsedTimes(value: string, isPropertyName = false) {
     if (
         inputDescriptor.options.debug ||
@@ -120,4 +163,131 @@ export function increaseReusedStringUsedTimes(value: string, isPropertyName = fa
         times: 0
     }
     analyzeResult.reusedStrings[value].times++
+}
+
+function getTransformableStringLiteralValue(node: WithLoc<AnyNode>, context: EstreeWalkContext) {
+    let value = ""
+    switch (node.type) {
+        case "StringLiteral": {
+            value = (node as WithLoc<StringLiteral>).value
+            break
+        }
+        case "TemplateLiteral": {
+            const templateNode = node as WithLoc<TemplateLiteral>
+            if (templateNode.expressions.length) {
+                return
+            }
+            value = templateNode.quasis[0]?.value.cooked ?? ""
+            break
+        }
+        default: {
+            return
+        }
+    }
+
+    if (isInTypeOnlyContext(node, context)) {
+        return
+    }
+
+    const parentNode = context.parent?.value
+    if (!parentNode) {
+        return {
+            value,
+            computed: false,
+            propertyName: false
+        } satisfies StringLiteralDetail
+    }
+
+    switch (parentNode.type) {
+        case "TSPropertySignature":
+        case "TSMethodSignature": {
+            if (node === any(parentNode).key && !any(parentNode).computed) {
+                return
+            }
+            break
+        }
+        case "ObjectProperty":
+        case "ObjectMethod":
+        case "ClassMethod":
+        case "ClassPrivateMethod":
+        case "ClassProperty":
+        case "ClassPrivateProperty":
+        case "ClassAccessorProperty": {
+            const isNonComputedKey = node === any(parentNode).key && !any(parentNode).computed
+            if (isNonComputedKey) {
+                if (value === "__proto__") {
+                    return
+                }
+                return {
+                    value,
+                    computed: true,
+                    propertyName: true
+                } satisfies StringLiteralDetail
+            }
+            break
+        }
+        case "ImportDeclaration":
+        case "ExportAllDeclaration":
+        case "ExportNamedDeclaration":
+        case "TSImportType":
+        case "TSLiteralType": {
+            return
+        }
+        case "TaggedTemplateExpression": {
+            if (node === parentNode.quasi) {
+                return
+            }
+            break
+        }
+        case "TSEnumMember":
+        case "TSModuleDeclaration": {
+            if (node === any(parentNode).id) {
+                return
+            }
+            break
+        }
+    }
+
+    return {
+        value,
+        computed: false,
+        propertyName: false
+    } satisfies StringLiteralDetail
+}
+
+function isInTypeOnlyContext(node: WithLoc<AnyNode>, context: EstreeWalkContext) {
+    let child = node as AnyNode
+    for (let current = context.parent; current; current = current.parent) {
+        const currentNode = current.value as AnyNode
+        switch (currentNode.type) {
+            case "TSAsExpression":
+            case "TSSatisfiesExpression":
+            case "TSNonNullExpression":
+            case "TSInstantiationExpression": {
+                if (child === any(currentNode).expression) {
+                    child = currentNode
+                    continue
+                }
+                return true
+            }
+            case "TSTypeAssertion": {
+                if (child === any(currentNode).expression) {
+                    child = currentNode
+                    continue
+                }
+                return true
+            }
+            case "TSEnumDeclaration":
+            case "TSEnumMember": {
+                return false
+            }
+            default: {
+                if (currentNode.type.startsWith("TS")) {
+                    return true
+                }
+                child = currentNode
+            }
+        }
+    }
+    return false
 }

@@ -267,4 +267,58 @@ test.describe("todo-mvc case", () => {
         await expect(page.locator('.filters a[href="#/active"]')).not.toHaveClass(/selected/)
         await expect(page.locator('.filters a[href="#/completed"]')).not.toHaveClass(/selected/)
     })
+
+    test("completed filter hides mark-all and hides main when no completed todos", async ({
+        page,
+        visitScenario,
+    }) => {
+        await visitScenario("todo-mvc")
+
+        await page.locator(".new-todo").fill("Only active todo")
+        await page.locator(".new-todo").press("Enter")
+
+        await page.locator('.filters a[href="#/completed"]').click()
+        await expect(page.locator(".main")).not.toBeVisible()
+        await expect(page.locator("#toggle-all")).not.toBeVisible()
+    })
+
+    test("completed filter keeps main visible for completed todos and hides mark-all", async ({
+        page,
+        visitScenario,
+    }) => {
+        await visitScenario("todo-mvc")
+
+        await page.locator(".new-todo").fill("Completed one")
+        await page.locator(".new-todo").press("Enter")
+        await page.locator(".new-todo").fill("Active one")
+        await page.locator(".new-todo").press("Enter")
+        await page.locator(".todo-list .todo").first().locator(".toggle").click()
+
+        await page.locator('.filters a[href="#/completed"]').click()
+        await expect(page.locator(".main")).toBeVisible()
+        await expect(page.locator(".todo-list .todo")).toHaveCount(1)
+        await expect(page.locator(".todo-list .todo label")).toHaveText("Completed one")
+        await expect(page.locator("#toggle-all")).not.toBeVisible()
+    })
+
+    test("mark all as completed and switch to completed shows all items", async ({
+        page,
+        visitScenario,
+    }) => {
+        await visitScenario("todo-mvc")
+
+        await page.locator(".new-todo").fill("First todo")
+        await page.locator(".new-todo").press("Enter")
+        await page.locator(".new-todo").fill("Second todo")
+        await page.locator(".new-todo").press("Enter")
+        await expect(page.locator(".todo-list .todo")).toHaveCount(2)
+
+        await page.locator("#toggle-all").check()
+        await expect(page.locator(".todo-count")).toContainText("0")
+
+        await page.locator('.filters a[href="#/completed"]').click()
+        await expect(page.locator(".todo-list .todo")).toHaveCount(2)
+        await expect(page.locator(".todo-list .todo label").first()).toHaveText("First todo")
+        await expect(page.locator(".todo-list .todo label").nth(1)).toHaveText("Second todo")
+    })
 })

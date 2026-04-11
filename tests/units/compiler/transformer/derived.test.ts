@@ -250,7 +250,7 @@ describe("Development", () => {
     })
 })
 
-it("sbould not be transfomed as derived reactive value when shorthandDerivedDeclaration is false", () => {
+it("should not be transformed as derived reactive value when shorthandDerivedDeclaration is false", () => {
     for (let i = 0; i < 2; i++) {
         _matchTransformedScript(
             `

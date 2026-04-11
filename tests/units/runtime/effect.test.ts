@@ -298,7 +298,7 @@ test("Functions of watch effect", async () => {
     }
 })
 
-test("Runing sequence of diffrent effects", async () => {
+test("Running sequence of different effects", async () => {
     const value = react(0)
     ;[postEffect, renderEffect, preEffect, syncEffect, renderEffect, preEffect, postEffect].forEach(
         (fn, index) => {
@@ -584,7 +584,7 @@ test("Effect chains propagate only along their expected dependency paths", async
     }
 })
 
-test("Whether a runtime warning will be cause when effect dependants on no reactive value", () => {
+test("Whether a runtime warning will be caused when effect depends on no reactive value", () => {
     for (const effectFunc of reactiveEffectFuncs) {
         warningMatcher.mockClear()
         effectFunc(NOOP)
@@ -603,7 +603,7 @@ test("Whether a runtime warning will be cause when effect dependants on no react
     }
 })
 
-test("Wheter a runtime error will be cause when recursive update depth over than the maximum value", async () => {
+test("Whether a runtime error will be caused when recursive update depth exceeds the maximum value", async () => {
     const errMsg = getErrorMessage(() => MaximumUpdateDepthExceeded())
     const stopGlobalErrorWatcher = matchGlobalError(errMsg, true)
     const v1 = react(0)
@@ -638,7 +638,7 @@ test("Wheter a runtime error will be cause when recursive update depth over than
     expect(arr).toEqual(makeConsecutiveNumbersArr(303))
 })
 
-describe("Whether traversal operations of specified types were recorded as depending on ITERATOR_KEYS", () => {
+describe("Traversal operations of specified types are tracked as ITERATOR_KEYS dependencies", () => {
     test("Depend on Set", async () => {
         const set = constReact(new Set([1, 2, []]))
         renderEffect(() => {

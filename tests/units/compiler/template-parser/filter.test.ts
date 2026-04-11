@@ -4,7 +4,7 @@ import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
-test("Wheter comment nodes were removed from parse result", () => {
+test("Whether comment nodes were removed from parse result", () => {
     const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <!-- xxx -->

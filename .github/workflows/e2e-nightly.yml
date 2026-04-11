@@ -1,9 +1,12 @@
 name: E2E Nightly
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "17 2 * * *"
 
 jobs:
   e2e-matrix:
