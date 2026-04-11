@@ -3,7 +3,7 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.61",
+  "version": "1.0.62",
   "sideEffects": false,
   "files": [
     "dist",
