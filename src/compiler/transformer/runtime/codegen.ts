@@ -52,11 +52,12 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         writer.write(`${contextId}.P = `).writeScriptNode(defaultProps.value).wrapLine()
     }
     generateDelegateEventsRegistration(writer, contextId)
-    writer.writeLine(`${internalId}.init(${contextId})`)
 
     if (usedIntrinsicVars.size) {
-        writer.write(`const { ${arrayFrom(usedIntrinsicVars).join(", ")} } = `)
+        writer.write(`\nconst { ${arrayFrom(usedIntrinsicVars).join(", ")} } = `)
     }
+    writer.write(`${internalId}.init(${contextId})`)
+
     if (!hoistWriter.empty) {
         writer.wrapLine().write(hoistWriter.code)
     }

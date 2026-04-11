@@ -3,7 +3,7 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.59",
+  "version": "1.0.61",
   "sideEffects": false,
   "files": [
     "dist",
@@ -32,9 +32,12 @@
   },
   "scripts": {
     "lint": "eslint",
-    "test": "vitest --run",
     "dev": "rollup -c -w",
     "bundle": "rollup -c",
+    "test:units": "vitest --run",
+    "test:e2e": "npm run bundle && playwright test",
+    "test:e2e-prod": "PROD_ONLY=1 npm run bundle && playwright test",
+    "test:e2e-serve": "npm run bundle && PLAYWRIGHT_PORT=34173 tsx tests/e2e/server.ts",
     "build": "rimraf dist && npm run build-types && npm run bundle",
     "build-types": "npx tsc && tsx scripts/build-types.ts && rimraf dist/temp-types",
     "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/qingkuai/syncs'"

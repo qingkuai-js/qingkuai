@@ -38,6 +38,17 @@ export const BEFORE_DESTROY = 4
 export const AFTER_DESTROY = 5
 
 // sundry
+export const KEY_NAME_FLAG =
+    KEY_SPACE |
+    KEY_TAB |
+    KEY_ENTER |
+    KEY_DELETE |
+    KEY_ESCAPE |
+    KEY_UP |
+    KEY_DOWN |
+    KEY_LEFT |
+    KEY_RIGHT
+
 export const KEY_FLAG_MAP = {
     " ": KEY_SPACE,
     Tab: KEY_TAB,

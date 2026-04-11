@@ -1,0 +1,49 @@
+name: E2E Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  e2e-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium-debug
+          - chromium-non-debug
+          - firefox-debug
+          - firefox-non-debug
+          - webkit-debug
+          - webkit-non-debug
+          - edge-debug
+          - edge-non-debug
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build bundle
+        run: pnpm run bundle
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit msedge
+
+      - name: Run E2E for project
+        run: pnpm exec playwright test --project=${{ matrix.project }} --reporter=line

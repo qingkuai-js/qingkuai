@@ -1,4 +1,3 @@
-import {} from "../shared/aliases"
 import { analyzeResult, generateIdentifier } from "../../compiler/state"
 
 export const createHashId = (function () {
