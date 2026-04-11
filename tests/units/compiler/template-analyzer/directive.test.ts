@@ -51,7 +51,7 @@ describe("#html", () => {
         ])
     })
 
-    test("Unnecessary direct", () => {
+    test("Unnecessary directive", () => {
         analyzeTemplateAndMatchMessages(`<div #html>...</div>`, [
             {
                 type: "warning",
@@ -310,7 +310,7 @@ describe(`#for`, () => {
         ])
     })
 
-    test("More then 2 binding patterns were provided", () => {
+    test("More than 2 binding patterns were provided", () => {
         analyzeTemplateAndMatchMessages(`<div #for={ a, b, c of arr }></div>`, [
             {
                 type: "error",
@@ -697,7 +697,7 @@ describe("#else", () => {
     })
 })
 
-test("#key: withot for directive", () => {
+test("#key: used without #for directive", () => {
     analyzeTemplateAndMatchMessages(`<div #for={0} #key={_}></div>`)
 
     analyzeTemplateAndMatchMessages(`<div #key={_}></div>`, [

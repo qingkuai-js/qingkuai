@@ -182,7 +182,7 @@ test("Functions of has handler", () => {
     expect(nums.$[1]).toBe(99)
 })
 
-test("Functions of getProtoType handler", () => {
+test("Functions of getPrototypeOf handler", () => {
     const obj = constReact({})
     syncEffect(() => {
         arr.push(Object.getPrototypeOf(obj))

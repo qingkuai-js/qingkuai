@@ -328,7 +328,7 @@ test("Type arguments for components", () => {
     })
 })
 
-test("Whehter invalid tag structure will be parsed as text content", () => {
+test("Whether invalid tag structure will be parsed as text content", () => {
     matchTemplateNodeList(parseTemplateTesting(`<></>`), {
         content: [
             {

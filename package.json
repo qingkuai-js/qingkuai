@@ -31,11 +31,11 @@
     }
   },
   "scripts": {
-      "lint": "eslint",
-      "dev": "rollup -c -w",
-      "bundle": "rollup -c",
-      "test:units": "vitest --run",
-      "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "dev": "rollup -c -w",
+    "bundle": "rollup -c",
+    "test:units": "vitest --run",
+    "typecheck": "tsc --noEmit",
     "test:e2e": "npm run bundle && playwright test",
     "test:e2e-prod": "PROD_ONLY=1 npm run bundle && playwright test",
     "test:e2e-serve": "npm run bundle && PLAYWRIGHT_PORT=34173 tsx tests/e2e/server.ts",

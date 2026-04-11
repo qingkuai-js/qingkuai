@@ -1,7 +1,7 @@
 import { test, describe } from "vitest"
 import { analyzeTemplateAndMatchMessages } from "./_match"
 
-test("Directive names only need to be checked for duplication against other directive names.", () => {
+test("Directive names only need to be checked for duplication against other directive names", () => {
     for (const tag of ["span", "Comp"]) {
         if (tag === "Comp") {
             analyzeTemplateAndMatchMessages(`<${tag} &target={_} #target={_}></${tag}>`)
@@ -95,7 +95,7 @@ describe("Non-component tag", () => {
         ])
     })
 
-    test("Dynamic and static class attribute can coexist.", () => {
+    test("Dynamic and static class attribute can coexist", () => {
         analyzeTemplateAndMatchMessages(`<div class="" !class={_}></div>`)
 
         analyzeTemplateAndMatchMessages(`<lang-js shallow !shallow></lang-js>`, [
@@ -107,7 +107,7 @@ describe("Non-component tag", () => {
         ])
     })
 
-    test("Event names only need to be checked for duplication against other event names.", () => {
+    test("Event names only need to be checked for duplication against other event names", () => {
         analyzeTemplateAndMatchMessages(`<div click="" @click={_}></div>`)
         analyzeTemplateAndMatchMessages(`<div @click={_} @click={_}></div>`, [
             {
@@ -176,7 +176,7 @@ describe("Component tag", () => {
         ])
     })
 
-    test("Dynamic and static class attribute cannot coexist.", () => {
+    test("Dynamic and static class attribute cannot coexist", () => {
         analyzeTemplateAndMatchMessages(`<Comp class="" !class={_} />`, [
             {
                 type: "error",
@@ -191,7 +191,7 @@ describe("Component tag", () => {
         ])
     })
 
-    test("Reference attribute only need to be checked for duplication against other reference attributes.", () => {
+    test("Reference attributes only need to be checked for duplication against other reference attributes", () => {
         analyzeTemplateAndMatchMessages(`<Comp custom="" &custom={_} />`)
         analyzeTemplateAndMatchMessages(`<Comp &custom={_} &custom={_} />`, [
             {
