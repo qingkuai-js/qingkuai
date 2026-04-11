@@ -1,10 +1,8 @@
-import nodeFs from "node:fs"
-
 import { test, expect } from "vitest"
 import { parse } from "@babel/parser"
-import { compile, compileIntermediate } from "../../../../src/compiler/compile"
 
-const complexFileInput = nodeFs.readFileSync(new URL("./_input.qk", import.meta.url), "utf8")
+import complexFileInput from "./_input"
+import { compile, compileIntermediate } from "../../../../src/compiler/compile"
 
 function expectValidESMSyntax(code: string, label: string) {
     expect(() =>
