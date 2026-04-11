@@ -1,5 +1,20 @@
+import type {
+    Range,
+    TemplateNode,
+    CompileOptions,
+    IdentifierStatus
+} from "#type-declarations/compiler"
 import type { Destruction } from "#type-declarations/runtime"
-import type { TemplateNode, Range, IdentifierStatus } from "#type-declarations/compiler"
+
+export interface E2EScenario {
+    name: string
+    title: string
+    input: string
+
+    readySelector?: string
+    compileOptions?: CompileOptions
+    components?: Record<string, string>
+}
 
 export interface ExpectedEffect {
     cleaner: any
@@ -13,19 +28,8 @@ export interface E2EWorkerFixtures {
     serverOrigin: string
 }
 
-export type E2ECompileMode = "debug" | "non-debug"
-
 export interface E2EProjectMetadata {
     compileMode: E2ECompileMode
-}
-
-export interface E2EScenario {
-    name: string
-    title: string
-    input: string
-
-    readySelector?: string
-    components?: Record<string, string>
 }
 
 export interface CompileErrorMatcher {
@@ -55,6 +59,8 @@ export interface ProcessEnvHost {
 export interface E2EFixtures {
     visitScenario: (name: string) => Promise<void>
 }
+
+export type E2ECompileMode = "debug" | "non-debug"
 
 export type ExpectedTemplateNode = Omit<Partial<TemplateNode>, "children"> & {
     children?: ExpectedTemplateNode[]

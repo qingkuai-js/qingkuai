@@ -82,7 +82,7 @@ export function keyedListBlock(
                 continue
             }
             if (wholeContent && !nodesDetached) {
-                detachWholeContent(info.d)
+                detachWholeContent(info.d, anchor)
                 nodesDetached = true
             }
             destroy(info.d, !nodesDetached)
@@ -422,12 +422,13 @@ function removeAllListInfos(infos: TraverseInfo[]) {
         return
     }
 
-    const wholeContent = isWholeContentDestruction(infos[0].d)
     let nodesDetached = false
+    const anchor = infos[oldLength - 1].d.n!.nextSibling!
+    const wholeContent = isWholeContentDestruction(infos[0].d)
     for (let i = oldLength - 1; i >= 0; i--) {
         const destruction = infos[i].d
         if (wholeContent && !nodesDetached) {
-            detachWholeContent(destruction)
+            detachWholeContent(destruction, anchor)
             nodesDetached = true
         }
         destroy(destruction, !nodesDetached)
@@ -474,9 +475,9 @@ function normalizeTraversable(value: any): Traversable {
     return NonTraverse()
 }
 
-function detachWholeContent(destruction: Destruction) {
+function detachWholeContent(destruction: Destruction, anchor: ChildNode | null) {
     const parent = destruction.s!.parentElement!
-    const anchor = parent.lastChild!
+    anchor ??= parent.lastChild!
     parent.textContent = ""
     appendChild(parent, anchor)
 }

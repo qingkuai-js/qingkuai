@@ -2,6 +2,7 @@ import nodeFs from "node:fs"
 import nodeHttp from "node:http"
 import nodePath from "node:path"
 
+import type { CompileOptions } from "../../src/types/compiler"
 import { compile } from "../../src/compiler/index"
 import { renderIndexPage, renderScenarioPage } from "./page-template"
 import { e2eScenarios, getE2EScenario, isE2EScenarioName } from "./scenarios"
@@ -117,7 +118,7 @@ function getScenarioCode(name: string) {
     }
 
     const scenario = getE2EScenario(name)
-    const code = compileSourceCodeOrThrow(scenario.input)
+    const code = compileSourceCodeOrThrow(scenario.input, scenario.compileOptions)
     scenarioCodeCache.set(name, code)
     return code
 }
@@ -177,8 +178,8 @@ function parseScenarioRoute(pathname: string) {
     return { scenarioName, subPath }
 }
 
-function compileSourceCodeOrThrow(source: string) {
-    const result = compile(source, { debug: compileInDebugMode })
+function compileSourceCodeOrThrow(source: string, options?: CompileOptions) {
+    const result = compile(source, { debug: compileInDebugMode, ...options })
     const errors = result.messages.filter(item => item.type === "error")
     if (errors.length) {
         throw new Error(errors.map(item => `${item.value.code}: ${item.value.message}`).join("\n"))
