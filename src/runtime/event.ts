@@ -18,15 +18,16 @@ import { call } from "../util/shared/aliases"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { any, createProxy } from "../util/shared/sundry"
-import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP } from "./constants"
+import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP, KEY_NAME_FLAG } from "./constants"
 
 // 包装带有键位标志的事件
 // Wrap events with key flags.
 export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
     return function (this: EventTarget, event: KeyboardEvent) {
-        let checkRes: boolean | undefined = true
+        let checkRes: number | boolean | undefined = true
         if (event.type.startsWith("key")) {
-            checkRes = !!(flag && any(KEY_FLAG_MAP)[event.key])
+            const keyFlag = any(KEY_FLAG_MAP)[event.key] as number | undefined
+            checkRes = keyFlag ? flag & keyFlag : !(flag & KEY_NAME_FLAG)
         }
         if (!checkRes) {
             return

@@ -29,5 +29,11 @@ jobs:
       - name: Run lint
         run: pnpm run lint
 
-      - name: Run test
-        run: pnpm run test
+      - name: Run unit tests
+        run: pnpm run test:units
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests (Chromium)
+        run: pnpm run test:e2e -- --project=chromium-debug --project=chromium-non-debug

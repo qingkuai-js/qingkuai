@@ -80,8 +80,8 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
             if (!j++) {
                 writer.write(getMaybeReusedString(""))
             }
-            writer.write(" + ")
-            writeParsedExpression(writer, part)
+            writer.write(" + (")
+            writeParsedExpression(writer, part).write(")")
         } else {
             const generated = getGeneratedStaticTextContent(part)
             if (!generated) {
