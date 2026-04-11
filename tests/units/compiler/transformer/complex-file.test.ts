@@ -34,6 +34,8 @@ function compileIntermediateAndAssertNoErrors(source: string, label: string) {
 
 test("Runtime: complex file broad syntax coverage and generated-code sanity", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "complex-runtime")
+    const prodClickLiteralId = prod.code.match(/const\s+(_s\d+)\s*=\s*"click"/)?.[1]
+
     expect(prod.code).toContain('import * as _ from "qingkuai/internal"')
     expect(dev.code).toContain('import * as _ from "qingkuai/internal"')
     expect(prod.code).toContain("_.conditionBlock([")
@@ -47,7 +49,8 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     expect(prod.code).toContain('let pending = _.react(Promise.resolve({ value: "done" }))')
     expect(prod.code).toContain("let mount = _.react(document.body)")
     expect(prod.code).toContain("let list = _.react([")
-    expect(prod.code).toContain("_ctx.e = [_s1]")
+    expect(prodClickLiteralId).toBeTruthy()
+    expect(prod.code).toContain(`_ctx.e = [${prodClickLiteralId}]`)
 
     expect(dev.code).toContain("_.conditionBlock([")
     expect(dev.code).toContain("_.promiseBlock(")

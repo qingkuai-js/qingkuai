@@ -33,6 +33,7 @@ import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { analyzeResult, inputDescriptor, messages } from "../state"
+import { collectReusedStringReference } from "../optimizer/compress"
 import { endSemicolonRE, intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
@@ -60,6 +61,7 @@ export function analyzeInterpolation(
             node: expression,
             startSourceIndex,
             topLevelReferences,
+            reusedStringReferences: [],
             contextReferences: reactiveContextReferences
         }
     } else {
@@ -72,7 +74,10 @@ export function analyzeInterpolation(
     }
 
     walkEstree(expression, {
-        AnyNode(node) {
+        AnyNode(node, context) {            
+            if (parsedExpression) {
+                collectReusedStringReference(node, context, parsedExpression.reusedStringReferences)
+            }
             markNeedSourcemap(node, startSourceIndex)
         },
 

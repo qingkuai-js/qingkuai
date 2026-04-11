@@ -4,12 +4,13 @@ import type { TemplateNode } from "#type-declarations/compiler"
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
 import { traverseObject } from "../../../util/shared/sundry"
-import { getMaybeReusedString } from "../../optimizer/compress"
+import { getMaybeReusedString, replaceReusedStringReferences } from "../../optimizer/compress"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
 
 export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourcemap = true) {
     const parsedExpression = getParsedExpression(key)!
     const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
+    replaceReusedStringReferences(editor, parsedExpression.reusedStringReferences)
     traverseObject(parsedExpression.topLevelReferences, (key, value) => {
         const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[key]
         if (topLevelIdentifier && topLevelIdentifier.transofrmedTo) {

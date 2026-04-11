@@ -15,6 +15,7 @@ import { stripTypeExpressions } from "../../estree/sundry"
 import { jsDestructuringEqualTokenRE } from "../../regular"
 import { findOutOfComment } from "../../../util/compiler/string"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
+import { replaceReusedStringReferences } from "../../optimizer/compress"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
@@ -124,6 +125,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
         editor.insert(call.callee.start!, `${internalId}.`)
     }
+    replaceReusedStringReferences(editor, analyzeResult.script.reusedStringReferences)
 
     function transformRawDecalration(info: TopLevelIdentifierInfo) {
         for (const { declarator } of info.nodeInfos) {

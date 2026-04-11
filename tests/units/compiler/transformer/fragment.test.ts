@@ -840,9 +840,9 @@ describe("non-debug mode", () => {
                     const _compressStrings = [_s1, _s2, _s3]
 
                     const _getFragment1 = _.createFragmentGetter(\` \`)
-                    const _getFragment2 = _.createFragmentGetter(\`/0> /1\`, _compressStrings)
-                    const _getFragment3 = _.createFragmentGetter(\`<p> /2\`, _compressStrings)
-                    const _getFragment4 = _.createFragmentGetter(\`/0><p>no content/2/1\`, _compressStrings)
+                    const _getFragment2 = _.createFragmentGetter(\`|0> |1\`, _compressStrings)
+                    const _getFragment3 = _.createFragmentGetter(\`<p> |2\`, _compressStrings)
+                    const _getFragment4 = _.createFragmentGetter(\`|0><p>no content|2|1\`, _compressStrings)
                 `
             )
             matchTemplateNodesAnchorId([
@@ -872,7 +872,7 @@ describe("non-debug mode", () => {
                     const _compressStrings = [_s1, _s2]
 
                     const _getFragment1 = _.createFragmentGetter(\` \`)
-                    const _getFragment2 = _.createFragmentGetter(\`/0> /1:/0> /1\`, _compressStrings)
+                    const _getFragment2 = _.createFragmentGetter(\`|0> |1:|0> |1\`, _compressStrings)
                 `
             )
             matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
@@ -912,14 +912,14 @@ describe("non-debug mode", () => {
                     const _s1 = "</a>"
                     const _compressStrings = [_s1]
 
-                    const _getFragment1 = _.createFragmentGetter(\`<a>/0<a>/0\`, _compressStrings)
+                    const _getFragment1 = _.createFragmentGetter(\`<a>|0<a>|0\`, _compressStrings)
                 `
             )
         })
 
-        test("Slash characters in non-compressed parts are escaped to //", () => {
+        test("Pipe characters in non-compressed parts are escaped to ||", () => {
             // </div> and </p> each appear only once so are not compressed,
-            // but their "/" is escaped to "//" because the fragment uses _compressStrings
+            // while literal "|" is escaped to "||" because the fragment uses _compressStrings
             matchGeneratedFragment(
                 `
                     <div #for={item of items}>
@@ -935,8 +935,30 @@ describe("non-debug mode", () => {
                     const _compressStrings = [_s1, _s2]
 
                     const _getFragment1 = _.createFragmentGetter(\` <!>\`)
-                    const _getFragment2 = _.createFragmentGetter(\`<div>/0> /1<//div>\`, _compressStrings)
-                    const _getFragment3 = _.createFragmentGetter(\`<p>/0> /1<//p>\`, _compressStrings)
+                    const _getFragment2 = _.createFragmentGetter(\`<div>|0> |1</div>\`, _compressStrings)
+                    const _getFragment3 = _.createFragmentGetter(\`<p>|0> |1</p>\`, _compressStrings)
+                `
+            )
+        })
+
+        test("Literal pipe characters are escaped when compression is enabled", () => {
+            matchGeneratedFragment(
+                `
+                    <div #for={item of items}>
+                        a|b<span>{item}</span>c|d
+                    </div>
+                    <p #for={j of other}>
+                        <span>{j}</span>
+                    </p>
+                `,
+                `
+                    const _s1 = "<span"
+                    const _s2 = "</span>"
+                    const _compressStrings = [_s1, _s2]
+
+                    const _getFragment1 = _.createFragmentGetter(\` <!>\`)
+                    const _getFragment2 = _.createFragmentGetter(\`<div>a||b|0> |1c||d</div>\`, _compressStrings)
+                    const _getFragment3 = _.createFragmentGetter(\`<p>|0> |1</p>\`, _compressStrings)
                 `
             )
         })
@@ -1062,8 +1084,8 @@ describe("non-debug mode", () => {
                 const _compressStrings = [_s1, _s2]
 
                 const _getFragment1 = _.createFragmentGetter(\` \`)
-                const _getFragment2 = _.createFragmentGetter(\`/0>/1\`, _compressStrings)
-                const _getFragment3 = _.createFragmentGetter(\`/0> /1\`, _compressStrings)
+                const _getFragment2 = _.createFragmentGetter(\`|0>|1\`, _compressStrings)
+                const _getFragment3 = _.createFragmentGetter(\`|0> |1\`, _compressStrings)
             `
         )
         matchTemplateNodesAnchorId([
@@ -1243,7 +1265,7 @@ describe("non-debug mode", () => {
                 const _compressStrings = [_s1, _s2]
 
                 const _getFragment1 = _.createFragmentGetter(\` \`)
-                const _getFragment2 = _.createFragmentGetter(\`/0> /1:/0> /1\`, _compressStrings)
+                const _getFragment2 = _.createFragmentGetter(\`|0> |1:|0> |1\`, _compressStrings)
             `
         )
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
