@@ -135,7 +135,8 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             }
 
             if (SPREAD_TAG === node.tag) {
-                const selectableParent = getSelectableParentNode(node)
+                const selectableParent =
+                    fragment.nodeContext === nodeContext ? null : getSelectableParentNode(node)
                 generate(
                     node.children,
                     fragment,

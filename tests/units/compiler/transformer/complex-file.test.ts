@@ -87,6 +87,35 @@ test("Runtime regression: component branch keeps condition block branches separa
     expect(dev.code).not.toContain("})__ =>")
 })
 
+test("Runtime regression: qk spread promise branches select dynamic nodes from local fragments", () => {
+    const source = `
+<lang-js>
+    let pending = Promise.resolve({ label: "Spread resolved", extra: "OK" })
+</lang-js>
+
+<div>
+    <qk:spread #await={pending}>
+        waiting
+        <span>pending</span>
+    </qk:spread>
+    <qk:spread #then={{ label, extra }}>
+        then
+        <span>{label}</span>
+        <strong>{extra}</strong>
+    </qk:spread>
+</div>`
+
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(source, "spread-promise-selectors")
+
+    expect(prod.code).toMatch(/const _span\d+ = _\.getChild\(_fragment\d+(?:, \d+)?\)/)
+    expect(prod.code).toMatch(/const _strong\d+ = _\.getSibling\(_span\d+(?:, \d+)?\)/)
+    expect(prod.code).not.toMatch(/const _span\d+ = _\.getChild\(_div\d+/)
+
+    expect(dev.code).toMatch(/const _span\d+ = _\.getChild\(_fragment\d+(?:, \d+)?\)/)
+    expect(dev.code).toMatch(/const _strong\d+ = _\.getSibling\(_span\d+(?:, \d+)?\)/)
+    expect(dev.code).not.toMatch(/const _span\d+ = _\.getChild\(_div\d+/)
+})
+
 test("Runtime regression: keyed list selection emits selector helper and event call", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "keyed-selector")
     expect(prod.code).toMatch(/const _selector\d+ = \(\(\) => \{/)

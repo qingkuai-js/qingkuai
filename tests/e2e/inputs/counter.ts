@@ -8,7 +8,7 @@ const counterScenario: E2EScenario = {
     readySelector: "[data-page='counter']",
     input: formatSourceCode(`
         <lang-js>
-            let count = reactive(0)
+            let count = 0
 
             const increase = () => {
                 count++

@@ -1,13 +1,17 @@
 import type { E2EScenario } from "#type-declarations/testing"
 
+import awaitDirectiveScenario from "./inputs/await-directive"
 import counterScenario from "./inputs/counter"
+import ifDirectiveScenario from "./inputs/if-directive"
 import todoMvcScenario from "./inputs/todo-mvc"
 import collectionScenario from "./inputs/collection"
 import nestedComponentsScenario from "./inputs/nested-components"
 
 export const e2eScenarios = [
+    awaitDirectiveScenario,
     counterScenario,
     collectionScenario,
+    ifDirectiveScenario,
     todoMvcScenario,
     nestedComponentsScenario
 ] satisfies E2EScenario[]

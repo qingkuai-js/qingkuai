@@ -8,12 +8,12 @@ const collectionScenario: E2EScenario = {
     readySelector: "[data-page='collection']",
     input: formatSourceCode(`
         <lang-js>
-            let nextId = reactive(2)
-            let selectedId = reactive(0)
-            const items = reactive([
+            let nextId = 2
+            let selectedId = 0
+            const items = [
                 { id: 1, label: "Alpha" },
                 { id: 2, label: "Beta" }
-            ])
+            ]
 
             const addItem = () => {
                 nextId++
