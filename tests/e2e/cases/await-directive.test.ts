@@ -151,4 +151,32 @@ test.describe("await-directive case", () => {
         await page.locator("#priority-toggle-if").click()
         await expect(page.locator("#priority-await")).toHaveText("Priority pending")
     })
+
+    test("keeps component await branches between stable siblings", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario("await-directive")
+
+        const children = page.locator("#component-await-order-host > *")
+
+        await expect(children).toHaveText(["Before", "Component pending", "After"])
+        await expect(page.locator("#component-await-pending")).toHaveText("Component pending")
+        await expect(page.locator("#component-await-then")).toHaveCount(0)
+        await expect(page.locator("#component-await-catch")).toHaveCount(0)
+
+        await page.locator("#component-await-resolve").click()
+        await expect(children).toHaveText(["Before", "Component then: component resolved", "After"])
+        await expect(page.locator("#component-await-pending")).toHaveCount(0)
+        await expect(page.locator("#component-await-catch")).toHaveCount(0)
+
+        await page.locator("#component-await-reset").click()
+        await expect(children).toHaveText(["Before", "Component pending", "After"])
+        await expect(page.locator("#component-await-then")).toHaveCount(0)
+
+        await page.locator("#component-await-reject").click()
+        await expect(children).toHaveText(["Before", "Component catch: component failed", "After"])
+        await expect(page.locator("#component-await-pending")).toHaveCount(0)
+        await expect(page.locator("#component-await-then")).toHaveCount(0)
+    })
 })

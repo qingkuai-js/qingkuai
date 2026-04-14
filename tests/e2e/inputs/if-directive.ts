@@ -9,12 +9,17 @@ const ifDirectiveScenario: E2EScenario = {
     input: formatSourceCode(`
         <lang-js>
             import TogglePanel from "./components/TogglePanel"
+            import ToggleOrderPanel from "./components/ToggleOrderPanel"
+            import IfChainIfPanel from "./components/IfChainIfPanel"
+            import IfChainElifPanel from "./components/IfChainElifPanel"
+            import IfChainElsePanel from "./components/IfChainElsePanel"
 
             let showList = false
             let showSpread = false
             let showComponent = false
             let language = "other"
             let spreadBranch = "else"
+            let componentBranch = "else"
             const items = [
                 { id: 1, label: "Alpha" },
                 { id: 2, label: "Beta" }
@@ -49,6 +54,14 @@ const ifDirectiveScenario: E2EScenario = {
                                 ? "elif"
                                 : "else"
             }
+
+            const cycleComponentBranch = () => {
+                componentBranch = componentBranch === "else"
+                    ? "if"
+                    : componentBranch === "if"
+                      ? "elif"
+                      : "else"
+            }
         </lang-js>
 
         <section data-page="if-directive">
@@ -59,6 +72,7 @@ const ifDirectiveScenario: E2EScenario = {
             <button id="toggle-component" @click={toggleComponent()}>Toggle component</button>
             <button id="cycle-language" @click={cycleLanguage()}>Cycle language</button>
             <button id="cycle-spread-branch" @click={cycleSpreadBranch()}>Cycle spread branch</button>
+            <button id="cycle-component-branch" @click={cycleComponentBranch()}>Cycle component branch</button>
 
             <ul id="if-for-list">
                 <li
@@ -99,6 +113,20 @@ const ifDirectiveScenario: E2EScenario = {
                 <p #else id="component-fallback">Component fallback</p>
             </div>
 
+            <div id="component-order-host">
+                <span class="component-order-marker">Before</span>
+                <ToggleOrderPanel #if={showComponent} />
+                <span class="component-order-marker">After</span>
+            </div>
+
+            <div id="component-chain-host">
+                <span class="component-chain-marker">Before chain</span>
+                <IfChainIfPanel #if={componentBranch === "if"} />
+                <IfChainElifPanel #elif={componentBranch === "elif"} />
+                <IfChainElsePanel #else />
+                <span class="component-chain-marker">After chain</span>
+            </div>
+
             <div id="language-branch">
                 <p #if={language === "qk"} id="lang-qk">Qingkuai</p>
                 <p #elif={language === "js"} id="lang-js">JavaScript</p>
@@ -110,6 +138,18 @@ const ifDirectiveScenario: E2EScenario = {
     components: {
         TogglePanel: formatSourceCode(`
             <div id="component-content">Component content</div>
+        `),
+        ToggleOrderPanel: formatSourceCode(`
+            <div id="component-order-content">Component content</div>
+        `),
+        IfChainIfPanel: formatSourceCode(`
+            <div id="component-chain-if">Component if branch</div>
+        `),
+        IfChainElifPanel: formatSourceCode(`
+            <div id="component-chain-elif">Component elif branch</div>
+        `),
+        IfChainElsePanel: formatSourceCode(`
+            <div id="component-chain-else">Component else branch</div>
         `)
     }
 }

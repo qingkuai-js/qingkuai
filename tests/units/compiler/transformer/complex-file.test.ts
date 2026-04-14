@@ -67,14 +67,12 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     expect(dev.code.includes("_compressStrings")).toBe(false)
 })
 
-test("Runtime regression: slot fallback generates valid nullish-coalesced call syntax", () => {
+test("Runtime regression: slot fallback generates valid renderSlot helper call", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "slot-fallback")
-    expect(prod.code).toContain("?? (() => {")
-    expect(dev.code).toContain("?? (() => {")
-    expect(prod.code).toContain("}))(")
-    expect(dev.code).toContain("}))(")
-    expect(prod.code).toContain("_ctx.s?.main")
-    expect(dev.code).toContain("_ctx.s?.main")
+    expect(prod.code).toContain('_.renderSlot(_ctx, "main",')
+    expect(dev.code).toContain('_.renderSlot(_ctx, "main",')
+    expect(prod.code).toContain("_.UNDEF, () => {")
+    expect(dev.code).toContain("_.UNDEF, () => {")
 })
 
 test("Runtime regression: component branch keeps condition block branches separated", () => {

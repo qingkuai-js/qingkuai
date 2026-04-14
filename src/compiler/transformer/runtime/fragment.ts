@@ -13,9 +13,9 @@ import {
     interpolatedAttrStartCharRE
 } from "../../regular"
 import {
+    FRAG_WHOLE_CONTENT,
     FRAG_LEADING_ANCHOR,
-    FRAG_ORPHAN_CONTENT,
-    FRAG_WHOLE_CONTENT
+    FRAG_ORPHAN_CONTENT
 } from "../../../util/shared/flags"
 import {
     getTemplateNodeContext,
@@ -280,7 +280,7 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
         fragmentFlag |= FRAG_WHOLE_CONTENT
         flagInterpretive.push("WHOLE_CONTENT")
     }
-    if (isFragmentNeedLeadingAnchor(fragment)) {
+    if (doesFragmentNeedLeadingAnchor(fragment)) {
         fragmentFlag |= FRAG_LEADING_ANCHOR
         flagInterpretive.push("LEADING_ANCHOR")
     } else if (isFragmentOrphan(fragment)) {
@@ -401,9 +401,14 @@ function isFragmentWholeContent(fragment: TemplateFragment) {
     return true
 }
 
-function isFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
+function doesFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
     const nodeContext = fragment.nodeContext
     if (!nodeContext) {
+        for (const [, nodeContext] of analyzeResult.template.nodeContexts) {
+            if (nodeContext.fragment) {
+                return !!(nodeContext.node.componentTag || nodeContext.node.tag === SPREAD_TAG)
+            }
+        }
         return false
     }
     return nodeContext.node.children.some(child => {
@@ -419,7 +424,7 @@ function isFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
 }
 
 function isFragmentOrphan(fragment: TemplateFragment) {
-    if (isFragmentNeedLeadingAnchor(fragment) || fragment.directChildrenCount !== 1) {
+    if (doesFragmentNeedLeadingAnchor(fragment) || fragment.directChildrenCount !== 1) {
         return false
     }
     if (fragment !== analyzeResult.template.componentFragment) {

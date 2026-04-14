@@ -8,6 +8,8 @@ const awaitDirectiveScenario: E2EScenario = {
     readySelector: "[data-page='await-directive']",
     input: formatSourceCode(`
         <lang-js>
+            import AsyncPanel from "./components/AsyncPanel"
+
             const createPendingPromise = () => new Promise(() => {})
 
             let branchPromise = createPendingPromise()
@@ -16,6 +18,7 @@ const awaitDirectiveScenario: E2EScenario = {
             let spreadPromise = createPendingPromise()
             let structuredPromise = createPendingPromise()
             let priorityPromise = createPendingPromise()
+            let componentPromise = createPendingPromise()
             let showPriorityPending = false
 
             const resetBranch = () => {
@@ -99,6 +102,23 @@ const awaitDirectiveScenario: E2EScenario = {
             const togglePriorityIf = () => {
                 showPriorityPending = !showPriorityPending
             }
+
+            const resetComponentPromise = () => {
+                componentPromise = createPendingPromise()
+            }
+
+            const resolveComponentPromise = () => {
+                componentPromise = new Promise(resolve => {
+                    setTimeout(() => resolve("component resolved"), 10)
+                })
+            }
+
+            const rejectComponentPromise = () => {
+                componentPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject("component failed"), 10)
+                })
+            }
+
         </lang-js>
 
         <section data-page="await-directive">
@@ -124,14 +144,18 @@ const awaitDirectiveScenario: E2EScenario = {
                 <button id="inline-resolve-reset" @click={resetInlineResolve()}>Reset inline resolve</button>
                 <button id="inline-resolve-trigger" @click={resolveInline()}>Resolve inline</button>
             </div>
-            <div id="inline-resolve-block">
-                <p
-                    id="inline-then"
-                    #await={inlineResolvePromise}
-                    #then={res}
-                >
-                    Inline resolved: {res}
-                </p>
+            <div id="inline-order-host">
+                <span class="inline-order-marker">Before</span>
+                <div id="inline-resolve-block">
+                    <p
+                        id="inline-then"
+                        #await={inlineResolvePromise}
+                        #then={res}
+                    >
+                        Inline resolved: {res}
+                    </p>
+                </div>
+                <span class="inline-order-marker">After</span>
             </div>
 
             <div>
@@ -205,8 +229,35 @@ const awaitDirectiveScenario: E2EScenario = {
                 <p id="priority-then" #then={res}>Priority then: {res}</p>
                 <p id="priority-catch" #catch={err}>Priority catch: {err}</p>
             </div>
+
+            <div>
+                <button id="component-await-reset" @click={resetComponentPromise()}>Reset component await</button>
+                <button id="component-await-resolve" @click={resolveComponentPromise()}>Resolve component await</button>
+                <button id="component-await-reject" @click={rejectComponentPromise()}>Reject component await</button>
+            </div>
+            <div id="component-await-order-host">
+                <span class="component-await-marker">Before</span>
+                <AsyncPanel #await={componentPromise}>
+                    <span id="component-await-pending">Component pending</span>
+                </AsyncPanel>
+                <AsyncPanel #then={res}>
+                    <span id="component-await-then">Component then: {res}</span>
+                </AsyncPanel>
+                <AsyncPanel #catch={err}>
+                    <span id="component-await-catch">Component catch: {err}</span>
+                </AsyncPanel>
+                <span class="component-await-marker">After</span>
+            </div>
+
         </section>
-    `)
+    `),
+    components: {
+        AsyncPanel: formatSourceCode(`
+            <article class="component-await-panel">
+                <slot></slot>
+            </article>
+        `)
+    }
 }
 
 export default awaitDirectiveScenario

@@ -193,7 +193,7 @@ function generateDirectiveBlock(
             // fallthrough
         }
         case "#then": {
-            if (!nodeContext.fragment?.content.length) {
+            if (!nodeContext.fragment?.content.length && !node.componentTag) {
                 return (writer.writeLine(`${internalId}.UNDEF,`), undefined)
             }
             // fallthrough
@@ -592,8 +592,10 @@ function generateRenderEffect(
 function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
+    const internalId = generateIdentifier.internal
     const contextId = generateIdentifier.context
     const hasDefaultContent = !!nodeContext.fragment?.content.length
+    const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
 
     const insertTrailingComma = () => {
         if (needInsertComma) {
@@ -602,44 +604,41 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
         return ((needInsertComma = true), writer)
     }
 
-    const generateSlotName = () => {
-        const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
-        return writeContextKey(slotName, writer)
-    }
-    if (!hasDefaultContent) {
-        writer.wrapLine().write(`${contextId}.s?.`)
-        generateSlotName().write(`(${nodeContext.anchorId}`)
+    writer.wrapLine().write(`${internalId}.renderSlot(`)
+    writer.write(`${contextId}, ${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`)
+
+    if (
+        nodeContext.dynamicAttributes.length ||
+        nodeContext.staticAttributes.some(attr => attr.name.raw !== "name")
+    ) {
+        writer.writeLine(", {").indent()
+
+        for (const attribute of nodeContext.dynamicAttributes) {
+            const baseName = getAttributeBaseName(attribute.name.raw)
+            insertTrailingComma()
+            writeContextKey(baseName, writer)
+            writer.write(": ").writeParsedExpression(attribute)
+        }
+        for (const attribute of nodeContext.staticAttributes) {
+            const rawName = attribute.name.raw
+            if (rawName === "name") {
+                continue
+            }
+            insertTrailingComma()
+            writeContextKey(attribute.name.raw, writer).write(": ")
+            writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true")
+        }
+        writer.dedent().write("}")
     } else {
-        writer.wrapLine().write(`;(${contextId}.s?.`)
-        generateSlotName().write(" ?? (() => {").indent(false)
+        writer.write(`, ${internalId}.UNDEF`)
     }
+
+    if (hasDefaultContent) {
+        writer.writeLine(", () => {").indent(false)
+    }
+
     return () => {
         if (hasDefaultContent) {
-            writer.dedent().write(`}))(${nodeContext.anchorId}`)
-        }
-        if (
-            nodeContext.dynamicAttributes.length ||
-            nodeContext.staticAttributes.some(attr => attr.name.raw !== "name")
-        ) {
-            writer.write(", {").indent()
-
-            for (const attribute of nodeContext.dynamicAttributes) {
-                const baseName = getAttributeBaseName(attribute.name.raw)
-                insertTrailingComma()
-                writeContextKey(baseName, writer)
-                writer.write(": ").writeParsedExpression(attribute)
-            }
-            for (const attribute of nodeContext.staticAttributes) {
-                const rawName = attribute.name.raw
-                if (rawName === "name") {
-                    continue
-                }
-                insertTrailingComma()
-                writeContextKey(attribute.name.raw, writer).write(": ")
-                writer.write(
-                    attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true"
-                )
-            }
             writer.dedent().write("}")
         }
         writer.write(")")

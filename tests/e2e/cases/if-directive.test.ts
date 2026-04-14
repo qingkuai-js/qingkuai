@@ -62,6 +62,27 @@ test.describe("if-directive case", () => {
         await expect(page.locator("#component-content")).toHaveCount(0)
     })
 
+    test("keeps component if branch between stable siblings", async ({ page, visitScenario }) => {
+        await visitScenario("if-directive")
+
+        const children = page.locator("#component-order-host > *")
+
+        await expect(children).toHaveText(["Before", "After"])
+        await expect(page.locator("#component-order-content")).toHaveCount(0)
+
+        await page.locator("#toggle-component").click()
+        await expect(children).toHaveText(["Before", "Component content", "After"])
+        await expect(page.locator("#component-order-content")).toHaveText("Component content")
+
+        await page.locator("#toggle-component").click()
+        await expect(children).toHaveText(["Before", "After"])
+        await expect(page.locator("#component-order-content")).toHaveCount(0)
+
+        await page.locator("#toggle-component").click()
+        await expect(children).toHaveText(["Before", "Component content", "After"])
+        await expect(page.locator("#component-order-content")).toHaveText("Component content")
+    })
+
     test("supports if elif else branch switching", async ({ page, visitScenario }) => {
         await visitScenario("if-directive")
 
@@ -112,5 +133,37 @@ test.describe("if-directive case", () => {
         await expect(page.locator("#spread-branch-host")).toContainText("Spread else text")
         await expect(page.locator("#spread-branch-if")).toHaveCount(0)
         await expect(page.locator("#spread-branch-elif")).toHaveCount(0)
+    })
+
+    test("supports full component if elif else chain switching", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario("if-directive")
+
+        const markers = page.locator("#component-chain-host .component-chain-marker")
+
+        await expect(markers).toHaveText(["Before chain", "After chain"])
+        await expect(page.locator("#component-chain-else")).toHaveText("Component else branch")
+        await expect(page.locator("#component-chain-if")).toHaveCount(0)
+        await expect(page.locator("#component-chain-elif")).toHaveCount(0)
+
+        await page.locator("#cycle-component-branch").click()
+        await expect(markers).toHaveText(["Before chain", "After chain"])
+        await expect(page.locator("#component-chain-if")).toHaveText("Component if branch")
+        await expect(page.locator("#component-chain-else")).toHaveCount(0)
+        await expect(page.locator("#component-chain-elif")).toHaveCount(0)
+
+        await page.locator("#cycle-component-branch").click()
+        await expect(markers).toHaveText(["Before chain", "After chain"])
+        await expect(page.locator("#component-chain-elif")).toHaveText("Component elif branch")
+        await expect(page.locator("#component-chain-if")).toHaveCount(0)
+        await expect(page.locator("#component-chain-else")).toHaveCount(0)
+
+        await page.locator("#cycle-component-branch").click()
+        await expect(markers).toHaveText(["Before chain", "After chain"])
+        await expect(page.locator("#component-chain-else")).toHaveText("Component else branch")
+        await expect(page.locator("#component-chain-if")).toHaveCount(0)
+        await expect(page.locator("#component-chain-elif")).toHaveCount(0)
     })
 })
