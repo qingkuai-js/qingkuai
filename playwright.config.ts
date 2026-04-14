@@ -74,8 +74,8 @@ export default defineConfig({
     forbidOnly: isCI,
     retries: isCI ? 2 : 0,
     fullyParallel: !isHeaded,
+    testDir: "./tests/e2e",
     testMatch: "**/*.test.ts",
-    testDir: "./tests/e2e/cases",
     workers: isHeaded ? 1 : isCI ? 2 : undefined,
     outputDir: nodePath.join(nodeOs.tmpdir(), "qingkuai-playwright-artifacts")
 })

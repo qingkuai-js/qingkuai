@@ -1,10 +1,10 @@
-import { formatSourceCode } from "../../src/util/shared/sundry"
-
 import type { E2EScenario } from "#type-declarations/testing"
+
+import { formatSourceCode } from "../../src/util/shared/sundry"
 
 export function renderIndexPage(scenarios: E2EScenario[]) {
     const links = scenarios.reduce((ret, item) => {
-        return `${ret}<li><a href="/scenarios/${item.name}">${item.title}</a></li>`
+        return `${ret}<li><a href="/scenarios/${item.name}">${item.name}</a></li>`
     }, "")
     return formatSourceCode(`
         <!doctype html>
@@ -31,7 +31,7 @@ export function renderScenarioPage(scenario: E2EScenario) {
             <head>
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <title>${scenario.title}</title>
+                <title>${scenario.name}</title>
                 <script type="importmap">
                     {
                         "imports": {

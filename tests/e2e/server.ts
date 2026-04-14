@@ -1,9 +1,11 @@
+import type { CompileOptions } from "../../src/types/compiler"
+
 import nodeFs from "node:fs"
 import nodeHttp from "node:http"
 import nodePath from "node:path"
 
-import type { CompileOptions } from "../../src/types/compiler"
 import { compile } from "../../src/compiler/index"
+import { formatSourceCode } from "../../src/util/shared/sundry"
 import { renderIndexPage, renderScenarioPage } from "./page-template"
 import { e2eScenarios, getE2EScenario, isE2EScenarioName } from "./scenarios"
 
@@ -118,7 +120,7 @@ function getScenarioCode(name: string) {
     }
 
     const scenario = getE2EScenario(name)
-    const code = compileSourceCodeOrThrow(scenario.input, scenario.compileOptions)
+    const code = compileSourceCodeOrThrow(formatSourceCode(scenario.input), scenario.compileOptions)
     scenarioCodeCache.set(name, code)
     return code
 }

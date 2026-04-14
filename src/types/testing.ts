@@ -6,15 +6,31 @@ import type {
 } from "#type-declarations/compiler"
 import type { Destruction } from "#type-declarations/runtime"
 
+export type E2EScenarioInput = Omit<E2EScenario, "name">
+
 export interface E2EScenario {
     name: string
-    title: string
     input: string
 
-    readySelector?: string
     compileOptions?: CompileOptions
     components?: Record<string, string>
 }
+
+export type E2EScenarioName = E2EScenario["name"]
+
+export interface E2EScenarioTestModule {
+    scenario: E2EScenario
+}
+
+export type E2ETest = typeof import("../../tests/e2e/fixture").test
+export type E2EExpect = typeof import("@playwright/test").expect
+
+export interface E2ETestRegistrarHelpers {
+    test: E2ETest
+    expect: E2EExpect
+}
+
+export type E2ETestRegistrar = (helpers: E2ETestRegistrarHelpers) => void
 
 export interface ExpectedEffect {
     cleaner: any
@@ -57,7 +73,7 @@ export interface ProcessEnvHost {
 }
 
 export interface E2EFixtures {
-    visitScenario: (name: string) => Promise<void>
+    visitScenario: (scenario: E2EScenarioInput) => Promise<void>
 }
 
 export type E2ECompileMode = "debug" | "non-debug"
