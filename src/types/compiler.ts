@@ -66,6 +66,7 @@ export interface TemplateFragment {
         parent: string | undefined
     }[]
     id: string
+    flag: number
     getterId: string
     content: string[]
     usedCompressString: boolean
@@ -305,8 +306,8 @@ export interface ScriptAnalyzeRet {
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     topLevelReferences: TopLevelReferences
-    reusedStringReferences: ReusedStringReference[]
     preMutatedTopLevelIdentifiers: Set<string>
+    reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<VariableDeclarator, EstreeWalkContext<Identifier>>
     importDeclarations: EstreeWalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]

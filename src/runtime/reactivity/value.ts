@@ -162,9 +162,14 @@ function reactWithProxy(target: any, flag = 0): any {
         return target
     }
 
+    const typeStr = optc(target)
+    const typeFlag = TYPE_FLAG_MAP[typeStr] ?? WRAPPER_OBJECT
+    if (typeFlag & WRAPPER_OBJECT && typeStr !== "Object") {
+        return target
+    }
+
     const isShallow = flag & WRAPPER_SHALLOW
     const isChanged = isShallow ? notEqual : reactiveNotEqual
-    const typeFlag = TYPE_FLAG_MAP[optc(target)] ?? WRAPPER_OBJECT
     const wrapper = newReactivityWrapper(target, (flag |= WRAPPER_PROXY | typeFlag))
 
     const proxy: any = createProxy(target, {

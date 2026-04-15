@@ -13,9 +13,9 @@ import {
     interpolatedAttrStartCharRE
 } from "../../regular"
 import {
+    FRAG_WHOLE_CONTENT,
     FRAG_LEADING_ANCHOR,
-    FRAG_ORPHAN_CONTENT,
-    FRAG_WHOLE_CONTENT
+    FRAG_ORPHAN_CONTENT
 } from "../../../util/shared/flags"
 import {
     getTemplateNodeContext,
@@ -38,6 +38,7 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
     function extendFragments(nodeContext: TemplateNodeContext | null) {
         const fragment: TemplateFragment = {
             id: "",
+            flag: 0,
             content: [],
             nodeContext,
             getterId: "",
@@ -135,7 +136,8 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             }
 
             if (SPREAD_TAG === node.tag) {
-                const selectableParent = getSelectableParentNode(node)
+                const selectableParent =
+                    fragment.nodeContext === nodeContext ? null : getSelectableParentNode(node)
                 generate(
                     node.children,
                     fragment,
@@ -272,19 +274,18 @@ export function writeFragmentGetterDeclarations(
 
 export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
     let isOrphan = false
-    let fragmentFlag = 0
     const flagInterpretive: string[] = []
     const selectionCache: SelectionCache = newCleanObj()
     if (isFragmentWholeContent(fragment)) {
-        fragmentFlag |= FRAG_WHOLE_CONTENT
+        fragment.flag |= FRAG_WHOLE_CONTENT
         flagInterpretive.push("WHOLE_CONTENT")
     }
-    if (isFragmentNeedLeadingAnchor(fragment)) {
-        fragmentFlag |= FRAG_LEADING_ANCHOR
+    if (doesFragmentNeedLeadingAnchor(fragment)) {
+        fragment.flag |= FRAG_LEADING_ANCHOR
         flagInterpretive.push("LEADING_ANCHOR")
     } else if (isFragmentOrphan(fragment)) {
         isOrphan = true
-        fragmentFlag |= FRAG_ORPHAN_CONTENT
+        fragment.flag |= FRAG_ORPHAN_CONTENT
         flagInterpretive.push("ORPHAN_CONTENT")
         fragment.id = fragment.selections[0]?.id ?? ""
     }
@@ -294,11 +295,11 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
 
     const internalId = generateIdentifier.internal
     const interpretiveComment =
-        fragmentFlag && inputDescriptor.options.interpretiveComments
+        fragment.flag && inputDescriptor.options.interpretiveComments
             ? `/* ${flagInterpretive.join(" | ")} */ `
             : ""
     writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`)
-    writer.write(`${fragmentFlag ? `${interpretiveComment}${fragmentFlag}` : ""})`)
+    writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""})`)
 
     for (const selection of fragment.selections) {
         if (isOrphan && selection === fragment.selections[0]) {
@@ -400,13 +401,18 @@ function isFragmentWholeContent(fragment: TemplateFragment) {
     return true
 }
 
-function isFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
+function doesFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
     const nodeContext = fragment.nodeContext
     if (!nodeContext) {
+        for (const [, nodeContext] of analyzeResult.template.nodeContexts) {
+            if (nodeContext.fragment) {
+                return !!(nodeContext.node.componentTag || nodeContext.node.tag === SPREAD_TAG)
+            }
+        }
         return false
     }
     return nodeContext.node.children.some(child => {
-        if (child.tag === SPREAD_TAG) {
+        if (child.componentTag || child.tag === SPREAD_TAG) {
             return true
         }
 
@@ -418,7 +424,11 @@ function isFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
 }
 
 function isFragmentOrphan(fragment: TemplateFragment) {
-    if (isFragmentNeedLeadingAnchor(fragment) || fragment.directChildrenCount !== 1) {
+    if (
+        fragment.flag & FRAG_LEADING_ANCHOR ||
+        fragment.directChildrenCount !== 1 ||
+        fragment.content[0] === " "
+    ) {
         return false
     }
     if (fragment !== analyzeResult.template.componentFragment) {

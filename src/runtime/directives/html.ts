@@ -19,11 +19,11 @@ export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
             return
         }
 
-        const escapeTags = newOptions.escapeTags || []
-        if (newOptions.escapeStyle) {
+        const escapeTags = newOptions?.escapeTags || []
+        if (newOptions?.escapeStyle) {
             escapeTags.push("style")
         }
-        if (newOptions.escapeScript) {
+        if (newOptions?.escapeScript) {
             escapeTags.push("script")
         }
         if (((html = newHtml), escapeTags.length)) {

@@ -1,6 +1,8 @@
 import type {
+    E2EScenario,
     E2EFixtures,
     E2ECompileMode,
+    E2EScenarioInput,
     E2EWorkerFixtures,
     E2EProjectMetadata
 } from "#type-declarations/testing"
@@ -8,7 +10,6 @@ import type {
 import nodeProcess from "node:process"
 import nodeChildProcess from "node:child_process"
 
-import { getE2EScenario } from "./scenarios"
 import { test as baseTest, expect } from "@playwright/test"
 
 const SERVER_BOOT_TIMEOUT_MS = 10000
@@ -49,14 +50,11 @@ export const test = baseTest.extend<E2EFixtures, E2EWorkerFixtures>({
         { scope: "worker" }
     ],
     visitScenario: async ({ page, serverOrigin }, use) => {
-        await use(async name => {
-            const scenario = getE2EScenario(name)
-            await page.goto(`${serverOrigin}/scenarios/${scenario.name}`)
+        await use(async (scenario: E2EScenarioInput) => {
+            const name = (scenario as E2EScenario).name
+            await page.goto(`${serverOrigin}/scenarios/${name}`)
             await expect(page.locator("body")).toHaveAttribute("data-e2e-ready", "ready")
-
-            if (scenario.readySelector) {
-                await expect(page.locator(scenario.readySelector)).toBeVisible()
-            }
+            await expect(page.locator(`[data-page='${name}']`)).toBeVisible()
         })
     }
 })

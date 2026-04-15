@@ -28,10 +28,10 @@ export {
     bindInputChecked
 } from "./reference"
 
-
 export { alias } from "./debug"
 export { init, mount } from "./component"
 export { htmlBlock } from "./directives/html"
+export { renderSlot } from "./directives/slot"
 export { NIL, UNDEF, NOOP } from "./constants"
 export { targetBlock } from "./directives/target"
 export { renderEffect } from "./reactivity/effect"
