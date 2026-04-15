@@ -75,6 +75,11 @@
     "typescript-eslint": "^8.57.1",
     "vitest": "^3.2.4"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "keywords": [
     "ui",
     "framework",

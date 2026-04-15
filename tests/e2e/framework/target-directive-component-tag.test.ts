@@ -1,6 +1,5 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
-import { formatSourceCode } from "../../../src/util/shared/sundry"
 import { defineE2ETestFile } from "../scenario-module"
 
 const scenario: E2EScenarioInput = {
@@ -34,11 +33,11 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        TargetPanel: formatSourceCode(`
+        TargetPanel: `
             <article class="target-panel">
                 <slot></slot>
             </article>
-        `)
+        `
     }
 }
 

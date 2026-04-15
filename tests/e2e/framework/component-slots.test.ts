@@ -1,6 +1,5 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
-import { formatSourceCode } from "../../../src/util/shared/sundry"
 import { defineE2ETestFile } from "../scenario-module"
 
 const scenario: E2EScenarioInput = {
@@ -29,7 +28,7 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        "layout/SlotShowcase": formatSourceCode(`
+        "layout/SlotShowcase": `
             <section id="slot-showcase">
                 <div id="slot-header-host">
                     <slot name="header" !label={"Header from child"}>
@@ -47,7 +46,7 @@ const scenario: E2EScenarioInput = {
                     </slot>
                 </div>
             </section>
-        `)
+        `
     }
 }
 
