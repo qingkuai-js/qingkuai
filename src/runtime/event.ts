@@ -119,7 +119,7 @@ function dispatch(event: Event, passive: boolean) {
     const path = event.composedPath().slice(0, -4)
     const handlerKey = DELEGATE_PREFIX + event.type
 
-    const excuteEventHandler = (elem: EventTarget) => {
+    const excuteEventHandler = (elem: EventTarget, phase: number) => {
         const handler = any(elem)[handlerKey]
         const flag = any(elem)[flagKey] ?? 0
         if (flag & EVENT_PREVENT) {
@@ -129,26 +129,21 @@ function dispatch(event: Event, passive: boolean) {
             delete any(elem)[flagKey]
             delete any(elem)[handlerKey]
         }
-        const proxiedEvent = createProxy(event, {
-            get(target, property: keyof Event) {
+        const wrappedEvent = createProxy(Object.create(event), {
+            get(_, property: keyof Event) {
                 if (property === "currentTarget") {
                     return elem
                 }
                 if (property === "eventPhase") {
-                    if (elem === event.target) {
-                        return Event.AT_TARGET
-                    }
-                    if (flag & EVENT_CAPTURE) {
-                        return Event.CAPTURING_PHASE
-                    }
-                    return Event.BUBBLING_PHASE
+                    return phase
                 }
-                return target[property]
+                return any(event)[property]
             }
         })
-        call(handler, elem, proxiedEvent)
+        call(handler, elem, wrappedEvent)
     }
 
+    let stopped = false
     for (let i = path.length - 1; i >= 0; i--) {
         const elem = any(path[i])
         const handler = elem[handlerKey]
@@ -169,13 +164,20 @@ function dispatch(event: Event, passive: boolean) {
             bubblings.push([elem, flag])
             continue
         }
-        if ((excuteEventHandler(elem), flag & EVENT_STOP)) {
+
+        const phase = isTarget ? Event.AT_TARGET : Event.CAPTURING_PHASE
+        if ((excuteEventHandler(elem, phase), flag & EVENT_STOP)) {
+            stopped = true
             break
         }
     }
-    for (const [elem, flag] of bubblings) {
-        if ((excuteEventHandler(elem), flag & EVENT_STOP)) {
-            break
+
+    if (!stopped) {
+        for (let i = bubblings.length - 1; i >= 0; i--) {
+            const [elem, flag] = bubblings[i]
+            if ((excuteEventHandler(elem, Event.BUBBLING_PHASE), flag & EVENT_STOP)) {
+                break
+            }
         }
     }
 }
