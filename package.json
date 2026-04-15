@@ -40,7 +40,7 @@
     "test:units": "vitest --run",
     "test:e2e": "npm run bundle && playwright test",
     "test": "npm run test:units && npm run test:e2e",
-    "test:e2e:quick": "playwright test --project=chromium-debug",
+    "test:e2e-quick": "playwright test --project=chromium-debug",
     "test:e2e-prod": "PROD_ONLY=1 npm run bundle && playwright test",
     "test:e2e-serve": "npm run bundle && PLAYWRIGHT_PORT=34173 tsx tests/e2e/server.ts",
     "build": "rimraf dist && npm run build-types && npm run bundle",

@@ -66,6 +66,7 @@ export interface TemplateFragment {
         parent: string | undefined
     }[]
     id: string
+    flag: number
     getterId: string
     content: string[]
     usedCompressString: boolean

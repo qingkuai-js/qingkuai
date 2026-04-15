@@ -256,6 +256,7 @@ describe("debug mode", () => {
 
         const writer = new RuntimeCodeWriter()
         writeFragmentSelections(writer, {
+            flag: 0,
             id: "_fragment1",
             getterId: "_getFragment1",
             nodeContext: null,

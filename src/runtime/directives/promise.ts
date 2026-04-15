@@ -24,8 +24,8 @@ export function promiseBlock(
         if (destruction) {
             destroy(destruction)
         }
-        destruction = NIL
         state = newState
+        destruction = NIL
 
         if (render) {
             destruction = invokeRender(() => {
@@ -35,10 +35,9 @@ export function promiseBlock(
     }
 
     renderEffect(() => {
-        if (state != PROMISE_PENDING) {
-            if (pms) {
-                pms.cancel()
-            }
+        if (state === PROMISE_PENDING) {
+            pms?.cancel()
+        } else {
             changeState(PROMISE_PENDING, renderPending)
         }
         ;(pms = makeCancelablePromise(getValue())).then(
