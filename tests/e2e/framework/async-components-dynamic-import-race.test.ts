@@ -1,7 +1,6 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
 import { defineE2ETestFile } from "../scenario-module"
-import { formatSourceCode } from "../../../src/util/shared/sundry"
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -40,8 +39,8 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        AsyncOne: formatSourceCode(`<article id="async-one">Async One</article>`),
-        AsyncTwo: formatSourceCode(`<article id="async-two">Async Two</article>`)
+        AsyncOne: `<article id="async-one">Async One</article>`,
+        AsyncTwo: `<article id="async-two">Async Two</article>`
     }
 }
 

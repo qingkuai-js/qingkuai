@@ -140,7 +140,7 @@ function getComponentCode(scenarioName: string, componentName: string) {
         )
     }
 
-    const code = compileSourceCodeOrThrow(source)
+    const code = compileSourceCodeOrThrow(formatSourceCode(source))
     componentCodeCache.set(cacheKey, code)
     return code
 }

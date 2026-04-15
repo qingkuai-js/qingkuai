@@ -1,6 +1,5 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
-import { formatSourceCode } from "../../../src/util/shared/sundry"
 import { defineE2ETestFile } from "../scenario-module"
 
 const scenario: E2EScenarioInput = {
@@ -15,7 +14,7 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        "layout/Panel": formatSourceCode(`
+        "layout/Panel": `
             <lang-js>
                 import Leaf from "./Leaf"
             </lang-js>
@@ -23,10 +22,10 @@ const scenario: E2EScenarioInput = {
             <div id="nested-panel">
                 <Leaf />
             </div>
-        `),
-        "layout/Leaf": formatSourceCode(`
+        `,
+        "layout/Leaf": `
             <p id="nested-leaf">Nested Leaf</p>
-        `)
+        `
     }
 }
 

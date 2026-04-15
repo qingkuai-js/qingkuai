@@ -1,6 +1,5 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
-import { formatSourceCode } from "../../../src/util/shared/sundry"
 import { defineE2ETestFile } from "../scenario-module"
 
 const scenario: E2EScenarioInput = {
@@ -26,7 +25,7 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        "layout/PropCard": formatSourceCode(`
+        "layout/PropCard": `
             <lang-js>
                 defaultProps({
                     count: 0,
@@ -39,7 +38,7 @@ const scenario: E2EScenarioInput = {
                 <p id="prop-card-count">Count: {props.count}</p>
                 <p id="prop-card-featured">Featured: {props.featured ? "yes" : "no"}</p>
             </article>
-        `)
+        `
     }
 }
 

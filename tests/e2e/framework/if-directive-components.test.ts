@@ -1,6 +1,5 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
-import { formatSourceCode } from "../../../src/util/shared/sundry"
 import { defineE2ETestFile } from "../scenario-module"
 
 const scenario: E2EScenarioInput = {
@@ -70,21 +69,21 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        TogglePanel: formatSourceCode(`
+        TogglePanel: `
             <div id="component-content">Component content</div>
-        `),
-        ToggleOrderPanel: formatSourceCode(`
+        `,
+        ToggleOrderPanel: `
             <div id="component-order-content">Component content</div>
-        `),
-        IfChainIfPanel: formatSourceCode(`
+        `,
+        IfChainIfPanel: `
             <div id="component-chain-if">Component if branch</div>
-        `),
-        IfChainElifPanel: formatSourceCode(`
+        `,
+        IfChainElifPanel: `
             <div id="component-chain-elif">Component elif branch</div>
-        `),
-        IfChainElsePanel: formatSourceCode(`
+        `,
+        IfChainElsePanel: `
             <div id="component-chain-else">Component else branch</div>
-        `)
+        `
     }
 }
 
