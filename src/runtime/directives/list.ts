@@ -443,6 +443,7 @@ function normalizeTraversable(value: any): Traversable {
         v: value
     }
     if (isNumber(value)) {
+        ret.l = value
         ret.t = TRAVERSE_NUMBER
         return ret
     }
