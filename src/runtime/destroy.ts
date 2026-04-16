@@ -6,7 +6,7 @@ import { runAll } from "../util/shared/sundry"
 import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
 import { spliceByElem } from "../util/shared/arrays"
-import { FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
+import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags"
 import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
 import { currentDestruction, setCurrentDestruction } from "./state"
 
@@ -48,7 +48,8 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
     if (children) {
         const childDetach = detachNodes && !destruction.s
         for (let i = 0; i < children.length; i++) {
-            destroy(children[i], childDetach, false)
+            const hasTargetDirective = !!(children[i].f & FRAG_WITH_TARGET)
+            destroy(children[i], childDetach || hasTargetDirective, false)
         }
     }
     if (effects) {

@@ -8,6 +8,7 @@ const scenario: E2EScenarioInput = {
             import AsyncOne from "./components/AsyncOne"
             import AsyncTwo from "./components/AsyncTwo"
 
+            let raceProbe = "idle"
             let asyncComponentPromise = new Promise(() => {})
 
             async function getComponent(componentName, delay) {
@@ -16,12 +17,23 @@ const scenario: E2EScenarioInput = {
             }
 
             const loadSlowOne = () => (asyncComponentPromise = getComponent("one", 40))
+            const loadSlowFail = () => {
+                raceProbe = "idle"
+                asyncComponentPromise = new Promise((_, reject) => {
+                    setTimeout(() => {
+                        raceProbe = "done"
+                        reject("slow failed")
+                    }, 40)
+                })
+            }
             const loadFastTwo = () => (asyncComponentPromise = getComponent("two", 5))
         </lang-js>
 
         <section data-page="async-components-promise-return-race">
             <button id="load-slow-one" @click={loadSlowOne()}>Load slow one</button>
+            <button id="load-slow-fail" @click={loadSlowFail()}>Load slow fail</button>
             <button id="load-fast-two" @click={loadFastTwo()}>Load fast two</button>
+            <p id="race-probe">{raceProbe}</p>
 
             <div
                 id="async-loading"
@@ -32,6 +44,7 @@ const scenario: E2EScenarioInput = {
             <qk:spread #then={LoadedComponent}>
                 <LoadedComponent />
             </qk:spread>
+            <div id="async-error" #catch={err}>Failed: {err}</div>
         </section>
     `,
     components: {
@@ -50,5 +63,17 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect(page.locator("#async-two")).toHaveText("Async Two")
         await expect(page.locator("#async-one")).toHaveCount(0)
         await expect(page.locator("#async-loading")).toHaveCount(0)
+    })
+
+    test("ignores stale rejection after a newer success", async ({ page, visitScenario }) => {
+        await visitScenario(scenario)
+
+        await page.locator("#load-slow-fail").click()
+        await page.locator("#load-fast-two").click()
+
+        await expect(page.locator("#async-two")).toHaveText("Async Two")
+        await expect(page.locator("#race-probe")).toHaveText("done")
+        await expect(page.locator("#async-error")).toHaveCount(0)
+        await expect(page.locator("#async-one")).toHaveCount(0)
     })
 })

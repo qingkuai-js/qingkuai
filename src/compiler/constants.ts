@@ -23,7 +23,11 @@ import {
     EVENT_SELF,
     EVENT_PREVENT,
     EVENT_CAPTURE,
-    EVENT_PASSIVE
+    EVENT_PASSIVE,
+    FRAG_WITH_TARGET,
+    FRAG_WHOLE_CONTENT,
+    FRAG_ORPHAN_CONTENT,
+    FRAG_LEADING_ANCHOR
 } from "../util/shared/flags"
 import { objectAssign } from "../util/shared/aliases"
 
@@ -86,6 +90,13 @@ export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
     preserveBlankTextNodes: true,
     checkEmptyInterpolation: true,
     checkAttributeValueEnclosure: true
+}
+
+export const FRAG_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
+    [FRAG_WHOLE_CONTENT]: "WHOLE_CONTENT",
+    [FRAG_LEADING_ANCHOR]: "LEADING_ANCHOR",
+    [FRAG_ORPHAN_CONTENT]: "ORPHAN_CONTENT",
+    [FRAG_WITH_TARGET]: "WITH_TARGET_DIRECTIVE"
 }
 
 export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {

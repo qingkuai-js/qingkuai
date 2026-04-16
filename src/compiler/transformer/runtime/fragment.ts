@@ -13,6 +13,7 @@ import {
     interpolatedAttrStartCharRE
 } from "../../regular"
 import {
+    FRAG_WITH_TARGET,
     FRAG_WHOLE_CONTENT,
     FRAG_LEADING_ANCHOR,
     FRAG_ORPHAN_CONTENT
@@ -22,10 +23,10 @@ import {
     getGeneratedStaticTextContent
 } from "../../../util/compiler/template"
 import { getLastElem } from "../../../util/shared/arrays"
-import { newCleanObj } from "../../../util/shared/sundry"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
-import { CREATE_ANCHOR_DIRECTIVES, SPREAD_TAG } from "../../constants"
+import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
+import { CREATE_ANCHOR_DIRECTIVES, FRAG_FLAG_INTERPRETIVE_MAP, SPREAD_TAG } from "../../constants"
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
     if (!nodes.length) {
@@ -273,36 +274,39 @@ export function writeFragmentGetterDeclarations(
 }
 
 export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
-    let isOrphan = false
-    const flagInterpretive: string[] = []
+    const flagInterpretives: string[] = []
     const selectionCache: SelectionCache = newCleanObj()
     if (isFragmentWholeContent(fragment)) {
         fragment.flag |= FRAG_WHOLE_CONTENT
-        flagInterpretive.push("WHOLE_CONTENT")
     }
     if (doesFragmentNeedLeadingAnchor(fragment)) {
         fragment.flag |= FRAG_LEADING_ANCHOR
-        flagInterpretive.push("LEADING_ANCHOR")
     } else if (isFragmentOrphan(fragment)) {
-        isOrphan = true
         fragment.flag |= FRAG_ORPHAN_CONTENT
-        flagInterpretive.push("ORPHAN_CONTENT")
         fragment.id = fragment.selections[0]?.id ?? ""
+    }
+    if (doesFragmentHasTargetDirective(fragment)) {
+        fragment.flag |= FRAG_WITH_TARGET
     }
     if (!fragment.id) {
         fragment.id = ensureIdWithNumSuffix("_fragment")
     }
+    traverseObject(FRAG_FLAG_INTERPRETIVE_MAP, (flag, interpret) => {
+        if (fragment.flag & flag) {
+            flagInterpretives.push(interpret)
+        }
+    })
 
     const internalId = generateIdentifier.internal
     const interpretiveComment =
         fragment.flag && inputDescriptor.options.interpretiveComments
-            ? `/* ${flagInterpretive.join(" | ")} */ `
+            ? `/* ${flagInterpretives.join(" | ")} */ `
             : ""
     writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`)
     writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""})`)
 
     for (const selection of fragment.selections) {
-        if (isOrphan && selection === fragment.selections[0]) {
+        if (fragment.flag & FRAG_ORPHAN_CONTENT && selection === fragment.selections[0]) {
             continue
         }
 
@@ -399,6 +403,12 @@ function isFragmentWholeContent(fragment: TemplateFragment) {
         }
     }
     return true
+}
+
+function doesFragmentHasTargetDirective(fragment: TemplateFragment) {
+    return fragment.nodeContext?.sortedDirectives.some(directive => {
+        return directive.name.raw === "#target"
+    })
 }
 
 function doesFragmentNeedLeadingAnchor(fragment: TemplateFragment) {

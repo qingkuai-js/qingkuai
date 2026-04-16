@@ -25,6 +25,14 @@ const scenario: E2EScenarioInput = {
                 asyncComponentPromise = getComponentModule("two")
             }
 
+            const loadImmediateOne = () => {
+                asyncComponentPromise = Promise.resolve(AsyncOne)
+            }
+
+            const failImmediate = () => {
+                asyncComponentPromise = Promise.reject("immediate failed")
+            }
+
             const failAsyncComponent = () => {
                 asyncComponentPromise = new Promise((_, reject) => {
                     setTimeout(() => reject("promise failed"), 10)
@@ -37,7 +45,9 @@ const scenario: E2EScenarioInput = {
 
             <button id="async-load-one" @click={loadAsyncOne()}>Load component one</button>
             <button id="async-load-two" @click={loadAsyncTwo()}>Load component two</button>
+            <button id="async-load-immediate" @click={loadImmediateOne()}>Load immediate one</button>
             <button id="async-fail" @click={failAsyncComponent()}>Fail component</button>
+            <button id="async-fail-immediate" @click={failImmediate()}>Fail immediate</button>
 
             <div
                 id="async-loading"
@@ -87,5 +97,17 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await page.locator("#async-fail").click()
         await expect(page.locator("#async-error")).toHaveText("Failed: promise failed")
+    })
+
+    test("supports immediately settled promise results", async ({ page, visitScenario }) => {
+        await visitScenario(scenario)
+
+        await page.locator("#async-load-immediate").click()
+        await expect(page.locator("#async-one")).toHaveText("Async One")
+        await expect(page.locator("#async-loading")).toHaveCount(0)
+
+        await page.locator("#async-fail-immediate").click()
+        await expect(page.locator("#async-error")).toHaveText("Failed: immediate failed")
+        await expect(page.locator("#async-one")).toHaveCount(0)
     })
 })
