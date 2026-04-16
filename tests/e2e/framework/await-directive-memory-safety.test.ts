@@ -36,11 +36,11 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="await-directive-memory-safety">
             <div>
-                <button id="trigger-resolve" @click={triggerResolve()}>Resolve Once</button>
-                <button id="trigger-multiple" @click={triggerResolveMultipleTimes()}>
+                <button id="trigger-resolve" @click={triggerResolve}>Resolve Once</button>
+                <button id="trigger-multiple" @click={triggerResolveMultipleTimes}>
                     Resolve 3x
                 </button>
-                <button id="reset-memory" @click={resetMemoryPromise()}>Reset</button>
+                <button id="reset-memory" @click={resetMemoryPromise}>Reset</button>
             </div>
 
             <div id="memory-container">

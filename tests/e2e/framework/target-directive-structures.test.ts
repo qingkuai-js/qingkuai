@@ -19,8 +19,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="target-directive-structures">
             <h1 id="target-title">Target directive</h1>
             <div>
-                <button id="target-spread-to-a" @click={moveSpreadToA()}>Spread to A</button>
-                <button id="target-spread-reset" @click={resetSpreadInline()}>Spread reset</button>
+                <button id="target-spread-to-a" @click={moveSpreadToA}>Spread to A</button>
+                <button id="target-spread-reset" @click={resetSpreadInline}>Spread reset</button>
             </div>
             <div id="target-spread-source">
                 <qk:spread #target={spreadTarget}>

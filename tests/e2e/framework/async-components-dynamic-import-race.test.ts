@@ -35,9 +35,9 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-dynamic-import-race">
-            <button id="load-slow-one" @click={loadSlowOne()}>Load slow one</button>
-            <button id="load-slow-fail" @click={loadSlowFail()}>Load slow fail</button>
-            <button id="load-fast-two" @click={loadFastTwo()}>Load fast two</button>
+            <button id="load-slow-one" @click={loadSlowOne}>Load slow one</button>
+            <button id="load-slow-fail" @click={loadSlowFail}>Load slow fail</button>
+            <button id="load-fast-two" @click={loadFastTwo}>Load fast two</button>
             <p id="race-probe">{raceProbe}</p>
 
             <div

@@ -21,7 +21,7 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="cycle-spread-branch"
-                @click={cycleSpreadBranch()}
+                @click={cycleSpreadBranch}
             >
                 Cycle spread branch
             </button>

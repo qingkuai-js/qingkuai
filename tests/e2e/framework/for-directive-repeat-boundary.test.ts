@@ -19,8 +19,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="for-directive-repeat-boundary">
             <h1 id="for-title">For directive</h1>
             <div>
-                <button id="for-repeat-zero" @click={setRepeatZero()}>Repeat 0</button>
-                <button id="for-repeat-four" @click={setRepeatFour()}>Repeat 4</button>
+                <button id="for-repeat-zero" @click={setRepeatZero}>Repeat 0</button>
+                <button id="for-repeat-four" @click={setRepeatFour}>Repeat 4</button>
             </div>
             <div id="for-repeat-host">
                 <span #for={n of repeatItems} class="for-repeat-item">{n}</span>

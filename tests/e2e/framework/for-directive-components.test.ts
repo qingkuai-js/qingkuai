@@ -31,13 +31,13 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="for-add-item"
-                    @click={addItem()}
+                    @click={addItem}
                 >
                     Add item
                 </button>
                 <button
                     id="for-remove-item"
-                    @click={removeLastItem()}
+                    @click={removeLastItem}
                 >
                     Remove last
                 </button>

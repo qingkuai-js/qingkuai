@@ -21,8 +21,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="target-directive-component-content">
             <h1 id="target-title">Target directive</h1>
             <div>
-                <button id="target-component-to-b" @click={moveComponentToB()}>Component to B</button>
-                <button id="target-component-reset" @click={resetComponentInline()}>Component reset</button>
+                <button id="target-component-to-b" @click={moveComponentToB}>Component to B</button>
+                <button id="target-component-reset" @click={resetComponentInline}>Component reset</button>
             </div>
             <div id="target-component-source">
                 <div #target={componentTarget}>

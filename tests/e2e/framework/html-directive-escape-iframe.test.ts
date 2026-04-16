@@ -20,8 +20,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="html-directive-escape-iframe">
             <h1 id="html-title">Html directive</h1>
             <div>
-                <button id="html-escape-iframe" @click={useEscapeIframe()}>Escape iframe</button>
-                <button id="html-escape-none" @click={useNoEscape()}>No escape</button>
+                <button id="html-escape-iframe" @click={useEscapeIframe}>Escape iframe</button>
+                <button id="html-escape-none" @click={useNoEscape}>No escape</button>
             </div>
             <div id="html-host" #html={htmlOptions}>{rawHtml}</div>
         </section>

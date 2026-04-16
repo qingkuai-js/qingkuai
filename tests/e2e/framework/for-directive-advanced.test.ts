@@ -21,7 +21,7 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="for-toggle-even-only"
-                @click={toggleEvenOnly()}
+                @click={toggleEvenOnly}
             >
                 Toggle even only
             </button>

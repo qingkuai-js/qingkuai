@@ -28,9 +28,9 @@ const scenario: E2EScenarioInput = {
             <h1 id="async-components-title">Async Components Dynamic Import</h1>
 
             <div>
-                <button id="async-load-one" @click={loadAsyncOne()}>Load component one</button>
-                <button id="async-load-two" @click={loadAsyncTwo()}>Load component two</button>
-                <button id="async-fail" @click={failAsyncComponent()}>Fail component</button>
+                <button id="async-load-one" @click={loadAsyncOne}>Load component one</button>
+                <button id="async-load-two" @click={loadAsyncTwo}>Load component two</button>
+                <button id="async-fail" @click={failAsyncComponent}>Fail component</button>
             </div>
 
             <div

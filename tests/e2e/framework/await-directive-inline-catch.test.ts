@@ -25,13 +25,13 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="inline-reject-reset"
-                    @click={resetInlineReject()}
+                    @click={resetInlineReject}
                 >
                     Reset inline reject
                 </button>
                 <button
                     id="inline-reject-trigger"
-                    @click={rejectInline()}
+                    @click={rejectInline}
                 >
                     Reject inline
                 </button>

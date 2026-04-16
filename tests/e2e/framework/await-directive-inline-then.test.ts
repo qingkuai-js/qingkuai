@@ -25,13 +25,13 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="inline-resolve-reset"
-                    @click={resetInlineResolve()}
+                    @click={resetInlineResolve}
                 >
                     Reset inline resolve
                 </button>
                 <button
                     id="inline-resolve-trigger"
-                    @click={resolveInline()}
+                    @click={resolveInline}
                 >
                     Resolve inline
                 </button>

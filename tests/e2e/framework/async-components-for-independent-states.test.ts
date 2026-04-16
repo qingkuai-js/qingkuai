@@ -61,9 +61,9 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-for-independent-states">
-            <button id="resolve-one" @click={resolveOne()}>Resolve one</button>
-            <button id="reject-two" @click={rejectTwo()}>Reject two</button>
-            <button id="reset-two" @click={resetTwo()}>Reset two</button>
+            <button id="resolve-one" @click={resolveOne}>Resolve one</button>
+            <button id="reject-two" @click={rejectTwo}>Reject two</button>
+            <button id="reset-two" @click={resetTwo}>Reset two</button>
 
             <ul id="async-for-list">
                 <li

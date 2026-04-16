@@ -55,10 +55,10 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-for-list-updates">
-            <button id="resolve-one" @click={resolveOne()}>Resolve one</button>
-            <button id="remove-first" @click={removeFirst()}>Remove first</button>
-            <button id="add-third" @click={addThird()}>Add third</button>
-            <button id="resolve-three" @click={resolveThree()}>Resolve three</button>
+            <button id="resolve-one" @click={resolveOne}>Resolve one</button>
+            <button id="remove-first" @click={removeFirst}>Remove first</button>
+            <button id="add-third" @click={addThird}>Add third</button>
+            <button id="resolve-three" @click={resolveThree}>Resolve three</button>
 
             <ul id="async-for-list">
                 <li

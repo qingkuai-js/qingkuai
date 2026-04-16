@@ -23,7 +23,7 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="cycle-language"
-                @click={cycleLanguage()}
+                @click={cycleLanguage}
             >
                 Cycle language
             </button>

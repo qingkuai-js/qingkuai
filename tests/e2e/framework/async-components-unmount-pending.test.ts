@@ -36,9 +36,9 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-unmount-pending">
-            <button id="reload-pending" @click={reloadPending()}>Reload pending</button>
-            <button id="hide-host" @click={hideHost()}>Hide host</button>
-            <button id="resolve-pending" @click={resolvePending()}>Resolve pending</button>
+            <button id="reload-pending" @click={reloadPending}>Reload pending</button>
+            <button id="hide-host" @click={hideHost}>Hide host</button>
+            <button id="resolve-pending" @click={resolvePending}>Resolve pending</button>
 
             <p id="host-state">{showHost ? "shown" : "hidden"}</p>
             <p id="resolve-count">{resolveCount}</p>

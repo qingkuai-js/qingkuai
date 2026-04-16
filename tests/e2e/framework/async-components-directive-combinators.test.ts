@@ -49,13 +49,13 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-directive-combinators">
-            <button id="move-to-a" @click={moveToA()}>Move to A</button>
-            <button id="move-to-source" @click={moveToSource()}>Move to source</button>
-            <button id="hide-host" @click={hideHost()}>Hide host</button>
-            <button id="show-host" @click={showHost()}>Show host</button>
-            <button id="reset-pending" @click={resetPending()}>Reset pending</button>
-            <button id="load-one" @click={loadOne()}>Load one</button>
-            <button id="fail-load" @click={failLoad()}>Fail load</button>
+            <button id="move-to-a" @click={moveToA}>Move to A</button>
+            <button id="move-to-source" @click={moveToSource}>Move to source</button>
+            <button id="hide-host" @click={hideHost}>Hide host</button>
+            <button id="show-host" @click={showHost}>Show host</button>
+            <button id="reset-pending" @click={resetPending}>Reset pending</button>
+            <button id="load-one" @click={loadOne}>Load one</button>
+            <button id="fail-load" @click={failLoad}>Fail load</button>
 
             <div id="target-dest-a"></div>
 

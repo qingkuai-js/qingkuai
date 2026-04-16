@@ -20,8 +20,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="html-directive-combinators">
             <h1 id="html-title">Html directive</h1>
             <div>
-                <button id="html-if-toggle" @click={toggleIfHtml()}>Toggle html if</button>
-                <button id="html-if-updated" @click={setIfUpdated()}>If updated</button>
+                <button id="html-if-toggle" @click={toggleIfHtml}>Toggle html if</button>
+                <button id="html-if-updated" @click={setIfUpdated}>If updated</button>
             </div>
             <div id="html-if-host">
                 <div id="html-if-block" #if={showIfHtml} #html>{ifHtml}</div>

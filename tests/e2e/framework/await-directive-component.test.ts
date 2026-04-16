@@ -33,19 +33,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="component-await-reset"
-                    @click={resetComponentPromise()}
+                    @click={resetComponentPromise}
                 >
                     Reset component await
                 </button>
                 <button
                     id="component-await-resolve"
-                    @click={resolveComponentPromise()}
+                    @click={resolveComponentPromise}
                 >
                     Resolve component await
                 </button>
                 <button
                     id="component-await-reject"
-                    @click={rejectComponentPromise()}
+                    @click={rejectComponentPromise}
                 >
                     Reject component await
                 </button>

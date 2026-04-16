@@ -43,11 +43,11 @@ const scenario: E2EScenarioInput = {
         <section data-page="async-components-promise-return">
             <h1 id="async-components-title">Async Components Promise Return</h1>
 
-            <button id="async-load-one" @click={loadAsyncOne()}>Load component one</button>
-            <button id="async-load-two" @click={loadAsyncTwo()}>Load component two</button>
-            <button id="async-load-immediate" @click={loadImmediateOne()}>Load immediate one</button>
-            <button id="async-fail" @click={failAsyncComponent()}>Fail component</button>
-            <button id="async-fail-immediate" @click={failImmediate()}>Fail immediate</button>
+            <button id="async-load-one" @click={loadAsyncOne}>Load component one</button>
+            <button id="async-load-two" @click={loadAsyncTwo}>Load component two</button>
+            <button id="async-load-immediate" @click={loadImmediateOne}>Load immediate one</button>
+            <button id="async-fail" @click={failAsyncComponent}>Fail component</button>
+            <button id="async-fail-immediate" @click={failImmediate}>Fail immediate</button>
 
             <div
                 id="async-loading"

@@ -23,8 +23,8 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-promise-return-recovery">
-            <button id="load-one" @click={loadOne()}>Load one</button>
-            <button id="fail-one" @click={failOne()}>Fail one</button>
+            <button id="load-one" @click={loadOne}>Load one</button>
+            <button id="fail-one" @click={failOne}>Fail one</button>
 
             <div
                 id="async-loading"

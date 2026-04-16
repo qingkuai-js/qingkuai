@@ -37,8 +37,8 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="async-components-nested">
             <div>
-                <button id="load-parent" @click={loadParent()}>Load Parent</button>
-                <button id="load-child" @click={loadChild()}>Load Child</button>
+                <button id="load-parent" @click={loadParent}>Load Parent</button>
+                <button id="load-child" @click={loadChild}>Load Child</button>
             </div>
 
             <div id="parent-loading" #await={parentPromise}>

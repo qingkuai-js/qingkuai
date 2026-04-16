@@ -27,8 +27,8 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="await-directive-timeout">
             <div>
-                <button id="use-fast" @click={replaceWithFastPromise()}>Use Fast Promise</button>
-                <button id="trigger-timeout" @click={replaceWithError()}>Trigger Timeout</button>
+                <button id="use-fast" @click={replaceWithFastPromise}>Use Fast Promise</button>
+                <button id="trigger-timeout" @click={replaceWithError}>Trigger Timeout</button>
             </div>
 
             <div id="timeout-container">

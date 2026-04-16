@@ -18,7 +18,7 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="event-binding-basic">
-            <button id="click-btn" @click={handleClick()}>Click me</button>
+            <button id="click-btn" @click={handleClick}>Click me</button>
             <p id="click-count">{clickCount}</p>
 
             <input

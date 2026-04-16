@@ -32,19 +32,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="spread-reset"
-                    @click={resetSpread()}
+                    @click={resetSpread}
                 >
                     Reset spread
                 </button>
                 <button
                     id="spread-resolve"
-                    @click={resolveSpread()}
+                    @click={resolveSpread}
                 >
                     Resolve spread
                 </button>
                 <button
                     id="spread-reject"
-                    @click={rejectSpread()}
+                    @click={rejectSpread}
                 >
                     Reject spread
                 </button>

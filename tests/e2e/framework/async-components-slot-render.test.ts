@@ -38,8 +38,8 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="async-components-slot-render">
             <div>
-                <button id="load-header" @click={loadHeader()}>Load Header</button>
-                <button id="load-footer" @click={loadFooter()}>Load Footer</button>
+                <button id="load-header" @click={loadHeader}>Load Header</button>
+                <button id="load-footer" @click={loadFooter}>Load Footer</button>
             </div>
 
             <Container>

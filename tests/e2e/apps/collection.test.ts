@@ -36,13 +36,13 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="add-item"
-                    @click={addItem()}
+                    @click={addItem}
                 >
                     Add item
                 </button>
                 <button
                     id="remove-first"
-                    @click={removeFirst()}
+                    @click={removeFirst}
                 >
                     Remove first
                 </button>
