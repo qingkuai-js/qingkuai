@@ -74,7 +74,7 @@ export function analyzeInterpolation(
     }
 
     walkEstree(expression, {
-        AnyNode(node, context) {            
+        AnyNode(node, context) {
             if (parsedExpression) {
                 collectReusedStringReference(node, context, parsedExpression.reusedStringReferences)
             }
@@ -133,6 +133,9 @@ export function analyzeInterpolation(
                     topLevelIdentifier.status !== "literal" &&
                     topLevelIdentifier.status !== "pending")
             ) {
+                parsedExpression!.reactive ||= true
+            }
+            if (name === "props" || name === "refs") {
                 parsedExpression!.reactive ||= true
             }
             analyzeResult.script.fullIdentifiers.add(name)
