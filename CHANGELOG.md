@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.63](https://github.com/qingkuai-js/qingkuai/compare/v1.0.62...v1.0.63) (2026-04-17)
+## [1.0.64](https://github.com/qingkuai-js/qingkuai/v1.0.64) (2026-04-17)
 
 ### Changes
 
