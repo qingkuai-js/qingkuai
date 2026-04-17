@@ -14,8 +14,8 @@ import { any, createProxy, runAll } from "../util/shared/sundry"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
+// prettier-ignore
 export const [
-    onBeforeMount,
     onAfterMount,
     onBeforeUpdate,
     onAfterUpdate,
@@ -76,7 +76,7 @@ export function mount(anchor?: Element, fragment?: DocumentFragment) {
 // in `ComponentInstance.h`; this method generates functions for registering them
 function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
-    for (let i = 0; i < 6; i++) {
+    for (let i = 1; i < 6; i++) {
         hookRegisters.push(callback => {
             ;(currentInstance!.h[i] ??= []).push(callback)
         })

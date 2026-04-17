@@ -2,7 +2,6 @@ export type { QingkuaiComponent } from "#type-declarations/runtime"
 export type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 
 export {
-    onBeforeMount,
     onAfterMount,
     onBeforeUpdate,
     onAfterUpdate,
