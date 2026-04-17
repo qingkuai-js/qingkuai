@@ -38,11 +38,14 @@ jobs:
           ref: ${{ steps.tag.outputs.value }}
 
       - name: Ensure tag commit is on origin/main
+        id: tag-commit
         env:
           TAG: ${{ steps.tag.outputs.value }}
         run: |
           git fetch origin main --prune
           tag_commit="$(git rev-list -n 1 "$TAG")"
+
+          echo "value=$tag_commit" >> "$GITHUB_OUTPUT"
 
           if ! git merge-base --is-ancestor "$tag_commit" origin/main; then
             echo "Release is allowed only for tags that point to commits on origin/main." >&2
@@ -64,7 +67,9 @@ jobs:
 
       - name: Read version from package.json
         id: package-version
-        run: echo "value=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
 
       - name: Validate tag equals package version
         env:
@@ -130,9 +135,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: qingkuai ${{ steps.tag.outputs.value }}
+          name: ${{ steps.tag.outputs.value }}
           tag_name: ${{ steps.tag.outputs.value }}
-          target_commitish: ${{ steps.tag.outputs.value }}
+          target_commitish: ${{ steps.tag-commit.outputs.value }}
           body_path: ${{ steps.notes.outputs.path }}
           files: |
             qingkuai-*.tgz
