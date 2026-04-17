@@ -30,7 +30,6 @@ export const RESOLVED = Promise.resolve()
 export const OBJECT_PROTO = OBJECT.prototype
 export const DOCUMENT = typeof document === "undefined" ? UNDEF : document
 
-export const BEFORE_MOUNT = 0
 export const AFTER_MOUNT = 1
 export const BEFORE_UPDATE = 2
 export const AFTER_UPDATE = 3
@@ -66,3 +65,5 @@ export const DESTRUCT_HTML: HtmlBlockOptions = {
     escapeScript: true,
     escapeTags: ["link", "iframe", "form"]
 }
+
+export const REFERENCE_VALUE = Symbol("reference value")

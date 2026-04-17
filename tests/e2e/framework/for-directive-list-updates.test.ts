@@ -33,9 +33,9 @@ const scenario: E2EScenarioInput = {
             <h1 id="for-title">For directive</h1>
 
             <div>
-                <button id="for-add-item" @click={addItem()}>Add item</button>
-                <button id="for-remove-item" @click={removeLastItem()}>Remove last</button>
-                <button id="for-swap-items" @click={swapFirstTwoItems()}>Swap first two</button>
+                <button id="for-add-item" @click={addItem}>Add item</button>
+                <button id="for-remove-item" @click={removeLastItem}>Remove last</button>
+                <button id="for-swap-items" @click={swapFirstTwoItems}>Swap first two</button>
             </div>
 
             <ul id="for-basic-list">

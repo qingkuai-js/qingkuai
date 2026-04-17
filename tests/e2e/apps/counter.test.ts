@@ -22,13 +22,13 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="decrement"
-                    @click={decrease()}
+                    @click={decrease}
                 >
                     Decrease
                 </button>
                 <button
                     id="increment"
-                    @click={increase()}
+                    @click={increase}
                 >
                     Increase
                 </button>

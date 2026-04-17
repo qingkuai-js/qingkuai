@@ -62,40 +62,30 @@ test("Transform result of alias in development environment", () => [
         `,
         formatSourceCode(`
             const _G1 = __ => ([props, "b"])
-            const _S1 = v => (b = v)
             const _G2 = __ => ([props, "c"])
-            const _S2 = v => (c = v)
             const _G3 = __ => ([props.d, "e"])
-            const _S3 = v => (e = v)
             const _G4 = __ => ([arr, 0])
-            const _S4 = v => (i = v)
             const _G5 = __ => ([arr, 1])
-            const _S5 = v => (j = v)
             const _G6 = __ => ([arr[2], 0])
-            const _S6 = v => (k = v)
             const _G7 = __ => ([arr[3], 0])
-            const _S7 = v => (l = v)
             const _G8 = __ => ([arr[3], 1])
-            const _S8 = v => (m = v)
             const _G9 = __ => ([props, "q"])
-            const _S9 = v => (r = v)
             const _G10 = __ => ([props, "u"])
-            const _S10 = v => (u = v)
-            console.log(a, _b.$, _c.$, d, _e.$, f, g, h, _i.$, _j.$, _k.$, _l.$, _m.$, n, o, p, q, _r.$, s, t, _u.$)
+            console.log(a, b[_.REFERENCE_VALUE], c[_.REFERENCE_VALUE], d, e[_.REFERENCE_VALUE], f, g, h, i[_.REFERENCE_VALUE], j[_.REFERENCE_VALUE], k[_.REFERENCE_VALUE], l[_.REFERENCE_VALUE], m[_.REFERENCE_VALUE], n, o, p, q, r[_.REFERENCE_VALUE], s, t, u[_.REFERENCE_VALUE])
             
             const a = 1;
-                let [_b, b] = _.alias(_G1, _S1)
-            let [[_c, c], [_e, e]] = _.destructuringAlias([_G2, _G3], [_S2, _S3]); const f = 2,
+                let b = _.alias(_G1)
+            let [c, e] = _.destructuringAlias(_G2, _G3); const f = 2,
                 g = 3
             const h = 4;
-                let [[_i, i], [_j, j], [_k, k], [_l, l], [_m, m]] = _.destructuringAlias([_G4, _G5, _G6, _G7, _G8], [_S4, _S5, _S6, _S7, _S8]); const n = 5
+                let [i, j, k, l, m] = _.destructuringAlias(_G4, _G5, _G6, _G7, _G8); const n = 5
             let o = 6,
                 p = 7,
-                [[_r, r]] = _.destructuringAlias([_G9], [_S9]),
+                [r] = _.destructuringAlias(_G9),
                 s = 8,
                 t = 9
-            let [_u, u] = _.alias(_G10, _S10)
-            console.log(a, _b.$, _c.$, d, _e.$, f, g, h, _i.$, _j.$, _k.$, _l.$, _m.$, n, o, p, q, _r.$, s, t, _u.$)
+            let u = _.alias(_G10)
+            console.log(a, b[_.REFERENCE_VALUE], c[_.REFERENCE_VALUE], d, e[_.REFERENCE_VALUE], f, g, h, i[_.REFERENCE_VALUE], j[_.REFERENCE_VALUE], k[_.REFERENCE_VALUE], l[_.REFERENCE_VALUE], m[_.REFERENCE_VALUE], n, o, p, q, r[_.REFERENCE_VALUE], s, t, u[_.REFERENCE_VALUE])
         `),
         {
             debug: true

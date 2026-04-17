@@ -43,7 +43,7 @@ const scenario: E2EScenarioInput = {
 
             <div
                 id="stop-parent"
-                @click={incParent()}
+                @click={incParent}
             >
                 <button
                     id="stop-btn"

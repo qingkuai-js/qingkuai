@@ -328,7 +328,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             componentTag: isComponent
                 ? isValidIdentifierName(tag, true)
                     ? tag
-                    : kebab2Camel(tag)
+                    : kebab2Camel(tag, true)
                 : "",
             loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })

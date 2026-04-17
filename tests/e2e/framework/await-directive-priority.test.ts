@@ -31,19 +31,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="priority-reset"
-                    @click={resetPriority()}
+                    @click={resetPriority}
                 >
                     Reset priority
                 </button>
                 <button
                     id="priority-resolve"
-                    @click={resolvePriority()}
+                    @click={resolvePriority}
                 >
                     Resolve priority
                 </button>
                 <button
                     id="priority-toggle-if"
-                    @click={togglePriorityIf()}
+                    @click={togglePriorityIf}
                 >
                     Toggle priority if
                 </button>

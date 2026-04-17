@@ -26,13 +26,13 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="toggle-list"
-                @click={toggleList()}
+                @click={toggleList}
             >
                 Toggle list
             </button>
             <button
                 id="toggle-spread"
-                @click={toggleSpread()}
+                @click={toggleSpread}
             >
                 Toggle spread
             </button>

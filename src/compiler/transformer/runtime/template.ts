@@ -34,6 +34,7 @@ import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
 import { stripTypeExpressions } from "../../estree/sundry"
+import { kebab2Camel } from "../../../util/compiler/string"
 import { getLocByIndex } from "../../../util/compiler/position"
 import { getMaybeReusedString } from "../../optimizer/compress"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
@@ -554,10 +555,13 @@ function generateRenderEffect(
                         break
                     }
                     case "&value": {
-                        if (node.tag === "input") {
+                        if (node.tag !== "select") {
                             generateBindCall("bindInputValue", "both")
                         } else {
-                            generateBindCall("bindSelectValue", "getter")
+                            const multiple =
+                                nodeContext.attributesMap["multiple"] ||
+                                nodeContext.attributesMap["!multiple"]
+                            generateBindCall("bindSelectValue", multiple ? "getter" : "both")
                         }
                         break
                     }
@@ -690,7 +694,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.staticAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer).write(": ")
+            writeContextKey(baseName, writer, true).write(": ")
 
             if (!attribute.equalSign) {
                 writer.write("true")
@@ -705,7 +709,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = getParsedExpression(event)!
             const baseName = getParsedEventInfo(event)!.eventName.slice(1)
             insertTrailingComma()
-            writeContextKey(baseName, writer)
+            writeContextKey(baseName, writer, true)
             writer.write(": ").write(`${getterArgId} => (`)
 
             if (isInlineEventHandler(expression.node)) {
@@ -720,7 +724,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.dynamicAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer).write(": ")
+            writeContextKey(baseName, writer, true).write(": ")
             writer.write(`${getterArgId} => (`).writeParsedExpression(attribute).write(")")
         }
 
@@ -732,7 +736,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             if (attribute !== nodeContext.referenceAttributes[0]) {
                 insertTrailingComma()
             }
-            writeContextKey(getAttributeBaseName(attribute.name.raw), writer)
+            writeContextKey(getAttributeBaseName(attribute.name.raw), writer, true)
             writer.write(": [").indent().write(`${getterArgId} => (`)
             writeParsedExpression(writer, attribute, false)
             writer.writeLine("),")
@@ -759,7 +763,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
             const slotName = expression ? (expression.node as StringLiteral).value : "default"
             insertTrailingComma()
-            writeContextKey(slotName, writer).write(`: (${anchorId}`)
+            writeContextKey(slotName, writer, true).write(`: (${anchorId}`)
 
             if (patterns?.length) {
                 writer.write(", ")
@@ -803,7 +807,11 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
     return false
 }
 
-function writeContextKey(str: string, writer: RuntimeCodeWriter) {
+function writeContextKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
+    if (toCamel) {
+        str = kebab2Camel(str)
+    }
+
     const reusedStringInfo = analyzeResult.reusedStrings[str]
     if (
         isValidIdentifierName(str) &&

@@ -28,9 +28,9 @@ const scenario: E2EScenarioInput = {
         <section data-page="html-directive-await">
             <h1 id="html-title">Html directive</h1>
             <div>
-                <button id="html-await-reset" @click={resetAwait()}>Await reset</button>
-                <button id="html-await-resolve" @click={resolveAwait()}>Await resolve</button>
-                <button id="html-await-reject" @click={rejectAwait()}>Await reject</button>
+                <button id="html-await-reset" @click={resetAwait}>Await reset</button>
+                <button id="html-await-resolve" @click={resolveAwait}>Await resolve</button>
+                <button id="html-await-reject" @click={rejectAwait}>Await reject</button>
             </div>
             <div id="html-await-host">
                 <div id="html-await-pending" #await={htmlPromise} #html>

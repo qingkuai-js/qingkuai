@@ -26,8 +26,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="target-directive-for">
             <h1 id="target-title">Target directive</h1>
             <div>
-                <button id="target-for-to-b" @click={moveForToB()}>For to B</button>
-                <button id="target-for-append" @click={appendForItem()}>For append</button>
+                <button id="target-for-to-b" @click={moveForToB}>For to B</button>
+                <button id="target-for-append" @click={appendForItem}>For append</button>
             </div>
             <div id="target-for-source">
                 <p #for={item of forItems} #key={item.id}>

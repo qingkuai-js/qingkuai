@@ -29,19 +29,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="target-to-a"
-                    @click={teleportToA()}
+                    @click={teleportToA}
                 >
                     Teleport to A
                 </button>
                 <button
                     id="target-to-b"
-                    @click={teleportToB()}
+                    @click={teleportToB}
                 >
                     Teleport to B
                 </button>
                 <button
                     id="target-reset"
-                    @click={resetInline()}
+                    @click={resetInline}
                 >
                     Reset inline
                 </button>

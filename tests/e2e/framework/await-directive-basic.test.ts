@@ -32,19 +32,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="branch-reset"
-                    @click={resetBranch()}
+                    @click={resetBranch}
                 >
                     Reset branch
                 </button>
                 <button
                     id="branch-resolve"
-                    @click={resolveBranch()}
+                    @click={resolveBranch}
                 >
                     Resolve branch
                 </button>
                 <button
                     id="branch-reject"
-                    @click={rejectBranch()}
+                    @click={rejectBranch}
                 >
                     Reject branch
                 </button>

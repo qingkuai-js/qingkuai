@@ -32,19 +32,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="target-delayed-resolve"
-                    @click={resolveDelayedTarget()}
+                    @click={resolveDelayedTarget}
                 >
                     Resolve delayed dest
                 </button>
                 <button
                     id="target-delayed-teleport"
-                    @click={teleportToDelayedTarget()}
+                    @click={teleportToDelayedTarget}
                 >
                     Teleport delayed
                 </button>
                 <button
                     id="target-delayed-reset"
-                    @click={resetDelayedTarget()}
+                    @click={resetDelayedTarget}
                 >
                     Reset delayed
                 </button>

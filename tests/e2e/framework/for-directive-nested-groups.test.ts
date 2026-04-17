@@ -17,7 +17,7 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="for-directive-nested-groups">
             <h1 id="for-title">For directive</h1>
-            <button id="for-append-group-entry" @click={appendGroupEntry()}>Append group entry</button>
+            <button id="for-append-group-entry" @click={appendGroupEntry}>Append group entry</button>
             <ul id="for-nested-groups">
                 <li #for={group of groups} class="for-group-item">
                     <h3 class="for-group-title">{group.name}</h3>

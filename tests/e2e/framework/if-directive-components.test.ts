@@ -32,13 +32,13 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="toggle-component"
-                @click={toggleComponent()}
+                @click={toggleComponent}
             >
                 Toggle component
             </button>
             <button
                 id="cycle-component-branch"
-                @click={cycleComponentBranch()}
+                @click={cycleComponentBranch}
             >
                 Cycle component branch
             </button>

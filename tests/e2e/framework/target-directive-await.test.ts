@@ -23,8 +23,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="target-directive-await">
             <h1 id="target-title">Target directive</h1>
             <div>
-                <button id="target-await-to-a" @click={moveAwaitToA()}>Await to A</button>
-                <button id="target-await-resolve" @click={resolveAwaitBranch()}>Await resolve</button>
+                <button id="target-await-to-a" @click={moveAwaitToA}>Await to A</button>
+                <button id="target-await-resolve" @click={resolveAwaitBranch}>Await resolve</button>
             </div>
             <div id="target-await-source">
                 <p id="target-await-pending" #await={awaitValuePromise} #target={awaitTarget}>Await pending</p>

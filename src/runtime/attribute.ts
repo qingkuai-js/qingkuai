@@ -5,8 +5,8 @@ import { getElementValue } from "./dom"
 import { ATTRIBUTE_PREFIX } from "./constants"
 import { NotArrayOrSet } from "./messages/error"
 import { objectKeys } from "../util/shared/aliases"
-import { reactiveNotEqual } from "../util/runtime/sundry"
 import { any, notEqual, optc } from "../util/shared/sundry"
+import { nextTick, reactiveNotEqual } from "../util/runtime/sundry"
 import { isArray, isBoolean, isString } from "../util/shared/assert"
 
 export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
@@ -81,26 +81,29 @@ export function setInputGroup(elem: HTMLInputElement, target: any) {
 }
 
 export function setSelectValue(elem: HTMLSelectElement, target: any) {
-    if (!elem.multiple) {
-        if (notEqual(target, getElementValue(elem))) {
-            for (const option of elem.options) {
-                option.selected = !notEqual(target, getElementValue(option))
+    nextTick(() => {
+        const options = elem.options ?? []
+        if (!elem.multiple) {
+            if (notEqual(target, getElementValue(elem))) {
+                for (const option of options) {
+                    option.selected = !notEqual(target, getElementValue(option))
+                }
+                any(elem)[ATTRIBUTE_PREFIX + "value"] = target
             }
-            any(elem)[ATTRIBUTE_PREFIX + "value"] = target
+        } else {
+            const containerIsArray = isArray(target)
+            if (!containerIsArray && optc(target) !== "Set") {
+                return NotArrayOrSet("value", "<select multiple>")
+            }
+            for (const option of options) {
+                setAttribute(
+                    option,
+                    "selected",
+                    target[containerIsArray ? "includes" : "has"](getElementValue(option))
+                )
+            }
         }
-    } else {
-        const containerIsArray = isArray(target)
-        if (!containerIsArray && optc(target) !== "Set") {
-            return NotArrayOrSet("value", "<select multiple>")
-        }
-        for (const option of elem.options) {
-            setAttribute(
-                option,
-                "selected",
-                target[containerIsArray ? "includes" : "has"](getElementValue(option))
-            )
-        }
-    }
+    })
 }
 
 function getClassNameWithObject(o: AnyObject) {

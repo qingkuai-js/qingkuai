@@ -5,17 +5,17 @@ import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/run
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
 import { createDestruction } from "./destroy"
+import { constReact } from "./reactivity/value"
 import { isElement } from "../util/runtime/assert"
 import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
-import { stripPrototype } from "../util/shared/sundry"
 import { isFunction, isString } from "../util/shared/assert"
 import { any, createProxy, runAll } from "../util/shared/sundry"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
+// prettier-ignore
 export const [
-    onBeforeMount,
     onAfterMount,
     onBeforeUpdate,
     onAfterUpdate,
@@ -76,7 +76,7 @@ export function mount(anchor?: Element, fragment?: DocumentFragment) {
 // in `ComponentInstance.h`; this method generates functions for registering them
 function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
-    for (let i = 0; i < 6; i++) {
+    for (let i = 1; i < 6; i++) {
         hookRegisters.push(callback => {
             ;(currentInstance!.h[i] ??= []).push(callback)
         })
@@ -85,19 +85,22 @@ function hooksRegisterGen(): LifecycleHookRegister[] {
 }
 
 function initRefs(transformed: AnyObject | undefined, defaults: any) {
-    if (transformed && stripPrototype(transformed)) {
+    if (defaults) {
+        defaults = constReact(defaults)
+    }
+    if (transformed || defaults) {
         return createProxy(
             {},
             {
                 get(_, property) {
-                    const propValue = transformed[property]
+                    const propValue = transformed?.[property]
                     if (propValue) {
                         return propValue[0]()
                     }
                     return defaults?.[property]
                 },
                 set(_, property, value) {
-                    const propValue = transformed[property]
+                    const propValue = transformed?.[property]
                     if (propValue) {
                         propValue[1](value)
                     } else if (defaults && property in defaults) {
@@ -111,12 +114,15 @@ function initRefs(transformed: AnyObject | undefined, defaults: any) {
 }
 
 function initProps(transformed: AnyObject | undefined, defaults: any) {
-    if (transformed && stripPrototype(transformed)) {
+    if (defaults) {
+        defaults = constReact(defaults)
+    }
+    if (transformed || defaults) {
         return createProxy(
             {},
             {
                 get(_, property) {
-                    const propValue = transformed[property]
+                    const propValue = transformed?.[property]
                     if (propValue) {
                         if (!isFunction(propValue)) {
                             return propValue
@@ -134,7 +140,7 @@ function initProps(transformed: AnyObject | undefined, defaults: any) {
 }
 
 function initSlots(transformed: AnyObject | undefined) {
-    if (transformed && stripPrototype(transformed)) {
+    if (transformed) {
         return createProxy(
             {},
             {

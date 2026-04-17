@@ -46,6 +46,10 @@ export function renderScenarioPage(scenario: E2EScenario) {
                     <div id="app"></div>
                 </main>
 
+                <script>
+                    globalThis.__qk_max_schedule_depth = 300
+                </script>
+
                 <script type="module">
                     import { mountApp } from "qingkuai"
                     import App from "/scenarios/${scenario.name}/app.js"

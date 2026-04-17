@@ -642,7 +642,7 @@ test("With components", () => {
                 prev: nodeList[0].children[5]
             }
         ],
-        componentTag: "myComp",
+        componentTag: "MyComp",
         loc: getLocByIndex(0, 70),
         startTagEndPos: getPosByIndex(9),
         endTagStartPos: getPosByIndex(60)
@@ -1045,7 +1045,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                             prev: nodeList[0].children[1]
                         }
                     ],
-                    componentTag: "myComp",
+                    componentTag: "MyComp",
                     loc: getLocByIndex(0, 36),
                     startTagEndPos: getPosByIndex(9),
                     endTagStartPos: getPosByIndex(26)
@@ -1207,7 +1207,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                             endTagStartPos: getPosByIndex(37)
                         }
                     ],
-                    componentTag: "myComp",
+                    componentTag: "MyComp",
                     loc: getLocWithDefaultEnd(0),
                     startTagEndPos: getPosByIndex(9)
                 }

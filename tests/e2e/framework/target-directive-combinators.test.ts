@@ -20,8 +20,8 @@ const scenario: E2EScenarioInput = {
         <section data-page="target-directive-combinators">
             <h1 id="target-title">Target directive</h1>
             <div>
-                <button id="target-if-to-a" @click={moveIfToA()}>If to A</button>
-                <button id="target-if-toggle" @click={toggleIfTarget()}>Toggle if</button>
+                <button id="target-if-to-a" @click={moveIfToA}>If to A</button>
+                <button id="target-if-toggle" @click={toggleIfTarget}>Toggle if</button>
             </div>
             <div id="target-if-source">
                 <p id="target-if-content" #if={showIfTarget} #target={ifTarget}>If payload</p>

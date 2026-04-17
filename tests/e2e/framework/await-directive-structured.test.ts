@@ -32,19 +32,19 @@ const scenario: E2EScenarioInput = {
             <div>
                 <button
                     id="structured-reset"
-                    @click={resetStructured()}
+                    @click={resetStructured}
                 >
                     Reset structured
                 </button>
                 <button
                     id="structured-resolve"
-                    @click={resolveStructured()}
+                    @click={resolveStructured}
                 >
                     Resolve structured
                 </button>
                 <button
                     id="structured-reject"
-                    @click={rejectStructured()}
+                    @click={rejectStructured}
                 >
                     Reject structured
                 </button>

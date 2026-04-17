@@ -33,9 +33,9 @@ const scenario: E2EScenarioInput = {
         <section data-page="html-directive-for">
             <h1 id="html-title">Html directive</h1>
             <div>
-                <button id="html-for-append" @click={appendForItem()}>For append</button>
-                <button id="html-for-remove" @click={removeForItem()}>For remove</button>
-                <button id="html-for-update-second" @click={updateForSecond()}>For update second</button>
+                <button id="html-for-append" @click={appendForItem}>For append</button>
+                <button id="html-for-remove" @click={removeForItem}>For remove</button>
+                <button id="html-for-update-second" @click={updateForSecond}>For update second</button>
             </div>
             <ul id="html-for-host">
                 <li #for={item of forItems} #key={item.id} #html>{item.html}</li>

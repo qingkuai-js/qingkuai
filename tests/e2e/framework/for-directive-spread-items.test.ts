@@ -22,7 +22,7 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="for-directive-spread-items">
             <h1 id="for-title">For directive</h1>
-            <button id="for-toggle-spread" @click={toggleSpreadItems()}>Toggle spread items</button>
+            <button id="for-toggle-spread" @click={toggleSpreadItems}>Toggle spread items</button>
             <div id="for-spread-host">
                 <qk:spread #for={item of spreadItems}>
                     <span class="for-spread-label">{item.label}</span>

@@ -49,10 +49,13 @@ export function analyzeInterpolation(
     }
 
     let parsedExpression: ParsedExpression | undefined
+
+    const attrRawName = parsingInfoKey?.name?.raw
     const reactiveContextReferences: ContextReference[] = []
     const nodeContext = getTemplateNodeContext(templateNode)
     const topLevelReferences: TopLevelReferences = newCleanObj()
     const expression = parseExpression(source, startSourceIndex)
+    const isReferenceAttr = attrRawName?.startsWith("&") && nodeContext.attributesMap[attrRawName]
 
     if (expression) {
         parsedExpression = {
@@ -74,7 +77,7 @@ export function analyzeInterpolation(
     }
 
     walkEstree(expression, {
-        AnyNode(node, context) {            
+        AnyNode(node, context) {
             if (parsedExpression) {
                 collectReusedStringReference(node, context, parsedExpression.reusedStringReferences)
             }
@@ -101,7 +104,8 @@ export function analyzeInterpolation(
                     const status = topLevelIdentifier.status
                     if (
                         status === "pending" ||
-                        (status === "literal" && context.isIdentifierAssignmentTarget)
+                        (status === "literal" &&
+                            (isReferenceAttr || context.isIdentifierAssignmentTarget))
                     ) {
                         topLevelIdentifier.status = inputDescriptor.options.reactivityMode
                     }
@@ -133,6 +137,9 @@ export function analyzeInterpolation(
                     topLevelIdentifier.status !== "literal" &&
                     topLevelIdentifier.status !== "pending")
             ) {
+                parsedExpression!.reactive ||= true
+            }
+            if (name === "props" || name === "refs") {
                 parsedExpression!.reactive ||= true
             }
             analyzeResult.script.fullIdentifiers.add(name)

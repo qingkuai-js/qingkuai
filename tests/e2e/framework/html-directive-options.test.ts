@@ -32,11 +32,11 @@ const scenario: E2EScenarioInput = {
         <section data-page="html-directive-options">
             <h1 id="html-title">Html directive</h1>
             <div>
-                <button id="html-set-initial" @click={setInitialHtml()}>Set initial html</button>
-                <button id="html-set-updated" @click={setUpdatedHtml()}>Set updated html</button>
-                <button id="html-set-script" @click={setScriptHtml()}>Set script html</button>
-                <button id="html-escape-none" @click={useNoEscape()}>No escape</button>
-                <button id="html-escape-script" @click={useEscapeScript()}>Escape script</button>
+                <button id="html-set-initial" @click={setInitialHtml}>Set initial html</button>
+                <button id="html-set-updated" @click={setUpdatedHtml}>Set updated html</button>
+                <button id="html-set-script" @click={setScriptHtml}>Set script html</button>
+                <button id="html-escape-none" @click={useNoEscape}>No escape</button>
+                <button id="html-escape-script" @click={useEscapeScript}>Escape script</button>
             </div>
             <div id="html-host" #html={htmlOptions}>{rawHtml}</div>
         </section>

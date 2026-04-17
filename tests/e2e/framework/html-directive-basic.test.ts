@@ -22,7 +22,7 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="html-set-updated"
-                @click={setUpdatedHtml()}
+                @click={setUpdatedHtml}
             >
                 Set updated html
             </button>
@@ -35,7 +35,7 @@ const scenario: E2EScenarioInput = {
 
             <button
                 id="html-spread-updated"
-                @click={setSpreadUpdated()}
+                @click={setSpreadUpdated}
             >
                 Spread updated
             </button>

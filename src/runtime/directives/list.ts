@@ -1,5 +1,4 @@
 import type {
-    Effect,
     Destruction,
     Traversable,
     TraverseInfo,
@@ -444,6 +443,7 @@ function normalizeTraversable(value: any): Traversable {
         v: value
     }
     if (isNumber(value)) {
+        ret.l = value
         ret.t = TRAVERSE_NUMBER
         return ret
     }
@@ -510,9 +510,11 @@ function updateBlock(oldInfo: TraverseInfo, traversable: Traversable, index: num
     if (reactiveNotEqual(oldM, context.m) || reactiveNotEqual(oldX, context.x)) {
         oldInfo.s?.(context)
 
-        const effect = oldInfo.d.e?.[0] as Effect | undefined
-        if (effect && !(effect.l & EFFECT_SCHEDULING)) {
-            runAndUpdateEffect(effect)
+        for (let i = 0; i < (oldInfo.d.e?.length ?? 0); i++) {
+            const effect = oldInfo.d.e?.[i]
+            if (effect && !(effect.l & EFFECT_SCHEDULING)) {
+                runAndUpdateEffect(effect)
+            }
         }
     }
 }

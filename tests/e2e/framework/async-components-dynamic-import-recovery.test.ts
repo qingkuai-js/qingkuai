@@ -20,8 +20,8 @@ const scenario: E2EScenarioInput = {
         </lang-js>
 
         <section data-page="async-components-dynamic-import-recovery">
-            <button id="load-missing" @click={loadMissing()}>Load missing</button>
-            <button id="load-one" @click={loadOne()}>Load one</button>
+            <button id="load-missing" @click={loadMissing}>Load missing</button>
+            <button id="load-one" @click={loadOne}>Load one</button>
             
             <div
                 id="async-loading"
