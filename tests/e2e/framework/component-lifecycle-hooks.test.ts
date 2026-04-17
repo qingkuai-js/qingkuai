@@ -22,6 +22,11 @@ const scenario: E2EScenarioInput = {
             const incrementVersion = () => {
                 version++
             }
+
+            const incrementVersionTwice = () => {
+                version++
+                version++
+            }
         </lang-js>
 
         <section data-page="component-lifecycle-hooks">
@@ -29,6 +34,7 @@ const scenario: E2EScenarioInput = {
             <p id="lifecycle-log">{lifecycleLog}</p>
             <button id="toggle-btn" @click={toggle}>Toggle</button>
             <button id="update-btn" @click={incrementVersion}>Update</button>
+            <button id="update-twice-btn" @click={incrementVersionTwice}>Update twice</button>
             <LifecycleMonitor
                 #if={showComponent}
                 !version={version}
@@ -116,6 +122,23 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await page.locator("#toggle-btn").click()
         await expect(monitor).toHaveCount(0)
         await expect(log).toHaveText("after-mount,before-destroy,after-destroy")
+    })
+
+    test("batches multiple sync mutations into one update hook cycle", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario(scenario)
+
+        const log = page.locator("#lifecycle-log")
+
+        await page.locator("#toggle-btn").click()
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 0")
+        await expect(log).toHaveText("after-mount")
+
+        await page.locator("#update-twice-btn").click()
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 2")
+        await expect(log).toHaveText("after-mount,before-update,after-update")
     })
 
     test("supports multiple mount/unmount cycles", async ({ page, visitScenario }) => {

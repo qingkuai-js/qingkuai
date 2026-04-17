@@ -10,10 +10,15 @@ const scenario: E2EScenarioInput = {
             const setNonTraversable = () => {
                 listSource = true
             }
+
+            const setTraversable = () => {
+                listSource = ["C", "D"]
+            }
         </lang-js>
 
         <section data-page="for-directive-non-traverse-error">
             <button id="set-non-traversable" @click={setNonTraversable}>Set non-traversable</button>
+            <button id="set-traversable" @click={setTraversable}>Set traversable</button>
             <div id="non-traverse-host">
                 <span
                     class="non-traverse-item"
@@ -44,5 +49,28 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect
             .poll(() => pageErrors.join("\n"))
             .toContain('The given value for "#for" directive is non-traversable.')
+    })
+
+    test("keeps previous rendered list after non-traversable interruption", async ({
+        page,
+        visitScenario
+    }) => {
+        const pageErrors: string[] = []
+        page.on("pageerror", error => {
+            pageErrors.push(error.message)
+        })
+
+        await visitScenario(scenario)
+        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"])
+
+        await page.locator("#set-non-traversable").click()
+        await expect
+            .poll(() => pageErrors.join("\n"))
+            .toContain('The given value for "#for" directive is non-traversable.')
+
+        await page.locator("#set-traversable").click()
+
+        // After a non-traversable runtime error, current behavior keeps previous nodes.
+        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"])
     })
 })
