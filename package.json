@@ -3,8 +3,12 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.62",
+  "version": "1.0.63",
   "sideEffects": false,
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/qingkuai-js/qingkuai"
+  },
   "files": [
     "dist",
     "LICENSE",
