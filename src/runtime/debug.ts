@@ -1,74 +1,35 @@
-import type { ArbitraryFunc, Getter, Setter } from "#type-declarations/tools"
+import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
+import { REFERNECE_VALUE } from "./constants"
+import { isFunction } from "../util/shared/assert"
 import { newCleanObj } from "../util/shared/sundry"
-import { aliasSetterToTarget, aliasTargetDescriptors } from "./state"
-import { defineProperties, getOwnPropertyDescriptor } from "../util/shared/aliases"
+import { defineProperties } from "../util/shared/aliases"
 
-export function alias(getter: Getter, setter: Setter) {
-    return destructuringAlias([getter], [setter])[0]
+export function alias(getter: Getter) {
+    return destructuringAlias(getter)[0]
 }
 
-export const destructuringAlias = stripErrorStack((getters: Getter[], setters: Setter[]) => {
-    const ret: any[] = []
-    for (let i = 0; i < getters.length; i++) {
-        const acceesor: any = {}
-        const [target, key] = getters[i]()
-
-        const set = (v: any) => {
-            const [target, key] = getters[i]()
-            target[key] = v
-        }
-
-        const get = () => {
-            let container: any
-            let originDescriptor: any
-            const [target, key] = getters[i]()
-            if (aliasTargetDescriptors.has(target)) {
-                container = aliasTargetDescriptors.get(target)
-            } else {
-                aliasTargetDescriptors.set(target, (container = newCleanObj()))
-            }
-            if (!(originDescriptor = container[key])) {
-                originDescriptor = container[key] = getOwnPropertyDescriptor(target, key)
-                if (!aliasSetterToTarget.has(setters[i])) {
-                    aliasSetterToTarget.set(setters[i], {
-                        key,
-                        target,
-                        descriptor: originDescriptor
-                    })
-                } else {
-                    const existing = aliasSetterToTarget.get(setters[i])
-                    defineProperties(existing.target, { [existing.key]: existing.descriptor })
-                }
-            }
-            defineProperties(target, {
-                [key]: {
-                    get() {
-                        return originDescriptor.get?.() ?? originDescriptor.value
-                    },
-                    set(v) {
-                        if ((setters[i](v), originDescriptor?.set)) {
-                            originDescriptor.set(v)
-                        } else {
-                            originDescriptor.value = v
-                        }
-                    },
-                    enumerable: originDescriptor.enumerable,
-                    configurable: originDescriptor.configurable
-                }
-            })
-            return (setters[i](target[key]), target[key])
-        }
-
-        defineProperties(acceesor, {
-            $: {
-                get: stripErrorStack(get),
-                set: stripErrorStack(set)
+export const destructuringAlias = stripErrorStack((...getters: Getter[]) => {
+    return getters.map(getter => {
+        const accessor = newCleanObj()
+        defineProperties(accessor, {
+            [REFERNECE_VALUE]: {
+                get: stripErrorStack(() => {
+                    const [target, key] = getter()
+                    const ret = target[key]
+                    if (isFunction(ret)) {
+                        return ret.bind(target)
+                    }
+                    return ret
+                }),
+                set: stripErrorStack(value => {
+                    const [target, key] = getter()
+                    target[key] = value
+                })
             }
         })
-        ret.push([acceesor, target[key]])
-    }
-    return ret
+        return accessor
+    })
 })
 
 function stripErrorStack<T extends ArbitraryFunc>(fn: T): T {

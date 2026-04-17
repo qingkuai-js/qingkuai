@@ -5,7 +5,6 @@ import type {
     VariableDeclaration
 } from "@babel/types"
 import type { CodeEditor } from "../editor"
-import type { Pair } from "#type-declarations/tools"
 import type { AnyNode, IntrinsicCall } from "#type-declarations/estree"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
 
@@ -78,18 +77,25 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             case "literal": {
                 return transformRawDecalration(info)
             }
+            case "shallow":
+            case "reactive": {
+                transformReactiveDeclaration(name, info)
+                info.transofrmedTo = identifierMap[name] ?? name
+                return (info.transofrmedTo += info.accessor ? ".$" : "")
+            }
             case "derived": {
                 transformDerivedDeclaration(name, info)
                 return (info.transofrmedTo = `${identifierMap[name] ?? name}.$`)
             }
             case "alias": {
                 transformAliasDeclaration(name, info)
-                return (info.transofrmedTo = debugMode ? `${identifierMap[name]}.$` : info.path)
-            }
-            case "shallow":
-            case "reactive": {
-                transformReactiveDeclaration(name, info)
-                return (info.transofrmedTo = `${identifierMap[name] ?? name}${info.accessor ? ".$" : ""}`)
+
+                if (!debugMode) {
+                    info.transofrmedTo = info.path
+                } else {
+                    info.transofrmedTo = `${name}[${internalId}.REFERNECE_VALUE]`
+                }
+                return
             }
         }
     })
@@ -255,9 +261,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 ...intrinsicCall.arguments[0].range!,
                 generateHoistGetter(`[${aliasInfos[0].target}, ${aliasInfos[0].property}]`)
             )
-            transformNonDestructuringDeclaratorId(declarator)
             editor.insert(intrinsicId.start!, `${internalId}.`)
-            editor.insert(intrinsicCall.arguments[0].end!, `, ${generateHoistSetter(name)}`)
             return
         }
 
@@ -265,23 +269,17 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             return
         }
 
+        const getterIds: string[] = []
         const declaratorIdRange = declarator.id.range!
-        const [getterIds, setterIds]: Pair<string[]> = [[], []]
-        const destructuringIds = info.destructuringIdentifierNames.map(item => {
-            return `[${getReactiveIdentifier(item)}, ${item}]`
-        })
+        const joinedDestructuringIds = info.destructuringIdentifierNames.join(", ")
         for (const aliasInfo of aliasInfos) {
             getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.property}]`))
-            setterIds.push(generateHoistSetter(aliasInfo.id))
         }
-        editor.insert(
-            intrinsicCall.arguments[0].end!,
-            `[${getterIds.join(", ")}], [${setterIds.join(", ")}]`
-        )
+        editor.insert(intrinsicCall.arguments[0].end!, `${getterIds.join(", ")}`)
         editor.remove(...declaratorIdRange)
         editor.remove(...intrinsicCall.arguments[0].range!)
         replaceIntrinsicCall(declarator, "destructuringAlias")
-        editor.insert(declarator.id.start!, `[${destructuringIds.join(", ")}]`, declaratorIdRange)
+        editor.insert(declarator.id.start!, `[${joinedDestructuringIds}]`, declaratorIdRange)
     }
 
     function transformReactiveDeclaration(name: string, info: TopLevelIdentifierInfo) {
