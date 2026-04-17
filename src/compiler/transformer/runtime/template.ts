@@ -555,10 +555,13 @@ function generateRenderEffect(
                         break
                     }
                     case "&value": {
-                        if (node.tag === "input") {
+                        if (node.tag !== "select") {
                             generateBindCall("bindInputValue", "both")
                         } else {
-                            generateBindCall("bindSelectValue", "getter")
+                            const multiple =
+                                nodeContext.attributesMap["multiple"] ||
+                                nodeContext.attributesMap["!multiple"]
+                            generateBindCall("bindSelectValue", multiple ? "getter" : "both")
                         }
                         break
                     }

@@ -1,12 +1,12 @@
 import type { Getter, Setter } from "#type-declarations/tools"
 
 import { getElementValue } from "./dom"
+import { any } from "../util/shared/sundry"
 import { setInputGroup } from "./attribute"
 import { ATTRIBUTE_PREFIX } from "./constants"
 import { isArray } from "../util/shared/assert"
 import { pushDestructionCleaner } from "./destroy"
 import { spliceByElem } from "../util/shared/arrays"
-import { any, notEqual } from "../util/shared/sundry"
 import { listen, renderEffect, setAttribute, setSelectValue } from "./internal"
 
 export function bindDomReceiver(elem: any, setter: Setter) {
@@ -51,30 +51,32 @@ export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {
     renderEffect(() => setInputGroup(elem, getTarget()))
 }
 
-export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter) {
+export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter, setValue: Setter) {
     listen(elem, "change", () => {
         const target = getTarget()
+        const options = elem.options ?? []
         if (elem.multiple) {
-            for (const option of elem.options) {
+            const targetIsArray = isArray(target)
+            if (targetIsArray) {
+                target.length = 0
+            } else {
+                target.clear()
+            }
+            for (const option of options) {
+                const selected = option.selected
                 const value = getElementValue(option)
-                if (!notEqual(target, value)) {
-                    target((any(option)[ATTRIBUTE_PREFIX + "value"] = value))
+                if (selected) {
+                    if (targetIsArray) {
+                        target.push(value)
+                    } else {
+                        target.add(value)
+                    }
                 }
             }
         } else {
-            for (const option of elem.options) {
-                const { selected } = option
-                const value = getElementValue(option)
-                if (!isArray(target)) {
-                    if (selected) {
-                        target.add(value)
-                    } else {
-                        target.delete(value)
-                    }
-                } else if (selected) {
-                    target.push(value)
-                } else {
-                    spliceByElem(target, value)
+            for (const option of options) {
+                if (option.selected) {
+                    setValue((any(option)[ATTRIBUTE_PREFIX + "value"] = getElementValue(option)))
                 }
             }
         }

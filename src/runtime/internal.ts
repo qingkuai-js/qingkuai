@@ -23,6 +23,7 @@ export {
 export {
     bindInputGroup,
     bindInputValue,
+    bindInputNumber,
     bindSelectValue,
     bindDomReceiver,
     bindInputChecked
@@ -33,8 +34,8 @@ export { htmlBlock } from "./directives/html"
 export { renderSlot } from "./directives/slot"
 export { targetBlock } from "./directives/target"
 export { renderEffect } from "./reactivity/effect"
-export { alias, destructuringAlias } from "./debug"
 export { promiseBlock } from "./directives/promise"
+export { alias, destructuringAlias } from "./debug"
 export { conditionBlock } from "./directives/condition"
 export { objectAssign, call } from "../util/shared/aliases"
 export { listBlock, keyedListBlock } from "./directives/list"

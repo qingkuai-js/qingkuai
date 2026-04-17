@@ -49,10 +49,13 @@ export function analyzeInterpolation(
     }
 
     let parsedExpression: ParsedExpression | undefined
+
+    const attrRawName = parsingInfoKey?.name?.raw
     const reactiveContextReferences: ContextReference[] = []
     const nodeContext = getTemplateNodeContext(templateNode)
     const topLevelReferences: TopLevelReferences = newCleanObj()
     const expression = parseExpression(source, startSourceIndex)
+    const isReferenceAttr = attrRawName?.startsWith("&") && nodeContext.attributesMap[attrRawName]
 
     if (expression) {
         parsedExpression = {
@@ -101,7 +104,8 @@ export function analyzeInterpolation(
                     const status = topLevelIdentifier.status
                     if (
                         status === "pending" ||
-                        (status === "literal" && context.isIdentifierAssignmentTarget)
+                        (status === "literal" &&
+                            (isReferenceAttr || context.isIdentifierAssignmentTarget))
                     ) {
                         topLevelIdentifier.status = inputDescriptor.options.reactivityMode
                     }
