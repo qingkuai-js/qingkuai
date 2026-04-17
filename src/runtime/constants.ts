@@ -67,4 +67,4 @@ export const DESTRUCT_HTML: HtmlBlockOptions = {
     escapeTags: ["link", "iframe", "form"]
 }
 
-export const REFERNECE_VALUE = Symbol("reference value")
+export const REFERENCE_VALUE = Symbol("reference value")

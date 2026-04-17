@@ -93,7 +93,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 if (!debugMode) {
                     info.transofrmedTo = info.path
                 } else {
-                    info.transofrmedTo = `${name}[${internalId}.REFERNECE_VALUE]`
+                    info.transofrmedTo = `${name}[${internalId}.REFERENCE_VALUE]`
                 }
                 return
             }
