@@ -526,7 +526,7 @@ describe("Array prototype methods", () => {
                 }
                 return pre + cur
             }, "Ret: ")
-            emptyArr(arr), arr.push(ret)
+            ;(emptyArr(arr), arr.push(ret))
             expect(isString(ret)).toBeTruthy()
         })
         expect(arr[0]).toBe("Ret: foo")
@@ -829,6 +829,9 @@ describe("Array prototype methods", () => {
 
         nums.splice(0, 2)
         expect(arr).toEqual([3])
+
+        nums.splice(1, 0, 1, 2)
+        expect(arr).toEqual([3, 1, 2])
     })
 
     test("forEach", () => {
