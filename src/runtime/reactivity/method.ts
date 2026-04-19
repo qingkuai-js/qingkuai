@@ -140,11 +140,11 @@ export const reactiveMethods: ReactiveMethods = {
         unshift(...values) {
             return _batchUpdateWithRaw(this[WRAPPER], "unshift", ...values)
         },
-        splice(start, deleteCount) {
-            if (!deleteCount) {
+        splice(start, deleteCount, ...items) {
+            if (!deleteCount && !items.length) {
                 return []
             }
-            return _batchUpdateWithRaw(this[WRAPPER], "splice", start, deleteCount)
+            return _batchUpdateWithRaw(this[WRAPPER], "splice", start, deleteCount, ...items)
         }
     },
     [WRAPPER_SET]: {
