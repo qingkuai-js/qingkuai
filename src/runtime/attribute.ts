@@ -44,7 +44,7 @@ export function setAttribute(elem: HTMLElement, name: string, value: any) {
     }
     any(elem)[ATTRIBUTE_PREFIX + name] = value
 
-    if (shouldRemoveAttribute(value)) {
+    if (isNull(value) || isUndefined(value)) {
         elem.removeAttribute(name)
         return
     }
@@ -58,7 +58,12 @@ export function setAttribute(elem: HTMLElement, name: string, value: any) {
         }
     }
     if (isBoolean(value)) {
-        value = ""
+        if (value) {
+            value = ""
+        } else {
+            elem.removeAttribute(name)
+            return
+        }
     }
     elem.setAttribute(name, value)
 }
@@ -72,7 +77,7 @@ export function setXlinkAttribute(elem: HTMLElement, name: string, value: any) {
     }
     any(elem)[key] = value
 
-    if (shouldRemoveAttribute(value)) {
+    if (isNull(value) || isUndefined(value) || value === false) {
         elem.removeAttributeNS(XLINK_NAMESPACE_URI, localName)
         return
     }
@@ -130,8 +135,4 @@ function getClassNameWithObject(o: AnyObject) {
         }
     }
     return className
-}
-
-function shouldRemoveAttribute(value: any) {
-    return isNull(value) || isUndefined(value) || value === false
 }
