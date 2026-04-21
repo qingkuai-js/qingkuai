@@ -2,12 +2,12 @@ import type { AnyObject } from "#type-declarations/tools"
 import type { ClassAttrValue } from "#type-declarations/runtime"
 
 import { getElementValue } from "./dom"
-import { ATTRIBUTE_PREFIX } from "./constants"
 import { NotArrayOrSet } from "./messages/error"
 import { objectKeys } from "../util/shared/aliases"
 import { any, notEqual, optc } from "../util/shared/sundry"
 import { nextTick, reactiveNotEqual } from "../util/runtime/sundry"
-import { isArray, isBoolean, isString } from "../util/shared/assert"
+import { ATTRIBUTE_PREFIX, XLINK_NAMESPACE_URI } from "./constants"
+import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert"
 
 export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
     let className = ""
@@ -44,6 +44,11 @@ export function setAttribute(elem: HTMLElement, name: string, value: any) {
     }
     any(elem)[ATTRIBUTE_PREFIX + name] = value
 
+    if (shouldRemoveAttribute(value)) {
+        elem.removeAttribute(name)
+        return
+    }
+
     if (name in elem) {
         try {
             any(elem)[name] = value
@@ -53,18 +58,29 @@ export function setAttribute(elem: HTMLElement, name: string, value: any) {
         }
     }
     if (isBoolean(value)) {
-        if (value) {
-            value = ""
-        } else {
-            elem.removeAttribute(name)
-            return
-        }
+        value = ""
     }
     elem.setAttribute(name, value)
 }
 
 export function setXlinkAttribute(elem: HTMLElement, name: string, value: any) {
-    elem.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:" + name, value)
+    const localName = name
+    const qualifiedName = "xlink:" + localName
+    const key = ATTRIBUTE_PREFIX + qualifiedName
+    if (!reactiveNotEqual(any(elem)[key], value)) {
+        return
+    }
+    any(elem)[key] = value
+
+    if (shouldRemoveAttribute(value)) {
+        elem.removeAttributeNS(XLINK_NAMESPACE_URI, localName)
+        return
+    }
+
+    if (isBoolean(value)) {
+        value = ""
+    }
+    elem.setAttributeNS(XLINK_NAMESPACE_URI, qualifiedName, value)
 }
 
 export function setInputGroup(elem: HTMLInputElement, target: any) {
@@ -114,4 +130,8 @@ function getClassNameWithObject(o: AnyObject) {
         }
     }
     return className
+}
+
+function shouldRemoveAttribute(value: any) {
+    return isNull(value) || isUndefined(value) || value === false
 }
