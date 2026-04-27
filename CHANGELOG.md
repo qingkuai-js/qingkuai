@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.65](https://github.com/qingkuai-js/qingkuai/compare/v1.0.64...v1.0.65) (2026-04-27)
+
+### Fixes
+
+- **runtime:** ensure `splice` insert operations trigger side effects (updated unit tests) ([1422f55](https://github.com/qingkuai-js/qingkuai/commit/1422f55))
+- **runtime:** remove DOM attributes when value is `null`/`undefined` (updated e2e tests) ([f82b455](https://github.com/qingkuai-js/qingkuai/commit/f82b455))
+- **compiler:** fix reactivity inference mismatch for mutable identifiers accessed in reference attributes ([2efc2c0](https://github.com/qingkuai-js/qingkuai/commit/2efc2c0))
+
+### Tests
+
+- **e2e:** add SVG-related end-to-end tests ([f82b455](https://github.com/qingkuai-js/qingkuai/commit/f82b455))
+- **e2e:** add boundary coverage for DOM attribute behavior ([1c16f6c](https://github.com/qingkuai-js/qingkuai/commit/1c16f6c))
+- **e2e:** add tests for reactivity inference of mutable identifiers in reference attributes ([2efc2c0](https://github.com/qingkuai-js/qingkuai/commit/2efc2c0))
+
 ## [1.0.64](https://github.com/qingkuai-js/qingkuai/v1.0.64) (2026-04-17)
 
 ### Changes

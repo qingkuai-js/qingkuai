@@ -241,6 +241,7 @@ export interface TopLevelIdentifierInfo {
     accessor: boolean
     transofrmedTo: string
     status: IdentifierStatus
+    usedExpressions: Set<ParsedExpression>
     destructuringIdentifierNames?: string[]
 }
 export interface TemplateNodeContext {

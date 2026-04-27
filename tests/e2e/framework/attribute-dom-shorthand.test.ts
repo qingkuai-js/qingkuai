@@ -14,7 +14,7 @@ const scenario: E2EScenarioInput = {
             }
         </lang-js>
 
-        <section data-page="reference-attributes-dom-shorthand">
+        <section data-page="attribute-dom-shorthand">
             <button id="toggle-visible" @click={toggleVisible}>Toggle visible</button>
 
             <qk:spread #if={visible}>

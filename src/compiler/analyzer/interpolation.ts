@@ -107,6 +107,9 @@ export function analyzeInterpolation(
                         (status === "literal" &&
                             (isReferenceAttr || context.isIdentifierAssignmentTarget))
                     ) {
+                        for (const exp of topLevelIdentifier.usedExpressions) {
+                            exp.reactive = true
+                        }
                         topLevelIdentifier.status = inputDescriptor.options.reactivityMode
                     }
                     ;(topLevelReferences[name] ??= []).push({
@@ -114,6 +117,7 @@ export function analyzeInterpolation(
                         declared: true,
                         shorthand: context.isShorthandIdentifierAccess
                     })
+                    topLevelIdentifier.usedExpressions.add(parsedExpression!)
                 }
             }
             if (

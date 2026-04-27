@@ -448,7 +448,8 @@ function updateTopLevelIdentifiers(
             accessor,
             path: "",
             transofrmedTo: "",
-            nodeInfos: [nodeInfo]
+            nodeInfos: [nodeInfo],
+            usedExpressions: new Set()
         }
     }
     checkTopLevelIdentifier(id.name, id.range!)
