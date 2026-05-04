@@ -1,7 +1,7 @@
 # Qingkuai
 
 <p>
-    <img src="https://github.com/qingkuai-js/qingkuai/design/banner.svg" alt="qingkuai banner" />
+    <img src="https://github.com/qingkuai-js/qingkuai/blob/main/design/banner.svg" alt="qingkuai banner" />
 </p>
 
 [![npm](https://img.shields.io/npm/v/qingkuai.svg)](https://www.npmjs.com/package/qingkuai)
