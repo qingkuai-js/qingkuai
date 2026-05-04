@@ -399,13 +399,17 @@ function generateRenderEffect(
 
         const generateSetAttributeCall = (attribute: TemplateAttribute) => {
             const baseName = getAttributeBaseName(attribute.name.raw)
+            const interpolationSourceIndex = attribute.equalSign
+                ? attribute.value.loc.start.index
+                : attribute.loc.start.index
             if (createRenderEffect) {
                 generateRenderEffectCall()
             }
             if (baseName === "class") {
                 const staticClassAttr = nodeContext.attributesMap["class"]
-                writer.wrapLine().write(`${internalId}.setClassName(`)
-                writer.write(nodeContext.id).write(", ")
+                writer.wrapLine().write(`${internalId}.`)
+                writer.write("setClassName", interpolationSourceIndex)
+                writer.write("(").write(nodeContext.id).write(", ")
 
                 if (staticClassAttr) {
                     writer.write("[")
@@ -421,16 +425,17 @@ function generateRenderEffect(
             }
             if (baseName === "value" && node.tag === "select") {
                 writer.wrapLine().write(`${internalId}.`)
-                writer.write(`setSelectValue(${nodeContext.id}, `)
-                writer.writeParsedExpression(attribute).write(")")
+                writer.write(`setSelectValue`, interpolationSourceIndex)
+                writer.write(`(${nodeContext.id}, `).writeParsedExpression(attribute).write(")")
                 return
             }
 
             const isXlinkAttr = baseName.startsWith("xlink:")
             const attrName = isXlinkAttr ? baseName.slice(6) : baseName
             const method = isXlinkAttr ? "setXlinkAttribute" : "setAttribute"
-            writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
-            writer.write(`${getMaybeReusedString(attrName)}, `)
+            writer.wrapLine().write(`${internalId}.`)
+            writer.write(method, interpolationSourceIndex)
+            writer.write(`(${nodeContext.id}, ${getMaybeReusedString(attrName)}, `)
             writer.writeParsedExpression(attribute).write(")")
         }
 
@@ -439,8 +444,13 @@ function generateRenderEffect(
                 if (createRenderEffect) {
                     generateRenderEffectCall()
                 }
-                writer.wrapLine().write(`${internalId}.setText(`)
-                writer.write(`${nodeContext.id}, `).writeInterpolatedText(node).write(")")
+
+                const firstInterpolatedPart = node.content.find(part => {
+                    return part.isInterpolated
+                })
+                writer.wrapLine().write(`${internalId}.`)
+                writer.write("setText", firstInterpolatedPart?.loc.start.index ?? -1)
+                writer.write(`(${nodeContext.id}, `).writeInterpolatedText(node).write(")")
             }
         }
 

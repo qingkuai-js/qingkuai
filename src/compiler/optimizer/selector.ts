@@ -284,9 +284,17 @@ function writeDomOperationCall(
     info: GeneratedSelectorInfo,
     expressionType: "prev" | "next"
 ) {
+    const sourceIndex = info.targetAttribute
+        ? info.targetAttribute.equalSign
+            ? info.targetAttribute.value.loc.start.index
+            : info.targetAttribute.loc.start.index
+        : info.targetTextPart?.loc.start.index
+    const internalId = generateIdentifier.internal
+
     switch (info.operation.method) {
         case "setClassName": {
-            writer.write(`${getInternalId()}.setClassName(${nodeId}, `)
+            writer.write(`${internalId}.`).write("setClassName", sourceIndex)
+
             if (info.operation.staticClassAttr) {
                 writer.write("[")
                 writer.writeTemplateStr(
@@ -304,23 +312,23 @@ function writeDomOperationCall(
         }
 
         case "setAttribute": {
-            writer.write(`${getInternalId()}.setAttribute(${nodeId}, `)
-            writer.write(`${getMaybeReusedString(info.operation.attrName)}, `)
+            writer.write(`${internalId}.`).write("setAttribute", sourceIndex)
+            writer.write(`(${nodeId}, `).write(`${getMaybeReusedString(info.operation.attrName)}, `)
             writeSelectorExpression(writer, info, expressionType)
             writer.write(")")
             break
         }
 
         case "setXlinkAttribute": {
-            writer.write(`${getInternalId()}.setXlinkAttribute(${nodeId}, `)
-            writer.write(`${getMaybeReusedString(info.operation.attrName)}, `)
+            writer.write(`${internalId}.`).write("setXlinkAttribute", sourceIndex)
+            writer.write(`(${nodeId}, `).write(`${getMaybeReusedString(info.operation.attrName)}, `)
             writeSelectorExpression(writer, info, expressionType)
             writer.write(")")
             break
         }
 
         case "setText": {
-            writer.write(`${getInternalId()}.setText(${nodeId}, `)
+            writer.write(`${internalId}.`).write("setText", sourceIndex).write(`(${nodeId}, `)
             writeSelectorExpression(writer, info, expressionType)
             writer.write(")")
             break
@@ -395,8 +403,4 @@ function normalizeRanges(ranges: [number, number][]) {
         ret.push(current)
     }
     return ret
-}
-
-function getInternalId() {
-    return generateIdentifier.internal
 }
