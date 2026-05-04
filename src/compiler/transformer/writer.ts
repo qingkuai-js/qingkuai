@@ -77,9 +77,9 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return encode(this._mappings)
     }
 
-    write(str: string) {
+    write(str: string, startSourceIndex = -1) {
         for (let i = 0; i < str.length; i++) {
-            this.writeCharacter(str[i], -1)
+            this.writeCharacter(str[i], i ? -1 : startSourceIndex)
         }
         return this
     }
