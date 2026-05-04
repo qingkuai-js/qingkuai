@@ -9,6 +9,15 @@ Qingkuai is a compiler-based frontend framework for building web interfaces. It 
 
 Learn more at [Qingkuai Docs](https://qingkuai.dev), or try it out in the [Playground](https://try.qingkuai.dev).
 
+# Why Qingkuai
+
+1. Architecture: Compile-time checking & performance optimization, fine-grained updates.
+2. Bundle Size: Runtime only 5KB–11KB (gzip), compiled size 20%–80% of other frameworks. See [Bundle Size Report](https://mlgq.github.io/frontend-framework-bundle-size/?lang=en)
+3. Reactivity: Full reactive support with compiler-auto-inferred, no manual handling needed. See [Reactivity Dclaration](https://qingkuai.dev/basic/reactivity.html#reactivity-declaration), [Reactivity inference rules](https://qingkuai.dev/references/reactivity-infer-rules.html)
+4. Developer Experience: Native JavaScript/TypeScript-like experience inside script blocks. Try in [Palyground](https://try.qingkuai.dev)
+5. Debugging Experience: Generated code in development with source-matching and directive context identifiers. See [Debugging Documentation](https://qingkuai.dev/misc/debugging.html)
+6. Language Services & AI: Full component language services plus MCP server for better AI understanding and generation quality. See [VsCode Extension](https://marketplace.visualstudio.com/items?itemName=qingkuai-tools.qingkuai-language-features), [MCP Server](https://www.npmjs.com/package/qingkuai-mcp-server)
+
 ## Contributing
 
 Please see the [Contributing Guide](CONTRIBUTING.md) for details on how to contribute to QingKuai.
