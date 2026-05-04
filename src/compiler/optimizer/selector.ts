@@ -293,7 +293,7 @@ function writeDomOperationCall(
 
     switch (info.operation.method) {
         case "setClassName": {
-            writer.write(`${internalId}.`).write("setClassName", sourceIndex)
+            writer.write(`${internalId}.`).write("setClassName", sourceIndex).write(`(${nodeId}, `)
 
             if (info.operation.staticClassAttr) {
                 writer.write("[")
