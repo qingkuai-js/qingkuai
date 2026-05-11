@@ -25,7 +25,7 @@ export {
     bindInputValue,
     bindInputNumber,
     bindSelectValue,
-    bindDomReceiver,
+    bindHandleReceiver,
     bindInputChecked
 } from "./reference"
 

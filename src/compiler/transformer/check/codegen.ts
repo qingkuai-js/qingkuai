@@ -554,8 +554,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                 }
 
-                if (rawName === "&dom") {
-                    writeValue("DomReceiver", stringify(node.tag))
+                if (rawName === "&handle") {
+                    writeValue("HandleReceiver", stringify(node.tag))
                 }
 
                 if ("select" === node.tag && rawName === "&value") {

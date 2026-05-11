@@ -560,8 +560,8 @@ function generateRenderEffect(
                         generateBindCall("bindInputGroup", "getter")
                         break
                     }
-                    case "&dom": {
-                        generateBindCall("bindDomReceiver", "setter")
+                    case "&handle": {
+                        generateBindCall("bindHandleReceiver", "setter")
                         break
                     }
                     case "&value": {

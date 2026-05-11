@@ -9,7 +9,7 @@ import { pushDestructionCleaner } from "./destroy"
 import { spliceByElem } from "../util/shared/arrays"
 import { listen, renderEffect, setAttribute, setSelectValue } from "./internal"
 
-export function bindDomReceiver(elem: any, setter: Setter) {
+export function bindHandleReceiver(elem: any, setter: Setter) {
     pushDestructionCleaner(() => {
         setter(null)
     })

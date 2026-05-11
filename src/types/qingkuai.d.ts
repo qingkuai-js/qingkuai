@@ -27,7 +27,7 @@ export namespace __qk__lsu {
     export const validateHtmlBlockOptions: <T extends HtmlBlockOptions>(value: T) => void
     export const validateReferenceGroup: <T extends Set<any> | Array<any>>(value: T) => void
     export const validateTargetDirectiveValue: <T extends HTMLElement | string>(value: T) => void
-    export const validateDomReceiver: <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E) => void
+    export const validateHandleReceiver: <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E) => void
     export const validateEventHandler: <T extends string, H extends (ev: ExtractEventKind<T>) => any>(value: T, handler: H) => void
 
     export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any

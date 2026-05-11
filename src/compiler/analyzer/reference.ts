@@ -3,7 +3,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
 import { isLeftValue } from "../estree/assert"
-import { DomRerferenceAttributeOnComponent } from "../message/warn"
+import { HandleRerferenceAttributeOnComponent } from "../message/warn"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
@@ -44,7 +44,7 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
 
 function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribute) {
     const tag = node.tag
-    const allowedList = ["&dom"]
+    const allowedList = ["&handle"]
     const rawName = attribute.name.raw
     const nameLoc = attribute.name.loc
 
@@ -53,8 +53,8 @@ function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribut
     }
 
     if (node.componentTag) {
-        if (rawName === "&dom") {
-            DomRerferenceAttributeOnComponent(nameLoc)
+        if (rawName === "&handle") {
+            HandleRerferenceAttributeOnComponent(nameLoc)
         }
         return true
     }

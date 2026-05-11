@@ -77,7 +77,7 @@ describe("Non-component tag", () => {
             {
                 type: "error",
                 range: [20, 23],
-                value: `The <span> tag only supports "&dom" as a reference attribute, but got: "&id".`
+                value: `The <span> tag only supports "&handle" as a reference attribute, but got: "&id".`
             }
         ])
 
