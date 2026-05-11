@@ -39,16 +39,6 @@ test("select", () => {
     ])
 })
 
-test("&handle on component has no special effect", () => {
-    analyzeTemplateAndMatchMessages(`<Comp &handle />`, [
-        {
-            type: "warning",
-            range: [6, 13],
-            value: `Using "&handle" on a component will not assign the DOM element to the target. It behaves like a normal reference attribute.`
-        }
-    ])
-})
-
 test("<slot> and <qk:spread> cannot accept any reference attributes", () => {
     analyzeTemplateAndMatchMessages(`<slot &handle></slot>`, [
         {

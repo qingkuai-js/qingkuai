@@ -25,8 +25,8 @@ export {
     bindInputValue,
     bindInputNumber,
     bindSelectValue,
-    bindHandleReceiver,
-    bindInputChecked
+    bindInputChecked,
+    bindHandleReceiver
 } from "./reference"
 
 export { init, mount } from "./component"

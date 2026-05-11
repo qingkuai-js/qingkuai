@@ -3,7 +3,7 @@ import type { ASTLocation, CompileWarning, IdentifierStatus } from "#type-declar
 
 import { messages } from "../state"
 
-export const UnnecessarySpreadTag = withLocation(9014, (without: string) => {
+export const UnnecessarySpreadTag = withLocation(9012, (without: string) => {
     return `The <qk:spread> tag without ${without} is unnecessary.`
 })
 
@@ -50,10 +50,6 @@ export const RedundantArgsForIntrinsic = withLocation(
 
 export const DuplicateDefaultDeclaration = withLocation(9013, (subject: string) => {
     return `This default value definition for "${subject}" is ignored because it is overridden by a later one.`
-})
-
-export const HandleRerferenceAttributeOnComponent = withLocation(9012, () => {
-    return `Using "&handle" on a component will not assign the DOM element to the target. It behaves like a normal reference attribute.`
 })
 
 export const RedundantBooleanAttributeValue = withLocation(

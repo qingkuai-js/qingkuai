@@ -69,6 +69,7 @@ export function mount(anchor?: Element, fragment?: DocumentFragment) {
     }
     runHooks(currentInstance!, AFTER_MOUNT)
     setCurrentInstance(currentInstance!.p)
+    return currentInstance!
 }
 
 // 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法
