@@ -2,7 +2,8 @@ import type {
     Destruction,
     Traversable,
     TraverseInfo,
-    TraverseContext
+    TraverseContext,
+    ComponentInstance
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter, Setter } from "#type-declarations/tools"
 
@@ -14,15 +15,17 @@ import {
     TRAVERSE_ARRAYLIKE
 } from "./constants"
 import { destroy } from "../destroy"
+import { invokeRender } from "./render"
+import { currentInstance } from "../state"
 import { NIL, REFLECT, UNDEF } from "../constants"
 import { appendChild, insertBefore } from "../dom"
 import { arrayFrom } from "../../util/shared/arrays"
+import { walkNodes } from "../../util/runtime/sundry"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { reactiveNotEqual } from "../../util/runtime/sundry"
 import { newCleanObj, optc } from "../../util/shared/sundry"
 import { FRAG_WHOLE_CONTENT } from "../../util/shared/flags"
 import { DuplicateKey, NonTraverse } from "../messages/error"
-import { invokeRender, walkNodes } from "../../util/runtime/sundry"
 import { renderEffect, runAndUpdateEffect } from "../reactivity/effect"
 import { isArray, isNumber, isString, isUndefined } from "../../util/shared/assert"
 
@@ -37,6 +40,8 @@ export function keyedListBlock(
     let traversable!: Traversable
     let infos: Record<string, TraverseInfo | undefined> = newCleanObj()
 
+    const componentInstance = currentInstance!
+
     const mountKeyedInfo = (
         reference: ChildNode,
         key: string,
@@ -48,9 +53,10 @@ export function keyedListBlock(
             d: NIL as any,
             c: getContext(traversable, index)
         }
-        info.d = invokeRender(() => {
+        const render = () => {
             info.s = runtimeRender(reference, info.c)
-        })
+        }
+        info.d = invokeRender(render, componentInstance)
         infos[key] = info
     }
 
@@ -323,6 +329,7 @@ export function keyedListBlock(
 export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     let traversable!: Traversable
     const infos: TraverseInfo[] = []
+    const componentInstance = currentInstance!
 
     renderEffect(() => {
         const oldLength = infos.length
@@ -331,7 +338,7 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
         const newLength = traversable.l
         if (oldLength === 0) {
             for (let i = 0; i < newLength; i++) {
-                infos[i] = mountListInfo(traversable, i, render)
+                infos[i] = mountListInfo(traversable, i, render, componentInstance)
             }
             return
         }
@@ -349,7 +356,7 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
             destroy(infos.pop()!.d)
         }
         for (let i = oldLength; i < newLength; i++) {
-            infos.push(mountListInfo(traversable, i, render))
+            infos.push(mountListInfo(traversable, i, render, componentInstance))
         }
     })
 }
@@ -402,12 +409,20 @@ function getIncreasingSequence(items: ArrayLike<number>) {
     return result
 }
 
-function mountListInfo(traversable: Traversable, index: number, render: ArbitraryFunc) {
+function mountListInfo(
+    traversable: Traversable,
+    index: number,
+    render: ArbitraryFunc,
+    instance: ComponentInstance
+) {
     let setter: Setter | undefined = UNDEF
-    const context = getContext(traversable, index)
-    const destruction = invokeRender(() => {
+
+    const _render = () => {
         setter = render(context)
-    })
+    }
+
+    const context = getContext(traversable, index)
+    const destruction = invokeRender(_render, instance)
     return {
         s: setter,
         c: context,

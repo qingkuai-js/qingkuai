@@ -3,15 +3,19 @@ import type { ArbitraryFunc } from "#type-declarations/tools"
 
 import { UNDEF } from "../constants"
 import { destroy } from "../destroy"
+import { invokeRender } from "./render"
+import { currentInstance } from "../state"
 import { renderEffect } from "../reactivity/effect"
-import { invokeRender } from "../../util/runtime/sundry"
 
 // crs: Conditions and Renders
 export function conditionBlock(crs: ArbitraryFunc[]) {
     let renderIndex = -1
     let destruction: Destruction | undefined
+
     const crsCount = crs.length
     const hasElse = crsCount % 2
+    const componentInstance = currentInstance!
+
     renderEffect(() => {
         for (let i = 0; i < crsCount; i += 2) {
             const isElse = hasElse && i === crsCount - 1
@@ -24,7 +28,7 @@ export function conditionBlock(crs: ArbitraryFunc[]) {
                 if (destruction) {
                     destroy(destruction)
                 }
-                destruction = invokeRender(crs[i + +!isElse])
+                destruction = invokeRender(crs[i + +!isElse], componentInstance)
             }
             return
         }
