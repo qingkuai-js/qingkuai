@@ -29,6 +29,11 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
+import {
+    ensureIdWithPrefix,
+    getAttributeBaseName,
+    ensureIdWithNumSuffix
+} from "../../../util/compiler/sundry"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
@@ -39,7 +44,6 @@ import { getMaybeReusedString } from "../../optimizer/compress"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert"
-import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
@@ -117,12 +121,42 @@ export function generateTemplateRender(
     }
 
     if (isRoot) {
-        if (!componentFragment?.content.length) {
-            writer.write(`\nreturn ${generateIdentifier.internal}.mount()`)
-        } else {
-            writer.write(`\nreturn ${generateIdentifier.internal}.mount(`)
-            writer.write(`${generateIdentifier.anchor}, ${componentFragment.id})`)
+        const anchorId = generateIdentifier.anchor
+        const internalId = generateIdentifier.internal
+        const getterArgId = generateIdentifier.getterArg
+        const instanceId = ensureIdWithPrefix("instance")
+        const exportedBindings = new Map<string, string>()
+        const hasComponentFragment = !!componentFragment?.content.length
+        for (const binding of analyzeResult.script.exportedBindings) {
+            exportedBindings.set(binding.exported, binding.local)
         }
+
+        if (!exportedBindings.size) {
+            if (!hasComponentFragment) {
+                writer.write(`\nreturn ${internalId}.mount()`)
+            } else {
+                writer.write(`\nreturn ${internalId}.mount(`)
+                writer.write(`${anchorId}, ${componentFragment.id})`)
+            }
+            return
+        }
+
+        writer.write(`\nconst ${instanceId} = ${internalId}.mount(`)
+
+        if (hasComponentFragment) {
+            writer.write(`${anchorId}, ${componentFragment.id}`)
+        }
+        writer.write(")").wrapLine().write("return ")
+        writer.write(`${internalId}.defineWithTransformed(${instanceId}, {`).indent(false)
+
+        for (const [exported, local] of exportedBindings) {
+            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
+            const transformed = topLevelIdentifier?.transofrmedTo || local
+            writer.wrapLine()
+            writeContextKey(exported, writer)
+            writer.write(`:  ${getterArgId} => (${transformed}),`)
+        }
+        writer.dedent().write(`})`)
     }
 }
 

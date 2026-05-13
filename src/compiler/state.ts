@@ -58,6 +58,8 @@ function newAnalyzeResult(): AnalyzeResult {
         script: {
             watchers: [],
             defaultItems: {},
+            exportedBindings: [],
+            exportDeclarations: [],
             importDeclarations: [],
             reusedStringReferences: [],
             eliminatedNodes: new Set(),

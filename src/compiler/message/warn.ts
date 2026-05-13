@@ -41,13 +41,6 @@ export const RedundantDirectiveValue = withLocation(9006, (directive: string) =>
     return `The "${directive}" directive does not need a value, and the redundant directive value will be ignored.`
 })
 
-export const RedundantArgsForIntrinsic = withLocation(
-    9016,
-    (intrinsic: string, expected: number, got: number) => {
-        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
-    }
-)
-
 export const DuplicateDefaultDeclaration = withLocation(9013, (subject: string) => {
     return `This default value definition for "${subject}" is ignored because it is overridden by a later one.`
 })
@@ -69,6 +62,13 @@ export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
 export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
     return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 })
+
+export const RedundantArgsForIntrinsic = withLocation(
+    9016,
+    (intrinsic: string, expected: number, got: number) => {
+        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
+    }
+)
 
 export function isCompileWarning(v: any): v is CompileWarning {
     return v instanceof QingkuaiCompileWarning
