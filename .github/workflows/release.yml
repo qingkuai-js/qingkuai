@@ -16,7 +16,8 @@ permissions:
   id-token: write
 
 jobs:
-  release:
+  prepare-tag:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -46,7 +47,6 @@ jobs:
           echo "value=v$package_version" >> "$GITHUB_OUTPUT"
 
       - name: Ensure tag exists on workflow dispatch
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           TAG: ${{ steps.tag.outputs.value }}
         run: |
@@ -62,12 +62,21 @@ jobs:
             echo "Created and pushed tag: $TAG"
           fi
 
-      - name: Checkout resolved tag
+  release:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: tag
         env:
-          TAG: ${{ steps.tag.outputs.value }}
-        run: |
-          git fetch origin --tags --prune
-          git checkout "refs/tags/$TAG"
+          REF_NAME: ${{ github.ref_name }}
+        run: echo "value=$REF_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
