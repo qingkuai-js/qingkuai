@@ -696,13 +696,13 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
 
 function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
-    let referenceHandleAttribute: TemplateAttribute | null = null
 
     const internalId = generateIdentifier.internal
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
     const instanceId = ensureIdWithNumSuffix("_component")
     const componentTagParts = getParsedComponentTag(nodeContext.node)!
+    const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
     const hasSlots = nodeContext.node.children.some(child => {
         return getTemplateNodeContext(child).fragment!.content.length
@@ -787,7 +787,6 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     if (hasRefs && insertTrailingComma().write("r: {").indent()) {
         for (const attribute of nodeContext.referenceAttributes) {
             if (attribute.name.raw === "&handle") {
-                referenceHandleAttribute = attribute
                 continue
             }
             if (
@@ -844,10 +843,9 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     } else {
         writer.write(`)`)
     }
+
     if (referenceHandleAttribute) {
-        writer
-            .wrapLine()
-            .write(`${internalId}.bindHandleReceiver(${instanceId}, ${setterArgId} => (`)
+        writer.write(`\n${internalId}.bindHandleReceiver(${instanceId}, ${setterArgId} => (`)
         writer.writeParsedExpression(referenceHandleAttribute).write(` = ${setterArgId}))`)
     }
 }
