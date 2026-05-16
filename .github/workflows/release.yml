@@ -77,9 +77,35 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
+
+      - name: Diagnose npm auth context
+        run: |
+          npm --version
+          npm config get registry
+          if [[ -f "$HOME/.npmrc" ]]; then
+            sed -E 's#(//registry\.npmjs\.org/:_authToken=).*#\1***#' "$HOME/.npmrc"
+          else
+            echo "No ~/.npmrc found"
+          fi
+
+      - name: Diagnose workflow context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+        run: |
+          echo "event=$EVENT_NAME"
+          echo "ref=$REF"
+          echo "ref_name=$REF_NAME"
+          echo "actor=$ACTOR"
+          echo "repository=$REPOSITORY"
+          echo "workflow=$WORKFLOW"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -96,7 +122,7 @@ jobs:
         run: npm pack
 
       - name: Publish package to npm (Trusted Publishing)
-        run: npm publish ./qingkuai-*.tgz --access public --provenance
+        run: npm publish --access public --provenance
 
       - name: Generate release notes from CHANGELOG
         id: notes

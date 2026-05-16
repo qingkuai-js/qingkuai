@@ -6,8 +6,8 @@
   "version": "1.0.66",
   "sideEffects": false,
   "repository": {
-    "type": "github",
-    "url": "https://github.com/qingkuai-js/qingkuai"
+    "type": "git",
+    "url": "git+https://github.com/qingkuai-js/qingkuai.git"
   },
   "files": [
     "dist",
