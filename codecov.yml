@@ -1,0 +1,15 @@
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  status:
+    project:
+      compiler:
+        flags:
+          - compiler
+        target: auto
+        threshold: 0.2%
+
+comment:
+  layout: "reach,diff,flags,files"
+  require_changes: false

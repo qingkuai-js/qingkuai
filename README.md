@@ -4,10 +4,9 @@
     <img src="https://github.com/qingkuai-js/qingkuai/blob/main/design/banner.svg" alt="qingkuai banner" />
 </p>
 
-[![npm](https://img.shields.io/npm/v/qingkuai.svg)](https://www.npmjs.com/package/qingkuai)
-[![License](https://img.shields.io/npm/l/qingkuai.svg)](LICENSE)
 [![CI](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml)
 [![E2E Nightly](https://github.com/qingkuai-js/qingkuai/actions/workflows/e2e-nightly.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/e2e-nightly.yml)
+[![codecov](https://codecov.io/gh/qingkuai-js/qingkuai/branch/main/graph/badge.svg?flag=compiler)](https://codecov.io/gh/qingkuai-js/qingkuai)
 
 Qingkuai is a compiler-based frontend framework for building web interfaces. It transforms `.qk` source files into minimal, strictly optimized JavaScript.
 
