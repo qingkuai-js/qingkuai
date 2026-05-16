@@ -3,6 +3,16 @@ import { analyzeTemplateAndMatchMessages } from "./_match"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 
 describe("Duplicate slot name", () => {
+    test("Nested slot elements", () => {
+        analyzeTemplateAndMatchMessages(`<slot name="a"><slot name="b"></slot></slot>`, [
+            {
+                type: "error",
+                range: [0, 5],
+                value: `Nested <slot> elements are not allowed.`
+            }
+        ])
+    })
+
     test("Without name attribute", () => {
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`

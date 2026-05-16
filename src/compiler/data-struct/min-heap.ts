@@ -9,11 +9,11 @@ export class MinHeap<T> {
     keys: (keyof T)[]
 
     constructor(init: T[], ...sortKeys: (keyof T)[]) {
+        this.keys = sortKeys
         init.forEach((item, index) => {
             this.tree.push(item)
             this.up(index)
         })
-        this.keys = sortKeys
     }
 
     get first(): T | undefined {

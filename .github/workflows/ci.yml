@@ -2,7 +2,14 @@ name: CI
 
 on:
   push:
+    branches-ignore:
+      - e2e-badge
+    paths-ignore:
+      - "badges/e2e-scenarios.json"
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   lint-and-test:
@@ -32,8 +39,15 @@ jobs:
       - name: Run lint
         run: pnpm run lint
 
-      - name: Run unit tests
-        run: pnpm run test:units
+      - name: Run unit tests with coverage
+        run: pnpm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          flags: compiler
+          fail_ci_if_error: true
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium

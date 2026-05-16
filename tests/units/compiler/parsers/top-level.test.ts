@@ -3,8 +3,10 @@ import {
     getLocByIndex,
     getLocWithDefaultEnd
 } from "../../../../src/util/compiler/position"
-import { describe, test } from "vitest"
+import { describe, test, expect } from "vitest"
+import { messages } from "../../../../src/compiler/state"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
+import { parseTemplateStandalone } from "../../../../src/compiler/parser/template"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
 test("Single tag", () => {
@@ -14,6 +16,35 @@ test("Single tag", () => {
         startTagEndPos: getPosByIndex(5),
         endTagStartPos: getPosByIndex(5)
     })
+})
+
+test("Standalone parser defaults preserveBlankTextNodes to true", () => {
+    const nodeList = parseTemplateStandalone("<div></div>\n")
+
+    expect(nodeList.length).toBe(2)
+    expect(nodeList[1].content[0].value).toBe("\n")
+})
+
+test("Interpolation errors include both empty and unclosed cases", () => {
+    parseTemplateTesting("{}{", { recover: true, checkEmptyInterpolation: true })
+
+    const values = messages.map(item => String(item.value))
+    expect(values.some(v => v.includes("Empty interpolation expression block"))).toBe(true)
+    expect(values.some(v => v.includes("Unclosed interpolation expression block"))).toBe(true)
+})
+
+test("Component generic parameter reports unclosed generic error", () => {
+    parseTemplateTesting("<Comp<T", { recover: true })
+
+    const values = messages.map(item => String(item.value))
+    expect(values.some(v => v.includes("Unclosed generic parameter"))).toBe(true)
+})
+
+test("Tag and attribute with no separator reports invalid element tag name", () => {
+    parseTemplateTesting("<div#x></div>", { recover: true })
+
+    const values = messages.map(item => String(item.value))
+    expect(values.some(v => v.includes("Invalid element tag name"))).toBe(true)
 })
 
 test("Multiple tags", () => {

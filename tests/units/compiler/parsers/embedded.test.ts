@@ -1,5 +1,6 @@
 import { test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
@@ -236,4 +237,43 @@ test("Whether <script> and <style> element will not be parsed as embedded langua
             endTagStartPos: getPosByIndex(63)
         }
     )
+})
+
+test("Embedded style block without end tag reports unclosed start tag", () => {
+    parseTemplateTesting("<style>.a{color:red}", {
+        recover: true
+    })
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [0, 6],
+            value: "The start tag <style> is not closed."
+        }
+    ])
+})
+
+test("Embedded script end tag without closing angle reports end tag not closed", () => {
+    parseTemplateTesting("<script>console.log(1)</script", {
+        recover: true
+    })
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [22, 30],
+            value: "The end tag </script> is not closed."
+        }
+    ])
+})
+
+test("Embedded language blocks nested in normal elements are rejected", () => {
+    parseTemplateTesting("<div><lang-js></lang-js></div>", {
+        recover: true
+    })
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [5, 13],
+            value: "The embedded language block <lang-js> can only be used in the top level of the template."
+        }
+    ])
 })

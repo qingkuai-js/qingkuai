@@ -12,6 +12,7 @@ import type { PositionFlag } from "./enums"
 
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
+import { NON_REACTIVE_REASONS } from "./constants"
 import { analyzeTemplate } from "./analyzer/template"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
@@ -47,10 +48,17 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     const writer = generateIntermediateCode(templateNodes)
     const idStatusInfo: Record<string, string> = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
-        if (info.status === "literal" || info.status === "pending") {
-            idStatusInfo[name] = "raw"
-        } else {
-            idStatusInfo[name] = `${info.status}${info.path ? ` -> ${info.path}` : ""}`
+        switch (info.status) {
+            case "raw":
+            case "literal":
+            case "pending": {
+                idStatusInfo[name] = `raw (${NON_REACTIVE_REASONS[info.status]})`
+                break
+            }
+            default: {
+                idStatusInfo[name] = `${info.status}${info.path ? ` -> ${info.path}` : ""}`
+                break
+            }
         }
     })
 

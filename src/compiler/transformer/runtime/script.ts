@@ -31,6 +31,15 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
     const processedItems = new Set<VariableDeclarator | TSEnumDeclaration>()
 
+    for (const exportDeclaration of analyzeResult.script.exportDeclarations) {
+        const node = exportDeclaration.value
+        if (node.type === "ExportNamedDeclaration" && node.declaration) {
+            editor.remove(node.start!, node.declaration.start!)
+            continue
+        }
+        editor.remove(node.start!, node.end!)
+    }
+
     // 调试模式下衍生响应式值标识符在编译后不能是常量，因为目标被修改后需要通过 setter 同步修原始始标识符
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
     // because when the target is modified, the original identifier needs to be synchronized via a setter.

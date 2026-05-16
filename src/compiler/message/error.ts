@@ -126,10 +126,6 @@ export const UnclosedStaticAttributeValue = withLocation(1008, () => {
     return "Unclosed static attribute value."
 })
 
-export const ExportStatementsAreNotSupported = withLocation(1019, () => {
-    return "Export statements are not supported."
-})
-
 export const SlotNameAttributeMustBeStatic = withLocation(1039, () => {
     return `The "name" attribute on <slot> tag must be static.`
 })
@@ -204,6 +200,10 @@ export const ShadowCompilerIntrinsicAtTopLevel = withLocation(1020, (name: strin
 
 export const InvalidAliasDestructuringDeclaration = withLocation(1025, (kind: string) => {
     return `${kind} are not allowed in destructuring pattern of alias declarations.`
+})
+
+export const EmbeddedScriptOnlySupportsNamedExports = withLocation(1019, (kind: string) => {
+    return `${kind} is not supported in embedded script block.`
 })
 
 export const HtmlDirectiveRequiresSingleTextChild = withLocation(1035, () => {
@@ -317,8 +317,8 @@ export const InvalidShorthandAttributeName = withLocation(1049, (name: string) =
     return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
 })
 
-export function isCompileError(err: Error): err is CompileError {
-    return err instanceof QingkuaiCompileError
+export function isCompileError(value: any): value is CompileError {
+    return value instanceof QingkuaiCompileError
 }
 
 class QingkuaiCompileError extends Error implements CompileError {
@@ -339,7 +339,6 @@ class QingkuaiCompileError extends Error implements CompileError {
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function error(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
         const err = new QingkuaiCompileError(loc, code, fn(...params))
-
         if (!inputDescriptor.options.checkMode) {
             throw err
         }

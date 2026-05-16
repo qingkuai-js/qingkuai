@@ -1,4 +1,4 @@
-import type { GeneralFunc, ObjectKeys } from "#type-declarations/tools"
+import type { ObjectKeys } from "#type-declarations/tools"
 import type { NextTickFunc, ToRawFunc } from "#type-declarations/runtime-ex"
 import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime"
 
@@ -14,8 +14,6 @@ import { any, notEqual } from "../shared/sundry"
 import { constReact } from "../../runtime/internal"
 import { FRAG_ORPHAN_CONTENT } from "../shared/flags"
 import { NIL, RESOLVED } from "../../runtime/constants"
-import { createDestruction } from "../../runtime/destroy"
-import { backToParentDestruction } from "../../runtime/state"
 import { refProperties } from "../../runtime/reactivity/state"
 
 export const toRaw: ToRawFunc = v => {
@@ -64,11 +62,6 @@ export function reactiveNotEqual(a: any, b: any) {
 
 export function getRawProperty(property: any) {
     return isRefProperty(property) ? property[1] : property
-}
-
-export function invokeRender(render: GeneralFunc) {
-    const destruction = createDestruction()
-    return (render(), backToParentDestruction(), destruction)
 }
 
 export function ensureGetRefProperty(property: ObjectKeys) {

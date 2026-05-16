@@ -162,24 +162,20 @@ export function analyzeTemplateAsExpression(
     loc: ASTLocation,
     type: "component" | "attribute"
 ) {
-    let expression!: ReturnType<typeof analyzeInterpolation>
-
     const baseName = getAttributeBaseName(name)
     const camelName = kebab2Camel(baseName)
-    try {
-        expression = analyzeInterpolation(
-            node,
-            parsingKey,
-            camelName,
-            loc.start.index + +(type === "attribute")
-        )
-    } catch {
-        // 检查模式下无需再报 “无效表达式” 的错误，转而报下方的 “无效组件名称” 或 “无效属性名称” 错误
-        // In check mode, there is no need to report the "Invalid Expression" error again,
-        // but instead report the "Invalid Component Name" or "Invalid Shorthand Attribute Name" error below.
-        if (inputDescriptor.options.checkMode) {
-            messages.pop()
-        }
+    const expression = analyzeInterpolation(
+        node,
+        parsingKey,
+        camelName,
+        loc.start.index + +(type === "attribute")
+    )
+
+    // 检查模式下无需再报 “无效表达式” 的错误，转而报下方的 “无效组件名称” 或 “无效属性名称” 错误
+    // In check mode, there is no need to report the "Invalid Expression" error again,
+    // but instead report the "Invalid Component Name" or "Invalid Shorthand Attribute Name" error below.
+    if (!expression && inputDescriptor.options.checkMode) {
+        messages.pop()
     }
 
     if (

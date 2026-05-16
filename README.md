@@ -4,10 +4,10 @@
     <img src="https://github.com/qingkuai-js/qingkuai/blob/main/design/banner.svg" alt="qingkuai banner" />
 </p>
 
-[![npm](https://img.shields.io/npm/v/qingkuai.svg)](https://www.npmjs.com/package/qingkuai)
-[![License](https://img.shields.io/npm/l/qingkuai.svg)](LICENSE)
 [![CI](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml)
 [![E2E Nightly](https://github.com/qingkuai-js/qingkuai/actions/workflows/e2e-nightly.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/e2e-nightly.yml)
+[![codecov](https://codecov.io/gh/qingkuai-js/qingkuai/branch/main/graph/badge.svg?flag=compiler)](https://codecov.io/gh/qingkuai-js/qingkuai)
+[![E2E Scenarios](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/qingkuai-js/qingkuai/e2e-badge/badges/e2e-scenarios.json)](https://github.com/qingkuai-js/qingkuai/tree/main/tests/e2e)
 
 Qingkuai is a compiler-based frontend framework for building web interfaces. It transforms `.qk` source files into minimal, strictly optimized JavaScript.
 
@@ -25,7 +25,7 @@ Learn more at [Qingkuai Docs](https://qingkuai.dev), or try it out in the [Playg
 ## Quick Start
 
 ```bash
-npm run create qingkuai my-app && cd ./my-app
+npm create qingkuai my-app && cd ./my-app
 npm install && npm run dev
 ```
 

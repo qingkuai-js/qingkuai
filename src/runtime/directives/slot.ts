@@ -1,7 +1,8 @@
 import type { GeneralFunc } from "#type-declarations/tools"
 import type { ComponentContext } from "#type-declarations/runtime"
 
-import { invokeRender } from "../../util/runtime/sundry"
+import { invokeRender } from "./render"
+import { currentInstance } from "../state"
 
 export function renderSlot(
     context: ComponentContext,
@@ -11,12 +12,12 @@ export function renderSlot(
     fallback?: GeneralFunc
 ) {
     const slot = context.s?.[name]
-    if (slot) {
-        return invokeRender(() => {
-            slot(anchor, props)
-        })
-    }
-    if (fallback) {
-        return invokeRender(fallback)
+    const componentInstance = currentInstance!
+    if (!slot) {
+        if (fallback) {
+            invokeRender(fallback, componentInstance)
+        }
+    } else {
+        invokeRender(() => slot(anchor, props), componentInstance)
     }
 }

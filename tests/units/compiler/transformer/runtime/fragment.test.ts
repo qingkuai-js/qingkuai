@@ -7,11 +7,11 @@ import {
     matchGeneratedFragmentNonDebug
 } from "./_match"
 import { describe, expect, test } from "vitest"
-import { compile } from "../../../../src/compiler/compile"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer"
-import { resetCompilerState, generateIdentifier } from "../../../../src/compiler/state"
-import { writeFragmentSelections } from "../../../../src/compiler/transformer/runtime/fragment"
+import { compile } from "../../../../../src/compiler/compile"
+import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { RuntimeCodeWriter } from "../../../../../src/compiler/transformer/writer"
+import { resetCompilerState, generateIdentifier } from "../../../../../src/compiler/state"
+import { writeFragmentSelections } from "../../../../../src/compiler/transformer/runtime/fragment"
 
 function getRandomDirective() {
     return ["#if={bool}", "#for={3}", "#target={document.body}", "#await={promise}"][

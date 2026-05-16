@@ -55,11 +55,11 @@ const scenario: E2EScenarioInput = {
 
             <div
                 id="target-dest-a"
-                &dom={destA}
+                &handle={destA}
             ></div>
             <div
                 id="target-dest-b"
-                &dom={destB}
+                &handle={destB}
             ></div>
         </section>
     `
@@ -77,7 +77,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect(page.locator("#target-dest-b #target-content")).toHaveCount(0)
     })
 
-    test("works with destination nodes that also bind &dom", async ({ page, visitScenario }) => {
+    test("works with destination nodes that also bind &handle", async ({ page, visitScenario }) => {
         await visitScenario(scenario)
 
         await expect(page.locator("#target-source-container #target-content")).toHaveText(

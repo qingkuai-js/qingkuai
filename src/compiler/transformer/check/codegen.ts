@@ -74,6 +74,14 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         embeddedScriptEditor.remove(...importDeclaration.value.range!)
         writer.writeScriptNode(importDeclaration.value).writeLine(";")
     }
+    for (const exportDeclaration of analyzeResult.script.exportDeclarations) {
+        const node = exportDeclaration.value
+        if (node.type === "ExportNamedDeclaration" && node.declaration) {
+            embeddedScriptEditor.remove(node.start!, node.declaration.start!)
+            continue
+        }
+        embeddedScriptEditor.remove(node.start!, node.end!)
+    }
     writer.write("\nfunction __qk__component(){").indent()
 
     if (isTS) {
@@ -554,8 +562,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     }
                 }
 
-                if (rawName === "&dom") {
-                    writeValue("DomReceiver", stringify(node.tag))
+                if (rawName === "&handle") {
+                    writeValue("HandleReceiver", stringify(node.tag))
                 }
 
                 if ("select" === node.tag && rawName === "&value") {

@@ -42,7 +42,9 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "test:units": "vitest --run",
+    "test:coverage": "vitest --run --coverage",
     "test:e2e": "npm run bundle && playwright test",
+    "test:e2e-badge": "tsx scripts/e2e-badge.ts",
     "test": "npm run test:units && npm run test:e2e",
     "test:e2e-quick": "playwright test --project=chromium-debug",
     "test:e2e-prod": "PROD_ONLY=1 npm run bundle && playwright test",
@@ -65,6 +67,7 @@
     "@playwright/test": "^1.58.2",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^24.2.0",
+    "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^10.1.0",
     "fs-extra": "^11.3.4",
     "husky": "^9.1.7",
@@ -77,7 +80,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.57.1",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

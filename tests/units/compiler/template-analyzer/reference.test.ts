@@ -3,7 +3,7 @@ import { analyzeTemplateAndMatchMessages } from "./_match"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 
 test("input", () => {
-    analyzeTemplateAndMatchMessages(`<input &dom />`)
+    analyzeTemplateAndMatchMessages(`<input &handle />`)
     analyzeTemplateAndMatchMessages(`<input &value>`)
     analyzeTemplateAndMatchMessages(`<input &number />`)
     analyzeTemplateAndMatchMessages(`<input &group />`)
@@ -39,30 +39,20 @@ test("select", () => {
     ])
 })
 
-test("&dom on component has no special effect", () => {
-    analyzeTemplateAndMatchMessages(`<Comp &dom />`, [
-        {
-            type: "warning",
-            range: [6, 10],
-            value: `Using "&dom" on a component will not assign the DOM element to the target. It behaves like a normal reference attribute.`
-        }
-    ])
-})
-
 test("<slot> and <qk:spread> cannot accept any reference attributes", () => {
-    analyzeTemplateAndMatchMessages(`<slot &dom></slot>`, [
+    analyzeTemplateAndMatchMessages(`<slot &handle></slot>`, [
         {
             type: "error",
-            range: [6, 10],
-            value: `The <slot> tag does not support reference attributes or event listeners, but got a reference attribute: "&dom".`
+            range: [6, 13],
+            value: `The <slot> tag does not support reference attributes or event listeners, but got a reference attribute: "&handle".`
         }
     ])
 
-    analyzeTemplateAndMatchMessages(`<qk:spread &dom></qk:spread>`, [
+    analyzeTemplateAndMatchMessages(`<qk:spread &handle></qk:spread>`, [
         {
             type: "error",
-            range: [11, 15],
-            value: `The <qk:spread> tag can only accept directives, but got a reference attribute: "&dom".`
+            range: [11, 18],
+            value: `The <qk:spread> tag can only accept directives, but got a reference attribute: "&handle".`
         },
         {
             type: "warning",
@@ -81,33 +71,33 @@ test("Invalid value for reference attribute", () => {
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
             <lang-ts></lang-ts>
-            <span &dom={_![_]}></span>
+            <span &handle={_![_]}></span>
         `)
     )
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
             <lang-ts></lang-ts>
-            <span &dom={_!._}></span>
+            <span &handle={_!._}></span>
         `)
     )
-    analyzeTemplateAndMatchMessages(`<span &dom></span>`)
-    analyzeTemplateAndMatchMessages(`<span &dom={_}></span>`)
-    analyzeTemplateAndMatchMessages(`<span &dom={_._}></span>`)
-    analyzeTemplateAndMatchMessages(`<span &dom={_[0]}></span>`)
-    analyzeTemplateAndMatchMessages(`<span &dom={_[_]}></span>`)
+    analyzeTemplateAndMatchMessages(`<span &handle></span>`)
+    analyzeTemplateAndMatchMessages(`<span &handle={_}></span>`)
+    analyzeTemplateAndMatchMessages(`<span &handle={_._}></span>`)
+    analyzeTemplateAndMatchMessages(`<span &handle={_[0]}></span>`)
+    analyzeTemplateAndMatchMessages(`<span &handle={_[_]}></span>`)
 
-    analyzeTemplateAndMatchMessages(`<span &dom={_?.a}></span>`, [
+    analyzeTemplateAndMatchMessages(`<span &handle={_?.a}></span>`, [
         {
             type: "error",
-            range: [12, 16],
+            range: [15, 19],
             value: `The value of a reference attribute must be either an identifier or a member expression.`
         }
     ])
 
-    analyzeTemplateAndMatchMessages(`<span &dom={a + b}></span>`, [
+    analyzeTemplateAndMatchMessages(`<span &handle={a + b}></span>`, [
         {
             type: "error",
-            range: [12, 17],
+            range: [15, 20],
             value: `The value of a reference attribute must be either an identifier or a member expression.`
         }
     ])

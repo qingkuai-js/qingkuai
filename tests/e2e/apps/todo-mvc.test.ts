@@ -143,7 +143,7 @@ const scenario: E2EScenarioInput = {
                             class="edit"
                             #if={index === editingIndex}
                             &value={todo.title}
-                            &dom={editInputs[index]}
+                            &handle={editInputs[index]}
                             @blur={handleConfirmEdit}
                             @keydown|esc={handleCancelEdit}
                             @keyup|enter={handleConfirmEdit}

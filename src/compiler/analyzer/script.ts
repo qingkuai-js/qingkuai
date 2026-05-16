@@ -5,7 +5,15 @@ import type {
     TopLevelDeclarationNode
 } from "#type-declarations/estree"
 import type { EstreeWalkContext } from "#type-declarations/compiler"
-import type { Identifier, VariableDeclarator, VariableDeclaration } from "@babel/types"
+import type {
+    Identifier,
+    Declaration,
+    StringLiteral,
+    ExportSpecifier,
+    VariableDeclarator,
+    VariableDeclaration,
+    ExportNamedDeclaration
+} from "@babel/types"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import {
@@ -30,13 +38,13 @@ import {
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
     InvalidUsageForIntrinsicMethods,
-    ExportStatementsAreNotSupported,
     ShadowCompilerIntrinsicAtTopLevel,
     InvalidParameterForAliasIntrinsic,
     InvalidSpreadElementArgForIntrinsic,
     TSModuleDeclarationsAreNotSupported,
     InvalidAliasDestructuringDeclaration,
-    IntrinsicNotAllowedInUsingDeclaration
+    IntrinsicNotAllowedInUsingDeclaration,
+    EmbeddedScriptOnlySupportsNamedExports
 } from "../message/error"
 import {
     RedundantRawMark,
@@ -47,7 +55,7 @@ import {
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
-import { PRESERVED_IDPREFIX } from "../constants"
+import { EXPORT_FORM_DESCRIPTIONS, PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
@@ -70,14 +78,28 @@ const visitor: Visitor = {
     AnyNode(node, context) {
         switch (node.type) {
             case "TSExportAssignment":
-            case "ExportSpecifier":
             case "ExportAllDeclaration":
-            case "ExportDefaultSpecifier":
-            case "ExportNamedDeclaration":
             case "ExportDefaultDeclaration":
-            case "ExportNamespaceSpecifier": {
                 if (context.inTopLevel) {
-                    ExportStatementsAreNotSupported(getScriptLocByRange(node.range))
+                    EmbeddedScriptOnlySupportsNamedExports(
+                        getScriptLocByRange(node.range),
+                        EXPORT_FORM_DESCRIPTIONS[node.type]
+                    )
+                    analyzeResult.script.exportDeclarations.push(context)
+                }
+                break
+            case "ExportNamedDeclaration": {
+                if (context.inTopLevel) {
+                    const declaration = node as ExportNamedDeclaration
+                    if (declaration.source) {
+                        EmbeddedScriptOnlySupportsNamedExports(
+                            getScriptLocByRange(node.range),
+                            "Re-export declaration"
+                        )
+                    } else {
+                        collectExportedBindings(declaration)
+                    }
+                    analyzeResult.script.exportDeclarations.push(context)
                 }
                 break
             }
@@ -293,6 +315,77 @@ const visitor: Visitor = {
             analyzeResult.script.eliminatedNodes.add(node)
         }
         analyzeResult.script.importDeclarations.push(context)
+    }
+}
+
+function collectExportedBindings(declaration: ExportNamedDeclaration) {
+    const declarationNode = declaration.declaration
+
+    const getBindingName = (node: Identifier | StringLiteral) => {
+        return node.type === "Identifier" ? node.name : node.value
+    }
+
+    if (declarationNode) {
+        if (
+            declaration.exportKind === "type" ||
+            declarationNode.type === "TSTypeAliasDeclaration" ||
+            declarationNode.type === "TSInterfaceDeclaration"
+        ) {
+            EmbeddedScriptOnlySupportsNamedExports(
+                getScriptLocByRange(declaration.range!),
+                "Type export"
+            )
+        } else {
+            collectBindingsFromDeclaration(declarationNode)
+        }
+    } else {
+        for (const specifier of declaration.specifiers as ExportSpecifier[]) {
+            if (declaration.exportKind === "type") {
+                EmbeddedScriptOnlySupportsNamedExports(
+                    getScriptLocByRange(declaration.range!),
+                    "Type export"
+                )
+                continue
+            }
+            if (specifier.exportKind === "type") {
+                EmbeddedScriptOnlySupportsNamedExports(
+                    getScriptLocByRange(specifier.range!),
+                    "Type export"
+                )
+                continue
+            }
+            analyzeResult.script.exportedBindings.push({
+                local: getBindingName(specifier.local),
+                exported: getBindingName(specifier.exported)
+            })
+        }
+    }
+}
+
+function collectBindingsFromDeclaration(node: Declaration) {
+    switch (node.type) {
+        case "VariableDeclaration": {
+            for (const declarator of node.declarations) {
+                walkPatternIdentifiers(declarator.id, identifier => {
+                    analyzeResult.script.exportedBindings.push({
+                        local: identifier.name,
+                        exported: identifier.name
+                    })
+                })
+            }
+            break
+        }
+        case "ClassDeclaration":
+        case "TSEnumDeclaration":
+        case "FunctionDeclaration": {
+            if (node.id) {
+                analyzeResult.script.exportedBindings.push({
+                    local: node.id.name,
+                    exported: node.id.name
+                })
+            }
+            break
+        }
     }
 }
 

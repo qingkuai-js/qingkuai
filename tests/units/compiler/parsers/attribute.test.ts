@@ -1,10 +1,10 @@
-import { describe, test } from "vitest"
 import {
     getLocByIndex,
     getPosByIndex,
     newASTLocation,
     getLocWithDefaultEnd
 } from "../../../../src/util/compiler/position"
+import { describe, expect, test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
@@ -231,7 +231,7 @@ test("With reference attributes", () => {
             formatSourceCode(`
                 <span
                     !id={ dynamicId }
-                    &dom={span}
+                    &handle={span}
                 ></span>
             `)
         ),
@@ -253,21 +253,21 @@ test("With reference attributes", () => {
                 },
                 {
                     name: {
-                        raw: "&dom",
-                        loc: getLocByIndex(32, 36)
+                        raw: "&handle",
+                        loc: getLocByIndex(32, 39)
                     },
                     value: {
                         raw: "span",
-                        loc: getLocByIndex(38, 42)
+                        loc: getLocByIndex(41, 45)
                     },
                     equalSign: true,
                     valueEnclosure: "curly",
-                    loc: getLocByIndex(32, 43)
+                    loc: getLocByIndex(32, 46)
                 }
             ],
-            loc: getLocByIndex(0, 52),
-            startTagEndPos: getPosByIndex(45),
-            endTagStartPos: getPosByIndex(45)
+            loc: getLocByIndex(0, 55),
+            startTagEndPos: getPosByIndex(48),
+            endTagStartPos: getPosByIndex(48)
         }
     )
 })
@@ -343,7 +343,7 @@ test("Within nested structure", () => {
                 <input
                     #if={showInput}
                     !id={dynamicId}
-                    &dom={inputElem}
+                    &handle={inputElem}
                     @input={handleInput}
                 />
             </div>
@@ -395,48 +395,48 @@ test("Within nested structure", () => {
                     },
                     {
                         name: {
-                            raw: "&dom",
-                            loc: getLocByIndex(97, 101)
+                            raw: "&handle",
+                            loc: getLocByIndex(97, 104)
                         },
                         value: {
                             raw: "inputElem",
-                            loc: getLocByIndex(103, 112)
+                            loc: getLocByIndex(106, 115)
                         },
                         equalSign: true,
                         valueEnclosure: "curly",
-                        loc: getLocByIndex(97, 113)
+                        loc: getLocByIndex(97, 116)
                     },
                     {
                         name: {
                             raw: "@input",
-                            loc: getLocByIndex(122, 128)
+                            loc: getLocByIndex(125, 131)
                         },
                         value: {
                             raw: "handleInput",
-                            loc: getLocByIndex(130, 141)
+                            loc: getLocByIndex(133, 144)
                         },
                         equalSign: true,
                         valueEnclosure: "curly",
-                        loc: getLocByIndex(122, 142)
+                        loc: getLocByIndex(125, 145)
                     }
                 ],
                 parent: nodeList[0],
                 isSelfClosing: true,
-                loc: getLocByIndex(34, 149),
+                loc: getLocByIndex(34, 152),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
-                startTagEndPos: getPosByIndex(149)
+                startTagEndPos: getPosByIndex(152)
             },
             {
                 content: [
                     {
                         value: "\n",
                         isInterpolated: false,
-                        loc: getLocByIndex(149, 150)
+                        loc: getLocByIndex(152, 153)
                     }
                 ],
                 parent: nodeList[0],
-                loc: getLocByIndex(149, 150),
+                loc: getLocByIndex(152, 153),
                 prev: nodeList[0].children[1]
             }
         ],
@@ -455,9 +455,9 @@ test("Within nested structure", () => {
                 loc: getLocByIndex(5, 28)
             }
         ],
-        loc: getLocByIndex(0, 156),
+        loc: getLocByIndex(0, 159),
         startTagEndPos: getPosByIndex(29),
-        endTagStartPos: getPosByIndex(150)
+        endTagStartPos: getPosByIndex(153)
     })
 })
 
@@ -465,6 +465,10 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
     const parseRecover = (source: string) => {
         return parseTemplateTesting(source, { recover: true })
     }
+
+    test("Not recoverable", () => {
+        expect(() => parseTemplateTesting(`<div`)).toThrow()
+    })
 
     test("Unexpected token in the starting of attribute name", () => {
         matchTemplateNodeListAndMessages(

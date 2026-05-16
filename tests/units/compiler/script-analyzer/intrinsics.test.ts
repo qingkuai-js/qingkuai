@@ -1,6 +1,7 @@
 import type { ExpectedCompileMessage } from "#type-declarations/testing"
 
-import { describe, test } from "vitest"
+import { describe, test, expect } from "vitest"
+import { messages } from "../../../../src/compiler/state"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { analyzeScript } from "../../../../src/compiler/analyzer/script"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
@@ -531,6 +532,44 @@ test("Shorthand derived declaration with compiler intrinsic method", () => {
             value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("raw") method is ambiguous.`
         }
     ])
+})
+
+test("Analyzer emits errors for top-level await, namespace and reserved identifiers", () => {
+    localAnalyze(`
+        namespace N {}
+        const __qk__internal = 1
+        await Promise.resolve(1)
+        const $arg = 1
+    `)
+
+    const errors = messages.filter(item => item.type === "error")
+    expect(errors.length).toBeGreaterThan(0)
+    expect(messages.length).toBeGreaterThanOrEqual(3)
+})
+
+test("Analyzer validates intrinsic argument count and spread arguments", () => {
+    localAnalyze(`
+        watchExp(1, 2, 3)
+        defaultProps(...x, y)
+        reactive(...x)
+    `)
+
+    const errors = messages.filter(item => item.type === "error")
+    const warnings = messages.filter(item => item.type === "warning")
+    expect(errors.length).toBeGreaterThan(0)
+    expect(warnings.length).toBeGreaterThan(0)
+})
+
+test("Analyzer rejects aliasing plain identifier and intrinsics inside using declarations", () => {
+    localAnalyze(`
+        const source = 1
+        const copied = alias(source)
+        using x = reactive(1)
+        import fs = require("node:fs")
+    `)
+
+    expect(messages.some(item => item.type === "error")).toBe(true)
+    expect(messages.length).toBeGreaterThan(0)
 })
 
 test("Duplicate default definitions", () => {

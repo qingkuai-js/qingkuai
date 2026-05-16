@@ -1,6 +1,7 @@
-import { defineConfig } from "rollup"
-
+import nodeFs from "node:fs"
 import esbuild from "rollup-plugin-esbuild"
+
+import { defineConfig } from "rollup"
 
 export default defineConfig(() => {
     const result = []
@@ -16,7 +17,7 @@ export default defineConfig(() => {
                 return
             }
         },
-        plugins: [esbuild()],
+        plugins: [replacePacakgeVersionPlugin(), esbuild()],
         external: ["@babel/parser", "@jridgewell/sourcemap-codec"]
     }
 
@@ -48,6 +49,25 @@ function getOutput(format, dir) {
                     return `runtime/chunk${ext}`
                 }
             }
+        }
+    }
+}
+
+function replacePacakgeVersionPlugin() {
+    const VERSION_SOURCE_ID = "/src/runtime/meta.ts"
+    const VERSION_PLACEHOLDER = "__QK_PACKAGE_VERSION__"
+    const PACKAGE_INFO = JSON.parse(nodeFs.readFileSync("./package.json", "utf8"))
+    return {
+        name: "replace-package-version",
+        renderChunk(code, chunk) {
+            if (
+                !chunk.moduleIds.some(id => {
+                    return id.includes(VERSION_SOURCE_ID)
+                })
+            ) {
+                return null
+            }
+            return code.replaceAll(VERSION_PLACEHOLDER, PACKAGE_INFO.version)
         }
     }
 }

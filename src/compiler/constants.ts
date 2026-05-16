@@ -34,6 +34,12 @@ import { objectAssign } from "../util/shared/aliases"
 export const SPREAD_TAG = "qk:spread"
 export const PRESERVED_IDPREFIX = "__qk__"
 
+export const NON_REACTIVE_REASONS = {
+    literal: "never mutated",
+    raw: "explicit raw",
+    pending: "template unused"
+}
+
 // Language Service Constants
 export const LSC = {
     UTIL: PRESERVED_IDPREFIX + "lsu",
@@ -90,6 +96,12 @@ export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
     preserveBlankTextNodes: true,
     checkEmptyInterpolation: true,
     checkAttributeValueEnclosure: true
+}
+
+export const EXPORT_FORM_DESCRIPTIONS: Readonly<Record<string, string>> = {
+    ExportAllDeclaration: "Export-all",
+    TSExportAssignment: "TS assignment export",
+    ExportDefaultDeclaration: "Default export"
 }
 
 export const FRAG_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {

@@ -1,0 +1,81 @@
+name: E2E Badge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "tests/e2e/**"
+      - "scripts/e2e-badge.ts"
+      - ".github/workflows/e2e-badge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-badge-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Generate E2E scenarios badge JSON
+        run: pnpm run test:e2e-badge
+
+      - name: Publish badge JSON to e2e-badge branch
+        run: |
+          set -euo pipefail
+
+          badge_path="badges/e2e-scenarios.json"
+          if [[ ! -f "$badge_path" ]]; then
+            echo "Badge file not found: $badge_path" >&2
+            exit 1
+          fi
+
+          tmp_file="$(mktemp)"
+          cp "$badge_path" "$tmp_file"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin e2e-badge >/dev/null 2>&1; then
+            git fetch origin e2e-badge
+            git checkout -B e2e-badge origin/e2e-badge
+          else
+            git checkout --orphan e2e-badge
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p badges
+          cp "$tmp_file" "$badge_path"
+
+          git add "$badge_path"
+          if git diff --cached --quiet; then
+            echo "No badge changes to publish"
+            exit 0
+          fi
+
+          source_commit="${GITHUB_SHA}"
+          source_short="${source_commit:0:7}"
+          source_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${source_commit}"
+
+          git commit \
+            -m "chore: update e2e badge data (${source_short}) [skip ci]" \
+            -m "source-commit: ${source_url}"
+          git push origin e2e-badge

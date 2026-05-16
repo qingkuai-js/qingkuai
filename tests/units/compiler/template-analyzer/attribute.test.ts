@@ -77,7 +77,7 @@ describe("Non-component tag", () => {
             {
                 type: "error",
                 range: [20, 23],
-                value: `The <span> tag only supports "&dom" as a reference attribute, but got: "&id".`
+                value: `The <span> tag only supports "&handle" as a reference attribute, but got: "&id".`
             }
         ])
 
@@ -322,6 +322,21 @@ test("Attribute value is redundant for shallow attribute on embedded script lang
             type: "warning",
             range: [9, 23],
             value: `The "shallow" attribute on <lang-ts> tag is a boolean attribute, and the redundant attribute value will be ignored.`
+        }
+    ])
+})
+
+test("Embedded script language tag can only accept one reactivity mmode attribute", () => {
+    analyzeTemplateAndMatchMessages(`<lang-js reactive shallow></lang-js>`, [
+        {
+            type: "error",
+            range: [18, 25],
+            value: `Conflicting reactivity modes on <lang-js>: "reactive" and "shallow" cannot be used together.`
+        },
+        {
+            type: "error",
+            range: [9, 17],
+            value: `Conflicting reactivity modes on <lang-js>: "reactive" and "shallow" cannot be used together.`
         }
     ])
 })

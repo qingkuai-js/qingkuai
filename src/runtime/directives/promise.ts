@@ -3,11 +3,12 @@ import type { CancelablePromise, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "../constants"
 import { destroy } from "../destroy"
+import { invokeRender } from "./render"
+import { currentInstance } from "../state"
 import { NotPromise } from "../messages/error"
 import { renderEffect } from "../reactivity/effect"
 import { isPromise } from "../../util/shared/assert"
 import { objectAssign } from "../../util/shared/aliases"
-import { invokeRender } from "../../util/runtime/sundry"
 import { CANCELABLE, PROMISE_PENDING, PROMISE_SETTLED } from "./constants"
 
 export function promiseBlock(
@@ -19,6 +20,7 @@ export function promiseBlock(
     let state: number
     let pms: CancelablePromise | null
     let destruction: Destruction | null
+    const componentInstance = currentInstance!
 
     const changeState = (newState: number, render: ArbitraryFunc | undefined, arg?: any) => {
         if (destruction) {
@@ -28,9 +30,7 @@ export function promiseBlock(
         destruction = NIL
 
         if (render) {
-            destruction = invokeRender(() => {
-                render(arg)
-            })
+            destruction = invokeRender(() => render(arg), componentInstance)
         }
     }
 

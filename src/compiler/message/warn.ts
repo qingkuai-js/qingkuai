@@ -3,7 +3,7 @@ import type { ASTLocation, CompileWarning, IdentifierStatus } from "#type-declar
 
 import { messages } from "../state"
 
-export const UnnecessarySpreadTag = withLocation(9014, (without: string) => {
+export const UnnecessarySpreadTag = withLocation(9012, (without: string) => {
     return `The <qk:spread> tag without ${without} is unnecessary.`
 })
 
@@ -26,7 +26,7 @@ export const DeclareDerivedMixedSyntaticForms = withLocation(9003, () => {
 })
 
 export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scope: string) => {
-    return `Top-level scope identifier "${name}" will be overwrittern in ${scope}.`
+    return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
 export const RedundantRawMark = withLocation(9005, () => {
@@ -41,19 +41,8 @@ export const RedundantDirectiveValue = withLocation(9006, (directive: string) =>
     return `The "${directive}" directive does not need a value, and the redundant directive value will be ignored.`
 })
 
-export const RedundantArgsForIntrinsic = withLocation(
-    9016,
-    (intrinsic: string, expected: number, got: number) => {
-        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
-    }
-)
-
 export const DuplicateDefaultDeclaration = withLocation(9013, (subject: string) => {
     return `This default value definition for "${subject}" is ignored because it is overridden by a later one.`
-})
-
-export const DomRerferenceAttributeOnComponent = withLocation(9012, () => {
-    return `Using "&dom" on a component will not assign the DOM element to the target. It behaves like a normal reference attribute.`
 })
 
 export const RedundantBooleanAttributeValue = withLocation(
@@ -73,6 +62,13 @@ export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
 export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
     return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 })
+
+export const RedundantArgsForIntrinsic = withLocation(
+    9016,
+    (intrinsic: string, expected: number, got: number) => {
+        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
+    }
+)
 
 export function isCompileWarning(v: any): v is CompileWarning {
     return v instanceof QingkuaiCompileWarning
