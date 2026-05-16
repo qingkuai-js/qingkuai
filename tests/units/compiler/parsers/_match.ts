@@ -15,7 +15,7 @@ import {
 } from "../../../../src/util/compiler/position"
 import { expect } from "vitest"
 import { PositionFlag } from "../../../../src/compiler/enums"
-import { isNumber } from "../../../../src/util//shared/assert"
+import { isNumber } from "../../../../src/util/shared/assert"
 import { inputDescriptor } from "../../../../src/compiler/state"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { newTemplateNode } from "../../../../src/compiler/parser/template"

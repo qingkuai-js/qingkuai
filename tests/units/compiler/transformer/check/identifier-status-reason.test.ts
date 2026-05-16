@@ -1,8 +1,9 @@
 import { expect, test } from "vitest"
 import { parse } from "@babel/parser"
-
-import { compileIntermediate } from "../../../../src/compiler/compile"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { PositionFlag } from "../../../../../src/compiler"
+import { inputDescriptor } from "../../../../../src/compiler/state"
+import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { compileIntermediate } from "../../../../../src/compiler/compile"
 
 function expectValidESMSyntax(code: string, label: string) {
     expect(() =>
@@ -17,6 +18,15 @@ function compileIntermediateAndAssertNoErrors(source: string, label: string) {
     const result = compileIntermediate(source)
     expect(result.messages.filter(msg => msg.type === "error")).toEqual([])
     expectValidESMSyntax(result.code, `${label}-intermediate`)
+    if (inputDescriptor.script.existing) {
+        for (
+            let i = inputDescriptor.script.loc.start.index;
+            i < inputDescriptor.script.loc.end.index;
+            i++
+        ) {
+            expect(result.isPositionFlagSetAtIndex(PositionFlag.InScript, i)).toBe(true)
+        }
+    }
     return result
 }
 
@@ -81,6 +91,21 @@ test("Intermediate: explicit raw marker carries explicit raw reason", () => {
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-explicit-raw")
     expect(result.identifierStatusInfo).toMatchObject({
         config: "raw (explicit raw)"
+    })
+})
+
+test("Intermediate: alias marker carries alias reason", () => {
+    const source = formatSourceCode(`
+        <lang-js>
+            const config = alias(props.config)
+        </lang-js>
+
+        <p>{ config }</p>
+    `)
+
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-alias")
+    expect(result.identifierStatusInfo).toMatchObject({
+        config: "alias -> props.config"
     })
 })
 

@@ -1,6 +1,5 @@
 import { test, expect } from "vitest"
-import { compile } from "../../../../src/compiler/compile"
-import { messages } from "../../../../src/compiler/state"
+import { compile } from "../../../../../src/compiler/compile"
 
 test("Runtime: named exports become component handle properties", () => {
     const { code, messages } = compile(

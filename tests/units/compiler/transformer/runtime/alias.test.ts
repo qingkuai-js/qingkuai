@@ -1,6 +1,6 @@
 import { test } from "vitest"
 import { matchTransformedScript } from "./_match"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 
 test("Transform result of alias in production environment", () => {
     matchTransformedScript(

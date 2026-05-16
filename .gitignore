@@ -2,6 +2,7 @@
 .DS_Store
 
 dist
+coverage
 test-space
 test-results
 node_modules

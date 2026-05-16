@@ -1,10 +1,10 @@
-import { describe, test } from "vitest"
 import {
     getLocByIndex,
     getPosByIndex,
     newASTLocation,
     getLocWithDefaultEnd
 } from "../../../../src/util/compiler/position"
+import { describe, expect, test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
@@ -465,6 +465,10 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
     const parseRecover = (source: string) => {
         return parseTemplateTesting(source, { recover: true })
     }
+
+    test("Not recoverable", () => {
+        expect(() => parseTemplateTesting(`<div`)).toThrow()
+    })
 
     test("Unexpected token in the starting of attribute name", () => {
         matchTemplateNodeListAndMessages(

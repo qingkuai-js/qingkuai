@@ -78,3 +78,17 @@ describe("qk:spread", () => {
         )
     })
 })
+
+describe("Boundary checks", () => {
+    test("Attribute at string end does not cause position array out of bounds", () => {
+        analyzeTemplateAndMatchMessages("<div #for={item of items} #key={item}></div>")
+    })
+
+    test("Multi-word attribute with kebab case at boundary", () => {
+        analyzeTemplateAndMatchMessages("<div @some-long-event={handler}></div>")
+    })
+
+    test("Component attribute name transformation at boundary", () => {
+        analyzeTemplateAndMatchMessages("<MyComponent></MyComponent>")
+    })
+})

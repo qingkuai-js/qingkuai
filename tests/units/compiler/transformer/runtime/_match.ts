@@ -6,22 +6,22 @@ import {
     inputDescriptor,
     generateIdentifier,
     resetCompilerState
-} from "../../../../src/compiler/state"
+} from "../../../../../src/compiler/state"
 import {
     getTemplateFragments,
     writeFragmentGetterDeclarations
-} from "../../../../src/compiler/transformer/runtime/fragment"
-import { isUndefined } from "../../../../src/util/shared/assert"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { CodeEditor } from "../../../../src/compiler/transformer/editor"
-import { parseTemplate } from "../../../../src/compiler/parser/template"
-import { analyzeScript } from "../../../../src/compiler/analyzer/script"
-import { PARSER_TEMPLATE_OPTIONS } from "../../../../src/compiler/constants"
-import { analyzeTemplate } from "../../../../src/compiler/analyzer/template"
-import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer"
-import { removeEliminatedNodes } from "../../../../src/compiler/transformer/runtime/codegen"
-import { transformEmbeddedScript } from "../../../../src/compiler/transformer/runtime/script"
-import { writeStringLiteralsDeclarations } from "../../../../src/compiler/optimizer/compress"
+} from "../../../../../src/compiler/transformer/runtime/fragment"
+import { isUndefined } from "../../../../../src/util/shared/assert"
+import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { CodeEditor } from "../../../../../src/compiler/transformer/editor"
+import { parseTemplate } from "../../../../../src/compiler/parser/template"
+import { analyzeScript } from "../../../../../src/compiler/analyzer/script"
+import { PARSER_TEMPLATE_OPTIONS } from "../../../../../src/compiler/constants"
+import { analyzeTemplate } from "../../../../../src/compiler/analyzer/template"
+import { RuntimeCodeWriter } from "../../../../../src/compiler/transformer/writer"
+import { removeEliminatedNodes } from "../../../../../src/compiler/transformer/runtime/codegen"
+import { transformEmbeddedScript } from "../../../../../src/compiler/transformer/runtime/script"
+import { writeStringLiteralsDeclarations } from "../../../../../src/compiler/optimizer/compress"
 
 export function matchTransformedScript(
     source: string,

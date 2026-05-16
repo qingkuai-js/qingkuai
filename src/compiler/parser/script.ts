@@ -65,9 +65,9 @@ function getParserOptions(initial: ParserOptions = {}) {
     const ret: ParserOptions = {
         ...initial,
         ranges: true,
-        errorRecovery: inputDescriptor.options.checkMode
+        errorRecovery: inputDescriptor?.options.checkMode
     }
-    return (inputDescriptor.script.isTS && (ret.plugins = ["typescript"]), ret)
+    return (inputDescriptor?.script.isTS && (ret.plugins = ["typescript"]), ret)
 }
 
 function correctErrorLocation<T extends ArbitraryFunc>(

@@ -138,7 +138,7 @@ export function replaceReusedStringReferences(
     references: ReusedStringReference[]
 ) {
     for (const reference of references) {
-        const literalId = analyzeResult.reusedStrings[reference.value]?.id
+        const literalId = getMaybeReusedString(reference.value)
         if (literalId) {
             editor.replace(
                 ...reference.range,

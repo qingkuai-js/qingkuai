@@ -317,8 +317,8 @@ export const InvalidShorthandAttributeName = withLocation(1049, (name: string) =
     return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
 })
 
-export function isCompileError(err: Error): err is CompileError {
-    return err instanceof QingkuaiCompileError
+export function isCompileError(value: any): value is CompileError {
+    return value instanceof QingkuaiCompileError
 }
 
 class QingkuaiCompileError extends Error implements CompileError {
@@ -339,7 +339,6 @@ class QingkuaiCompileError extends Error implements CompileError {
 function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
     function error(...[loc, ...params]: [loc: ASTLocation, ...Parameters<T>]) {
         const err = new QingkuaiCompileError(loc, code, fn(...params))
-
         if (!inputDescriptor.options.checkMode) {
             throw err
         }

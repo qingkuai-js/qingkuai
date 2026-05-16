@@ -26,7 +26,7 @@ export const DeclareDerivedMixedSyntaticForms = withLocation(9003, () => {
 })
 
 export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scope: string) => {
-    return `Top-level scope identifier "${name}" will be overwrittern in ${scope}.`
+    return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
 export const RedundantRawMark = withLocation(9005, () => {

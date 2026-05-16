@@ -1,8 +1,8 @@
 import { describe, it, test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
+import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 
 test("Whether comment nodes were removed from parse result", () => {
     const nodeList = parseTemplateTesting(
@@ -853,5 +853,135 @@ it("Should not cause error when `dt` tag is used as descendant of `dl` of anothe
         loc: getLocByIndex(0, 47),
         startTagEndPos: getPosByIndex(4),
         endTagStartPos: getPosByIndex(42)
+    })
+})
+
+describe("Blank text filtering behavior", () => {
+    test("Whitespace-only text nodes should be removed when preserveBlankTextNodes is false", () => {
+        const nodeList = parseTemplateTesting(`<div>  </div>`, {
+            preserveBlankTextNodes: false
+        })
+
+        matchTemplateNodeList(nodeList, {
+            tag: "div",
+            loc: getLocByIndex(0, 13),
+            startTagEndPos: getPosByIndex(5),
+            endTagStartPos: getPosByIndex(7)
+        })
+    })
+
+    test("Non-blank text nodes should be preserved when preserveBlankTextNodes is false", () => {
+        const nodeList = parseTemplateTesting(`<div>content</div>`, {
+            preserveBlankTextNodes: false
+        })
+
+        matchTemplateNodeList(nodeList, {
+            tag: "div",
+            children: [
+                {
+                    content: [
+                        {
+                            value: "content",
+                            isInterpolated: false,
+                            loc: getLocByIndex(5, 12)
+                        }
+                    ],
+                    parent: nodeList[0],
+                    loc: getLocByIndex(5, 12)
+                }
+            ],
+            loc: getLocByIndex(0, 18),
+            startTagEndPos: getPosByIndex(5),
+            endTagStartPos: getPosByIndex(12)
+        })
+    })
+})
+
+describe("Additional structure branches", () => {
+    const parseAndCheckStructure = (source: string) => {
+        return parseTemplateTesting(source, {
+            recover: true,
+            checkTemplateStructure: true
+        })
+    }
+
+    test("Unexpected child for option and optgroup", () => {
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseAndCheckStructure(`<select><option><div></div></option></select>`)
+            return [nodeList, nodeList[0]]
+        }, [
+            {
+                type: "error",
+                range: [16, 20],
+                value: "Invalid template structure: the <div> tag cannot be nested in <option>."
+            }
+        ])
+
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseAndCheckStructure(
+                `<select><optgroup><div></div></optgroup></select>`
+            )
+            return [nodeList, nodeList[0]]
+        }, [
+            {
+                type: "error",
+                range: [18, 22],
+                value: "Invalid template structure: the <div> tag cannot be nested in <optgroup>."
+            }
+        ])
+    })
+
+    test("Unexpected child for colgroup", () => {
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseAndCheckStructure(
+                `<table><colgroup><div></div></colgroup></table>`
+            )
+            return [nodeList, nodeList[0]]
+        }, [
+            {
+                type: "error",
+                range: [17, 21],
+                value: "Invalid template structure: the <div> tag cannot be nested in <colgroup>."
+            }
+        ])
+    })
+
+    test("Nested td tags are invalid", () => {
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseAndCheckStructure(
+                `<table><tbody><tr><td><td></td></td></tr></tbody></table>`
+            )
+            return [nodeList, nodeList[0]]
+        }, [
+            {
+                type: "error",
+                range: [22, 25],
+                value: "Invalid template structure: the <td> tag cannot be nested in <td>, it can only be nested in <tr>."
+            }
+        ])
+    })
+
+    test("Heading and ruby related ancestor rules", () => {
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseAndCheckStructure(`<h1><h2></h2></h1>`)
+            return [nodeList, nodeList[0]]
+        }, [
+            {
+                type: "error",
+                range: [4, 7],
+                value: "Invalid template structure: the <h2> tag cannot be descendant of <h1>."
+            }
+        ])
+
+        matchTemplateNodeListAndMessages(() => {
+            const nodeList = parseAndCheckStructure(`<ruby><rt><rp></rp></rt></ruby>`)
+            return [nodeList, nodeList[0]]
+        }, [
+            {
+                type: "error",
+                range: [10, 13],
+                value: "Invalid template structure: the <rp> tag cannot be descendant of <rt>."
+            }
+        ])
     })
 })

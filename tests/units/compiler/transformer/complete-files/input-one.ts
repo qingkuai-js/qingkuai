@@ -1,6 +1,6 @@
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 
-const complexFileInput = formatSourceCode(`
+export default formatSourceCode(`
 	<lang-js>
 		let title = "QingKuai"
 		let showPanel = true
@@ -15,6 +15,7 @@ const complexFileInput = formatSourceCode(`
 			{ id: 1, text: "A", ok: true },
 			{ id: 2, text: "B", ok: false }
 		]
+		let count = 0
 
 		function onHeaderClick() {
 			showPanel = !showPanel
@@ -62,6 +63,7 @@ const complexFileInput = formatSourceCode(`
 			<button @click={select(item)}></button>
 		</div>
 	</div>
-`)
 
-export default complexFileInput
+	<div>{count}</div>
+	<p !id={++count}></p>
+`)

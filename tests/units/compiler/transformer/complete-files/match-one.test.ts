@@ -1,8 +1,8 @@
 import { test, expect } from "vitest"
 import { parse } from "@babel/parser"
 
-import complexFileInput from "./_input"
-import { compile, compileIntermediate } from "../../../../src/compiler/compile"
+import input from "./input-one"
+import { compile, compileIntermediate } from "../../../../../src/compiler/compile"
 
 function expectValidESMSyntax(code: string, label: string) {
     expect(() =>
@@ -31,7 +31,7 @@ function compileIntermediateAndAssertNoErrors(source: string, label: string) {
 }
 
 test("Runtime: complex file broad syntax coverage and generated-code sanity", () => {
-    const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "complex-runtime")
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "complex-runtime")
     const prodClickLiteralId = prod.code.match(/const\s+(_s\d+)\s*=\s*"click"/)?.[1]
 
     expect(prod.code).toContain('import * as _ from "qingkuai/internal"')
@@ -71,7 +71,7 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
 })
 
 test("Runtime regression: slot fallback generates valid renderSlot helper call", () => {
-    const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "slot-fallback")
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "slot-fallback")
     expect(prod.code).toContain('_.renderSlot(_ctx, "main",')
     expect(dev.code).toContain('_.renderSlot(_ctx, "main",')
     expect(prod.code).toContain("_.UNDEF, () => {")
@@ -79,7 +79,7 @@ test("Runtime regression: slot fallback generates valid renderSlot helper call",
 })
 
 test("Runtime regression: component branch keeps condition block branches separated", () => {
-    const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "component-condition")
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "component-condition")
     expect(prod.code).toContain("_.conditionBlock([")
     expect(dev.code).toContain("_.conditionBlock([")
     expect(prod.code).toContain("Comp(")
@@ -118,7 +118,7 @@ test("Runtime regression: qk spread promise branches select dynamic nodes from l
 })
 
 test("Runtime regression: keyed list selection emits selector helper and event call", () => {
-    const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "keyed-selector")
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "keyed-selector")
     expect(prod.code).toMatch(/const _selector\d+ = \(\(\) => \{/)
     expect(prod.code).toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/)
     expect(prod.code).toContain("const prevNode = _getNodeByKey")
@@ -141,7 +141,7 @@ test("Runtime regression: keyed list selection emits selector helper and event c
 })
 
 test("Runtime regression: debug mode skips selector optimization", () => {
-    const { prod, dev } = compileRuntimeAndAssertNoErrors(complexFileInput, "debug-skip-selector")
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "debug-skip-selector")
     expect(prod.code).toMatch(/const _selector\d+ = \(\(\) => \{/)
     expect(prod.code).toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/)
     expect(prod.code).toContain("_.renderEffect(() => {")
@@ -155,7 +155,7 @@ test("Runtime regression: debug mode skips selector optimization", () => {
 })
 
 test("Intermediate regression: component slot blocks generate valid object property closures", () => {
-    const result = compileIntermediateAndAssertNoErrors(complexFileInput, "slot-closure")
+    const result = compileIntermediateAndAssertNoErrors(input, "slot-closure")
     expect(result.code).toContain('"body": () => {')
     expect(result.code).toContain("},")
     expect(result.code).not.toContain("};,")
@@ -163,7 +163,7 @@ test("Intermediate regression: component slot blocks generate valid object prope
 })
 
 test("Intermediate regression: component branch input stays parseable in intermediate output", () => {
-    const result = compileIntermediateAndAssertNoErrors(complexFileInput, "component-condition")
+    const result = compileIntermediateAndAssertNoErrors(input, "component-condition")
     expect(result.code).toContain("if (showPanel) {}")
     expect(result.code).toContain("if (error) {}")
     expect(result.code).toContain("__qk__lsu.confirmComponent(Comp)")
@@ -171,7 +171,7 @@ test("Intermediate regression: component branch input stays parseable in interme
 })
 
 test("Intermediate: complex file broad syntax coverage and metadata sanity", () => {
-    const result = compileIntermediateAndAssertNoErrors(complexFileInput, "complex")
+    const result = compileIntermediateAndAssertNoErrors(input, "complex")
     const mainSlotNode = result.getSlotTemplateNode("main")
 
     expect(result.code).toContain("import { __qk__lsu")
@@ -202,4 +202,23 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
     expect(result.getTemplateNodeContext(mainSlotNode!).attributesMap.name?.value.raw).toBe("main")
     expect(result.getSourceIndex(0)).toBe(-1)
     expect(result.getInterIndex(0)).toBe(-1)
+})
+
+test("Runtime regression: first interpolation block tracked in renderEffect", () => {
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "first-interpolation")
+
+    expect(prod.code).toContain("let count = _.react(0)")
+    expect(dev.code).toContain("let [_count, count] = _.react(0,")
+
+    expect(prod.code).toContain("_.renderEffect(() => {")
+    expect(prod.code).toMatch(/\+\+count\.\$/)
+
+    expect(dev.code).toContain("_.renderEffect(() => {")
+    expect(dev.code).toMatch(/\+\+_count\.\$/)
+
+    expect(prod.code).toMatch(/_.setText\(_text\d+, count\.\$\)/)
+    expect(dev.code).toMatch(/_.setText\(_text\d+, _count\.\$\)/)
+    expect(prod.code).toMatch(
+        /_.renderEffect\(\(\) => \{[\s\S]*?_.setText\(_text\d+, count\.\$\)[\s\S]*?\}\)/
+    )
 })

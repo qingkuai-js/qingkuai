@@ -325,3 +325,18 @@ test("Attribute value is redundant for shallow attribute on embedded script lang
         }
     ])
 })
+
+test("Embedded script language tag can only accept one reactivity mmode attribute", () => {
+    analyzeTemplateAndMatchMessages(`<lang-js reactive shallow></lang-js>`, [
+        {
+            type: "error",
+            range: [18, 25],
+            value: `Conflicting reactivity modes on <lang-js>: "reactive" and "shallow" cannot be used together.`
+        },
+        {
+            type: "error",
+            range: [9, 17],
+            value: `Conflicting reactivity modes on <lang-js>: "reactive" and "shallow" cannot be used together.`
+        }
+    ])
+})

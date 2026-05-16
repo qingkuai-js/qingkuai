@@ -2,8 +2,8 @@ import type { PatternLike } from "@babel/types"
 import type { EstreeWalkContext } from "#type-declarations/compiler"
 
 import { expect, test } from "vitest"
-import { NOOP } from "../../../../src/runtime/constants"
 import { parse, parseExpression } from "@babel/parser"
+import { NOOP } from "../../../../src/runtime/constants"
 import { isLeftValue } from "../../../../src/compiler/estree/assert"
 import { walkEstree, walkPatternIdentifiers } from "../../../../src/compiler/estree/walk"
 

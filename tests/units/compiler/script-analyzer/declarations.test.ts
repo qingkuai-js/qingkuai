@@ -449,3 +449,26 @@ test("Shorthand derived declaration is invalid for destructuring declarations", 
         })
     ])
 })
+
+test("Status of pre-mutation of literals should be pending", () => {
+    localAnalyze(`
+        const fn = () => {
+            a++
+        }
+        let a = 0
+    `)
+    checkTopLevelIdentifiers([
+        {
+            name: "fn",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "a",
+            hoist: false,
+            implicit: true,
+            status: "pending"
+        }
+    ])
+})
