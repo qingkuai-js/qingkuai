@@ -25,7 +25,7 @@ Learn more at [Qingkuai Docs](https://qingkuai.dev), or try it out in the [Playg
 ## Quick Start
 
 ```bash
-npm run create qingkuai my-app && cd ./my-app
+npm create qingkuai my-app && cd ./my-app
 npm install && npm run dev
 ```
 
