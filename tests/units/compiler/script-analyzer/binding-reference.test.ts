@@ -114,6 +114,7 @@ test("Functions", () => {
         y = function z(A, B = {C, ...D}){}
         E = (function ([F = G, ...H]){})()
         function I<J, K>(L: M, N = O as P as Q){}
+        ;(() => (R, S))()
     `)
     walkEstree(ast, {
         Identifier(node, context) {
@@ -131,10 +132,13 @@ test("Functions", () => {
                 case "D":
                 case "E":
                 case "G":
-                case "O": {
+                case "O":
+                case "R":
+                case "S": {
                     return expect(context.isBindingReference).toBeTruthy()
                 }
                 default: {
+                    console.log(node.name)
                     return expect(context.isBindingReference).toBeFalsy()
                 }
             }

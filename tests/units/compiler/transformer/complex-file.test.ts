@@ -65,6 +65,9 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
 
     expect(prod.code.includes("_compressStrings")).toBe(true)
     expect(dev.code.includes("_compressStrings")).toBe(false)
+
+    expect(prod.code).toContain("return () => selected.$")
+    expect(dev.code).toContain("return () => _selected.$")
 })
 
 test("Runtime regression: slot fallback generates valid renderSlot helper call", () => {

@@ -322,7 +322,6 @@ function isBindingReference(context: EstreeWalkContext) {
         case "LabeledStatement":
         case "ContinueStatement":
         case "PrivateName":
-        case "ArrowFunctionExpression":
         case "ImportSpecifier":
         case "ImportDefaultSpecifier":
         case "ImportNamespaceSpecifier":
@@ -347,6 +346,10 @@ function isBindingReference(context: EstreeWalkContext) {
         case "MemberExpression":
         case "OptionalMemberExpression": {
             return parentNode.computed || node !== parentNode.property
+        }
+
+        case "ArrowFunctionExpression": {
+            return !assertedContext.isParameterIdentifier
         }
 
         case "ObjectMethod":

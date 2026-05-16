@@ -27,6 +27,7 @@ const complexFileInput = formatSourceCode(`
 
 		function select(item) {
 			selected = item
+            return () => selected
 		}
 	</lang-js>
 
