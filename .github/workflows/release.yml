@@ -79,9 +79,17 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          registry-url: https://registry.npmjs.org
 
-      - name: Show npm version
-        run: npm --version
+      - name: Diagnose npm auth context
+        run: |
+          npm --version
+          npm config get registry
+          if [[ -f "$HOME/.npmrc" ]]; then
+            sed -E 's#(//registry\.npmjs\.org/:_authToken=).*#\1***#' "$HOME/.npmrc"
+          else
+            echo "No ~/.npmrc found"
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
