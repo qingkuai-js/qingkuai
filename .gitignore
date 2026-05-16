@@ -2,6 +2,7 @@
 .DS_Store
 
 dist
+badges
 coverage
 test-space
 test-results

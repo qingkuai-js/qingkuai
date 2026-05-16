@@ -2,6 +2,10 @@ name: CI
 
 on:
   push:
+    branches-ignore:
+      - e2e-badge
+    paths-ignore:
+      - "badges/e2e-scenarios.json"
   pull_request:
 
 permissions:

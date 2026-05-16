@@ -44,6 +44,7 @@
     "test:units": "vitest --run",
     "test:coverage": "vitest --run --coverage",
     "test:e2e": "npm run bundle && playwright test",
+    "test:e2e-badge": "tsx scripts/e2e-badge.ts",
     "test": "npm run test:units && npm run test:e2e",
     "test:e2e-quick": "playwright test --project=chromium-debug",
     "test:e2e-prod": "PROD_ONLY=1 npm run bundle && playwright test",
