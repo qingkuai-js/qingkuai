@@ -3,7 +3,6 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
 import { isLeftValue } from "../estree/assert"
-import { HandleRerferenceAttributeOnComponent } from "../message/warn"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
@@ -53,9 +52,6 @@ function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribut
     }
 
     if (node.componentTag) {
-        if (rawName === "&handle") {
-            HandleRerferenceAttributeOnComponent(nameLoc)
-        }
         return true
     }
     switch (tag) {

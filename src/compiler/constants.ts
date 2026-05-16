@@ -92,6 +92,12 @@ export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
     checkAttributeValueEnclosure: true
 }
 
+export const EXPORT_FORM_DESCRIPTIONS: Readonly<Record<string, string>> = {
+    ExportAllDeclaration: "Export-all",
+    TSExportAssignment: "TS assignment export",
+    ExportDefaultDeclaration: "Default export"
+}
+
 export const FRAG_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
     [FRAG_WHOLE_CONTENT]: "WHOLE_CONTENT",
     [FRAG_LEADING_ANCHOR]: "LEADING_ANCHOR",

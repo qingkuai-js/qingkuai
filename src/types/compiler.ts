@@ -284,6 +284,10 @@ export interface TemplateAnalyzeRet {
     parsedComponentTags: Map<TemplateNode, ComponentTagPart[]>
 }
 export interface ScriptAnalyzeRet {
+    exportedBindings: {
+        local: string
+        exported: string
+    }[]
     declaratorToAliasInfos: Map<
         VariableDeclarator,
         {
@@ -307,6 +311,7 @@ export interface ScriptAnalyzeRet {
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     topLevelReferences: TopLevelReferences
+    exportDeclarations: EstreeWalkContext[]
     preMutatedTopLevelIdentifiers: Set<string>
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>

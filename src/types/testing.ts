@@ -66,6 +66,10 @@ export interface ExpectedTopLevelIdentifier {
     status: IdentifierStatus
 }
 
+export interface E2EPageEvaluator {
+    evaluate: <T>(fn: () => T) => Promise<T>
+}
+
 export interface ProcessEnvHost {
     process?: {
         env?: Record<string, string | undefined>

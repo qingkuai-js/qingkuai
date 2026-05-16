@@ -3,14 +3,21 @@ import type { Destruction } from "#type-declarations/runtime"
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 
 import { destroy } from "../destroy"
+import { invokeRender } from "./render"
+import { currentInstance } from "../state"
 import { renderEffect } from "../reactivity/effect"
-import { invokeRender } from "../../util/runtime/sundry"
 import { createFragmentGetter, insertBefore } from "../internal"
 
 export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
     let html: string | undefined
     let destruction: Destruction | undefined
     let options: HtmlBlockOptions | undefined
+
+    const componentInstance = currentInstance!
+
+    const render = () => {
+        insertBefore(anchor, createFragmentGetter(html!)())
+    }
 
     renderEffect(() => {
         const newHtml = "" + getValue()
@@ -35,9 +42,7 @@ export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
         if (destruction) {
             destroy(destruction)
         }
-        destruction = invokeRender(() => {
-            insertBefore(anchor, createFragmentGetter(html!)())
-        })
+        destruction = invokeRender(render, componentInstance)
         options = newOptions
     })
 }

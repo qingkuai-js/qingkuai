@@ -1,11 +1,12 @@
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
+import { invokeRender } from "./render"
 import { renderEffect } from "../reactivity/effect"
+import { walkNodes } from "../../util/runtime/sundry"
 import { isElement } from "../../util/runtime/assert"
 import { InvalidElementNode } from "../messages/error"
 import { isNull, isString } from "../../util/shared/assert"
 import { appendChild, insertBefore, selectElement } from "../dom"
-import { invokeRender, walkNodes } from "../../util/runtime/sundry"
 
 export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFunc) {
     let oldTarget: any = anchor

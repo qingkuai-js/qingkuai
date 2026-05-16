@@ -1,4 +1,4 @@
-import type { AnyObject } from "#type-declarations/tools"
+import type { AnyObject, Getter } from "#type-declarations/tools"
 import type { ComponentContext, ComponentInstance } from "#type-declarations/runtime"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
 
@@ -11,6 +11,7 @@ import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
 import { isFunction, isString } from "../util/shared/assert"
 import { any, createProxy, runAll } from "../util/shared/sundry"
+import { defineProperties, objectKeys } from "../util/shared/aliases"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
@@ -62,13 +63,27 @@ export function runHooks(instance: ComponentInstance, index: number) {
 }
 
 export function mount(anchor?: Element, fragment?: DocumentFragment) {
+    const instance = currentInstance!
     backToParentDestruction()
 
     if (anchor && fragment) {
         insertBefore(anchor, fragment)
     }
-    runHooks(currentInstance!, AFTER_MOUNT)
-    setCurrentInstance(currentInstance!.p)
+    runHooks(instance, AFTER_MOUNT)
+    setCurrentInstance(instance.p)
+    return instance
+}
+
+export function defineWithTransformed(target: any, transformed: Record<string, Getter>) {
+    const descriptors: PropertyDescriptorMap = {}
+    for (const key of objectKeys(transformed)) {
+        descriptors[key] = {
+            get: transformed[key],
+            enumerable: true,
+            configurable: true
+        }
+    }
+    return defineProperties(target, descriptors)
 }
 
 // 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法

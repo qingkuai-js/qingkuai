@@ -1,6 +1,5 @@
 import type {
     TemplateNode,
-    TemplateFragment,
     TemplateAttribute,
     TemplateNodeContext
 } from "#type-declarations/compiler"
@@ -30,6 +29,11 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
+import {
+    ensureIdWithPrefix,
+    getAttributeBaseName,
+    ensureIdWithNumSuffix
+} from "../../../util/compiler/sundry"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
@@ -40,7 +44,6 @@ import { getMaybeReusedString } from "../../optimizer/compress"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert"
-import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
@@ -110,18 +113,50 @@ export function generateTemplateRender(
         }
 
         if ((generateTemplateRender(writer, node.children, false), hasFragmentContent)) {
-            writeFragmentAttachment(writer, nodeContext.anchorId, nodeContext.fragment!)
+            writer.write(`\n${generateIdentifier.internal}.insertBefore(`)
+            writer.write(`${nodeContext.anchorId}, ${nodeContext.fragment!.id})`)
         }
 
         insertPostfix?.()
     }
 
     if (isRoot) {
-        if (!componentFragment?.content.length) {
-            writer.write(`\n${generateIdentifier.internal}.mount()`)
-        } else {
-            writeFragmentAttachment(writer, generateIdentifier.anchor, componentFragment)
+        const anchorId = generateIdentifier.anchor
+        const internalId = generateIdentifier.internal
+        const getterArgId = generateIdentifier.getterArg
+        const instanceId = ensureIdWithPrefix("instance")
+        const exportedBindings = new Map<string, string>()
+        const hasComponentFragment = !!componentFragment?.content.length
+        for (const binding of analyzeResult.script.exportedBindings) {
+            exportedBindings.set(binding.exported, binding.local)
         }
+
+        if (!exportedBindings.size) {
+            if (!hasComponentFragment) {
+                writer.write(`\nreturn ${internalId}.mount()`)
+            } else {
+                writer.write(`\nreturn ${internalId}.mount(`)
+                writer.write(`${anchorId}, ${componentFragment.id})`)
+            }
+            return
+        }
+
+        writer.write(`\nconst ${instanceId} = ${internalId}.mount(`)
+
+        if (hasComponentFragment) {
+            writer.write(`${anchorId}, ${componentFragment.id}`)
+        }
+        writer.write(")").wrapLine().write("return ")
+        writer.write(`${internalId}.defineWithTransformed(${instanceId}, {`).indent(false)
+
+        for (const [exported, local] of exportedBindings) {
+            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
+            const transformed = topLevelIdentifier?.transofrmedTo || local
+            writer.wrapLine()
+            writeContextKey(exported, writer)
+            writer.write(`:  ${getterArgId} => (${transformed}),`)
+        }
+        writer.dedent().write(`})`)
     }
 }
 
@@ -662,14 +697,19 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
 function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
+    const internalId = generateIdentifier.internal
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
+    const instanceId = ensureIdWithNumSuffix("_component")
     const componentTagParts = getParsedComponentTag(nodeContext.node)!
+    const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
     const hasSlots = nodeContext.node.children.some(child => {
         return getTemplateNodeContext(child).fragment!.content.length
     })
-    const hasRefs = !!nodeContext.referenceAttributes.length
+    const hasRefs = nodeContext.referenceAttributes.some(attr => {
+        return attr.name.raw !== "&handle"
+    })
     const hasStaticAttrs = !!nodeContext.staticAttributes.length
     const hasEventListeners = !!nodeContext.eventListeners.length
     const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length
@@ -682,7 +722,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         return ((needInsertComma = true), writer)
     }
 
-    writer.wrapLine()
+    writer.wrapLine().write(`const ${instanceId} = `)
 
     for (let i = 0; i < componentTagParts.length; i++) {
         if (i) {
@@ -694,11 +734,14 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         )
     }
 
-    if (!(hasSlots || hasProps || hasRefs)) {
-        return (writer.write(`(${nodeContext.anchorId})`), undefined)
+    const hasContext = hasSlots || hasProps || hasRefs
+    writer.write(`(${nodeContext.anchorId}`)
+
+    if (hasContext) {
+        writer.write(", {").indent()
     }
 
-    if ((writer.write(`(${nodeContext.anchorId}, {`).indent(), hasProps)) {
+    if (hasProps) {
         writer.write("p: {").indent()
 
         for (const attribute of nodeContext.staticAttributes) {
@@ -743,7 +786,16 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
     if (hasRefs && insertTrailingComma().write("r: {").indent()) {
         for (const attribute of nodeContext.referenceAttributes) {
-            if (attribute !== nodeContext.referenceAttributes[0]) {
+            if (attribute.name.raw === "&handle") {
+                continue
+            }
+            if (
+                attribute !== nodeContext.referenceAttributes[0] &&
+                !(
+                    attribute === nodeContext.referenceAttributes[1] &&
+                    nodeContext.referenceAttributes[0].name.raw === "&handle"
+                )
+            ) {
                 insertTrailingComma()
             }
             writeContextKey(getAttributeBaseName(attribute.name.raw), writer, true)
@@ -786,7 +838,16 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.dedent().write("}")
     }
 
-    writer.dedent().write("})")
+    if (hasContext) {
+        writer.dedent().write("})")
+    } else {
+        writer.write(`)`)
+    }
+
+    if (referenceHandleAttribute) {
+        writer.write(`\n${internalId}.bindHandleReceiver(${instanceId}, ${setterArgId} => (`)
+        writer.writeParsedExpression(referenceHandleAttribute).write(` = ${setterArgId}))`)
+    }
 }
 
 function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateAttribute) {
@@ -851,15 +912,6 @@ function doesTextContentHasRenderEffect(node: TemplateNode) {
         validContentParts[0].isInterpolated &&
         equalsWithKeyDirectiveValue(getTemplateNodeContext(node), validContentParts[0])
     )
-}
-
-function writeFragmentAttachment(
-    writer: RuntimeCodeWriter,
-    anchorId: string,
-    fragment: TemplateFragment
-) {
-    const method = fragment === analyzeResult.template.componentFragment ? "mount" : "insertBefore"
-    return writer.write(`\n${generateIdentifier.internal}.${method}(${anchorId}, ${fragment.id})`)
 }
 
 function getActiveSelectorInfos(nodeContext: TemplateNodeContext) {

@@ -126,10 +126,6 @@ export const UnclosedStaticAttributeValue = withLocation(1008, () => {
     return "Unclosed static attribute value."
 })
 
-export const ExportStatementsAreNotSupported = withLocation(1019, () => {
-    return "Export statements are not supported."
-})
-
 export const SlotNameAttributeMustBeStatic = withLocation(1039, () => {
     return `The "name" attribute on <slot> tag must be static.`
 })
@@ -204,6 +200,10 @@ export const ShadowCompilerIntrinsicAtTopLevel = withLocation(1020, (name: strin
 
 export const InvalidAliasDestructuringDeclaration = withLocation(1025, (kind: string) => {
     return `${kind} are not allowed in destructuring pattern of alias declarations.`
+})
+
+export const EmbeddedScriptOnlySupportsNamedExports = withLocation(1019, (kind: string) => {
+    return `${kind} is not supported in embedded script block.`
 })
 
 export const HtmlDirectiveRequiresSingleTextChild = withLocation(1035, () => {
