@@ -188,13 +188,13 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
 
     expect(result.slotNames).toEqual(["main"])
     expect(result.identifierStatusInfo).toMatchObject({
-        title: "raw",
+        title: "raw (template unused)",
         showPanel: "reactive",
         pending: "reactive",
         mount: "reactive",
         list: "reactive",
-        onHeaderClick: "raw",
-        onItemClick: "raw"
+        onHeaderClick: "raw (never mutated)",
+        onItemClick: "raw (never mutated)"
     })
     expect(result.getTypeDelayInterIndexes).toEqual([])
     expect(result.templateNodes.length).toBeGreaterThan(0)

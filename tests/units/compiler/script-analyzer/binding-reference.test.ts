@@ -138,7 +138,6 @@ test("Functions", () => {
                     return expect(context.isBindingReference).toBeTruthy()
                 }
                 default: {
-                    console.log(node.name)
                     return expect(context.isBindingReference).toBeFalsy()
                 }
             }

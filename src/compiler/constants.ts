@@ -34,6 +34,12 @@ import { objectAssign } from "../util/shared/aliases"
 export const SPREAD_TAG = "qk:spread"
 export const PRESERVED_IDPREFIX = "__qk__"
 
+export const NON_REACTIVE_REASONS = {
+    literal: "never mutated",
+    raw: "explicit raw",
+    pending: "template unused"
+}
+
 // Language Service Constants
 export const LSC = {
     UTIL: PRESERVED_IDPREFIX + "lsu",
