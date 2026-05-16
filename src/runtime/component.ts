@@ -63,14 +63,15 @@ export function runHooks(instance: ComponentInstance, index: number) {
 }
 
 export function mount(anchor?: Element, fragment?: DocumentFragment) {
+    const instance = currentInstance!
     backToParentDestruction()
 
     if (anchor && fragment) {
         insertBefore(anchor, fragment)
     }
-    runHooks(currentInstance!, AFTER_MOUNT)
-    setCurrentInstance(currentInstance!.p)
-    return currentInstance!
+    runHooks(instance, AFTER_MOUNT)
+    setCurrentInstance(instance.p)
+    return instance
 }
 
 export function defineWithTransformed(target: any, transformed: Record<string, Getter>) {
