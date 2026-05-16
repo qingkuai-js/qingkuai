@@ -1,8 +1,8 @@
 # Qingkuai
 
-<p>
-    <img src="https://github.com/qingkuai-js/qingkuai/blob/main/design/banner.svg" alt="qingkuai banner" />
-</p>
+<a href="https://qingkuai.dev">
+   <img src="./assets/banner.svg" alt="qingkuai banner" /> 
+</a>
 
 [![CI](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml)
 [![E2E Nightly](https://github.com/qingkuai-js/qingkuai/actions/workflows/e2e-nightly.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/e2e-nightly.yml)
@@ -21,6 +21,14 @@ Learn more at [Qingkuai Docs](https://qingkuai.dev), or try it out in the [Playg
 - **Developer Experience**: Native JS/TS-like experience inside script blocks, Try in [Palyground](https://try.qingkuai.dev).
 - **Debugging Experience**: Enhanced [debugging](https://qingkuai.dev/misc/debugging.html) with source-matched and directive context identifiers.
 - **Language Services & AI**: Full [language services](https://marketplace.visualstudio.com/items?itemName=qingkuai-tools.qingkuai-language-features) and [mcp server](https://www.npmjs.com/package/qingkuai-mcp-server) for better AI-assisted development.
+
+## Js Framework Benchmark
+
+[![js-framework-benchmark-report](./assets/js-framework-benchmark.png)](https://krausest.github.io/js-framework-benchmark/2026/chrome148.html)
+
+## Bundle Size Report
+
+[![bundle-size-report](./assets/bundle-size-report.png)](https://mlgq.github.io/frontend-framework-bundle-size/?lang=en)
 
 ## Quick Start
 

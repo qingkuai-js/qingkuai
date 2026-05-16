@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.0.66](https://github.com/qingkuai-js/qingkuai/compare/v1.0.65...v1.0.66) (2026-05-17)
+
+### Changes
+
+- **compiler:** generate source maps before and after interpolation block transforms to improve debugging experience ([8bee953](https://github.com/qingkuai-js/qingkuai/commit/8bee953))
+
+### Features
+
+- **runtime, compiler:** rename `&dom` to `&handle` and support accessing component instance handles ([18a73e0](https://github.com/qingkuai-js/qingkuai/commit/18a73e0), [fc47939](https://github.com/qingkuai-js/qingkuai/commit/fc47939))
+- **compiler:** support `export` syntax in component files and expose exports on the component instance ([7fdade9](https://github.com/qingkuai-js/qingkuai/commit/7fdade9))
+- **compiler(check):** provide explicit reasons when inferred identifiers are considered non-reactive ([8c47ce6](https://github.com/qingkuai-js/qingkuai/commit/8c47ce6))
+- **runtime:** export package version from `qingkuai` runtime (`version`) ([0ca6098](https://github.com/qingkuai-js/qingkuai/commit/0ca6098))
+
+### Fixes
+
+- **runtime:** correctly reset `currentInstance` when directive handlers are re-executed ([c0a6fef](https://github.com/qingkuai-js/qingkuai/commit/c0a6fef))
+- **compiler:** correctly transform reactive identifier access inside arrow functions ([7981fab](https://github.com/qingkuai-js/qingkuai/commit/7981fab))
+
+### Tests
+
+- **unit:** add error and transform tests for `export` support ([c550d49](https://github.com/qingkuai-js/qingkuai/commit/c550d49))
+- **unit:** add transform tests for reactive identifier access inside arrow functions ([7981fab](https://github.com/qingkuai-js/qingkuai/commit/7981fab))
+- **unit:** add tests for compiler check-mode reasons on non-reactive identifier inference ([8c47ce6](https://github.com/qingkuai-js/qingkuai/commit/8c47ce6))
+- **e2e:** add tests for `currentInstance` when directive handlers are re-run ([cc6e835](https://github.com/qingkuai-js/qingkuai/commit/cc6e835))
+- **e2e:** add tests for component instance access via `&handle` and exported value access from instances ([7fdade9](https://github.com/qingkuai-js/qingkuai/commit/7fdade9))
+
 ## [1.0.65](https://github.com/qingkuai-js/qingkuai/compare/v1.0.64...v1.0.65) (2026-04-27)
 
 ### Fixes

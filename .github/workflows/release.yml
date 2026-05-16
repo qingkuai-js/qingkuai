@@ -7,52 +7,67 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing git tag to release (for example: v1.0.63)"
-        required: true
         type: string
+        required: false
+        description: "Optional tag to release (for example: v1.0.66). Leave empty to auto-create from package version."
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Resolve release tag
         id: tag
         env:
           INPUT_TAG: ${{ inputs.tag }}
           REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [[ -n "$INPUT_TAG" ]]; then
-            echo "value=$INPUT_TAG" >> "$GITHUB_OUTPUT"
-          else
+          if [[ "$EVENT_NAME" == "push" ]]; then
             echo "value=$REF_NAME" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-      - name: Checkout tag
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.tag.outputs.value }}
+          if [[ -n "$INPUT_TAG" ]]; then
+            echo "value=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-      - name: Ensure tag commit is on origin/main
-        id: tag-commit
+          package_version="$(node -p 'require("./package.json").version')"
+          echo "value=v$package_version" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure tag exists on workflow dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           TAG: ${{ steps.tag.outputs.value }}
         run: |
-          git fetch origin main --prune
-          tag_commit="$(git rev-list -n 1 "$TAG")"
+          git fetch origin --tags --prune
 
-          echo "value=$tag_commit" >> "$GITHUB_OUTPUT"
-
-          if ! git merge-base --is-ancestor "$tag_commit" origin/main; then
-            echo "Release is allowed only for tags that point to commits on origin/main." >&2
-            echo "Tag: $TAG" >&2
-            echo "Commit: $tag_commit" >&2
-            exit 1
+          if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
+            echo "Tag already exists: $TAG"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created and pushed tag: $TAG"
           fi
+
+      - name: Checkout resolved tag
+        env:
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          git fetch origin --tags --prune
+          git checkout "refs/tags/$TAG"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -64,35 +79,15 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-
-      - name: Read version from package.json
-        id: package-version
-        run: |
-          version="$(node -p 'require("./package.json").version')"
-          echo "value=$version" >> "$GITHUB_OUTPUT"
+          registry-url: https://registry.npmjs.org
 
       - name: Validate tag equals package version
         env:
           TAG: ${{ steps.tag.outputs.value }}
-          PACKAGE_VERSION: ${{ steps.package-version.outputs.value }}
-        run: |
-          expected_tag="v$PACKAGE_VERSION"
-          if [[ "$TAG" != "$expected_tag" ]]; then
-            echo "Tag $TAG does not match package.json version $PACKAGE_VERSION" >&2
-            exit 1
-          fi
+        run: pnpm exec tsx scripts/release.ts validate-tag "$TAG"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Run typecheck
-        run: pnpm run typecheck
-
-      - name: Run lint
-        run: pnpm run lint
-
-      - name: Run unit tests
-        run: pnpm run test:units
 
       - name: Build package
         run: pnpm run build
@@ -100,35 +95,16 @@ jobs:
       - name: Pack npm tarball
         run: npm pack
 
+      - name: Publish package to npm (Trusted Publishing)
+        run: npm publish ./qingkuai-*.tgz --access public --provenance
+
       - name: Generate release notes from CHANGELOG
         id: notes
         env:
           TAG: ${{ steps.tag.outputs.value }}
-          VERSION: ${{ steps.package-version.outputs.value }}
         run: |
           notes_file="release-notes.md"
-          awk -v version="$VERSION" '
-            BEGIN {
-              in_section = 0
-            }
-            $0 ~ "^## \\[" version "\\]" {
-              in_section = 1
-            }
-            in_section {
-              if ($0 ~ /^## \[/ && $0 !~ "^## \\[" version "\\]") {
-                exit
-              }
-              print
-            }
-          ' CHANGELOG.md > "$notes_file"
-
-          if [[ ! -s "$notes_file" ]]; then
-            {
-              echo "## $TAG"
-              echo
-              echo "Release created from tag $TAG."
-            } > "$notes_file"
-          fi
+          pnpm exec tsx scripts/release.ts notes "$TAG" "$notes_file"
 
           echo "path=$notes_file" >> "$GITHUB_OUTPUT"
 
@@ -137,32 +113,6 @@ jobs:
         with:
           name: ${{ steps.tag.outputs.value }}
           tag_name: ${{ steps.tag.outputs.value }}
-          target_commitish: ${{ steps.tag-commit.outputs.value }}
           body_path: ${{ steps.notes.outputs.path }}
           files: |
             qingkuai-*.tgz
-
-      - name: Normalize release title and target commit
-        uses: actions/github-script@v7
-        env:
-          TAG: ${{ steps.tag.outputs.value }}
-          TARGET_COMMIT: ${{ steps.tag-commit.outputs.value }}
-        with:
-          script: |
-            const { owner, repo } = context.repo
-            const tag = process.env.TAG
-            const targetCommit = process.env.TARGET_COMMIT
-
-            const release = await github.rest.repos.getReleaseByTag({
-              owner,
-              repo,
-              tag,
-            })
-
-            await github.rest.repos.updateRelease({
-              owner,
-              repo,
-              release_id: release.data.id,
-              name: tag,
-              target_commitish: targetCommit,
-            })
