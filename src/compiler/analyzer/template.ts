@@ -25,7 +25,6 @@ import { analyzeAttributes } from "./attribute"
 import { analyzeStaticTextContent } from "./text"
 import { newCleanObj } from "../../util/shared/sundry"
 import { UnnecessarySpreadTag } from "../message/warn"
-import { parseComponentTag } from "../parser/component"
 import { objectAssign } from "../../util/shared/aliases"
 import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
@@ -69,7 +68,6 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                     )
                 )
             }
-            analyzeResult.template.parsedComponentTags.set(node, parseComponentTag(node))
             analyzeTemplateAsExpression(node, node.componentTag, node, startTagLog, "component")
         }
 

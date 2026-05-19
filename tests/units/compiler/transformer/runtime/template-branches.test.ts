@@ -129,7 +129,7 @@ test("Runtime template: invalid slot prop key uses computed context key", () => 
 test("Runtime template: export-free template returns plain mount call", () => {
     const code = compileRuntime("")
     expect(code).toContain("return _.mount()")
-    expect(code).not.toContain("defineWithTransformed")
+    expect(code).not.toContain("defineExports")
 })
 
 test("Runtime template: debug mode keeps generation parseable for same branches", () => {

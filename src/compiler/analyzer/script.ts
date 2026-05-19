@@ -55,7 +55,6 @@ import {
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
-import { EXPORT_FORM_DESCRIPTIONS, PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
@@ -64,6 +63,7 @@ import { getScriptLocByRange } from "../../util/compiler/position"
 import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
 import { collectReusedStringReference } from "../optimizer/compress"
 import { markNeedSourcemap, stripTypeExpressions } from "../estree/sundry"
+import { EXPORT_FORM_DESCRIPTIONS, PRESERVED_IDPREFIX } from "../constants"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code

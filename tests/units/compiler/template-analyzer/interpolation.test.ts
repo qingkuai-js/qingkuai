@@ -41,12 +41,12 @@ test("Kebab shorthand attribute keeps source length by leading spaces", () => {
     expect(parsedExpression?.source).toBe(" fooBar")
 })
 
-test("Invalid component name", () => {
+test("Invalid component tag", () => {
     analyzeTemplateAndMatchMessages(`<a..b></a..b>`, [
         {
             type: "error",
             range: [1, 5],
-            value: `Invalid component name: "A..b". It cannot be converted into a valid JavaScript identifier or member expression.`
+            value: `Invalid component tag: <a..b>. It cannot be converted into a valid JavaScript identifier or member expression.`
         }
     ])
 })

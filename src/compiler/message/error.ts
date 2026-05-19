@@ -270,12 +270,16 @@ export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrins
     return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })
 
+export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: string) => {
+    return `Invalid component tag <${tag}>: hyphens are not allowed when using a member expression as a component tag.`
+})
+
 export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
     return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`
 })
 
-export const InvalidComponentName = withLocation(1057, (name: string) => {
-    return `Invalid component name: "${name}". It cannot be converted into a valid JavaScript identifier or member expression.`
+export const InvalidComponentTag = withLocation(1057, (tag: string) => {
+    return `Invalid component tag: <${tag}>. It cannot be converted into a valid JavaScript identifier or member expression.`
 })
 
 export const DuplicateSlotName = withLocation(1050, (name: string) => {

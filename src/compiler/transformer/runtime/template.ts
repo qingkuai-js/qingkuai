@@ -20,10 +20,10 @@ import {
     getForBlockSelectorInfos
 } from "../../optimizer/selector"
 import {
+    getStartTagNameLoc,
     getParsedEventInfo,
     getParsedDirective,
     getParsedExpression,
-    getParsedComponentTag,
     getPrevElementContext,
     getNextElementContent,
     getTemplateNodeContext,
@@ -39,7 +39,6 @@ import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
 import { stripTypeExpressions } from "../../estree/sundry"
 import { kebab2Camel } from "../../../util/compiler/string"
-import { getLocByIndex } from "../../../util/compiler/position"
 import { getMaybeReusedString } from "../../optimizer/compress"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
@@ -147,7 +146,7 @@ export function generateTemplateRender(
             writer.write(`${anchorId}, ${componentFragment.id}`)
         }
         writer.write(")").wrapLine().write("return ")
-        writer.write(`${internalId}.defineWithTransformed(${instanceId}, {`).indent(false)
+        writer.write(`${internalId}.defineExports(${instanceId}, {`).indent(false)
 
         for (const [exported, local] of exportedBindings) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
@@ -697,14 +696,14 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
 function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false
 
+    const node = nodeContext.node
     const internalId = generateIdentifier.internal
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
     const instanceId = ensureIdWithNumSuffix("_component")
-    const componentTagParts = getParsedComponentTag(nodeContext.node)!
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
-    const hasSlots = nodeContext.node.children.some(child => {
+    const hasSlots = node.children.some(child => {
         return getTemplateNodeContext(child).fragment!.content.length
     })
     const hasRefs = nodeContext.referenceAttributes.some(attr => {
@@ -723,16 +722,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     }
 
     writer.wrapLine().write(`const ${instanceId} = `)
-
-    for (let i = 0; i < componentTagParts.length; i++) {
-        if (i) {
-            writer.write(".")
-        }
-        writer.writeTemplateStr(
-            componentTagParts[i].id,
-            getLocByIndex(...componentTagParts[i].sourceRange)
-        )
-    }
+    writer.writeTemplateStr(node.componentTag, getStartTagNameLoc(node))
 
     const hasContext = hasSlots || hasProps || hasRefs
     writer.write(`(${nodeContext.anchorId}`)
@@ -813,7 +803,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         insertTrailingComma().write("s: {").indent()
         needInsertComma = false
 
-        for (const child of nodeContext.node.children) {
+        for (const child of node.children) {
             const childContext = getTemplateNodeContext(child)
             if (!childContext.fragment!.content.length) {
                 continue

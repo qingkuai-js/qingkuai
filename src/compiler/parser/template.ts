@@ -51,6 +51,7 @@ import {
     UnclosedStaticAttributeValue,
     EmbeddedScriptBlockOutOfLimit,
     NoNameForInterpolatedAttribute,
+    HyphenNotAllowedInMemberExpressionTag,
     InvalidValueEnclosureForStaticAttribute,
     InvalidValueEnclosureForInterpolatedAttribute
 } from "../message/error"
@@ -60,11 +61,10 @@ import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
-import { isValidIdentifierName } from "../../util/compiler/assert"
-import { kebab2Camel, findEndBracket } from "../../util/compiler/string"
 import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
 import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS } from "../constants"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
+import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string"
 
 export const parseTemplateStandalone: ParseTemplateFunc = (source, options = {}) => {
     const inputOptions: Partial<InputOptions> = {}
@@ -296,6 +296,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             return commentNode
         }
 
+        let componentTag = ""
         let startTagOpenRange: Range
         let startTagCloseMatched: RegExpExecRet = null
         let prevForChild: TemplateNode | undefined = undefined
@@ -319,17 +320,24 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         const langMatched = templateEmbeddedLangTagRE.exec(tag)
         const isComponent = !langMatched && componentTagRE.test(tag)
 
+        if (isComponent) {
+            if (findOutOfComment(tag, ".") !== -1) {
+                if (findOutOfComment(tag, "-") !== -1) {
+                    HyphenNotAllowedInMemberExpressionTag(tagOpenLoc, tag)
+                }
+                componentTag = tag
+            } else {
+                componentTag = kebab2Camel(tag, true)
+            }
+        }
+
         // 初始化一个用于返回的 TemplateNode 节点
         // Initialize a TemplateNode to be returned.
         const templateNode = initTemplateNode({
             tag,
             prev,
             parent,
-            componentTag: isComponent
-                ? isValidIdentifierName(tag, true)
-                    ? tag
-                    : kebab2Camel(tag, true)
-                : "",
+            componentTag,
             loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })
 

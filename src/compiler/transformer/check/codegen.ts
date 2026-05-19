@@ -2,18 +2,18 @@ import type {
     Range,
     ASTLocation,
     TemplateNode,
-    TemplateAttribute,
-    ParsedExpression
+    ParsedExpression,
+    TemplateAttribute
 } from "#type-declarations/compiler"
 import type { VariableDeclarator } from "@babel/types"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
 
 import {
+    getStartTagNameLoc,
     getParsedExpression,
     getParsedEventInfo,
     getStartTagOpenLoc,
     getParsedDirective,
-    getParsedComponentTag,
     getPrevElementContext,
     getTemplateNodeContext
 } from "../../../util/compiler/template"
@@ -45,6 +45,13 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.loc.start.index
     )
     const scriptDescriptor = inputDescriptor.script
+    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
+    const exportBindings = analyzeResult.script.exportedBindings.filter(item => {
+        if (item.local !== item.exported) {
+            return !!topLevelIdentifiers[item.exported]
+        }
+        return !!topLevelIdentifiers[item.local]
+    })
     const exportSourceRange: Range | undefined = inputDescriptor.script.existing
         ? [scriptDescriptor.startTagOpenRange[0] + 1, scriptDescriptor.startTagOpenRange[1]]
         : undefined
@@ -82,7 +89,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
         embeddedScriptEditor.remove(node.start!, node.end!)
     }
-    writer.write("\nfunction __qk__component(){").indent()
+    writer.write(`\nfunction ${LSC.COMPONENT}(){`).indent()
 
     if (isTS) {
         writer.writeLine(`const slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`)
@@ -121,8 +128,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     ? nodeContext.attributesMap.name.loc
                     : startTagOpenLoc
             )
+            const startTagNameRange = getRangeByLoc(getStartTagNameLoc(node))
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
-            const startTagRange: Range = [node.loc.start.index, node.startTagEndPos.index]
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
 
             const indentAndWriteStartEnclosure = (
@@ -286,26 +293,24 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 })
                 writer.wrapLine()
 
+                const referenceHandleAttr = nodeContext.attributesMap["&handle"]
+                const referenceHandleExp = getParsedExpression(referenceHandleAttr)
+                if (referenceHandleExp) {
+                    writer.write(`${LSC.UTIL}.validateHandleReceiver(${node.componentTag}, `)
+                    writeParsedExpression(writer, referenceHandleExp).write(");").wrapLine()
+                }
                 if (node.rawTag !== node.tag || !getParsedExpression(node)) {
                     writer.write(ANY_VALUE)
                 } else {
-                    const componentTagParts = getParsedComponentTag(node)!
                     writer.write(`${LSC.UTIL}.confirmComponent(`)
-
-                    for (let i = 0; i < componentTagParts.length; i++) {
-                        if (i) {
-                            writer.write(".")
-                        }
-                        writer.write(componentTagParts[i].id, componentTagParts[i].sourceRange)
-                    }
-                    writer.write(")")
+                    writer.write(node.componentTag, startTagNameRange).write(")")
                 }
                 if (node.typeArgument) {
                     const typeArgumentRange = getRangeByLoc(node.typeArgument.loc)
                     writer.write("<").write(node.typeArgument.raw, typeArgumentRange).write(">")
                 }
                 writer.write("(").write("{").indent()
-                writer.write("props: ").write("{", startTagRange[0]).indent(false)
+                writer.write("props: ").write("{", startTagNameRange[0]).indent(false)
             }
 
             if (isComponent || isSlot) {
@@ -469,8 +474,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (isComponent) {
-                writer.dedent().write("}", startTagRange[1] - 1)
-                writer.writeLine(",").write("refs: ").write("{", startTagRange[0]).indent(false)
+                writer.dedent().write("}", startTagNameRange[1] - 1)
+                writer.writeLine(",").write("refs: ").write("{", startTagNameRange[0]).indent(false)
             }
 
             for (const attribute of nodeContext.referenceAttributes) {
@@ -484,7 +489,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     analyzeResult.template.validReferenceAttributes.has(attribute)
 
                 if (isComponent) {
-                    if (!property) {
+                    if (!property || attribute.name.raw === "&handle") {
                         continue
                     }
 
@@ -593,7 +598,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             }
 
             if (isComponent) {
-                writer.dedent().write("}", startTagRange[1] - 1)
+                writer.dedent().write("}", startTagNameRange[1] - 1)
                 writer.writeLine(",").write("slots: {").indent(false)
             }
 

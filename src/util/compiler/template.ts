@@ -37,10 +37,6 @@ export function getParsedEventInfo(key: TemplateAttribute) {
     return analyzeResult.template.parsedEvents.get(key)
 }
 
-export function getParsedComponentTag(node: TemplateNode) {
-    return analyzeResult.template.parsedComponentTags.get(node)
-}
-
 export function getValidTextContentParts(node: TemplateNode) {
     return node.content.filter(part => {
         if (part.isInterpolated) {

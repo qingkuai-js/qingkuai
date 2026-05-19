@@ -22,7 +22,7 @@ test("Runtime: named exports become component handle properties", () => {
     expect(messages.filter(item => item.type === "error")).toEqual([])
     expect(code).not.toContain("export let count")
     expect(code).not.toContain("export { inc as increase }")
-    expect(code).toContain("_.defineWithTransformed(")
+    expect(code).toContain("_.defineExports(")
     expect(code).toContain("count:  __ => (count.$),")
     expect(code).toContain("increase:  __ => (inc),")
 })
@@ -52,7 +52,7 @@ test("Runtime: declaration and aliased exports are transformed", () => {
     expect(code).not.toContain("export function inc")
     expect(code).not.toContain("export class Tool")
     expect(code).not.toContain("export { inner as renamed, Tool as ExportedTool }")
-    expect(code).toContain("_.defineWithTransformed(")
+    expect(code).toContain("_.defineExports(")
     expect(code).toContain("plain:  __ => (plain),")
     expect(code).toContain("inc:  __ => (inc),")
     expect(code).toContain("Tool:  __ => (Tool),")
@@ -76,7 +76,7 @@ test("Runtime: string literal export names in handle properties", () => {
     )
 
     expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.defineWithTransformed(")
+    expect(code).toContain("_.defineExports(")
     expect(code).toContain('["x-y"]:  __ => (pkg),')
 })
 
@@ -95,7 +95,7 @@ test("Runtime: enum exports are transformed", () => {
     )
 
     expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.defineWithTransformed(")
+    expect(code).toContain("_.defineExports(")
     expect(code).toContain("Status:  __ => (Status),")
 })
 
@@ -116,6 +116,6 @@ test("Runtime: colliding export names result in last one in handle", () => {
     )
 
     expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.defineWithTransformed(")
+    expect(code).toContain("_.defineExports(")
     expect(code).toContain("same:  __ => (b),")
 })

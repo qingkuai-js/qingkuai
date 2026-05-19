@@ -359,6 +359,68 @@ test("Type arguments for components", () => {
     })
 })
 
+test("Component tag member expression and hyphen rules", () => {
+    const nodeList = parseTemplateTesting(`<a.b></a.b><a-b></a-b>`)
+
+    matchTemplateNodeList(
+        nodeList,
+        {
+            tag: "a.b",
+            componentTag: "a.b",
+            next: nodeList[1],
+            loc: getLocByIndex(0, 11),
+            startTagEndPos: getPosByIndex(5),
+            endTagStartPos: getPosByIndex(5)
+        },
+        {
+            tag: "a-b",
+            componentTag: "AB",
+            prev: nodeList[0],
+            loc: getLocByIndex(11, 22),
+            startTagEndPos: getPosByIndex(16),
+            endTagStartPos: getPosByIndex(16)
+        }
+    )
+})
+
+test("Component member-expression tags cannot contain hyphen", () => {
+    matchTemplateNodeListAndMessages(() => {
+        const nodeList = parseTemplateTesting(`<a.b-c></a.b-c><a-b.c></a-b.c>`, {
+            recover: true
+        })
+        return [
+            nodeList,
+            {
+                tag: "a.b-c",
+                componentTag: "a.b-c",
+                next: nodeList[1],
+                loc: getLocByIndex(0, 15),
+                startTagEndPos: getPosByIndex(7),
+                endTagStartPos: getPosByIndex(7)
+            },
+            {
+                tag: "a-b.c",
+                componentTag: "a-b.c",
+                prev: nodeList[0],
+                loc: getLocByIndex(15, 30),
+                startTagEndPos: getPosByIndex(22),
+                endTagStartPos: getPosByIndex(22)
+            }
+        ]
+    }, [
+        {
+            type: "error",
+            range: [0, 6],
+            value: `Invalid component tag <a.b-c>: hyphens are not allowed when using a member expression as a component tag.`
+        },
+        {
+            type: "error",
+            range: [15, 21],
+            value: `Invalid component tag <a-b.c>: hyphens are not allowed when using a member expression as a component tag.`
+        }
+    ])
+})
+
 test("Whether invalid tag structure will be parsed as text content", () => {
     matchTemplateNodeList(parseTemplateTesting(`<></>`), {
         content: [

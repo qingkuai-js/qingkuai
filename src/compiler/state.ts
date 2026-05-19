@@ -52,7 +52,6 @@ function newAnalyzeResult(): AnalyzeResult {
             parsedExpressions: new Map(),
             staticTextContents: new Map(),
             keyedSelectorInfos: new Map(),
-            parsedComponentTags: new Map(),
             validReferenceAttributes: new Set()
         },
         script: {

@@ -11,7 +11,7 @@ import type {
 import {
     InvalidExpression,
     ExpectedExpression,
-    InvalidComponentName,
+    InvalidComponentTag,
     InvalidShorthandAttributeName,
     InvalidIntrinsicMethodPlacement
 } from "../message/error"
@@ -163,11 +163,11 @@ export function analyzeTemplateAsExpression(
     type: "component" | "attribute"
 ) {
     const baseName = getAttributeBaseName(name)
-    const camelName = kebab2Camel(baseName)
+    const source = type === "attribute" ? kebab2Camel(baseName) : baseName
     const expression = analyzeInterpolation(
         node,
         parsingKey,
-        camelName,
+        source,
         loc.start.index + +(type === "attribute")
     )
 
@@ -183,16 +183,16 @@ export function analyzeTemplateAsExpression(
         expression?.type !== "Identifier" &&
         expression?.type !== "MemberExpression"
     ) {
-        return InvalidComponentName(loc, name)
+        return InvalidComponentTag(loc, name)
     }
     if (type === "attribute" && expression?.type !== "Identifier") {
         return InvalidShorthandAttributeName(loc, name)
     }
 
-    const nameSub = baseName.length - camelName.length
+    const nameSub = baseName.length - source.length
     if (nameSub > 0) {
         const parsedExpression = getParsedExpression(parsingKey)!
-        inputDescriptor.positions[loc.start.index + camelName.length + 1].flag &=
+        inputDescriptor.positions[loc.start.index + source.length + 1].flag &=
             ~PositionFlag.SourcemapEnd
         markPositionFlag(PositionFlag.SourcemapEnd, loc.end.index)
         parsedExpression.source = " ".repeat(nameSub) + parsedExpression.source
