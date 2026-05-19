@@ -1,4 +1,8 @@
-import type { Subscription, ComponentInstance, ReactivityWrapper } from "#type-declarations/runtime"
+import type {
+    Subscription,
+    ReactivityWrapper,
+    ComponentInstanceBase
+} from "#type-declarations/runtime"
 
 import {
     WRAPPER_MAP,
@@ -136,14 +140,14 @@ export function scheduleUpdate(
 }
 
 function update() {
-    const updatingComponents: ComponentInstance[] = []
+    const updatingComponents: ComponentInstanceBase[] = []
     for (const effect of getSortedEffects(1)) {
         runAndUpdateEffect(effect)
 
         // 首次渲染副作用时，触发组件的 onBeforeUpdate 并将组件加入 updatingComponents
         // For the first render effect, trigger the component's `onBeforeUpdate` and add it to `updatingComponents`
-        if (effect.m && !effect.m.u) {
-            effect.m.u = true
+        if (effect.m && !effect.m.updating) {
+            effect.m.updating = true
             runHooks(effect.m, BEFORE_UPDATE)
             updatingComponents.push(effect.m)
         }
@@ -152,7 +156,7 @@ function update() {
     // 所有副作用执行完后，触发 updatingComponents 中组件的 onAfterUpdate
     // After all effects finish, trigger `onAfterUpdate` for all components in `updatingComponents`
     for (const component of updatingComponents) {
-        component.u = false
+        component.updating = false
         runHooks(component, AFTER_UPDATE)
     }
 

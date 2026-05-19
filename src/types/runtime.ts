@@ -2,7 +2,6 @@ import type {
     Getter,
     Setter,
     AnyObject,
-    FixedArray,
     ObjectKeys,
     GeneralFunc,
     ArbitraryFunc
@@ -41,10 +40,10 @@ export interface TraverseInfo {
     s: Setter | undefined
 }
 
-export interface ComponentInstance {
-    u: boolean // updating
-    p: ComponentInstance | null // parent
-    h: FixedArray<GeneralFunc[] | undefined, 6> // hooks
+export interface ComponentInstanceBase {
+    updating: boolean
+    hooks: GeneralFunc[][]
+    parent: ComponentInstanceBase | null
 }
 
 export interface Effect {
@@ -55,7 +54,7 @@ export interface Effect {
     k: Link[] // dependencies
     x: number // index in Destruction.e
     d: Destruction | null // destruction
-    m: ComponentInstance | null // component
+    m: ComponentInstanceBase | null // component
     c: GeneralFunc | null // cleaner between two runs
     g?: Getter // getter (WatchEffect)
     v?: any // value (WatchEffect)
@@ -69,7 +68,7 @@ export interface Destruction {
     s: ChildNode | null // start node
     l: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
-    m: ComponentInstance | null // component
+    m: ComponentInstanceBase | null // component
 }
 
 export interface BaseWrapper {
@@ -133,13 +132,15 @@ export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra
 export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
-
 export type DestructuringFunc = (target: any) => any[]
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
 export type GeneralEffectFunc = () => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
+
+export type ComponentInstance<T extends QingkuaiComponent<any>> = ComponentInstanceBase &
+    ReturnType<T[typeof RENDER]>
 
 export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

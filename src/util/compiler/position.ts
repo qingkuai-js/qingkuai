@@ -33,6 +33,10 @@ export function getPositionOfEachChar(str: string) {
     return ret
 }
 
+export function getScriptSourceIndex(index: number) {
+    return index + inputDescriptor.script.loc.start.index
+}
+
 export function getScriptLocByRange(range: Range) {
     const delta = inputDescriptor.script.loc.start.index
     return getLocByIndex(range[0] + delta, range[1] + delta)

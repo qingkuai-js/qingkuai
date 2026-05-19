@@ -1,14 +1,14 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ComponentInstance, Destruction } from "#type-declarations/runtime"
+import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime"
 
 import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
 import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
 import { spliceByElem } from "../util/shared/arrays"
-import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags"
 import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
 import { currentDestruction, setCurrentDestruction } from "./state"
+import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags"
 
 export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     if (!currentDestruction) {
@@ -17,7 +17,7 @@ export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     ;(currentDestruction.l ??= []).push(cleaner)
 }
 
-export function createDestruction(instance: ComponentInstance | null = NIL) {
+export function createDestruction(instance: ComponentInstanceBase | null = NIL) {
     const destruction: Destruction = {
         f: 0,
         e: NIL,

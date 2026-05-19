@@ -44,20 +44,21 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
     // because when the target is modified, the original identifier needs to be synchronized via a setter.
     const convertToLetKeywordDeclarators = new Map<VariableDeclarator, VariableDeclaration>()
-    traverseObject(topLevelIdentifiers, (_, value) => {
-        const declaration = value.nodeInfos[0].declaration
-        if (
-            debugMode &&
-            declaration.type === "VariableDeclaration" &&
-            declaration.kind === "const" &&
-            (value.status === "alias" || value.status === "derived")
-        ) {
-            convertToLetKeywordDeclarators.set(
-                value.nodeInfos[0].declarator as VariableDeclarator,
-                declaration
-            )
-        }
-    })
+    if (debugMode) {
+        traverseObject(topLevelIdentifiers, (_, value) => {
+            const declaration = value.nodeInfos[0].declaration
+            if (
+                (value.status === "alias" || value.status === "derived") &&
+                declaration.type === "VariableDeclaration" &&
+                declaration.kind === "const"
+            ) {
+                convertToLetKeywordDeclarators.set(
+                    value.nodeInfos[0].declarator as VariableDeclarator,
+                    declaration
+                )
+            }
+        })
+    }
     for (const [declarator, declaration] of convertToLetKeywordDeclarators) {
         const { declarations } = declaration
         const declaratorIndex = declarations.indexOf(declarator)

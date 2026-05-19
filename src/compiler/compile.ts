@@ -6,13 +6,13 @@ import type {
     StyleDescriptor,
     ScriptDescriptor,
     ASTPositionWithFlag,
+    TopLevelIdentifierInfo,
     CompileIntermediateOptions
 } from "#type-declarations/compiler"
 import type { PositionFlag } from "./enums"
 
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
-import { NON_REACTIVE_REASONS } from "./constants"
 import { analyzeTemplate } from "./analyzer/template"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
@@ -48,18 +48,7 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     const writer = generateIntermediateCode(templateNodes)
     const idStatusInfo: Record<string, string> = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
-        switch (info.status) {
-            case "raw":
-            case "literal":
-            case "pending": {
-                idStatusInfo[name] = `raw (${NON_REACTIVE_REASONS[info.status]})`
-                break
-            }
-            default: {
-                idStatusInfo[name] = `${info.status}${info.path ? ` -> ${info.path}` : ""}`
-                break
-            }
-        }
+        idStatusInfo[name] = getTopLevelIdentifierInfo(info)
     })
 
     const positions = inputDescriptor.positions
@@ -117,5 +106,25 @@ export class CompileIntermediateResult {
 
     isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
         return !!(this.positions[index].flag & flag)
+    }
+}
+
+function getTopLevelIdentifierInfo(id: TopLevelIdentifierInfo) {
+    switch (id.status) {
+        case "literal": {
+            return "raw (never mutated)"
+        }
+        case "pending": {
+            return "raw (template unused)"
+        }
+        case "raw": {
+            if (!id.implicit) {
+                return "raw (explicit raw)"
+            }
+            return "raw (constant literal)"
+        }
+        default: {
+            return `${id.status}${id.path ? ` -> ${id.path}` : ""}`
+        }
     }
 }

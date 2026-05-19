@@ -3,7 +3,7 @@ import type {
     Traversable,
     TraverseInfo,
     TraverseContext,
-    ComponentInstance
+    ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter, Setter } from "#type-declarations/tools"
 
@@ -413,7 +413,7 @@ function mountListInfo(
     traversable: Traversable,
     index: number,
     render: ArbitraryFunc,
-    instance: ComponentInstance
+    instance: ComponentInstanceBase
 ) {
     let setter: Setter | undefined = UNDEF
 

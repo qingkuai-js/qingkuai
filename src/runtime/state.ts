@@ -1,9 +1,9 @@
-import type { ComponentInstance, Destruction } from "#type-declarations/runtime"
+import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "./constants"
 
 export let currentDestruction: Destruction | null = NIL
-export let currentInstance: ComponentInstance | null = NIL
+export let currentInstance: ComponentInstanceBase | null = NIL
 
 export const eventRegisterInfo: Record<string, boolean[]> = {}
 
@@ -18,6 +18,6 @@ export function setCurrentDestruction(value: Destruction | null) {
     return (currentDestruction = value)
 }
 
-export function setCurrentInstance(value: ComponentInstance | null) {
+export function setCurrentInstance(value: ComponentInstanceBase | null) {
     return (currentInstance = value)
 }

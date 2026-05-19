@@ -602,7 +602,20 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
     })(nodes)
 
-    writer.write(`\n\nreturn (_) => {}`).dedent().write("}\n\n")
+    if ((writer.write(`\n\nreturn (_) => {`), exportBindings.length)) {
+        writer.indent().write(`return {`).indent(false)
+
+        for (const item of exportBindings) {
+            writer.wrapLine().write(item.exported)
+
+            if (item.local !== item.exported) {
+                writer.write(": ").write(item.local)
+            }
+            writer.write(",")
+        }
+        writer.dedent().write("}").dedent()
+    }
+    writer.write("}").dedent().write("}\n\n")
 
     if (isTS) {
         writer.write(`export `)

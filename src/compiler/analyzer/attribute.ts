@@ -26,7 +26,7 @@ export function analyzeAttributes(node: TemplateNode) {
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
-    const sortedAttributes = node.attributes.toSorted((a, b) => {
+    const sortedAttributes = node.attributes.slice().sort((a, b) => {
         const av = ATTRIBUTE_PRIORITY_MAP[a.name.raw] ?? 0
         const bv = ATTRIBUTE_PRIORITY_MAP[b.name.raw] ?? 0
         return bv - av

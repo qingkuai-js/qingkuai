@@ -16,6 +16,7 @@ import { encode } from "@jridgewell/sourcemap-codec"
 import { transformInterpolatedText, writeParsedExpression } from "./runtime/interpolation"
 
 abstract class BaseCodeWriter {
+    protected abstract get indentStr(): string
     public abstract write(str: string, startSourceIndex?: number): this
     protected abstract writeCharacter(character: string, sourceIndex: number): void
 
@@ -53,10 +54,6 @@ abstract class BaseCodeWriter {
 
     writeLine(str: string, startSourceIndex = -1) {
         return this.write(str, startSourceIndex).wrapLine()
-    }
-
-    protected get indentStr() {
-        return inputDescriptor.indent.repeat(this.indentLevel)
     }
 }
 
@@ -145,6 +142,10 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
             this.writeCharacter("", editor.getSourceIndex(editedContent.length) ?? -1, false)
         }
         return isEmbeddedScript ? this.indent(false) : this
+    }
+
+    protected get indentStr() {
+        return inputDescriptor.indent.repeat(this.indentLevel)
     }
 
     protected writeCharacter(
@@ -268,6 +269,10 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
             }
         }
         return this
+    }
+
+    protected get indentStr() {
+        return " ".repeat(this.indentLevel * 4)
     }
 
     protected writeCharacter(character: string, sourceIndex: number, nextSourceIndex = -1) {

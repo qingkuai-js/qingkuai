@@ -167,6 +167,10 @@ export interface EventFlagInfo {
     }[]
     value: number
 }
+export interface ExportBinding {
+    local: string
+    exported: string
+}
 export interface ContextReference {
     range: Range
     shorthand: boolean
@@ -281,13 +285,8 @@ export interface TemplateAnalyzeRet {
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
     parsedDirectives: Map<TemplateAttribute, ParsedDirective>
-    parsedComponentTags: Map<TemplateNode, ComponentTagPart[]>
 }
 export interface ScriptAnalyzeRet {
-    exportedBindings: {
-        local: string
-        exported: string
-    }[]
     declaratorToAliasInfos: Map<
         VariableDeclarator,
         {
@@ -310,6 +309,7 @@ export interface ScriptAnalyzeRet {
     eliminatedNodes: Set<AnyNode>
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
+    exportedBindings: ExportBinding[]
     topLevelReferences: TopLevelReferences
     exportDeclarations: EstreeWalkContext[]
     preMutatedTopLevelIdentifiers: Set<string>

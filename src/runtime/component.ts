@@ -1,6 +1,6 @@
 import type { AnyObject, Getter } from "#type-declarations/tools"
-import type { ComponentContext, ComponentInstance } from "#type-declarations/runtime"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
+import type { ComponentContext, ComponentInstanceBase } from "#type-declarations/runtime"
 
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
@@ -38,10 +38,10 @@ export const mountApp: MountAppFunc = (component, target) => {
 }
 
 export function init(context: ComponentContext) {
-    const instance: ComponentInstance = {
-        u: false,
-        h: any([]),
-        p: currentInstance
+    const instance: ComponentInstanceBase = {
+        updating: false,
+        hooks: any([]),
+        parent: currentInstance
     }
     setCurrentInstance(instance)
     createDestruction(instance)
@@ -56,9 +56,9 @@ export function init(context: ComponentContext) {
     }
 }
 
-export function runHooks(instance: ComponentInstance, index: number) {
-    if (instance.h[index]?.length) {
-        runAll(instance.h[index]!)
+export function runHooks(instance: ComponentInstanceBase, index: number) {
+    if (instance.hooks[index]?.length) {
+        runAll(instance.hooks[index]!)
     }
 }
 
@@ -70,11 +70,11 @@ export function mount(anchor?: Element, fragment?: DocumentFragment) {
         insertBefore(anchor, fragment)
     }
     runHooks(instance, AFTER_MOUNT)
-    setCurrentInstance(instance.p)
+    setCurrentInstance(instance.parent)
     return instance
 }
 
-export function defineWithTransformed(target: any, transformed: Record<string, Getter>) {
+export function defineExports(target: any, transformed: Record<string, Getter>) {
     const descriptors: PropertyDescriptorMap = {}
     for (const key of objectKeys(transformed)) {
         descriptors[key] = {
@@ -93,50 +93,59 @@ function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 1; i < 6; i++) {
         hookRegisters.push(callback => {
-            ;(currentInstance!.h[i] ??= []).push(callback)
+            ;(currentInstance!.hooks[i] ??= []).push(callback)
         })
     }
     return hookRegisters
 }
 
-function initRefs(transformed: AnyObject | undefined, defaults: any) {
-    if (defaults) {
-        defaults = constReact(defaults)
-    }
-    if (transformed || defaults) {
-        return createProxy(
-            {},
-            {
-                get(_, property) {
-                    const propValue = transformed?.[property]
-                    if (propValue) {
-                        return propValue[0]()
-                    }
-                    return defaults?.[property]
-                },
-                set(_, property, value) {
-                    const propValue = transformed?.[property]
-                    if (propValue) {
-                        propValue[1](value)
-                    } else if (defaults && property in defaults) {
-                        defaults[property] = value
-                    }
-                    return true
-                }
+function initSlots(transformed?: AnyObject) {
+    return createProxy(
+        {},
+        {
+            get(_, property: string) {
+                return !!transformed?.[property]
+            },
+            set() {
+                return true
             }
-        )
-    }
+        }
+    )
 }
 
-function initProps(transformed: AnyObject | undefined, defaults: any) {
+function initRefs(transformed?: AnyObject, defaults?: AnyObject) {
     if (defaults) {
         defaults = constReact(defaults)
     }
+    return createProxy(
+        {},
+        {
+            get(_, property: string) {
+                const propValue = transformed?.[property]
+                if (propValue) {
+                    return propValue[0]()
+                }
+                return defaults?.[property]
+            },
+            set(_, property: string, value) {
+                const propValue = transformed?.[property]
+                if (propValue) {
+                    propValue[1](value)
+                } else if (defaults && property in defaults) {
+                    defaults[property] = value
+                }
+                return true
+            }
+        }
+    )
+}
+
+function initProps(transformed?: AnyObject, defaults?: AnyObject) {
     if (transformed || defaults) {
         return createProxy(
             {},
             {
-                get(_, property) {
+                get(_, property: string) {
                     const propValue = transformed?.[property]
                     if (propValue) {
                         if (!isFunction(propValue)) {
@@ -148,22 +157,6 @@ function initProps(transformed: AnyObject | undefined, defaults: any) {
                 },
                 set() {
                     return (InvalidAssignment("component props"), true)
-                }
-            }
-        )
-    }
-}
-
-function initSlots(transformed: AnyObject | undefined) {
-    if (transformed) {
-        return createProxy(
-            {},
-            {
-                get(_, property) {
-                    return !!transformed[property]
-                },
-                set() {
-                    return true
                 }
             }
         )
