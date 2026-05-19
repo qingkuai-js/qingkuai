@@ -7,32 +7,56 @@ const scenario: E2EScenarioInput = {
         <lang-js>
             import FormatPanel from "./components/ui/FormatPanel"
 
-            let kebabLog = ""
-            let camelLog = ""
+            let kebabTagLog = ""
+            let camelTagLog = ""
+            let kebabAttrLog = ""
+            let camelAttrLog = ""
 
-            const onSaveDone = payload => {
-                kebabLog = payload
+            const onSaveDoneForKebabTag = payload => {
+                kebabTagLog = payload
             }
 
-            const onSaveDoneCamel = payload => {
-                camelLog = payload
+            const onSaveDoneForCamelTag = payload => {
+                camelTagLog = payload
+            }
+
+            const onSaveDoneForKebabAttr = payload => {
+                kebabAttrLog = payload
+            }
+
+            const onSaveDoneForCamelAttr = payload => {
+                camelAttrLog = payload
             }
         </lang-js>
 
         <section data-page="component-attribute-formats">
-            <p id="kebab-log">{kebabLog}</p>
-            <p id="camel-log">{camelLog}</p>
+            <p id="kebab-tag-log">{kebabTagLog}</p>
+            <p id="camel-tag-log">{camelTagLog}</p>
+            <p id="kebab-attr-log">{kebabAttrLog}</p>
+            <p id="camel-attr-log">{camelAttrLog}</p>
 
             <format-panel
                 featured
-                title-text="Kebab title"
-                @save-done={onSaveDone}
+                title-text="Shared title"
+                @save-done={onSaveDoneForKebabTag}
             />
 
             <FormatPanel
-                !featured={false}
-                titleText="Camel title"
-                @saveDone={onSaveDoneCamel}
+                featured
+                titleText="Shared title"
+                @save-done={onSaveDoneForCamelTag}
+            />
+
+            <format-panel
+                featured
+                title-text="Equivalent title"
+                @save-done={onSaveDoneForKebabAttr}
+            />
+
+            <format-panel
+                !featured={true}
+                titleText="Equivalent title"
+                @saveDone={onSaveDoneForCamelAttr}
             />
         </section>
     `,
@@ -54,28 +78,41 @@ const scenario: E2EScenarioInput = {
 }
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
-    test("supports static boolean component attributes", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-
-        const panels = page.locator(".format-panel")
-        await expect(panels.nth(0).locator(".format-featured")).toHaveText("yes")
-        await expect(panels.nth(1).locator(".format-featured")).toHaveText("no")
-    })
-
-    test("supports kebab-case and camelCase component tags attributes and events", async ({
+    test("treats kebab-case and PascalCase component tags equivalently", async ({
         page,
         visitScenario
     }) => {
         await visitScenario(scenario)
 
         const panels = page.locator(".format-panel")
-        await expect(panels.nth(0).locator(".format-title")).toHaveText("Kebab title")
-        await expect(panels.nth(1).locator(".format-title")).toHaveText("Camel title")
+        await expect(panels.nth(0).locator(".format-title")).toHaveText("Shared title")
+        await expect(panels.nth(1).locator(".format-title")).toHaveText("Shared title")
+        await expect(panels.nth(0).locator(".format-featured")).toHaveText("yes")
+        await expect(panels.nth(1).locator(".format-featured")).toHaveText("yes")
 
         await panels.nth(0).locator(".format-emit").click()
         await panels.nth(1).locator(".format-emit").click()
 
-        await expect(page.locator("#kebab-log")).toHaveText("Kebab title:true")
-        await expect(page.locator("#camel-log")).toHaveText("Camel title:false")
+        await expect(page.locator("#kebab-tag-log")).toHaveText("Shared title:true")
+        await expect(page.locator("#camel-tag-log")).toHaveText("Shared title:true")
+    })
+
+    test("treats kebab-case and camelCase component attributes equivalently", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario(scenario)
+
+        const panels = page.locator(".format-panel")
+        await expect(panels.nth(2).locator(".format-title")).toHaveText("Equivalent title")
+        await expect(panels.nth(3).locator(".format-title")).toHaveText("Equivalent title")
+        await expect(panels.nth(2).locator(".format-featured")).toHaveText("yes")
+        await expect(panels.nth(3).locator(".format-featured")).toHaveText("yes")
+
+        await panels.nth(2).locator(".format-emit").click()
+        await panels.nth(3).locator(".format-emit").click()
+
+        await expect(page.locator("#kebab-attr-log")).toHaveText("Equivalent title:true")
+        await expect(page.locator("#camel-attr-log")).toHaveText("Equivalent title:true")
     })
 })
