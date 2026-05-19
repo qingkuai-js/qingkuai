@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.67](https://github.com/qingkuai-js/qingkuai/compare/v1.0.66...v1.0.67) (2026-05-19)
+
+### Features
+
+- **compiler(check):** adjust generated component export intermediate code format and add `ComponentInstance` type export for language service compatibility ([b3ff895](https://github.com/qingkuai-js/qingkuai/commit/b3ff895))
+- **compiler:** normalize component tag format by disallowing hyphens when using member expressions as component tags, and remove `parseComponentTag` ([1099cd3](https://github.com/qingkuai-js/qingkuai/commit/1099cd3), [be2155f](https://github.com/qingkuai-js/qingkuai/commit/be2155f))
+
+### Tests
+
+- **unit:** add tests to ensure component tags cannot mix dots and hyphens ([1099cd3](https://github.com/qingkuai-js/qingkuai/commit/1099cd3))
+- **e2e:** enhance consistency checks for component tags and component props across different syntaxes ([513c42e](https://github.com/qingkuai-js/qingkuai/commit/513c42e))
+
 ## [1.0.66](https://github.com/qingkuai-js/qingkuai/compare/v1.0.65...v1.0.66) (2026-05-17)
 
 ### Features
