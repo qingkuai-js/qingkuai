@@ -2,16 +2,13 @@
 
 ## [1.0.66](https://github.com/qingkuai-js/qingkuai/compare/v1.0.65...v1.0.66) (2026-05-17)
 
-### Changes
-
-- **compiler:** generate source maps before and after interpolation block transforms to improve debugging experience ([8bee953](https://github.com/qingkuai-js/qingkuai/commit/8bee953))
-
 ### Features
 
 - **runtime, compiler:** rename `&dom` to `&handle` and support accessing component instance handles ([18a73e0](https://github.com/qingkuai-js/qingkuai/commit/18a73e0), [fc47939](https://github.com/qingkuai-js/qingkuai/commit/fc47939))
 - **compiler:** support `export` syntax in component files and expose exports on the component instance ([7fdade9](https://github.com/qingkuai-js/qingkuai/commit/7fdade9))
 - **compiler(check):** provide explicit reasons when inferred identifiers are considered non-reactive ([8c47ce6](https://github.com/qingkuai-js/qingkuai/commit/8c47ce6))
 - **runtime:** export package version from `qingkuai` runtime (`version`) ([0ca6098](https://github.com/qingkuai-js/qingkuai/commit/0ca6098))
+- **compiler:** generate source maps before and after interpolation block transforms to improve debugging experience ([8bee953](https://github.com/qingkuai-js/qingkuai/commit/8bee953))
 
 ### Fixes
 
