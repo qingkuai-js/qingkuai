@@ -58,7 +58,8 @@
   },
   "dependencies": {
     "@babel/parser": "^7.29.3",
-    "@jridgewell/sourcemap-codec": "^1.5.5"
+    "@jridgewell/sourcemap-codec": "^1.5.5",
+    "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@babel/types": "^7.29.0",
@@ -78,7 +79,6 @@
     "rollup": "^4.60.4",
     "rollup-plugin-esbuild": "^6.2.1",
     "tsx": "^4.22.2",
-    "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.4",
     "vitest": "^4.1.6"
   },

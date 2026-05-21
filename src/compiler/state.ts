@@ -12,10 +12,10 @@ import { objectAssign } from "../util/shared/aliases"
 import { createHashId } from "../util/compiler/sundry"
 import { newASTLocation } from "../util/compiler/position"
 
-export let analyzeResult: AnalyzeResult
 export let messages: CompileMessage[] = []
-export let inputDescriptor: InputDescriptor
-export let generateIdentifier: GenerateIdentifier
+export let analyzeResult = newAnalyzeResult()
+export let inputDescriptor = newInputDescriptor({})
+export let generateIdentifier = newGenerateIdentifier()
 
 export function resetCompilerState(options: Partial<InputOptions>) {
     messages = []
