@@ -1,6 +1,6 @@
 import type { ContextPattern } from "#type-declarations/estree"
-import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler"
 import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
+import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler"
 
 import { parseContextPattern } from "./script"
 import { isContextPattern } from "../estree/assert"

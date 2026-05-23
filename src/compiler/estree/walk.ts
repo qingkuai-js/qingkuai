@@ -25,8 +25,8 @@ export class EstreeWalkContext<T extends AnyNode = AnyNode> implements EstreeWal
         }
     }
 
-    // 判断节点是否为作用域边界的上下文
-    // Determine whether the node is within a scope boundary context.
+    // 判断是否为作用域边界的上下文
+    // Determine whether this is a scope boundary context.
     get isScopeBoundary() {
         const node = this.value
         const parentNode = this.parent?.value

@@ -1,13 +1,41 @@
 import ts from "typescript"
 
-import { walkTsAst } from "../ts-ast/walk"
 import { inputDescriptor } from "../state"
+import { walkTsNode } from "../ts-ast/walk"
 import { any } from "../../util/shared/sundry"
 import { hasParseError } from "../ts-ast/assert"
 import { isString } from "../../util/shared/assert"
 
 export function parseContextPattern(source: string) {
-    const sourceFile = createSourceFile(`[${source}]=_`, 0, true)
+    const sourceFile = createSourceFile(`const [${source}]=_`, 0, true)
+    if (hasParseError(sourceFile)) {
+        return null
+    }
+
+    const statement = sourceFile.statements[0]
+    if (!ts.isVariableStatement(statement)) {
+        return null
+    }
+
+    const firstDeclaration = statement.declarationList.declarations[0]
+    if (!ts.isArrayBindingPattern(firstDeclaration.name)) {
+        return null
+    }
+    walkTsNode(firstDeclaration.name, node => {
+        const start = node.getStart()
+        const fullStart = node.getFullStart()
+        node.getStart = () => start - 7
+        node.getFullStart = () => fullStart - 7
+    })
+    return firstDeclaration.name
+}
+
+export function parseScript(source: string) {
+    return createSourceFile(source, inputDescriptor.script.loc.start.index)
+}
+
+export function parseExpression(source: string, startSourceIndex: number) {
+    const sourceFile = createSourceFile(`_=(${source})`, startSourceIndex)
     if (hasParseError(sourceFile)) {
         return null
     }
@@ -20,33 +48,12 @@ export function parseContextPattern(source: string) {
     const expression = statement.expression
     if (
         !ts.isBinaryExpression(expression) ||
-        !ts.isArrayLiteralExpression(expression.left) ||
+        !ts.isParenthesizedExpression(expression.right) ||
         expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
     ) {
         return null
     }
-    walkTsAst(expression.left, node => {
-        const start = node.getStart()
-        const fullStart = node.getFullStart()
-        node.getStart = () => start - 1
-        node.getFullStart = () => fullStart - 1
-
-        // @ts-expect-error: modify readonly properties
-        ;[node.pos, node.end] = [node.pos - 1, node.end - 1]
-    })
-    return expression.left
-}
-
-export function parseScript(source: string) {
-    return createSourceFile(source, inputDescriptor.script.loc.start.index)
-}
-
-export function parseExpression(source: string, startSourceIndex: number) {
-    const sourceFile = createSourceFile(`_=${source}`, startSourceIndex)
-    if (hasParseError(sourceFile) || !ts.isExpressionStatement(sourceFile.statements[0])) {
-        return null
-    }
-    return sourceFile.statements[0].expression
+    return expression.right.expression
 }
 
 function createSourceFile(

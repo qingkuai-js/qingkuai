@@ -1,13 +1,6 @@
+import type ts from "typescript"
+
 import type {
-    Identifier,
-    Expression,
-    SpreadElement,
-    ImportDeclaration,
-    VariableDeclarator,
-    TSImportEqualsDeclaration
-} from "@babel/types"
-import type {
-    AnyNode,
     IntrinsicCall,
     ContextPattern,
     TopLevelDeclaratorNode,
@@ -306,39 +299,32 @@ export interface ScriptAnalyzeRet {
     >
     watchers: IntrinsicCall[]
     fullIdentifiers: Set<string>
-    eliminatedNodes: Set<AnyNode>
+    eliminatedNodes: Set<ts.Node>
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
     topLevelReferences: TopLevelReferences
-    exportDeclarations: EstreeWalkContext[]
+    exportDeclarations: TsWalkContext[]
     preMutatedTopLevelIdentifiers: Set<string>
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<VariableDeclarator, EstreeWalkContext<Identifier>>
-    importDeclarations: EstreeWalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
+    declaratorToIntrinsic: Map<VariableDeclarator, TsWalkContext<ts.Identifier>>
+    importDeclarations: TsWalkContext<ts.ImportDeclaration | ts.ImportEqualsDeclaration>[]
 }
 
-export interface EstreeWalkContext<T extends AnyNode = AnyNode> {
+export interface TsWalkContext<T extends ts.Node = ts.Node> {
     value: T
     inTopLevel: boolean
     isScopeBoundary: boolean
     isBindingReference: boolean
     inHoistableTopLevel: boolean
-    isComputedIdentifier: boolean
-    isParameterIdentifier: boolean
-    isShorthandIdentifierAccess: boolean
     isNonHoistableScopeBoundary: boolean
     isIdentifierAssignmentTarget: boolean
+    scope: TsWalkContext | null
+    parent: TsWalkContext | null
+    nonHoistableScope: TsWalkContext | null
     scopeIdentifiers: Set<string> | undefined
-    scope: EstreeWalkContext | null
-    parent: EstreeWalkContext | null
-    nonHoistableScope: EstreeWalkContext | null
-    striptTypeOperationsParent: EstreeWalkContext | null
-    findAncestorUntil: <T extends AnyNode["type"]>(
-        type: T
-    ) => EstreeWalkContext<AnyNode & { type: T }> | null
-    walkAncestors: (callback: (context: EstreeWalkContext) => void) => void
+    walkAncestors: (callback: (context: TsWalkContext) => any) => void
 }
 
 export type Range = Pair<number>
