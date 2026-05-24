@@ -74,7 +74,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
-    "prettier-plugin-qingkuai": "^1.0.31",
     "rimraf": "^6.1.3",
     "rollup": "^4.60.4",
     "rollup-plugin-esbuild": "^6.2.1",

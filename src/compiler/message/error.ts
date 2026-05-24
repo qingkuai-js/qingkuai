@@ -154,6 +154,10 @@ export const UnrecognizedEventFlag = withLocation(1045, (name: string) => {
     return `Unrecognized event flag: "${name}".`
 })
 
+export const InvalidExportStatement = withLocation(1019, (kind: string) => {
+    return `${kind} is not supported in embedded script block.`
+})
+
 export const InvalidTemplateStructure = withLocation(1015, (msg: string) => {
     return `Invalid template structure: ${msg}.`
 })
@@ -200,10 +204,6 @@ export const ShadowCompilerIntrinsicAtTopLevel = withLocation(1020, (name: strin
 
 export const InvalidAliasDestructuringDeclaration = withLocation(1025, (kind: string) => {
     return `${kind} are not allowed in destructuring pattern of alias declarations.`
-})
-
-export const EmbeddedScriptOnlySupportsNamedExports = withLocation(1019, (kind: string) => {
-    return `${kind} is not supported in embedded script block.`
 })
 
 export const HtmlDirectiveRequiresSingleTextChild = withLocation(1035, () => {

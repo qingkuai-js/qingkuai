@@ -22,8 +22,10 @@ export function parseContextPattern(source: string) {
         return null
     }
     walkTsNode(firstDeclaration.name, node => {
+        const end = node.getEnd()
         const start = node.getStart()
         const fullStart = node.getFullStart()
+        node.getEnd = () => end - 7
         node.getStart = () => start - 7
         node.getFullStart = () => fullStart - 7
     })

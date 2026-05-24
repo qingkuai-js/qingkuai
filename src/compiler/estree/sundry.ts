@@ -1,5 +1,6 @@
 import type { Range } from "#type-declarations/compiler"
-import type { AnyNode, WithLoc } from "#type-declarations/estree"
+
+import ts from "typescript"
 
 import { PositionFlag } from "../enums"
 import { isTypeOperation } from "./assert"
@@ -19,7 +20,7 @@ export function getStripedTypeAnnotationRange(node: AnyNode): Range {
     return [node.start!, node.typeAnnotation.start!]
 }
 
-export function markNeedSourcemap(node: WithLoc<AnyNode>, startSourceIndex: number) {
-    markPositionFlag(PositionFlag.SourcemapEnd, startSourceIndex + node.end)
-    markPositionFlag(PositionFlag.SourcemapStart, startSourceIndex + node.start)
+export function markNeedSourcemap(node: ts.Node, startSourceIndex: number) {
+    markPositionFlag(PositionFlag.SourcemapEnd, startSourceIndex + node.getEnd())
+    markPositionFlag(PositionFlag.SourcemapStart, startSourceIndex + node.getStart())
 }

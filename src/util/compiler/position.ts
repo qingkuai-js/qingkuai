@@ -1,6 +1,7 @@
 import type { Range } from "#type-declarations/compiler"
 import type { ASTLocation, ASTPosition, ASTPositionWithFlag } from "#type-declarations/compiler"
 
+import ts from "typescript"
 import { PositionFlag } from "../../compiler/enums"
 import { whitespaceRE } from "../../compiler/regular"
 import { inputDescriptor } from "../../compiler/state"
@@ -38,12 +39,15 @@ export function getScriptSourceIndex(index: number) {
 }
 
 export function getScriptLocByRange(range: Range) {
-    const delta = inputDescriptor.script.loc.start.index
-    return getLocByIndex(range[0] + delta, range[1] + delta)
+    return getScriptLocByIndex(...range)
 }
 
 export function getRangeByLocation(loc: ASTLocation): Range {
     return [loc.start.index, loc.end.index]
+}
+
+export function getScriptLocByNode(node: ts.Node) {
+    return getScriptLocByIndex(node.getStart(), node.getEnd())
 }
 
 export function getLocWithDefaultEnd(index: number): ASTLocation {
@@ -53,6 +57,11 @@ export function getLocWithDefaultEnd(index: number): ASTLocation {
 export function getPosByIndex(index: number): ASTPosition {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     return (({ flag, ...rest }) => rest)(inputDescriptor.positions[index])
+}
+
+export function getScriptLocByIndex(start: number, end: number = start) {
+    const delta = inputDescriptor.script.loc.start.index
+    return getLocByIndex(start + delta, end + delta)
 }
 
 export function isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {

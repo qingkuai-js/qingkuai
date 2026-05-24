@@ -58,7 +58,7 @@ function newAnalyzeResult(): AnalyzeResult {
             watchers: [],
             defaultItems: {},
             exportedBindings: [],
-            exportDeclarations: [],
+            exportStatements: [],
             importDeclarations: [],
             reusedStringReferences: [],
             eliminatedNodes: new Set(),
@@ -66,7 +66,6 @@ function newAnalyzeResult(): AnalyzeResult {
             usedIntrinsicVars: new Set(),
             importIdentifiers: new Set(),
             declaratorToIntrinsic: new Map(),
-            declaratorToAliasInfos: new Map(),
             topLevelReferences: newCleanObj(),
             topLevelIdentifiers: newCleanObj(),
             preMutatedTopLevelIdentifiers: new Set()

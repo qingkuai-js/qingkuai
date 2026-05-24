@@ -1,12 +1,6 @@
 import type ts from "typescript"
-
-import type {
-    IntrinsicCall,
-    ContextPattern,
-    TopLevelDeclaratorNode,
-    TopLevelDeclarationNode
-} from "#type-declarations/estree"
 import type { Pair } from "#type-declarations/tools"
+import type { ContextPattern, TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
 
 export interface CompileWarning {
     loc: ASTLocation
@@ -205,7 +199,7 @@ export interface ReusedStringReference {
 }
 export interface ParsedExpression {
     source: string
-    node: Expression
+    node: ts.Expression
     reactive: boolean
     startSourceIndex: number
     contextReferences: ContextReference[]
@@ -225,13 +219,13 @@ export interface GeneratedSelectorInfo {
     targetTextPart?: TextContentPart
     targetAttribute?: TemplateAttribute
 }
+export interface TopLevelIdentifierNodeInfo {
+    id: ts.Identifier
+    declarator: TopLevelDeclaratorNode
+    declaration: TopLevelDeclarationNode
+    destructuringIdentifierNames?: string[]
+}
 export interface TopLevelIdentifierInfo {
-    nodeInfos: {
-        id: Identifier
-        declarator: TopLevelDeclaratorNode
-        declaration: TopLevelDeclarationNode
-        destructuringIdentifierNames?: string[]
-    }[]
     path: string
     hoist: boolean
     implicit: boolean
@@ -239,7 +233,7 @@ export interface TopLevelIdentifierInfo {
     transofrmedTo: string
     status: IdentifierStatus
     usedExpressions: Set<ParsedExpression>
-    destructuringIdentifierNames?: string[]
+    nodeInfos: TopLevelIdentifierNodeInfo[]
 }
 export interface TemplateNodeContext {
     id: string
@@ -280,51 +274,28 @@ export interface TemplateAnalyzeRet {
     parsedDirectives: Map<TemplateAttribute, ParsedDirective>
 }
 export interface ScriptAnalyzeRet {
-    declaratorToAliasInfos: Map<
-        VariableDeclarator,
-        {
-            id: string
-            target: string
-            property: string
-        }[]
-    >
     defaultItems: Partial<
         Record<
             "refs" | "props",
             {
-                intrinsicId: Identifier
-                value: Expression | SpreadElement
+                intrinsicId: ts.Identifier
+                value: ts.Expression | ts.SpreadElement
             }
         >
     >
-    watchers: IntrinsicCall[]
+    exportStatements: ts.Node[]
+    watchers: ts.CallExpression[]
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<ts.Node>
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
     topLevelReferences: TopLevelReferences
-    exportDeclarations: TsWalkContext[]
     preMutatedTopLevelIdentifiers: Set<string>
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<VariableDeclarator, TsWalkContext<ts.Identifier>>
-    importDeclarations: TsWalkContext<ts.ImportDeclaration | ts.ImportEqualsDeclaration>[]
-}
-
-export interface TsWalkContext<T extends ts.Node = ts.Node> {
-    value: T
-    inTopLevel: boolean
-    isScopeBoundary: boolean
-    isBindingReference: boolean
-    inHoistableTopLevel: boolean
-    isNonHoistableScopeBoundary: boolean
-    isIdentifierAssignmentTarget: boolean
-    scope: TsWalkContext | null
-    parent: TsWalkContext | null
-    nonHoistableScope: TsWalkContext | null
-    scopeIdentifiers: Set<string> | undefined
-    walkAncestors: (callback: (context: TsWalkContext) => any) => void
+    declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>
+    importDeclarations: (ts.ImportDeclaration | ts.ImportEqualsDeclaration)[]
 }
 
 export type Range = Pair<number>

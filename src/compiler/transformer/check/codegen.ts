@@ -81,7 +81,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         embeddedScriptEditor.remove(...importDeclaration.value.range!)
         writer.writeScriptNode(importDeclaration.value).writeLine(";")
     }
-    for (const exportDeclaration of analyzeResult.script.exportDeclarations) {
+    for (const exportDeclaration of analyzeResult.script.exportStatements) {
         const node = exportDeclaration.value
         if (node.type === "ExportNamedDeclaration" && node.declaration) {
             embeddedScriptEditor.remove(node.start!, node.declaration.start!)

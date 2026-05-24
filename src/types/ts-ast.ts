@@ -1,5 +1,12 @@
 import type ts from "typescript"
 
+export type ScopeBoundary =
+    | ts.SourceFile
+    | ts.ModuleBlock
+    | ts.Block
+    | ts.CaseClause
+    | ts.ConciseBody
+
 export type NamedNode =
     | ts.ParameterDeclaration
     | ts.GetAccessorDeclaration
@@ -17,7 +24,25 @@ export type NamedNode =
     | ts.ImportEqualsDeclaration
     | ts.PropertyAccessExpression
 
+export type TopLevelDeclarationNode =
+    | ts.VariableDeclarationList
+    | ts.FunctionDeclaration
+    | ts.ClassDeclaration
+    | ts.EnumDeclaration
+
+export type TopLevelDeclaratorNode =
+    | ts.VariableDeclaration
+    | Exclude<TopLevelDeclarationNode, ts.VariableDeclarationList>
+
+export type TsNodeWithContext<T extends ts.Node = ts.Node> = T & {
+    inTopLevel: boolean
+    isScopeBoundary: boolean
+    isBindingReference: boolean
+    parent: TsNodeWithContext | null
+    isNonHoistableScopeBoundary: boolean
+    scopeIdentifiers: Set<string> | undefined
+}
+
 export type ContextPattern = ts.Identifier | ts.BindingPattern
 export type FindNodesPredicate<T extends ts.Node> = (node: ts.Node) => node is T
 export type ForStatementLike = ts.ForStatement | ts.ForInStatement | ts.ForOfStatement
-export type ScopeBoundary = ts.SourceFile | ts.ModuleBlock | ts.Block | ts.CaseClause

@@ -31,7 +31,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
     const processedItems = new Set<VariableDeclarator | TSEnumDeclaration>()
 
-    for (const exportDeclaration of analyzeResult.script.exportDeclarations) {
+    for (const exportDeclaration of analyzeResult.script.exportStatements) {
         const node = exportDeclaration.value
         if (node.type === "ExportNamedDeclaration" && node.declaration) {
             editor.remove(node.start!, node.declaration.start!)
@@ -241,11 +241,12 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         transformDestructuringEqualSign(declarator, info.destructuringIdentifierNames)
     }
 
+    // 待办：需要重构，参考 src/runtime/debug.ts
     function transformAliasDeclaration(name: string, info: TopLevelIdentifierInfo) {
         const declarator = info.nodeInfos[0].declarator as VariableDeclarator
         const { declarations } = info.nodeInfos[0].declaration as VariableDeclaration
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
-        const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
+        const aliasInfos = analyzeResult.script.declarationToAliasInfos.get(declarator)!
 
         // 移除 VariableDeclarator 多余的尾部逗号
         // Remove any trailing comma from the VariableDeclarator.

@@ -1,33 +1,34 @@
-import type { TsWalkContext as TsWalkContextImpl } from "#type-declarations/compiler"
-import type { ContextPattern, ForStatementLike, NamedNode } from "#type-declarations/ts-ast"
+import type {
+    NamedNode,
+    ContextPattern,
+    ForStatementLike,
+    TsNodeWithContext,
+    ScopeBoundary
+} from "#type-declarations/ts-ast"
+
+import ts from "typescript"
 
 import {
     isScopeBoundary,
     isBindingReference,
-    isUpdateExpression,
-    isAssignmentExpression,
+    isParameterProperty,
     isNonHoistableScopeBoundary,
     isVariableDeclarationListWithVar
 } from "./assert"
-import ts from "typescript"
-import { striptTypeOperationsParent } from "./sundry"
+import { getNonHoistableScope } from "./context"
+import { objectAssign } from "../../util/shared/aliases"
+import { getStriptTypeOperationsParent } from "./sundry"
 import { intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 
-export function walkTsNodeWithContext(
-    node: ts.Node,
-    context: TsWalkContextImpl | null = null,
-    callback: (context: TsWalkContextImpl) => void
+export function walkAncestors(
+    node: TsNodeWithContext,
+    callback: (node: TsNodeWithContext) => boolean | void
 ) {
-    const parentContext = new TsWalkContext(node, context)
-    callback(new TsWalkContext(node, context, context?.scopeIdentifiers))
-    ts.forEachChild(node, child => {
-        const childContext = new TsWalkContext(
-            child,
-            parentContext,
-            new Set(parentContext.scopeIdentifiers)
-        )
-        walkTsNodeWithContext(child, childContext, callback)
-    })
+    for (let current = node.parent; current; current = current.parent) {
+        if (callback(current)) {
+            break
+        }
+    }
 }
 
 export function walkTsNode(node: ts.Node, callback: (node: ts.Node) => boolean | void) {
@@ -39,6 +40,13 @@ export function walkTsNode(node: ts.Node, callback: (node: ts.Node) => boolean |
             return true
         }
     }
+}
+
+export function walkTsNodeWithContext(node: ts.Node, callback: (node: TsNodeWithContext) => void) {
+    callback(attchContextToNode(node))
+    ts.forEachChild(node, child => {
+        walkTsNodeWithContext(child, callback)
+    })
 }
 
 // 递归遍历一个 Pattern 节点，当遇到绑定标识符时，调用传入的 callback，并传入当前标识符节点及其访问路径
@@ -107,120 +115,62 @@ export function walkPatternIdentifiers(
     return result
 }
 
-class TsWalkContext<T extends ts.Node = ts.Node> implements TsWalkContextImpl<T> {
-    inTopLevel: boolean
-    isScopeBoundary: boolean
-    isBindingReference: boolean
-    isNonHoistableScopeBoundary: boolean
+function attchContextToNode(node: ts.Node) {
+    let inTopLevel: boolean
+    let scopeIdentifiers: Set<string> | undefined
 
-    constructor(
-        public value: T,
-        public parent: TsWalkContextImpl | null = null,
-        public scopeIdentifiers: Set<string> | undefined = undefined
-    ) {
-        this.isScopeBoundary = isScopeBoundary(value)
-        this.isBindingReference = isBindingReference(value)
-        this.isNonHoistableScopeBoundary = isNonHoistableScopeBoundary(value)
-        this.inTopLevel = !parent || (parent.inTopLevel && !parent.isScopeBoundary)
-
-        if (!ts.isSourceFile(value) && this.isScopeBoundary) {
-            recordScopeIdentifiers(this)
+    const nodeWithContext = node as TsNodeWithContext
+    const currentIsScopeBoundary = isScopeBoundary(node)
+    const contextedParent = nodeWithContext.parent as TsNodeWithContext | null
+    if (!ts.isSourceFile(nodeWithContext)) {
+        if (!currentIsScopeBoundary) {
+            scopeIdentifiers = contextedParent?.scopeIdentifiers
+        } else {
+            scopeIdentifiers = new Set(contextedParent?.scopeIdentifiers)
         }
     }
 
-    // 判断节点是否为标识符形式的赋值目标
-    // Determine whether the node is an identifier-form assignment target.
-    get isIdentifierAssignmentTarget() {
-        if (!this.isBindingReference) {
-            return false
-        }
-
-        let ret = false
-        const nodeEnd = this.value.end
-        this.walkAncestors(({ value }) => {
-            if (ts.isNonNullExpression(value)) {
-                return
-            }
-            if (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) {
-                return true
-            }
-            if (isUpdateExpression(value)) {
-                return (ret = true)
-            }
-            if (isAssignmentExpression(value)) {
-                return (ret = nodeEnd <= value.operatorToken.getStart())
-            }
-        })
-        return ret
+    if (!contextedParent || ts.isSourceFile(contextedParent)) {
+        inTopLevel = true
+    } else {
+        inTopLevel = contextedParent.inTopLevel && !contextedParent.isScopeBoundary
     }
 
-    // 获取节点所属的作用域
-    // Get the scope that the node belongs to.
-    get scope(): TsWalkContext | null {
-        let ret: any = null
-        this.walkAncestors(current => {
-            if (current.isScopeBoundary) {
-                return ((ret = current), true)
-            }
-        })
-        return ret
-    }
+    objectAssign(nodeWithContext, {
+        inTopLevel,
+        scopeIdentifiers,
+        isScopeBoundary: currentIsScopeBoundary,
+        isBindingReference: isBindingReference(nodeWithContext),
+        isNonHoistableScopeBoundary: isNonHoistableScopeBoundary(nodeWithContext)
+    })
 
-    // 获取节点所属的不可提升作用域
-    // Get the non-hoistable scope that the node belongs to.
-    get nonHoistableScope(): TsWalkContext | null {
-        let ret: any = null
-        this.walkAncestors(current => {
-            if (current.isNonHoistableScopeBoundary) {
-                return ((ret = current), true)
-            }
-        })
-        return ret
+    if (currentIsScopeBoundary && !ts.isSourceFile(nodeWithContext)) {
+        recordScopeIdentifiers(nodeWithContext as TsNodeWithContext<ScopeBoundary>)
     }
-
-    // 节点是否处于可提升的顶级作用域（含非函数块级作用域）
-    // Whether the node is in a hoistable top-level scope (including non-function block scopes).
-    get inHoistableTopLevel() {
-        let ret = true
-        this.walkAncestors(current => {
-            if (current.isNonHoistableScopeBoundary) {
-                return ((ret = ts.isSourceFile(current.value)), true)
-            }
-        })
-        return ret
-    }
-
-    walkAncestors(callback: (context: TsWalkContextImpl) => boolean | void) {
-        for (let current = this.parent; current; current = current.parent) {
-            if (callback(current)) {
-                break
-            }
-        }
-    }
+    return nodeWithContext
 }
 
 // 记录上下文中含有的作用域标识符
 // Record the scope identifiers present in the context.
-function recordScopeIdentifiers(context: TsWalkContext) {
-    const node = context.value
+function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
     const patterns: ContextPattern[] = []
     const declarations: ts.VariableDeclaration[] = []
-    const parentNode = striptTypeOperationsParent(context.value)!
-    const statements = isScopeBoundary(node) ? node.statements : [node]
+    const parent = getStriptTypeOperationsParent(node)! as ts.Node
+    const statements = "statements" in node ? node.statements : [node]
 
-    const extendScopeIdentifiers = (context: TsWalkContext, id: ts.Identifier) => {
+    const extendScopeIdentifiers = (scope: TsNodeWithContext, id: ts.Identifier) => {
         if (
             process.env.VITEST === "true" ||
             intrinsicMethodsRE.test(id.text) ||
             intrinsicVariableRE.test(id.text)
         ) {
-            ;(context.scopeIdentifiers ??= new Set()).add(id.text)
+            ;(scope.scopeIdentifiers ??= new Set()).add(id.text)
         }
     }
 
-    switch (parentNode.kind) {
+    switch (parent.kind) {
         case ts.SyntaxKind.CatchClause: {
-            const catchClause = parentNode as ts.CatchClause
+            const catchClause = parent as ts.CatchClause
             if (catchClause.variableDeclaration && catchClause.variableDeclaration.name) {
                 patterns.push(catchClause.variableDeclaration.name)
             }
@@ -230,49 +180,65 @@ function recordScopeIdentifiers(context: TsWalkContext) {
         case ts.SyntaxKind.ForStatement:
         case ts.SyntaxKind.ForInStatement:
         case ts.SyntaxKind.ForOfStatement: {
-            const statement = parentNode as ForStatementLike
+            const statement = parent as ForStatementLike
             if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
-                patterns.push(...statement.initializer.declarations.map(decl => decl.name))
+                statement.initializer.declarations.forEach(decl => declarations.push(decl))
             }
             break
         }
 
+        case ts.SyntaxKind.EnumDeclaration:
         case ts.SyntaxKind.ClassExpression:
-        case ts.SyntaxKind.FunctionExpression: {
-            const expression = parentNode as ts.ClassExpression | ts.FunctionExpression
-            if (expression.name) {
-                extendScopeIdentifiers(context, expression.name)
+        case ts.SyntaxKind.ClassDeclaration:
+        case ts.SyntaxKind.FunctionExpression:
+        case ts.SyntaxKind.FunctionDeclaration: {
+            const namedNode = parent as NamedNode
+            if (namedNode.name && ts.isIdentifier(namedNode.name)) {
+                extendScopeIdentifiers(node, namedNode.name)
             }
             // fallthrough
         }
 
         default: {
-            if ("parameters" in parentNode && ts.isParameter(parentNode)) {
-                patterns.push(parentNode.name)
+            if ("parameters" in parent) {
+                for (const parameter of parent.parameters as ts.NodeArray<ts.ParameterDeclaration>) {
+                    if (ts.isConstructorDeclaration(parent) && isParameterProperty(parameter)) {
+                        continue
+                    }
+                    patterns.push(parameter.name)
+                }
             }
         }
     }
     for (const pattern of patterns) {
         walkPatternIdentifiers(pattern, identifier => {
-            extendScopeIdentifiers(context, identifier)
+            extendScopeIdentifiers(node, identifier)
         })
     }
     for (const statement of statements) {
         switch (statement.kind) {
-            case ts.SyntaxKind.VariableDeclarationList: {
-                const declarationList = statement as ts.VariableDeclarationList
+            case ts.SyntaxKind.VariableStatement: {
+                const declarationList = (statement as ts.VariableStatement).declarationList
                 for (const declaration of declarationList.declarations) {
                     declarations.push(declaration)
                 }
                 break
             }
+
+            case ts.SyntaxKind.ModuleDeclaration: {
+                // @ts-expect-error: access private method (check emit)
+                if (ts.getModuleInstanceState(statement) === 0) {
+                    break
+                }
+                // fallthrough
+            }
+
             case ts.SyntaxKind.EnumDeclaration:
             case ts.SyntaxKind.ClassDeclaration:
-            case ts.SyntaxKind.ModuleDeclaration:
             case ts.SyntaxKind.FunctionDeclaration: {
                 const namedNode = statement as NamedNode
                 if (namedNode.name && ts.isIdentifier(namedNode.name)) {
-                    extendScopeIdentifiers(context, namedNode.name)
+                    extendScopeIdentifiers(node, namedNode.name)
                 }
                 break
             }
@@ -280,15 +246,15 @@ function recordScopeIdentifiers(context: TsWalkContext) {
     }
     for (const declaration of declarations) {
         walkPatternIdentifiers(declaration.name, identifier => {
-            let scopeContext: TsWalkContext = context
+            let scopeNode: TsNodeWithContext = node
             const isVar = isVariableDeclarationListWithVar(
                 declaration.parent as ts.VariableDeclarationList
             )
-            if (isVar && !context.isNonHoistableScopeBoundary) {
-                scopeContext = context.nonHoistableScope!
+            if (isVar && !node.isNonHoistableScopeBoundary) {
+                scopeNode = getNonHoistableScope(node)!
             }
-            if (!ts.isSourceFile(scopeContext.value)) {
-                extendScopeIdentifiers(scopeContext, identifier)
+            if (!ts.isSourceFile(scopeNode)) {
+                extendScopeIdentifiers(scopeNode, identifier)
             }
         })
     }
