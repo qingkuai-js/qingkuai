@@ -5,13 +5,13 @@ import type { StringLiteralDetail, ReusedStringReference } from "#type-declarati
 
 import ts from "typescript"
 
+import { getNodeRange } from "../ts-ast/sundry"
 import { stringify } from "../../util/shared/aliases"
 import { isUndefined } from "../../util/shared/assert"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
 import { isValidIdentifierName } from "../../util/compiler/assert"
 import { newCleanObj, traverseObject } from "../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../state"
-import { getNodeRange } from "../ts-ast/sundry"
 
 export function writeStringLiteralsDeclarations(
     writer: RuntimeCodeWriter,

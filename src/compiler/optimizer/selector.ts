@@ -1,4 +1,5 @@
 import type {
+    Range,
     TemplateNode,
     ParsedExpression,
     TemplateAttribute,
@@ -7,18 +8,20 @@ import type {
 } from "#type-declarations/compiler"
 import type { RuntimeCodeWriter } from "../transformer/writer"
 
+import ts from "typescript"
+
 import {
     getParsedDirective,
     getParsedExpression,
     getTemplateNodeContext
 } from "../../util/compiler/template"
-import { walkEstree } from "../estree/walk"
+import { walkTsNode } from "../ts-ast/walk"
 import { getMaybeReusedString } from "./compress"
 import { CodeEditor } from "../transformer/editor"
-import { isExpressionEqual } from "../estree/assert"
-import { stripTypeExpressions } from "../estree/sundry"
 import { analyzeResult, generateIdentifier } from "../state"
+import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../util/compiler/sundry"
+import { isBindingReference, isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert"
 
 export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
     const keyDirective = forNodeContext.attributesMap["#key"]
@@ -36,12 +39,8 @@ export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
         return []
     }
 
-    const keyNode = stripTypeExpressions(parsedKeyExpression.node)
-    if (
-        keyNode.type !== "Identifier" &&
-        keyNode.type !== "MemberExpression" &&
-        keyNode.type !== "OptionalMemberExpression"
-    ) {
+    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
+    if (ts.isIdentifier(keyNode) && isMemberAccessExpression(keyNode)) {
         return []
     }
 
@@ -222,16 +221,11 @@ function validateSelectorExpression(
         }
     }
 
-    const keyNode = stripTypeExpressions(parsedKeyExpression.node)
-    const keyRanges: [number, number][] = []
-    walkEstree(expression.node, {
-        AnyNode(node) {
-            if (!node.range) {
-                return
-            }
-            if (isExpressionEqual(node as any, keyNode as any)) {
-                keyRanges.push([node.range[0], node.range[1]])
-            }
+    const keyRanges: Range[] = []
+    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
+    walkTsNode(expression.node, node => {
+        if (isExpressionEqual(node, keyNode)) {
+            keyRanges.push([node.getStart(), node.getEnd()])
         }
     })
     if (!keyRanges.length) {
@@ -246,27 +240,25 @@ function validateSelectorExpression(
     }
 
     let valid = true
-    walkEstree(expression.node, {
-        Identifier(node, context) {
-            if (!valid || !context.isBindingReference) {
-                return
-            }
-
-            const range = node.range!
-            const isTopLevelIdentifier =
-                node.name === topLevelIdentifierName &&
-                expression.topLevelReferences[topLevelIdentifierName].some(item => {
-                    return item.range[0] === range[0] && item.range[1] === range[1]
-                })
-            if (isTopLevelIdentifier) {
-                return
-            }
-
-            if (isRangeCovered(range, normalizedKeyRanges)) {
-                return
-            }
-            valid = false
+    walkTsNode(expression.node, node => {
+        if (!valid || !ts.isIdentifier(node) || !isBindingReference(node)) {
+            return
         }
+
+        const range: Range = [node.getStart(), node.getEnd()]
+        const isTopLevelIdentifier =
+            node.text === topLevelIdentifierName &&
+            expression.topLevelReferences[topLevelIdentifierName].some(item => {
+                return item.range[0] === range[0] && item.range[1] === range[1]
+            })
+        if (isTopLevelIdentifier) {
+            return
+        }
+
+        if (isRangeCovered(range, normalizedKeyRanges)) {
+            return
+        }
+        valid = false
     })
 
     if (!valid) {
@@ -355,16 +347,11 @@ function writeSelectorExpression(
         }
     }
 
-    const keyNode = stripTypeExpressions(parsedKeyExpression.node)
-    const keyRanges: [number, number][] = []
-    walkEstree(parsedExpression.node, {
-        AnyNode(node) {
-            if (!node.range) {
-                return
-            }
-            if (isExpressionEqual(node as any, keyNode as any)) {
-                keyRanges.push([node.range[0], node.range[1]])
-            }
+    const keyRanges: Range[] = []
+    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
+    walkTsNode(parsedExpression.node, node => {
+        if (isExpressionEqual(node, keyNode)) {
+            keyRanges.push([node.getStart(), node.getEnd()])
         }
     })
     for (const [start, end] of normalizeRanges(keyRanges).toSorted((a, b) => b[0] - a[0])) {
@@ -380,17 +367,17 @@ function walk(node: TemplateNode, callback: (node: TemplateNode) => void) {
     }
 }
 
-function isRangeCovered(range: [number, number], ranges: [number, number][]) {
+function isRangeCovered(range: Range, ranges: Range[]) {
     return ranges.some(item => {
         return item[0] <= range[0] && item[1] >= range[1]
     })
 }
 
-function normalizeRanges(ranges: [number, number][]) {
+function normalizeRanges(ranges: Range[]) {
     const sorted = ranges
-        .map(item => [item[0], item[1]] as [number, number])
+        .map(item => [item[0], item[1]] as Range)
         .toSorted((a, b) => a[0] - b[0] || b[1] - a[1])
-    const ret: [number, number][] = []
+    const ret: Range[] = []
     for (const current of sorted) {
         const prev = ret[ret.length - 1]
         if (!prev) {
