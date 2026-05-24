@@ -2,8 +2,8 @@ import ts from "typescript"
 
 import { expect, test } from "vitest"
 import {
-    stripTypeExpressions,
-    findFirstChildUntil
+    findFirstChildUntil,
+    getStriptTypeOperationsNode
 } from "../../../../../src/compiler/ts-ast/sundry"
 import { parseTsScript } from "../../../../../src/util/testing/ts-ast"
 
@@ -12,7 +12,7 @@ test("Function: stripTypeExpressions returns original node for non-type operatio
     const binary = findFirstChildUntil(sourceFile, ts.isBinaryExpression)
     expect(binary).toBeTruthy()
 
-    expect(stripTypeExpressions(binary!)).toBe(binary)
+    expect(getStriptTypeOperationsNode(binary!)).toBe(binary)
 })
 
 test("Function: stripTypeExpressions strips nested type operations", () => {
@@ -20,7 +20,7 @@ test("Function: stripTypeExpressions strips nested type operations", () => {
     const asExpr = findFirstChildUntil(sourceFile, ts.isAsExpression)
     expect(asExpr).toBeTruthy()
 
-    const stripped = stripTypeExpressions(asExpr!)
+    const stripped = getStriptTypeOperationsNode(asExpr!)
     expect(ts.isIdentifier(stripped)).toBeTruthy()
     expect((stripped as ts.Identifier).text).toBe("b")
 })
@@ -30,7 +30,7 @@ test("Function: stripTypeExpressions strips non-null expression", () => {
     const nonNull = findFirstChildUntil(sourceFile, ts.isNonNullExpression)
     expect(nonNull).toBeTruthy()
 
-    const stripped = stripTypeExpressions(nonNull!)
+    const stripped = getStriptTypeOperationsNode(nonNull!)
     expect(ts.isIdentifier(stripped)).toBeTruthy()
     expect((stripped as ts.Identifier).text).toBe("b")
 })

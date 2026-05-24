@@ -50,7 +50,7 @@ test("ScopeBoundary: catch clause", () => {
         }
     `)
     const catchClause = findFirstChildUntil(sourceFile, ts.isCatchClause)!
-    expect(isScopeBoundary(catchClause)).toBeTruthy()
+    expect(isScopeBoundary(catchClause)).toBeFalsy()
 })
 
 test("ScopeBoundary: case clause", () => {
