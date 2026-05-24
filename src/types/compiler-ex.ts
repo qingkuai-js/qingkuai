@@ -7,7 +7,7 @@ import type {
     TemplateAttribute,
     StandaloneParseTemplateOptions
 } from "#type-declarations/compiler"
-import type { ContextPattern } from "#type-declarations/estree"
+import type { ArrayBindingElement } from "typescript"
 
 export interface Camel2KebabFunc {
     /**
@@ -396,7 +396,7 @@ export interface ParseDirectiveValueFunc {
         base: string
         keywordIndex: number
         baseStartSourceIndex: number
-        patterns: ContextPattern[]
+        patterns: ArrayBindingElement[]
         messages?: CompileMessage[]
     }
 }

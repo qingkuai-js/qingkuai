@@ -3,16 +3,15 @@ import ts from "typescript"
 import { expect, test } from "vitest"
 import { NOOP } from "../../../../../src/runtime/constants"
 import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk"
-import { isContextPattern } from "../../../../../src/compiler/ts-ast/assert"
-import { walkPatternIdentifiers } from "../../../../../src/compiler/ts-ast/walk"
 import { findFirstAncestorUntil } from "../../../../../src/compiler/ts-ast/sundry"
+import { walkBindingNameIdentifiers } from "../../../../../src/compiler/ts-ast/walk"
 import { parseScript, parseContextPattern } from "../../../../../src/compiler/parser/script"
 
 function extractIdentifiers(source: string) {
     const result: string[][] = []
     const existingIdentifiers = new Set<string>()
     walkTsNode(parseScript(source), node => {
-        if (!isContextPattern(node) || findFirstAncestorUntil(node, isContextPattern)) {
+        if (!ts.isBindingName(node) || findFirstAncestorUntil(node, ts.isBindingName)) {
             return
         }
 
@@ -27,7 +26,7 @@ function extractIdentifiers(source: string) {
             }
         }
 
-        walkPatternIdentifiers(node, (id, path) => {
+        walkBindingNameIdentifiers(node, (id, path) => {
             if (!existingIdentifiers.has(id.text)) {
                 existingIdentifiers.add(id.text)
                 result.push([id.text, path])
@@ -41,7 +40,7 @@ test("Whether default value is specified", () => {
     function expectedDefaultValueIsSpecified(source: string, expected: boolean) {
         const pattern: ts.ArrayBindingPattern = parseContextPattern(source)!
         expect(
-            walkPatternIdentifiers(pattern, NOOP).specifiedDefaultValue,
+            walkBindingNameIdentifiers(pattern, NOOP).specifiedDefaultValue,
             `source: ${source}`
         ).toBe(expected)
     }

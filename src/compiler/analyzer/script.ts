@@ -46,6 +46,12 @@ import {
     isFunctionLiteral,
     isVariableDeclarationListWithVar
 } from "../ts-ast/assert"
+import {
+    getNodeRange,
+    markNeedSourcemap,
+    getStriptTypeOperationsNode,
+    getStriptTypeOperationsParent
+} from "../ts-ast/sundry"
 import { analyzeExports } from "./exports"
 import { parseScript } from "../parser/script"
 import { PRESERVED_IDPREFIX } from "../constants"
@@ -54,13 +60,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
 import { isInHoistableTopLevel, isIdentifierAssignmentTarget } from "../ts-ast/context"
-import { walkAncestors, walkPatternIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
-import {
-    getNodeRange,
-    markNeedSourcemap,
-    getStriptTypeOperationsNode,
-    getStriptTypeOperationsParent
-} from "../ts-ast/sundry"
+import { walkAncestors, walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
     const sourceCode = inputDescriptor.script.code
@@ -257,7 +257,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
         const destructuringIdentifierNames: string[] | undefined = ts.isIdentifier(declaration.name)
             ? undefined
             : []
-        const patternInfo = walkPatternIdentifiers(declaration.name, (identifier, path) => {
+        const patternInfo = walkBindingNameIdentifiers(declaration.name, (identifier, path) => {
             const initNode = declaration.initializer
 
             // `let/var` 声明对衍生响应式值无意义，它不可被修改

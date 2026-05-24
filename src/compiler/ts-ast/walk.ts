@@ -1,9 +1,8 @@
 import type {
     NamedNode,
-    ContextPattern,
+    ScopeBoundary,
     ForStatementLike,
-    TsNodeWithContext,
-    ScopeBoundary
+    TsNodeWithContext
 } from "#type-declarations/ts-ast"
 
 import ts from "typescript"
@@ -49,15 +48,15 @@ export function walkTsNodeWithContext(node: ts.Node, callback: (node: TsNodeWith
     })
 }
 
-// 递归遍历一个 Pattern 节点，当遇到绑定标识符时，调用传入的 callback，并传入当前标识符节点及其访问路径
-// Recursively traverse a Pattern node. When a binding identifier is encountered, invoke the
+// 递归遍历一个 BindingName 节点，当遇到绑定标识符时，调用传入的 callback，并传入当前标识符节点及其访问路径
+// Recursively traverse a BindingName node. When a binding identifier is encountered, invoke the
 // provided callback with the current identifier node and its access path.
 //
 // 注意：通过此方法分析解构模式的访问路径时，只有模式中未使用剩余元素语法才能得到精确的静态访问路径
 // Note: When analyzing access paths of destructuring patterns using this method,
 // precise static access paths can only be obtained if the pattern does not use rest elements.
-export function walkPatternIdentifiers(
-    pattern: ContextPattern,
+export function walkBindingNameIdentifiers(
+    pattern: ts.BindingName,
     callback: (id: ts.Identifier, path: string) => void
 ) {
     const result = {
@@ -65,7 +64,7 @@ export function walkPatternIdentifiers(
         specifiedDefaultValue: false
     }
 
-    ;(function extract(from: ContextPattern, path: string): void | boolean {
+    ;(function extract(from: ts.BindingName, path: string): void | boolean {
         if (ts.isIdentifier(from)) {
             return callback(from, path)
         }
@@ -153,7 +152,7 @@ function attchContextToNode(node: ts.Node) {
 // 记录上下文中含有的作用域标识符
 // Record the scope identifiers present in the context.
 function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
-    const patterns: ContextPattern[] = []
+    const patterns: ts.BindingName[] = []
     const declarations: ts.VariableDeclaration[] = []
     const parent = getStriptTypeOperationsParent(node)! as ts.Node
     const statements = "statements" in node ? node.statements : [node]
@@ -211,7 +210,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
         }
     }
     for (const pattern of patterns) {
-        walkPatternIdentifiers(pattern, identifier => {
+        walkBindingNameIdentifiers(pattern, identifier => {
             extendScopeIdentifiers(node, identifier)
         })
     }
@@ -245,7 +244,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
         }
     }
     for (const declaration of declarations) {
-        walkPatternIdentifiers(declaration.name, identifier => {
+        walkBindingNameIdentifiers(declaration.name, identifier => {
             let scopeNode: TsNodeWithContext = node
             const isVar = isVariableDeclarationListWithVar(
                 declaration.parent as ts.VariableDeclarationList

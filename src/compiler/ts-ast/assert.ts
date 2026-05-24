@@ -1,4 +1,4 @@
-import type { ContextPattern, NamedNode, ScopeBoundary } from "#type-declarations/ts-ast"
+import type { NamedNode, ScopeBoundary } from "#type-declarations/ts-ast"
 
 import ts from "typescript"
 
@@ -46,6 +46,10 @@ export function isLiteral(node: ts.Node) {
     return false
 }
 
+export function isValidContextPattern(node: ts.ArrayBindingElement) {
+    return ts.isOmittedExpression(node) || !node.dotDotDotToken
+}
+
 export function isParameterProperty(param: ts.ParameterDeclaration) {
     return !!param.modifiers?.some(mod => {
         return (
@@ -77,19 +81,6 @@ export function isLastNodeOfParenthesis(node: ts.Node) {
         return node.parent.right === node
     }
     return false
-}
-
-export function isContextPattern(node: ts.Node): node is ContextPattern {
-    switch (node.kind) {
-        case ts.SyntaxKind.Identifier:
-        case ts.SyntaxKind.ArrayBindingPattern:
-        case ts.SyntaxKind.ObjectBindingPattern: {
-            return true
-        }
-        default: {
-            return false
-        }
-    }
 }
 
 // 判断节点是否为更新表达式（++ 或 --）
@@ -270,7 +261,7 @@ export function isLeftValue(node: ts.Node): boolean {
     }
     node = getStriptTypeOperationsNode(node)!
 
-    if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+    if (isMemberAccessExpression(node)) {
         return !node.questionDotToken && isLeftValue(node.expression)
     }
     if (ts.isIdentifier(node)) {
@@ -361,4 +352,8 @@ export function isExpressionEqual(a: ts.Node, b: ts.Node): boolean {
             return false
         }
     }
+}
+
+export function isMemberAccessExpression(node: ts.Node) {
+    return ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)
 }

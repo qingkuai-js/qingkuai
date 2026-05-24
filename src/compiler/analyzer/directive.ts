@@ -4,7 +4,8 @@ import type {
     ParsedDirective,
     TemplateAttribute
 } from "#type-declarations/compiler"
-import type { ContextPattern } from "#type-declarations/estree"
+
+import ts from "typescript"
 
 import {
     InvalidSlotName,
@@ -28,18 +29,18 @@ import {
     getNonWhiteSpaceLocByLoc,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
-import { isContextPattern } from "../estree/assert"
-import { markNeedSourcemap } from "../estree/sundry"
+import { markNeedSourcemap } from "../ts-ast/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
-import { walkEstree, walkPatternIdentifiers } from "../estree/walk"
+import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+import { isValidContextPattern } from "../ts-ast/assert"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
     let conflictingDirective: TemplateAttribute | undefined
@@ -105,8 +106,9 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 } else {
                     const expression = localAnalyzeInterpolation(base, baseStartSourceIndex)
                     if (
-                        expression?.type !== "StringLiteral" &&
-                        (expression?.type !== "TemplateLiteral" || expression.expressions.length)
+                        !expression ||
+                        ts.isStringLiteral(expression) ||
+                        ts.isNoSubstitutionTemplateLiteral(expression)
                     ) {
                         ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
                             getNonWhitespaceLocByIndex(
@@ -198,7 +200,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
 
             if (directive.valueEnclosure !== "none") {
-                const patterns: ContextPattern[] = []
+                const patterns: ts.ArrayBindingElement[] = []
                 const parseResult = parseContextPattern(rawValue)
 
                 const reportInvalidPattern = (start: number, end: number) => {
@@ -212,12 +214,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     )
                 } else {
                     for (const element of parseResult.elements) {
-                        if (isContextPattern(element)) {
+                        if (isValidContextPattern(element)) {
                             patterns.push(element)
                         } else {
                             reportInvalidPattern(
-                                valueStartSourceIndex + element.start!,
-                                valueStartSourceIndex + element.end!
+                                valueStartSourceIndex + element.getStart(),
+                                valueStartSourceIndex + element.getEnd()
                             )
                         }
                     }
@@ -306,7 +308,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
     function recordContextPatterns(
         parsedDirective: ParsedDirective,
-        patternNodes: ContextPattern[]
+        patternNodes: ts.ArrayBindingElement[]
     ) {
         for (const patternNode of patternNodes) {
             const validIdentifiers = new Set<string>()
@@ -318,31 +320,30 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
             parsedDirective.patterns.push(parsedPattern)
 
-            if (patternNode) {
+            if (!ts.isOmittedExpression(patternNode)) {
                 if (inputDescriptor.options.sourcemap) {
-                    walkEstree(patternNode, {
-                        AnyNode(node) {
-                            markNeedSourcemap(node, valueStartSourceIndex)
-                        }
+                    walkTsNode(patternNode, node => {
+                        markNeedSourcemap(node, valueStartSourceIndex)
                     })
                 }
                 parsedPattern.sourceRange = [
-                    valueStartSourceIndex + patternNode.start!,
-                    valueStartSourceIndex + patternNode.end!
+                    valueStartSourceIndex + patternNode.getStart(),
+                    valueStartSourceIndex + patternNode.getEnd()
                 ]
-                walkPatternIdentifiers(patternNode, ({ name }) => {
-                    validIdentifiers.add(name)
-                    analyzeResult.script.fullIdentifiers.add(name)
-                    nodeContext.contextIdentifiers[name] = parsedDirective
+                walkBindingNameIdentifiers(patternNode.name, ({ text }) => {
+                    validIdentifiers.add(text)
+                    analyzeResult.script.fullIdentifiers.add(text)
+                    nodeContext.contextIdentifiers[text] = parsedDirective
                 })
-            }
-            if (patternNode && validIdentifiers.size === 0) {
-                EmptyContextPattern(
-                    getNonWhitespaceLocByIndex(
-                        valueStartSourceIndex + patternNode.start!,
-                        valueStartSourceIndex + patternNode.end!
+
+                if (validIdentifiers.size === 0) {
+                    EmptyContextPattern(
+                        getNonWhitespaceLocByIndex(
+                            valueStartSourceIndex + patternNode.getStart(),
+                            valueStartSourceIndex + patternNode.getEnd()
+                        )
                     )
-                )
+                }
             }
         }
     }

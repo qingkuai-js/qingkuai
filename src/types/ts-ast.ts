@@ -43,6 +43,5 @@ export type TsNodeWithContext<T extends ts.Node = ts.Node> = T & {
     scopeIdentifiers: Set<string> | undefined
 }
 
-export type ContextPattern = ts.Identifier | ts.BindingPattern
 export type FindNodesPredicate<T extends ts.Node> = (node: ts.Node) => node is T
 export type ForStatementLike = ts.ForStatement | ts.ForInStatement | ts.ForOfStatement

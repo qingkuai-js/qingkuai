@@ -1,6 +1,6 @@
 import type ts from "typescript"
 import type { Pair } from "#type-declarations/tools"
-import type { ContextPattern, TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
+import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
 
 export interface CompileWarning {
     loc: ASTLocation
@@ -169,8 +169,8 @@ export interface ComponentTagPart {
 }
 export interface ParsedPattern {
     sourceRange: Range
-    node: ContextPattern
     directive: ParsedDirective
+    node: ts.ArrayBindingElement
     declaredIdentifiers: Set<string>
 }
 export interface ParsedDirective {

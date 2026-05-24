@@ -1,8 +1,8 @@
 import ts from "typescript"
 
 import { analyzeResult } from "../state"
-import { walkPatternIdentifiers } from "../ts-ast/walk"
 import { InvalidExportStatement } from "../message/error"
+import { walkBindingNameIdentifiers } from "../ts-ast/walk"
 import { getScriptLocByNode } from "../../util/compiler/position"
 
 export function analyzeExports(sourceFile: ts.SourceFile) {
@@ -103,7 +103,7 @@ export function analyzeExports(sourceFile: ts.SourceFile) {
 
                 if (ts.isVariableStatement(statement)) {
                     for (const declaration of statement.declarationList.declarations) {
-                        walkPatternIdentifiers(declaration.name, id => {
+                        walkBindingNameIdentifiers(declaration.name, id => {
                             analyzeResult.script.exportedBindings.push({
                                 local: id.text,
                                 exported: id.text

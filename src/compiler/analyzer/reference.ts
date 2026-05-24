@@ -2,7 +2,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
-import { isLeftValue } from "../estree/assert"
+import { isLeftValue } from "../ts-ast/assert"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
