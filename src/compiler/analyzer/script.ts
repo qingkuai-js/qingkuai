@@ -508,7 +508,7 @@ function updateTopLevelIdentifiers(
             implicit,
             accessor,
             path: "",
-            transofrmedTo: "",
+            transofrmeTo: "",
             nodeInfos: [nodeInfo],
             usedExpressions: new Set()
         }

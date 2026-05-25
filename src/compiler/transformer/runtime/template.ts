@@ -150,7 +150,7 @@ export function generateTemplateRender(
 
         for (const [exported, local] of exportedBindings) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
-            const transformed = topLevelIdentifier?.transofrmedTo || local
+            const transformed = topLevelIdentifier?.transofrmeTo || local
             writer.wrapLine()
             writeContextKey(exported, writer)
             writer.write(`:  ${getterArgId} => (${transformed}),`)

@@ -90,20 +90,20 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             case "shallow":
             case "reactive": {
                 transformReactiveDeclaration(name, info)
-                info.transofrmedTo = identifierMap[name] ?? name
-                return (info.transofrmedTo += info.accessor ? ".$" : "")
+                info.transofrmeTo = identifierMap[name] ?? name
+                return (info.transofrmeTo += info.accessor ? ".$" : "")
             }
             case "derived": {
                 transformDerivedDeclaration(name, info)
-                return (info.transofrmedTo = `${identifierMap[name] ?? name}.$`)
+                return (info.transofrmeTo = `${identifierMap[name] ?? name}.$`)
             }
             case "alias": {
                 transformAliasDeclaration(name, info)
 
                 if (!debugMode) {
-                    info.transofrmedTo = info.path
+                    info.transofrmeTo = info.path
                 } else {
-                    info.transofrmedTo = `${name}[${internalId}.REFERENCE_VALUE]`
+                    info.transofrmeTo = `${name}[${internalId}.REFERENCE_VALUE]`
                 }
                 return
             }
@@ -115,7 +115,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     traverseObject(topLevelIdentifiers, (name, info) => {
         if (topLevelReferences[name]) {
             for (const reference of topLevelReferences[name]) {
-                const { hoist, transofrmedTo, status } = info
+                const { hoist, transofrmeTo: transofrmedTo, status } = info
                 if (!transofrmedTo) {
                     continue
                 }
