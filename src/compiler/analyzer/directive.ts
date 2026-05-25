@@ -32,6 +32,7 @@ import {
 import { markNeedSourcemap } from "../ts-ast/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
+import { isValidContextPattern } from "../ts-ast/assert"
 import { parseDirectiveValue } from "../parser/directive"
 import { analyzeResult, inputDescriptor } from "../state"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
@@ -40,7 +41,6 @@ import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
 import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { isValidContextPattern } from "../ts-ast/assert"
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
     let conflictingDirective: TemplateAttribute | undefined
@@ -107,8 +107,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     const expression = localAnalyzeInterpolation(base, baseStartSourceIndex)
                     if (
                         !expression ||
-                        ts.isStringLiteral(expression) ||
-                        ts.isNoSubstitutionTemplateLiteral(expression)
+                        !(
+                            ts.isStringLiteral(expression) ||
+                            ts.isNoSubstitutionTemplateLiteral(expression)
+                        )
                     ) {
                         ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
                             getNonWhitespaceLocByIndex(

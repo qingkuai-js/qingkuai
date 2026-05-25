@@ -1,7 +1,8 @@
 import type { CodeEditor } from "./editor"
-import type { AnyNode, PartialAnyNode } from "#type-declarations/estree"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 import type { ASTLocation, ASTPosition, Range, TemplateNode } from "#type-declarations/compiler"
+
+import ts from "typescript"
 
 import {
     getPosByIndex,
@@ -11,6 +12,7 @@ import {
 import { PositionFlag } from "../enums"
 import { inputDescriptor } from "../state"
 import { nonWhitespaceRE } from "../regular"
+import { getNodeRange } from "../ts-ast/sundry"
 import { isNumber } from "../../util/shared/assert"
 import { encode } from "@jridgewell/sourcemap-codec"
 import { transformInterpolatedText, writeParsedExpression } from "./runtime/interpolation"
@@ -100,9 +102,9 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return (this.writeCharacter("", sourceLoc.end.index), this)
     }
 
-    writeScriptNode(node: PartialAnyNode, dedent = true) {
+    writeScriptNode(node: ts.Node, dedent = true) {
         if (node) {
-            const range = node.range!
+            const range = getNodeRange(node)
             const str = inputDescriptor.script.code.slice(...range)
             for (let i = 0; i < str.length; i++) {
                 if (
@@ -210,14 +212,14 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
         }
     }
 
-    writeScriptNode(node: AnyNode) {
+    writeScriptNode(node: ts.Node) {
         const startSourceIndex = inputDescriptor.script.loc.start.index
         return this.write(
             inputDescriptor.source.slice(
-                startSourceIndex + node.start!,
-                startSourceIndex + node.end!
+                startSourceIndex + node.getStart(),
+                startSourceIndex + node.getEnd()
             ),
-            startSourceIndex + node.start!
+            startSourceIndex + node.getStart()
         )
     }
 
