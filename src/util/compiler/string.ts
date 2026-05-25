@@ -66,13 +66,6 @@ export function findNonWhitespaceChar(str: string, start: number) {
     return start
 }
 
-export function findNonWhitespaceCharRight(str: string, start: number) {
-    while (start > 0 && !nonWhitespaceRE.test(str[start - 1])) {
-        start--
-    }
-    return start
-}
-
 // 生成在脚本源码中脱离指定范围（字符串、注释）查找子串（或正则）的方法
 // Generate methods to search for a substring (or RegExp) in script source code,
 // excluding matches that appear inside specified ranges (e.g., strings or comments).

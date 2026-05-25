@@ -11,13 +11,12 @@ import {
     isScopeBoundary,
     isBindingReference,
     isParameterProperty,
-    isNonHoistableScopeBoundary,
-    isVariableDeclarationListWithVar
+    isNonHoistableScopeBoundary
 } from "./assert"
 import { getNonHoistableScope } from "./context"
 import { objectAssign } from "../../util/shared/aliases"
-import { getStriptTypeOperationsParent } from "./sundry"
 import { intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
+import { getStriptTypeOperationsParent, getVariableDeclareKeyword } from "./sundry"
 
 export function walkAncestors(
     node: TsNodeWithContext,
@@ -246,10 +245,10 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
     for (const declaration of declarations) {
         walkBindingNameIdentifiers(declaration.name, identifier => {
             let scopeNode: TsNodeWithContext = node
-            const isVar = isVariableDeclarationListWithVar(
+            const declareKeyword = getVariableDeclareKeyword(
                 declaration.parent as ts.VariableDeclarationList
             )
-            if (isVar && !node.isNonHoistableScopeBoundary) {
+            if (declareKeyword === "var" && !node.isNonHoistableScopeBoundary) {
                 scopeNode = getNonHoistableScope(node)!
             }
             if (!ts.isSourceFile(scopeNode)) {

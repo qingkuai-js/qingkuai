@@ -1,6 +1,7 @@
 import type { GenerateIdentifier, TemplateNode } from "#type-declarations/compiler"
 
 import { CodeEditor } from "../editor"
+import { eliminate } from "../eliminate"
 import { RuntimeCodeWriter } from "../writer"
 import { transformEmbeddedScript } from "./script"
 import { generateTemplateRender } from "./template"
@@ -8,7 +9,6 @@ import { arrayFrom } from "../../../util/shared/arrays"
 import { objectAssign } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
 import { ensureIdWithPrefix } from "../../../util/compiler/sundry"
-import { findNonWhitespaceCharRight } from "../../../util/compiler/string"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragment"
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress"
@@ -35,11 +35,11 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const templateFragments = getTemplateFragments(nodes)
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
-    for (const declaration of analyzeResult.script.importDeclarations) {
-        writer.writeScriptNode(declaration.value).wrapLine()
+    for (const decl of analyzeResult.script.importDeclarations) {
+        writer.writeScriptNode(decl).wrapLine()
     }
+    eliminate(embeddedScriptEditor)
     writer.write(`import * as ${internalId} from "qingkuai/internal"`).wrapLine(2)
-    removeEliminatedNodes(embeddedScriptEditor)
     writeStringLiteralsDeclarations(writer, templateFragments)
     writeFragmentGetterDeclarations(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
@@ -67,19 +67,6 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         writer.wrapLine()
     }
     return (generateTemplateRender(writer, nodes), writer.dedent().write("}"))
-}
-
-export function removeEliminatedNodes(editor: CodeEditor) {
-    const { eliminatedNodes } = analyzeResult.script
-    const scriptSource = inputDescriptor.script.code
-    const sortedEliminatedNodes = arrayFrom(eliminatedNodes).sort((a, b) => {
-        return a.start! - b.start!
-    })
-    for (let i = 0, prevEnd = 0; i < sortedEliminatedNodes.length; i++) {
-        const elininatedNode = sortedEliminatedNodes[i]
-        const start = findNonWhitespaceCharRight(scriptSource, elininatedNode.start!)
-        editor.remove(Math.max(prevEnd, start), (prevEnd = elininatedNode.end!))
-    }
 }
 
 // 将需要委托的事件名称列表设置到 context.e

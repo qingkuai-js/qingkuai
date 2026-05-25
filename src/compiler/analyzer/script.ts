@@ -40,15 +40,9 @@ import {
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
 import {
-    isLiteral,
-    isLeftValue,
-    isTypeOperation,
-    isFunctionLiteral,
-    isVariableDeclarationListWithVar
-} from "../ts-ast/assert"
-import {
     getNodeRange,
     markNeedSourcemap,
+    getVariableDeclareKeyword,
     getStriptTypeOperationsNode,
     getStriptTypeOperationsParent
 } from "../ts-ast/sundry"
@@ -60,6 +54,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
 import { isInHoistableTopLevel, isIdentifierAssignmentTarget } from "../ts-ast/context"
+import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../ts-ast/assert"
 import { walkAncestors, walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
@@ -246,7 +241,8 @@ function analyzeIdentifier(node: TsNodeWithContext<ts.Identifier>) {
 }
 
 function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDeclarationList>) {
-    if (isVariableDeclarationListWithVar(node) ? !isInHoistableTopLevel(node) : !node.inTopLevel) {
+    const declareKeyword = getVariableDeclareKeyword(node)
+    if (declareKeyword === "var" ? !isInHoistableTopLevel(node) : !node.inTopLevel) {
         return
     }
 
@@ -262,10 +258,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
 
             // `let/var` 声明对衍生响应式值无意义，它不可被修改
             // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
-            if (
-                status === "derived" &&
-                (isVariableDeclarationListWithVar(node) || node.flags & ts.NodeFlags.Let)
-            ) {
+            if (status === "derived" && (declareKeyword === "var" || declareKeyword === "let")) {
                 UnnecessaryMutableDerivedDeclaration(getScriptLocByNode(declaration))
             }
 
@@ -289,7 +282,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
                 }
             }
 
-            const hoist = isVariableDeclarationListWithVar(node)
+            const hoist = declareKeyword === "var"
             const implicit = status === "pending" || status === "literal"
             updateTopLevelIdentifiers(
                 identifier,
@@ -351,7 +344,8 @@ function inferStatusByVariableDeclaration(
     declaration: ts.VariableDeclaration,
     declarationList: ts.VariableDeclarationList
 ): IdentifierStatus {
-    if (declarationList.flags & ts.NodeFlags.Using) {
+    const declareKeyword = getVariableDeclareKeyword(declarationList)
+    if (declareKeyword === "using") {
         return "raw"
     }
 
@@ -359,9 +353,9 @@ function inferStatusByVariableDeclaration(
         ts.isIdentifier(declaration.name) &&
         declaration.name.text.startsWith("$") &&
         inputDescriptor.options.shorthandDerivedDeclaration
+    const isConst = declareKeyword === "const"
     const declarationLoc = getScriptLocByNode(declaration)
     const isDestructuring = !ts.isIdentifier(declaration.name)
-    const isConst = !!(declarationList.flags & ts.NodeFlags.Const)
     const initNode =
         declaration.initializer && getStriptTypeOperationsNode(declaration.initializer, true)
 
@@ -495,9 +489,8 @@ function updateTopLevelIdentifiers(
                     break
                 }
                 default: {
-                    accessor =
-                        !!(declaration.flags & ts.NodeFlags.Let) ||
-                        isVariableDeclarationListWithVar(declaration)
+                    const declareKeyword = getVariableDeclareKeyword(declaration)
+                    accessor = declareKeyword === "var" || declareKeyword === "let"
                     break
                 }
             }
@@ -617,7 +610,9 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                     ) {
                         CannotAliasIdentifier(intrinsicCallLoc)
                     }
-                    if (grandParentNode.flags & ts.NodeFlags.Using) {
+
+                    const declarationList = grandParentNode.parent as ts.VariableDeclarationList
+                    if (getVariableDeclareKeyword(declarationList) === "using") {
                         IntrinsicNotAllowedInUsingDeclaration(
                             getScriptLocByNode(grandParentNode),
                             intrinsicName

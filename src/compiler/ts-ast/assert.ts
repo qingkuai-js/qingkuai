@@ -270,14 +270,6 @@ export function isLeftValue(node: ts.Node): boolean {
     return false
 }
 
-export function isVariableDeclarationListWithVar(node: ts.VariableDeclarationList) {
-    return !(
-        node.flags & ts.NodeFlags.Let ||
-        node.flags & ts.NodeFlags.Const ||
-        node.flags & ts.NodeFlags.Using
-    )
-}
-
 export function isInlineEventHandler(node: ts.Node) {
     switch (node.kind) {
         case ts.SyntaxKind.Identifier:

@@ -1,6 +1,8 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { TemplateNode } from "#type-declarations/compiler"
 
+import ts from "typescript"
+
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
 import { traverseObject } from "../../../util/shared/sundry"
@@ -13,19 +15,19 @@ export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourc
     replaceReusedStringReferences(editor, parsedExpression.reusedStringReferences)
     traverseObject(parsedExpression.topLevelReferences, (key, value) => {
         const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[key]
-        if (topLevelIdentifier && topLevelIdentifier.transofrmedTo) {
+        if (topLevelIdentifier && topLevelIdentifier.transofrmeTo) {
             for (const reference of value) {
                 if (reference.shorthand) {
-                    editor.insert(reference.range[1], `: ${topLevelIdentifier.transofrmedTo}`)
+                    editor.insert(reference.range[1], `: ${topLevelIdentifier.transofrmeTo}`)
                 } else {
-                    editor.replace(...reference.range, topLevelIdentifier.transofrmedTo, true)
+                    editor.replace(...reference.range, topLevelIdentifier.transofrmeTo, true)
                 }
             }
         }
     })
     for (const reference of parsedExpression.contextReferences) {
         const parsedPattern = reference.pattern
-        if (!parsedPattern || parsedPattern.node!.type !== "Identifier") {
+        if (!parsedPattern || ts.isIdentifier(parsedPattern.node)) {
             continue
         }
 

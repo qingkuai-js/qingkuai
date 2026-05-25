@@ -37,6 +37,22 @@ export function findFirstAncestorUntil<T extends ts.Node>(
     return null
 }
 
+export function getVariableDeclareKeyword(node: ts.VariableDeclarationList) {
+    if (node.flags & ts.NodeFlags.Let) {
+        return "let"
+    }
+    if (node.flags & ts.NodeFlags.Const) {
+        if (node.flags & ts.NodeFlags.Using) {
+            return "await using"
+        }
+        return "const"
+    }
+    if (node.flags & ts.NodeFlags.Using) {
+        return "using"
+    }
+    return "var"
+}
+
 export function markNeedSourcemap(node: ts.Node, startSourceIndex: number) {
     markPositionFlag(PositionFlag.SourcemapEnd, startSourceIndex + node.getEnd())
     markPositionFlag(PositionFlag.SourcemapStart, startSourceIndex + node.getStart())

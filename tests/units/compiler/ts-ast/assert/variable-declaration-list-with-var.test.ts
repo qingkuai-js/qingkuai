@@ -1,16 +1,18 @@
 import ts from "typescript"
 
 import { expect, test } from "vitest"
+import {
+    findFirstChildUntil,
+    getVariableDeclareKeyword
+} from "../../../../../src/compiler/ts-ast/sundry"
 import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk"
 import { parseTsScript } from "../../../../../src/util/testing/ts-ast"
-import { findFirstChildUntil } from "../../../../../src/compiler/ts-ast/sundry"
-import { isVariableDeclarationListWithVar } from "../../../../../src/compiler/ts-ast/assert"
 
 function expectIsVarDeclarationList(source: string) {
     const sourceFile = parseTsScript(source)
     const node = findFirstChildUntil(sourceFile, ts.isVariableDeclarationList)
     expect(node, `source: "${source}" should contain variable declaration list`).toBeTruthy()
-    return expect(isVariableDeclarationListWithVar(node!), `source: "${source}"`)
+    return expect(getVariableDeclareKeyword(node!) === "var", `source: "${source}"`)
 }
 
 function collectVariableDeclarationLists(source: string) {
@@ -50,8 +52,8 @@ test("VariableDeclarationList: for statement init", () => {
         for (let b = 0; b < 1; b++) {}
     `)
     expect(lists.length).toBe(2)
-    expect(isVariableDeclarationListWithVar(lists[0]!)).toBeTruthy()
-    expect(isVariableDeclarationListWithVar(lists[1]!)).toBeFalsy()
+    expect(getVariableDeclareKeyword(lists[0]!) === "var").toBeTruthy()
+    expect(getVariableDeclareKeyword(lists[1]!) === "var").toBeFalsy()
 })
 
 test("VariableDeclarationList: for-in and for-of left declaration", () => {
@@ -62,8 +64,8 @@ test("VariableDeclarationList: for-in and for-of left declaration", () => {
         for (let g of h) {}
     `)
     expect(lists.length).toBe(4)
-    expect(isVariableDeclarationListWithVar(lists[0]!)).toBeTruthy()
-    expect(isVariableDeclarationListWithVar(lists[1]!)).toBeFalsy()
-    expect(isVariableDeclarationListWithVar(lists[2]!)).toBeTruthy()
-    expect(isVariableDeclarationListWithVar(lists[3]!)).toBeFalsy()
+    expect(getVariableDeclareKeyword(lists[0]!) === "var").toBeTruthy()
+    expect(getVariableDeclareKeyword(lists[1]!) === "var").toBeFalsy()
+    expect(getVariableDeclareKeyword(lists[2]!) === "var").toBeTruthy()
+    expect(getVariableDeclareKeyword(lists[3]!) === "var").toBeFalsy()
 })

@@ -3,16 +3,16 @@ import type {
     TemplateAttribute,
     TemplateNodeContext
 } from "#type-declarations/compiler"
-import type { StringLiteral } from "@babel/types"
 import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
 
+import ts from "typescript"
+
 import {
-    isExpressionEqual,
     isFunctionLiteral,
     isInlineEventHandler,
     isSimpleHandlerReference
-} from "../../estree/assert"
+} from "../../ts-ast/assert"
 import {
     hasSelectorForAttribute,
     hasSelectorForTextNode,
@@ -37,9 +37,10 @@ import {
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
-import { stripTypeExpressions } from "../../estree/sundry"
 import { kebab2Camel } from "../../../util/compiler/string"
 import { getMaybeReusedString } from "../../optimizer/compress"
+import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
+import { equalsWithKeyDirectiveValue } from "../../optimizer/render"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert"
@@ -521,7 +522,7 @@ function generateRenderEffect(
                 const baseName = eventInfo.eventName.slice(1)
                 const delegated = DELEGATABLE_EVENTS.has(baseName)
                 const stringifiedBaseName = getMaybeReusedString(baseName)
-                const stripedTypeExpressionNode = stripTypeExpressions(expression.node)
+                const stripedTypeExpressionNode = getStriptTypeOperationsNode(expression.node)
                 const insertInterpretiveComment = inputDescriptor.options.interpretiveComments
                 writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
                 writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
@@ -813,7 +814,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = slotDirective && getParsedExpression(slotDirective)
             const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
-            const slotName = expression ? (expression.node as StringLiteral).value : "default"
+            const slotName = expression ? (expression.node as ts.StringLiteral).text : "default"
             insertTrailingComma()
             writeContextKey(slotName, writer, true).write(`: (${anchorId}`)
 
@@ -914,42 +915,4 @@ function getActiveSelectorInfos(nodeContext: TemplateNodeContext) {
         currentNode = currentNode.parent
     }
     return []
-}
-
-// 优化：当文本内容仅包含一个插值表达式，且该表达式与同一节点上的 #key 指令的表达式相等时，不为该文本内容生成 render effect
-// Optimization: When the text content contains only one interpolated expression, and that expression is equal
-// to the expression of the #key directive on the same node, do not generate a render effect for that text content
-function equalsWithKeyDirectiveValue(nodeContext: TemplateNodeContext, parsedExpressionKey: any) {
-    const parsedExpression = getParsedExpression(parsedExpressionKey)
-    if (!parsedExpression?.node) {
-        return false
-    }
-
-    let contextIdentifier: string | undefined
-    const expNode = stripTypeExpressions(parsedExpression.node)
-    switch (expNode.type) {
-        case "Identifier": {
-            contextIdentifier = expNode.name
-            break
-        }
-        case "MemberExpression":
-        case "OptionalMemberExpression": {
-            if (expNode.object.type === "Identifier") {
-                contextIdentifier = expNode.object.name
-            }
-            break
-        }
-    }
-
-    const parsedDirective = nodeContext.contextIdentifiers[contextIdentifier!]
-    if (parsedDirective?.src.directive.name.raw !== "#for") {
-        return false
-    }
-
-    const keyDirective = parsedDirective.src.nodeContext.attributesMap["#key"]
-    const parsedExpOfKeyDirective = keyDirective && getParsedExpression(keyDirective)
-    if (!parsedExpOfKeyDirective?.node) {
-        return false
-    }
-    return isExpressionEqual(parsedExpression.node, parsedExpOfKeyDirective.node)
 }

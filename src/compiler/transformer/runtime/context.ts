@@ -1,6 +1,8 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { ParsedPattern, TemplateAttribute } from "#type-declarations/compiler"
 
+import ts from "typescript"
+
 import { CodeEditor } from "../editor"
 import { generateIdentifier, inputDescriptor } from "../../state"
 import { getParsedDirective } from "../../../util/compiler/template"
@@ -29,7 +31,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
 
     if (!isDebugMode) {
         const hasDestructuring = patterns.some(
-            pattern => pattern.node && pattern.node.type !== "Identifier"
+            pattern => pattern.node && ts.isIdentifier(pattern.node)
         )
         if (!hasDestructuring) {
             return writer
@@ -46,7 +48,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
 
     for (let i = 0; i < patterns.length; i++) {
         const pattern = patterns[i]
-        const shouldWrite = isDebugMode || (pattern.node && pattern.node.type !== "Identifier")
+        const shouldWrite = isDebugMode || (pattern.node && !ts.isIdentifier(pattern.node))
         if (i && shouldWrite) {
             writer.write(", ")
         }
@@ -65,7 +67,7 @@ export function writeContextPatterns(
 ) {
     for (let i = 0; i < patterns.length; i++) {
         const pattern = patterns[i]
-        const shouldWrite = !destructuring || pattern.node?.type !== "Identifier"
+        const shouldWrite = !destructuring || (pattern.node && !ts.isIdentifier(pattern.node))
         if (i && shouldWrite) {
             writer.write(", ")
         }
