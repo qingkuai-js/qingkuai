@@ -226,10 +226,10 @@ export interface TopLevelIdentifierNodeInfo {
     destructuringIdentifierNames?: string[]
 }
 export interface TopLevelIdentifierInfo {
-    path: string
     hoist: boolean
     implicit: boolean
     accessor: boolean
+    aliasTarget: string
     transofrmeTo: string
     status: IdentifierStatus
     usedExpressions: Set<ParsedExpression>
@@ -256,7 +256,6 @@ export interface TemplateAnalyzeRet {
         passive: Set<string>
         nonPassive: Set<string>
     }
-    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>
     parsedEvents: Map<
         TemplateAttribute,
         {
@@ -272,8 +271,16 @@ export interface TemplateAnalyzeRet {
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
     parsedDirectives: Map<TemplateAttribute, ParsedDirective>
+    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>
 }
 export interface ScriptAnalyzeRet {
+    declaratorToAliasInfos: Map<
+        ts.VariableDeclaration,
+        {
+            property: string
+            expression: string
+        }[]
+    >
     defaultItems: Partial<
         Record<
             "refs" | "props",

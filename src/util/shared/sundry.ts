@@ -19,7 +19,7 @@ export function any(v: any) {
 }
 
 export function newCleanObj() {
-    return stripPrototype({})
+    return Object.create(NIL)
 }
 
 export function notEqual(a: any, b: any) {

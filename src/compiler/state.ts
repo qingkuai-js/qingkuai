@@ -67,6 +67,7 @@ function newAnalyzeResult(): AnalyzeResult {
             importIdentifiers: new Set(),
             declaratorToIntrinsic: new Map(),
             topLevelReferences: newCleanObj(),
+            declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),
             preMutatedTopLevelIdentifiers: new Set()
         },
@@ -78,7 +79,7 @@ function newAnalyzeResult(): AnalyzeResult {
 // Generate a new input source descriptor
 function newInputDescriptor(options: Partial<InputOptions>) {
     const ret: InputDescriptor = {
-        indent: "",
+        indent: "    ",
         source: "",
         styles: [],
         positions: [],

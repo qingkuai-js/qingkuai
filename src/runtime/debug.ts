@@ -9,7 +9,6 @@ export function alias(getter: Getter) {
     return destructuringAlias(getter)[0]
 }
 
-// 待办：需要重构，使用 AliasedIdentifier 类代替，get => (参数 + path)，set => (参数 + path) = value
 export const destructuringAlias = stripErrorStack((...getters: Getter[]) => {
     return getters.map(getter => {
         const accessor = newCleanObj()

@@ -124,7 +124,7 @@ function getTopLevelIdentifierInfo(id: TopLevelIdentifierInfo) {
             return "raw (constant literal)"
         }
         default: {
-            return `${id.status}${id.path ? ` -> ${id.path}` : ""}`
+            return `${id.status}${id.aliasTarget ? ` -> ${id.aliasTarget}` : ""}`
         }
     }
 }

@@ -47,10 +47,11 @@ import {
     getStriptTypeOperationsParent
 } from "../ts-ast/sundry"
 import { analyzeExports } from "./exports"
-import { parseScript } from "../parser/script"
 import { PRESERVED_IDPREFIX } from "../constants"
+import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
 import { analyzeResult, inputDescriptor } from "../state"
+import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
 import { isInHoistableTopLevel, isIdentifierAssignmentTarget } from "../ts-ast/context"
@@ -58,6 +59,10 @@ import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../t
 import { walkAncestors, walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
+    if (!inputDescriptor.script.existing) {
+        return
+    }
+
     const sourceCode = inputDescriptor.script.code
     const sourceFile = parseScript(sourceCode)
     const startSourceIndex = inputDescriptor.script.loc.start.index
@@ -248,6 +253,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
 
     const isCheckMode = inputDescriptor.options.checkMode
     const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
+    const declaratorToAliasInfos = analyzeResult.script.declaratorToAliasInfos
     for (const declaration of node.declarations) {
         const status = inferStatusByVariableDeclaration(declaration, node)
         const destructuringIdentifierNames: string[] | undefined = ts.isIdentifier(declaration.name)
@@ -304,9 +310,44 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
                 initNode.arguments.length &&
                 isLeftValue(initNode.arguments[0])
             ) {
+                let aliasProperty: string | undefined
+                let aliasExpression: string | undefined
+                let aliasInfos = declaratorToAliasInfos.get(declaration)
                 const firstArg = getStriptTypeOperationsParent(initNode.arguments[0])!
-                const argSource = inputDescriptor.script.code.slice(...getNodeRange(firstArg))
-                topLevelIdentifiers[identifier.text].path = argSource + path
+                if (!destructuringIdentifierNames) {
+                    if (ts.isElementAccessExpression(firstArg)) {
+                        aliasExpression = firstArg.expression.getText()
+                        aliasProperty = firstArg.argumentExpression.getText()
+                    } else if (
+                        ts.isPropertyAccessChain(firstArg) &&
+                        ts.isIdentifier(firstArg.name)
+                    ) {
+                        aliasProperty = stringify(firstArg.name.text)
+                        aliasExpression = firstArg.expression.getText()
+                    }
+                } else if (path) {
+                    const pathExp = parseExpression(path, 0)!
+                    if (ts.isElementAccessExpression(pathExp)) {
+                        aliasProperty = pathExp.argumentExpression.getText()
+                        aliasExpression = firstArg.getText() + pathExp.expression.getText()
+                    } else if (
+                        ts.isPropertyAccessExpression(pathExp) &&
+                        ts.isIdentifier(pathExp.name)
+                    ) {
+                        aliasProperty = stringify(pathExp.name.getText())
+                        aliasExpression = firstArg.getText() + pathExp.expression.getText()
+                    }
+                }
+                if (!aliasInfos) {
+                    declaratorToAliasInfos.set(declaration, (aliasInfos = []))
+                }
+                if (aliasExpression && aliasProperty) {
+                    aliasInfos.push({
+                        property: aliasProperty,
+                        expression: aliasExpression
+                    })
+                }
+                topLevelIdentifiers[identifier.text].aliasTarget = firstArg.getText() + path
             }
 
             // 记录解构声明的标识符名称列表
@@ -500,7 +541,7 @@ function updateTopLevelIdentifiers(
             hoist,
             implicit,
             accessor,
-            path: "",
+            aliasTarget: "",
             transofrmeTo: "",
             nodeInfos: [nodeInfo],
             usedExpressions: new Set()
