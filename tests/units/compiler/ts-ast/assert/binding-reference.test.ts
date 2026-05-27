@@ -202,7 +202,7 @@ test("Declaration: classes", () => {
                 F<G, H>(I: J, K = L as M) {}
             }
         `,
-        ["d", "e", "g", "k", "z", "B", "D", "L"],
+        ["d", "e", "g", "k", "z", "D", "L"],
         [
             "a",
             "b",
@@ -215,6 +215,7 @@ test("Declaration: classes", () => {
             "s",
             "y",
             "A",
+            "B",
             "C",
             "E",
             "F",

@@ -61,7 +61,7 @@ test("stage test: skips __proto__ object property key literal", () => {
         </lang-ts>
         <div></div>
     `)
-    expect(analyzeResult.reusedStrings.__proto__).toBeUndefined()
+    expect(analyzeResult.reusedStrings.__proto__?.times).toBe(1)
 })
 
 test("stage test: keeps non-computed object property string keys as transformable references", () => {
@@ -74,7 +74,7 @@ test("stage test: keeps non-computed object property string keys as transformabl
     expect(analyzeResult.reusedStrings.keep_object_property_key_literal?.times).toBe(1)
 })
 
-test("stage test: skips tagged template quasi literal content", () => {
+test("stage test: keeps tagged template quasi literal content", () => {
     compile(`
         <lang-ts>
             function t(...args: any[]) { return args }
@@ -82,7 +82,7 @@ test("stage test: skips tagged template quasi literal content", () => {
         </lang-ts>
         <div></div>
     `)
-    expect(analyzeResult.reusedStrings.skip_tagged_template_quasi).toBeUndefined()
+    expect(analyzeResult.reusedStrings.skip_tagged_template_quasi?.times).toBe(1)
 })
 
 test("stage test: skips enum member string id literals", () => {

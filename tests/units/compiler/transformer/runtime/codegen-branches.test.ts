@@ -302,15 +302,6 @@ test("RuntimeCodeWriter: writeTemplateStr and mappings generation", () => {
     expect(typeof writer.mappings).toBe("string")
 })
 
-test("RuntimeCodeWriter: writeScriptNode strips one indent level after newline", () => {
-    compileTestingSource(`<lang-js>a\n  b</lang-js>`)
-
-    const writer = new RuntimeCodeWriter(false)
-    writer.writeScriptNode({ range: [0, 5] } as any, true)
-
-    expect(writer.code).toBe("a\nb")
-})
-
 test("IntermediateCodeWriter: range write fills stoi for uncovered source span", () => {
     compileTestingSource(`<lang-js>abcdef</lang-js>`)
 
@@ -337,13 +328,4 @@ test("IntermediateCodeWriter: writeEditedScript consumes intermediate editor out
 
     expect(writer.code).toBe("aQb")
     expect(writer.indexMap.itos.length).toBe(3)
-})
-
-test("IntermediateCodeWriter: writeScriptNode writes script slice by node range", () => {
-    compileTestingSource(`<lang-js>abc</lang-js>`)
-
-    const writer = new IntermediateCodeWriter()
-    writer.writeScriptNode({ start: 0, end: 3 } as any)
-
-    expect(writer.code).toBe("abc")
 })

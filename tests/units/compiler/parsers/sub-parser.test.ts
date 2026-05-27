@@ -1,3 +1,5 @@
+import ts from "typescript"
+
 import { test, expect } from "vitest"
 import {
     parseScript,
@@ -70,7 +72,7 @@ test("Function: parseContextPattern", () => {
     const pattern = parseContextPattern("a, b")
     const invalid = parseContextPattern("a + b")
     expect(pattern?.elements.length).toBe(2)
-    expect(pattern?.elements[0]?.start).toBe(0)
+    expect(pattern?.elements[0]?.getStart()).toBe(0)
     expect(invalid).toBeNull()
 })
 
@@ -85,5 +87,5 @@ test("Function: parseExpression and parseScript", () => {
     expect(parseExpression("a +", inputDescriptor.script.loc.start.index)).toBeNull()
 
     parseTemplateTesting("<lang-ts>const count: number = 1</lang-ts>")
-    expect(parseScript("const count: number = 1")?.type).toBe("Program")
+    expect(parseScript("const count: number = 1")?.kind).toBe(ts.SyntaxKind.SourceFile)
 })

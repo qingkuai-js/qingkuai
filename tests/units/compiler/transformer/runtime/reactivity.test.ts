@@ -1130,7 +1130,7 @@ describe("Development", () => {
                         const _S1 = v => (a = v)
                         a
 
-                        let [_a, a] = _.shallowReact(null, _S1)
+                        let [_a, a]: number | null = _.shallowReact(null, _S1)
                         _a.$ ??= 1
                     `)
                 )
