@@ -1,16 +1,11 @@
 import { test, expect } from "vitest"
-import { parse } from "@babel/parser"
 
 import input from "./input-one"
+import { parseScript } from "../../../../../src/compiler/parser/script"
 import { compile, compileIntermediate } from "../../../../../src/compiler/compile"
 
 function expectValidESMSyntax(code: string, label: string) {
-    expect(() =>
-        parse(code, {
-            sourceType: "module",
-            sourceFilename: `qingkuai-${label}.mjs`
-        })
-    ).not.toThrow()
+    expect(() => parseScript(code), label).not.toThrow()
 }
 
 function compileRuntimeAndAssertNoErrors(source: string, label: string) {

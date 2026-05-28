@@ -1,17 +1,12 @@
 import { expect, test } from "vitest"
-import { parse } from "@babel/parser"
 import { PositionFlag } from "../../../../../src/compiler"
 import { inputDescriptor } from "../../../../../src/compiler/state"
+import { parseScript } from "../../../../../src/compiler/parser/script"
 import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 import { compileIntermediate } from "../../../../../src/compiler/compile"
 
 function expectValidESMSyntax(code: string, label: string) {
-    expect(() =>
-        parse(code, {
-            sourceType: "module",
-            sourceFilename: `qingkuai-${label}.mjs`
-        })
-    ).not.toThrow()
+    expect(() => parseScript(code), label).not.toThrow()
 }
 
 function compileIntermediateAndAssertNoErrors(source: string, label: string) {
