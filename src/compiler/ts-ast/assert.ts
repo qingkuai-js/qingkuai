@@ -65,6 +65,13 @@ export function isFunctionLiteral(node: ts.Node) {
     return ts.isFunctionExpression(node) || ts.isArrowFunction(node)
 }
 
+export function isArrayBindingNameIdentifier(node: ts.ArrayBindingElement) {
+    if (ts.isOmittedExpression(node) || node.dotDotDotToken) {
+        return false
+    }
+    return ts.isIdentifier(node.name)
+}
+
 // 判断节点是否为括号表达式的最后一个节点
 // Determine whether the node is the last node of a parenthesized expression.
 export function isLastNodeOfParenthesis(node: ts.Node) {
@@ -88,6 +95,8 @@ export function isLastNodeOfParenthesis(node: ts.Node) {
 export function isUpdateExpression(
     node: ts.Node
 ): node is ts.PrefixUnaryExpression | ts.PostfixUnaryExpression {
+    node = getStriptTypeOperationsNode(node)!
+
     if (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) {
         if (
             node.operator === ts.SyntaxKind.PlusPlusToken ||
@@ -102,6 +111,8 @@ export function isUpdateExpression(
 // 判断节点是否为赋值表达式
 // Determine whether the node is an assignment expression.
 export function isAssignmentExpression(node: ts.Node): node is ts.BinaryExpression {
+    node = getStriptTypeOperationsNode(node)!
+
     if (!ts.isBinaryExpression(node)) {
         return false
     }
@@ -127,6 +138,44 @@ export function isAssignmentExpression(node: ts.Node): node is ts.BinaryExpressi
         default: {
             return false
         }
+    }
+}
+
+// 判断标识符节点是否为赋值目标
+// Determine whether the identifier node is an assignment target.
+export function isIdentifierAssignmentTarget(identifier: ts.Identifier) {
+    for (let current: ts.Node = identifier; current; ) {
+        const parent = getStriptTypeOperationsParent(current)
+        if (!parent) {
+            return false
+        }
+        if (isUpdateExpression(parent)) {
+            return true
+        }
+        if (ts.isForInStatement(parent) || ts.isForOfStatement(parent)) {
+            return parent.initializer === identifier
+        }
+        switch (parent.kind) {
+            case ts.SyntaxKind.SpreadElement:
+            case ts.SyntaxKind.ArrayLiteralExpression:
+            case ts.SyntaxKind.ObjectLiteralExpression:
+            case ts.SyntaxKind.ShorthandPropertyAssignment: {
+                break
+            }
+            case ts.SyntaxKind.PropertyAssignment: {
+                if (current === (parent as ts.PropertyAssignment).initializer) {
+                    break
+                }
+                return false
+            }
+            default: {
+                if (isAssignmentExpression(parent)) {
+                    return identifier.getEnd() < parent.operatorToken.getStart()
+                }
+                return false
+            }
+        }
+        current = parent
     }
 }
 
@@ -300,7 +349,7 @@ export function isSimpleHandlerReference(node: ts.Node) {
 
 export function isPropertyEqual(a: ts.Node, b: ts.Node): boolean {
     const [x, y] = [a, b].map(node => {
-        switch ((node = getStriptTypeOperationsParent(node)!).kind) {
+        switch ((node = getStriptTypeOperationsNode(node)!).kind) {
             case ts.SyntaxKind.Identifier: {
                 return (node as ts.Identifier).text
             }
@@ -318,7 +367,7 @@ export function isPropertyEqual(a: ts.Node, b: ts.Node): boolean {
 }
 
 export function isExpressionEqual(a: ts.Node, b: ts.Node): boolean {
-    ;[a, b] = [a, b].map(node => getStriptTypeOperationsParent(node)!)
+    ;[a, b] = [a, b].map(node => getStriptTypeOperationsNode(node)!)
 
     if (a.kind !== b.kind) {
         return false
@@ -326,7 +375,7 @@ export function isExpressionEqual(a: ts.Node, b: ts.Node): boolean {
 
     switch (a.kind) {
         case ts.SyntaxKind.Identifier: {
-            return any(a).text === any(b).name
+            return any(a).text === any(b).text
         }
         case ts.SyntaxKind.PropertyAccessExpression: {
             return (

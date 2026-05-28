@@ -46,16 +46,22 @@ import {
     getStriptTypeOperationsNode,
     getStriptTypeOperationsParent
 } from "../ts-ast/sundry"
+import {
+    isLiteral,
+    isLeftValue,
+    isTypeOperation,
+    isFunctionLiteral,
+    isIdentifierAssignmentTarget
+} from "../ts-ast/assert"
 import { analyzeExports } from "./exports"
 import { PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
+import { isInHoistableTopLevel } from "../ts-ast/context"
 import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
-import { isInHoistableTopLevel, isIdentifierAssignmentTarget } from "../ts-ast/context"
-import { isLiteral, isLeftValue, isTypeOperation, isFunctionLiteral } from "../ts-ast/assert"
 import { walkAncestors, walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
@@ -304,7 +310,6 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
             // When the status is `alias`, record the access path of the identifier alias.
             if (
                 initNode &&
-                !isCheckMode &&
                 status === "alias" &&
                 ts.isCallExpression(initNode) &&
                 initNode.arguments.length &&
@@ -313,39 +318,48 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
                 let aliasProperty: string | undefined
                 let aliasExpression: string | undefined
                 let aliasInfos = declaratorToAliasInfos.get(declaration)
-                const firstArg = getStriptTypeOperationsParent(initNode.arguments[0])!
-                if (!destructuringIdentifierNames) {
-                    if (ts.isElementAccessExpression(firstArg)) {
-                        aliasExpression = firstArg.expression.getText()
-                        aliasProperty = firstArg.argumentExpression.getText()
-                    } else if (
-                        ts.isPropertyAccessChain(firstArg) &&
-                        ts.isIdentifier(firstArg.name)
-                    ) {
-                        aliasProperty = stringify(firstArg.name.text)
-                        aliasExpression = firstArg.expression.getText()
+                const firstArg = getStriptTypeOperationsNode(initNode.arguments[0])!
+                if (!isCheckMode) {
+                    if (!destructuringIdentifierNames) {
+                        if (ts.isElementAccessExpression(firstArg)) {
+                            aliasExpression = firstArg.expression.getText()
+                            aliasProperty = firstArg.argumentExpression.getText()
+                        } else if (
+                            ts.isPropertyAccessExpression(firstArg) &&
+                            ts.isIdentifier(firstArg.name)
+                        ) {
+                            aliasProperty = stringify(firstArg.name.text)
+                            aliasExpression = firstArg.expression.getText()
+                        }
+                    } else if (path) {
+                        const pathExp = parseExpression("_" + path, 0)!
+                        if (ts.isElementAccessExpression(pathExp)) {
+                            aliasExpression = pathExp.expression.getText()
+                            aliasProperty = pathExp.argumentExpression.getText()
+                        } else if (
+                            ts.isPropertyAccessExpression(pathExp) &&
+                            ts.isIdentifier(pathExp.name)
+                        ) {
+                            aliasExpression = pathExp.expression.getText()
+                            aliasProperty = stringify(pathExp.name.getText())
+                        }
+
+                        // 添加 alias 内建方法参数并去除路径表达式前缀下划线
+                        // Add the argument of the alias intrinsic method and
+                        // remove the underscore prefix from the path expression.
+                        if (aliasExpression) {
+                            aliasExpression = firstArg.getText() + aliasExpression.slice(1)
+                        }
                     }
-                } else if (path) {
-                    const pathExp = parseExpression(path, 0)!
-                    if (ts.isElementAccessExpression(pathExp)) {
-                        aliasProperty = pathExp.argumentExpression.getText()
-                        aliasExpression = firstArg.getText() + pathExp.expression.getText()
-                    } else if (
-                        ts.isPropertyAccessExpression(pathExp) &&
-                        ts.isIdentifier(pathExp.name)
-                    ) {
-                        aliasProperty = stringify(pathExp.name.getText())
-                        aliasExpression = firstArg.getText() + pathExp.expression.getText()
+                    if (!aliasInfos) {
+                        declaratorToAliasInfos.set(declaration, (aliasInfos = []))
                     }
-                }
-                if (!aliasInfos) {
-                    declaratorToAliasInfos.set(declaration, (aliasInfos = []))
-                }
-                if (aliasExpression && aliasProperty) {
-                    aliasInfos.push({
-                        property: aliasProperty,
-                        expression: aliasExpression
-                    })
+                    if (aliasExpression && aliasProperty) {
+                        aliasInfos.push({
+                            property: aliasProperty,
+                            expression: aliasExpression
+                        })
+                    }
                 }
                 topLevelIdentifiers[identifier.text].aliasTarget = firstArg.getText() + path
             }
@@ -397,8 +411,7 @@ function inferStatusByVariableDeclaration(
     const isConst = declareKeyword === "const"
     const declarationLoc = getScriptLocByNode(declaration)
     const isDestructuring = !ts.isIdentifier(declaration.name)
-    const initNode =
-        declaration.initializer && getStriptTypeOperationsNode(declaration.initializer, true)
+    const initNode = declaration.initializer && getStriptTypeOperationsNode(declaration.initializer)
 
     if (!initNode) {
         return isConst ? "raw" : "literal"
@@ -425,7 +438,7 @@ function inferStatusByVariableDeclaration(
         return "pending"
     }
 
-    const callee = getStriptTypeOperationsNode(initNode.expression, true)!
+    const callee = getStriptTypeOperationsNode(initNode.expression)!
     if (!ts.isIdentifier(callee)) {
         return "pending"
     }
@@ -569,7 +582,7 @@ function checkTopLevelIdentifier(id: ts.Identifier, imported = false) {
 // Validate the usage of compiler intrinsic methods.
 function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
     const intrinsicName = node.text
-    const parent = getStriptTypeOperationsParent(node, true)!
+    const parent = getStriptTypeOperationsParent(node)!
     if (ts.isCallExpression(parent)) {
         const firstArg = parent.arguments[0]
         const argsLen = parent.arguments.length
@@ -642,7 +655,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                     }
                 }
 
-                const grandParentNode = getStriptTypeOperationsParent(parent, true)!
+                const grandParentNode = getStriptTypeOperationsParent(parent)!
                 if (parent.inTopLevel && ts.isVariableDeclaration(grandParentNode)) {
                     if (
                         intrinsicName === "alias" &&

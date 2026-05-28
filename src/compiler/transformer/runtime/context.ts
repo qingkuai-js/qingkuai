@@ -1,10 +1,9 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { ParsedPattern, TemplateAttribute } from "#type-declarations/compiler"
 
-import ts from "typescript"
-
 import { CodeEditor } from "../editor"
 import { generateIdentifier, inputDescriptor } from "../../state"
+import { isArrayBindingNameIdentifier } from "../../ts-ast/assert"
 import { getParsedDirective } from "../../../util/compiler/template"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
@@ -31,7 +30,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
 
     if (!isDebugMode) {
         const hasDestructuring = patterns.some(
-            pattern => pattern.node && ts.isIdentifier(pattern.node)
+            pattern => !isArrayBindingNameIdentifier(pattern.node)
         )
         if (!hasDestructuring) {
             return writer
@@ -48,7 +47,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
 
     for (let i = 0; i < patterns.length; i++) {
         const pattern = patterns[i]
-        const shouldWrite = isDebugMode || (pattern.node && !ts.isIdentifier(pattern.node))
+        const shouldWrite = isDebugMode || !isArrayBindingNameIdentifier(pattern.node)
         if (i && shouldWrite) {
             writer.write(", ")
         }
@@ -67,7 +66,7 @@ export function writeContextPatterns(
 ) {
     for (let i = 0; i < patterns.length; i++) {
         const pattern = patterns[i]
-        const shouldWrite = !destructuring || (pattern.node && !ts.isIdentifier(pattern.node))
+        const shouldWrite = !destructuring || !isArrayBindingNameIdentifier(pattern.node)
         if (i && shouldWrite) {
             writer.write(", ")
         }

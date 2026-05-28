@@ -153,7 +153,7 @@ function attchContextToNode(node: ts.Node) {
 function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
     const patterns: ts.BindingName[] = []
     const declarations: ts.VariableDeclaration[] = []
-    const parent = getStriptTypeOperationsParent(node)! as ts.Node
+    const parent = getStriptTypeOperationsParent(node, false)! as ts.Node
     const statements = "statements" in node ? node.statements : [node]
 
     const extendScopeIdentifiers = (scope: TsNodeWithContext, id: ts.Identifier) => {

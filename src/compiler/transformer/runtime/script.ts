@@ -232,16 +232,12 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         transformDestructuringEqualSign(declarator, destructuringIdentifierNames)
     }
 
-    function transformAliasDeclaration(name: string, info: TopLevelIdentifierInfo) {
+    function transformAliasDeclaration(_: string, info: TopLevelIdentifierInfo) {
         const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
         const { declarations } = info.nodeInfos[0].declaration as ts.VariableDeclarationList
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
         const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
-
-        if (!aliasInfos.length) {
-            return
-        }
 
         // 移除 VariableDeclarator 多余的尾部逗号
         // Remove any trailing comma from the VariableDeclarator.
@@ -255,7 +251,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                     declaratorToRemoveEndComma = declarations[declaratorIndex - 1]
                 }
                 editor.removeCharacter(
-                    declaratorToRemoveEndComma.end! +
+                    declaratorToRemoveEndComma.getEnd() +
                         findEndCommaIndexOfVariableDeclarator(declaratorToRemoveEndComma)
                 )
             }
@@ -281,7 +277,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         for (const aliasInfo of aliasInfos) {
             getterIds.push(generateHoistGetter(`[${aliasInfo.expression}, ${aliasInfo.property}]`))
         }
-        editor.insert(intrinsicCall.arguments[0].end!, `${getterIds.join(", ")}`)
+        editor.insert(intrinsicCall.arguments[0].getEnd(), `${getterIds.join(", ")}`)
         editor.remove(...declaratorIdRange)
         editor.remove(...getNodeRange(intrinsicCall.arguments[0]))
         replaceIntrinsicCall(declarator, "destructuringAlias")
@@ -361,7 +357,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
                     const declaratorIndex = declaration.declarations.indexOf(declarator)
                     if (declaratorIndex === declaration.declarations.length - 1) {
-                        editor.insert(declarator.end!, ";")
+                        editor.insert(declarator.getEnd(), ";")
                     } else {
                         replaceCommaWithSemi(declarator)
                         editor.insert(
@@ -383,11 +379,11 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                             item => `${getReactiveIdentifier(item)}.$`
                         )
                         editor.insert(
-                            declarator.end!,
+                            declarator.getEnd(),
                             ` [${shouldUpdateTargetsArr.join(", ")}] = [${shouldUpdateItemsArr.join(", ")}];`
                         )
                     } else {
-                        editor.insert(declarator.end!, ` ${reactiveIdentifier}.$ = ${name};`)
+                        editor.insert(declarator.getEnd(), ` ${reactiveIdentifier}.$ = ${name};`)
                     }
                 }
             }

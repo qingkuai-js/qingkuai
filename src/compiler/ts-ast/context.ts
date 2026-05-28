@@ -1,9 +1,7 @@
 import type { TsNodeWithContext } from "#type-declarations/ts-ast"
 
 import ts from "typescript"
-
 import { walkAncestors } from "./walk"
-import { isUpdateExpression, isAssignmentExpression, isMemberAccessExpression } from "./assert"
 
 // 节点是否处于可提升的顶级作用域（含非函数块级作用域）
 // Whether the node is in a hoistable top-level scope (including non-function block scopes).
@@ -39,30 +37,4 @@ export function getNonHoistableScope(node: TsNodeWithContext): TsNodeWithContext
         }
     })
     return ret
-}
-
-// 判断节点是否为标识符形式的赋值目标
-// Determine whether the node is an identifier-form assignment target.
-export function isIdentifierAssignmentTarget(node: TsNodeWithContext): boolean {
-    if (!node.isBindingReference) {
-        return false
-    }
-
-    let result = false
-    const nodeEnd = node.getEnd()
-    walkAncestors(node, child => {
-        if (ts.isNonNullExpression(child)) {
-            return
-        }
-        if (isMemberAccessExpression(child)) {
-            return true
-        }
-        if (isUpdateExpression(child)) {
-            return (result = true)
-        }
-        if (isAssignmentExpression(child)) {
-            return (result = nodeEnd <= child.operatorToken.getStart())
-        }
-    })
-    return result
 }

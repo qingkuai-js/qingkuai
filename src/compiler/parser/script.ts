@@ -18,18 +18,15 @@ export function parseContextPattern(source: string) {
     }
 
     const firstDeclaration = statement.declarationList.declarations[0]
-    if (!ts.isArrayBindingPattern(firstDeclaration.name)) {
+    if (
+        !ts.isArrayBindingPattern(firstDeclaration.name) ||
+        firstDeclaration.name.elements.some(item => {
+            return ts.isBindingElement(item) && item.initializer
+        })
+    ) {
         return null
     }
-    walkTsNode(firstDeclaration.name, node => {
-        const end = node.getEnd()
-        const start = node.getStart()
-        const fullStart = node.getFullStart()
-        node.getEnd = () => end - 7
-        node.getStart = () => start - 7
-        node.getFullStart = () => fullStart - 7
-    })
-    return firstDeclaration.name
+    return offsetStartAndEndGetter(firstDeclaration.name, -7)
 }
 
 export function parseScript(source: string) {
@@ -55,7 +52,7 @@ export function parseExpression(source: string, startSourceIndex: number) {
     ) {
         return null
     }
-    return expression.right.expression
+    return offsetStartAndEndGetter(expression.right.expression, -3)
 }
 
 function createSourceFile(
@@ -85,4 +82,18 @@ function createSourceFile(
         })
     }
     return sourceFile
+}
+
+function offsetStartAndEndGetter<T extends ts.Node>(root: T, offset: number): T {
+    walkTsNode(root, node => {
+        const end = node.getEnd()
+        const text = node.getText()
+        const start = node.getStart()
+        const fullStart = node.getFullStart()
+        node.getText = () => text
+        node.getEnd = () => end + offset
+        node.getStart = () => start + offset
+        node.getFullStart = () => fullStart + offset
+    })
+    return root
 }

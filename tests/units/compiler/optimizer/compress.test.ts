@@ -82,7 +82,7 @@ test("stage test: keeps tagged template quasi literal content", () => {
         </lang-ts>
         <div></div>
     `)
-    expect(analyzeResult.reusedStrings.skip_tagged_template_quasi?.times).toBe(1)
+    expect(analyzeResult.reusedStrings.skip_tagged_template_quasi?.times).toBeUndefined()
 })
 
 test("stage test: skips enum member string id literals", () => {

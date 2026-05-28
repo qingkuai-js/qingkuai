@@ -74,7 +74,7 @@ export function markNeedSourcemap(node: ts.Node, startSourceIndex: number) {
  */
 export function getStriptTypeOperationsParent<T extends ts.Node>(
     node: T,
-    omitParenthesis?: boolean
+    omitParenthesis = true
 ): T["parent"] | null {
     if (!node.parent) {
         return null
@@ -108,7 +108,7 @@ export function getLastNodeOfParenthesis(node: ts.Node): ts.Node {
 
 // 获取剥离类型操作后的节点
 // Get the node after stripping type operations.
-export function getStriptTypeOperationsNode(node: ts.Node, omitParenthesis = false): ts.Node {
+export function getStriptTypeOperationsNode(node: ts.Node, omitParenthesis = true): ts.Node {
     if (omitParenthesis && ts.isParenthesizedExpression(node)) {
         return getStriptTypeOperationsNode(getLastNodeOfParenthesis(node), omitParenthesis)
     }

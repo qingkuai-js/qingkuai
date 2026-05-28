@@ -23,14 +23,14 @@ test("access chain", () => {
     expectIsLeftValue("a[0].b").toBeTruthy()
     expectIsLeftValue("a.b[0]").toBeTruthy()
     expectIsLeftValue("a[foo as any].bar").toBeTruthy()
+    expectIsLeftValue("(a)").toBeTruthy()
+    expectIsLeftValue("(a.b)").toBeTruthy()
     expectIsLeftValue("foo!.bar!").toBeTruthy()
 })
 
 test("destructuring and invalid expressions", () => {
     expectIsLeftValue("[a]").toBeFalsy()
     expectIsLeftValue("{ a }").toBeFalsy()
-    expectIsLeftValue("(a)").toBeFalsy()
-    expectIsLeftValue("(a.b)").toBeFalsy()
     expectIsLeftValue("a?.[b]").toBeFalsy()
     expectIsLeftValue("a?.b.c").toBeFalsy()
     expectIsLeftValue("a.b?.c").toBeFalsy()

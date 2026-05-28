@@ -111,22 +111,6 @@ export function getMaybeReusedString(value: string) {
     return `/* ${value} */ ${literalId}`
 }
 
-export function replaceReusedStringReferences(
-    editor: CodeEditor,
-    references: ReusedStringReference[]
-) {
-    for (const reference of references) {
-        const literalId = getMaybeReusedString(reference.value)
-        if (literalId) {
-            editor.replace(
-                ...reference.range,
-                reference.computed ? `[${literalId}]` : literalId,
-                true
-            )
-        }
-    }
-}
-
 export function increaseReusedStringUsedTimes(value: string, isPropertyName = false) {
     if (
         inputDescriptor.options.debug ||
@@ -157,12 +141,23 @@ export function collectReusedStringReference(node: ts.Node, references: ReusedSt
 }
 
 function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail | undefined {
+    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
+        return
+    }
     if (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node)) {
         return
     }
+    if (ts.isTaggedTemplateExpression(node.parent)) {
+        return
+    }
+
+    const defaultResult: StringLiteralDetail = {
+        value: node.text,
+        computed: false,
+        propertyName: false
+    }
 
     switch (node.parent.kind) {
-        case ts.SyntaxKind.EnumMember:
         case ts.SyntaxKind.LiteralType:
         case ts.SyntaxKind.MethodSignature:
         case ts.SyntaxKind.ImportDeclaration:
@@ -172,40 +167,58 @@ function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail 
             return
         }
 
+        case ts.SyntaxKind.EnumMember: {
+            if ((node.parent as ts.EnumMember).initializer !== node) {
+                return
+            }
+            return defaultResult
+        }
+
         case ts.SyntaxKind.ComputedPropertyName: {
             const grandParent = node.parent.parent
             if (ts.isPropertySignature(grandParent) || ts.isMethodSignature(grandParent)) {
                 return
             }
-            return {
-                value: node.text,
-                computed: false,
-                propertyName: false
-            }
+            return defaultResult
         }
 
-        default: {
-            if (
-                ts.isMethodDeclaration(node.parent) ||
-                ts.isPropertyDeclaration(node.parent) ||
-                ts.isPropertyAssignment(node.parent) ||
-                ts.isGetAccessorDeclaration(node.parent) ||
-                ts.isSetAccessorDeclaration(node.parent)
-            ) {
-                if (node.parent.name !== node) {
-                    return
-                }
-                return {
-                    value: node.text,
-                    computed: true,
-                    propertyName: true
-                }
+        case ts.SyntaxKind.PropertyAssignment: {
+            if ((node.parent as ts.PropertyAssignment).name !== node) {
+                return defaultResult
+            }
+            // fallthrough
+        }
+
+        case ts.SyntaxKind.GetAccessor:
+        case ts.SyntaxKind.SetAccessor:
+        case ts.SyntaxKind.MethodDeclaration:
+        case ts.SyntaxKind.PropertyDeclaration: {
+            if ((node.parent as ts.NamedDeclaration).name !== node) {
+                return
+            }
+            return {
+                value: node.text,
+                computed: true,
+                propertyName: true
             }
         }
     }
-    return {
-        value: node.text,
-        computed: false,
-        propertyName: false
-    } satisfies StringLiteralDetail
+    return defaultResult
+}
+
+export function replaceReusedStringReferences(
+    editor: CodeEditor,
+    references: ReusedStringReference[]
+) {
+    for (const reference of references) {
+        const literalId = analyzeResult.reusedStrings[reference.value]?.id
+        if (literalId) {
+            const compressed = getMaybeReusedString(reference.value)
+            editor.replace(
+                ...reference.range,
+                reference.computed ? `[${compressed}]` : compressed,
+                true
+            )
+        }
+    }
 }

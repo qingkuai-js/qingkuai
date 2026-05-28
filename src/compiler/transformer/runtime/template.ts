@@ -344,7 +344,7 @@ function generateDirectiveBlock(
                     }
                 },
                 returns() {
-                    if (parsedDirective.context?.returnsId) {
+                    if (inputDescriptor.options.debug && parsedDirective.context?.returnsId) {
                         writer.wrapLine().write(`return ${parsedDirective.context.returnsId}`)
                     }
                 }

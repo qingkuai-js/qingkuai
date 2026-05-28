@@ -19,15 +19,15 @@ import {
     getTemplateNodeContext
 } from "../../../util/compiler/template"
 import { CodeEditor } from "../editor"
+import { eliminate } from "../eliminate"
 import { LSC, SPREAD_TAG } from "../../constants"
 import { IntermediateCodeWriter } from "../writer"
 import { stringify } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
-import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
-import { eliminate } from "../eliminate"
-import { isFunctionLiteral, isInlineEventHandler } from "../../ts-ast/assert"
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
+import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
+import { isFunctionLiteral, isInlineEventHandler } from "../../ts-ast/assert"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
     let slotNamesType = ""

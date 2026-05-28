@@ -33,8 +33,7 @@ import { markNeedSourcemap } from "../ts-ast/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { walkTsNodeWithContext } from "../ts-ast/walk"
 import { kebab2Camel } from "../../util/compiler/string"
-import { isMemberAccessExpression } from "../ts-ast/assert"
-import { isIdentifierAssignmentTarget } from "../ts-ast/context"
+import { isIdentifierAssignmentTarget } from "../ts-ast/assert"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { analyzeResult, inputDescriptor, messages } from "../state"
 import { collectReusedStringReference } from "../optimizer/compress"
@@ -118,7 +117,7 @@ export function analyzeInterpolation(
                     ;(topLevelReferences[idName] ??= []).push({
                         declared: true,
                         range: nodeRange,
-                        shorthand: ts.isShorthandPropertyAssignment(node)
+                        shorthand: ts.isShorthandPropertyAssignment(node.parent)
                     })
                     topLevelIdentifier.usedExpressions.add(parsedExpression!)
                 }
@@ -181,16 +180,15 @@ export function analyzeTemplateAsExpression(
         messages.pop()
     }
 
-    if (
-        expression &&
-        type === "component" &&
-        !ts.isIdentifier(expression) &&
-        !isMemberAccessExpression(expression)
+    if (type === "attribute") {
+        if (!expression || !ts.isIdentifier(expression)) {
+            return InvalidShorthandAttributeName(loc, name)
+        }
+    } else if (
+        !expression ||
+        (!ts.isIdentifier(expression) && !ts.isPropertyAccessExpression(expression))
     ) {
         return InvalidComponentTag(loc, name)
-    }
-    if (expression && type === "attribute" && ts.isIdentifier(expression)) {
-        return InvalidShorthandAttributeName(loc, name)
     }
 
     const nameSub = baseName.length - source.length

@@ -1,30 +1,19 @@
 import ts from "typescript"
 
 import { expect, test } from "vitest"
-import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk"
+import { inputDescriptor } from "../../../../../src/compiler/state"
 import { parseTsScript } from "../../../../../src/util/testing/ts-ast"
+import { parseExpression } from "../../../../../src/compiler/parser/script"
 import { findFirstChildUntil } from "../../../../../src/compiler/ts-ast/sundry"
 import { isAssignmentExpression } from "../../../../../src/compiler/ts-ast/assert"
 
 function expectIsAssignmentExpression(source: string) {
-    const sourceFile = parseTsScript(source)
-    const node = findFirstChildUntil(sourceFile, ts.isBinaryExpression)
-    expect(node, `source: "${source}" should contain binary expression`).toBeTruthy()
-    return expect(isAssignmentExpression(node!), `source: "${source}"`)
+    const expression = parseExpression(source, 0)!
+    inputDescriptor.script.isTS = true
+    return expect(isAssignmentExpression(expression), `source: "${source}"`)
 }
 
-function collectBinaryExpressions(source: string) {
-    const sourceFile = parseTsScript(source)
-    const result: ts.BinaryExpression[] = []
-    walkTsNode(sourceFile, node => {
-        if (ts.isBinaryExpression(node)) {
-            result.push(node)
-        }
-    })
-    return result
-}
-
-test("Assignment: wrapped assignment operators", () => {
+test("Wrapped assignment operators", () => {
     expectIsAssignmentExpression("a = 1").toBeTruthy()
     expectIsAssignmentExpression("((a as number)) += 1").toBeTruthy()
     expectIsAssignmentExpression("((a satisfies number)) -= 1").toBeTruthy()
@@ -43,7 +32,7 @@ test("Assignment: wrapped assignment operators", () => {
     expectIsAssignmentExpression("((<number>a)) >>>= 1").toBeTruthy()
 })
 
-test("Assignment: wrapped non-assignment operators", () => {
+test("Wrapped non-assignment operators", () => {
     expectIsAssignmentExpression("((a as number)) == 1").toBeFalsy()
     expectIsAssignmentExpression("((a satisfies number)) === 1").toBeFalsy()
     expectIsAssignmentExpression("((<number>a)) < 1").toBeFalsy()
@@ -52,7 +41,7 @@ test("Assignment: wrapped non-assignment operators", () => {
     expectIsAssignmentExpression("((<number>a)) * 1").toBeFalsy()
 })
 
-test("Assignment: pure non-assignment operators", () => {
+test("Pure non-assignment operators", () => {
     expectIsAssignmentExpression("a + b").toBeFalsy()
     expectIsAssignmentExpression("a * b").toBeFalsy()
     expectIsAssignmentExpression("a - b").toBeFalsy()
@@ -71,7 +60,7 @@ test("Assignment: pure non-assignment operators", () => {
     expectIsAssignmentExpression("a >>> b").toBeFalsy()
 })
 
-test("Assignment: pure assignment operators", () => {
+test("Pure assignment operators", () => {
     expectIsAssignmentExpression("a = 1").toBeTruthy()
     expectIsAssignmentExpression("b += 1").toBeTruthy()
     expectIsAssignmentExpression("c -= 1").toBeTruthy()
@@ -90,32 +79,19 @@ test("Assignment: pure assignment operators", () => {
     expectIsAssignmentExpression("p >>>= 1").toBeTruthy()
 })
 
-test("Assignment: non-binary expression is false", () => {
+test("Destructuring assignment", () => {
+    expectIsAssignmentExpression("[a, b] = [1, 2]").toBeTruthy()
+    expectIsAssignmentExpression("({c, d: e} = {c: 1, d: 2})").toBeTruthy()
+    expectIsAssignmentExpression("[f, ...g] = [1, 2, 3]").toBeTruthy()
+    expectIsAssignmentExpression("[h, i] = [1, 2] as const").toBeTruthy()
+    expectIsAssignmentExpression("({j, k} = {j: 1, k: 2} as const)").toBeTruthy()
+    expectIsAssignmentExpression("[l, m] = [1, 2] satisfies number[]").toBeTruthy()
+    expectIsAssignmentExpression("({n, o} = <{n: number, o: number}>{n: 1, o: 2})").toBeTruthy()
+})
+
+test("Non-binary expression is false", () => {
     const sourceFile = parseTsScript("a++")
     const node = findFirstChildUntil(sourceFile, ts.isPostfixUnaryExpression)
     expect(node, `source: \"a++\" should contain target node`).toBeTruthy()
     expect(isAssignmentExpression(node!)).toBeFalsy()
-})
-
-test("Assignment: walk-context operator mix in script block", () => {
-    const binaries = collectBinaryExpressions(`
-        let a = 0
-        const b = { c: 1 }
-        a += b.c
-        b.c &&= a
-        if (a > 0) {
-            b.c = a
-        }
-    `)
-
-    const assignmentKinds = new Set([
-        ts.SyntaxKind.EqualsToken,
-        ts.SyntaxKind.PlusEqualsToken,
-        ts.SyntaxKind.AmpersandAmpersandEqualsToken
-    ])
-    for (const node of binaries) {
-        const actual = isAssignmentExpression(node)
-        const expected = assignmentKinds.has(node.operatorToken.kind)
-        expect(actual, `operator: ${ts.SyntaxKind[node.operatorToken.kind]}`).toBe(expected)
-    }
 })

@@ -1,11 +1,10 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { TemplateNode } from "#type-declarations/compiler"
 
-import ts from "typescript"
-
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
 import { traverseObject } from "../../../util/shared/sundry"
+import { isArrayBindingNameIdentifier } from "../../ts-ast/assert"
 import { getMaybeReusedString, replaceReusedStringReferences } from "../../optimizer/compress"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
 
@@ -27,7 +26,7 @@ export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourc
     })
     for (const reference of parsedExpression.contextReferences) {
         const parsedPattern = reference.pattern
-        if (!parsedPattern || ts.isIdentifier(parsedPattern.node)) {
+        if (!isArrayBindingNameIdentifier(parsedPattern.node)) {
             continue
         }
 
