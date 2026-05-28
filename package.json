@@ -57,15 +57,13 @@
     "*.{js,jsx,ts,tsx,mjs,cjs,json,md,yml,yaml,qk}": "prettier --write"
   },
   "dependencies": {
-    "@babel/parser": "^7.29.3",
     "@jridgewell/sourcemap-codec": "^1.5.5",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
-    "@babel/types": "^7.29.0",
     "@eslint/js": "^10.0.1",
     "@microsoft/api-extractor": "^7.58.7",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.60.0",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^24.12.4",
     "@vitest/coverage-v8": "^4.1.6",
