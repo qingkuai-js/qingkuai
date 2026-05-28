@@ -50,7 +50,7 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     const writer = generateIntermediateCode(templateNodes)
     const idStatusInfo: Record<string, string> = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
-        idStatusInfo[name] = getTopLevelIdentifierInfo(info)
+        idStatusInfo[name] = getTopLevelIdentifierInfo(name, info)
     })
 
     const positions = inputDescriptor.positions
@@ -111,10 +111,7 @@ export class CompileIntermediateResult {
     }
 }
 
-function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
-    const intrinsicName = analyzeResult.script.declaratorToIntrinsic
-        .get(info.nodeInfos[0].declarator as ts.VariableDeclaration)
-        ?.getText()
+function getTopLevelIdentifierInfo(name: string, info: TopLevelIdentifierInfo) {
     switch (info.status) {
         case "literal": {
             return "raw (never mutated)"
@@ -123,13 +120,17 @@ function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
             return "raw (template unused)"
         }
         case "raw": {
-            if (!intrinsicName) {
-                return "raw (implicit raw)"
+            const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+            const intrinsicName = analyzeResult.script.declaratorToIntrinsic
+                .get(declarator)
+                ?.getText()
+            if (intrinsicName === "raw") {
+                return "raw (explicit raw)"
             }
-            if (intrinsicName !== "raw") {
-                return "raw (downgraded)"
+            if (inputDescriptor.options.shorthandDerivedDeclaration && name.startsWith("$")) {
+                return "raw (constant literal, downgraded)"
             }
-            return "raw (explicit raw)"
+            return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
         }
         default: {
             return `${info.status}${info.aliasTarget ? ` -> ${info.aliasTarget}` : ""}`
