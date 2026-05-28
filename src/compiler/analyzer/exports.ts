@@ -24,24 +24,34 @@ export function analyzeExports(sourceFile: ts.SourceFile) {
                 const exportDeclaration = statement as ts.ExportDeclaration
                 analyzeResult.script.exportStatements.push(exportDeclaration)
 
-                if (exportDeclaration.moduleSpecifier) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Re-export")
-                    break
-                }
+                const moduleSpecifier = exportDeclaration.moduleSpecifier
+                const hasValidModuleSpecifier =
+                    !!moduleSpecifier && moduleSpecifier.pos !== moduleSpecifier.end
 
                 if (!exportDeclaration.exportClause) {
-                    break
-                }
-
-                if (exportDeclaration.isTypeOnly) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Type export")
+                    if (hasValidModuleSpecifier) {
+                        InvalidExportStatement(getScriptLocByNode(statement), "Re-export")
+                    }
                     break
                 }
 
                 // 不完整的输入: `export * as ns`
                 // Incomplete input: `export * as ns`
                 if (ts.isNamespaceExport(exportDeclaration.exportClause)) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Namespace export")
+                    InvalidExportStatement(
+                        getScriptLocByNode(statement),
+                        hasValidModuleSpecifier ? "Re-export" : "Namespace export"
+                    )
+                    break
+                }
+
+                if (hasValidModuleSpecifier) {
+                    InvalidExportStatement(getScriptLocByNode(statement), "Re-export")
+                    break
+                }
+
+                if (exportDeclaration.isTypeOnly) {
+                    InvalidExportStatement(getScriptLocByNode(statement), "Type export")
                     break
                 }
 

@@ -2,6 +2,10 @@ import ts from "typescript"
 
 import { expect, test } from "vitest"
 import {
+    isParameterProperty,
+    isArrayBindingNameIdentifier
+} from "../../../../../src/compiler/ts-ast/assert"
+import {
     findFirstChildUntil,
     getVariableDeclareKeyword
 } from "../../../../../src/compiler/ts-ast/sundry"
@@ -68,4 +72,42 @@ test("VariableDeclarationList: for-in and for-of left declaration", () => {
     expect(getVariableDeclareKeyword(lists[1]!) === "var").toBeFalsy()
     expect(getVariableDeclareKeyword(lists[2]!) === "var").toBeTruthy()
     expect(getVariableDeclareKeyword(lists[3]!) === "var").toBeFalsy()
+})
+
+test("Binding element: array binding identifier detection", () => {
+    const omittedSource = parseTsScript("const [, a] = arr")
+    const omitted = findFirstChildUntil(omittedSource, ts.isOmittedExpression)
+    expect(omitted).toBeTruthy()
+    expect(isArrayBindingNameIdentifier(omitted!)).toBe(false)
+
+    const restSource = parseTsScript("const [...a] = arr")
+    const rest = findFirstChildUntil(restSource, ts.isBindingElement)
+    expect(rest).toBeTruthy()
+    expect(isArrayBindingNameIdentifier(rest!)).toBe(false)
+
+    const idSource = parseTsScript("const [a] = arr")
+    const idElement = findFirstChildUntil(idSource, ts.isBindingElement)
+    expect(idElement).toBeTruthy()
+    expect(isArrayBindingNameIdentifier(idElement!)).toBe(true)
+
+    const patternSource = parseTsScript("const [{ a }] = arr")
+    const patternElement = findFirstChildUntil(patternSource, ts.isBindingElement)
+    expect(patternElement).toBeTruthy()
+    expect(isArrayBindingNameIdentifier(patternElement!)).toBe(false)
+})
+
+test("Parameter declaration: parameter property modifiers", () => {
+    const sources = [
+        "class A { constructor(public a: number) {} }",
+        "class B { constructor(private b: number) {} }",
+        "class C { constructor(protected c: number) {} }",
+        "class D { constructor(readonly d: number) {} }"
+    ]
+
+    for (const source of sources) {
+        const sourceFile = parseTsScript(source)
+        const parameter = findFirstChildUntil(sourceFile, ts.isParameter)
+        expect(parameter).toBeTruthy()
+        expect(isParameterProperty(parameter!)).toBe(true)
+    }
 })

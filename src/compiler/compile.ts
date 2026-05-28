@@ -11,6 +11,8 @@ import type {
 } from "#type-declarations/compiler"
 import type { PositionFlag } from "./enums"
 
+import ts from "typescript"
+
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
 import { analyzeTemplate } from "./analyzer/template"
@@ -109,8 +111,11 @@ export class CompileIntermediateResult {
     }
 }
 
-function getTopLevelIdentifierInfo(id: TopLevelIdentifierInfo) {
-    switch (id.status) {
+function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
+    const intrinsicName = analyzeResult.script.declaratorToIntrinsic
+        .get(info.nodeInfos[0].declarator as ts.VariableDeclaration)
+        ?.getText()
+    switch (info.status) {
         case "literal": {
             return "raw (never mutated)"
         }
@@ -118,13 +123,16 @@ function getTopLevelIdentifierInfo(id: TopLevelIdentifierInfo) {
             return "raw (template unused)"
         }
         case "raw": {
-            if (!id.implicit) {
-                return "raw (explicit raw)"
+            if (!intrinsicName) {
+                return "raw (implicit raw)"
             }
-            return "raw (constant literal)"
+            if (intrinsicName !== "raw") {
+                return "raw (downgraded)"
+            }
+            return "raw (explicit raw)"
         }
         default: {
-            return `${id.status}${id.aliasTarget ? ` -> ${id.aliasTarget}` : ""}`
+            return `${info.status}${info.aliasTarget ? ` -> ${info.aliasTarget}` : ""}`
         }
     }
 }

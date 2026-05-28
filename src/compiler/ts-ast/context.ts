@@ -17,6 +17,8 @@ export function isInHoistableTopLevel(node: TsNodeWithContext): boolean {
 
 // 获取节点所属的作用域边界节点
 // Get the scope boundary node that the node belongs to.
+//
+// v8 ignore next -- reserved for future feature
 export function getScope(node: TsNodeWithContext): TsNodeWithContext | null {
     let ret: any = null
     walkAncestors(node, current => {

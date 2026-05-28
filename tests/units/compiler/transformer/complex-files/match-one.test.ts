@@ -1,6 +1,7 @@
 import { test, expect } from "vitest"
 
 import input from "./input-one"
+import { equalsWithKeyDirectiveValue } from "../../../../../src/compiler/optimizer/render"
 import { parseScript } from "../../../../../src/compiler/parser/script"
 import { compile, compileIntermediate } from "../../../../../src/compiler/compile"
 
@@ -23,6 +24,19 @@ function compileIntermediateAndAssertNoErrors(source: string, label: string) {
     expect(result.messages.filter(msg => msg.type === "error")).toEqual([])
     expectValidESMSyntax(result.code, `${label}-intermediate`)
     return result
+}
+
+function findTemplateNodeByForDirective(nodes: any[]): any | null {
+    for (const node of nodes) {
+        if (node?.attributes?.some((attr: any) => attr?.name?.raw === "#for")) {
+            return node
+        }
+        const found = findTemplateNodeByForDirective(node?.children ?? [])
+        if (found) {
+            return found
+        }
+    }
+    return null
 }
 
 test("Runtime: complex file broad syntax coverage and generated-code sanity", () => {
@@ -188,6 +202,9 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
         pending: "reactive",
         mount: "reactive",
         list: "reactive",
+        rawValue: "raw (downgraded)",
+        explicitRawValue: "raw (explicit raw)",
+        implicitRawValue: "raw (implicit raw)",
         onHeaderClick: "raw (never mutated)",
         onItemClick: "raw (never mutated)"
     })
@@ -197,6 +214,15 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
     expect(result.getTemplateNodeContext(mainSlotNode!).attributesMap.name?.value.raw).toBe("main")
     expect(result.getSourceIndex(0)).toBe(-1)
     expect(result.getInterIndex(0)).toBe(-1)
+})
+
+test("Runtime regression: equalsWithKeyDirectiveValue returns false for missing parsed expression", () => {
+    const result = compileIntermediateAndAssertNoErrors(input, "missing-parsed-expression")
+    const forNode = findTemplateNodeByForDirective(result.templateNodes)
+
+    expect(forNode).toBeTruthy()
+    const nodeContext = result.getTemplateNodeContext(forNode!)
+    expect(equalsWithKeyDirectiveValue(nodeContext, Symbol("missing-exp"))).toBe(false)
 })
 
 test("Runtime regression: first interpolation block tracked in renderEffect", () => {

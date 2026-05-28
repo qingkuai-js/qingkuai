@@ -1,4 +1,5 @@
 import { expect, test } from "vitest"
+import { parseTsScript } from "../../../../../src/util/testing/ts-ast"
 import { isLeftValue } from "../../../../../src/compiler/ts-ast/assert"
 import { parseExpression } from "../../../../../src/compiler/parser/script"
 
@@ -64,4 +65,9 @@ test("invalid literals and declarations", () => {
     expectIsLeftValue("class a{}").toBeFalsy()
     expectIsLeftValue("function(){}").toBeFalsy()
     expectIsLeftValue("function a(){}").toBeFalsy()
+})
+
+test("boundary: source file node is never a left value", () => {
+    const sourceFile = parseTsScript("a")
+    expect(isLeftValue(sourceFile)).toBe(false)
 })

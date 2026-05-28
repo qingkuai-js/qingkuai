@@ -309,3 +309,27 @@ test("Unsupported export: default export declarations are rejected", () => {
     ])
     expect(analyzeResult.script.exportedBindings).toEqual([])
 })
+
+test("Export declaration: incomplete bare export has no clause and no invalid-export error", () => {
+    localAnalyze(`
+        export *
+    `)
+
+    expect(messages.length).toBe(0)
+    expect(analyzeResult.script.exportedBindings).toEqual([])
+})
+
+test("Unsupported export: incomplete namespace export is rejected", () => {
+    localAnalyze(`
+        export * as ns
+    `)
+
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [0, 14],
+            value: "Namespace export is not supported in embedded script block."
+        }
+    ])
+    expect(analyzeResult.script.exportedBindings).toEqual([])
+})

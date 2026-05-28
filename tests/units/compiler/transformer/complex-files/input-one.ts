@@ -17,6 +17,10 @@ export default formatSourceCode(`
 		]
 		let count = 0
 
+		const rawValue = reactive(null)
+		const explicitRawValue = raw({ value: 1 })
+		const implicitRawValue = () => 1
+
 		function onHeaderClick() {
 			showPanel = !showPanel
 		}

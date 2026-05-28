@@ -140,3 +140,63 @@ test("Intermediate: literal used and then mutated becomes reactive", () => {
         inc: "raw (never mutated)"
     })
 })
+
+test("Intermediate: const function literal used in template is implicit raw", () => {
+    const source = formatSourceCode(`
+        <lang-js>
+            const getValue = () => 1
+        </lang-js>
+
+        <p>{ getValue }</p>
+    `)
+
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-implicit-raw")
+    expect(result.identifierStatusInfo).toMatchObject({
+        getValue: "raw (implicit raw)"
+    })
+})
+
+test("Intermediate: reactive mark on const literal is downgraded to raw", () => {
+    const source = formatSourceCode(`
+        <lang-js>
+            const value = reactive(1)
+        </lang-js>
+
+        <p>{ value }</p>
+    `)
+
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-downgraded-raw")
+    expect(result.identifierStatusInfo).toMatchObject({
+        value: "raw (downgraded)"
+    })
+})
+
+test("Intermediate: shallow intrinsic keeps shallow status", () => {
+    const source = formatSourceCode(`
+        <lang-js>
+            let state = shallow({ n: 1 })
+        </lang-js>
+
+        <p>{ state.n }</p>
+    `)
+
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-shallow")
+    expect(result.identifierStatusInfo).toMatchObject({
+        state: "shallow"
+    })
+})
+
+test("Intermediate: derived intrinsic keeps derived status", () => {
+    const source = formatSourceCode(`
+        <lang-js>
+            let value = derived(() => 1)
+        </lang-js>
+
+        <p>{ value }</p>
+    `)
+
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-derived")
+    expect(result.identifierStatusInfo).toMatchObject({
+        value: "derived"
+    })
+})
