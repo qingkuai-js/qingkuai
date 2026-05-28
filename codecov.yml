@@ -7,8 +7,8 @@ coverage:
       compiler:
         flags:
           - compiler
-        target: auto
-        threshold: 0.2%
+        target: 95%
+        threshold: 0%
 
 comment:
   layout: "reach,diff,flags,files"

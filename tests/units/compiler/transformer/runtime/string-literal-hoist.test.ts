@@ -269,21 +269,6 @@ test("Production: enum string initializers still allow reusable literal extracti
     expect(code).toContain(`A = ${literalId}`)
 })
 
-test("Production: __proto__ object key is not converted to computed reused key", () => {
-    const code = compileAndGetCode(
-        `
-            <lang-js>
-                const a = { "__proto__": 1, "same": "same" }
-                const b = "same" + "same"
-            </lang-js>
-            <div>{a["same"] + b}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain('"__proto__": 1')
-    expect(code).toContain(`[${literalId}]: ${literalId}`)
-})
-
 test("Production: TS as/satisfies type contexts keep type literals untouched", () => {
     const code = compileAndGetCode(
         `

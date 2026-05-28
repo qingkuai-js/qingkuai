@@ -14,5 +14,5 @@
     }
   },
   "exclude": ["dist", "node_modules/**/*"],
-  "include": ["src", "tests", "test-space", "env.d.ts", "scripts", "dist/temp-types"]
+  "include": ["src", "tests", "test-space", "scripts", "dist/temp-types", "env.d.ts"]
 }

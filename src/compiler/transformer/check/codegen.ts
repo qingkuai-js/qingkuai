@@ -5,8 +5,9 @@ import type {
     ParsedExpression,
     TemplateAttribute
 } from "#type-declarations/compiler"
-import type { VariableDeclarator } from "@babel/types"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
+
+import ts from "typescript"
 
 import {
     getStartTagNameLoc,
@@ -18,14 +19,15 @@ import {
     getTemplateNodeContext
 } from "../../../util/compiler/template"
 import { CodeEditor } from "../editor"
+import { eliminate } from "../eliminate"
 import { LSC, SPREAD_TAG } from "../../constants"
 import { IntermediateCodeWriter } from "../writer"
 import { stringify } from "../../../util/shared/aliases"
-import { stripTypeExpressions } from "../../estree/sundry"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
+import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
-import { isFunctionLiteral, isInlineEventHandler } from "../../estree/assert"
+import { isFunctionLiteral, isInlineEventHandler } from "../../ts-ast/assert"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
     let slotNamesType = ""
@@ -44,8 +46,10 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.code,
         inputDescriptor.script.loc.start.index
     )
-    const scriptDescriptor = inputDescriptor.script
+    const importDeclarations = analyzeResult.script.importDeclarations
+    const scriptTagOpenRange = inputDescriptor.script.startTagOpenRange
     const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
+    const declaratorToIntrinsic = analyzeResult.script.declaratorToIntrinsic
     const exportBindings = analyzeResult.script.exportedBindings.filter(item => {
         if (item.local !== item.exported) {
             return !!topLevelIdentifiers[item.exported]
@@ -53,7 +57,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         return !!topLevelIdentifiers[item.local]
     })
     const exportSourceRange: Range | undefined = inputDescriptor.script.existing
-        ? [scriptDescriptor.startTagOpenRange[0] + 1, scriptDescriptor.startTagOpenRange[1]]
+        ? [scriptTagOpenRange[0] + 1, scriptTagOpenRange[1]]
         : undefined
 
     const ANY_VALUE = `${LSC.UTIL}.anyValue`
@@ -75,19 +79,11 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         "defaultRefs",
         "defaultProps"
     ]
+    eliminate(embeddedScriptEditor)
     writer.writeLine(`import { ${needImportItems.join(", ")} } from "qingkuai/language-service";`)
 
-    for (const importDeclaration of analyzeResult.script.importDeclarations) {
-        embeddedScriptEditor.remove(...importDeclaration.value.range!)
-        writer.writeScriptNode(importDeclaration.value).writeLine(";")
-    }
-    for (const exportDeclaration of analyzeResult.script.exportDeclarations) {
-        const node = exportDeclaration.value
-        if (node.type === "ExportNamedDeclaration" && node.declaration) {
-            embeddedScriptEditor.remove(node.start!, node.declaration.start!)
-            continue
-        }
-        embeddedScriptEditor.remove(node.start!, node.end!)
+    for (const decl of importDeclarations) {
+        writer.writeScriptNode(decl).writeLine(";")
     }
     writer.write(`\nfunction ${LSC.COMPONENT}(){`).indent()
 
@@ -98,18 +94,21 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     }
     writer.dedent(false)
 
-    traverseObject(analyzeResult.script.topLevelIdentifiers, (_, info) => {
-        const declarator = info.nodeInfos[0].declarator as VariableDeclarator
-        if (
-            info.status !== "derived" ||
-            analyzeResult.script.declaratorToIntrinsic.has(declarator)
-        ) {
+    traverseObject(topLevelIdentifiers, (_, info) => {
+        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+        if (info.status !== "derived" || declaratorToIntrinsic.has(declarator)) {
             return
         }
 
-        if (declarator.init && isFunctionLiteral(stripTypeExpressions(declarator.init))) {
-            embeddedScriptEditor.insert(declarator.init!.end!, ")")
-            embeddedScriptEditor.insert(declarator.init!.start!, `${LSC.UTIL}.getReturnType(`)
+        if (
+            declarator.initializer &&
+            isFunctionLiteral(getStriptTypeOperationsNode(declarator.initializer))
+        ) {
+            embeddedScriptEditor.insert(
+                declarator.initializer.getStart()!,
+                `${LSC.UTIL}.getReturnType(`
+            )
+            embeddedScriptEditor.insert(declarator.initializer.getEnd(), ")")
         }
     })
     writer.wrapLine().writeEditedScript(embeddedScriptEditor).indent().writeLine(";\n")

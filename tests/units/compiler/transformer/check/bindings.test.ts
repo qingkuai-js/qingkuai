@@ -1,7 +1,7 @@
 import { test, expect } from "vitest"
-import { parse } from "@babel/parser"
 
 import { LSC } from "../../../../../src/compiler/constants"
+import { parseScript } from "../../../../../src/compiler/parser/script"
 import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 import { compileIntermediate } from "../../../../../src/compiler/compile"
 
@@ -11,10 +11,8 @@ function compileIntermediateResult(source: string) {
 
 function compileAndAssertNoErrors(source: string) {
     const result = compileIntermediateResult(source)
+    expect(() => parseScript(result.code)).not.toThrow()
     expect(result.messages.filter(m => m.type === "error")).toEqual([])
-    expect(() =>
-        parse(result.code, { sourceType: "module", plugins: ["typescript"] })
-    ).not.toThrow()
     return result
 }
 

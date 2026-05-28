@@ -8,6 +8,8 @@ import type {
     TemplateNodeContext
 } from "#type-declarations/compiler"
 
+import ts from "typescript"
+
 import {
     InvalidExpression,
     ExpectedExpression,
@@ -26,11 +28,12 @@ import {
     getTemplateNodeContext
 } from "../../util/compiler/template"
 import { PositionFlag } from "../enums"
-import { walkEstree } from "../estree/walk"
 import { parseExpression } from "../parser/script"
-import { markNeedSourcemap } from "../estree/sundry"
+import { markNeedSourcemap } from "../ts-ast/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
+import { walkTsNodeWithContext } from "../ts-ast/walk"
 import { kebab2Camel } from "../../util/compiler/string"
+import { isIdentifierAssignmentTarget } from "../ts-ast/assert"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { analyzeResult, inputDescriptor, messages } from "../state"
 import { collectReusedStringReference } from "../optimizer/compress"
@@ -74,79 +77,78 @@ export function analyzeInterpolation(
                 ? "Expression with ending semicolon will be treated as statement, which is not allowed in interpolation."
                 : ""
         )
+        return null
     }
 
-    walkEstree(expression, {
-        AnyNode(node, context) {
-            if (parsedExpression) {
-                collectReusedStringReference(node, context, parsedExpression.reusedStringReferences)
-            }
-            markNeedSourcemap(node, startSourceIndex)
-        },
+    walkTsNodeWithContext(expression, node => {
+        markNeedSourcemap(node, startSourceIndex)
+        collectReusedStringReference(node, parsedExpression.reusedStringReferences)
 
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers based on their different usage patterns in the template.
-        Identifier({ name, range }, context) {
-            const parsedDirective = nodeContext.contextIdentifiers[name]
-            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[name]
-            if (!topLevelIdentifier && !parsedDirective && intrinsicMethodsRE.test(name)) {
-                const sourceRange: Range = [
-                    startSourceIndex + range[0],
-                    startSourceIndex + range[1]
-                ]
-                InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), name)
+        if (ts.isIdentifier(node)) {
+            const idName = node.text
+            const nodeRange: Range = [node.getStart(), node.getEnd()]
+            const parsedDirective = nodeContext.contextIdentifiers[idName]
+            const sourceRange = nodeRange.map(n => n + startSourceIndex) as Range
+            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[idName]
+            if (!topLevelIdentifier && !parsedDirective && intrinsicMethodsRE.test(idName)) {
+                InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), idName)
             }
-            if (context.isBindingReference && !parsedDirective) {
-                if (intrinsicVariableRE.test(name)) {
-                    analyzeResult.script.usedIntrinsicVars.add(name)
+            if (node.isBindingReference && !parsedDirective) {
+                if (intrinsicVariableRE.test(idName)) {
+                    analyzeResult.script.usedIntrinsicVars.add(idName)
                 }
                 if (topLevelIdentifier) {
                     const status = topLevelIdentifier.status
                     if (
+                        // prettier-ignore
                         status === "pending" ||
-                        (status === "literal" &&
-                            (isReferenceAttr || context.isIdentifierAssignmentTarget))
+                        (
+                            status === "literal" &&
+                            (isReferenceAttr || isIdentifierAssignmentTarget(node))
+                        )
                     ) {
                         for (const exp of topLevelIdentifier.usedExpressions) {
                             exp.reactive = true
                         }
                         topLevelIdentifier.status = inputDescriptor.options.reactivityMode
                     }
-                    ;(topLevelReferences[name] ??= []).push({
-                        range,
+                    ;(topLevelReferences[idName] ??= []).push({
                         declared: true,
-                        shorthand: context.isShorthandIdentifierAccess
+                        range: nodeRange,
+                        shorthand: ts.isShorthandPropertyAssignment(node.parent)
                     })
                     topLevelIdentifier.usedExpressions.add(parsedExpression!)
                 }
             }
             if (
                 parsedDirective &&
-                context.isBindingReference &&
-                shouldContextIdentifierBeTransformed(name, parsingInfoKey, nodeContext)
+                node.isBindingReference &&
+                shouldContextIdentifierBeTransformed(idName, parsingInfoKey, nodeContext)
             ) {
                 const pattern = parsedDirective.patterns.find(parsedPattern => {
-                    return parsedPattern.declaredIdentifiers.has(name)
+                    return parsedPattern.declaredIdentifiers.has(idName)
                 })!
                 reactiveContextReferences.push({
-                    range,
                     pattern,
-                    shorthand: context.isShorthandIdentifierAccess
+                    range: nodeRange,
+                    shorthand: ts.isShorthandPropertyAssignment(node)
                 })
             }
             if (
                 parsedDirective ||
-                analyzeResult.script.importIdentifiers.has(name) ||
+                analyzeResult.script.importIdentifiers.has(idName) ||
                 (topLevelIdentifier &&
                     topLevelIdentifier.status !== "literal" &&
                     topLevelIdentifier.status !== "pending")
             ) {
                 parsedExpression!.reactive ||= true
             }
-            if (name === "props" || name === "refs") {
+            if (idName === "props" || idName === "refs") {
                 parsedExpression!.reactive ||= true
             }
-            analyzeResult.script.fullIdentifiers.add(name)
+            analyzeResult.script.fullIdentifiers.add(idName)
         }
     })
     if (parsedExpression) {
@@ -178,15 +180,15 @@ export function analyzeTemplateAsExpression(
         messages.pop()
     }
 
-    if (
-        type === "component" &&
-        expression?.type !== "Identifier" &&
-        expression?.type !== "MemberExpression"
+    if (type === "attribute") {
+        if (!expression || !ts.isIdentifier(expression)) {
+            return InvalidShorthandAttributeName(loc, name)
+        }
+    } else if (
+        !expression ||
+        (!ts.isIdentifier(expression) && !ts.isPropertyAccessExpression(expression))
     ) {
         return InvalidComponentTag(loc, name)
-    }
-    if (type === "attribute" && expression?.type !== "Identifier") {
-        return InvalidShorthandAttributeName(loc, name)
     }
 
     const nameSub = baseName.length - source.length

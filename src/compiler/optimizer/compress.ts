@@ -1,15 +1,11 @@
-import type {
-    EstreeWalkContext,
-    StringLiteralDetail,
-    ReusedStringReference
-} from "#type-declarations/compiler"
 import type { CodeEditor } from "../transformer/editor"
 import type { RuntimeCodeWriter } from "../transformer/writer"
-import type { AnyNode, WithLoc } from "#type-declarations/estree"
-import type { StringLiteral, TemplateLiteral } from "@babel/types"
 import type { TemplateFragment } from "#type-declarations/compiler"
+import type { StringLiteralDetail, ReusedStringReference } from "#type-declarations/compiler"
 
-import { any } from "../../util/shared/sundry"
+import ts from "typescript"
+
+import { getNodeRange } from "../ts-ast/sundry"
 import { stringify } from "../../util/shared/aliases"
 import { isUndefined } from "../../util/shared/assert"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
@@ -115,40 +111,6 @@ export function getMaybeReusedString(value: string) {
     return `/* ${value} */ ${literalId}`
 }
 
-export function collectReusedStringReference(
-    node: WithLoc<AnyNode>,
-    context: EstreeWalkContext,
-    references: ReusedStringReference[]
-) {
-    const detail = getTransformableStringLiteralValue(node, context)
-    if (isUndefined(detail)) {
-        return
-    }
-
-    increaseReusedStringUsedTimes(detail.value, detail.propertyName)
-    references.push({
-        value: detail.value,
-        range: node.range!,
-        computed: detail.computed
-    })
-}
-
-export function replaceReusedStringReferences(
-    editor: CodeEditor,
-    references: ReusedStringReference[]
-) {
-    for (const reference of references) {
-        const literalId = getMaybeReusedString(reference.value)
-        if (literalId) {
-            editor.replace(
-                ...reference.range,
-                reference.computed ? `[${literalId}]` : literalId,
-                true
-            )
-        }
-    }
-}
-
 export function increaseReusedStringUsedTimes(value: string, isPropertyName = false) {
     if (
         inputDescriptor.options.debug ||
@@ -165,129 +127,98 @@ export function increaseReusedStringUsedTimes(value: string, isPropertyName = fa
     analyzeResult.reusedStrings[value].times++
 }
 
-function getTransformableStringLiteralValue(node: WithLoc<AnyNode>, context: EstreeWalkContext) {
-    let value = ""
-    switch (node.type) {
-        case "StringLiteral": {
-            value = (node as WithLoc<StringLiteral>).value
-            break
-        }
-        case "TemplateLiteral": {
-            const templateNode = node as WithLoc<TemplateLiteral>
-            if (templateNode.expressions.length) {
-                return
-            }
-            value = templateNode.quasis[0]?.value.cooked ?? ""
-            break
-        }
-        default: {
-            return
-        }
+export function collectReusedStringReference(node: ts.Node, references: ReusedStringReference[]) {
+    const detail = getTransformableStringLiteralValue(node)
+    if (isUndefined(detail)) {
+        return
     }
+    references.push({
+        value: detail.value,
+        computed: detail.computed,
+        range: getNodeRange(node)
+    })
+    increaseReusedStringUsedTimes(detail.value, detail.propertyName)
+}
 
-    if (isInTypeOnlyContext(node, context)) {
+function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail | undefined {
+    if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
+        return
+    }
+    if (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node)) {
+        return
+    }
+    if (ts.isTaggedTemplateExpression(node.parent)) {
         return
     }
 
-    const parentNode = context.parent?.value
-    if (!parentNode) {
-        return {
-            value,
-            computed: false,
-            propertyName: false
-        } satisfies StringLiteralDetail
-    }
-
-    switch (parentNode.type) {
-        case "TSPropertySignature":
-        case "TSMethodSignature": {
-            if (node === any(parentNode).key && !any(parentNode).computed) {
-                return
-            }
-            break
-        }
-        case "ObjectProperty":
-        case "ObjectMethod":
-        case "ClassMethod":
-        case "ClassPrivateMethod":
-        case "ClassProperty":
-        case "ClassPrivateProperty":
-        case "ClassAccessorProperty": {
-            const isNonComputedKey = node === any(parentNode).key && !any(parentNode).computed
-            if (isNonComputedKey) {
-                if (value === "__proto__") {
-                    return
-                }
-                return {
-                    value,
-                    computed: true,
-                    propertyName: true
-                } satisfies StringLiteralDetail
-            }
-            break
-        }
-        case "ImportDeclaration":
-        case "ExportAllDeclaration":
-        case "ExportNamedDeclaration":
-        case "TSImportType":
-        case "TSLiteralType": {
-            return
-        }
-        case "TaggedTemplateExpression": {
-            if (node === parentNode.quasi) {
-                return
-            }
-            break
-        }
-        case "TSEnumMember":
-        case "TSModuleDeclaration": {
-            if (node === any(parentNode).id) {
-                return
-            }
-            break
-        }
-    }
-
-    return {
-        value,
+    const defaultResult: StringLiteralDetail = {
+        value: node.text,
         computed: false,
         propertyName: false
-    } satisfies StringLiteralDetail
-}
+    }
 
-function isInTypeOnlyContext(node: WithLoc<AnyNode>, context: EstreeWalkContext) {
-    let child = node as AnyNode
-    for (let current = context.parent; current; current = current.parent) {
-        const currentNode = current.value as AnyNode
-        switch (currentNode.type) {
-            case "TSAsExpression":
-            case "TSSatisfiesExpression":
-            case "TSNonNullExpression":
-            case "TSInstantiationExpression": {
-                if (child === any(currentNode).expression) {
-                    child = currentNode
-                    continue
-                }
-                return true
+    switch (node.parent.kind) {
+        case ts.SyntaxKind.LiteralType:
+        case ts.SyntaxKind.MethodSignature:
+        case ts.SyntaxKind.ImportDeclaration:
+        case ts.SyntaxKind.ExportDeclaration:
+        case ts.SyntaxKind.ModuleDeclaration:
+        case ts.SyntaxKind.PropertySignature: {
+            return
+        }
+
+        case ts.SyntaxKind.EnumMember: {
+            if ((node.parent as ts.EnumMember).initializer !== node) {
+                return
             }
-            case "TSTypeAssertion": {
-                if (child === any(currentNode).expression) {
-                    child = currentNode
-                    continue
-                }
-                return true
+            return defaultResult
+        }
+
+        case ts.SyntaxKind.ComputedPropertyName: {
+            const grandParent = node.parent.parent
+            if (ts.isPropertySignature(grandParent) || ts.isMethodSignature(grandParent)) {
+                return
             }
-            case "TSEnumDeclaration":
-            case "TSEnumMember": {
-                return false
+            return defaultResult
+        }
+
+        case ts.SyntaxKind.PropertyAssignment: {
+            if ((node.parent as ts.PropertyAssignment).name !== node) {
+                return defaultResult
             }
-            default: {
-                if (currentNode.type.startsWith("TS")) {
-                    return true
-                }
-                child = currentNode
+            // fallthrough
+        }
+
+        case ts.SyntaxKind.GetAccessor:
+        case ts.SyntaxKind.SetAccessor:
+        case ts.SyntaxKind.MethodDeclaration:
+        case ts.SyntaxKind.PropertyDeclaration: {
+            if ((node.parent as ts.NamedDeclaration).name !== node) {
+                return
+            }
+            return {
+                value: node.text,
+                computed: true,
+                propertyName: true
             }
         }
     }
-    return false
+    return defaultResult
+}
+
+export function replaceReusedStringReferences(
+    editor: CodeEditor,
+    references: ReusedStringReference[]
+) {
+    for (const reference of references) {
+        const literalId = analyzeResult.reusedStrings[reference.value]?.id
+        if (literalId) {
+            const compressed = getMaybeReusedString(reference.value)
+            editor.replace(
+                ...reference.range,
+                reference.computed ? `[${compressed}]` : compressed,
+                true
+            )
+        }
+    }
 }

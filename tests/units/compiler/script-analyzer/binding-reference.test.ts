@@ -1,266 +1,318 @@
-import type { Identifier } from "@babel/types"
-import type { EstreeWalkContext } from "#type-declarations/compiler"
+import type { TsNodeWithContext } from "#type-declarations/ts-ast"
 
-import { parse } from "@babel/parser"
+import ts from "typescript"
+
 import { expect, test } from "vitest"
-import { any } from "../../../../src/util/shared/sundry"
-import { walkEstree } from "../../../../src/compiler/estree/walk"
+import { parseTsScript } from "../../../../src/util/testing/ts-ast"
+import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk"
 
-function localParse(source: string) {
-    return parse(source, {
-        strictMode: false,
-        sourceType: "module",
-        plugins: ["typescript"]
+function collectIdentifiers(source: string): Map<string, TsNodeWithContext<ts.Identifier>[]> {
+    const sourceFile = parseTsScript(source)
+    const map = new Map<string, TsNodeWithContext<ts.Identifier>[]>()
+
+    walkTsNodeWithContext(sourceFile, node => {
+        if (!ts.isIdentifier(node)) {
+            return
+        }
+        const name = node.text
+        if (!map.has(name)) {
+            map.set(name, [])
+        }
+        map.get(name)!.push(node)
     })
+
+    return map
 }
 
-const checkShorthandBindingReference = (context: EstreeWalkContext<Identifier>) => {
-    expect(context.isShorthandIdentifierAccess).toBeTruthy()
-    expect(context.isBindingReference).toBe(any(context).parent.value.value === context.value)
+function expectBinding(source: string, truthy: string[], falsy: string[]) {
+    const ids = collectIdentifiers(source)
+
+    for (const name of truthy) {
+        const nodes = ids.get(name)
+        expect(nodes, `identifier "${name}" not found`).toBeTruthy()
+        for (const node of nodes!) {
+            expect(node.isBindingReference, `"${name}" should be a binding reference`).toBe(true)
+        }
+    }
+
+    for (const name of falsy) {
+        const nodes = ids.get(name)
+        expect(nodes, `identifier "${name}" not found`).toBeTruthy()
+        for (const node of nodes!) {
+            expect(node.isBindingReference, `"${name}" should NOT be a binding reference`).toBe(
+                false
+            )
+        }
+    }
 }
 
-test("Expressions", () => {
-    const ast = localParse(`
-        a;
-        b.c.d;
-        e?.f?.g;
-        h!.i!.j;
-        k++;
-        ++l;
-        m--;
-        --n;
-        o += 1;
-        p ||= q;
-        r ? s : t;
-        ;[u, v] = [w, x];
-        ;({ y, z: A } = B);
-        C as any;
-        D satisfies string;
-        <number>E;
-    `)
-    walkEstree(ast, {
-        Identifier(node, context) {
-            switch (node.name) {
-                case "y": {
-                    return checkShorthandBindingReference(context)
-                }
-                case "c":
-                case "d":
-                case "f":
-                case "g":
-                case "i":
-                case "j":
-                case "z": {
-                    return expect(context.isBindingReference).toBeFalsy()
-                }
-                default: {
-                    return expect(context.isBindingReference).toBeTruthy()
-                }
-            }
-        }
-    })
+test("Expression: references, property names and assignment targets", () => {
+    expectBinding(
+        `
+            a;
+            b.c.d;
+            e?.f?.g;
+            h!.i!.j;
+            k++;
+            ++l;
+            m--;
+            --n;
+            o += 1;
+            p ||= q;
+            r ? s : t;
+            ;[u, v] = [w, x];
+            ;({ y, z: A } = B);
+            C as any;
+            D satisfies string;
+            <number>E;
+        `,
+        [
+            "a",
+            "b",
+            "e",
+            "h",
+            "k",
+            "l",
+            "m",
+            "n",
+            "o",
+            "p",
+            "q",
+            "r",
+            "s",
+            "t",
+            "u",
+            "v",
+            "w",
+            "x",
+            "y",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+        ],
+        ["c", "d", "f", "g", "i", "j", "z"]
+    )
 })
 
-test("Variables", () => {
-    const ast = localParse(`
-        const a = 1;
-        const b = c;
-        const [d, e] = [1, 2];
-        const [f, g] = [h, i];
-        const {j: k} = {}
-        var { l, m, n: { o } } = p
-        
-        using q = r()
-        await using s = t.u()
+test("Declaration: variables, destructuring and resource declarations", () => {
+    expectBinding(
+        `
+            const a = 1;
+            const b = c;
+            const [d, e] = [1, 2];
+            const [f, g] = [h, i];
+            const { j: k } = {};
+            var { l, m, n: { o } } = p;
 
-        type v = w
-        interface x{}
-        let y: z = 0
-    `)
-    walkEstree(ast, {
-        Identifier(node, context) {
-            switch (node.name) {
-                case "c":
-                case "h":
-                case "i":
-                case "p":
-                case "r":
-                case "t": {
-                    return expect(context.isBindingReference).toBeTruthy()
-                }
-                default: {
-                    return expect(context.isBindingReference).toBeFalsy()
-                }
-            }
-        }
-    })
+            using q = r();
+            await using s = t.u();
+
+            type v = w;
+            interface x {}
+            let y: z = 0;
+        `,
+        ["c", "h", "i", "p", "r", "t"],
+        [
+            "a",
+            "b",
+            "d",
+            "e",
+            "f",
+            "g",
+            "j",
+            "k",
+            "l",
+            "m",
+            "n",
+            "o",
+            "q",
+            "s",
+            "u",
+            "v",
+            "w",
+            "x",
+            "y",
+            "z"
+        ]
+    )
 })
 
-test("Functions", () => {
-    const ast = localParse(`
-        function a(){}
-        ;(function b(){})()
-        function c(d, e = f){}
-        ;((g, h = i)=>{})()
-        function j({ k, l: m = n }){}
-        ;(([o, { p: [q = r] }])=>{})()
-        s = ({
-            t: {
-                u: {
-                    v: w = x
+test("Declaration: functions and parameters", () => {
+    expectBinding(
+        `
+            function a() {}
+            ;(function b() {})()
+            function c(d, e = f) {}
+            ;((g, h = i) => {})()
+            function j({ k, l: m = n }) {}
+            ;(([o, { p: [q = r] }]) => {})()
+            s = ({
+                t: {
+                    u: {
+                        v: w = x
+                    }
                 }
-            }
-        })=>{}
-        y = function z(A, B = {C, ...D}){}
-        E = (function ([F = G, ...H]){})()
-        function I<J, K>(L: M, N = O as P as Q){}
-        ;(() => (R, S))()
-    `)
-    walkEstree(ast, {
-        Identifier(node, context) {
-            switch (node.name) {
-                case "C": {
-                    return checkShorthandBindingReference(context)
-                }
-                case "f":
-                case "i":
-                case "n":
-                case "r":
-                case "s":
-                case "x":
-                case "y":
-                case "D":
-                case "E":
-                case "G":
-                case "O":
-                case "R":
-                case "S": {
-                    return expect(context.isBindingReference).toBeTruthy()
-                }
-                default: {
-                    return expect(context.isBindingReference).toBeFalsy()
-                }
-            }
-        }
-    })
+            }) => {}
+            y = function z(A, B = { C, ...D }) {}
+            E = (function([F = G, ...H]) {})()
+            function I<J, K>(L: M, N = O as P as Q) {}
+            ;(() => (R, S))()
+        `,
+        ["f", "i", "n", "r", "s", "x", "y", "C", "D", "E", "G", "O", "R", "S"],
+        [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "g",
+            "h",
+            "j",
+            "k",
+            "l",
+            "m",
+            "o",
+            "p",
+            "q",
+            "t",
+            "u",
+            "v",
+            "w",
+            "z",
+            "A",
+            "B",
+            "F",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "P",
+            "Q"
+        ]
+    )
 })
 
-test("Classes", () => {
-    const ast = localParse(`
-        class a{
-            b = 1
-            c = d
-            [e] = 2
-            f(){}
-            [g](){}
-            h(i, j = k){}
-            [l]({
-                m,
-                n: {
-                    o = p
+test("Declaration: classes, computed names and accessors", () => {
+    expectBinding(
+        `
+            class a {
+                b = 1
+                c = d
+                [e] = 2
+                f() {}
+                [g]() {}
+                h(i, j = k) {}
+                [l]({
+                    m,
+                    n: {
+                        o = p
+                    }
+                }) {
+                    this.q
                 }
-            }){
-                this.q
-            }
-            get r(){}
-            set r(s){}
+                get r() { return s }
+                set r(t) { this.u = v }
 
-            #t
-            #u = v
-            #w(){
-                this.#t = x
+                #w
+                #x = y
             }
-        }
 
-        class y extends z{}
-        class A implements B{}
-        class C implements D, E<F>{}
-
-        class G extends H<I, J>{
-            K<L, M>(N: O, P = Q as R){}
-        }
-    `)
-    walkEstree(ast, {
-        Identifier(node, context) {
-            switch (node.name) {
-                case "d":
-                case "e":
-                case "g":
-                case "k":
-                case "l":
-                case "p":
-                case "v":
-                case "x":
-                case "z":
-                case "H":
-                case "Q": {
-                    return expect(context.isBindingReference).toBeTruthy()
-                }
-                default: {
-                    return expect(context.isBindingReference).toBeFalsy()
-                }
+            class z extends A {}
+            class B implements C {}
+            class D extends E<F> {
+                G<H, I>(J: K, L = M as N) {}
             }
-        }
-    })
+        `,
+        ["d", "e", "g", "k", "l", "p", "s", "v", "y", "A", "E", "M"],
+        [
+            "a",
+            "b",
+            "c",
+            "f",
+            "h",
+            "i",
+            "j",
+            "m",
+            "n",
+            "o",
+            "q",
+            "r",
+            "t",
+            "u",
+            "z",
+            "B",
+            "C",
+            "D",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "N"
+        ]
+    )
 })
 
-test("Statements", () => {
-    const ast = localParse(`
-        ;[a, b = c, ...d] = [e, f, ...g]
-        ;({
-            h,
-            i: j = k,
-            l: { m: n }
-        } = {})
-        for({
-            o,
-            p: { q = r }
-        } in s){}
-        t: for([u, v, ...w] of x){
-            continue t
-            break t
-        }
-        with(y){}
-        with({
-            z,
-            A: {
-                B: { C }
+test("Module/Type: import and type-only syntax", () => {
+    expectBinding(
+        `
+            import a from "x"
+            import { b } from "y"
+            import { c as d } from "z"
+            import * as e from "w"
+            import type { F as G } from "u"
+            import { type H as I, J } from "v"
+
+            type K<L> = L extends M<infer N> ? N : O
+            export as namespace P
+            const Q: K<M<R>> = S
+        `,
+        ["S"],
+        ["a", "b", "c", "d", "e", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"]
+    )
+})
+
+test("Statement: labels, for statements and catch clauses", () => {
+    expectBinding(
+        `
+            ;[a, b = c, ...d] = [e, f, ...g]
+            ;({ h, i: j = k, l: { m: n } } = {})
+            for ({ o, p: { q = r } } in s) {}
+            t: for ([u, v, ...w] of x) {
+                continue t
+                break t
             }
-        }){}
-        try{}catch({
-            D,
-            E: { F = G },
-            ...H
-        }){}
-    `)
-    walkEstree(ast, {
-        Identifier(node, context) {
-            switch (node.name) {
-                case "h":
-                case "o":
-                case "z":
-                case "C":
-                    return checkShorthandBindingReference(context)
-                case "b":
-                case "i":
-                case "j":
-                case "l":
-                case "m":
-                case "p":
-                case "q":
-                case "t":
-                case "A":
-                case "B":
-                case "D":
-                case "E":
-                case "F":
-                case "H": {
-                    return expect(context.isBindingReference).toBeFalsy()
-                }
-                default: {
-                    return expect(context.isBindingReference).toBeTruthy()
-                }
-            }
-        }
-    })
+            try {} catch ({ A, B: { C = D }, ...E }) {}
+        `,
+        [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "j",
+            "k",
+            "n",
+            "o",
+            "q",
+            "r",
+            "s",
+            "u",
+            "v",
+            "w",
+            "x",
+            "D"
+        ],
+        ["i", "l", "m", "p", "t", "A", "B", "C", "E"]
+    )
 })

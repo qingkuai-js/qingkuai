@@ -4,6 +4,7 @@ import type { TemplateNode } from "#type-declarations/compiler"
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
 import { traverseObject } from "../../../util/shared/sundry"
+import { isArrayBindingNameIdentifier } from "../../ts-ast/assert"
 import { getMaybeReusedString, replaceReusedStringReferences } from "../../optimizer/compress"
 import { getGeneratedStaticTextContent, getParsedExpression } from "../../../util/compiler/template"
 
@@ -13,19 +14,19 @@ export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourc
     replaceReusedStringReferences(editor, parsedExpression.reusedStringReferences)
     traverseObject(parsedExpression.topLevelReferences, (key, value) => {
         const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[key]
-        if (topLevelIdentifier && topLevelIdentifier.transofrmedTo) {
+        if (topLevelIdentifier && topLevelIdentifier.transformTo) {
             for (const reference of value) {
                 if (reference.shorthand) {
-                    editor.insert(reference.range[1], `: ${topLevelIdentifier.transofrmedTo}`)
+                    editor.insert(reference.range[1], `: ${topLevelIdentifier.transformTo}`)
                 } else {
-                    editor.replace(...reference.range, topLevelIdentifier.transofrmedTo, true)
+                    editor.replace(...reference.range, topLevelIdentifier.transformTo, true)
                 }
             }
         }
     })
     for (const reference of parsedExpression.contextReferences) {
         const parsedPattern = reference.pattern
-        if (!parsedPattern || parsedPattern.node!.type !== "Identifier") {
+        if (!isArrayBindingNameIdentifier(parsedPattern.node)) {
             continue
         }
 

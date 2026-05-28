@@ -1,96 +1,99 @@
-import type { ParserOptions } from "@babel/parser"
-import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ArrayPattern, AssignmentExpression } from "@babel/types"
+import ts from "typescript"
 
 import { inputDescriptor } from "../state"
-import { walkEstree } from "../estree/walk"
-import { babelErrorLocInfoRE } from "../regular"
-import { isUndefined } from "../../util/shared/assert"
-import { objectAssign } from "../../util/shared/aliases"
-import { getPosByIndex } from "../../util/compiler/position"
-import { parse, parseExpression as _parseExpression } from "@babel/parser"
+import { walkTsNode } from "../ts-ast/walk"
+import { any } from "../../util/shared/sundry"
+import { hasParseError } from "../ts-ast/assert"
+import { isString } from "../../util/shared/assert"
+
+export function parseContextPattern(source: string) {
+    const sourceFile = createSourceFile(`const [${source}]=_`, 0, true)
+    if (hasParseError(sourceFile)) {
+        return null
+    }
+
+    const statement = sourceFile.statements[0]
+    if (!ts.isVariableStatement(statement)) {
+        return null
+    }
+
+    const firstDeclaration = statement.declarationList.declarations[0]
+    if (
+        !ts.isArrayBindingPattern(firstDeclaration.name) ||
+        firstDeclaration.name.elements.some(item => {
+            return ts.isBindingElement(item) && item.initializer
+        })
+    ) {
+        return null
+    }
+    return offsetStartAndEndGetter(firstDeclaration.name, -7)
+}
 
 export function parseScript(source: string) {
-    return correctErrorLocation(() => {
-        return parse(
-            source,
-            getParserOptions({
-                sourceType: "module"
-            })
-        ).program
-    }, inputDescriptor.script.loc.start.index)
+    return createSourceFile(source, inputDescriptor.script.loc.start.index)
 }
 
 export function parseExpression(source: string, startSourceIndex: number) {
-    return (
-        correctErrorLocation(() => {
-            return _parseExpression(source, getParserOptions())
-        }, startSourceIndex) ?? null
-    )
-}
-
-export function parseContextPattern(source: string): ArrayPattern | null {
-    try {
-        const expression = _parseExpression(`[${source}]=_`, {
-            ...getParserOptions(),
-            tokens: true,
-            errorRecovery: false
-        }) as AssignmentExpression
-
-        if (expression.left.type !== "ArrayPattern") {
-            return null
-        }
-
-        // 由于解析时添加了一个开始中括号前缀，这里需要将每个节点的位置信息向前移动一位
-        // Since a prefix '[' was added during parsing, the position of each node needs to be shifted forward by one here.
-        walkEstree(expression.left, {
-            AnyNode(node) {
-                if (!node.loc.end.column) {
-                    node.loc.end.column--
-                }
-                if (!node.loc.start.column) {
-                    node.loc.start.column--
-                }
-                node.loc.end.index = node.range[1] = --node.end
-                node.loc.start.index = node.range[0] = --node.start
-            }
-        })
-        return expression.left
-    } catch {
+    const sourceFile = createSourceFile(`_=(${source})`, startSourceIndex)
+    if (hasParseError(sourceFile)) {
         return null
     }
-}
 
-function getParserOptions(initial: ParserOptions = {}) {
-    const ret: ParserOptions = {
-        ...initial,
-        ranges: true,
-        errorRecovery: inputDescriptor?.options.checkMode
+    const statement = sourceFile.statements[0]
+    if (!ts.isExpressionStatement(statement)) {
+        return null
     }
-    return (inputDescriptor?.script.isTS && (ret.plugins = ["typescript"]), ret)
+
+    const expression = statement.expression
+    if (
+        !ts.isBinaryExpression(expression) ||
+        !ts.isParenthesizedExpression(expression.right) ||
+        expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
+    ) {
+        return null
+    }
+    return offsetStartAndEndGetter(expression.right.expression, -3)
 }
 
-function correctErrorLocation<T extends ArbitraryFunc>(
-    fn: T,
-    startSourceIndex: number
-): ReturnType<T> | undefined {
-    try {
-        return fn()
-    } catch (error: any) {
-        // 非检查模式时将解析错误的位置信息修改为源码位置信息
-        // Change the location information of parse error to the source location when not in check mode
-        if (!inputDescriptor.options.checkMode) {
-            const sourcePosition = getPosByIndex(startSourceIndex + error.pos)
-            if (!isUndefined(error.loc)) {
-                objectAssign(error.loc, sourcePosition)
-            }
-            error.pos = sourcePosition.index
-            error.message = error.message.replace(
-                babelErrorLocInfoRE,
-                `(${sourcePosition.line}:${sourcePosition.column})`
-            )
-            Error.captureStackTrace(error)
-            throw error
+function createSourceFile(
+    source: string,
+    startSourceIndex: number,
+    recover = inputDescriptor.options.checkMode
+) {
+    const sourceFile = ts.createSourceFile(
+        "",
+        source,
+        ts.ScriptTarget.ESNext,
+        true,
+        inputDescriptor.script.isTS ? ts.ScriptKind.TS : ts.ScriptKind.JS
+    )
+    if (hasParseError(sourceFile) && !recover) {
+        let message = "Syntax error"
+        const firstDiagnostic: ts.Diagnostic = any(sourceFile).parseDiagnostics[0]
+        if (isString(firstDiagnostic.messageText)) {
+            message = firstDiagnostic.messageText
+        } else {
+            message = firstDiagnostic.messageText.messageText
         }
+        throw new SyntaxError(message, {
+            cause: {
+                pos: startSourceIndex + firstDiagnostic.start! + startSourceIndex
+            }
+        })
     }
+    return sourceFile
+}
+
+function offsetStartAndEndGetter<T extends ts.Node>(root: T, offset: number): T {
+    walkTsNode(root, node => {
+        const end = node.getEnd()
+        const text = node.getText()
+        const start = node.getStart()
+        const fullStart = node.getFullStart()
+        node.getText = () => text
+        node.getEnd = () => end + offset
+        node.getStart = () => start + offset
+        node.getFullStart = () => fullStart + offset
+    })
+    return root
 }

@@ -182,8 +182,8 @@ function checkSlotAssignment(node: TemplateNode) {
             const { startSourceIndex, node } = expressionInfo
             recordExistingMap(
                 inputDescriptor.source.slice(
-                    startSourceIndex + node.start! + 1,
-                    startSourceIndex + node.end! - 1
+                    startSourceIndex + node.getStart() + 1,
+                    startSourceIndex + node.getEnd() - 1
                 ),
                 directive.loc
             )

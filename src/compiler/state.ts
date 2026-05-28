@@ -12,10 +12,10 @@ import { objectAssign } from "../util/shared/aliases"
 import { createHashId } from "../util/compiler/sundry"
 import { newASTLocation } from "../util/compiler/position"
 
-export let analyzeResult: AnalyzeResult
 export let messages: CompileMessage[] = []
-export let inputDescriptor: InputDescriptor
-export let generateIdentifier: GenerateIdentifier
+export let analyzeResult = newAnalyzeResult()
+export let inputDescriptor = newInputDescriptor({})
+export let generateIdentifier = newGenerateIdentifier()
 
 export function resetCompilerState(options: Partial<InputOptions>) {
     messages = []
@@ -58,7 +58,7 @@ function newAnalyzeResult(): AnalyzeResult {
             watchers: [],
             defaultItems: {},
             exportedBindings: [],
-            exportDeclarations: [],
+            exportStatements: [],
             importDeclarations: [],
             reusedStringReferences: [],
             eliminatedNodes: new Set(),
@@ -66,8 +66,8 @@ function newAnalyzeResult(): AnalyzeResult {
             usedIntrinsicVars: new Set(),
             importIdentifiers: new Set(),
             declaratorToIntrinsic: new Map(),
-            declaratorToAliasInfos: new Map(),
             topLevelReferences: newCleanObj(),
+            declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),
             preMutatedTopLevelIdentifiers: new Set()
         },
@@ -79,7 +79,7 @@ function newAnalyzeResult(): AnalyzeResult {
 // Generate a new input source descriptor
 function newInputDescriptor(options: Partial<InputOptions>) {
     const ret: InputDescriptor = {
-        indent: "",
+        indent: "    ",
         source: "",
         styles: [],
         positions: [],

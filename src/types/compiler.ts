@@ -1,19 +1,6 @@
-import type {
-    Identifier,
-    Expression,
-    SpreadElement,
-    ImportDeclaration,
-    VariableDeclarator,
-    TSImportEqualsDeclaration
-} from "@babel/types"
-import type {
-    AnyNode,
-    IntrinsicCall,
-    ContextPattern,
-    TopLevelDeclaratorNode,
-    TopLevelDeclarationNode
-} from "#type-declarations/estree"
+import type ts from "typescript"
 import type { Pair } from "#type-declarations/tools"
+import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
 
 export interface CompileWarning {
     loc: ASTLocation
@@ -182,8 +169,8 @@ export interface ComponentTagPart {
 }
 export interface ParsedPattern {
     sourceRange: Range
-    node: ContextPattern
     directive: ParsedDirective
+    node: ts.ArrayBindingElement
     declaredIdentifiers: Set<string>
 }
 export interface ParsedDirective {
@@ -212,7 +199,7 @@ export interface ReusedStringReference {
 }
 export interface ParsedExpression {
     source: string
-    node: Expression
+    node: ts.Expression
     reactive: boolean
     startSourceIndex: number
     contextReferences: ContextReference[]
@@ -232,21 +219,21 @@ export interface GeneratedSelectorInfo {
     targetTextPart?: TextContentPart
     targetAttribute?: TemplateAttribute
 }
+export interface TopLevelIdentifierNodeInfo {
+    id: ts.Identifier
+    declarator: TopLevelDeclaratorNode
+    declaration: TopLevelDeclarationNode
+    destructuringIdentifierNames?: string[]
+}
 export interface TopLevelIdentifierInfo {
-    nodeInfos: {
-        id: Identifier
-        declarator: TopLevelDeclaratorNode
-        declaration: TopLevelDeclarationNode
-        destructuringIdentifierNames?: string[]
-    }[]
-    path: string
     hoist: boolean
     implicit: boolean
     accessor: boolean
-    transofrmedTo: string
+    aliasTarget: string
+    transformTo: string
     status: IdentifierStatus
     usedExpressions: Set<ParsedExpression>
-    destructuringIdentifierNames?: string[]
+    nodeInfos: TopLevelIdentifierNodeInfo[]
 }
 export interface TemplateNodeContext {
     id: string
@@ -269,7 +256,6 @@ export interface TemplateAnalyzeRet {
         passive: Set<string>
         nonPassive: Set<string>
     }
-    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>
     parsedEvents: Map<
         TemplateAttribute,
         {
@@ -285,60 +271,38 @@ export interface TemplateAnalyzeRet {
     validReferenceAttributes: Set<TemplateAttribute>
     nodeContexts: Map<TemplateNode, TemplateNodeContext>
     parsedDirectives: Map<TemplateAttribute, ParsedDirective>
+    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>
 }
 export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
-        VariableDeclarator,
+        ts.VariableDeclaration,
         {
-            id: string
-            target: string
             property: string
+            expression: string
         }[]
     >
     defaultItems: Partial<
         Record<
             "refs" | "props",
             {
-                intrinsicId: Identifier
-                value: Expression | SpreadElement
+                intrinsicId: ts.Identifier
+                value: ts.Expression | ts.SpreadElement
             }
         >
     >
-    watchers: IntrinsicCall[]
+    exportStatements: ts.Node[]
+    watchers: ts.CallExpression[]
     fullIdentifiers: Set<string>
-    eliminatedNodes: Set<AnyNode>
+    eliminatedNodes: Set<ts.Node>
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
     topLevelReferences: TopLevelReferences
-    exportDeclarations: EstreeWalkContext[]
     preMutatedTopLevelIdentifiers: Set<string>
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<VariableDeclarator, EstreeWalkContext<Identifier>>
-    importDeclarations: EstreeWalkContext<ImportDeclaration | TSImportEqualsDeclaration>[]
-}
-
-export interface EstreeWalkContext<T extends AnyNode = AnyNode> {
-    value: T
-    inTopLevel: boolean
-    isScopeBoundary: boolean
-    isBindingReference: boolean
-    inHoistableTopLevel: boolean
-    isComputedIdentifier: boolean
-    isParameterIdentifier: boolean
-    isShorthandIdentifierAccess: boolean
-    isNonHoistableScopeBoundary: boolean
-    isIdentifierAssignmentTarget: boolean
-    scopeIdentifiers: Set<string> | undefined
-    scope: EstreeWalkContext | null
-    parent: EstreeWalkContext | null
-    nonHoistableScope: EstreeWalkContext | null
-    striptTypeOperationsParent: EstreeWalkContext | null
-    findAncestorUntil: <T extends AnyNode["type"]>(
-        type: T
-    ) => EstreeWalkContext<AnyNode & { type: T }> | null
-    walkAncestors: (callback: (context: EstreeWalkContext) => void) => void
+    declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>
+    importDeclarations: (ts.ImportDeclaration | ts.ImportEqualsDeclaration)[]
 }
 
 export type Range = Pair<number>

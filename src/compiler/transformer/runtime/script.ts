@@ -1,16 +1,16 @@
-import type {
-    Identifier,
-    TSEnumDeclaration,
-    VariableDeclarator,
-    VariableDeclaration
-} from "@babel/types"
 import type { CodeEditor } from "../editor"
-import type { AnyNode, IntrinsicCall } from "#type-declarations/estree"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
 
+import ts from "typescript"
+
+import {
+    getNodeRange,
+    getVariableDeclareKeyword,
+    getStriptTypeOperationsNode,
+    getStriptTypeOperationsParent
+} from "../../ts-ast/sundry"
 import { RuntimeCodeWriter } from "../writer"
 import { arrayFrom } from "../../../util/shared/arrays"
-import { stripTypeExpressions } from "../../estree/sundry"
 import { jsDestructuringEqualTokenRE } from "../../regular"
 import { findOutOfComment } from "../../../util/compiler/string"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
@@ -29,52 +29,41 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
     // Used to record VariableDeclarators that have already been processed.
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
-    const processedItems = new Set<VariableDeclarator | TSEnumDeclaration>()
-
-    for (const exportDeclaration of analyzeResult.script.exportDeclarations) {
-        const node = exportDeclaration.value
-        if (node.type === "ExportNamedDeclaration" && node.declaration) {
-            editor.remove(node.start!, node.declaration.start!)
-            continue
-        }
-        editor.remove(node.start!, node.end!)
-    }
+    const processedItems = new Set<ts.VariableDeclaration | ts.EnumDeclaration>()
 
     // 调试模式下衍生响应式值标识符在编译后不能是常量，因为目标被修改后需要通过 setter 同步修原始始标识符
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
     // because when the target is modified, the original identifier needs to be synchronized via a setter.
-    const convertToLetKeywordDeclarators = new Map<VariableDeclarator, VariableDeclaration>()
+    const convertToLetKeywordDecs = new Map<ts.VariableDeclaration, ts.VariableDeclarationList>()
     if (debugMode) {
         traverseObject(topLevelIdentifiers, (_, value) => {
             const declaration = value.nodeInfos[0].declaration
             if (
                 (value.status === "alias" || value.status === "derived") &&
-                declaration.type === "VariableDeclaration" &&
-                declaration.kind === "const"
+                ts.isVariableDeclarationList(declaration) &&
+                getVariableDeclareKeyword(declaration) === "const"
             ) {
-                convertToLetKeywordDeclarators.set(
-                    value.nodeInfos[0].declarator as VariableDeclarator,
-                    declaration
-                )
+                const declarator = value.nodeInfos[0].declarator as ts.VariableDeclaration
+                convertToLetKeywordDecs.set(declarator, declaration)
             }
         })
     }
-    for (const [declarator, declaration] of convertToLetKeywordDeclarators) {
+    for (const [declarator, declaration] of convertToLetKeywordDecs) {
         const { declarations } = declaration
         const declaratorIndex = declarations.indexOf(declarator)
         if (declaratorIndex !== 0) {
-            editor.insert(declarator.start!, "let ")
+            editor.insert(declarator.getStart(), "let ")
             replaceCommaWithSemi(declarations[declaratorIndex - 1])
         } else {
-            editor.replace(declaration.start!, declaration.start! + 5, "let", true)
+            editor.replace(declaration.getStart(), declaration.getStart() + 5, "let", true)
         }
         for (let i = declaratorIndex + 1; i < declarations.length; i++) {
-            if (!convertToLetKeywordDeclarators.has(declarations[i])) {
+            if (!convertToLetKeywordDecs.has(declarations[i])) {
                 replaceCommaWithSemi(declarations[i - 1])
-                editor.insert(declarations[i].start!, "const ")
+                editor.insert(declarations[i].getStart(), "const ")
                 break
             }
-            convertToLetKeywordDeclarators.delete(declarations[i])
+            convertToLetKeywordDecs.delete(declarations[i])
         }
     }
 
@@ -90,20 +79,20 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             case "shallow":
             case "reactive": {
                 transformReactiveDeclaration(name, info)
-                info.transofrmedTo = identifierMap[name] ?? name
-                return (info.transofrmedTo += info.accessor ? ".$" : "")
+                info.transformTo = identifierMap[name] ?? name
+                return (info.transformTo += info.accessor ? ".$" : "")
             }
             case "derived": {
                 transformDerivedDeclaration(name, info)
-                return (info.transofrmedTo = `${identifierMap[name] ?? name}.$`)
+                return (info.transformTo = `${identifierMap[name] ?? name}.$`)
             }
             case "alias": {
                 transformAliasDeclaration(name, info)
 
                 if (!debugMode) {
-                    info.transofrmedTo = info.path
+                    info.transformTo = info.aliasTarget
                 } else {
-                    info.transofrmedTo = `${name}[${internalId}.REFERENCE_VALUE]`
+                    info.transformTo = `${name}[${internalId}.REFERENCE_VALUE]`
                 }
                 return
             }
@@ -115,7 +104,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     traverseObject(topLevelIdentifiers, (name, info) => {
         if (topLevelReferences[name]) {
             for (const reference of topLevelReferences[name]) {
-                const { hoist, transofrmedTo, status } = info
+                const { hoist, transformTo: transofrmedTo, status } = info
                 if (!transofrmedTo) {
                     continue
                 }
@@ -136,17 +125,17 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     for (const call of analyzeResult.script.watchers) {
         const firstArg = call.arguments[0]
         if (shouldNodeWrapAsGetter(firstArg)) {
-            editor.insert(firstArg.end!, ")")
-            editor.insert(firstArg.start!, `() => (`)
+            editor.insert(firstArg.getEnd(), ")")
+            editor.insert(firstArg.getStart(), `() => (`)
         }
-        editor.insert(call.callee.start!, `${internalId}.`)
+        editor.insert(call.expression.getStart(), `${internalId}.`)
     }
     replaceReusedStringReferences(editor, analyzeResult.script.reusedStringReferences)
 
     function transformRawDecalration(info: TopLevelIdentifierInfo) {
         for (const { declarator } of info.nodeInfos) {
             if (
-                declarator.type === "VariableDeclarator" &&
+                ts.isVariableDeclaration(declarator) &&
                 declaratorToIntrinsic.has(declarator) &&
                 !processedItems.has(declarator)
             ) {
@@ -158,33 +147,34 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function transformDerivedDeclaration(name: string, info: TopLevelIdentifierInfo) {
-        const declarator = info.nodeInfos[0].declarator as VariableDeclarator
+        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
+        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
         const withIntrinsic = analyzeResult.script.declaratorToIntrinsic.has(declarator)
         const intrinsicInfo = withIntrinsic ? getIntrinsicInfo(declarator) : undefined
-        const byExpression = intrinsicInfo?.id.name === "derivedExp"
-        if (!info.destructuringIdentifierNames) {
+        const byExpression = intrinsicInfo?.id.text === "derivedExp"
+        if (!destructuringIdentifierNames) {
             if (intrinsicInfo) {
                 const firstArg = intrinsicInfo.call.arguments[0]
                 if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
-                    editor.insert(firstArg.end!, ")")
-                    editor.insert(firstArg.start!, "() => (")
+                    editor.insert(firstArg.getEnd(), ")")
+                    editor.insert(firstArg.getStart(), "() => (")
                 }
                 if (debugMode) {
-                    editor.insert(firstArg.end!, `, ${generateHoistSetter(name)}`)
+                    editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`)
                 }
                 replaceIntrinsicCall(declarator, "derived")
             } else {
                 // 断言：此时一定存在初始值（不然会退化为原始值）
                 // Assertion: at this point, an initializer must exist
                 // (otherwise it would have been downgraded to the raw value).
-                const initNode = declarator.init!
+                const initNode = declarator.initializer!
                 const shouldWrapAsGetter = shouldNodeWrapAsGetter(initNode)
-                editor.insertMulti(initNode.start!, [
+                editor.insertMulti(initNode.getStart(), [
                     internalId,
                     ".derived(",
                     shouldWrapAsGetter ? "() => (" : ""
                 ])
-                editor.insertMulti(initNode.end!, [
+                editor.insertMulti(initNode.getEnd(), [
                     shouldWrapAsGetter ? ")" : "",
                     debugMode ? `, ${generateHoistSetter(name)}` : "",
                     ")"
@@ -199,17 +189,17 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
         const firstArg = intrinsicInfo!.call.arguments[0]
         if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
-            editor.insert(firstArg.end!, ")")
-            editor.insert(firstArg.start!, "() => (")
+            editor.insert(firstArg.getEnd(), ")")
+            editor.insert(firstArg.getStart(), "() => (")
         }
         if (debugMode) {
-            const destructuringIds = info.destructuringIdentifierNames.map(item => {
+            const destructuringIds = destructuringIdentifierNames.map(item => {
                 return `[${getReactiveIdentifier(item)}, ${item}]`
             })
-            editor.insertMulti(declarator.id.start!, [
+            editor.insertMulti(declarator.name.getStart(), [
                 {
-                    sourceRange: declarator.id.range!,
-                    value: `[${destructuringIds.join(", ")}]`
+                    value: `[${destructuringIds.join(", ")}]`,
+                    sourceRange: getNodeRange(declarator.name)
                 },
                 {
                     value: `= ${internalId}.`
@@ -217,14 +207,14 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             ])
         } else {
             editor.insert(
-                declarator.id.start!,
-                `[${info.destructuringIdentifierNames.join(", ")}] = ${internalId}.`
+                declarator.name.getStart(),
+                `[${destructuringIdentifierNames.join(", ")}] = ${internalId}.`
             )
         }
-        editor.insertMulti(declarator.id.start!, [
+        editor.insertMulti(declarator.name.getStart(), [
             {
                 value: "destructuringDerived",
-                sourceRange: intrinsicInfo?.id.range
+                sourceRange: intrinsicInfo && getNodeRange(intrinsicInfo.id)
             },
             {
                 value: "(("
@@ -232,18 +222,20 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         ])
         replaceIntrinsicCall(declarator, "", () => {
             const segments: string[] = []
-            const names = info.destructuringIdentifierNames!
-            if ((segments.push(`, ${names.length}`), debugMode)) {
-                segments.push(`, [${names.map(generateHoistSetter).join(", ")}]`)
+            if ((segments.push(`, ${destructuringIdentifierNames.length}`), debugMode)) {
+                segments.push(
+                    `, [${destructuringIdentifierNames.map(generateHoistSetter).join(", ")}]`
+                )
             }
             return segments.join("") + ")"
         })
-        transformDestructuringEqualSign(declarator, info.destructuringIdentifierNames)
+        transformDestructuringEqualSign(declarator, destructuringIdentifierNames)
     }
 
-    function transformAliasDeclaration(name: string, info: TopLevelIdentifierInfo) {
-        const declarator = info.nodeInfos[0].declarator as VariableDeclarator
-        const { declarations } = info.nodeInfos[0].declaration as VariableDeclaration
+    function transformAliasDeclaration(_: string, info: TopLevelIdentifierInfo) {
+        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
+        const { declarations } = info.nodeInfos[0].declaration as ts.VariableDeclarationList
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
         const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
 
@@ -251,7 +243,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         // Remove any trailing comma from the VariableDeclarator.
         if (!debugMode) {
             if (declarations.length !== 1) {
-                let declaratorToRemoveEndComma: VariableDeclarator
+                let declaratorToRemoveEndComma: ts.VariableDeclaration
                 const declaratorIndex = declarations.indexOf(declarator)
                 if (declaratorIndex !== declarations.length - 1) {
                     declaratorToRemoveEndComma = declarator
@@ -259,19 +251,19 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                     declaratorToRemoveEndComma = declarations[declaratorIndex - 1]
                 }
                 editor.removeCharacter(
-                    declaratorToRemoveEndComma.end! +
+                    declaratorToRemoveEndComma.getEnd() +
                         findEndCommaIndexOfVariableDeclarator(declaratorToRemoveEndComma)
                 )
             }
             return
         }
 
-        if (!info.destructuringIdentifierNames) {
+        if (!destructuringIdentifierNames) {
             editor.replace(
-                ...intrinsicCall.arguments[0].range!,
-                generateHoistGetter(`[${aliasInfos[0].target}, ${aliasInfos[0].property}]`)
+                ...getNodeRange(intrinsicCall.arguments[0]),
+                generateHoistGetter(`[${aliasInfos[0].expression}, ${aliasInfos[0].property}]`)
             )
-            editor.insert(intrinsicId.start!, `${internalId}.`)
+            editor.insert(intrinsicId.getStart(), `${internalId}.`)
             return
         }
 
@@ -280,16 +272,16 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
 
         const getterIds: string[] = []
-        const declaratorIdRange = declarator.id.range!
-        const joinedDestructuringIds = info.destructuringIdentifierNames.join(", ")
+        const declaratorIdRange = getNodeRange(declarator.name)
+        const joinedDestructuringIds = destructuringIdentifierNames.join(", ")
         for (const aliasInfo of aliasInfos) {
-            getterIds.push(generateHoistGetter(`[${aliasInfo.target}, ${aliasInfo.property}]`))
+            getterIds.push(generateHoistGetter(`[${aliasInfo.expression}, ${aliasInfo.property}]`))
         }
-        editor.insert(intrinsicCall.arguments[0].end!, `${getterIds.join(", ")}`)
+        editor.insert(intrinsicCall.arguments[0].getEnd(), `${getterIds.join(", ")}`)
         editor.remove(...declaratorIdRange)
-        editor.remove(...intrinsicCall.arguments[0].range!)
+        editor.remove(...getNodeRange(intrinsicCall.arguments[0]))
         replaceIntrinsicCall(declarator, "destructuringAlias")
-        editor.insert(declarator.id.start!, `[${joinedDestructuringIds}]`, declaratorIdRange)
+        editor.insert(declarator.name.getStart(), `[${joinedDestructuringIds}]`, declaratorIdRange)
     }
 
     function transformReactiveDeclaration(name: string, info: TopLevelIdentifierInfo) {
@@ -302,39 +294,39 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         const defaultReactCallee = `${internalId}.${defaultReactFunc}`
 
         // ClassDeclaration
-        if (firstDeclaration.type === "ClassDeclaration") {
+        if (ts.isClassDeclaration(firstDeclaration)) {
             if (debugMode) {
                 editor.insert(
-                    firstDeclaration.start!,
+                    firstDeclaration.getStart(),
                     `let [${reactiveIdentifier}, ${name}] = ${defaultReactCallee}(`
                 )
-                editor.insert(firstDeclaration.end!, `, ${generateHoistSetter(name)})`)
+                editor.insert(firstDeclaration.getEnd(), `, ${generateHoistSetter(name)})`)
             } else {
-                editor.insert(firstDeclaration.end!, ")")
-                editor.insert(firstDeclaration.start!, `let ${name} = ${defaultReactCallee}(`)
+                editor.insert(firstDeclaration.getEnd(), ")")
+                editor.insert(firstDeclaration.getStart(), `let ${name} = ${defaultReactCallee}(`)
             }
             return
         }
 
         // TSEnumDeclaration
-        if (firstDeclaration.type === "TSEnumDeclaration") {
+        if (ts.isEnumDeclaration(firstDeclaration)) {
             if (debugMode) {
                 editor.insert(
-                    firstDeclaration.start!,
+                    firstDeclaration.getStart(),
                     `const [${reactiveIdentifier}] = ${defaultReactCallee}({}, ${generateSetterCode(
                         name
                     )})\n${inputDescriptor.indent}`
                 )
             } else {
                 editor.insert(
-                    firstDeclaration.start!,
+                    firstDeclaration.getStart(),
                     `const ${reactiveIdentifier} = ${defaultReactCallee}({})\n${inputDescriptor.indent}`
                 )
             }
             for (const { declaration } of info.nodeInfos) {
                 const writer = new RuntimeCodeWriter().indent()
                 editor.insert(
-                    declaration.end!,
+                    declaration.getEnd(),
                     writer.write(
                         isShallow
                             ? `${reactiveIdentifier}.$ = ${name};`
@@ -347,11 +339,11 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
         // VariableDeclaration(kind: var) || FunctionDeclaration
         if (info.hoist) {
-            const isFunctionDeclaration = firstDeclaration.type === "FunctionDeclaration"
+            const isFunctionDeclaration = ts.isFunctionDeclaration(firstDeclaration)
             if (!isFunctionDeclaration) {
                 for (const nodeInfo of info.nodeInfos) {
-                    const declarator = nodeInfo.declarator as VariableDeclarator
-                    const declaration = nodeInfo.declaration as VariableDeclaration
+                    const declarator = nodeInfo.declarator as ts.VariableDeclaration
+                    const declaration = nodeInfo.declaration as ts.VariableDeclarationList
                     if (processedItems.has(declarator)) {
                         continue
                     }
@@ -365,10 +357,13 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
                     const declaratorIndex = declaration.declarations.indexOf(declarator)
                     if (declaratorIndex === declaration.declarations.length - 1) {
-                        editor.insert(declarator.end!, ";")
+                        editor.insert(declarator.getEnd(), ";")
                     } else {
                         replaceCommaWithSemi(declarator)
-                        editor.insert(declaration.declarations[declaratorIndex + 1].start!, "var ")
+                        editor.insert(
+                            declaration.declarations[declaratorIndex + 1].getStart(),
+                            "var "
+                        )
                     }
                     if (nodeInfo.destructuringIdentifierNames) {
                         const shouldUpdateItems = new Set<string>()
@@ -384,11 +379,11 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                             item => `${getReactiveIdentifier(item)}.$`
                         )
                         editor.insert(
-                            declarator.end!,
+                            declarator.getEnd(),
                             ` [${shouldUpdateTargetsArr.join(", ")}] = [${shouldUpdateItemsArr.join(", ")}];`
                         )
                     } else {
-                        editor.insert(declarator.end!, ` ${reactiveIdentifier}.$ = ${name};`)
+                        editor.insert(declarator.getEnd(), ` ${reactiveIdentifier}.$ = ${name};`)
                     }
                 }
             }
@@ -406,23 +401,25 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
 
         // VariableDeclaration(non-var)
-        const declarator = info.nodeInfos[0].declarator as VariableDeclarator
-        const isConst = (firstDeclaration as VariableDeclaration).kind !== "let"
-        if (!declarator.init) {
+        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+        const declaration = info.nodeInfos[0].declaration as ts.VariableDeclarationList
+        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
+        const isConst = getVariableDeclareKeyword(declaration) !== "let"
+        if (!declarator.initializer) {
             if (!debugMode) {
-                editor.insert(declarator.id.end!, ` = ${defaultReactCallee}()`)
+                editor.insert(declarator.name.getEnd(), ` = ${defaultReactCallee}()`)
             } else {
                 // assertion: non-const
                 editor.insert(
-                    declarator.id.end!,
+                    declarator.name.getEnd(),
                     `] = ${defaultReactCallee}(${undefId}, ${generateHoistSetter(name)})`
                 )
-                editor.insert(declarator.id.start!, `[${reactiveIdentifier}, `)
+                editor.insert(declarator.name.getStart(), `[${reactiveIdentifier}, `)
             }
             return
         }
 
-        if (!info.destructuringIdentifierNames) {
+        if (!destructuringIdentifierNames) {
             const reactFunc = isConst
                 ? isShallow
                     ? "shallowConstReact"
@@ -443,10 +440,10 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 })
             } else {
                 if (debugMode && !isConst) {
-                    editor.insert(declarator.init.end!, `, ${generateHoistSetter(name)}`)
+                    editor.insert(declarator.initializer.getEnd(), `, ${generateHoistSetter(name)}`)
                 }
-                editor.insert(declarator.init.end!, ")")
-                editor.insert(declarator.init.start!, `${internalId}.${reactFunc}(`)
+                editor.insert(declarator.initializer.getEnd(), ")")
+                editor.insert(declarator.initializer.getStart(), `${internalId}.${reactFunc}(`)
             }
             return
         }
@@ -458,7 +455,6 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
         const setterIds: string[] = []
         const needSetters = debugMode && !isConst
-        const { destructuringIdentifierNames } = info
         const destructuringFuncReturnItems = destructuringIdentifierNames.map((item, index) => {
             const { status } = analyzeResult.script.topLevelIdentifiers[item]
             const isReactive = status === "shallow" || status === "reactive"
@@ -471,7 +467,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         // Declaration id and react call
         if (!needSetters) {
             editor.insert(
-                declarator.id.start!,
+                declarator.name.getStart(),
                 `[${destructuringIdentifierNames.join(", ")}] = ${internalId}.`
             )
         } else {
@@ -480,22 +476,24 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 const isReactive = status === "shallow" || status === "reactive"
                 return isReactive ? `[${getReactiveIdentifier(item)}, ${item}]` : item
             })
-            editor.insertMulti(declarator.id.start!, [
+            editor.insertMulti(declarator.name.getStart(), [
                 {
-                    sourceRange: declarator.id.range!,
-                    value: `[${destructuringIds.join(", ")}]`
+                    value: `[${destructuringIds.join(", ")}]`,
+                    sourceRange: getNodeRange(declarator.name)
                 },
                 {
                     value: ` = ${internalId}.`
                 }
             ])
         }
+
+        const intrinsicInfo = getIntrinsicInfo(declarator)
         editor.insert(
-            declarator.id.start!,
+            declarator.name.getStart(),
             `destructuring${isShallow ? "Shallow" : ""}${isConst ? "Const" : ""}React`,
-            getIntrinsicInfo(declarator)?.id.range
+            intrinsicInfo && getNodeRange(intrinsicInfo.id)
         )
-        editor.insert(declarator.id.start!, "((")
+        editor.insert(declarator.name.getStart(), "((")
         transformDestructuringEqualSign(declarator, destructuringFuncReturnItems)
 
         // Reactive target and debugging setters
@@ -507,43 +505,46 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 return `${undefId}${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`
             })
         } else {
-            editor.insert(declarator.end!, `${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`)
+            editor.insert(
+                declarator.getEnd(),
+                `${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`
+            )
         }
         return
     }
 
     function replaceIntrinsicCall(
-        declarator: VariableDeclarator,
+        declarator: ts.VariableDeclaration,
         newName: string,
         insertArg?: (hasArg: boolean) => string | undefined
     ) {
         const { call, id } = getIntrinsicInfo(declarator)!
-        const initNodeStart = declarator.init!.start!
+        const initNodeStart = declarator.initializer!.getStart()
         const insertArgRet = insertArg?.(!!call.arguments.length)
 
         if ((processedItems.add(declarator), insertArgRet)) {
             if (call.arguments.length) {
-                editor.insert(call.arguments[0].end!, insertArgRet)
+                editor.insert(call.arguments[0].getEnd(), insertArgRet)
             } else {
-                editor.insert(call.end! - 1, insertArgRet)
+                editor.insert(call.getEnd() - 1, insertArgRet)
             }
         }
         if (newName !== "") {
-            editor.insert(id.start!, `${internalId}.`)
-            editor.replace(...id.range!, newName, true)
+            editor.insert(id.getStart(), `${internalId}.`)
+            editor.replace(id.getStart(), id.getEnd(), newName, true)
         } else {
             if (!call.arguments.length) {
-                editor.remove(initNodeStart, call.end! - 1)
+                editor.remove(initNodeStart, call.getEnd() - 1)
             } else {
-                editor.remove(call.arguments[0].end!, call.end! - 1)
-                editor.remove(initNodeStart, call.arguments[0].start!)
+                editor.remove(call.arguments[0].getEnd(), call.getEnd() - 1)
+                editor.remove(initNodeStart, call.arguments[0].getStart())
             }
-            editor.remove(call.end! - 1, call.end!)
+            editor.remove(call.getEnd() - 1, call.getEnd())
         }
     }
 
-    function replaceCommaWithSemi(declarator: VariableDeclarator) {
-        const declaratorEnd = declarator.end!
+    function replaceCommaWithSemi(declarator: ts.VariableDeclaration) {
+        const declaratorEnd = declarator.getEnd()
         const commaIndex = findEndCommaIndexOfVariableDeclarator(declarator)
         if (commaIndex !== -1) {
             editor.replace(declaratorEnd + commaIndex, declaratorEnd + commaIndex + 1, ";")
@@ -564,23 +565,27 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         return (hoistWriter.write(`const ${setterId} = ${generateSetterCode(target)}\n`), setterId)
     }
 
-    function transformNonDestructuringDeclaratorId(declarator: VariableDeclarator) {
+    function transformNonDestructuringDeclaratorId(declarator: ts.VariableDeclaration) {
         if (debugMode) {
-            const idNode = declarator.id as Identifier
+            const idNode = declarator.name as ts.Identifier
             editor.replace(
-                ...idNode.range!,
-                `[${getReactiveIdentifier(idNode.name)}, ${idNode.name}]`,
+                idNode.getStart(),
+                idNode.getEnd(),
+                `[${getReactiveIdentifier(idNode.text)}, ${idNode.text}]`,
                 true
             )
         }
     }
 
-    function transformDestructuringEqualSign(declarator: VariableDeclarator, returns: string[]) {
+    function transformDestructuringEqualSign(
+        declarator: ts.VariableDeclaration,
+        returns: string[]
+    ) {
         const [matchedIndex, matchedLen] = findOutOfComment(
-            scriptSource.slice(declarator.id.end!),
+            scriptSource.slice(declarator.name.getEnd()),
             jsDestructuringEqualTokenRE
         )
-        const equalSignIndex = declarator.id.end! + matchedIndex
+        const equalSignIndex = declarator.name.getEnd() + matchedIndex
         editor.replace(
             equalSignIndex,
             equalSignIndex + matchedLen,
@@ -589,10 +594,10 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 }
 
-function shouldNodeWrapAsGetter(node: AnyNode) {
-    switch (stripTypeExpressions(node).type) {
-        case "FunctionExpression":
-        case "ArrowFunctionExpression": {
+function shouldNodeWrapAsGetter(node: ts.Node) {
+    switch (getStriptTypeOperationsNode(node).kind) {
+        case ts.SyntaxKind.ArrowFunction:
+        case ts.SyntaxKind.FunctionExpression: {
             return false
         }
     }
@@ -607,16 +612,17 @@ function generateSetterCode(target: string) {
 function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
     const debugMode = inputDescriptor.options.debug
     const firstDeclaration = info.nodeInfos[0].declaration
-    switch (firstDeclaration.type) {
-        case "ClassDeclaration": {
+    switch (firstDeclaration.kind) {
+        case ts.SyntaxKind.ClassDeclaration: {
             return debugMode
         }
-        case "TSEnumDeclaration":
-        case "FunctionDeclaration": {
+        case ts.SyntaxKind.EnumDeclaration:
+        case ts.SyntaxKind.FunctionDeclaration: {
             return true
         }
-        default: {
-            switch (firstDeclaration.kind) {
+        case ts.SyntaxKind.VariableDeclarationList: {
+            const declarationList = firstDeclaration as ts.VariableDeclarationList
+            switch (getVariableDeclareKeyword(declarationList)) {
                 case "var": {
                     return true
                 }
@@ -631,17 +637,16 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
     }
 }
 
-function getIntrinsicInfo(declarator: VariableDeclarator) {
-    const context = analyzeResult.script.declaratorToIntrinsic.get(declarator)!
-    if (context) {
+function getIntrinsicInfo(declarator: ts.VariableDeclaration) {
+    const id = analyzeResult.script.declaratorToIntrinsic.get(declarator)!
+    if (id) {
         return {
-            context,
-            id: context.value,
-            call: context.striptTypeOperationsParent!.value as IntrinsicCall
+            id,
+            call: getStriptTypeOperationsParent(id) as ts.CallExpression
         }
     }
 }
 
-function findEndCommaIndexOfVariableDeclarator(declarator: VariableDeclarator) {
-    return findOutOfComment(inputDescriptor.script.code.slice(declarator.end!), ",")
+function findEndCommaIndexOfVariableDeclarator(declarator: ts.VariableDeclaration) {
+    return findOutOfComment(inputDescriptor.script.code.slice(declarator.getEnd()), ",")
 }

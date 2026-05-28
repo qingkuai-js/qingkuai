@@ -22,7 +22,7 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
     matchCompileMessages(expected)
 }
 
-test("Allows named exports in embedded script", () => {
+test("Named export: allows named exports in embedded script", () => {
     localAnalyze(`
         export let count = reactive(0)
         function inc() {
@@ -43,7 +43,7 @@ test("Allows named exports in embedded script", () => {
     expect(messages.length).toBe(0)
 })
 
-test("Rejects unsupported export forms in embedded script", () => {
+test("Unsupported export: rejects assignment, default and re-export forms", () => {
     localAnalyze(`
         export default 1
         export * from "./foo"
@@ -60,22 +60,22 @@ test("Rejects unsupported export forms in embedded script", () => {
         {
             type: "error",
             range: [17, 38],
-            value: "Export-all is not supported in embedded script block."
+            value: "Re-export is not supported in embedded script block."
         },
         {
             type: "error",
             range: [39, 66],
-            value: "Re-export declaration is not supported in embedded script block."
+            value: "Re-export is not supported in embedded script block."
         },
         {
             type: "error",
             range: [67, 79],
-            value: "TS assignment export is not supported in embedded script block."
+            value: "Assignment export is not supported in embedded script block."
         }
     ])
 })
 
-test("Rejects and ignores type exports in embedded script", () => {
+test("Type export: rejects type-only export declaration", () => {
     localAnalyze(`
         type Foo = string
         export type { Foo }
@@ -90,7 +90,7 @@ test("Rejects and ignores type exports in embedded script", () => {
     ])
 })
 
-test("Rejects type specifier in mixed named exports", () => {
+test("Type export: rejects type specifier in mixed named exports", () => {
     localAnalyze(`
         const a = 1
         type b = number
@@ -112,7 +112,7 @@ test("Rejects type specifier in mixed named exports", () => {
     ])
 })
 
-test("Rejects type-only declaration exports", () => {
+test("Type export: rejects exported type alias declarations", () => {
     localAnalyze(`
         export type Foo = string
     `)
@@ -127,7 +127,7 @@ test("Rejects type-only declaration exports", () => {
     expect(analyzeResult.script.exportedBindings).toEqual([])
 })
 
-test("Rejects interface exports", () => {
+test("Type export: rejects exported interface declarations", () => {
     localAnalyze(`
         export interface Foo { x: number }
     `)
@@ -142,17 +142,15 @@ test("Rejects interface exports", () => {
     expect(analyzeResult.script.exportedBindings).toEqual([])
 })
 
-test("Multiple type specifiers produce multiple errors", () => {
+test("Type export: multiple type specifiers produce multiple errors", () => {
     localAnalyze(`
         export type { A, B, C }
     `)
-
-    const errors = messages.filter(item => item.type === "error")
-    expect(errors.length).toBe(3)
+    expect(messages.length).toBe(1)
     expect(analyzeResult.script.exportedBindings).toEqual([])
 })
 
-test("String literal export names", () => {
+test("Named export: supports string literal export names", () => {
     localAnalyze(`
         const a = 1
         export { a as "x-y" }
@@ -167,7 +165,7 @@ test("String literal export names", () => {
     ])
 })
 
-test("Export name collision: last export wins", () => {
+test("Named export: repeated exported names are preserved in order", () => {
     localAnalyze(`
         const a = 1
         const b = 2
@@ -187,7 +185,7 @@ test("Export name collision: last export wins", () => {
     ])
 })
 
-test("Enum exports are supported as values", () => {
+test("Declaration export: enum exports are supported as values", () => {
     localAnalyze(`
         export enum Foo { A = 1, B = 2 }
     `)
@@ -201,13 +199,137 @@ test("Enum exports are supported as values", () => {
     ])
 })
 
-test("No exports when all are rejected", () => {
+test("Type export: no exported bindings when all exports are rejected", () => {
     localAnalyze(`
         export type Foo = string
         export interface Bar {}
     `)
 
-    const errors = messages.filter(item => item.type === "error")
-    expect(errors.length).toBe(2)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [0, 24],
+            value: "Type export is not supported in embedded script block."
+        },
+        {
+            type: "error",
+            range: [25, 48],
+            value: "Type export is not supported in embedded script block."
+        }
+    ])
+    expect(analyzeResult.script.exportedBindings).toEqual([])
+})
+
+test("Named export: empty export clause is allowed and produces no bindings", () => {
+    localAnalyze(`
+        const a = 1
+        export {}
+    `)
+
+    expect(messages.length).toBe(0)
+    expect(analyzeResult.script.exportedBindings).toEqual([])
+})
+
+test("Declaration export: function, class and namespace exports are collected", () => {
+    localAnalyze(`
+        export function a() {}
+        export class B {}
+        export namespace C {
+            export const d = 1
+        }
+    `)
+
+    expect(analyzeResult.script.exportedBindings).toEqual([
+        {
+            local: "a",
+            exported: "a"
+        },
+        {
+            local: "B",
+            exported: "B"
+        },
+        {
+            local: "C",
+            exported: "C"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [41, 86],
+            value: "Namespace declarations are not allowed in component embedded scripts because the embedded script block are wrapped inside a component function."
+        }
+    ])
+})
+
+test("Declaration export: variable statement exports collect all destructured bindings", () => {
+    localAnalyze(`
+        export const { a, b: c } = source
+        export let [d, e = f] = list
+    `)
+
+    expect(messages.length).toBe(0)
+    expect(analyzeResult.script.exportedBindings).toEqual([
+        {
+            local: "a",
+            exported: "a"
+        },
+        {
+            local: "c",
+            exported: "c"
+        },
+        {
+            local: "d",
+            exported: "d"
+        },
+        {
+            local: "e",
+            exported: "e"
+        }
+    ])
+})
+
+test("Unsupported export: default export declarations are rejected", () => {
+    localAnalyze(`
+        export default function a() {}
+        export default class B {}
+    `)
+
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [0, 30],
+            value: "Default export is not supported in embedded script block."
+        },
+        {
+            type: "error",
+            range: [31, 56],
+            value: "Default export is not supported in embedded script block."
+        }
+    ])
+    expect(analyzeResult.script.exportedBindings).toEqual([])
+})
+
+test("Export declaration: incomplete bare export has no clause and no invalid-export error", () => {
+    localAnalyze(`
+        export *
+    `)
+
+    expect(messages.length).toBe(0)
+    expect(analyzeResult.script.exportedBindings).toEqual([])
+})
+
+test("Unsupported export: incomplete namespace export is rejected", () => {
+    localAnalyze(`
+        export * as ns
+    `)
+
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [0, 14],
+            value: "Namespace export is not supported in embedded script block."
+        }
+    ])
     expect(analyzeResult.script.exportedBindings).toEqual([])
 })

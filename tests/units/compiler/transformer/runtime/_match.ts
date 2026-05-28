@@ -16,10 +16,10 @@ import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 import { CodeEditor } from "../../../../../src/compiler/transformer/editor"
 import { parseTemplate } from "../../../../../src/compiler/parser/template"
 import { analyzeScript } from "../../../../../src/compiler/analyzer/script"
+import { eliminate } from "../../../../../src/compiler/transformer/eliminate"
 import { PARSER_TEMPLATE_OPTIONS } from "../../../../../src/compiler/constants"
 import { analyzeTemplate } from "../../../../../src/compiler/analyzer/template"
 import { RuntimeCodeWriter } from "../../../../../src/compiler/transformer/writer"
-import { removeEliminatedNodes } from "../../../../../src/compiler/transformer/runtime/codegen"
 import { transformEmbeddedScript } from "../../../../../src/compiler/transformer/runtime/script"
 import { writeStringLiteralsDeclarations } from "../../../../../src/compiler/optimizer/compress"
 
@@ -79,7 +79,7 @@ function localTransform(source: string, options: CompileOptions) {
     generateIdentifier.internal = "_"
     generateIdentifier.setterArg = "v"
     generateIdentifier.getterArg = "__"
-    removeEliminatedNodes(embeddedScriptEditor)
+    eliminate(embeddedScriptEditor)
     transformEmbeddedScript(hoistEmbeddedScriptWriter, embeddedScriptEditor)
 
     return {
