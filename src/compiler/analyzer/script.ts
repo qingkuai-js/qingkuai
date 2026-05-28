@@ -555,7 +555,7 @@ function updateTopLevelIdentifiers(
             implicit,
             accessor,
             aliasTarget: "",
-            transofrmeTo: "",
+            transformTo: "",
             nodeInfos: [nodeInfo],
             usedExpressions: new Set()
         }

@@ -14,12 +14,12 @@ export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourc
     replaceReusedStringReferences(editor, parsedExpression.reusedStringReferences)
     traverseObject(parsedExpression.topLevelReferences, (key, value) => {
         const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[key]
-        if (topLevelIdentifier && topLevelIdentifier.transofrmeTo) {
+        if (topLevelIdentifier && topLevelIdentifier.transformTo) {
             for (const reference of value) {
                 if (reference.shorthand) {
-                    editor.insert(reference.range[1], `: ${topLevelIdentifier.transofrmeTo}`)
+                    editor.insert(reference.range[1], `: ${topLevelIdentifier.transformTo}`)
                 } else {
-                    editor.replace(...reference.range, topLevelIdentifier.transofrmeTo, true)
+                    editor.replace(...reference.range, topLevelIdentifier.transformTo, true)
                 }
             }
         }

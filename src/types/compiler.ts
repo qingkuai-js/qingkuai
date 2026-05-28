@@ -230,7 +230,7 @@ export interface TopLevelIdentifierInfo {
     implicit: boolean
     accessor: boolean
     aliasTarget: string
-    transofrmeTo: string
+    transformTo: string
     status: IdentifierStatus
     usedExpressions: Set<ParsedExpression>
     nodeInfos: TopLevelIdentifierNodeInfo[]

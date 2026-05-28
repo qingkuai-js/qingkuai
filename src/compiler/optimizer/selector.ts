@@ -207,7 +207,7 @@ function validateSelectorExpression(
 
     const topLevelIdentifierName = topLevelIdentifierNames[0]
     const topLevelInfo = analyzeResult.script.topLevelIdentifiers[topLevelIdentifierName]
-    if (!topLevelInfo?.transofrmeTo) {
+    if (!topLevelInfo?.transformTo) {
         return
     }
 
@@ -266,7 +266,7 @@ function validateSelectorExpression(
     }
     return {
         topLevelIdentifierName,
-        topLevelTransformedTo: topLevelInfo.transofrmeTo
+        topLevelTransformedTo: topLevelInfo.transformTo
     }
 }
 
