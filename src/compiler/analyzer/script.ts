@@ -82,6 +82,7 @@ export function analyzeScript() {
 
 function analyzeSourceFile(sourceFile: ts.SourceFile) {
     walkTsNodeWithContext(sourceFile, node => {
+        markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
         collectReusedStringReference(node, analyzeResult.script.reusedStringReferences)
 
         if (ts.isIdentifier(node)) {
