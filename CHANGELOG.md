@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.70](https://github.com/qingkuai-js/qingkuai/compare/v1.0.67...v1.0.68) (2026-05-30)
+
+### Improvements
+
+- **compiler(check):** improve diagnostics for reactivity inference results ([de3a425](https://github.com/qingkuai-js/qingkuai/commit/de3a425), [ceb445d](https://github.com/qingkuai-js/qingkuai/commit/ceb445d))
+
+### Refactors
+
+- **compiler(parser):** migrate the script parser from `@babel/parser` to the TypeScript compiler ([470e562](https://github.com/qingkuai-js/qingkuai/commit/470e562))
+
+### Fixes
+
+- **compiler:** fix AST analysis and transform issues, and resolve unit/e2e regressions caused by AST shape differences after parser migration ([d8f1898](https://github.com/qingkuai-js/qingkuai/commit/d8f1898), [fa23809](https://github.com/qingkuai-js/qingkuai/commit/fa23809), [a4777f1](https://github.com/qingkuai-js/qingkuai/commit/a4777f1))
+
 ## [1.0.67](https://github.com/qingkuai-js/qingkuai/compare/v1.0.66...v1.0.67) (2026-05-19)
 
 ### Features
