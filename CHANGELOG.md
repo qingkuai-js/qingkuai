@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.71](https://github.com/qingkuai-js/qingkuai/compare/v1.0.70...v1.0.71) (2026-05-30)
+
+### Fixes
+
+- **compiler:** fix missing source map generation for embedded script blocks ([666c825](https://github.com/qingkuai-js/qingkuai/commit/666c825))
+
 ## [1.0.70](https://github.com/qingkuai-js/qingkuai/compare/v1.0.67...v1.0.68) (2026-05-30)
 
 ### Improvements
