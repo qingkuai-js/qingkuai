@@ -1,3 +1,4 @@
+import ts from "typescript"
 import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants"
 
 import {
@@ -36,6 +37,7 @@ export type {
 export type { CompileIntermediateResult } from "./compile"
 
 export const util = {
+    ts,
     camel2Kebab,
     kebab2Camel,
     toPropertyKey,
