@@ -20,6 +20,7 @@ import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
 import { generateIntermediateCode } from "./transformer/check/codegen"
 import { analyzeResult, inputDescriptor, messages, resetCompilerState } from "./state"
+import { isValidIdentifierName } from "../util/compiler/assert"
 
 export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
@@ -132,8 +133,14 @@ function getTopLevelIdentifierInfo(name: string, info: TopLevelIdentifierInfo) {
             }
             return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
         }
+        case "alias": {
+            if (isValidIdentifierName(info.aliasTarget)) {
+                return "raw (invalid alias)"
+            }
+            return `alias -> ${info.aliasTarget}`
+        }
         default: {
-            return `${info.status}${info.aliasTarget ? ` -> ${info.aliasTarget}` : ""}`
+            return info.status
         }
     }
 }

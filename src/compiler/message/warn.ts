@@ -64,7 +64,7 @@ export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
 })
 
 export const RedundantArgsForIntrinsic = withLocation(
-    9016,
+    9014,
     (intrinsic: string, expected: number, got: number) => {
         return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
     }

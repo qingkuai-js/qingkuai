@@ -459,21 +459,19 @@ function inferStatusByVariableDeclaration(
     }
 
     const firstArg = initNode.arguments[0]
-    const isLiteralArg = !firstArg || isLiteral(firstArg) || isFunctionLiteral(firstArg)
+    const isLiteralArg = !firstArg || isLiteral(firstArg)
     switch (calleeName) {
         case "alias": {
             return "alias"
         }
 
+        case "derived":
         case "derivedExp": {
-            // 通过 derivedExp 标记的衍生响应式字面量值无意义，退化为使用原始值
-            // Derived reactive literal values marked with `derivedExp` are meaningless and are downgraded to using the raw value.
             if (isLiteralArg) {
+                // 初始值为字面量值的简写衍生响应式声明无意义，退化为使用原始值
+                // Shorthand derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
                 return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
             }
-            // fallthrough
-        }
-        case "derived": {
             return "derived"
         }
 
@@ -483,7 +481,7 @@ function inferStatusByVariableDeclaration(
             }
 
             const status = calleeName as ReactiveIntrinsics
-            if (isDestructuring || !isConst || !isLiteralArg) {
+            if (isDestructuring || !isConst || !(isLiteralArg || isFunctionLiteral(firstArg))) {
                 return status
             }
 
@@ -658,6 +656,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                 const grandParentNode = getStriptTypeOperationsParent(parent)!
                 if (parent.inTopLevel && ts.isVariableDeclaration(grandParentNode)) {
                     if (
+                        firstArg &&
                         intrinsicName === "alias" &&
                         ts.isIdentifier(firstArg) &&
                         ts.isIdentifier(grandParentNode.name)
