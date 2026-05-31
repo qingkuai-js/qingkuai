@@ -112,7 +112,7 @@ describe("Not destructuring", () => {
         expect(value2.$).toBe(1)
         expect(invokeMarker).toHaveBeenCalledTimes(1)
         expect(warningMatcher).toHaveBeenCalledTimes(1)
-        expect(getCurrentEffect().l & EFFECT_DERIVED).toBeTruthy()
+        expect(getCurrentEffect()!.l & EFFECT_DERIVED).toBeTruthy()
 
         a.$++
         expect(value2.$).toBe(3)
@@ -121,7 +121,7 @@ describe("Not destructuring", () => {
 
         a.$++
         valid = false
-        effect = getCurrentEffect()
+        effect = getCurrentEffect()!
         expect(value2.$).toBe(-1)
         expect(getCurrentEffect()).toBeUndefined()
         expect(warningMatcher.args[2]).toBe(getter)

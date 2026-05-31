@@ -136,7 +136,7 @@ test("Functions of reactive effect", async () => {
         })
         expect(arr).toEqual([1])
 
-        const effect = getCurrentEffect()
+        const effect = getCurrentEffect()!
         checkEffectDependaceManager(effect, {
             destroyed: false,
             timing: timings[i],
@@ -221,7 +221,7 @@ test("Functions of watch effect", async () => {
         expect(pre).toBeUndefined()
         expect(cur).toBeUndefined()
 
-        const effect = getCurrentEffect()
+        const effect = getCurrentEffect()!
         checkEffectDependaceManager(effect, {
             cleaner: null,
             destroyed: false,

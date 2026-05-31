@@ -16,6 +16,7 @@ import {
     EFFECT_RENDER,
     EFFECT_DERIVED,
     EFFECT_DISPOSED,
+    EFFECT_NO_CHECK,
     EFFECT_DISABLED,
     EFFECT_SCHEDULING,
     EFFECT_DERIVED_DIRTY,
@@ -211,7 +212,7 @@ function runEffectCollector(effect: Effect) {
 // 检查并卸载无效的副作用：未依赖任何响应式值的副作用永远不会被再次触发
 // Check and dispose invalid effects: effects that do not depend on any reactive values will never be triggered again.
 function checkAndDestroyInvalidEffect(effect: Effect) {
-    if (effect.l & EFFECT_RENDER) {
+    if (effect.l & (EFFECT_RENDER | EFFECT_NO_CHECK | EFFECT_DISABLED)) {
         return true
     }
 
