@@ -6,11 +6,9 @@ import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
 import { createDestruction } from "./destroy"
 import { constReact } from "./reactivity/value"
-import { activeEffect } from "./reactivity/state"
 import { isElement } from "../util/runtime/assert"
 import { InvalidAssignment } from "./messages/warn"
 import { InvalidElementNode } from "./messages/error"
-import { EFFECT_NO_CHECK } from "./reactivity/constants"
 import { isFunction, isString } from "../util/shared/assert"
 import { any, createProxy, runAll } from "../util/shared/sundry"
 import { defineProperties, objectKeys } from "../util/shared/aliases"
@@ -124,9 +122,6 @@ function initRefs(transformed?: AnyObject, defaults?: AnyObject) {
         {
             get(_, property: string) {
                 const propValue = transformed?.[property]
-                if (activeEffect) {
-                    activeEffect.l |= EFFECT_NO_CHECK
-                }
                 if (propValue) {
                     return propValue[0]()
                 }
@@ -152,9 +147,6 @@ function initProps(transformed?: AnyObject, defaults?: AnyObject) {
             {
                 get(_, property: string) {
                     const propValue = transformed?.[property]
-                    if (activeEffect) {
-                        activeEffect.l |= EFFECT_NO_CHECK
-                    }
                     if (propValue) {
                         if (!isFunction(propValue)) {
                             return propValue

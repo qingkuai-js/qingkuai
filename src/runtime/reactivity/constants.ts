@@ -24,15 +24,14 @@ export const WRAPPER_OBJECT = 1 << 3
 export const WRAPPER_PROXY = 1 << 4
 export const WRAPPER_SHALLOW = 1 << 5
 
-export const EFFECT_NO_CHECK = 1 << 0
-export const EFFECT_WATCH = 1 << 1
-export const EFFECT_RENDER = 1 << 2
-export const EFFECT_DERIVED = 1 << 3
-export const EFFECT_DISABLED = 1 << 4
-export const EFFECT_DISPOSED = 1 << 5
-export const EFFECT_SCHEDULING = 1 << 6
-export const EFFECT_DERIVED_DIRTY = 1 << 7
-export const EFFECT_DERIVED_READING = 1 << 8
+export const EFFECT_WATCH = 1 << 0
+export const EFFECT_RENDER = 1 << 1
+export const EFFECT_DERIVED = 1 << 2
+export const EFFECT_DISABLED = 1 << 3
+export const EFFECT_DISPOSED = 1 << 4
+export const EFFECT_SCHEDULING = 1 << 5
+export const EFFECT_DERIVED_DIRTY = 1 << 6
+export const EFFECT_DERIVED_READING = 1 << 7
 
 export const SUB_SCHEDULING = 1 << 0
 export const SUB_IS_ITERATOR_KEY = 1 << 1

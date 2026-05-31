@@ -16,7 +16,6 @@ import {
     EFFECT_RENDER,
     EFFECT_DERIVED,
     EFFECT_DISPOSED,
-    EFFECT_NO_CHECK,
     EFFECT_DISABLED,
     EFFECT_SCHEDULING,
     EFFECT_DERIVED_DIRTY,
@@ -32,7 +31,6 @@ import { NIL, UNDEF } from "../constants"
 import { getSubscription } from "./schedule"
 import { any } from "../../util/shared/sundry"
 import { currentInstance, currentDestruction } from "../state"
-import { EffectOrWatchHasNoDependecies } from "../messages/warn"
 import { getLastElem, swapDelete } from "../../util/shared/arrays"
 
 export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
@@ -63,8 +61,6 @@ export function runAndUpdateEffect(effect: Effect) {
     // For watcher effect: `res` is the latest value of the watched target,
     // `effect.f` is the callback, and its return value is the user-defined cleanup function.
     effect.c = (isWatch ? effect.f(effect.v, (effect.v = res)) : res) || NIL
-
-    checkAndDestroyInvalidEffect(effect)
 }
 
 export function appendLinksToActiveEffect(from: Effect) {
@@ -141,7 +137,7 @@ function createEffect(
 
     // 将副作用记录到 Destruction
     // Record the effect onto `Destruction`
-    if (checkAndDestroyInvalidEffect(effect) && currentDestruction) {
+    if (currentDestruction) {
         const effects = (currentDestruction.e ??= [])
         effect.x = effects.length
         effects.push(effect)
@@ -188,6 +184,7 @@ function runEffectCollector(effect: Effect) {
     pushRunningEffectStack(effect)
 
     const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
+    effect.l &= ~EFFECT_DERIVED_READING
     popRunningEffectStack()
 
     const collectedLinks = effect.k
@@ -207,37 +204,6 @@ function runEffectCollector(effect: Effect) {
         }
     }
     return res
-}
-
-// 检查并卸载无效的副作用：未依赖任何响应式值的副作用永远不会被再次触发
-// Check and dispose invalid effects: effects that do not depend on any reactive values will never be triggered again.
-function checkAndDestroyInvalidEffect(effect: Effect) {
-    if (effect.l & (EFFECT_RENDER | EFFECT_NO_CHECK | EFFECT_DISABLED)) {
-        return true
-    }
-
-    let isValid = effect.k.length > 0
-    if (effect.l & EFFECT_DERIVED) {
-        const isReading = effect.l & EFFECT_DERIVED_READING
-        if (isReading) {
-            effect.l &= ~EFFECT_DERIVED_READING
-        }
-
-        // 不脏的 DerivedEffect 或非读取状态时无需检查依赖项数量
-        // No need to check dependency count when the DerivedEffect is not dirty or is not being read.
-        isValid ||= !isReading || !(effect.l & EFFECT_DERIVED_DIRTY)
-    }
-
-    if (!isValid) {
-        const isWatch = effect.l & EFFECT_WATCH
-        const isDerived = effect.l & EFFECT_DERIVED
-        disposeEffect(effect)
-        EffectOrWatchHasNoDependecies(
-            isWatch || isDerived ? effect.g! : effect.f,
-            isWatch ? "watcher" : effect.l & EFFECT_DERIVED ? "derived reactive value" : ""
-        )
-    }
-    return isValid
 }
 
 function createEffectWithHandle(...args: Parameters<typeof createEffect>): EffectHandle {

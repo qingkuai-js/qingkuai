@@ -29,8 +29,8 @@ import {
 import { NOOP } from "../../../src/runtime/constants"
 import { checkEffectDependaceManager } from "./_match"
 import { isReactive } from "../../../src/util/runtime/assert"
-import { matchGlobalError } from "../../../src/util/testing/match"
 import { beforeEach, describe, expect, test, vi } from "vitest"
+import { matchGlobalError } from "../../../src/util/testing/match"
 import { isArray, isNumber } from "../../../src/util/shared/assert"
 import { arrayFrom, emptyArr } from "../../../src/util/shared/arrays"
 import { createWarningMatcher } from "../../../src/util/testing/sundry"
@@ -581,25 +581,6 @@ test("Effect chains propagate only along their expected dependency paths", async
         }
         expect(invokeMarker).toHaveBeenCalledTimes(5)
         expect(arr).toEqual([1, originRaw, 2, 2, 2, obj.$, 99, 98])
-    }
-})
-
-test("Whether a runtime warning will be caused when effect depends on no reactive value", () => {
-    for (const effectFunc of reactiveEffectFuncs) {
-        warningMatcher.mockClear()
-        effectFunc(NOOP)
-        expect(warningMatcher.args[2]).toBe(NOOP)
-        expect(warningMatcher).toHaveBeenCalledTimes(1)
-        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()
-    }
-
-    for (const watchFunc of watchEffectFuncs) {
-        warningMatcher.mockClear()
-        watchFunc(NOOP, () => {})
-        expect(warningMatcher.args[2]).toBe(NOOP)
-        expect(warningMatcher).toHaveBeenCalledTimes(1)
-        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()
-        expect(warningMatcher.args[1].includes("that created with watcher")).toBeTruthy()
     }
 })
 
