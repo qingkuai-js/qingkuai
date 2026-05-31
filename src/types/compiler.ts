@@ -46,6 +46,10 @@ export interface EditReplacement {
 }
 
 export interface TemplateFragment {
+    content: {
+        value: string
+        isText: boolean
+    }[]
     selections: {
         id: string
         index: number
@@ -55,7 +59,6 @@ export interface TemplateFragment {
     id: string
     flag: number
     getterId: string
-    content: string[]
     usedCompressString: boolean
     directChildrenCount: number
     getWith: TemplateFragment | undefined

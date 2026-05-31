@@ -29,7 +29,7 @@ export function writeStringLiteralsDeclarations(
             continue
         }
         for (let i = 0; i < fragment.content.length; i++) {
-            const str = fragment.content[i]
+            const str = fragment.content[i].value
             fragmentContentPartUsedTimes[str] = (fragmentContentPartUsedTimes[str] ?? 0) + 1
         }
     }
@@ -45,7 +45,7 @@ export function writeStringLiteralsDeclarations(
         }
 
         for (let i = 0; i < fragment.content.length; i++) {
-            const compressStringIndex = compressStringIndexMap.get(fragment.content[i])
+            const compressStringIndex = compressStringIndexMap.get(fragment.content[i].value)
             if (!isUndefined(compressStringIndex)) {
                 fragment.usedCompressString = true
                 break
@@ -54,13 +54,13 @@ export function writeStringLiteralsDeclarations(
 
         if (fragment.usedCompressString) {
             for (let i = 0; i < fragment.content.length; i++) {
-                const str = fragment.content[i]
+                const str = fragment.content[i].value
                 const compressStringIndex = compressStringIndexMap.get(str)
-                fragment.content[i] = fragment.content[i].replaceAll("|", "||")
+                fragment.content[i].value = str.replaceAll("|", "||")
 
                 if (!isUndefined(compressStringIndex)) {
                     increaseReusedStringUsedTimes(str)
-                    fragment.content[i] = "|" + compressStringIndex
+                    fragment.content[i].value = "|" + compressStringIndex
                 }
             }
         }

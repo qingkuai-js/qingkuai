@@ -9,9 +9,6 @@ import {
 import { describe, expect, test } from "vitest"
 import { compile } from "../../../../../src/compiler/compile"
 import { formatSourceCode } from "../../../../../src/util/shared/sundry"
-import { RuntimeCodeWriter } from "../../../../../src/compiler/transformer/writer"
-import { resetCompilerState, generateIdentifier } from "../../../../../src/compiler/state"
-import { writeFragmentSelections } from "../../../../../src/compiler/transformer/runtime/fragment"
 
 function getRandomDirective() {
     return ["#if={bool}", "#for={3}", "#target={document.body}", "#await={promise}"][
@@ -117,11 +114,11 @@ describe("debug mode", () => {
 
         matchGeneratedFragment(
             `
-            <lang-js>
-                let _getFragment1
-            </lang-js>
-            <span> 1 2  3   0</span>
-        `,
+                <lang-js>
+                    let _getFragment1
+                </lang-js>
+                <span> 1 2  3   0</span>
+            `,
             `const _getFragment2 = _.createFragmentGetter(\`<span>1 2 3 0</span>\`)`
         )
 
@@ -166,22 +163,22 @@ describe("debug mode", () => {
     test("Spread tag", () => {
         let nodeList = matchGeneratedFragment(
             `
-            <qk:spread>
-                <button @click={() => {}}></button>
-            </qk:spread>
-        `,
+                <qk:spread>
+                    <button @click={() => {}}></button>
+                </qk:spread>
+            `,
             `const _getFragment1 = _.createFragmentGetter(\`<button></button>\`)`
         )
         matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_button1"]])
 
         nodeList = matchGeneratedFragment(
             `
-            <qk:spread>
                 <qk:spread>
-                    name: <span> {name} </span>
+                    <qk:spread>
+                        name: <span> {name} </span>
+                    </qk:spread>
                 </qk:spread>
-            </qk:spread>
-        `,
+            `,
             `const _getFragment1 = _.createFragmentGetter(\`name:<span> </span>\`)`
         )
         matchTemplateNodesRuntimeId([
@@ -193,12 +190,12 @@ describe("debug mode", () => {
     test("Directives", () => {
         let nodeList = matchGeneratedFragment(
             `
-            <div #for={item of 3}>{item}</div>
-        `,
+                <div #for={item of 3}>{item}</div>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
+            `
         )
         matchTemplateNodesRuntimeId([
             [nodeList[1], "_div1"],
@@ -208,21 +205,21 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <div #if={bool}>
-                <p #for={item of 3}>
-                    {item}
-                </p>
-            </div>
-            <div #else>
-                <p> no content </p>
-            </div>
-        `,
+                <div #if={bool}>
+                    <p #for={item of 3}>
+                        {item}
+                    </p>
+                </div>
+                <div #else>
+                    <p> no content </p>
+                </div>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
-            const _getFragment3 = _.createFragmentGetter(\`<p> </p>\`)
-            const _getFragment4 = _.createFragmentGetter(\`<div><p>no content</p></div>\`)
-        `,
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
+                const _getFragment3 = _.createFragmentGetter(\`<p> </p>\`)
+                const _getFragment4 = _.createFragmentGetter(\`<div><p>no content</p></div>\`)
+            `,
             {
                 debug: true
             }
@@ -235,6 +232,31 @@ describe("debug mode", () => {
             [nodeList[1], "_div1"],
             [nodeList[1].children[1], "_p1"],
             [nodeList[1].children[1].children[0], "_text3"]
+        ])
+    })
+
+    test("Convert preceding text anchor to comment anchor when static text follows", () => {
+        const nodeList = matchGeneratedFragment(
+            `
+                <Foo #if={false}></Foo>
+                <qk:spread #elif={"x"}>{"x"}</qk:spread>
+            `,
+            `
+                const _getFragment1 = _.createFragmentGetter(\` <!><!> \`)
+                const _getFragment2 = _.createFragmentGetter(\` \`)
+            `,
+            {
+                whitespace: "collapse"
+            }
+        )
+
+        matchTemplateNodesAnchorId([
+            [nodeList[1], "_text1"],
+            [nodeList[3], "_text1"]
+        ])
+        matchTemplateNodesRuntimeId([
+            [nodeList[1], "_text1"],
+            [nodeList[3].children[0], "_text2"]
         ])
     })
 
@@ -251,59 +273,34 @@ describe("debug mode", () => {
     })
 
     test("replaceWithText selection should not be rewritten to getSibling", () => {
-        resetCompilerState({ debug: false })
-        generateIdentifier.internal = "_"
+        const input = formatSourceCode(`
+            <Comp #if={condition}></Comp>
+            <Comp #else></Comp>
+            <div @click={onClick}></div>
+        `)
 
-        const writer = new RuntimeCodeWriter()
-        writeFragmentSelections(writer, {
-            flag: 0,
-            id: "_fragment1",
-            getterId: "_getFragment1",
-            nodeContext: null,
-            content: [" ", "<!>", " "],
-            getWith: undefined,
-            directChildrenCount: 3,
-            usedCompressString: false,
-            selections: [
-                {
-                    id: "_text1",
-                    parent: "_fragment1",
-                    replaceWithText: false,
-                    index: 0
-                },
-                {
-                    id: "_text2",
-                    parent: "_fragment1",
-                    replaceWithText: true,
-                    index: 1
-                },
-                {
-                    id: "_text3",
-                    parent: "_fragment1",
-                    replaceWithText: false,
-                    index: 2
-                }
-            ]
+        const { code } = compile(input, {
+            debug: false,
+            whitespace: "collapse"
         })
 
-        const code = formatSourceCode(writer.code)
-        expect(code).toContain("const _text2 = _.getSiblingAsText(_text1)")
-        expect(code).toContain("const _text3 = _.getSibling(_text2)")
+        expect(code).toContain("const _text3 = _.getSiblingAsText(_text2, 2)")
+        expect(code).toContain("const _div1 = _.getSibling(_text3, 2)")
     })
 
     test("Directives on spread tag", () => {
         let nodeList = matchGeneratedFragment(
             `
-            <qk:spread #for={item of 3}>
-                <div>
-                    {item}
-                </div>
-            </qk:spread>
-        `,
+                <qk:spread #for={item of 3}>
+                    <div>
+                        {item}
+                    </div>
+                </qk:spread>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
+            `
         )
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
         matchTemplateNodesRuntimeId([
@@ -313,16 +310,16 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <qk:spread #for={item of 3}>
-                <div #if={item}>
-                    ok
-                </div>
-            </qk:spread>
-        `,
+                <qk:spread #for={item of 3}>
+                    <div #if={item}>
+                        ok
+                    </div>
+                </qk:spread>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div>ok</div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div>ok</div>\`)
+            `
         )
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
@@ -331,18 +328,18 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <qk:spread #for={item of 3}>
-                <qk:spread #if={item}>
-                    <div #target={"body"}>
-                        <p> {item} </p>
-                    </div>
+                <qk:spread #for={item of 3}>
+                    <qk:spread #if={item}>
+                        <div #target={"body"}>
+                            <p> {item} </p>
+                        </div>
+                    </qk:spread>
                 </qk:spread>
-            </qk:spread>
-        `,
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div><p> </p></div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div><p> </p></div>\`)
+            `
         )
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
@@ -357,15 +354,15 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <qk:spread #for={item of 3}>
-                <div #if={item}></div>
-                <div #else></div>
-            </qk:spread>
-        `,
+                <qk:spread #for={item of 3}>
+                    <div #if={item}></div>
+                    <div #else></div>
+                </qk:spread>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+            `
         )
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
@@ -391,10 +388,10 @@ describe("debug mode", () => {
                 </Comp>
             `),
                 `
-                const _getFragment1 = _.createFragmentGetter(\` \`)
-                const _getFragment2 = _.createFragmentGetter(\`\\n    static content\\n    \`)
-                const _getFragment3 = _.createFragmentGetter(\`<p></p>\`)
-            `,
+                    const _getFragment1 = _.createFragmentGetter(\` \`)
+                    const _getFragment2 = _.createFragmentGetter(\`\\n    static content\\n    \`)
+                    const _getFragment3 = _.createFragmentGetter(\`<p></p>\`)
+                `,
                 {
                     whitespace: "preserve"
                 }
@@ -403,16 +400,16 @@ describe("debug mode", () => {
 
             nodeList = matchGeneratedFragment(
                 `
-                <Comp ${directive}>
-                    <div #for={a} #slot={"a"} !id></div>
-                    <div #if={bool} #slot={"b"}> {content} </div>
-                </Comp>
-            `,
+                    <Comp ${directive}>
+                        <div #for={a} #slot={"a"} !id></div>
+                        <div #if={bool} #slot={"b"}> {content} </div>
+                    </Comp>
+                `,
                 `
-                const _getFragment1 = _.createFragmentGetter(\` \`)
-                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-                const _getFragment3 = _.createFragmentGetter(\`<div> </div>\`)
-            `
+                    const _getFragment1 = _.createFragmentGetter(\` \`)
+                    const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+                    const _getFragment3 = _.createFragmentGetter(\`<div> </div>\`)
+                `
             )
             matchTemplateNodesAnchorId([
                 [nodeList[1], "_text1"],
@@ -427,20 +424,20 @@ describe("debug mode", () => {
 
             nodeList = matchGeneratedFragment(
                 `
-                <Comp ${directive}>
-                    <div !id></div>
-                    <qk:spread #slot={"empty"}></qk:spread>
-                    <qk:spread #slot={context from "spread"}>
-                        <p>{context.name}</p>
-                        <button @click={context.handleClick}></button>
-                    </qk:spread>
-                </Comp>
-            `,
+                    <Comp ${directive}>
+                        <div !id></div>
+                        <qk:spread #slot={"empty"}></qk:spread>
+                        <qk:spread #slot={context from "spread"}>
+                            <p>{context.name}</p>
+                            <button @click={context.handleClick}></button>
+                        </qk:spread>
+                    </Comp>
+                `,
                 `
-                const _getFragment1 = _.createFragmentGetter(\` \`)
-                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-                const _getFragment3 = _.createFragmentGetter(\`<p> </p><button></button>\`)
-            `
+                    const _getFragment1 = _.createFragmentGetter(\` \`)
+                    const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+                    const _getFragment3 = _.createFragmentGetter(\`<p> </p><button></button>\`)
+                `
             )
             matchTemplateNodesAnchorId([
                 [nodeList[1], "_text1"],
@@ -459,16 +456,16 @@ describe("debug mode", () => {
     test("Component tag with preceding directive", () => {
         const nodeList = matchGeneratedFragment(
             `
-            <Comp #if={a}>
-                <div></div>
-            </Comp>
-            <p #elif={b}></p>
-        `,
+                <Comp #if={a}>
+                    <div></div>
+                </Comp>
+                <p #elif={b}></p>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-            const _getFragment3 = _.createFragmentGetter(\`<p></p>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+                const _getFragment3 = _.createFragmentGetter(\`<p></p>\`)
+            `
         )
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
@@ -479,10 +476,10 @@ describe("debug mode", () => {
     test("Nesting components", () => {
         let nodeList = matchGeneratedFragment(
             `
-            <Comp>
-                <Test />
-            </Comp>
-        `,
+                <Comp>
+                    <Test />
+                </Comp>
+            `,
             `const _getFragment1 = _.createFragmentGetter(\` \`)`
         )
         matchTemplateNodesAnchorId([
@@ -492,11 +489,11 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <Comp ${getRandomDirective()}>
-                <Test1 />
-                <Test2 #slot={"2"} />
-            </Comp>
-        `,
+                <Comp ${getRandomDirective()}>
+                    <Test1 />
+                    <Test2 #slot={"2"} />
+                </Comp>
+            `,
             `const _getFragment1 = _.createFragmentGetter(\` \`)`
         )
         matchTemplateNodesAnchorId([
@@ -515,14 +512,14 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <slot>
-                <div !id></div>
-            </slot>
-        `,
+                <slot>
+                    <div !id></div>
+                </slot>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+            `
         )
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
         matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_div1"]])
@@ -531,16 +528,16 @@ describe("debug mode", () => {
     test("Slot tag in component", () => {
         let nodeList = matchGeneratedFragment(
             `
-            <Comp>
-                <slot>
-                    <div !id></div>
-                </slot>
-            </Comp>
-        `,
+                <Comp>
+                    <slot>
+                        <div !id></div>
+                    </slot>
+                </Comp>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+            `
         )
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
@@ -550,20 +547,20 @@ describe("debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `
-            <Comp ${getRandomDirective()}>
-                <slot>
-                    <div !id></div>
-                </slot>
-                <slot name="xxx" #slot={"xxx"}>
-                    <p> {content} </p>
-                </slot>
-            </Comp>
-        `,
+                <Comp ${getRandomDirective()}>
+                    <slot>
+                        <div !id></div>
+                    </slot>
+                    <slot name="xxx" #slot={"xxx"}>
+                        <p> {content} </p>
+                    </slot>
+                </Comp>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
-            const _getFragment3 = _.createFragmentGetter(\`<p> </p>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div></div>\`)
+                const _getFragment3 = _.createFragmentGetter(\`<p> </p>\`)
+            `
         )
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
@@ -580,16 +577,16 @@ describe("debug mode", () => {
     test("Directives on slot tag", () => {
         const nodeList = matchGeneratedFragment(
             `
-            <slot #for={item, index of 3}>
-                <span>{index}</span>
-                :
-                <span>{item}</span>
-            </slot>
-        `,
+                <slot #for={item, index of 3}>
+                    <span>{index}</span>
+                    :
+                    <span>{item}</span>
+                </slot>
+            `,
             `
-            const _getFragment1 = _.createFragmentGetter(\` \`)
-            const _getFragment2 = _.createFragmentGetter(\`<span> </span>:<span> </span>\`)
-        `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<span> </span>:<span> </span>\`)
+            `
         )
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
         matchTemplateNodesRuntimeId([
@@ -807,6 +804,7 @@ describe("non-debug mode", () => {
             [nodeList[1].children[1].children[1].children[0], "_text1"]
         ])
     })
+
     describe("String compression", () => {
         test("No compression when repeated content only appears in getWith fragments", () => {
             const nodeList = matchGeneratedFragment(
