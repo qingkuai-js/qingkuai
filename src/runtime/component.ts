@@ -121,16 +121,16 @@ function initRefs(transformed?: AnyObject, defaults?: AnyObject) {
         {},
         {
             get(_, property: string) {
-                const propValue = transformed?.[property]
-                if (propValue) {
-                    return propValue[0]()
+                let ret = transformed?.[property]
+                if (ret) {
+                    ret = ret[0]()
                 }
-                return defaults?.[property]
+                return ret ?? defaults?.[property]
             },
             set(_, property: string, value) {
-                const propValue = transformed?.[property]
-                if (propValue) {
-                    propValue[1](value)
+                let ret = transformed?.[property]
+                if (ret) {
+                    ret = ret[1](value)
                 } else if (defaults && property in defaults) {
                     defaults[property] = value
                 }
@@ -145,14 +145,13 @@ function initProps(transformed?: AnyObject, defaults?: AnyObject) {
         {},
         {
             get(_, property: string) {
-                const propValue = transformed?.[property]
-                if (propValue) {
-                    if (!isFunction(propValue)) {
-                        return propValue
+                let ret = transformed?.[property]
+                if (ret) {
+                    if (isFunction(ret)) {
+                        ret = ret()
                     }
-                    return propValue()
                 }
-                return defaults?.[property]
+                return ret ?? defaults?.[property]
             },
             set() {
                 return (InvalidAssignment("component props"), true)
