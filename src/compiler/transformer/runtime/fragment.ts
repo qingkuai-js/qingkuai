@@ -76,7 +76,10 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                 replaceWithText: getLastElem(fragment.content)?.value === "<!>",
                 index: (parentContext?.selectableChildCount ?? fragment.directChildrenCount) - 1
             })
-            return (nodeContext && (nodeContext.id = nodeId), nodeId)
+            if (nodeContext) {
+                nodeContext.id = nodeId
+            }
+            return nodeId
         }
 
         for (const node of nodes) {
