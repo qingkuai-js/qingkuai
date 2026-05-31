@@ -32,7 +32,7 @@ export function InvalidElementNode(purpose: string): never {
 export function MaximumUpdateDepthExceeded(): never {
     throwErrorWithCode(
         2004,
-        `Maximum recursive update depth exceeded. This usually occurs because reactive values were modified within asynchronous side effects or watchers, leading to recursive update scheduling.`
+        `Maximum recursive update depth exceeded(max schedule depth is ${__qk_max_schedule_depth}). This usually occurs because reactive values were modified within asynchronous side effects or watchers, leading to recursive update scheduling.`
     )
 }
 
