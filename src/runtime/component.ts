@@ -141,24 +141,22 @@ function initRefs(transformed?: AnyObject, defaults?: AnyObject) {
 }
 
 function initProps(transformed?: AnyObject, defaults?: AnyObject) {
-    if (transformed || defaults) {
-        return createProxy(
-            {},
-            {
-                get(_, property: string) {
-                    const propValue = transformed?.[property]
-                    if (propValue) {
-                        if (!isFunction(propValue)) {
-                            return propValue
-                        }
-                        return propValue()
+    return createProxy(
+        {},
+        {
+            get(_, property: string) {
+                const propValue = transformed?.[property]
+                if (propValue) {
+                    if (!isFunction(propValue)) {
+                        return propValue
                     }
-                    return defaults?.[property]
-                },
-                set() {
-                    return (InvalidAssignment("component props"), true)
+                    return propValue()
                 }
+                return defaults?.[property]
+            },
+            set() {
+                return (InvalidAssignment("component props"), true)
             }
-        )
-    }
+        }
+    )
 }
