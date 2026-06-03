@@ -2,18 +2,22 @@ import type { AnyObject, Getter } from "#type-declarations/tools"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
 import type { ComponentContext, ComponentInstanceBase } from "#type-declarations/runtime"
 
+import {
+    objectKeys,
+    reflectOwnKeys,
+    defineProperty,
+    defineProperties
+} from "../util/shared/aliases"
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
 import { createDestruction } from "./destroy"
-import { constReact } from "./reactivity/value"
 import { isElement } from "../util/runtime/assert"
-import { InvalidAssignment } from "./messages/warn"
+import { any, runAll } from "../util/shared/sundry"
 import { InvalidElementNode } from "./messages/error"
 import { isFunction, isString } from "../util/shared/assert"
-import { any, createProxy, runAll } from "../util/shared/sundry"
-import { defineProperties, objectKeys } from "../util/shared/aliases"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
+import { constReact } from "./internal"
 
 // prettier-ignore
 export const [
@@ -100,62 +104,63 @@ function hooksRegisterGen(): LifecycleHookRegister[] {
 }
 
 function initSlots(transformed?: AnyObject) {
-    return createProxy(
-        {},
-        {
-            get(_, property: string) {
-                return !!transformed?.[property]
-            },
-            set() {
-                return true
-            }
+    const ret: AnyObject = {}
+    if (transformed) {
+        for (const key of reflectOwnKeys(transformed)) {
+            defineProperty(ret, key, {
+                get() {
+                    return !!transformed[key]
+                },
+                enumerable: true
+            })
         }
-    )
+    }
+    return ret
 }
 
-function initRefs(transformed?: AnyObject, defaults?: AnyObject) {
-    if (defaults) {
-        defaults = constReact(defaults)
-    }
-    return createProxy(
-        {},
-        {
-            get(_, property: string) {
-                let ret = transformed?.[property]
-                if (ret) {
-                    ret = ret[0]()
-                }
-                return ret ?? defaults?.[property]
-            },
-            set(_, property: string, value) {
-                let ret = transformed?.[property]
-                if (ret) {
-                    ret = ret[1](value)
-                } else if (defaults && property in defaults) {
-                    defaults[property] = value
-                }
-                return true
-            }
+function initRefs(transformed?: AnyObject, ret: AnyObject = {}) {
+    if (((ret = constReact(ret)), transformed)) {
+        for (const key of reflectOwnKeys(transformed)) {
+            defineProperty(ret, key, {
+                get() {
+                    return transformed[key]?.[0]() ?? ret[key]
+                },
+                set(value) {
+                    transformed[key]?.[1](value)
+                },
+                enumerable: true
+            })
         }
-    )
+    }
+    return ret
 }
 
 function initProps(transformed?: AnyObject, defaults?: AnyObject) {
-    return createProxy(
-        {},
-        {
-            get(_, property: string) {
-                let ret = transformed?.[property]
-                if (ret) {
-                    if (isFunction(ret)) {
-                        ret = ret()
-                    }
-                }
-                return ret ?? defaults?.[property]
-            },
-            set() {
-                return (InvalidAssignment("component props"), true)
-            }
+    const ret: AnyObject = {}
+    if (defaults) {
+        for (const key of reflectOwnKeys(defaults)) {
+            defineProperty(ret, key, {
+                get() {
+                    return defaults[key]
+                },
+                enumerable: true,
+                configurable: true
+            })
         }
-    )
+    }
+    if (transformed) {
+        for (const key of reflectOwnKeys(transformed)) {
+            defineProperty(ret, key, {
+                get() {
+                    let val = transformed[key]
+                    if (isFunction(val)) {
+                        val = val()
+                    }
+                    return val ?? defaults?.[key]
+                },
+                enumerable: true
+            })
+        }
+    }
+    return ret
 }
