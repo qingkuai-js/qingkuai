@@ -19,7 +19,6 @@ import {
     tagCloseCharsRE,
     embeddedLangTagRE,
     preWhiteSpaceRuleRE,
-    embeddedStyleLangRE,
     templateAttributeEndRE,
     startWithTagStructureRE,
     templateAttributeNameRE,
@@ -64,10 +63,10 @@ import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
-import { isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert"
 import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS } from "../constants"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
 import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string"
+import { isEmbeddedStyleTag, isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert"
 
 export const parseTemplateStandalone: ParseTemplateFunc = (source, options = {}) => {
     const inputOptions: Partial<InputOptions> = {}
@@ -323,9 +322,9 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         const tag = tagOpenStr.slice(1)
         const isVoidNode = isVoidTag(tag)
+        const isEmbeddedStyle = isEmbeddedStyleTag(tag)
         const embeddedLang = embeddedLangTagRE.exec(tag)?.[1] ?? ""
         const isComponent = !embeddedLang && componentTagRE.test(tag)
-        const isEmbeddedStyle = embeddedStyleLangRE.test(embeddedLang)
 
         if (isComponent) {
             if (findOutOfComment(tag, ".") !== -1) {

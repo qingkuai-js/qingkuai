@@ -1,7 +1,12 @@
 import ts from "typescript"
 import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants"
 
-import { isVoidTag, isEmbeddedLanguageTag, isRequiredValueDirective } from "../util/compiler/assert"
+import {
+    isVoidTag,
+    isEmbeddedStyleTag,
+    isEmbeddedLanguageTag,
+    isRequiredValueDirective
+} from "../util/compiler/assert"
 import { formatSourceCode } from "../util/shared/sundry"
 
 import {
@@ -42,6 +47,7 @@ export const util = {
     findOutOfComment,
     findOutOfLiteral,
     formatSourceCode,
+    isEmbeddedStyleTag,
     isEmbeddedLanguageTag,
     findOutOfLiteralComment,
     isRequiredValueDirective

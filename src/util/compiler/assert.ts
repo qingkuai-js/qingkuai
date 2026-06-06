@@ -1,6 +1,12 @@
 import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
 import {
+    nonWhitespaceRE,
+    embeddedLangTagRE,
+    jsValidIdentifierRE,
+    embeddedStyleLangRE
+} from "../../compiler/regular"
+import {
     VOID_TAGS,
     JS_RESERVED_KEYWORDS,
     REQUIRED_VALUE_DIRECTIVES
@@ -8,7 +14,6 @@ import {
 import { findOutOfComment } from "./string"
 import { isEmptyString } from "../shared/assert"
 import { getTemplateNodeContext } from "./template"
-import { nonWhitespaceRE, jsValidIdentifierRE, embeddedLangTagRE } from "../../compiler/regular"
 
 export function isVoidTag(tag: string) {
     return VOID_TAGS.has(tag)
@@ -47,6 +52,10 @@ export function isHtmlDirectiveChild(node: TemplateNode) {
         return false
     }
     return !!getTemplateNodeContext(node.parent).attributesMap["#html"]
+}
+
+export function isEmbeddedStyleTag(tag: string) {
+    return tag.startsWith("lang-") && embeddedStyleLangRE.test(tag.slice(5))
 }
 
 export function isValidIdentifierName(name: string, allowReserved = false) {
