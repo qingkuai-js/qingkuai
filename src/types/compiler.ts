@@ -24,6 +24,7 @@ export interface ScriptDescriptor {
 export interface StyleDescriptor {
     code: string
     lang: string
+    global: boolean
     loc: ASTLocation
     startTagOpenRange: Range
 }

@@ -19,13 +19,13 @@ import {
     tagCloseCharsRE,
     embeddedLangTagRE,
     preWhiteSpaceRuleRE,
+    embeddedStyleLangRE,
     templateAttributeEndRE,
     startWithTagStructureRE,
     templateAttributeNameRE,
     templateTagStructureRE,
     templateInvalidAttributeRE,
-    interpolatedAttrStartCharRE,
-    embeddedStyleLangRE
+    interpolatedAttrStartCharRE
 } from "../regular"
 import {
     getPosByIndex,
@@ -301,6 +301,8 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         let componentTag = ""
         let startTagOpenRange: Range
+        let srcAttr: TemplateAttribute | null = null
+        let globalAttr: TemplateAttribute | null = null
         let startTagClosingMatched: RegExpExecRet = null
         let prevForChild: TemplateNode | undefined = undefined
 
@@ -543,14 +545,25 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 attributeInfo.value.loc.start = getPosByIndex(valueStartIndex)
             }
 
-            // 嵌入脚本语言标签上的 shallow 属性需要修改 CompilerOptions.reactivityMode 为 shallow
-            // The `shallow` attribute on an embedded script language tag requires setting `CompilerOptions.reactivityMode` to `shallow`.
-            if (
-                !isInterpolatedAttr &&
-                (attrName === "shallow" || attrName === "reactive") &&
-                (templateNode.tag === "lang-js" || templateNode.tag === "lang-ts")
-            ) {
-                inputDescriptor.options.reactivityMode = attrName
+            switch (attrName) {
+                case "src": {
+                    srcAttr = attributeInfo
+                    break
+                }
+                case "global": {
+                    globalAttr = attributeInfo
+                    break
+                }
+
+                // 嵌入脚本语言标签上的 shallow 属性需要修改 CompilerOptions.reactivityMode 为 shallow
+                // The `shallow` attribute on an embedded script language tag requires setting `CompilerOptions.reactivityMode` to `shallow`.
+                case "shallow":
+                case "reactive": {
+                    if (templateNode.tag === "lang-js" || templateNode.tag === "lang-ts") {
+                        inputDescriptor.options.reactivityMode = attrName
+                    }
+                    break
+                }
             }
         }
 
@@ -563,13 +576,13 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         // 无需解析子节点
         // No need to parse child nodes.
-        const srcAttr = templateNode.attributes.find(attr => attr.name.raw === "src")
         if (isVoidNode || startTagClosingMatched[0].startsWith("/")) {
             if (isEmbeddedStyle) {
                 if (srcAttr) {
                     inputDescriptor.styles.push({
                         startTagOpenRange,
                         lang: embeddedLang,
+                        global: !!globalAttr,
                         loc: getLocByIndex(index, index),
                         code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
                     })
@@ -643,8 +656,9 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 if (!rawContent.trim()) {
                     inputDescriptor.styles.push({
                         startTagOpenRange,
-                        lang: embeddedLang,
                         loc: contentLoc,
+                        lang: embeddedLang,
+                        global: !!globalAttr,
                         code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
                     })
                 } else {
@@ -679,7 +693,8 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                     startTagOpenRange,
                     loc: contentLoc,
                     code: rawContent,
-                    lang: embeddedLang
+                    lang: embeddedLang,
+                    global: !!globalAttr
                 })
                 markPositionFlag(PositionFlag.InStyle, contentLoc.start.index, contentLoc.end.index)
             }
