@@ -10,7 +10,7 @@ import { analyzeEvent } from "./event"
 import { analyzeDirective } from "./directive"
 import { newCleanObj } from "../../util/shared/sundry"
 import { analyzeReferenceAttribute } from "./reference"
-import { interpolatedAttrStartCharRE } from "../regular"
+import { embeddedStyleLangRE, interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
@@ -23,6 +23,7 @@ export function analyzeAttributes(node: TemplateNode) {
     const nodeContext = getTemplateNodeContext(node)
     const isEmbeddedScript = node.tag === "lang-js" || node.tag === "lang-ts"
     const duplicateCheckAttrsMap: Record<string, TemplateAttribute> = newCleanObj()
+    const isEbeddedStyle = node.isEmbedded && embeddedStyleLangRE.test(node.tag.slice(5))
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -56,9 +57,9 @@ export function analyzeAttributes(node: TemplateNode) {
         }
 
         if (
-            isEmbeddedScript &&
             attribute.equalSign &&
-            (rawName === "shallow" || rawName === "reactive")
+            ((isEbeddedStyle && rawName === "global") ||
+                (isEmbeddedScript && (rawName === "shallow" || rawName === "reactive")))
         ) {
             RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
         }
