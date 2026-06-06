@@ -1314,7 +1314,8 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                         {
                             tag: "p",
                             parent: nodeList[0],
-                            loc: getLocWithDefaultEnd(6),
+                            isSelfClosing: true,
+                            loc: getLocByIndex(6, 10),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
                             startTagEndPos: getPosByIndex(10)

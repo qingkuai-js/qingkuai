@@ -644,7 +644,8 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                             loc: getLocByIndex(5, 16)
                         }
                     ],
-                    loc: getLocWithDefaultEnd(0),
+                    isSelfClosing: true,
+                    loc: getLocByIndex(0, 19),
                     startTagEndPos: getPosByIndex(19)
                 }
             ],

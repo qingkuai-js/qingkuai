@@ -4,9 +4,10 @@ export const templateAttributeEndRE = /\s|>|$/
 export const templateInvalidAttributeRE = /^[^\s>]+/
 export const templateAttributeNameRE = /^[^\s='"\{\}><\/]+/
 export const templateConditionalCommentRE = /(?:^\[if |<\!\[endif\]$)/
-export const templateEmbeddedLangTagRE = /^lang-([jt]s|css|s[ca]ss|less|stylus|postcss)/
+export const embeddedStyleLangRE = /^(?:css|s[ca]ss|less|stylus|postcss)$/
 export const preWhiteSpaceRuleRE = /(?:^\s*|;)white-space:\s*pre(?:-(?:wrap|line))?(?:;|\s*$)/
 export const templateTagStructureRE = /<(?:\/?(?:(?!qk:spread)[a-zA-z][a-zA-Z\d\-_.]*|qk:spread)|!--)/
+export const embeddedLangTagRE = new RegExp(`^lang-([jt]s|${embeddedStyleLangRE.source.slice(4, -2)})$`)
 
 export const whitespaceRE = /\s/
 export const whitespacesRE = /\s*/

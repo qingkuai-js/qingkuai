@@ -134,6 +134,7 @@ function assertEmbeddedLangDescriptor(node: TemplateNode) {
                     lang: node.tag.slice(5),
                     code: contentNode ? contentNode.value : "",
                     startTagOpenRange: getRangeByLocation(getStartTagOpenLoc(node)),
+                    global: !!node.attributes.find(attr => attr.name.raw === "global"),
                     loc: contentNode ? contentNode.loc : getLocByIndex(node.startTagEndPos.index)
                 })
             }

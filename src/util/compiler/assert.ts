@@ -1,25 +1,21 @@
 import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
 import {
-    nonWhitespaceRE,
-    jsValidIdentifierRE,
-    templateEmbeddedLangTagRE
-} from "../../compiler/regular"
-import {
-    SELF_CLOSING_TAGS,
+    VOID_TAGS,
     JS_RESERVED_KEYWORDS,
     REQUIRED_VALUE_DIRECTIVES
 } from "../../compiler/constants"
 import { findOutOfComment } from "./string"
 import { isEmptyString } from "../shared/assert"
 import { getTemplateNodeContext } from "./template"
+import { nonWhitespaceRE, jsValidIdentifierRE, embeddedLangTagRE } from "../../compiler/regular"
 
-export function isSelfClosingTag(tag: string) {
-    return SELF_CLOSING_TAGS.has(tag)
+export function isVoidTag(tag: string) {
+    return VOID_TAGS.has(tag)
 }
 
 export function isEmbeddedLanguageTag(tag: string) {
-    return templateEmbeddedLangTagRE.test(tag)
+    return embeddedLangTagRE.test(tag)
 }
 
 export function isBlankTextNode(node: TemplateNode) {

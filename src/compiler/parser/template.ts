@@ -17,14 +17,15 @@ import {
     startQuoteRE,
     componentTagRE,
     tagCloseCharsRE,
+    embeddedLangTagRE,
     preWhiteSpaceRuleRE,
     templateAttributeEndRE,
     startWithTagStructureRE,
     templateAttributeNameRE,
     templateTagStructureRE,
-    templateEmbeddedLangTagRE,
     templateInvalidAttributeRE,
-    interpolatedAttrStartCharRE
+    interpolatedAttrStartCharRE,
+    embeddedStyleLangRE
 } from "../regular"
 import {
     getPosByIndex,
@@ -51,7 +52,9 @@ import {
     UnclosedStaticAttributeValue,
     EmbeddedScriptBlockOutOfLimit,
     NoNameForInterpolatedAttribute,
+    SelfClosingEmbeddedStyleTagWithoutSrc,
     HyphenNotAllowedInMemberExpressionTag,
+    EmbeddedStyleTagWithSrcCanHaveNoContent,
     InvalidValueEnclosureForStaticAttribute,
     InvalidValueEnclosureForInterpolatedAttribute
 } from "../message/error"
@@ -61,7 +64,7 @@ import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
-import { isNonEmptyExpression, isSelfClosingTag } from "../../util/compiler/assert"
+import { isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert"
 import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS } from "../constants"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
 import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string"
@@ -298,7 +301,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         let componentTag = ""
         let startTagOpenRange: Range
-        let startTagCloseMatched: RegExpExecRet = null
+        let startTagClosingMatched: RegExpExecRet = null
         let prevForChild: TemplateNode | undefined = undefined
 
         const tagOpenStr = templateTagStructureRE.exec(dps)![0]
@@ -317,8 +320,10 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         }
 
         const tag = tagOpenStr.slice(1)
-        const langMatched = templateEmbeddedLangTagRE.exec(tag)
-        const isComponent = !langMatched && componentTagRE.test(tag)
+        const isVoidNode = isVoidTag(tag)
+        const embeddedLang = embeddedLangTagRE.exec(tag)?.[1] ?? ""
+        const isComponent = !embeddedLang && componentTagRE.test(tag)
+        const isEmbeddedStyle = embeddedStyleLangRE.test(embeddedLang)
 
         if (isComponent) {
             if (findOutOfComment(tag, ".") !== -1) {
@@ -341,6 +346,12 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })
 
+        // 嵌入语言标签只能出现在模板顶层
+        // Embedded language tags can only appear at the top level of the template.
+        if (embeddedLang && !isNull(templateNode.parent)) {
+            EmbeddedLangNotInTopLevel(tagOpenLoc, tag)
+        }
+
         // 解析泛型参数
         // Parse generic parameters.
         if (isComponent && dps.startsWith("<")) {
@@ -362,7 +373,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         // 解析当前节点的属性列表
         // parse the attribute list of current node.
-        while (reduceSpaces() && dps && !(startTagCloseMatched = tagCloseCharsRE.exec(dps))) {
+        while (reduceSpaces() && dps && !(startTagClosingMatched = tagCloseCharsRE.exec(dps))) {
             let attrValue = ""
             let endCharIndex = -1
             let valueEndIndex = -1
@@ -545,16 +556,38 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
         // 快进到开始标签结束处，不存在闭合字符时直接返回此节点
         // Fast-forward to the end of the start tag; return this node directly if no closing character is found.
-        if (isNull(startTagCloseMatched)) {
+        if (isNull(startTagClosingMatched)) {
             return (TagIsNotClosing(tagOpenLoc, tag), templateNode)
         }
-        templateNode.startTagEndPos = reduceSource(startTagCloseMatched[0].length)
+        templateNode.startTagEndPos = reduceSource(startTagClosingMatched[0].length)
+
+        // 无需解析子节点
+        // No need to parse child nodes.
+        const srcAttr = templateNode.attributes.find(attr => attr.name.raw === "src")
+        if (isVoidNode || startTagClosingMatched[0].startsWith("/")) {
+            if (isEmbeddedStyle) {
+                if (srcAttr) {
+                    inputDescriptor.styles.push({
+                        startTagOpenRange,
+                        lang: embeddedLang,
+                        loc: getLocByIndex(index, index),
+                        code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
+                    })
+                } else {
+                    SelfClosingEmbeddedStyleTagWithoutSrc(tagOpenLoc, tag)
+                }
+            } else if (!isVoidNode && !isComponent) {
+                TagCanNotBeSelfClosing(getLocByIndex(index - 2, index), tag)
+            }
+            templateNode.loc.end = getPosByIndex(index)
+            templateNode.isSelfClosing = true
+            return templateNode
+        }
 
         // 遇到 script/style 或嵌入语言标签时直接快进到结束标签的结尾
         // Fast-forward to the end of the end tag when encountering a script/style or embedded language tag.
-        if (langMatched || tag === "script" || tag === "style") {
+        if (embeddedLang || tag === "script" || tag === "style") {
             const endTagIndex = new RegExp("</" + tag).exec(dps)?.index ?? -1
-            const embeddedLang = langMatched?.[1] || ""
             const neverOver = endTagIndex === -1
             if (neverOver) {
                 TagIsNotClosing(tagOpenLoc, tag)
@@ -604,10 +637,20 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 return templateNode
             }
 
-            // 嵌入语言标签只能出现在模板顶层
-            // Embedded language tags can only appear at the top level of the template.
-            if (!isNull(templateNode.parent)) {
-                EmbeddedLangNotInTopLevel(tagOpenLoc, tag)
+            // 具有 src 属性的嵌入式样式标签不允许有内容
+            // Embedded style tags with a `src` attribute are not allowed to have content.
+            if (isEmbeddedStyle && srcAttr) {
+                if (!rawContent.trim()) {
+                    inputDescriptor.styles.push({
+                        startTagOpenRange,
+                        lang: embeddedLang,
+                        loc: contentLoc,
+                        code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
+                    })
+                } else {
+                    EmbeddedStyleTagWithSrcCanHaveNoContent(tagOpenLoc, tag)
+                }
+                return templateNode
             }
 
             // 记录嵌入样式/脚本语言块的相关信息
@@ -646,46 +689,38 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         // 自闭合标签或组件开始标签以 /> 结尾时，无需解析子节点，其他情况解析文本内容和子节点
         // when tag is self-closing tag or a component start tag end in `/>`, there is no
         // need to parse child nodes, otherwise, the content and child nodes should be parsed.
-        if (!isSelfClosingTag(tag) && !startTagCloseMatched[0].startsWith("/")) {
-            while (true) {
+        while (true) {
+            const endTagMatched = new RegExp(`^</${tag}`).exec(dps)
+            if (endTagMatched) {
                 const endtagStartIndex = index
-                const endTagMatched = new RegExp(`^</${tag}`).exec(dps)
-                if (endTagMatched) {
-                    reduceSource(endTagMatched[0].length)
-                    templateNode.endTagStartPos = getPosByIndex(endtagStartIndex)
+                reduceSource(endTagMatched[0].length)
+                templateNode.endTagStartPos = getPosByIndex(endtagStartIndex)
 
-                    if (findCloseCharOfEndTag()) {
-                        templateNode.loc.end = getPosByIndex(index)
-                    } else {
-                        const endTagOpenLoc = getLocByIndex(
-                            endtagStartIndex,
-                            endtagStartIndex + tag.length + 2
-                        )
-                        TagIsNotClosing(endTagOpenLoc, tag, true)
-                    }
-                    return templateNode
-                }
-
-                if (!dps) {
-                    NoEndTagMatched(tagOpenLoc, tag)
-                    return templateNode
-                }
-
-                // 继续递归解析 textContent 或子标签
-                // Continue recursively parsing `textContent` or child tags.
-                if (startWithTagStructureRE.test(dps)) {
-                    prevForChild = parseTag(templateNode, prevForChild)
+                if (findCloseCharOfEndTag()) {
+                    templateNode.loc.end = getPosByIndex(index)
                 } else {
-                    prevForChild = parseContent(templateNode, prevForChild)
+                    const endTagOpenLoc = getLocByIndex(
+                        endtagStartIndex,
+                        endtagStartIndex + tag.length + 2
+                    )
+                    TagIsNotClosing(endTagOpenLoc, tag, true)
                 }
+                return templateNode
             }
-        } else if (isSelfClosingTag(tag) || isComponent) {
-            templateNode.isSelfClosing = true
-            templateNode.loc.end = getPosByIndex(index)
-        } else {
-            TagCanNotBeSelfClosing(getLocByIndex(index - 2, index), tag)
+
+            if (!dps) {
+                NoEndTagMatched(tagOpenLoc, tag)
+                return templateNode
+            }
+
+            // 继续递归解析 textContent 或子标签
+            // Continue recursively parsing `textContent` or child tags.
+            if (startWithTagStructureRE.test(dps)) {
+                prevForChild = parseTag(templateNode, prevForChild)
+            } else {
+                prevForChild = parseContent(templateNode, prevForChild)
+            }
         }
-        return templateNode
     }
 
     // 初始化一个模板语法树节点
@@ -702,7 +737,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             templateNode.preWhiteSpace = true
         }
         if (options.tag) {
-            templateNode.isSelfClosing = isSelfClosingTag(options.tag)
+            templateNode.isSelfClosing = isVoidTag(options.tag)
         }
         if (!templateNode.preWhiteSpace) {
             templateNode.preWhiteSpace = preWhiteSpaceRuleRE.test(
@@ -714,4 +749,9 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         }
         return (options.parent?.children.push(templateNode), templateNode)
     }
+}
+
+function getVirtualStyleContentWithSrc(lang: string, src: TemplateAttribute) {
+    const keyword = lang === "scss" || lang === "sass" ? "@use" : "@import"
+    return `${keyword} "${src.value.raw.replaceAll('"', '\\"')}";`
 }

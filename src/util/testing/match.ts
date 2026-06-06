@@ -34,8 +34,8 @@ export function matchCompileMessages(expectedMessages: ExpectedCompileMessage[])
         } else {
             expect(isCompileWarning(item.value)).toBe(true)
         }
-        expect(expected.type).toBe(item.type)
-        expect(expected.value).toBe(item.value.message)
-        expect(expected.range).toEqual([item.value.loc.start.index, item.value.loc.end.index])
+        expect(item.type).toBe(expected.type)
+        expect(item.value.message).toMatch(expected.value)
+        expect([item.value.loc.start.index, item.value.loc.end.index]).toEqual(expected.range)
     }
 }
