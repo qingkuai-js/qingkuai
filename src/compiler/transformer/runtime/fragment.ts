@@ -73,10 +73,13 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             fragment.selections.push({
                 id: nodeId,
                 parent: parentContext?.id,
-                replaceWithText: getLastElem(fragment.content) === "<!>",
+                replaceWithText: getLastElem(fragment.content)?.value === "<!>",
                 index: (parentContext?.selectableChildCount ?? fragment.directChildrenCount) - 1
             })
-            return (nodeContext && (nodeContext.id = nodeId), nodeId)
+            if (nodeContext) {
+                nodeContext.id = nodeId
+            }
+            return nodeId
         }
 
         for (const node of nodes) {
@@ -88,9 +91,18 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             const nodeContext = getTemplateNodeContext(node)
 
             const addEmptyTextNodeContent = (select = false) => {
-                const useComment = getLastElem(fragment.content) === " "
+                if (getLastElem(fragment.content)?.isText) {
+                    fragment.content.push({
+                        isText: false,
+                        value: "<!>"
+                    })
+                } else {
+                    fragment.content.push({
+                        isText: true,
+                        value: " "
+                    })
+                }
                 increaseDirectChildrenCount()
-                fragment.content.push(useComment ? "<!>" : " ")
                 return select ? selectLastNode("text", nodeContext) : ""
             }
 
@@ -153,17 +165,33 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                 } else {
                     const content = getGeneratedStaticTextContent(node.content[0])!
                     if (content) {
+                        const lastContent = getLastElem(fragment.content)
+                        if (lastContent?.isText) {
+                            selectLastNode("text")
+                            lastContent.value = "<!>"
+                            lastContent.isText = false
+                            getLastElem(fragment.selections)!.replaceWithText = true
+                        }
+                        fragment.content.push({
+                            isText: true,
+                            value: content
+                        })
                         increaseDirectChildrenCount()
-                        fragment.content.push(content)
                     }
                 }
                 continue
             }
 
             if (isComment) {
-                fragment.content.push("<!--")
+                fragment.content.push({
+                    isText: false,
+                    value: "<!--"
+                })
             } else {
-                fragment.content.push(`<${node.tag}`)
+                fragment.content.push({
+                    isText: false,
+                    value: `<${node.tag}`
+                })
             }
 
             for (const attribute of node.attributes) {
@@ -174,42 +202,72 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                     !interpolatedAttrStartCharRE.test(rawName[0]) &&
                     (!isStaticClass || !nodeContext.attributesMap["!class"])
                 ) {
-                    fragment.content.push(" ")
-                    fragment.content.push(rawName)
+                    fragment.content.push({
+                        isText: false,
+                        value: " "
+                    })
+                    fragment.content.push({
+                        isText: false,
+                        value: rawName
+                    })
 
                     if (attribute.equalSign) {
                         const quote = attribute.valueEnclosure === "double" ? '"' : "'"
                         const couldOmitQuote = omitQuoteAttrValueRE.test(rawValue)
-                        fragment.content.push("=")
+                        fragment.content.push({
+                            isText: false,
+                            value: "="
+                        })
 
                         if (!couldOmitQuote) {
-                            fragment.content.push(quote)
+                            fragment.content.push({
+                                isText: false,
+                                value: quote
+                            })
                         }
                         if (isStaticClass) {
                             const className = rawValue.replaceAll(atLeastOneWhitespaceRE, " ")
                             const classList = className.trim().split(" ")
                             for (let i = 0; i < classList.length; i++) {
                                 if (classList[i]) {
-                                    fragment.content.push(classList[i])
+                                    fragment.content.push({
+                                        isText: false,
+                                        value: classList[i]
+                                    })
                                 }
                                 if (i !== classList.length - 1) {
-                                    fragment.content.push(" ")
+                                    fragment.content.push({
+                                        isText: false,
+                                        value: " "
+                                    })
                                 }
                             }
                         } else {
-                            fragment.content.push(rawValue)
+                            fragment.content.push({
+                                isText: false,
+                                value: rawValue
+                            })
                         }
                         if (!couldOmitQuote) {
-                            fragment.content.push(quote)
+                            fragment.content.push({
+                                isText: false,
+                                value: quote
+                            })
                         }
                     }
                 }
             }
             if (inputDescriptor.styles.length) {
-                fragment.content.push(` qk-${inputDescriptor.options.hashId}`)
+                fragment.content.push({
+                    isText: false,
+                    value: ` qk-${inputDescriptor.options.hashId}`
+                })
             }
             if (!isComment) {
-                fragment.content.push(">")
+                fragment.content.push({
+                    isText: false,
+                    value: ">"
+                })
             }
             if ((increaseDirectChildrenCount(), nodeContext.shouldBeSelected)) {
                 selectLastNode(node.tag, nodeContext)
@@ -217,13 +275,16 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             generate(node.children, fragment, nodeContext)
 
             if (!node.isSelfClosing) {
-                fragment.content.push(isComment ? "-->" : `</${node.tag}>`)
+                fragment.content.push({
+                    isText: false,
+                    value: isComment ? "-->" : `</${node.tag}>`
+                })
             }
         }
     })(nodes, extendFragments(null), null)
 
     for (const fragment of fragments) {
-        const joinedContent = fragment.content.join("")
+        const joinedContent = fragment.content.map(item => item.value).join("")
         const existingFragment = existingFragmentContentMap[joinedContent]
         if (existingFragment) {
             fragment.getWith = existingFragment
@@ -247,9 +308,9 @@ export function writeFragmentGetterDeclarations(
             fragment.getterId = fragment.getWith!.getterId
         } else {
             const internalId = generateIdentifier.internal
-            const joinedContent = fragment.content.join("")
             const compressStringsId = generateIdentifier.compressStrings
             const fragmentGetterId = ensureIdWithNumSuffix("_getFragment")
+            const joinedContent = fragment.content.map(item => item.value).join("")
             fragment.getterId = fragmentGetterId
             writer.write(`const ${fragmentGetterId} = `)
             writer.write(`${internalId}.createFragmentGetter(`)
@@ -437,7 +498,7 @@ function isFragmentOrphan(fragment: TemplateFragment) {
     if (
         fragment.flag & FRAG_LEADING_ANCHOR ||
         fragment.directChildrenCount !== 1 ||
-        fragment.content[0] === " "
+        fragment.content[0].value === " "
     ) {
         return false
     }

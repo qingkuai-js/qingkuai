@@ -25,7 +25,10 @@ export function initDestruction() {
 }
 
 export function getCurrentEffect() {
-    return getLastElem(currentDestruction!.e!)!
+    if (!currentDestruction?.e) {
+        return null
+    }
+    return getLastElem(currentDestruction.e)
 }
 
 // 通过传入触发指定错误的方法，捕获后返回错误信息

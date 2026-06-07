@@ -222,6 +222,10 @@ export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
     return `Identifiers starting with "${PRESERVED_IDPREFIX}" are reserved for internal use.`
 })
 
+export const EmbeddedStyleTagWithSrcCanHaveNoContent = withLocation(1067, (tag: string) => {
+    return `The embedded style tag <${tag}> with a "src" attribute cannot have content.`
+})
+
 export const InvalidSpreadElementArgForIntrinsic = withLocation(1059, (intrinsic: string) => {
     return `The intrinsic method "${intrinsic}" does not support spread element as its argument.`
 })
@@ -280,6 +284,10 @@ export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
 
 export const InvalidComponentTag = withLocation(1057, (tag: string) => {
     return `Invalid component tag: <${tag}>. It cannot be converted into a valid JavaScript identifier or member expression.`
+})
+
+export const SelfClosingEmbeddedStyleTagWithoutSrc = withLocation(1066, (tag: string) => {
+    return `The self-closing embedded style tag <${tag}> must have a "src" attribute to specify the source file of the style.`
 })
 
 export const DuplicateSlotName = withLocation(1050, (name: string) => {

@@ -326,6 +326,17 @@ test("Attribute value is redundant for shallow attribute on embedded script lang
     ])
 })
 
+test("Attribute value is redundant for global attribute on embedded style language tag", () => {
+    analyzeTemplateAndMatchMessages(`<lang-css global></lang-css>`)
+    analyzeTemplateAndMatchMessages(`<lang-css global="true"></lang-css>`, [
+        {
+            type: "warning",
+            range: [10, 23],
+            value: `The "global" attribute on <lang-css> tag is a boolean attribute, and the redundant attribute value will be ignored.`
+        }
+    ])
+})
+
 test("Embedded script language tag can only accept one reactivity mmode attribute", () => {
     analyzeTemplateAndMatchMessages(`<lang-js reactive shallow></lang-js>`, [
         {

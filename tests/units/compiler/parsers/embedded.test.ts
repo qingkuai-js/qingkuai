@@ -1,4 +1,5 @@
-import { test } from "vitest"
+import { expect, test } from "vitest"
+import { inputDescriptor } from "../../../../src/compiler/state"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
@@ -274,6 +275,73 @@ test("Embedded language blocks nested in normal elements are rejected", () => {
             type: "error",
             range: [5, 13],
             value: "The embedded language block <lang-js> can only be used in the top level of the template."
+        }
+    ])
+})
+
+test("Embedded style: self-closing with src generates virtual import code", () => {
+    const nodeList = parseTemplateTesting(`<lang-css src="./theme.css" />`)
+
+    expect(nodeList.length).toBe(1)
+    expect(nodeList[0].tag).toBe("lang-css")
+    expect(nodeList[0].isSelfClosing).toBe(true)
+    expect(inputDescriptor.styles).toEqual([
+        expect.objectContaining({
+            lang: "css",
+            global: false,
+            code: `@import "./theme.css";`
+        })
+    ])
+})
+
+test("Embedded style: src uses @use for scss-like languages", () => {
+    parseTemplateTesting(`<lang-scss src="./theme.scss"></lang-scss>`)
+
+    expect(inputDescriptor.styles).toEqual([
+        expect.objectContaining({
+            lang: "scss",
+            global: false,
+            code: `@use "./theme.scss";`
+        })
+    ])
+})
+
+test("Embedded style: global attribute marks style descriptor as global", () => {
+    parseTemplateTesting(`<lang-css global src="./theme.css" />`)
+
+    expect(inputDescriptor.styles).toEqual([
+        expect.objectContaining({
+            lang: "css",
+            global: true,
+            code: `@import "./theme.css";`
+        })
+    ])
+})
+
+test("Embedded style: self-closing block without src reports error", () => {
+    parseTemplateTesting(`<lang-css />`, {
+        recover: true
+    })
+
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [0, 9],
+            value: `The self-closing embedded style tag <lang-css> must have a "src" attribute to specify the source file of the style.`
+        }
+    ])
+})
+
+test("Embedded style: style block with src cannot have content", () => {
+    parseTemplateTesting(`<lang-css src="./theme.css">.a{color:red}</lang-css>`, {
+        recover: true
+    })
+
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [0, 9],
+            value: `The embedded style tag <lang-css> with a "src" attribute cannot have content.`
         }
     ])
 })

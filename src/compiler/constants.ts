@@ -167,7 +167,7 @@ export const BLOCK_TAGS: ReadonlySet<string> = new Set([
     "noframes"
 ])
 
-export const SELF_CLOSING_TAGS: ReadonlySet<string> = new Set([
+export const VOID_TAGS: ReadonlySet<string> = new Set([
     "br",
     "img",
     "input",
