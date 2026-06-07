@@ -33,6 +33,13 @@ export function destructuringDerived(
         if (initialized && !isReading) {
             effect.l |= EFFECT_DERIVED_DIRTY
         }
+
+        // 这里不移除 EFFECT_DIREVED_READING 标志，因为依赖有效性检查需要访问它，并在结束后移除
+        // The EFFECT_DIREVED_READING flag is not removed here, because the dependency
+        // validity check needs to access it and remove it after the end
+        //
+        // See `checkDerivedEffectValidity` in `./effect.ts`
+
         initialized ||= true
     })
 

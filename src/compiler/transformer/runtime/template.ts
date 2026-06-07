@@ -20,7 +20,6 @@ import {
     getForBlockSelectorInfos
 } from "../../optimizer/selector"
 import {
-    getStartTagNameLoc,
     getParsedEventInfo,
     getParsedDirective,
     getParsedExpression,
@@ -699,9 +698,11 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
     const node = nodeContext.node
     const internalId = generateIdentifier.internal
+    const componentId = generateIdentifier.component
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
     const instanceId = ensureIdWithNumSuffix("_component")
+    const maybeDynamic = getParsedExpression(node)?.reactive
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
     const hasSlots = node.children.some(child => {
@@ -722,8 +723,13 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         return ((needInsertComma = true), writer)
     }
 
-    writer.wrapLine().write(`const ${instanceId} = `)
-    writer.writeTemplateStr(node.componentTag, getStartTagNameLoc(node))
+    if (!maybeDynamic) {
+        writer.write(`const ${instanceId} = `).writeParsedExpression(node)
+    } else {
+        writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`)
+        writer.writeParsedExpression(node).write(`), ${componentId} => {`)
+        writer.indent().write(`const ${instanceId} = `).write(componentId)
+    }
 
     const hasContext = hasSlots || hasProps || hasRefs
     writer.write(`(${nodeContext.anchorId}`)
@@ -838,6 +844,9 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     if (referenceHandleAttribute) {
         writer.write(`\n${internalId}.bindHandleReceiver(${instanceId}, ${setterArgId} => (`)
         writer.writeParsedExpression(referenceHandleAttribute).write(` = ${setterArgId}))`)
+    }
+    if (maybeDynamic) {
+        writer.dedent().write("})")
     }
 }
 

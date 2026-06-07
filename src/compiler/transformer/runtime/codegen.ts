@@ -24,6 +24,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         setterArg: ensureIdWithPrefix("v"),
         context: ensureIdWithPrefix("_ctx"),
         anchor: ensureIdWithPrefix("_anchor"),
+        component: ensureIdWithPrefix("_component"),
         compressStrings: ensureIdWithPrefix("_compressStrings")
     })
 

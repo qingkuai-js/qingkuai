@@ -31,6 +31,7 @@ function newGenerateIdentifier(): GenerateIdentifier {
         internal: "",
         getterArg: "",
         setterArg: "",
+        component: "",
         compressStrings: "",
         suffix: newCleanObj(),
         prefix: newCleanObj()

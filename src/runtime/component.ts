@@ -1,6 +1,11 @@
-import type { AnyObject, Getter } from "#type-declarations/tools"
+import type {
+    Destruction,
+    ComponentContext,
+    ComponentInstanceBase,
+    ComponentFunc
+} from "#type-declarations/runtime"
+import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
-import type { ComponentContext, ComponentInstanceBase } from "#type-declarations/runtime"
 
 import {
     objectKeys,
@@ -8,16 +13,18 @@ import {
     defineProperty,
     defineProperties
 } from "../util/shared/aliases"
+import { constReact } from "./internal"
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
-import { createDestruction } from "./destroy"
 import { isElement } from "../util/runtime/assert"
+import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
 import { InvalidElementNode } from "./messages/error"
+import { createDestruction, destroy } from "./destroy"
 import { isFunction, isString } from "../util/shared/assert"
+import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
-import { constReact } from "./internal"
 
 // prettier-ignore
 export const [
@@ -58,6 +65,23 @@ export function init(context: ComponentContext) {
         refs: initRefs(context.r, context.R),
         props: initProps(context.p, context.P)
     }
+}
+
+export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
+    let component: ComponentFunc | undefined
+    let destruction: Destruction | undefined
+    renderEffect(() => {
+        const currentComponent = getComponent()
+        if (currentComponent === component) {
+            return
+        }
+        if (destruction) {
+            destroy(destruction)
+        }
+        destruction = invokeRender(() => {
+            render((component = currentComponent))
+        })
+    })
 }
 
 export function runHooks(instance: ComponentInstanceBase, index: number) {
@@ -123,6 +147,7 @@ function initRefs(transformed?: AnyObject, ret: AnyObject = {}) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
                 get() {
+                    markActiveEffectNoCheck()
                     return transformed[key]?.[0]() ?? ret[key]
                 },
                 set(value) {
@@ -156,6 +181,7 @@ function initProps(transformed?: AnyObject, defaults?: AnyObject) {
                     if (isFunction(val)) {
                         val = val()
                     }
+                    markActiveEffectNoCheck()
                     return val ?? defaults?.[key]
                 },
                 enumerable: true
