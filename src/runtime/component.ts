@@ -8,6 +8,7 @@ import {
     defineProperty,
     defineProperties
 } from "../util/shared/aliases"
+import { constReact } from "./internal"
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
 import { createDestruction } from "./destroy"
@@ -15,9 +16,9 @@ import { isElement } from "../util/runtime/assert"
 import { any, runAll } from "../util/shared/sundry"
 import { InvalidElementNode } from "./messages/error"
 import { isFunction, isString } from "../util/shared/assert"
+import { markActiveEffectNoCheck } from "./reactivity/effect"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
 import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
-import { constReact } from "./internal"
 
 // prettier-ignore
 export const [
@@ -123,6 +124,7 @@ function initRefs(transformed?: AnyObject, ret: AnyObject = {}) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
                 get() {
+                    markActiveEffectNoCheck()
                     return transformed[key]?.[0]() ?? ret[key]
                 },
                 set(value) {
@@ -156,6 +158,7 @@ function initProps(transformed?: AnyObject, defaults?: AnyObject) {
                     if (isFunction(val)) {
                         val = val()
                     }
+                    markActiveEffectNoCheck()
                     return val ?? defaults?.[key]
                 },
                 enumerable: true

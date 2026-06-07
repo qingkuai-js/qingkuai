@@ -584,6 +584,25 @@ test("Effect chains propagate only along their expected dependency paths", async
     }
 })
 
+test("Whether a runtime warning will be caused when effect depends on no reactive value", () => {
+    for (const effectFunc of reactiveEffectFuncs) {
+        warningMatcher.mockClear()
+        effectFunc(NOOP)
+        expect(warningMatcher.args[2]).toBe(NOOP)
+        expect(warningMatcher).toHaveBeenCalledTimes(1)
+        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()
+    }
+
+    for (const watchFunc of watchEffectFuncs) {
+        warningMatcher.mockClear()
+        watchFunc(NOOP, () => {})
+        expect(warningMatcher.args[2]).toBe(NOOP)
+        expect(warningMatcher).toHaveBeenCalledTimes(1)
+        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()
+        expect(warningMatcher.args[1].includes("that created with watcher")).toBeTruthy()
+    }
+})
+
 test("Whether a runtime error will be caused when recursive update depth exceeds the maximum value", async () => {
     const errMsg = getErrorMessage(() => MaximumUpdateDepthExceeded())
     const stopGlobalErrorWatcher = matchGlobalError(errMsg, true)

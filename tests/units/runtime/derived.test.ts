@@ -89,6 +89,45 @@ describe("Not destructuring", () => {
         expect(invokeMarker).toHaveBeenCalledTimes(2)
     })
 
+    test("Check logic of derived value effect", () => {
+        const value1 = derived(() => {})
+        expect(value1.$).toBeUndefined()
+        expect(getCurrentEffect()).toBeUndefined()
+        expect(warningMatcher).toHaveBeenCalledTimes(1)
+        expect(warningMatcher.args[1].includes("derived reactive value")).toBeTruthy()
+
+        expect(value1.$).toBeUndefined()
+        expect(warningMatcher).toHaveBeenCalledTimes(1)
+
+        let valid = true
+        const a = react(1)
+        const getter = () => {
+            if ((invokeMarker(), valid)) {
+                return a.$++
+            }
+            return -1
+        }
+        const value2 = derived(getter)
+        expect(value2.$).toBe(1)
+        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        expect(warningMatcher).toHaveBeenCalledTimes(1)
+        expect(getCurrentEffect()!.l & EFFECT_DERIVED).toBeTruthy()
+
+        a.$++
+        expect(value2.$).toBe(3)
+        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        expect(warningMatcher).toHaveBeenCalledTimes(1)
+
+        a.$++
+        valid = false
+        expect(value2.$).toBe(-1)
+        expect(getCurrentEffect()).toBeUndefined()
+        expect(warningMatcher.args[2]).toBe(getter)
+        expect(invokeMarker).toHaveBeenCalledTimes(3)
+        expect(warningMatcher).toHaveBeenCalledTimes(2)
+        expect(warningMatcher.args[1].includes("derived reactive value")).toBeTruthy()
+    })
+
     test("Derived from another derived reactive value", () => {
         const a = react(1)
         const b = react(2)
