@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.72](https://github.com/qingkuai-js/qingkuai/compare/v1.0.71...v1.0.72) (2026-06-07)
+
+### Features
+
+- **compiler:** support the `src` attribute on embedded style tags to reference external style files ([a020d44](https://github.com/qingkuai-js/qingkuai/commit/a020d44), [b191d2c](https://github.com/qingkuai-js/qingkuai/commit/b191d2c))
+- **compiler:** support the `global` attribute on embedded style tags to prevent style rules from being scoped ([8c9370c](https://github.com/qingkuai-js/qingkuai/commit/8c9370c), [572fdaa](https://github.com/qingkuai-js/qingkuai/commit/572fdaa), [b191d2c](https://github.com/qingkuai-js/qingkuai/commit/b191d2c))
+
+### Refactors
+
+- **runtime:** replace proxy-based component `props`, `refs`, and `slots` with `accessor` properties ([633e751](https://github.com/qingkuai-js/qingkuai/commit/633e751))
+
+### Fixes
+
+- **runtime:** avoid merging a text node with a preceding text anchor node ([019798f](https://github.com/qingkuai-js/qingkuai/commit/019798f))
+- **runtime:** remove reactive dependency count checks and proactive stopping from effect callbacks ([327c590](https://github.com/qingkuai-js/qingkuai/commit/327c590))
+- **runtime:** return an empty object when component tags receive no props ([ec2a241](https://github.com/qingkuai-js/qingkuai/commit/ec2a241))
+- **runtime:** fix component prop value fallback logic so `Getter` values are read before deciding whether to use defaults ([e4272e5](https://github.com/qingkuai-js/qingkuai/commit/e4272e5))
+
 ## [1.0.71](https://github.com/qingkuai-js/qingkuai/compare/v1.0.70...v1.0.71) (2026-05-30)
 
 ### Fixes
