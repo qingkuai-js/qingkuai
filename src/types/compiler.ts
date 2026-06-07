@@ -123,23 +123,6 @@ export interface ASTPositionWithFlag extends ASTPosition {
     flag: number
 }
 
-export interface GenerateIdentifier {
-    suffix: Record<
-        string,
-        {
-            last: number
-            originUsed: boolean
-        }
-    >
-    anchor: string
-    context: string
-    internal: string
-    getterArg: string
-    setterArg: string
-    compressStrings: string
-    prefix: Record<string, number>
-}
-
 export interface AnalyzeResult {
     reusedStrings: Record<
         string,
@@ -385,6 +368,26 @@ export type SelectionCacheItem = {
     index: number
 }
 export type SelectionCache = Record<string, SelectionCacheItem[]>
+
+export type GenerateIdentifierStaticKeys =
+    | "anchor"
+    | "context"
+    | "internal"
+    | "getterArg"
+    | "setterArg"
+    | "component"
+    | "compressStrings"
+
+export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & {
+    suffix: Record<
+        string,
+        {
+            last: number
+            originUsed: boolean
+        }
+    >
+    prefix: Record<string, number>
+}
 
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean

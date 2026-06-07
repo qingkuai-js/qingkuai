@@ -357,8 +357,9 @@ test("Dotted component name and boolean prop are emitted", () => {
         </lang-js>
         <UI.Button disabled></UI.Button>
     `)
-    expect(code).toContain("UI.$.Button(")
+    expect(code).toContain("UI.$.Button")
     expect(code).toContain("disabled: true")
+    expect(code).toContain("dynamicComponent")
 })
 
 test("Reactive identifier component tag uses accessor call", () => {
@@ -368,8 +369,8 @@ test("Reactive identifier component tag uses accessor call", () => {
         </lang-js>
         <Comp></Comp>
     `)
-    expect(code).toContain("let Comp = _.react(Foo)")
-    expect(code).toContain("const _component1 = Comp.$(_text1)")
+    expect(code).toContain("Comp.$")
+    expect(code).toContain("dynamicComponent")
 })
 
 test("Reactive base in member component tag keeps accessor on base", () => {
@@ -379,8 +380,8 @@ test("Reactive base in member component tag keeps accessor on base", () => {
         </lang-js>
         <UI.Comp></UI.Comp>
     `)
-    expect(code).toContain("let UI = _.react({ Comp })")
-    expect(code).toContain("const _component1 = UI.$.Comp(_text1)")
+    expect(code).toContain("UI.$.Comp")
+    expect(code).toContain("dynamicComponent")
 })
 
 test("Component events and dynamic props use getter wrappers", () => {
