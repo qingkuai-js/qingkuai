@@ -14,13 +14,13 @@ function compileRuntimeWithOptions(source: string, options: Parameters<typeof co
     return result.code
 }
 
-test("Runtime template: component without context uses plain anchor call", () => {
+test("Component without context uses plain anchor call", () => {
     const code = compileRuntime(`<Comp></Comp>`)
     expect(code).toContain("const _component1 = Comp(_text1)")
     expect(code).not.toContain("const _component1 = Comp(_text1, {")
 })
 
-test("Runtime template: slot without attrs uses UNDEF props and fallback closure", () => {
+test("Slot without attrs uses UNDEF props and fallback closure", () => {
     const code = compileRuntime(`
         <Comp>
             <slot>
@@ -32,7 +32,7 @@ test("Runtime template: slot without attrs uses UNDEF props and fallback closure
     expect(code).toContain("_.UNDEF, () => {")
 })
 
-test("Runtime template: slot with dynamic and static attrs builds slot props object", () => {
+test("Slot with dynamic and static attrs builds slot props object", () => {
     const code = compileRuntime(`
         <lang-js>
             let label = "A"
@@ -44,7 +44,7 @@ test("Runtime template: slot with dynamic and static attrs builds slot props obj
     expect(code).toContain("fixed: true")
 })
 
-test("Runtime template: component refs skip &handle in r block and bind separately", () => {
+test("Component refs skip &handle in r block and bind separately", () => {
     const code = compileRuntime(`
         <lang-js>
             let model = ""
@@ -58,7 +58,7 @@ test("Runtime template: component refs skip &handle in r block and bind separate
     expect(code).not.toContain("handle: [")
 })
 
-test("Runtime template: await then catch without inline then keeps NIL placeholder", () => {
+test("Await then catch without inline then keeps NIL placeholder", () => {
     const code = compileRuntime(`
         <lang-js>
             let p = Promise.resolve(1)
@@ -70,7 +70,7 @@ test("Runtime template: await then catch without inline then keeps NIL placehold
     expect(code).toContain("_.NIL,")
 })
 
-test("Runtime template: then branch without fragment content writes UNDEF", () => {
+test("Then branch without fragment content writes UNDEF", () => {
     const code = compileRuntime(`
         <lang-js>
             let p = Promise.resolve(1)
@@ -81,7 +81,7 @@ test("Runtime template: then branch without fragment content writes UNDEF", () =
     expect(code).toContain("_.UNDEF,")
 })
 
-test("Runtime template: list block without key uses listBlock call", () => {
+test("List block without key uses listBlock call", () => {
     const code = compileRuntime(`
         <lang-js>
             let items = [1, 2, 3]
@@ -92,7 +92,7 @@ test("Runtime template: list block without key uses listBlock call", () => {
     expect(code).not.toContain("_.keyedListBlock(")
 })
 
-test("Runtime template: expression event uses inline delegate block", () => {
+test("Expression event uses inline delegate block", () => {
     const code = compileRuntime(`
         <lang-js>
             const fn = 0
@@ -103,12 +103,12 @@ test("Runtime template: expression event uses inline delegate block", () => {
     expect(code).toContain("fn + 1")
 })
 
-test("Runtime template: function literal event is passed directly", () => {
+test("Function literal event is passed directly", () => {
     const code = compileRuntime(`<button @click={() => 1}></button>`)
     expect(code).toContain('_.delegate(_button1, "click", () => 1)')
 })
 
-test("Runtime template: inline statement handler becomes $arg block", () => {
+test("Inline statement handler becomes $arg block", () => {
     const code = compileRuntime(`
         <lang-js>
             let count = 0
@@ -119,20 +119,20 @@ test("Runtime template: inline statement handler becomes $arg block", () => {
     expect(code).toContain("count.$++")
 })
 
-test("Runtime template: invalid slot prop key uses computed context key", () => {
+test("Invalid slot prop key uses computed context key", () => {
     const code = compileRuntime(`
         <slot long-prop="a"></slot>
     `)
     expect(code).toContain('["long-prop"]: "a"')
 })
 
-test("Runtime template: export-free template returns plain mount call", () => {
+test("Export-free template returns plain mount call", () => {
     const code = compileRuntime("")
     expect(code).toContain("return _.mount()")
     expect(code).not.toContain("defineExports")
 })
 
-test("Runtime template: debug mode keeps generation parseable for same branches", () => {
+test("Debug mode keeps generation parseable for same branches", () => {
     const code = compileRuntime(
         `
         <lang-js>
@@ -150,7 +150,7 @@ test("Runtime template: debug mode keeps generation parseable for same branches"
     expect(code).toContain("p: {")
 })
 
-test("Runtime template: component inline event in props becomes $arg wrapper", () => {
+test("Component inline event in props becomes $arg wrapper", () => {
     const code = compileRuntime(`
         <lang-js>
             let count = 0
@@ -162,7 +162,7 @@ test("Runtime template: component inline event in props becomes $arg wrapper", (
     expect(code).toContain("count.$++")
 })
 
-test("Runtime template: component slot patterns generate arg list", () => {
+test("Component slot patterns generate arg list", () => {
     const code = compileRuntime(`
         <Comp>
             <div #slot={ctx from "main"}></div>
@@ -173,7 +173,7 @@ test("Runtime template: component slot patterns generate arg list", () => {
     expect(code).toContain(", ctx")
 })
 
-test("Runtime template: await with then omits NIL placeholder", () => {
+test("Await with then omits NIL placeholder", () => {
     const code = compileRuntime(`
         <lang-js>
             let p = Promise.resolve(1)
@@ -186,7 +186,7 @@ test("Runtime template: await with then omits NIL placeholder", () => {
     expect(code).not.toContain("_.NIL,")
 })
 
-test("Runtime template: keyed list with text equal to key still generates setText for node text", () => {
+test("Keyed list with text equal to key still generates setText for node text", () => {
     const code = compileRuntime(`
         <lang-js>
             let list = [{ id: 1 }, { id: 2 }]
@@ -197,7 +197,7 @@ test("Runtime template: keyed list with text equal to key still generates setTex
     expect(code).toContain("_.setText(")
 })
 
-test("Runtime template: keyed list with extra text keeps setText update", () => {
+test("Keyed list with extra text keeps setText update", () => {
     const code = compileRuntime(`
         <lang-js>
             let list = [{ id: 1 }, { id: 2 }]
@@ -208,7 +208,7 @@ test("Runtime template: keyed list with extra text keeps setText update", () => 
     expect(code).toContain("_.setText(")
 })
 
-test("Runtime template: non-delegatable event uses listen call", () => {
+test("Non-delegatable event uses listen call", () => {
     const code = compileRuntime(`
         <lang-js>
             let y = 0
@@ -219,7 +219,7 @@ test("Runtime template: non-delegatable event uses listen call", () => {
     expect(code).toContain("y.$++")
 })
 
-test("Runtime template: if-elif-else chain keeps condition block tuple", () => {
+test("If-elif-else chain keeps condition block tuple", () => {
     const code = compileRuntime(`
         <lang-js>
             let a = true
@@ -234,7 +234,7 @@ test("Runtime template: if-elif-else chain keeps condition block tuple", () => {
     expect(code).toContain("__ => (b)")
 })
 
-test("Runtime template: await then catch chain keeps promiseBlock branches", () => {
+test("Await then catch chain keeps promiseBlock branches", () => {
     const code = compileRuntime(`
         <lang-js>
             let p = Promise.resolve(1)
@@ -249,7 +249,7 @@ test("Runtime template: await then catch chain keeps promiseBlock branches", () 
     expect(code).toContain("(e) => {")
 })
 
-test("Runtime template: component refs with multiple keys emit entries", () => {
+test("Component refs with multiple keys emit entries", () => {
     const code = compileRuntime(`
         <lang-js>
             let a = ""
@@ -262,7 +262,7 @@ test("Runtime template: component refs with multiple keys emit entries", () => {
     expect(code).toContain("checked: [")
 })
 
-test("Runtime template: component default slot without #slot directive is emitted", () => {
+test("Component default slot without #slot directive is emitted", () => {
     const code = compileRuntime(`
         <Comp>
             <div>child</div>
@@ -272,7 +272,7 @@ test("Runtime template: component default slot without #slot directive is emitte
     expect(code).toContain('["default"]: (')
 })
 
-test("Runtime template: html directive with sibling directive is generated after node selection", () => {
+test("Html directive with sibling directive is generated after node selection", () => {
     const code = compileRuntime(`
         <lang-js>
             let ok = true
@@ -284,7 +284,7 @@ test("Runtime template: html directive with sibling directive is generated after
     expect(code).toContain("_.htmlBlock(")
 })
 
-test("Runtime template: keyed for without explicit pattern uses anchor argument branch", () => {
+test("Keyed for without explicit pattern uses anchor argument branch", () => {
     const code = compileRuntime(`
         <lang-js>
             let list = [1, 2]
@@ -296,7 +296,7 @@ test("Runtime template: keyed for without explicit pattern uses anchor argument 
     expect(code).toContain("(_anchor")
 })
 
-test("Runtime template: class and select dynamic attributes use dedicated setters", () => {
+test("Class and select dynamic attributes use dedicated setters", () => {
     const code = compileRuntime(`
         <lang-js>
             let cls = "x"
@@ -310,7 +310,7 @@ test("Runtime template: class and select dynamic attributes use dedicated setter
     expect(code).toContain("_.setSelectValue(")
 })
 
-test("Runtime template: complex event expression and modifiers cover wrapper and flags", () => {
+test("Complex event expression and modifiers cover wrapper and flags", () => {
     const code = compileRuntime(`
         <lang-js>
             let a = () => 1
@@ -323,7 +323,7 @@ test("Runtime template: complex event expression and modifiers cover wrapper and
     expect(code).toContain(", 18)")
 })
 
-test("Runtime template: native refs generate all bind call variants", () => {
+test("Native refs generate all bind call variants", () => {
     const code = compileRuntime(`
         <lang-js>
             let n = 0
@@ -350,18 +350,40 @@ test("Runtime template: native refs generate all bind call variants", () => {
     expect(code).toContain("_.bindSelectValue(")
 })
 
-test("Runtime template: dotted component name and boolean prop are emitted", () => {
+test("Dotted component name and boolean prop are emitted", () => {
     const code = compileRuntime(`
         <lang-js>
             let UI = { Button: Comp }
         </lang-js>
         <UI.Button disabled></UI.Button>
     `)
-    expect(code).toContain("UI.Button(")
+    expect(code).toContain("UI.$.Button(")
     expect(code).toContain("disabled: true")
 })
 
-test("Runtime template: component events and dynamic props use getter wrappers", () => {
+test("Reactive identifier component tag uses accessor call", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let Comp = reactive(Foo)
+        </lang-js>
+        <Comp></Comp>
+    `)
+    expect(code).toContain("let Comp = _.react(Foo)")
+    expect(code).toContain("const _component1 = Comp.$(_text1)")
+})
+
+test("Reactive base in member component tag keeps accessor on base", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let UI = reactive({ Comp })
+        </lang-js>
+        <UI.Comp></UI.Comp>
+    `)
+    expect(code).toContain("let UI = _.react({ Comp })")
+    expect(code).toContain("const _component1 = UI.$.Comp(_text1)")
+})
+
+test("Component events and dynamic props use getter wrappers", () => {
     const code = compileRuntime(`
         <lang-js>
             let title = "x"
@@ -374,7 +396,7 @@ test("Runtime template: component events and dynamic props use getter wrappers",
     expect(code).toContain("title: __ => (title")
 })
 
-test("Runtime template: await with same-node then writes UNDEF no-render placeholder", () => {
+test("Await with same-node then writes UNDEF no-render placeholder", () => {
     const code = compileRuntime(`
         <lang-js>
             let p = Promise.resolve(1)
@@ -385,7 +407,7 @@ test("Runtime template: await with same-node then writes UNDEF no-render placeho
     expect(code).toContain("_.UNDEF,")
 })
 
-test("Runtime template: for without explicit pattern and without key uses default getter arg", () => {
+test("For without explicit pattern and without key uses default getter arg", () => {
     const code = compileRuntime(`
         <lang-js>
             let list = [1, 2, 3]
@@ -396,7 +418,7 @@ test("Runtime template: for without explicit pattern and without key uses defaul
     expect(code).toContain("__ => {")
 })
 
-test("Runtime template: interpretive comments annotate wrapper and general event flags", () => {
+test("Interpretive comments annotate wrapper and general event flags", () => {
     const code = compileRuntimeWithOptions(
         `
             <lang-js>

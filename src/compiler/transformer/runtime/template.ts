@@ -20,7 +20,6 @@ import {
     getForBlockSelectorInfos
 } from "../../optimizer/selector"
 import {
-    getStartTagNameLoc,
     getParsedEventInfo,
     getParsedDirective,
     getParsedExpression,
@@ -722,8 +721,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         return ((needInsertComma = true), writer)
     }
 
-    writer.wrapLine().write(`const ${instanceId} = `)
-    writer.writeTemplateStr(node.componentTag, getStartTagNameLoc(node))
+    writer.wrapLine().write(`const ${instanceId} = `).writeParsedExpression(node)
 
     const hasContext = hasSlots || hasProps || hasRefs
     writer.write(`(${nodeContext.anchorId}`)
