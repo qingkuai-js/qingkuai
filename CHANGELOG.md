@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.80](https://github.com/qingkuai-js/qingkuai/compare/v1.0.72...v1.0.73) (2026-06-08)
+
+### Features
+
+- **runtime:** reintroduce effect checks to warn and clean up when effects depend on reactive states ([900e43e](https://github.com/qingkuai-js/qingkuai/commit/900e43e))
+- **runtime:** support dynamic components rendered by changing reactive state values ([cd5bfcf](https://github.com/qingkuai-js/qingkuai/commit/cd5bfcf))
+
+### Fixes
+
+- **compiler:** correctly compile reactive identifiers used as component tags into reactive access ([060e483](https://github.com/qingkuai-js/qingkuai/commit/060e483))
+- **runtime:** avoid using `bind` when accessing methods on reactive values to preserve prototype behavior ([d3749fa](https://github.com/qingkuai-js/qingkuai/commit/d3749fa))
+
 ## [1.0.72](https://github.com/qingkuai-js/qingkuai/compare/v1.0.71...v1.0.72) (2026-06-07)
 
 ### Features
