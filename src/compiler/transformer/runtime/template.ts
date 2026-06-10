@@ -701,7 +701,6 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const componentId = generateIdentifier.component
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
-    const instanceId = ensureIdWithNumSuffix("_component")
     const maybeDynamic = getParsedExpression(node)?.reactive
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
@@ -723,17 +722,20 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         return ((needInsertComma = true), writer)
     }
 
-    if (!maybeDynamic) {
-        writer.write(`const ${instanceId} = `).writeParsedExpression(node)
-    } else {
+    if (maybeDynamic) {
         writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`)
-        writer.writeParsedExpression(node).write(`), ${componentId} => {`)
-        writer.indent().write(`const ${instanceId} = `).write(componentId)
+        writer.writeParsedExpression(node).write(`), ${componentId} => {`).indent(false)
+    }
+    if (referenceHandleAttribute) {
+        writer.write(`\n${internalId}.bindHandleReceiver(`).indent(false)
+    }
+    if (maybeDynamic) {
+        writer.write(`\n${componentId}(${nodeContext.anchorId}`)
+    } else {
+        writer.wrapLine().writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
     }
 
     const hasContext = hasSlots || hasProps || hasRefs
-    writer.write(`(${nodeContext.anchorId}`)
-
     if (hasContext) {
         writer.write(", {").indent()
     }
@@ -842,8 +844,9 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     }
 
     if (referenceHandleAttribute) {
-        writer.write(`\n${internalId}.bindHandleReceiver(${instanceId}, ${setterArgId} => (`)
-        writer.writeParsedExpression(referenceHandleAttribute).write(` = ${setterArgId}))`)
+        writer.write(", ").wrapLine().write(`${setterArgId} => (`)
+        writer.writeParsedExpression(referenceHandleAttribute)
+        writer.write(` = ${setterArgId})`).dedent().write(")")
     }
     if (maybeDynamic) {
         writer.dedent().write("})")

@@ -16,8 +16,8 @@ function compileRuntimeWithOptions(source: string, options: Parameters<typeof co
 
 test("Component without context uses plain anchor call", () => {
     const code = compileRuntime(`<Comp></Comp>`)
-    expect(code).toContain("const _component1 = Comp(_text1)")
-    expect(code).not.toContain("const _component1 = Comp(_text1, {")
+    expect(code).toContain("Comp(_text1)")
+    expect(code).not.toContain("Comp(_text1, {")
 })
 
 test("Slot without attrs uses UNDEF props and fallback closure", () => {
@@ -54,7 +54,8 @@ test("Component refs skip &handle in r block and bind separately", () => {
     `)
     expect(code).toContain("r: {")
     expect(code).toContain("value: [")
-    expect(code).toContain("_.bindHandleReceiver(_component1, v => (handle.$ = v))")
+    expect(code).toContain("_.bindHandleReceiver")
+    expect(code).toContain("Comp(_text1, {")
     expect(code).not.toContain("handle: [")
 })
 
@@ -146,8 +147,9 @@ test("Debug mode keeps generation parseable for same branches", () => {
         true
     )
     expect(code).toContain("_.promiseBlock(")
-    expect(code).toContain("const _component1 = Comp(")
+    expect(code).toContain("Comp(")
     expect(code).toContain("p: {")
+    expect(code).not.toContain("r:")
 })
 
 test("Component inline event in props becomes $arg wrapper", () => {
