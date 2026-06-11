@@ -26,8 +26,8 @@ import {
     getErrorMessage,
     getCurrentEffect
 } from "../../../src/util/testing/sundry"
-import { NOOP } from "../../../src/runtime/constants"
 import { checkEffectDependaceManager } from "./_match"
+import { NIL, NOOP } from "../../../src/runtime/constants"
 import { isReactive } from "../../../src/util/runtime/assert"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { matchGlobalError } from "../../../src/util/testing/match"
@@ -62,13 +62,13 @@ function makeConsecutiveNumbersArr(length: number) {
 
 test("destroy should disconnect destruction from parent/effects", () => {
     const parent = currentDestruction!
-    const nested = createDestruction()
+    const nested = createDestruction(NIL)
     const cleaner = vi.fn()
     pushDestructionCleaner(cleaner)
 
     const nestedEffect = renderEffect(NOOP)
 
-    createDestruction()
+    createDestruction(NIL)
     const nestedChildEffect = renderEffect(NOOP)
 
     backToParentDestruction()

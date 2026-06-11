@@ -13,6 +13,12 @@ import {
     defineProperty,
     defineProperties
 } from "../util/shared/aliases"
+import {
+    currentInstance,
+    currentDestruction,
+    setCurrentInstance,
+    backToParentDestruction
+} from "./state"
 import { constReact } from "./internal"
 import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
@@ -24,7 +30,6 @@ import { createDestruction, destroy } from "./destroy"
 import { isFunction, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
 import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
-import { backToParentDestruction, currentInstance, setCurrentInstance } from "./state"
 
 // prettier-ignore
 export const [
@@ -50,12 +55,12 @@ export const mountApp: MountAppFunc = (component, target) => {
 
 export function init(context: ComponentContext) {
     const instance: ComponentInstanceBase = {
-        updating: false,
         hooks: any([]),
+        updating: false,
         parent: currentInstance
     }
     setCurrentInstance(instance)
-    createDestruction(instance)
+    createDestruction(currentDestruction, instance)
 
     if (context.e) {
         registerEvents(context.e)
@@ -70,6 +75,8 @@ export function init(context: ComponentContext) {
 export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
     let component: ComponentFunc | undefined
     let destruction: Destruction | undefined
+    const componentInstance = currentInstance!
+    const parentDestruction = currentDestruction
     renderEffect(() => {
         const currentComponent = getComponent()
         if (currentComponent === component) {
@@ -78,9 +85,12 @@ export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
         if (destruction) {
             destroy(destruction)
         }
-        destruction = invokeRender(() => {
-            render((component = currentComponent))
-        })
+        destruction = invokeRender(
+            () => render(currentComponent),
+            componentInstance,
+            parentDestruction
+        )
+        component = currentComponent
     })
 }
 

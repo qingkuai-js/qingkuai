@@ -2,13 +2,13 @@ import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { CancelablePromise, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "../constants"
-import { destroy } from "../destroy"
 import { invokeRender } from "./render"
-import { currentInstance } from "../state"
 import { NotPromise } from "../messages/error"
 import { renderEffect } from "../reactivity/effect"
 import { isPromise } from "../../util/shared/assert"
 import { objectAssign } from "../../util/shared/aliases"
+import { destroy, pushDestructionCleaner } from "../destroy"
+import { currentDestruction, currentInstance } from "../state"
 import { CANCELABLE, PROMISE_PENDING, PROMISE_SETTLED } from "./constants"
 
 export function promiseBlock(
@@ -21,6 +21,13 @@ export function promiseBlock(
     let pms: CancelablePromise | null
     let destruction: Destruction | null
     const componentInstance = currentInstance!
+    const parentDestruction = currentDestruction
+
+    // 待办：添加端到端测试
+    // TODO: Add end-to-end tests
+    pushDestructionCleaner(() => {
+        pms?.cancel()
+    })
 
     const changeState = (newState: number, render: ArbitraryFunc | undefined, arg?: any) => {
         if (destruction) {
@@ -30,7 +37,7 @@ export function promiseBlock(
         destruction = NIL
 
         if (render) {
-            destruction = invokeRender(() => render(arg), componentInstance)
+            destruction = invokeRender(() => render(arg), componentInstance, parentDestruction)
         }
     }
 

@@ -4,8 +4,8 @@ import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 
 import { destroy } from "../destroy"
 import { invokeRender } from "./render"
-import { currentInstance } from "../state"
 import { renderEffect } from "../reactivity/effect"
+import { currentDestruction, currentInstance } from "../state"
 import { createFragmentGetter, insertBefore } from "../internal"
 
 export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
@@ -14,6 +14,7 @@ export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
     let options: HtmlBlockOptions | undefined
 
     const componentInstance = currentInstance!
+    const parentDestruction = currentDestruction
 
     const render = () => {
         insertBefore(anchor, createFragmentGetter(html!)())
@@ -42,7 +43,7 @@ export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
         if (destruction) {
             destroy(destruction)
         }
-        destruction = invokeRender(render, componentInstance)
+        destruction = invokeRender(render, componentInstance, parentDestruction)
         options = newOptions
     })
 }

@@ -28,10 +28,15 @@ import {
     popRunningEffectStack,
     pushRunningEffectStack
 } from "./state"
+import {
+    currentInstance,
+    currentDestruction,
+    setCurrentInstance,
+    setCurrentDestruction
+} from "../state"
 import { NIL, UNDEF } from "../constants"
 import { getSubscription } from "./schedule"
 import { any } from "../../util/shared/sundry"
-import { currentInstance, currentDestruction } from "../state"
 import { EffectOrWatchHasNoDependecies } from "../messages/warn"
 import { getLastElem, swapDelete } from "../../util/shared/arrays"
 
@@ -194,8 +199,21 @@ function runEffectCollector(effect: Effect) {
     effect.l &= ~EFFECT_NO_CHECK
     pushRunningEffectStack(effect)
 
-    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
-    popRunningEffectStack()
+    let res: any
+    const componentInstance = currentInstance
+    const parentDestruction = currentDestruction
+    setCurrentDestruction(effect.d)
+    if (effect.m) {
+        setCurrentInstance(effect.m)
+    }
+
+    try {
+        res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
+    } finally {
+        popRunningEffectStack()
+        setCurrentInstance(componentInstance)
+        setCurrentDestruction(parentDestruction)
+    }
 
     const collectedLinks = effect.k
     const collectedLen = collectedLinks.length

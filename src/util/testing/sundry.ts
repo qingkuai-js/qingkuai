@@ -1,6 +1,7 @@
 import type { GeneralFunc } from "#type-declarations/tools"
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
+import { NIL } from "../../runtime/constants"
 import { objectAssign } from "../shared/aliases"
 import { afterAll, beforeAll, vi } from "vitest"
 import { currentDestruction } from "../../runtime/state"
@@ -19,7 +20,7 @@ export function initDestruction() {
     })
     beforeAll(() => {
         if (!currentDestruction) {
-            createDestruction()
+            createDestruction(NIL)
         }
     })
 }

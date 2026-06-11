@@ -2,7 +2,7 @@ import type { GeneralFunc } from "#type-declarations/tools"
 import type { ComponentContext } from "#type-declarations/runtime"
 
 import { invokeRender } from "./render"
-import { currentInstance } from "../state"
+import { currentDestruction, currentInstance } from "../state"
 
 export function renderSlot(
     context: ComponentContext,
@@ -13,11 +13,12 @@ export function renderSlot(
 ) {
     const slot = context.s?.[name]
     const componentInstance = currentInstance!
+    const parentDestruction = currentDestruction
     if (!slot) {
         if (fallback) {
-            invokeRender(fallback, componentInstance)
+            invokeRender(fallback, componentInstance, parentDestruction)
         }
     } else {
-        invokeRender(() => slot(anchor, props), componentInstance)
+        invokeRender(() => slot(anchor, props), componentInstance, parentDestruction)
     }
 }

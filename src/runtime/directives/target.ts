@@ -6,11 +6,12 @@ import { walkNodes } from "../../util/runtime/sundry"
 import { isElement } from "../../util/runtime/assert"
 import { InvalidElementNode } from "../messages/error"
 import { isNull, isString } from "../../util/shared/assert"
+import { currentDestruction, currentInstance } from "../state"
 import { appendChild, insertBefore, selectElement } from "../dom"
 
 export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFunc) {
     let oldTarget: any = anchor
-    const destruction = invokeRender(render)
+    const destruction = invokeRender(render, currentInstance!, currentDestruction)
     renderEffect(() => {
         let newTarget: any
         const value = getValue()

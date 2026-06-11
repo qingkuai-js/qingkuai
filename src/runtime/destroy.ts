@@ -17,7 +17,10 @@ export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     ;(currentDestruction.l ??= []).push(cleaner)
 }
 
-export function createDestruction(instance: ComponentInstanceBase | null = NIL) {
+export function createDestruction(
+    parentDestruction: Destruction | null,
+    instance: ComponentInstanceBase | null = NIL
+) {
     const destruction: Destruction = {
         f: 0,
         e: NIL,
@@ -26,10 +29,10 @@ export function createDestruction(instance: ComponentInstanceBase | null = NIL) 
         s: NIL,
         n: NIL,
         m: instance,
-        p: currentDestruction
+        p: parentDestruction
     }
-    if (currentDestruction) {
-        ;(currentDestruction.c ??= []).push(destruction)
+    if (parentDestruction) {
+        ;(parentDestruction.c ??= []).push(destruction)
     }
     return setCurrentDestruction(destruction)!
 }
