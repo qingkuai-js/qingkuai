@@ -435,3 +435,58 @@ test("Interpretive comments annotate wrapper and general event flags", () => {
     expect(code).toContain("/* enter */")
     expect(code).toContain("/* stop */")
 })
+
+test("nested component: child component renders as default slot", () => {
+    const code = compileRuntime(`
+        <Foo>
+            <Bar />
+        </Foo>
+    `)
+    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain('["default"]: (_anchor')
+    expect(code).toContain("Bar(_anchor")
+})
+
+test("nested component: multiple child components with different slot names", () => {
+    const code = compileRuntime(`
+        <Foo>
+            <Bar #slot={"header"} />
+            <Baz #slot={"footer"} />
+        </Foo>
+    `)
+    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain("Bar(_anchor")
+    expect(code).toContain("Baz(_anchor")
+})
+
+test("nested component: child component with named and default slots", () => {
+    const code = compileRuntime(`
+        <Foo>
+            <Bar #slot={"header"} />
+            <Baz />
+        </Foo>
+    `)
+    expect(code).toContain("header: (_anchor")
+    expect(code).toContain("Bar(_anchor")
+    expect(code).toContain('["default"]: (_anchor')
+    expect(code).toContain("Baz(_anchor")
+})
+
+test("nested component: deeply nested three levels", () => {
+    const code = compileRuntime(`
+        <A>
+            <B>
+                <C />
+            </B>
+        </A>
+    `)
+    expect(code).toContain("A(_text1, {")
+    expect(code).toContain("B(_anchor1, {")
+    expect(code).toContain("C(_anchor")
+})
+
+test("nested component: component without context still uses plain call", () => {
+    const code = compileRuntime(`<Foo></Foo>`)
+    expect(code).toContain("Foo(_text1)")
+    expect(code).not.toContain("Foo(_text1, {")
+})

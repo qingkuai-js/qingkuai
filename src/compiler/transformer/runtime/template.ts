@@ -705,7 +705,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
     const hasSlots = node.children.some(child => {
-        return getTemplateNodeContext(child).fragment!.content.length
+        return child.componentTag || getTemplateNodeContext(child).fragment!.content.length
     })
     const hasRefs = nodeContext.referenceAttributes.some(attr => {
         return attr.name.raw !== "&handle"
@@ -814,7 +814,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
         for (const child of node.children) {
             const childContext = getTemplateNodeContext(child)
-            if (!childContext.fragment!.content.length) {
+            if (!child.componentTag && !childContext.fragment!.content.length) {
                 continue
             }
 
