@@ -62,13 +62,13 @@ function makeConsecutiveNumbersArr(length: number) {
 
 test("destroy should disconnect destruction from parent/effects", () => {
     const parent = currentDestruction!
-    const nested = createDestruction(NIL)
+    const nested = createDestruction(parent)
     const cleaner = vi.fn()
     pushDestructionCleaner(cleaner)
 
     const nestedEffect = renderEffect(NOOP)
 
-    createDestruction(NIL)
+    createDestruction(nested, NIL)
     const nestedChildEffect = renderEffect(NOOP)
 
     backToParentDestruction()
