@@ -41,8 +41,10 @@ export interface TraverseInfo {
 }
 
 export interface ComponentInstanceBase {
+    host: HTMLElement
     updating: boolean
     hooks: GeneralFunc[][]
+    context: ComponentContext
     parent: ComponentInstanceBase | null
 }
 
@@ -112,6 +114,8 @@ export type ComponentContext = Partial<{
     R: any // default refs
     P: any // default props
     e: string[] // delegated events
+    o: string // scope attribute name
+    i: boolean // inherit parent scope attribute
 }>
 
 export type ReactiveValue<T extends AnyObject> = T & {

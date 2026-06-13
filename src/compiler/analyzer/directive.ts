@@ -21,6 +21,7 @@ import {
     InvalidKeyDirectivePlacement,
     DuplicatePromiseBlockDirectives,
     InvalidSlotDirectivePlacement,
+    InvalidScopeDirectivePlacement,
     InvalidTargetDirectivePlacement,
     HtmlDirectiveRequiresSingleTextChild
 } from "../message/error"
@@ -29,6 +30,11 @@ import {
     getNonWhiteSpaceLocByLoc,
     getNonWhitespaceLocByIndex
 } from "../../util/compiler/position"
+import {
+    RedundantDirectiveValue,
+    UnnecessaryHtmlDirective,
+    UnnecessaryScopeDirective
+} from "../message/warn"
 import { markNeedSourcemap } from "../ts-ast/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
@@ -38,7 +44,6 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
 import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
-import { RedundantDirectiveValue, UnnecessaryHtmlDirective } from "../message/warn"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 
@@ -264,6 +269,18 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         case "#target": {
             if (node.parent && node.parent.componentTag) {
                 InvalidTargetDirectivePlacement(nameLoc)
+            }
+            break
+        }
+
+        case "#scope": {
+            if (directive.equalSign) {
+                RedundantDirectiveValue(directive.loc, rawName)
+            }
+            if (!node.componentTag) {
+                InvalidScopeDirectivePlacement(nameLoc)
+            } else if (!inputDescriptor.styles.length) {
+                UnnecessaryScopeDirective(directive.loc)
             }
             break
         }

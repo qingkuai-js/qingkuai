@@ -29,6 +29,10 @@ export function isShallow(wrapper: ReactivityWrapper) {
     return !!(wrapper.l & WRAPPER_SHALLOW)
 }
 
+export function isFragment(v: any): v is DocumentFragment {
+    return v instanceof DocumentFragment
+}
+
 export function isIteratorKey(wrapper: ReactivityWrapper, key: any) {
     if (wrapper.l & (WRAPPER_SET | WRAPPER_MAP)) {
         return !isRefProperty(key)

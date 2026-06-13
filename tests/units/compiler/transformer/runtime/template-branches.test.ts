@@ -20,6 +20,28 @@ test("Component without context uses plain anchor call", () => {
     expect(code).not.toContain("Comp(_text1, {")
 })
 
+test("Component #scope passes parent scope attribute in context", () => {
+    const code = compileRuntime(`
+        <lang-css>
+            div {}
+        </lang-css>
+        <Comp #scope></Comp>
+    `)
+    expect(code).toContain("Comp(_text1, {")
+    expect(code).toContain("i: true")
+})
+
+test("Root fragment uses standalone scope attribute", () => {
+    const code = compileRuntime(`
+        <lang-css>
+            div {}
+        </lang-css>
+        <div></div>
+    `)
+    expect(code).toMatch(/createFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/)
+    expect(code).toContain("return _.mount(_anchor, _fragment1)")
+})
+
 test("Slot without attrs uses UNDEF props and fallback closure", () => {
     const code = compileRuntime(`
         <Comp>

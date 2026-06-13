@@ -702,6 +702,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
     const maybeDynamic = getParsedExpression(node)?.reactive
+    const scopeDirective = nodeContext.attributesMap["#scope"]
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
 
     const hasSlots = node.children.some(child => {
@@ -713,6 +714,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const hasStaticAttrs = !!nodeContext.staticAttributes.length
     const hasEventListeners = !!nodeContext.eventListeners.length
     const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length
+    const hasScope = !!(scopeDirective && inputDescriptor.styles.length)
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
 
     const insertTrailingComma = () => {
@@ -735,7 +737,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.wrapLine().writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
     }
 
-    const hasContext = hasSlots || hasProps || hasRefs
+    const hasContext = hasSlots || hasProps || hasRefs || hasScope
     if (hasContext) {
         writer.write(", {").indent()
     }
@@ -835,6 +837,10 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             writer.dedent().write("}")
         }
         writer.dedent().write("}")
+    }
+
+    if (hasScope) {
+        insertTrailingComma().write("i: true")
     }
 
     if (hasContext) {

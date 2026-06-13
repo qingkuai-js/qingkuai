@@ -67,6 +67,7 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
 }
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
+    "#scope",
     "#html",
     "#key",
     "#for",
@@ -240,6 +241,7 @@ export const DIRECTIVE_LIST: ReadonlySet<string> = new Set([
     "#else",
     "#for",
     "#key",
+    "#scope",
     "#await",
     "#then",
     "#catch",

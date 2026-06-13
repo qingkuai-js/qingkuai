@@ -284,6 +284,44 @@ describe("#slot", () => {
     })
 })
 
+describe("#scope", () => {
+    test("Invalid placement", () => {
+        analyzeTemplateAndMatchMessages(`<div #scope></div>`, [
+            {
+                type: "error",
+                range: [5, 11],
+                value: `The "#scope" directive can only be used on components.`
+            }
+        ])
+    })
+
+    test("Valid input", () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp #scope></Comp>
+                <lang-css>
+                    div {}
+                </lang-css>
+            `)
+        )
+    })
+
+    test("Redundant value", () => {
+        analyzeTemplateAndMatchMessages(`<Comp #scope={1}></Comp>`, [
+            {
+                type: "warning",
+                range: [6, 16],
+                value: `The "#scope" directive does not need a value, and the redundant directive value will be ignored.`
+            },
+            {
+                type: "warning",
+                range: [6, 16],
+                value: `The "#scope" directive has no effect because the current component has no scoped styles.`
+            }
+        ])
+    })
+})
+
 describe(`#for`, () => {
     test(`Keyword inside pattern or base`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ of of arr }></div>`)

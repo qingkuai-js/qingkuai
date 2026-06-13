@@ -16,7 +16,7 @@ import {
 import { destroy } from "../destroy"
 import { invokeRender } from "./render"
 import { NIL, REFLECT, UNDEF } from "../constants"
-import { appendChild, insertBefore } from "../dom"
+import { appendChild, getParentElement, insertBefore } from "../dom"
 import { arrayFrom } from "../../util/shared/arrays"
 import { walkNodes } from "../../util/runtime/sundry"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
@@ -486,7 +486,7 @@ function normalizeTraversable(value: any): Traversable {
 }
 
 function detachWholeContent(destruction: Destruction, anchor: ChildNode | null) {
-    const parent = destruction.s!.parentElement!
+    const parent = getParentElement(destruction.s!)!
     anchor ??= parent.lastChild!
     parent.textContent = ""
     appendChild(parent, anchor)

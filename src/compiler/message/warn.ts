@@ -29,6 +29,10 @@ export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scop
     return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
+export const UnnecessaryScopeDirective = withLocation(9015, () => {
+    return `The "#scope" directive has no effect because the current component has no scoped styles.`
+})
+
 export const RedundantRawMark = withLocation(9005, () => {
     return `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
 })

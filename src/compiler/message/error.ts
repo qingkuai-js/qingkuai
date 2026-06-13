@@ -134,6 +134,10 @@ export const NoEndTagMatched = withLocation(1012, (tag: string) => {
     return `The <${tag}> tag does not have a matched end tag: </${tag}>.`
 })
 
+export const InvalidScopeDirectivePlacement = withLocation(1068, () => {
+    return `The "#scope" directive can only be used on components.`
+})
+
 export const EmbeddedScriptBlockOutOfLimit = withLocation(1011, () => {
     return `The embedded script block is out of limit: only one is allowed.`
 })

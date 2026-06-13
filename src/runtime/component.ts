@@ -29,7 +29,7 @@ import { InvalidElementNode } from "./messages/error"
 import { createDestruction, destroy } from "./destroy"
 import { isFunction, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
-import { appendChild, insertBefore, newTextNode, selectElement } from "./dom"
+import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
 // prettier-ignore
 export const [
@@ -53,11 +53,13 @@ export const mountApp: MountAppFunc = (component, target) => {
     any(component)(anchor)
 }
 
-export function init(context: ComponentContext) {
+export function init(anchor: Node, context: ComponentContext) {
     const instance: ComponentInstanceBase = {
+        context,
         hooks: any([]),
         updating: false,
-        parent: currentInstance
+        parent: currentInstance,
+        host: getParentElement(anchor)!
     }
     setCurrentInstance(instance)
     createDestruction(currentDestruction, instance)
@@ -100,16 +102,14 @@ export function runHooks(instance: ComponentInstanceBase, index: number) {
     }
 }
 
-export function mount(anchor?: Element, fragment?: DocumentFragment) {
-    const instance = currentInstance!
-    backToParentDestruction()
-
+export function mount(anchor?: ChildNode, fragment?: Node) {
     if (anchor && fragment) {
         insertBefore(anchor, fragment)
     }
-    runHooks(instance, AFTER_MOUNT)
-    setCurrentInstance(instance.parent)
-    return instance
+    runHooks(currentInstance!, AFTER_MOUNT)
+    backToParentDestruction()
+    setCurrentInstance(currentInstance!.parent)
+    return currentInstance!
 }
 
 export function defineExports(target: any, transformed: Record<string, Getter>) {
@@ -124,9 +124,9 @@ export function defineExports(target: any, transformed: Record<string, Getter>) 
     return defineProperties(target, descriptors)
 }
 
-// 组件生命周期回调均为 ComponentInstance.h 数组中不同下标的元素，该方法生成用于注册它们的方法
+// 组件生命周期回调均为 ComponentInstance.hooks 数组中不同下标的元素，该方法生成用于注册它们的方法
 // Component lifecycle callbacks are stored as elements at different indices
-// in `ComponentInstance.h`; this method generates functions for registering them
+// in `ComponentInstance.hooks`; this method generates functions for registering them
 function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 1; i < 6; i++) {

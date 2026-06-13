@@ -1,11 +1,18 @@
+import { setAttribute } from "./internal"
 import { any } from "../util/shared/sundry"
-import { currentDestruction } from "./state"
+import { arrayFrom } from "../util/shared/arrays"
 import { isString, isUndefined } from "../util/shared/assert"
+import { currentDestruction, currentInstance } from "./state"
+import { isElement, isFragment } from "../util/runtime/assert"
 import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
 import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, ATTRIBUTE_PREFIX } from "./constants"
 
 export function newTextNode() {
     return DOCUMENT!.createTextNode("")
+}
+
+export function getParentElement(node: Node) {
+    return node.parentElement
 }
 
 export function selectElement(selector: string) {
@@ -40,6 +47,7 @@ export function getChildAsText(target: Element, index = 0) {
 
 export function insertBefore(reference: ChildNode, node: Node) {
     reference.before(node)
+    attachParentScopeAttr(reference, node)
 }
 
 export function getSiblingAsText(node: ChildNode, distance = 1) {
@@ -131,4 +139,26 @@ function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
         ret += arr[index]
     }
     return ret
+}
+
+// 将父组件的作用域属性设置到指定元素上
+// Set the parent component's scope attribute to the specified element
+function attachParentScopeAttr(reference: ChildNode, node: Node): void {
+    const parentScopeAttr = currentInstance?.parent?.context.o?.slice(1)
+    if (
+        !currentInstance ||
+        !parentScopeAttr ||
+        !currentInstance.context.i ||
+        reference.parentNode !== currentInstance.host ||
+        (currentDestruction?.m !== currentInstance && currentDestruction?.p?.m !== currentInstance)
+    ) {
+        return
+    }
+    if (isElement(node)) {
+        setAttribute(node as HTMLElement, parentScopeAttr, "")
+    } else if (isFragment(node)) {
+        for (const element of arrayFrom(node.children) as HTMLElement[]) {
+            setAttribute(element, parentScopeAttr, "")
+        }
+    }
 }
