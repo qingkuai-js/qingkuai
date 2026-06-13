@@ -24,10 +24,18 @@ test("Compiler intrinsic method cannot be used in template expressions", () => {
     ])
 })
 
-test("props and refs are tracked as intrinsic vars and mark expression reactive", () => {
-    analyzeTemplateOnly(`<div>{props.count + refs.input}</div>`)
+test("props are tracked as intrinsic vars and mark expression reactive", () => {
+    analyzeTemplateOnly(`<div>{props.count}</div>`)
 
     expect(analyzeResult.script.usedIntrinsicVars.has("props")).toBe(true)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("refs are tracked as intrinsic vars and mark expression reactive", () => {
+    analyzeTemplateOnly(`<div>{refs.input}</div>`)
+
     expect(analyzeResult.script.usedIntrinsicVars.has("refs")).toBe(true)
 
     const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
@@ -59,4 +67,100 @@ test("Invalid shorthand dynamic attribute name reports error", () => {
             value: `Invalid name for shorthand dynamic attribute: "!for". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
         }
     ])
+})
+
+test("Interpolation reactivity: props and refs access is reactive", () => {
+    analyzeTemplateOnly(`<div>{props.count + refs.input}</div>`)
+
+    expect(analyzeResult.script.usedIntrinsicVars.has("props")).toBe(true)
+    expect(analyzeResult.script.usedIntrinsicVars.has("refs")).toBe(true)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("Interpolation reactivity: plain expression without props or refs is not reactive", () => {
+    analyzeTemplateOnly(`<div>{1 + 2}</div>`)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(false)
+})
+
+test("Interpolation reactivity: non-literal top-level identifier is reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let count = reactive()
+        </lang-js>
+        <div>{count}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("Interpolation reactivity: literal top-level identifier is not reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let count = 1
+        </lang-js>
+        <div>{count}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(false)
+})
+
+test("Interpolation reactivity: imported member access is reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            import helpers from "./helpers"
+        </lang-js>
+        <div>{helpers.format()}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("Interpolation reactivity: imported identifier alone is not reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            import helpers from "./helpers"
+        </lang-js>
+        <div>{helpers}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(false)
+})
+
+test("Interpolation reactivity: reactive #for context access is reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let items = reactive()
+        </lang-js>
+        <div #for={item of items}>
+            <span>{item.name}</span>
+        </div>
+    `)
+
+    const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
+        exp => exp?.source.trim() === "item.name"
+    )
+    expect(parsedExpression).toBeTruthy()
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("Interpolation reactivity: non-reactive #for context access is not reactive", () => {
+    analyzeTemplateOnly(`
+        <div #for={item of [1, 2]}>
+            <span>{item.name}</span>
+        </div>
+    `)
+
+    const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
+        exp => exp?.source.trim() === "item.name"
+    )
+    expect(parsedExpression).toBeTruthy()
+    expect(parsedExpression?.reactive).toBe(false)
 })

@@ -29,15 +29,15 @@ import {
 } from "../../util/compiler/template"
 import { PositionFlag } from "../enums"
 import { parseExpression } from "../parser/script"
-import { markNeedSourcemap } from "../ts-ast/sundry"
 import { newCleanObj } from "../../util/shared/sundry"
 import { walkTsNodeWithContext } from "../ts-ast/walk"
 import { kebab2Camel } from "../../util/compiler/string"
-import { isIdentifierAssignmentTarget } from "../ts-ast/assert"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { analyzeResult, inputDescriptor, messages } from "../state"
 import { collectReusedStringReference } from "../optimizer/compress"
+import { getStriptTypeOperationsParent, markNeedSourcemap } from "../ts-ast/sundry"
 import { endSemicolonRE, intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
+import { isIdentifierAssignmentTarget, isMemberAccessExpression } from "../ts-ast/assert"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 analyzeResult.template.parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `analyzeResult.template.parsedExpressions`.
@@ -70,6 +70,7 @@ export function analyzeInterpolation(
             reusedStringReferences: [],
             contextReferences: reactiveContextReferences
         }
+        analyzeResult.template.parsedExpressions.set(parsingInfoKey, parsedExpression)
     } else {
         InvalidExpression(
             getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
@@ -119,7 +120,7 @@ export function analyzeInterpolation(
                         range: nodeRange,
                         shorthand: ts.isShorthandPropertyAssignment(node.parent)
                     })
-                    topLevelIdentifier.usedExpressions.add(parsedExpression!)
+                    topLevelIdentifier.usedExpressions.add(parsedExpression)
                 }
             }
             if (
@@ -136,24 +137,44 @@ export function analyzeInterpolation(
                     shorthand: ts.isShorthandPropertyAssignment(node)
                 })
             }
-            if (
-                parsedDirective ||
-                analyzeResult.script.importIdentifiers.has(idName) ||
-                (topLevelIdentifier &&
-                    topLevelIdentifier.status !== "literal" &&
-                    topLevelIdentifier.status !== "pending")
-            ) {
-                parsedExpression!.reactive ||= true
-            }
+
+            // 以下四种情况可以判断该插值表达式具有响应性
+            // The following four cases can determine that the interpolation is reactive:
+
+            // 1. 访问 `props` 或 `refs`
+            // 1. Accessing `props` or `refs`.
             if (idName === "props" || idName === "refs") {
-                parsedExpression!.reactive ||= true
+                parsedExpression.reactive ||= true
             }
             analyzeResult.script.fullIdentifiers.add(idName)
+
+            // 2. 访问顶部作用域标识符且其状态不是 `literal` 或 `pending`
+            // 2. Accessing a top-level scope identifier whose status is not `literal` or `pending`.
+            if (
+                topLevelIdentifier &&
+                topLevelIdentifier.status !== "literal" &&
+                topLevelIdentifier.status !== "pending"
+            ) {
+                parsedExpression.reactive ||= true
+            }
+
+            // 3. 访问导入标识符且该访问了其属性
+            // 3. Accessing an imported identifier whose property is accessed.
+            if (
+                node.isBindingReference &&
+                analyzeResult.script.importIdentifiers.has(idName) &&
+                isMemberAccessExpression(getStriptTypeOperationsParent(node)!)
+            ) {
+                parsedExpression.reactive ||= true
+            }
+
+            // 4. 访问指令上下文标识符，且该指令上下文标识符所在的指令具有响应式表达式
+            // 4. Accessing a directive context identifier whose directive has reactive expressions.
+            if (parsedDirective && getParsedExpression(parsedDirective.src.directive)?.reactive) {
+                parsedExpression.reactive ||= true
+            }
         }
     })
-    if (parsedExpression) {
-        analyzeResult.template.parsedExpressions.set(parsingInfoKey, parsedExpression)
-    }
     return expression
 }
 
