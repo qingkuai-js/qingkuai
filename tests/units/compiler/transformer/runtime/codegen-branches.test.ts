@@ -99,7 +99,7 @@ test("Runtime codegen: intrinsic usage path emits direct internal call", () => {
         </lang-js>
         <div></div>
     `)
-    expect(code).toContain("_.init(_ctx)")
+    expect(code).toContain("_.init(_anchor, _ctx)")
     expect(code).toContain("_.watchExp(() => 1, () => {})")
 })
 

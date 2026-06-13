@@ -106,10 +106,12 @@ export function mount(anchor?: ChildNode, fragment?: Node) {
     if (anchor && fragment) {
         insertBefore(anchor, fragment)
     }
-    runHooks(currentInstance!, AFTER_MOUNT)
+
+    const instance = currentInstance!
+    runHooks(instance, AFTER_MOUNT)
     backToParentDestruction()
-    setCurrentInstance(currentInstance!.parent)
-    return currentInstance!
+    setCurrentInstance(instance.parent)
+    return instance
 }
 
 export function defineExports(target: any, transformed: Record<string, Getter>) {
