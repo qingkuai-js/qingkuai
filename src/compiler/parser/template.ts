@@ -576,7 +576,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         // 无需解析子节点
         // No need to parse child nodes.
         if (isVoidNode || startTagClosingMatched[0].startsWith("/")) {
-            if (isEmbeddedStyle) {
+            if ((templateNode.isEmbedded = isEmbeddedStyle)) {
                 if (srcAttr) {
                     inputDescriptor.styles.push({
                         startTagOpenRange,
