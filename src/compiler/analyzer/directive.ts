@@ -208,7 +208,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
             if (directive.valueEnclosure !== "none") {
                 const patterns: ts.ArrayBindingElement[] = []
-                const parseResult = parseContextPattern(rawValue)
+                const parseResult = parseContextPattern(rawValue, valueStartSourceIndex)
 
                 const reportInvalidPattern = (start: number, end: number) => {
                     InvalidContextPattern(getNonWhitespaceLocByIndex(start, end))

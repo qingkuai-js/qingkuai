@@ -51,6 +51,7 @@ import {
     UnclosedStaticAttributeValue,
     EmbeddedScriptBlockOutOfLimit,
     NoNameForInterpolatedAttribute,
+    EmbeddedStyleSrcRequiresValue,
     SelfClosingEmbeddedStyleTagWithoutSrc,
     HyphenNotAllowedInMemberExpressionTag,
     EmbeddedStyleTagWithSrcCanHaveNoContent,
@@ -344,6 +345,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             prev,
             parent,
             componentTag,
+            isEmbedded: !!embeddedLang,
             loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
         })
 
@@ -576,15 +578,19 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         // 无需解析子节点
         // No need to parse child nodes.
         if (isVoidNode || startTagClosingMatched[0].startsWith("/")) {
-            if ((templateNode.isEmbedded = isEmbeddedStyle)) {
+            if (isEmbeddedStyle) {
                 if (srcAttr) {
-                    inputDescriptor.styles.push({
-                        startTagOpenRange,
-                        lang: embeddedLang,
-                        global: !!globalAttr,
-                        loc: getLocByIndex(index, index),
-                        code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
-                    })
+                    if (srcAttr.equalSign && srcAttr.value.raw.trim()) {
+                        inputDescriptor.styles.push({
+                            startTagOpenRange,
+                            lang: embeddedLang,
+                            global: !!globalAttr,
+                            loc: srcAttr.name.loc,
+                            code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
+                        })
+                    } else {
+                        EmbeddedStyleSrcRequiresValue(tagOpenLoc, tag)
+                    }
                 } else {
                     SelfClosingEmbeddedStyleTagWithoutSrc(tagOpenLoc, tag)
                 }
@@ -610,7 +616,6 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             const endTagSourceIndex = neverOver ? -1 : index + endTagIndex
             const rawContent = dps.slice(0, neverOver ? undefined : endTagIndex)
             reduceSource(neverOver ? dps.length : endTagIndex + tag.length + 2)
-            templateNode.isEmbedded = !!embeddedLang
 
             // 检查结束标签是否闭合，并记录当前节点的相关位置信息
             // Check whether the end tag is properly closed and record the relevant position info of the current node.
@@ -653,13 +658,17 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             // Embedded style tags with a `src` attribute are not allowed to have content.
             if (isEmbeddedStyle && srcAttr) {
                 if (!rawContent.trim()) {
-                    inputDescriptor.styles.push({
-                        startTagOpenRange,
-                        loc: contentLoc,
-                        lang: embeddedLang,
-                        global: !!globalAttr,
-                        code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
-                    })
+                    if (srcAttr.equalSign && srcAttr.value.raw.trim()) {
+                        inputDescriptor.styles.push({
+                            startTagOpenRange,
+                            lang: embeddedLang,
+                            global: !!globalAttr,
+                            loc: srcAttr.name.loc,
+                            code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
+                        })
+                    } else {
+                        EmbeddedStyleSrcRequiresValue(tagOpenLoc, tag)
+                    }
                 } else {
                     EmbeddedStyleTagWithSrcCanHaveNoContent(tagOpenLoc, tag)
                 }
@@ -767,5 +776,8 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
 function getVirtualStyleContentWithSrc(lang: string, src: TemplateAttribute) {
     const keyword = lang === "scss" || lang === "sass" ? "@use" : "@import"
-    return `${keyword} "${src.value.raw.replaceAll('"', '\\"')}";`
+    return `${keyword} ${inputDescriptor.source.slice(
+        src.value.loc.start.index - 1,
+        src.value.loc.end.index + 1
+    )};`
 }
