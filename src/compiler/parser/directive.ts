@@ -41,7 +41,7 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
             return notKeywordReturns
         }
 
-        const pattern = parseContextPattern(rawValue.slice(0, i))
+        const pattern = parseContextPattern(rawValue.slice(0, i), startSourceIndex)
         if (!pattern?.elements.length) {
             continue
         }
