@@ -67,7 +67,6 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
 }
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
-    "#scope",
     "#html",
     "#key",
     "#for",
