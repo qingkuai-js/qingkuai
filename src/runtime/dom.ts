@@ -1,11 +1,11 @@
 import { setAttribute } from "./internal"
 import { any } from "../util/shared/sundry"
 import { arrayFrom } from "../util/shared/arrays"
+import { isElement } from "../util/runtime/assert"
 import { isString, isUndefined } from "../util/shared/assert"
 import { currentDestruction, currentInstance } from "./state"
-import { isElement, isFragment } from "../util/runtime/assert"
-import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT } from "../util/shared/flags"
 import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, ATTRIBUTE_PREFIX } from "./constants"
+import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags"
 
 export function newTextNode() {
     return DOCUMENT!.createTextNode("")
@@ -47,7 +47,6 @@ export function getChildAsText(target: Element, index = 0) {
 
 export function insertBefore(reference: ChildNode, node: Node) {
     reference.before(node)
-    attachParentScopeAttr(reference, node)
 }
 
 export function getSiblingAsText(node: ChildNode, distance = 1) {
@@ -56,7 +55,7 @@ export function getSiblingAsText(node: ChildNode, distance = 1) {
     return (child.replaceWith(textNode), textNode)
 }
 
-export function getElementValue(elem: HTMLElement) {
+export function getElementValue(elem: Element) {
     return any(elem)[ATTRIBUTE_PREFIX + "value"] ?? any(elem).value
 }
 
@@ -92,11 +91,13 @@ export function createFragmentGetter(html: string, arr?: string[]) {
         }
 
         const ret = content.cloneNode(true) as any
+        if (flag & FRAGMENT_ROOT) {
+            attachScopesToRoot(ret)
+        }
         if (flag) {
             ret[FRAGMENT_FLAG] = flag
         }
         if (currentDestruction) {
-            currentDestruction.f = flag
             if (isOrphan) {
                 currentDestruction.s = ret
                 currentDestruction.n = ret
@@ -104,6 +105,7 @@ export function createFragmentGetter(html: string, arr?: string[]) {
                 currentDestruction.s = ret.firstChild
                 currentDestruction.n = ret.lastChild
             }
+            currentDestruction.f = flag
         }
         return ret
     }
@@ -141,24 +143,16 @@ function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
     return ret
 }
 
-// 将父组件的作用域属性设置到指定元素上
-// Set the parent component's scope attribute to the specified element
-function attachParentScopeAttr(reference: ChildNode, node: Node): void {
-    const parentScopeAttr = currentInstance?.parent?.context.o?.slice(1)
-    if (
-        !currentInstance ||
-        !parentScopeAttr ||
-        !currentInstance.context.i ||
-        reference.parentNode !== currentInstance.host ||
-        (currentDestruction?.m !== currentInstance && currentDestruction?.p?.m !== currentInstance)
-    ) {
+// 将祖先 scope 链中的所有 scope 属性设置到根元素上
+// Apply all scope attributes from the ancestor scope chain to root elements
+function attachScopesToRoot(node: Element | DocumentFragment): void {
+    const scopes = currentInstance?.context.a
+    if (!scopes?.length) {
         return
     }
-    if (isElement(node)) {
-        setAttribute(node as HTMLElement, parentScopeAttr, "")
-    } else if (isFragment(node)) {
-        for (const element of arrayFrom(node.children) as HTMLElement[]) {
-            setAttribute(element, parentScopeAttr, "")
+    for (const element of isElement(node) ? [node] : arrayFrom(node.children)) {
+        for (const scope of scopes) {
+            setAttribute(element, scope, "")
         }
     }
 }

@@ -40,6 +40,14 @@ export const [
     onAfterDestroy
 ] = hooksRegisterGen()
 
+export function getScopes(scope?: string) {
+    const scopes = currentInstance?.context.a
+    if (!(scope = scope?.slice(1))) {
+        return scopes
+    }
+    return scopes ? [...scopes, scope] : [scope]
+}
+
 export const mountApp: MountAppFunc = (component, target) => {
     if (isString(target)) {
         target = selectElement(target) as Element

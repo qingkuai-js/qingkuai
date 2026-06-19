@@ -26,7 +26,7 @@ export namespace __qk__lsu {
     export const validateBoolean: <T extends boolean>(value: T) => void
     export const validateHtmlBlockOptions: <T extends HtmlBlockOptions>(value: T) => void
     export const validateReferenceGroup: <T extends Set<any> | Array<any>>(value: T) => void
-    export const validateTargetDirectiveValue: <T extends HTMLElement | string>(value: T) => void
+    export const validateTargetDirectiveValue: <T extends Element | string>(value: T) => void
     export const validateHandleReceiver: <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E) => void
     export const validateEventHandler: <T extends string, H extends (ev: ExtractEventKind<T>) => any>(value: T, handler: H) => void
 
@@ -625,5 +625,5 @@ type Getter<T> = () => T
 type ArbitraryFunc = (...args: any) => any
 type WatcherCallback<T> = (oldValue: T, newValue: T) => void
 type WatcherHandlers = Record<"stop" | "pause" | "resume", () => void>
-type ExtractEventKind<K> = K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : Event
-type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : HTMLElement
+type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
+type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element

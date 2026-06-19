@@ -108,6 +108,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(5, 10),
                     next: nodeList[0].children[1]
                 },
@@ -123,6 +124,7 @@ describe("Nesting structure", () => {
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(15, 24),
                             parent: nodeList[0].children[1],
                             next: nodeList[0].children[1].children[1]
@@ -139,12 +141,14 @@ describe("Nesting structure", () => {
                                         }
                                     ],
                                     preWhiteSpace: true,
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(30, 55),
                                     parent: nodeList[0].children[1].children[1]
                                 }
                             ],
                             preWhiteSpace: true,
                             loc: getLocByIndex(24, 62),
+                            hasActualAncestor: true,
                             parent: nodeList[0].children[1],
                             startTagEndPos: getPosByIndex(30),
                             endTagStartPos: getPosByIndex(55),
@@ -160,6 +164,7 @@ describe("Nesting structure", () => {
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(62, 67),
                             parent: nodeList[0].children[1],
                             prev: nodeList[0].children[1].children[1]
@@ -167,6 +172,7 @@ describe("Nesting structure", () => {
                     ],
                     preWhiteSpace: true,
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(10, 73),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -182,6 +188,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(73, 74),
                     prev: nodeList[0].children[1]
                 }
@@ -219,6 +226,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(5, 10),
                     next: nodeList[0].children[1]
                 },
@@ -234,12 +242,14 @@ describe("Nesting structure", () => {
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(14, 34),
                             parent: nodeList[0].children[1]
                         }
                     ],
                     parent: nodeList[0],
                     preWhiteSpace: true,
+                    hasActualAncestor: true,
                     loc: getLocByIndex(10, 37),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -255,6 +265,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(37, 42),
                     prev: nodeList[0].children[1],
                     next: nodeList[0].children[3]
@@ -271,6 +282,7 @@ describe("Nesting structure", () => {
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(45, 54),
                             parent: nodeList[0].children[3],
                             next: nodeList[0].children[3].children[1]
@@ -287,11 +299,13 @@ describe("Nesting structure", () => {
                                         }
                                     ],
                                     preWhiteSpace: true,
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(60, 85),
                                     parent: nodeList[0].children[3].children[1]
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(54, 92),
                             parent: nodeList[0].children[3],
                             startTagEndPos: getPosByIndex(60),
@@ -308,6 +322,7 @@ describe("Nesting structure", () => {
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(92, 97),
                             parent: nodeList[0].children[3],
                             prev: nodeList[0].children[3].children[1]
@@ -315,6 +330,7 @@ describe("Nesting structure", () => {
                     ],
                     preWhiteSpace: true,
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(42, 101),
                     prev: nodeList[0].children[2],
                     next: nodeList[0].children[4],
@@ -330,6 +346,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(101, 102),
                     prev: nodeList[0].children[3]
                 }
@@ -363,6 +380,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(5, 10),
                     next: nodeList[0].children[1]
                 },
@@ -393,12 +411,14 @@ describe("Nesting structure", () => {
                                 }
                             ],
                             preWhiteSpace: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(38, 55),
                             parent: nodeList[0].children[1]
                         }
                     ],
                     preWhiteSpace: true,
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(10, 59),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -414,6 +434,7 @@ describe("Nesting structure", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(59, 60),
                     prev: nodeList[0].children[1]
                 }

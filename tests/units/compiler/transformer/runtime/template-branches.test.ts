@@ -28,7 +28,7 @@ test("Component #scope passes parent scope attribute in context", () => {
         <Comp #scope></Comp>
     `)
     expect(code).toContain("Comp(_text1, {")
-    expect(code).toContain("i: true")
+    expect(code).toContain("_.getScopes(")
 })
 
 test("Root fragment uses standalone scope attribute", () => {

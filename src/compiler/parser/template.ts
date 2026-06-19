@@ -64,10 +64,10 @@ import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
-import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS } from "../constants"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
 import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string"
 import { isEmbeddedStyleTag, isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert"
+import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS, SPREAD_TAG } from "../constants"
 
 export const parseTemplateStandalone: ParseTemplateFunc = (source, options = {}) => {
     const inputOptions: Partial<InputOptions> = {}
@@ -87,17 +87,18 @@ export function newTemplateNode(): TemplateNode {
     return {
         tag: "",
         rawTag: "",
+        componentTag: "",
         next: null,
         prev: null,
         parent: null,
         content: [],
         children: [],
         attributes: [],
-        componentTag: "",
         isEmbedded: false,
         typeArgument: null,
         isSelfClosing: false,
         preWhiteSpace: false,
+        hasActualAncestor: false,
         loc: newASTLocation(),
         endTagStartPos: newASTPosition(),
         startTagEndPos: newASTPosition()
@@ -250,7 +251,6 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 prev,
                 parent,
                 content: contentParts,
-                preWhiteSpace: !!parent?.preWhiteSpace,
                 loc: getLocByIndex(contentStartIndex, index)
             })
         }
@@ -749,6 +749,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
     // 初始化一个模板语法树节点
     // Initialize a AST node for template.
     function initTemplateNode(options: Partial<TemplateNode> = {}): TemplateNode {
+        const parent = options.parent
         const templateNode = Object.assign(newTemplateNode(), {
             ...options,
             rawTag: options.tag
@@ -756,21 +757,30 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         if (options.prev) {
             options.prev.next = templateNode
         }
-        if (options.tag === "pre" || options.parent?.preWhiteSpace) {
-            templateNode.preWhiteSpace = true
-        }
         if (options.tag) {
             templateNode.isSelfClosing = isVoidTag(options.tag)
+        }
+
+        if (options.componentTag && options.loc) {
+            markPositionFlag(PositionFlag.IsComponentStart, options.loc.start.index)
+        }
+
+        if (options.tag === "pre" || options.parent?.preWhiteSpace) {
+            templateNode.preWhiteSpace = true
         }
         if (!templateNode.preWhiteSpace) {
             templateNode.preWhiteSpace = preWhiteSpaceRuleRE.test(
                 getLeadingCommentNode(templateNode)?.children[0]?.content[0]?.value ?? ""
             )
         }
-        if (options.componentTag && options.loc) {
-            markPositionFlag(PositionFlag.IsComponentStart, options.loc.start.index)
+
+        // 从父节点继承或父节点自身是实际元素时标记 hasActualAncestor
+        // Inherit from parent, or mark when the parent itself is an actual element
+        if (parent?.hasActualAncestor || (parent && isActualElement(parent))) {
+            templateNode.hasActualAncestor = true
         }
-        return (options.parent?.children.push(templateNode), templateNode)
+
+        return (parent?.children.push(templateNode), templateNode)
     }
 }
 
@@ -780,4 +790,14 @@ function getVirtualStyleContentWithSrc(lang: string, src: TemplateAttribute) {
         src.value.loc.start.index - 1,
         src.value.loc.end.index + 1
     )};`
+}
+
+function isActualElement(node: TemplateNode) {
+    return (
+        !node.isEmbedded &&
+        !node.componentTag &&
+        "!" !== node.tag &&
+        "slot" !== node.tag &&
+        SPREAD_TAG !== node.tag
+    )
 }

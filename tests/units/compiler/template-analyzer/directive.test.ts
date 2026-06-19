@@ -285,12 +285,22 @@ describe("#slot", () => {
 })
 
 describe("#scope", () => {
-    test("Invalid placement", () => {
+    test("Invalid placement on non-component", () => {
         analyzeTemplateAndMatchMessages(`<div #scope></div>`, [
             {
                 type: "error",
                 range: [5, 11],
                 value: `The "#scope" directive can only be used on components.`
+            }
+        ])
+    })
+
+    test("Invalid placement inside actual parent element", () => {
+        analyzeTemplateAndMatchMessages(`<div><Comp #scope></Comp></div>`, [
+            {
+                type: "warning",
+                range: [11, 17],
+                value: `The "#scope" directive is unnecessary here because this component already has an actual ancestor element.`
             }
         ])
     })

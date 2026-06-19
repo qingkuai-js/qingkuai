@@ -54,6 +54,7 @@ test("Whether comment nodes were removed from parse result", () => {
                         }
                     ],
                     parent: nodeList[1],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(36, 41),
                     next: nodeList[1].children[1]
                 },
@@ -66,6 +67,7 @@ test("Whether comment nodes were removed from parse result", () => {
                         }
                     ],
                     parent: nodeList[1],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(62, 63),
                     prev: nodeList[1].children[0]
                 }
@@ -234,6 +236,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(7, 12),
                             next: nodeList[0].children[1]
                         },
@@ -246,6 +249,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(23, 24),
                             prev: nodeList[0].children[0]
                         }
@@ -291,6 +295,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(7, 12),
                             next: nodeList[0].children[1]
                         },
@@ -305,6 +310,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                             loc: getLocByIndex(19, 28)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(19, 28),
                                     parent: nodeList[0].children[1],
                                     next: nodeList[0].children[1].children[1]
@@ -320,6 +326,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                                     loc: getLocByIndex(32, 45)
                                                 }
                                             ],
+                                            hasActualAncestor: true,
                                             loc: getLocByIndex(32, 45),
                                             parent: nodeList[0].children[1].children[1],
                                             next: nodeList[0].children[1].children[1].children[1]
@@ -332,11 +339,13 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                                     loc: getLocByIndex(57, 66)
                                                 }
                                             ],
+                                            hasActualAncestor: true,
                                             loc: getLocByIndex(57, 66),
                                             parent: nodeList[0].children[1].children[1],
                                             prev: nodeList[0].children[1].children[1].children[0]
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(28, 71),
                                     parent: nodeList[0].children[1],
                                     startTagEndPos: getPosByIndex(32),
@@ -352,12 +361,14 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                             loc: getLocByIndex(71, 76)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(71, 76),
                                     parent: nodeList[0].children[1],
                                     prev: nodeList[0].children[1].children[1]
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(12, 84),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -373,6 +384,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(84, 85),
                             prev: nodeList[0].children[1]
                         }
@@ -414,6 +426,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(5, 10),
                             next: nodeList[0].children[1]
                         },
@@ -426,6 +439,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(19, 20),
                             prev: nodeList[0].children[0]
                         }
@@ -476,6 +490,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                         {
                             tag: "span",
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(3, 23),
                             startTagEndPos: getPosByIndex(9),
                             endTagStartPos: getPosByIndex(16)
@@ -520,6 +535,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(4, 9),
                             next: nodeList[0].children[1]
                         },
@@ -534,6 +550,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                             loc: getLocByIndex(12, 21)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(12, 21),
                                     parent: nodeList[0].children[1],
                                     next: nodeList[0].children[1].children[1]
@@ -546,12 +563,14 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                             loc: getLocByIndex(30, 35)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(30, 35),
                                     parent: nodeList[0].children[1],
                                     prev: nodeList[0].children[1].children[0]
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(9, 39),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -567,6 +586,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(39, 40),
                             prev: nodeList[0].children[1]
                         }
@@ -608,6 +628,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(3, 8),
                             next: nodeList[0].children[1]
                         },
@@ -620,6 +641,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(19, 20),
                             prev: nodeList[0].children[0]
                         }
@@ -663,6 +685,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(5, 10),
                             next: nodeList[0].children[1]
                         },
@@ -677,6 +700,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                             loc: getLocByIndex(13, 22)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(13, 22),
                                     parent: nodeList[0].children[1],
                                     next: nodeList[0].children[1].children[1]
@@ -692,6 +716,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                                     loc: getLocByIndex(28, 41)
                                                 }
                                             ],
+                                            hasActualAncestor: true,
                                             loc: getLocByIndex(28, 41),
                                             parent: nodeList[0].children[1].children[1],
                                             next: nodeList[0].children[1].children[1].children[1]
@@ -704,11 +729,13 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                                     loc: getLocByIndex(54, 63)
                                                 }
                                             ],
+                                            hasActualAncestor: true,
                                             loc: getLocByIndex(54, 63),
                                             parent: nodeList[0].children[1].children[1],
                                             prev: nodeList[0].children[1].children[1].children[0]
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(22, 70),
                                     parent: nodeList[0].children[1],
                                     startTagEndPos: getPosByIndex(28),
@@ -724,12 +751,14 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                             loc: getLocByIndex(70, 75)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(70, 75),
                                     parent: nodeList[0].children[1],
                                     prev: nodeList[0].children[1].children[1]
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(10, 79),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -745,6 +774,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(79, 80),
                             prev: nodeList[0].children[1]
                         }
@@ -790,6 +820,7 @@ it("Should not cause error when `dt` tag is used as descendant of `dl` of anothe
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(4, 9),
                 next: nodeList[0].children[1]
             },
@@ -804,12 +835,14 @@ it("Should not cause error when `dt` tag is used as descendant of `dl` of anothe
                                 loc: getLocByIndex(13, 22)
                             }
                         ],
+                        hasActualAncestor: true,
                         loc: getLocByIndex(13, 22),
                         parent: nodeList[0].children[1],
                         next: nodeList[0].children[1].children[1]
                     },
                     {
                         tag: "dt",
+                        hasActualAncestor: true,
                         loc: getLocByIndex(22, 31),
                         parent: nodeList[0].children[1],
                         startTagEndPos: getPosByIndex(26),
@@ -825,12 +858,14 @@ it("Should not cause error when `dt` tag is used as descendant of `dl` of anothe
                                 loc: getLocByIndex(31, 36)
                             }
                         ],
+                        hasActualAncestor: true,
                         loc: getLocByIndex(31, 36),
                         parent: nodeList[0].children[1],
                         prev: nodeList[0].children[1].children[1]
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(9, 41),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
@@ -846,6 +881,7 @@ it("Should not cause error when `dt` tag is used as descendant of `dl` of anothe
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(41, 42),
                 prev: nodeList[0].children[1]
             }
@@ -887,6 +923,7 @@ describe("Blank text filtering behavior", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(5, 12)
                 }
             ],

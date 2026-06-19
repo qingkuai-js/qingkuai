@@ -25,6 +25,7 @@ test("Simple parsing", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(44, 59)
             }
         ],
@@ -119,6 +120,7 @@ test("With directives", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(4, 9),
                 next: nodeList[0].children[1]
             },
@@ -159,10 +161,12 @@ test("With directives", () => {
                                 loc: getLocByIndex(37, 38)
                             }
                         ],
+                        hasActualAncestor: true,
                         loc: getLocByIndex(30, 38),
                         parent: nodeList[0].children[1]
                     }
                 ],
+                hasActualAncestor: true,
                 loc: getLocByIndex(9, 43),
                 next: nodeList[0].children[2],
                 prev: nodeList[0].children[0],
@@ -178,6 +182,7 @@ test("With directives", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(43, 44),
                 prev: nodeList[0].children[1]
             }
@@ -299,6 +304,7 @@ test("With event listeners", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(123, 137)
             }
         ],
@@ -361,6 +367,7 @@ test("Within nested structure", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(29, 34),
                 next: nodeList[0].children[1]
             },
@@ -422,6 +429,7 @@ test("Within nested structure", () => {
                 ],
                 parent: nodeList[0],
                 isSelfClosing: true,
+                hasActualAncestor: true,
                 loc: getLocByIndex(34, 152),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
@@ -436,6 +444,7 @@ test("Within nested structure", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(152, 153),
                 prev: nodeList[0].children[1]
             }
@@ -691,6 +700,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(23, 28),
                             next: nodeList[0].children[1]
                         },
@@ -705,6 +715,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                             loc: getLocByIndex(49, 66)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(49, 66),
                                     parent: nodeList[0].children[1]
                                 }
@@ -725,6 +736,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(28, 70),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -740,6 +752,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(70, 71),
                             prev: nodeList[0].children[1]
                         }
@@ -956,6 +969,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(23, 28),
                             next: nodeList[0].children[1]
                         },
@@ -978,6 +992,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             ],
                             isSelfClosing: true,
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(28, 56),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -992,6 +1007,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(56, 57),
                             prev: nodeList[0].children[1]
                         }
@@ -1083,6 +1099,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(21, 32),
                             next: nodeList[0].children[1]
                         },
@@ -1112,11 +1129,13 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                             loc: getLocByIndex(56, 60)
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(56, 60),
                                     parent: nodeList[0].children[1]
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(32, 67),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -1132,6 +1151,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(67, 83),
                             prev: nodeList[0].children[1]
                         }

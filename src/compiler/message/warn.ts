@@ -49,6 +49,10 @@ export const DuplicateDefaultDeclaration = withLocation(9013, (subject: string) 
     return `This default value definition for "${subject}" is ignored because it is overridden by a later one.`
 })
 
+export const ScopeDirectiveHasActualAncestor = withLocation(9016, () => {
+    return `The "#scope" directive is unnecessary here because this component already has an actual ancestor element.`
+})
+
 export const RedundantBooleanAttributeValue = withLocation(
     9007,
     (tag: string, attribute: string) => {

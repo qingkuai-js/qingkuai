@@ -11,28 +11,16 @@ const scenario: E2EScenarioInput = {
             import NoStyleChild from "./components/scope/NoStyleChild"
         </lang-js>
 
-        <lang-css>
-            .scope-inherit {
-                outline: 3px solid rgb(255, 0, 0);
-            }
-        </lang-css>
-
         <section data-page="component-scope-directive">
             <h1 id="scope-title">Scope directive</h1>
-
-            <ScopedChild #scope />
-            <PlainChild />
-            <NoStyleChild #scope />
         </section>
+
+        <ScopedChild #scope />
+        <PlainChild />
+        <NoStyleChild #scope />
     `,
     components: {
         "scope/ScopedChild": `
-            <lang-css>
-                .child-local {
-                    padding: 2px;
-                }
-            </lang-css>
-
             <article
                 id="scoped-child-root"
                 class="scope-inherit child-local"

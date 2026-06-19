@@ -33,6 +33,7 @@ import {
     getAttributeBaseName,
     ensureIdWithNumSuffix
 } from "../../../util/compiler/sundry"
+import { TestingMode } from "../../enums"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
@@ -704,6 +705,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const maybeDynamic = getParsedExpression(node)?.reactive
     const scopeDirective = nodeContext.attributesMap["#scope"]
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
+    const isE2eTesting = inputDescriptor.options.testing === TestingMode.E2e
 
     const hasSlots = node.children.some(child => {
         return child.componentTag || getTemplateNodeContext(child).fragment!.content.length
@@ -714,8 +716,8 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const hasStaticAttrs = !!nodeContext.staticAttributes.length
     const hasEventListeners = !!nodeContext.eventListeners.length
     const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length
-    const hasScope = !!(scopeDirective && inputDescriptor.styles.length)
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
+    const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting))
 
     const insertTrailingComma = () => {
         if (needInsertComma) {
@@ -840,7 +842,8 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     }
 
     if (hasScope) {
-        insertTrailingComma().write("i: true")
+        const scopeName = getMaybeReusedString(` qk-${inputDescriptor.options.hashId}`)
+        insertTrailingComma().write(`a: ${internalId}.getScopes(${scopeName})`)
     }
 
     if (hasContext) {

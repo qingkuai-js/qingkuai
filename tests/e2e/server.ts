@@ -5,6 +5,7 @@ import nodeHttp from "node:http"
 import nodePath from "node:path"
 
 import { compile } from "../../src/compiler/index"
+import { TestingMode } from "../../src/compiler/enums"
 import { formatSourceCode } from "../../src/util/shared/sundry"
 import { renderIndexPage, renderScenarioPage } from "./page-template"
 import { e2eScenarios, getE2EScenario, isE2EScenarioName } from "./scenarios"
@@ -181,7 +182,11 @@ function parseScenarioRoute(pathname: string) {
 }
 
 function compileSourceCodeOrThrow(source: string, options?: CompileOptions) {
-    const result = compile(source, { debug: compileInDebugMode, ...options })
+    const result = compile(source, {
+        ...options,
+        testing: TestingMode.E2e,
+        debug: compileInDebugMode
+    })
     const errors = result.messages.filter(item => item.type === "error")
     if (errors.length) {
         throw new Error(errors.map(item => `${item.value.code}: ${item.value.message}`).join("\n"))

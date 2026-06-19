@@ -13,6 +13,8 @@ import {
     isParameterProperty,
     isNonHoistableScopeBoundary
 } from "./assert"
+import { TestingMode } from "../enums"
+import { inputDescriptor } from "../state"
 import { getNonHoistableScope } from "./context"
 import { objectAssign } from "../../util/shared/aliases"
 import { intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
@@ -158,9 +160,9 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
 
     const extendScopeIdentifiers = (scope: TsNodeWithContext, id: ts.Identifier) => {
         if (
-            process.env.VITEST === "true" ||
             intrinsicMethodsRE.test(id.text) ||
-            intrinsicVariableRE.test(id.text)
+            intrinsicVariableRE.test(id.text) ||
+            inputDescriptor.options.testing === TestingMode.Unit
         ) {
             ;(scope.scopeIdentifiers ??= new Set()).add(id.text)
         }
