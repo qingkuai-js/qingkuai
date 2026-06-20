@@ -138,4 +138,42 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await page.locator("#snapshot-handle").click()
         await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
     })
+
+    test("keeps handle isolated after high-frequency dynamic switches", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario(scenario)
+
+        const switchButton = page.locator("#switch-identifier")
+        const pingButton = page.locator("#ping-handle")
+        const snapshotButton = page.locator("#snapshot-handle")
+        const snapshot = page.locator("#snapshot")
+        const counterValue = page.locator("#counter-view .value")
+        const badgeValue = page.locator("#badge-view .value")
+
+        for (let i = 0; i < 20; i++) {
+            await switchButton.click()
+
+            if (i % 2 === 0) {
+                await expect(page.locator("#badge-view")).toBeVisible()
+                await expect(page.locator("#counter-view")).toHaveCount(0)
+
+                await pingButton.click()
+                await expect(badgeValue).toHaveText("Value: 12")
+
+                await snapshotButton.click()
+                await expect(snapshot).toHaveText("Snapshot: 12")
+            } else {
+                await expect(page.locator("#counter-view")).toBeVisible()
+                await expect(page.locator("#badge-view")).toHaveCount(0)
+
+                await pingButton.click()
+                await expect(counterValue).toHaveText("Value: 1")
+
+                await snapshotButton.click()
+                await expect(snapshot).toHaveText("Snapshot: 1")
+            }
+        }
+    })
 })
