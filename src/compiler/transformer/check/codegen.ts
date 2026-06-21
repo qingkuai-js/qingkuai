@@ -111,7 +111,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             embeddedScriptEditor.insert(declarator.initializer.getEnd(), ")")
         }
     })
-    writer.wrapLine().writeEditedScript(embeddedScriptEditor).indent().writeLine(";\n")
+    writer.wrapLine().writeEditedScript(embeddedScriptEditor).indent()
+    writer.write(";", inputDescriptor.script.loc.end.index).wrapLine(2)
 
     //
     ;(function generate(nodes: TemplateNode[]) {
