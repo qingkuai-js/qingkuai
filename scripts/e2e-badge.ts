@@ -51,7 +51,7 @@ const scenarioFiles = collectScenarioTestFiles(E2E_ROOT_DIR)
 const count = scenarioFiles.length
 const badgeData = {
     schemaVersion: 1,
-    label: "e2e scenarios",
+    label: "E2E Scenarios",
     message: String(count),
     color: getBadgeColor(count)
 }
