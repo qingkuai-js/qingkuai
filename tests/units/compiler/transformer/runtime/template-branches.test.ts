@@ -457,6 +457,19 @@ test("Interpretive comments annotate wrapper and general event flags", () => {
     expect(code).toContain("/* stop */")
 })
 
+test("debug mode with explicit options overrides auto-defaults", () => {
+    const code = compileRuntimeWithOptions(
+        `
+            <lang-js>
+                let x = 1
+            </lang-js>
+            <div>{x}</div>
+        `,
+        { debug: true, sourcemap: false, interpretiveComments: false, preserveHtmlComments: false }
+    )
+    expect(code).toContain("export default function")
+})
+
 test("nested component: child component renders as default slot", () => {
     const code = compileRuntime(`
         <Foo>
@@ -509,4 +522,21 @@ test("nested component: deeply nested three levels", () => {
 test("nested component: component without context still uses plain call", () => {
     const code = compileRuntime(`<Foo></Foo>`)
     expect(code).toContain("Foo(_text1")
+})
+
+test("root-level component without scope inherits ancestor scope", () => {
+    const code = compileRuntime(`<Foo></Foo>`)
+    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain("_.getScopes()")
+})
+
+test("root-level component without scope and with styles emits scopes", () => {
+    const code = compileRuntime(`
+        <lang-css>
+            div {}
+        </lang-css>
+        <Foo></Foo>
+    `)
+    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain("_.getScopes()")
 })

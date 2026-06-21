@@ -347,3 +347,31 @@ test("Embedded style: style block with src cannot have content", () => {
         }
     ])
 })
+
+test("Embedded style: self-closing block with empty src reports error", () => {
+    parseTemplateTesting(`<lang-css src="" />`, {
+        recover: true
+    })
+
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [0, 9],
+            value: `The "src" attribute on <lang-css> requires a non-empty value.`
+        }
+    ])
+})
+
+test("Embedded style: non-self-closing block with empty src reports error", () => {
+    parseTemplateTesting(`<lang-css src=""></lang-css>`, {
+        recover: true
+    })
+
+    matchCompileMessages([
+        {
+            type: "error",
+            range: [0, 9],
+            value: `The "src" attribute on <lang-css> requires a non-empty value.`
+        }
+    ])
+})

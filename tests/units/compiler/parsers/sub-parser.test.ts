@@ -89,3 +89,11 @@ test("Function: parseExpression and parseScript", () => {
     parseTemplateTesting("<lang-ts>const count: number = 1</lang-ts>")
     expect(parseScript("const count: number = 1")?.kind).toBe(ts.SyntaxKind.SourceFile)
 })
+
+test("parseExpression: regex-matched parse error returns null in non-check mode", () => {
+    expect(parseExpression("(a + b", 0)).toBeNull()
+})
+
+test("parseExpression: parse error throws in non-check mode when regex doesn't match", () => {
+    expect(() => parseExpression("a +", 0)).toThrow()
+})
