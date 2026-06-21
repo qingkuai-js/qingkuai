@@ -33,8 +33,10 @@ import {
 import {
     RedundantDirectiveValue,
     UnnecessaryHtmlDirective,
-    UnnecessaryScopeDirective
+    UnnecessaryScopeDirective,
+    ScopeDirectiveHasActualAncestor
 } from "../message/warn"
+import { TestingMode } from "../enums"
 import { markNeedSourcemap } from "../ts-ast/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
@@ -208,7 +210,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
             if (directive.valueEnclosure !== "none") {
                 const patterns: ts.ArrayBindingElement[] = []
-                const parseResult = parseContextPattern(rawValue)
+                const parseResult = parseContextPattern(rawValue, valueStartSourceIndex)
 
                 const reportInvalidPattern = (start: number, end: number) => {
                     InvalidContextPattern(getNonWhitespaceLocByIndex(start, end))
@@ -279,7 +281,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
             if (!node.componentTag) {
                 InvalidScopeDirectivePlacement(nameLoc)
-            } else if (!inputDescriptor.styles.length) {
+            } else if (node.hasActualAncestor) {
+                ScopeDirectiveHasActualAncestor(nameLoc)
+            } else if (
+                !inputDescriptor.styles.length &&
+                inputDescriptor.options.testing !== TestingMode.E2e
+            ) {
                 UnnecessaryScopeDirective(directive.loc)
             }
             break

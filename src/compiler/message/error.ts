@@ -174,6 +174,10 @@ export const MissingDirectiveValue = withLocation(1027, (directive: string) => {
     return `Directive "${directive}" requires a value.`
 })
 
+export const EmbeddedStyleSrcRequiresValue = withLocation(1068, (tag: string) => {
+    return `The "src" attribute on <${tag}> requires a non-empty value.`
+})
+
 export const ConflictingDirectives = withLocation(1026, (a: string, b: string) => {
     return `Conflicting directives: "${a}" and "${b}" cannot be used together.`
 })

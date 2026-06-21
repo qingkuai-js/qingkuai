@@ -6,6 +6,7 @@ import type {
     GenerateIdentifier
 } from "#type-declarations/compiler"
 
+import { TestingMode } from "./enums"
 import { isUndefined } from "../util/shared/assert"
 import { newCleanObj } from "../util/shared/sundry"
 import { objectAssign } from "../util/shared/aliases"
@@ -97,6 +98,7 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             debug: false,
             sourcemap: false,
             checkMode: false,
+            testing: TestingMode.None,
             reactivityMode: "reactive",
             interpretiveComments: false,
             whitespace: "trim-collapse",
@@ -117,6 +119,9 @@ function newInputDescriptor(options: Partial<InputOptions>) {
         if (isUndefined(options.preserveHtmlComments)) {
             options.preserveHtmlComments = true
         }
+    }
+    if (typeof process !== "undefined" && process.env?.VITEST === "true") {
+        ret.options.testing = TestingMode.Unit
     }
     return (objectAssign(ret.options, options), ret)
 }

@@ -13,6 +13,7 @@ import {
     interpolatedAttrStartCharRE
 } from "../../regular"
 import {
+    FRAGMENT_ROOT,
     FRAG_WITH_TARGET,
     FRAG_WHOLE_CONTENT,
     FRAG_LEADING_ANCHOR,
@@ -337,6 +338,9 @@ export function writeFragmentGetterDeclarations(
 export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
     const flagInterpretives: string[] = []
     const selectionCache: SelectionCache = newCleanObj()
+    if (!fragment.nodeContext || !fragment.nodeContext.node.hasActualAncestor) {
+        fragment.flag |= FRAGMENT_ROOT
+    }
     if (isFragmentWholeContent(fragment)) {
         fragment.flag |= FRAG_WHOLE_CONTENT
     }

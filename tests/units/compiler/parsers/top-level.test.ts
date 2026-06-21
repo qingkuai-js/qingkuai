@@ -604,6 +604,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(3, 4)
                         }
                     ],

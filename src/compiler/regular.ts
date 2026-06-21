@@ -42,3 +42,5 @@ export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.s
 
 export const formattingPreWhitespaceRE = /^\n?[\s]*\n/
 export const formattingUselessWhitespaceRE = /^[ \t]*/
+
+export const expressionParseErrorNoReportRE = /^'[)]' expected\.$/

@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.82](https://github.com/qingkuai-js/qingkuai/compare/v1.0.81...v1.0.82) (2026-06-21)
+
+### Features
+
+- **runtime, compiler:** add `scope` directive to enhance scoped style control ([b9bfb32](https://github.com/qingkuai-js/qingkuai/commit/b9bfb32))
+- **runtime, compiler:** support pass-through scope id behavior for the `scope` directive ([b9bfb32](https://github.com/qingkuai-js/qingkuai/commit/b9bfb32), [5220c32](https://github.com/qingkuai-js/qingkuai/commit/5220c32))
+
+### Improvements
+
+- **compiler:** remove constant declarations when rendering components and directly use component function call results ([3dd75c1](https://github.com/qingkuai-js/qingkuai/commit/3dd75c1))
+
+### Fixes
+
+- **compiler:** fix incorrect `Destruction` chain in directives and component calls ([b62fa39](https://github.com/qingkuai-js/qingkuai/commit/b62fa39))
+- **compiler:** fix incorrect compilation result when components exist in slots ([ca0d4e4](https://github.com/qingkuai-js/qingkuai/commit/ca0d4e4))
+- **compiler:** accessing imported identifiers themselves should not treat interpolation expressions as reactive ([a41e150](https://github.com/qingkuai-js/qingkuai/commit/a41e150))
+- **compiler(check):** fix incorrect semicolon source map position at the end of embedded script blocks in check mode ([0476fdb](https://github.com/qingkuai-js/qingkuai/commit/0476fdb))
+
 ## [1.0.81](https://github.com/qingkuai-js/qingkuai/compare/v1.0.80...v1.0.81) (2026-06-14)
 
 ### Features

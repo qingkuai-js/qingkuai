@@ -9,7 +9,7 @@ import { nextTick, reactiveNotEqual } from "../util/runtime/sundry"
 import { ATTRIBUTE_PREFIX, XLINK_NAMESPACE_URI } from "./constants"
 import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert"
 
-export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
+export function setClassName(elem: Element, value: ClassAttrValue) {
     let className = ""
     if (isString(value)) {
         className = value
@@ -38,7 +38,7 @@ export function setClassName(elem: HTMLElement, value: ClassAttrValue) {
     }
 }
 
-export function setAttribute(elem: HTMLElement, name: string, value: any) {
+export function setAttribute(elem: Element, name: string, value: any) {
     if (!reactiveNotEqual(any(elem)[ATTRIBUTE_PREFIX + name], value)) {
         return
     }
@@ -68,7 +68,7 @@ export function setAttribute(elem: HTMLElement, name: string, value: any) {
     elem.setAttribute(name, value)
 }
 
-export function setXlinkAttribute(elem: HTMLElement, name: string, value: any) {
+export function setXlinkAttribute(elem: Element, name: string, value: any) {
     const localName = name
     const qualifiedName = "xlink:" + localName
     const key = ATTRIBUTE_PREFIX + qualifiedName

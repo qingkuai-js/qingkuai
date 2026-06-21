@@ -261,15 +261,20 @@ describe("debug mode", () => {
     })
 
     test("Top-level directive root keeps anchor in fragment", () => {
-        const input = formatSourceCode(`
-            <div #for={item of [1, 2]}>{item}</div>
-        `)
-        const { code } = compile(input, { debug: false })
-
-        expect(code).toContain("const _fragment1 = _getFragment1()")
-        expect(code).toContain("const _text1 = _.getChild(_fragment1)")
-        expect(code).toContain("_.mount(_anchor, _fragment1)")
-        expect(code).not.toContain("const _text1 = _getFragment1(4)")
+        const nodeList = matchGeneratedFragment(
+            `
+                <div #for={item of [1, 2]}>{item}</div>
+            `,
+            `
+                const _getFragment1 = _.createFragmentGetter(\` \`)
+                const _getFragment2 = _.createFragmentGetter(\`<div> </div>\`)
+            `
+        )
+        matchTemplateNodesRuntimeId([
+            [nodeList[1], "_div1"],
+            [nodeList[1].children[0], "_text2"]
+        ])
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
     })
 
     test("replaceWithText selection should not be rewritten to getSibling", () => {

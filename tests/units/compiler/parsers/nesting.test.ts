@@ -29,7 +29,6 @@ test("Single level", () => {
             next: nodeList[2],
             children: [
                 {
-                    parent: nodeList[1],
                     content: [
                         {
                             value: "  bold  ",
@@ -37,6 +36,8 @@ test("Single level", () => {
                             loc: getLocByIndex(6, 14)
                         }
                     ],
+                    parent: nodeList[1],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(6, 14)
                 }
             ],
@@ -99,12 +100,14 @@ test("Multi level", () => {
                         }
                     ],
                     parent: nodeList[1],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(9, 14),
                     next: nodeList[1].children[1]
                 },
                 {
                     tag: "p",
                     parent: nodeList[1],
+                    hasActualAncestor: true,
                     prev: nodeList[1].children[0],
                     next: nodeList[1].children[2],
                     children: [
@@ -116,6 +119,7 @@ test("Multi level", () => {
                                     loc: getLocByIndex(17, 26)
                                 }
                             ],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(17, 26),
                             parent: nodeList[1].children[1],
                             next: nodeList[1].children[1].children[1]
@@ -134,10 +138,12 @@ test("Multi level", () => {
                                             value: "\n            go\n        "
                                         }
                                     ],
+                                    hasActualAncestor: true,
                                     loc: getLocByIndex(29, 53),
                                     parent: nodeList[1].children[1].children[1]
                                 }
                             ],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(26, 57),
                             startTagEndPos: getPosByIndex(29),
                             endTagStartPos: getPosByIndex(53)
@@ -150,6 +156,7 @@ test("Multi level", () => {
                                     loc: getLocByIndex(57, 62)
                                 }
                             ],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(57, 62),
                             parent: nodeList[1].children[1],
                             prev: nodeList[1].children[1].children[1]
@@ -168,6 +175,7 @@ test("Multi level", () => {
                         }
                     ],
                     parent: nodeList[1],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(66, 67),
                     prev: nodeList[1].children[1]
                 }
@@ -214,13 +222,15 @@ test("Identical tags", () => {
                             loc: getLocByIndex(5, 10)
                         }
                     ],
-                    loc: getLocByIndex(5, 10),
                     parent: nodeList[0],
+                    hasActualAncestor: true,
+                    loc: getLocByIndex(5, 10),
                     next: nodeList[0].children[1]
                 },
                 {
                     tag: "div",
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(10, 21),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -236,6 +246,7 @@ test("Identical tags", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(21, 26),
                     prev: nodeList[0].children[1],
                     next: nodeList[0].children[3]
@@ -243,6 +254,7 @@ test("Identical tags", () => {
                 {
                     tag: "div",
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(26, 37),
                     prev: nodeList[0].children[2],
                     next: nodeList[0].children[4],
@@ -258,6 +270,7 @@ test("Identical tags", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(37, 38),
                     prev: nodeList[0].children[3]
                 }
@@ -285,6 +298,7 @@ test("Identical tags", () => {
                 {
                     tag: "span",
                     parent: nodeList[2],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(51, 64),
                     startTagEndPos: getPosByIndex(57),
                     endTagStartPos: getPosByIndex(57)
@@ -319,6 +333,7 @@ test("With comment", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(5, 10),
                 next: nodeList[0].children[1]
             },
@@ -334,12 +349,14 @@ test("With comment", () => {
                             }
                         ],
                         preWhiteSpace: true,
+                        hasActualAncestor: true,
                         loc: getLocByIndex(14, 28),
                         parent: nodeList[0].children[1]
                     }
                 ],
                 parent: nodeList[0],
                 preWhiteSpace: true,
+                hasActualAncestor: true,
                 loc: getLocByIndex(10, 31),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
@@ -355,6 +372,7 @@ test("With comment", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(31, 41),
                 prev: nodeList[0].children[1],
                 next: nodeList[0].children[3]
@@ -371,12 +389,14 @@ test("With comment", () => {
                             }
                         ],
                         preWhiteSpace: true,
+                        hasActualAncestor: true,
                         loc: getLocByIndex(45, 50),
                         parent: nodeList[0].children[3]
                     }
                 ],
                 parent: nodeList[0],
                 preWhiteSpace: true,
+                hasActualAncestor: true,
                 loc: getLocByIndex(41, 53),
                 prev: nodeList[0].children[2],
                 next: nodeList[0].children[4],
@@ -392,6 +412,7 @@ test("With comment", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(53, 58),
                 prev: nodeList[0].children[3]
             }
@@ -426,6 +447,7 @@ test("With self-closing tags", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(5, 10),
                 next: nodeList[0].children[1]
             },
@@ -433,6 +455,7 @@ test("With self-closing tags", () => {
                 tag: "input",
                 isSelfClosing: true,
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(10, 17),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
@@ -447,6 +470,7 @@ test("With self-closing tags", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(17, 22),
                 prev: nodeList[0].children[1],
                 next: nodeList[0].children[3]
@@ -455,6 +479,7 @@ test("With self-closing tags", () => {
                 tag: "br",
                 isSelfClosing: true,
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(22, 27),
                 prev: nodeList[0].children[2],
                 next: nodeList[0].children[4],
@@ -469,6 +494,7 @@ test("With self-closing tags", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(27, 32),
                 prev: nodeList[0].children[3],
                 next: nodeList[0].children[5]
@@ -484,6 +510,7 @@ test("With self-closing tags", () => {
                                 loc: getLocByIndex(37, 46)
                             }
                         ],
+                        hasActualAncestor: true,
                         loc: getLocByIndex(37, 46),
                         parent: nodeList[0].children[5],
                         next: nodeList[0].children[5].children[1]
@@ -491,6 +518,7 @@ test("With self-closing tags", () => {
                     {
                         tag: "img",
                         isSelfClosing: true,
+                        hasActualAncestor: true,
                         loc: getLocByIndex(46, 53),
                         parent: nodeList[0].children[5],
                         startTagEndPos: getPosByIndex(53),
@@ -505,12 +533,14 @@ test("With self-closing tags", () => {
                                 loc: getLocByIndex(53, 58)
                             }
                         ],
+                        hasActualAncestor: true,
                         loc: getLocByIndex(53, 58),
                         parent: nodeList[0].children[5],
                         prev: nodeList[0].children[5].children[1]
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(32, 64),
                 prev: nodeList[0].children[4],
                 next: nodeList[0].children[6],
@@ -526,6 +556,7 @@ test("With self-closing tags", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(64, 65),
                 prev: nodeList[0].children[5]
             }
@@ -618,6 +649,7 @@ test("With components", () => {
                                 loc: getLocByIndex(48, 53)
                             }
                         ],
+                        hasActualAncestor: true,
                         loc: getLocByIndex(48, 53),
                         parent: nodeList[0].children[5]
                     }
@@ -663,6 +695,7 @@ test("With a text content interpolation block", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(5, 12)
             }
         ],
@@ -699,6 +732,7 @@ test("With multiple text content interpolation blocks", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(3, 18),
                     next: nodeList[0].children[1]
                 },
@@ -723,11 +757,13 @@ test("With multiple text content interpolation blocks", () => {
                                     loc: getLocByIndex(31, 32)
                                 }
                             ],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(24, 32),
                             parent: nodeList[0].children[1]
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(18, 39),
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
@@ -743,6 +779,7 @@ test("With multiple text content interpolation blocks", () => {
                         }
                     ],
                     parent: nodeList[0],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(39, 40),
                     prev: nodeList[0].children[1]
                 }
@@ -776,6 +813,7 @@ test("With multiple text content interpolation blocks", () => {
                         }
                     ],
                     parent: nodeList[2],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(48, 64),
                     next: nodeList[2].children[1]
                 },
@@ -805,11 +843,13 @@ test("With multiple text content interpolation blocks", () => {
                                     loc: getLocByIndex(79, 85)
                                 }
                             ],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(70, 86),
                             parent: nodeList[2].children[1]
                         }
                     ],
                     parent: nodeList[2],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(64, 93),
                     prev: nodeList[2].children[0],
                     next: nodeList[2].children[2],
@@ -825,6 +865,7 @@ test("With multiple text content interpolation blocks", () => {
                         }
                     ],
                     parent: nodeList[2],
+                    hasActualAncestor: true,
                     loc: getLocByIndex(93, 94),
                     prev: nodeList[2].children[1]
                 }
@@ -857,6 +898,7 @@ test("Type arguments for components", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(5, 10),
                 next: nodeList[0].children[1]
             },
@@ -869,6 +911,7 @@ test("Type arguments for components", () => {
                     raw: "Array<Item>",
                     loc: getLocByIndex(16, 27)
                 },
+                hasActualAncestor: true,
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
                 loc: getLocByIndex(10, 30),
@@ -883,6 +926,7 @@ test("Type arguments for components", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(30, 31),
                 prev: nodeList[0].children[1]
             }
@@ -914,6 +958,7 @@ test("Whether the child elements of textarea are parsed as textContent", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(10, 39)
             }
         ],
@@ -937,6 +982,7 @@ test("Whether invalid tag structure will be parsed as text content", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(5, 10)
             }
         ],
@@ -958,6 +1004,7 @@ test("Whether invalid tag structure will be parsed as text content", () => {
                     }
                 ],
                 parent: nodeList[0],
+                hasActualAncestor: true,
                 loc: getLocByIndex(3, 12)
             }
         ],
@@ -1078,6 +1125,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                         {
                             tag: "a",
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocWithDefaultEnd(3),
                             startTagEndPos: getPosByIndex(10)
                         }
@@ -1250,12 +1298,14 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(5, 10),
                             next: nodeList[0].children[1]
                         },
                         {
                             tag: "p",
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(10, 23),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -1271,6 +1321,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(23, 24),
                             prev: nodeList[0].children[1]
                         }
@@ -1308,6 +1359,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(5, 6),
                             next: nodeList[0].children[1]
                         },
@@ -1315,6 +1367,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                             tag: "p",
                             parent: nodeList[0],
                             isSelfClosing: true,
+                            hasActualAncestor: true,
                             loc: getLocByIndex(6, 10),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
@@ -1329,6 +1382,7 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 }
                             ],
                             parent: nodeList[0],
+                            hasActualAncestor: true,
                             loc: getLocByIndex(10, 11),
                             prev: nodeList[0].children[1]
                         }

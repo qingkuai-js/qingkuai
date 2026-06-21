@@ -1,5 +1,6 @@
 import type ts from "typescript"
 import type { Pair } from "#type-declarations/tools"
+import type { TestingMode } from "../compiler/enums"
 import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
 
 export interface CompileWarning {
@@ -94,6 +95,7 @@ export interface TemplateNode {
     isEmbedded: boolean
     preWhiteSpace: boolean
     isSelfClosing: boolean
+    hasActualAncestor: boolean
     children: TemplateNode[]
     content: TextContentPart[]
     startTagEndPos: ASTPosition
@@ -330,6 +332,7 @@ export type CompileOptions = Partial<{
     hashId: string
     debug: boolean
     sourcemap: boolean
+    testing: TestingMode
     interpretiveComments: boolean
     preserveHtmlComments: boolean
     shorthandDerivedDeclaration: boolean

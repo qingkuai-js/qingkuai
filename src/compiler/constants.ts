@@ -24,6 +24,7 @@ import {
     EVENT_PREVENT,
     EVENT_CAPTURE,
     EVENT_PASSIVE,
+    FRAGMENT_ROOT,
     FRAG_WITH_TARGET,
     FRAG_WHOLE_CONTENT,
     FRAG_ORPHAN_CONTENT,
@@ -67,7 +68,6 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
 }
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
-    "#scope",
     "#html",
     "#key",
     "#for",
@@ -94,6 +94,7 @@ export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
 }
 
 export const FRAG_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
+    [FRAGMENT_ROOT]: "ROOT",
     [FRAG_WHOLE_CONTENT]: "WHOLE_CONTENT",
     [FRAG_LEADING_ANCHOR]: "LEADING_ANCHOR",
     [FRAG_ORPHAN_CONTENT]: "ORPHAN_CONTENT",

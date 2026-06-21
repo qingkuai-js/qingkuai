@@ -83,7 +83,7 @@ export function registerEvents(registration: string[]) {
     }
 }
 
-export function listen(elem: HTMLElement, type: string, handler: ArbitraryFunc, flag = 0) {
+export function listen(elem: Element, type: string, handler: ArbitraryFunc, flag = 0) {
     const capture = !!(flag & EVENT_CAPTURE)
     const wrappedHandler = function (this: EventTarget, event: Event) {
         if (flag & EVENT_SELF && event.target !== elem) {

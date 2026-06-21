@@ -69,8 +69,8 @@ test("Function: parseEventFlagStandalone collects warnings and errors", () => {
 })
 
 test("Function: parseContextPattern", () => {
-    const pattern = parseContextPattern("a, b")
-    const invalid = parseContextPattern("a + b")
+    const pattern = parseContextPattern("a, b", 0)
+    const invalid = parseContextPattern("a + b", 0)
     expect(pattern?.elements.length).toBe(2)
     expect(pattern?.elements[0]?.getStart()).toBe(0)
     expect(invalid).toBeNull()

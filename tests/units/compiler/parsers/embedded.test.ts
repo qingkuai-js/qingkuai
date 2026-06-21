@@ -194,6 +194,7 @@ test("Whether <script> and <style> element will not be parsed as embedded langua
                     ],
                     parent: nodeList[0],
                     preWhiteSpace: true,
+                    hasActualAncestor: true,
                     loc: getLocByIndex(8, 27)
                 }
             ],
@@ -228,6 +229,7 @@ test("Whether <script> and <style> element will not be parsed as embedded langua
                     ],
                     parent: nodeList[2],
                     preWhiteSpace: true,
+                    hasActualAncestor: true,
                     loc: getLocByIndex(44, 63)
                 }
             ],

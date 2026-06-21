@@ -38,7 +38,7 @@ function extractIdentifiers(source: string) {
 
 test("Whether default value is specified", () => {
     function expectedDefaultValueIsSpecified(source: string, expected: boolean) {
-        const pattern: ts.ArrayBindingPattern = parseContextPattern(source)!
+        const pattern: ts.ArrayBindingPattern = parseContextPattern(source, 0)!
         expect(
             walkBindingNameIdentifiers(pattern, NOOP).specifiedDefaultValue,
             `source: ${source}`

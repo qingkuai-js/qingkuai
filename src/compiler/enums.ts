@@ -1,3 +1,9 @@
+export enum TestingMode {
+    None = 0,
+    Unit = 1,
+    E2e = 2
+}
+
 export enum PositionFlag {
     InScript = 1 << 0,
     InStyle = 1 << 1,
