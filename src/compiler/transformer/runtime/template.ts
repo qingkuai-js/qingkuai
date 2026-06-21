@@ -739,7 +739,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.wrapLine().writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
     }
 
-    const hasContext = hasSlots || hasProps || hasRefs || hasScope
+    const hasContext = hasSlots || hasProps || hasRefs || hasScope || !node.hasActualAncestor
     if (hasContext) {
         writer.write(", {").indent()
     }
@@ -844,6 +844,8 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     if (hasScope) {
         const scopeName = getMaybeReusedString(` qk-${inputDescriptor.options.hashId}`)
         insertTrailingComma().write(`a: ${internalId}.getScopes(${scopeName})`)
+    } else if (!node.hasActualAncestor) {
+        insertTrailingComma().write(`a: ${internalId}.getScopes()`)
     }
 
     if (hasContext) {

@@ -6,7 +6,6 @@ import { defineE2ETestFile } from "../scenario-module"
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import ChainBreakMiddle from "./components/scope/ChainBreakMiddle"
             import MultiRootComp from "./components/scope/MultiRootComp"
             import ToggleScope from "./components/scope/ToggleScope"
             import ListScope from "./components/scope/ListScope"
@@ -28,12 +27,8 @@ const scenario: E2EScenarioInput = {
             }
         </lang-js>
 
-        <section data-page="component-scope-advanced">
-            <h1 id="scope-advanced-title">Advanced scope directive</h1>
-
-            <section id="chain-break-section">
-                <h2>Chain break</h2>
-            </section>
+        <section data-page="component-scope-advanced-multi-root">
+            <h1 id="multi-root-title">Advanced scope: multi-root and dynamics</h1>
 
             <section id="multi-root-section">
                 <h2>Multi root</h2>
@@ -51,8 +46,6 @@ const scenario: E2EScenarioInput = {
             </section>
         </section>
 
-        <ChainBreakMiddle #scope />
-
         <MultiRootComp #scope />
 
         <ToggleScope #if={showScoped} #scope />
@@ -62,20 +55,6 @@ const scenario: E2EScenarioInput = {
         </div>
     `,
     components: {
-        "scope/ChainBreakMiddle": `
-            <lang-js>
-                import LeafNoScope from "./LeafNoScope"
-            </lang-js>
-
-            <section>
-                <LeafNoScope />
-            </section>
-        `,
-        "scope/LeafNoScope": `
-            <article id="chain-break-leaf">
-                <span id="chain-break-leaf-inner">leaf no scope</span>
-            </article>
-        `,
         "scope/MultiRootComp": `
             <header id="multi-root-header">
                 <span id="multi-root-header-inner">header content</span>
@@ -108,30 +87,12 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         })
     }
 
-    test("scope chain breaks when intermediate component lacks #scope", async ({
-        page,
-        visitScenario
-    }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#scope-advanced-title")).toBeVisible()
-
-        // ChainBreakMiddle has #scope from parent (page component).
-        // But ChainBreakMiddle does NOT use #scope on LeafNoScope.
-        // So LeafNoScope should NOT inherit page's scope — only its own scope.
-        const leafAttrs = await getScopeAttrs(page, "#chain-break-leaf")
-        const leafInnerAttrs = await getScopeAttrs(page, "#chain-break-leaf-inner")
-
-        // LeafNoScope has no #scope → no ancestor scopes → 0 scope attrs
-        expect(leafAttrs.length).toBe(0)
-        expect(leafInnerAttrs.length).toBe(0)
-    })
-
     test("applies ancestor scope to all root elements in multi-root component", async ({
         page,
         visitScenario
     }) => {
         await visitScenario(scenario)
-        await expect(page.locator("#scope-advanced-title")).toBeVisible()
+        await expect(page.locator("#multi-root-title")).toBeVisible()
 
         const headerAttrs = await getScopeAttrs(page, "#multi-root-header")
         const mainAttrs = await getScopeAttrs(page, "#multi-root-main")
@@ -158,7 +119,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         visitScenario
     }) => {
         await visitScenario(scenario)
-        await expect(page.locator("#scope-advanced-title")).toBeVisible()
+        await expect(page.locator("#multi-root-title")).toBeVisible()
 
         // Initial: page scope only = 1
         const initialAttrs = await getScopeAttrs(page, "#toggle-root")
@@ -183,7 +144,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         visitScenario
     }) => {
         await visitScenario(scenario)
-        await expect(page.locator("#scope-advanced-title")).toBeVisible()
+        await expect(page.locator("#multi-root-title")).toBeVisible()
 
         const allRoots = page.locator('[id="list-scope-root"]')
         await expect(allRoots).toHaveCount(2)

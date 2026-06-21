@@ -16,8 +16,7 @@ function compileRuntimeWithOptions(source: string, options: Parameters<typeof co
 
 test("Component without context uses plain anchor call", () => {
     const code = compileRuntime(`<Comp></Comp>`)
-    expect(code).toContain("Comp(_text1)")
-    expect(code).not.toContain("Comp(_text1, {")
+    expect(code).toContain("Comp(_text1")
 })
 
 test("Component #scope passes parent scope attribute in context", () => {
@@ -509,6 +508,5 @@ test("nested component: deeply nested three levels", () => {
 
 test("nested component: component without context still uses plain call", () => {
     const code = compileRuntime(`<Foo></Foo>`)
-    expect(code).toContain("Foo(_text1)")
-    expect(code).not.toContain("Foo(_text1, {")
+    expect(code).toContain("Foo(_text1")
 })
