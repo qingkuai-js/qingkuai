@@ -62,7 +62,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
     const ANY_VALUE = `${LSC.UTIL}.anyValue`
     const SLOT_NAMES_TYPE = slotNamesType || `${LSC.UTIL}.EmptyObject`
-    const COMPONENT_TYPE = `${LSC.UTIL}.QingkuaiComponent<ReturnType<typeof ${LSC.COMPONENT}>>`
+    const COMPONENT_TYPE = `${LSC.UTIL}.QingkuaiComponent<typeof ${LSC.COMPONENT}>`
 
     const needImportItems: string[] = [
         LSC.UTIL,
@@ -85,14 +85,11 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     for (const decl of importDeclarations) {
         writer.writeScriptNode(decl).writeLine(";")
     }
-    writer.write(`\nfunction ${LSC.COMPONENT}(){`).indent()
-
     if (isTS) {
         writer.writeLine(`const slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};`)
     } else {
         writer.writeLine(`/** @type { Readonly<${SLOT_NAMES_TYPE}> } */ slots = 0;`)
     }
-    writer.dedent(false)
 
     traverseObject(topLevelIdentifiers, (_, info) => {
         const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
@@ -111,7 +108,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             embeddedScriptEditor.insert(declarator.initializer.getEnd(), ")")
         }
     })
-    writer.wrapLine().writeEditedScript(embeddedScriptEditor).indent()
+    writer.wrapLine().writeEditedScript(embeddedScriptEditor)
     writer.write(";", inputDescriptor.script.loc.end.index).wrapLine(2)
 
     //
@@ -607,7 +604,11 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
     })(nodes)
 
-    if ((writer.write(`\n\nreturn (_) => {`), exportBindings.length)) {
+    // 生成组件函数和导出语句
+    // Generate component function and export statement
+    writer.write(`\n\nconst ${LSC.COMPONENT} = (_) => {`)
+
+    if (exportBindings.length) {
         writer.indent().write(`return {`).indent(false)
 
         for (const item of exportBindings) {
@@ -620,7 +621,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
         writer.dedent().write("}").dedent()
     }
-    writer.write("}").dedent().write("}\n\n")
+    writer.write("}").wrapLine(2)
 
     if (isTS) {
         writer.write(`export `)
