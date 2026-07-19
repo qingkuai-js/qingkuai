@@ -22,7 +22,7 @@ export function eliminate(editor: CodeEditor) {
                             modifier.kind === ts.SyntaxKind.ExportKeyword ||
                             modifier.kind === ts.SyntaxKind.DefaultKeyword
                         ) {
-                            editor.remove(modifier.getFullStart(), modifier.getEnd())
+                            editor.remove(modifier.getStart(), modifier.getEnd())
                         }
                     }
                 }
@@ -33,7 +33,7 @@ export function eliminate(editor: CodeEditor) {
 
     if (!inputDescriptor.options.checkMode) {
         for (const node of analyzeResult.script.eliminatedNodes) {
-            editor.remove(node.getFullStart(), node.getEnd())
+            editor.remove(node.getStart(), node.getEnd())
         }
     }
 }

@@ -304,6 +304,14 @@ export type TopLevelReferences = Record<
         shorthand: boolean
     }[]
 >
+export type IdentifierStatusInfo = Record<
+    string,
+    {
+        description: string
+        inlayIndexes: number[]
+        status: IdentifierStatus
+    }
+>
 
 export interface CompileIntermediateOptions {
     shorthandDerivedDeclaration?: boolean

@@ -6,6 +6,7 @@ import type {
     StyleDescriptor,
     ScriptDescriptor,
     ASTPositionWithFlag,
+    IdentifierStatusInfo,
     TopLevelIdentifierInfo,
     CompileIntermediateOptions
 } from "#type-declarations/compiler"
@@ -21,6 +22,7 @@ import { newCleanObj, traverseObject } from "../util/shared/sundry"
 import { generateIntermediateCode } from "./transformer/check/codegen"
 import { analyzeResult, inputDescriptor, messages, resetCompilerState } from "./state"
 import { isValidIdentifierName } from "../util/compiler/assert"
+import { getScriptSourceIndex } from "../util/compiler/position"
 
 export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
@@ -42,16 +44,24 @@ export function compile(source: string, options: CompileOptions = {}) {
 }
 
 export function compileIntermediate(source: string, options: CompileIntermediateOptions = {}) {
-    resetCompilerState({ ...options, checkMode: true })
+    resetCompilerState({
+        ...options,
+        checkMode: true,
+        preserveHtmlComments: true
+    })
 
     const templateNodes = parseTemplate(source)
     analyzeScript()
     analyzeTemplate(templateNodes)
 
     const writer = generateIntermediateCode(templateNodes)
-    const idStatusInfo: Record<string, string> = newCleanObj()
+    const idStatusInfo: IdentifierStatusInfo = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
-        idStatusInfo[name] = getTopLevelIdentifierInfo(name, info)
+        idStatusInfo[name] = {
+            status: getIdentifierStatusForInlayHint(info),
+            description: getTopLevelIdentifierInfo(name, info),
+            inlayIndexes: info.nodeInfos.map(nodeInfo => getScriptSourceIndex(nodeInfo.id.getEnd()))
+        }
     })
 
     const positions = inputDescriptor.positions
@@ -83,7 +93,7 @@ export class CompileIntermediateResult {
         public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],
-        public identifierStatusInfo: Record<string, string>,
+        public identifierStatusInfo: IdentifierStatusInfo,
         public indexMap: { itos: number[]; stoi: number[] },
         private slots: (typeof analyzeResult)["template"]["slots"],
         private nodeContexts: (typeof analyzeResult)["template"]["nodeContexts"]
@@ -138,6 +148,19 @@ function getTopLevelIdentifierInfo(name: string, info: TopLevelIdentifierInfo) {
                 return "raw (invalid alias)"
             }
             return `alias -> ${info.aliasTarget}`
+        }
+        default: {
+            return info.status
+        }
+    }
+}
+
+function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo) {
+    switch (info.status) {
+        case "literal":
+        case "pending":
+        case "raw": {
+            return "raw"
         }
         default: {
             return info.status
