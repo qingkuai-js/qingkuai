@@ -36,7 +36,9 @@ test("Intermediate: inferred raw reason is unmutated for literal used in templat
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-unmutated")
     expect(result.identifierStatusInfo).toMatchObject({
-        count: "raw (never mutated)"
+        count: {
+            description: "raw (never mutated)"
+        }
     })
 })
 
@@ -54,8 +56,12 @@ test("Intermediate: function call in template does not count as direct identifie
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-indirect-access")
     expect(result.identifierStatusInfo).toMatchObject({
-        state: "raw (template unused)",
-        getCount: "raw (never mutated)"
+        state: {
+            description: "raw (template unused)"
+        },
+        getCount: {
+            description: "raw (never mutated)"
+        }
     })
 })
 
@@ -70,7 +76,9 @@ test("Intermediate: object literal not used in template is raw with not-accessed
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-not-accessed")
     expect(result.identifierStatusInfo).toMatchObject({
-        state: "raw (template unused)"
+        state: {
+            description: "raw (template unused)"
+        }
     })
 })
 
@@ -85,7 +93,9 @@ test("Intermediate: explicit raw marker carries explicit raw reason", () => {
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-explicit-raw")
     expect(result.identifierStatusInfo).toMatchObject({
-        config: "raw (explicit raw)"
+        config: {
+            description: "raw (explicit raw)"
+        }
     })
 })
 
@@ -100,7 +110,9 @@ test("Intermediate: alias marker carries alias reason", () => {
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-alias")
     expect(result.identifierStatusInfo).toMatchObject({
-        config: "alias -> props.config"
+        config: {
+            description: "alias -> props.config"
+        }
     })
 })
 
@@ -117,7 +129,9 @@ test("Intermediate: function declaration stays raw even when called in template"
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-function-used")
     expect(result.identifierStatusInfo).toMatchObject({
-        getLabel: "raw (never mutated)"
+        getLabel: {
+            description: "raw (never mutated)"
+        }
     })
 })
 
@@ -136,8 +150,12 @@ test("Intermediate: literal used and then mutated becomes reactive", () => {
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-literal-mutated")
     expect(result.identifierStatusInfo).toMatchObject({
-        count: "reactive",
-        inc: "raw (never mutated)"
+        count: {
+            status: "reactive"
+        },
+        inc: {
+            description: "raw (never mutated)"
+        }
     })
 })
 
@@ -152,7 +170,9 @@ test("Intermediate: const function literal used in template is implicit raw", ()
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-implicit-raw")
     expect(result.identifierStatusInfo).toMatchObject({
-        getValue: "raw (implicit raw)"
+        getValue: {
+            description: "raw (implicit raw)"
+        }
     })
 })
 
@@ -167,7 +187,9 @@ test("Intermediate: reactive mark on const literal is downgraded to raw", () => 
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-downgraded-raw")
     expect(result.identifierStatusInfo).toMatchObject({
-        value: "raw (downgraded)"
+        value: {
+            description: "raw (downgraded)"
+        }
     })
 })
 
@@ -182,7 +204,9 @@ test("Intermediate: shallow intrinsic keeps shallow status", () => {
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-shallow")
     expect(result.identifierStatusInfo).toMatchObject({
-        state: "shallow"
+        state: {
+            status: "shallow"
+        }
     })
 })
 
@@ -197,6 +221,8 @@ test("Intermediate: derived intrinsic keeps derived status", () => {
 
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-derived")
     expect(result.identifierStatusInfo).toMatchObject({
-        value: "derived"
+        value: {
+            status: "derived"
+        }
     })
 })

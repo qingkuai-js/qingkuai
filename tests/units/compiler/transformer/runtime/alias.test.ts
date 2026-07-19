@@ -34,13 +34,17 @@ test("Transform result of alias in production environment", () => {
             console.log(a, props.b, props.c, d, props.d.e, f, g, h, arr[0], arr[1], arr[2][0], arr[3][0], arr[3][1], n, o, p, q, props.q, s, t, props.u)
 
             const a = 1
-            const f = 2,
+                
+            const  f = 2,
                 g = 3
-            const h = 4, n = 5
+            const h = 4,
+                 n = 5
             let o = 6,
                 p = 7,
+                
                 s = 8,
                 t = 9
+            
             console.log(a, props.b, props.c, d, props.d.e, f, g, h, arr[0], arr[1], arr[2][0], arr[3][0], arr[3][1], n, o, p, q, props.q, s, t, props.u)
         `,
         false

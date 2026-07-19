@@ -197,16 +197,36 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
 
     expect(result.slotNames).toEqual(["main"])
     expect(result.identifierStatusInfo).toMatchObject({
-        title: "raw (template unused)",
-        showPanel: "reactive",
-        pending: "reactive",
-        mount: "reactive",
-        list: "reactive",
-        rawValue: "raw (downgraded)",
-        explicitRawValue: "raw (explicit raw)",
-        implicitRawValue: "raw (implicit raw)",
-        onHeaderClick: "raw (never mutated)",
-        onItemClick: "raw (never mutated)"
+        title: {
+            description: "raw (template unused)"
+        },
+        showPanel: {
+            status: "reactive"
+        },
+        pending: {
+            status: "reactive"
+        },
+        mount: {
+            status: "reactive"
+        },
+        list: {
+            status: "reactive"
+        },
+        rawValue: {
+            description: "raw (downgraded)"
+        },
+        explicitRawValue: {
+            description: "raw (explicit raw)"
+        },
+        implicitRawValue: {
+            description: "raw (implicit raw)"
+        },
+        onHeaderClick: {
+            description: "raw (never mutated)"
+        },
+        onItemClick: {
+            description: "raw (never mutated)"
+        }
     })
     expect(result.getTypeDelayInterIndexes).toEqual([])
     expect(result.templateNodes.length).toBeGreaterThan(0)

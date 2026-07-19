@@ -65,9 +65,7 @@ test("TypeScript source uses typed default export branch", () => {
         </lang-ts>
         <div>{count}</div>
     `)
-    expect(result.code).toContain(
-        "as __qk__lsu.QingkuaiComponent<ReturnType<typeof __qk__component>>;"
-    )
+    expect(result.code).toContain("as __qk__lsu.QingkuaiComponent<typeof __qk__component>;")
     expect(result.code).not.toContain("/** @type")
 })
 
