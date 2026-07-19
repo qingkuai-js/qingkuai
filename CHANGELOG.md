@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.83](https://github.com/qingkuai-js/qingkuai/compare/v1.0.82...v1.0.83) (2026-07-19)
+
+### Refactors
+
+- **compiler:** restructure identifier reactivity status information returned by `compileIntermediate` to support language service `inlayHint` feature ([0ce7ad6](https://github.com/qingkuai-js/qingkuai/commit/0ce7ad6))
+- **compiler:** restructure intermediate code format in check mode to support CLI tool for generating type declaration files ([f70c3eb](https://github.com/qingkuai-js/qingkuai/commit/f70c3eb))
+
 ## [1.0.82](https://github.com/qingkuai-js/qingkuai/compare/v1.0.81...v1.0.82) (2026-06-21)
 
 ### Features
