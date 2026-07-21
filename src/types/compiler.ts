@@ -307,8 +307,11 @@ export type TopLevelReferences = Record<
 export type IdentifierStatusInfo = Record<
     string,
     {
+        inlays: {
+            index: number
+            kind: InlayHintKind
+        }[]
         description: string
-        inlayIndexes: number[]
         status: IdentifierStatus
     }
 >
@@ -403,5 +406,6 @@ export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & 
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean
 }
+export type InlayHintKind = "variable" | "function" | "class" | "enum"
 export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"
 export type ReactiveIntrinsics = "reactive" | "raw" | "shallow" | "derived" | "alias"
