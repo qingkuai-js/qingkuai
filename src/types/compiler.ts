@@ -344,6 +344,7 @@ export type CompileOptions = Partial<{
     debug: boolean
     sourcemap: boolean
     testing: TestingMode
+    replaceQkImport: boolean
     interpretiveComments: boolean
     preserveHtmlComments: boolean
     shorthandDerivedDeclaration: boolean

@@ -25,6 +25,7 @@ import { IntermediateCodeWriter } from "../writer"
 import { stringify } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
+
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
 import { isFunctionLiteral, isInlineEventHandler } from "../../ts-ast/assert"
