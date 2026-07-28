@@ -627,11 +627,11 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     if (isTS) {
         writer.write(`export `)
         writer.write("default", exportSourceRange)
-        return writer.write(` ${ANY_VALUE} as ${COMPONENT_TYPE};`)
+        return writer.write(` 0 as any as ${COMPONENT_TYPE};`)
     }
     writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `)
     writer.write("default", exportSourceRange)
-    return writer.write(` ${ANY_VALUE};`)
+    return writer.write(` 0;`)
 }
 
 function getRangeByLoc(loc: ASTLocation): Range {
