@@ -1,3 +1,4 @@
+import type ts from "typescript"
 import type {
     InputOptions,
     AnalyzeResult,
@@ -16,10 +17,12 @@ import { newASTLocation } from "../util/compiler/position"
 export let messages: CompileMessage[] = []
 export let analyzeResult = newAnalyzeResult()
 export let inputDescriptor = newInputDescriptor({})
+export let tsParsingDiagnostics: ts.Diagnostic[] = []
 export let generateIdentifier = newGenerateIdentifier()
 
 export function resetCompilerState(options: Partial<InputOptions>) {
     messages = []
+    tsParsingDiagnostics = []
     analyzeResult = newAnalyzeResult()
     generateIdentifier = newGenerateIdentifier()
     inputDescriptor = newInputDescriptor({ ...options })

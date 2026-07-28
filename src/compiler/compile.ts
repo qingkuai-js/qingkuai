@@ -16,6 +16,13 @@ import type { PositionFlag } from "./enums"
 
 import ts from "typescript"
 
+import {
+    messages,
+    analyzeResult,
+    inputDescriptor,
+    resetCompilerState,
+    tsParsingDiagnostics
+} from "./state"
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
 import { analyzeTemplate } from "./analyzer/template"
@@ -24,7 +31,6 @@ import { getScriptSourceIndex } from "../util/compiler/position"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
 import { generateIntermediateCode } from "./transformer/check/codegen"
-import { analyzeResult, inputDescriptor, messages, resetCompilerState } from "./state"
 
 export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
@@ -79,6 +85,7 @@ export function compileIntermediate(source: string, options: CompileIntermediate
         messages,
         templateNodes,
         positions,
+        tsParsingDiagnostics,
         writer.gtdii,
         scriptDescriptor,
         styleDescriptors,
@@ -97,6 +104,7 @@ export class CompileIntermediateResult {
         public messages: CompileMessage[],
         public templateNodes: TemplateNode[],
         public positions: ASTPositionWithFlag[],
+        public parseDiagnostics: ts.Diagnostic[],
         public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],

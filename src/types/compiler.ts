@@ -407,6 +407,7 @@ export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & 
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean
 }
+export type ParseDiatnosticDealtKind = "record" | "ignore" | "thrown"
 export type InlayHintKind = "variable" | "function" | "class" | "enum"
 export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"
 export type ReactiveIntrinsics = "reactive" | "raw" | "shallow" | "derived" | "alias"
