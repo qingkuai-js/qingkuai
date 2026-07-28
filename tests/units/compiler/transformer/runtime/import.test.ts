@@ -4,7 +4,7 @@ import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 
 function compileWithReplace(source: string) {
     const result = compile(formatSourceCode(source), {
-        replaceQkImport: true
+        replaceQkImports: true
     })
     expect(
         result.messages.filter(item => {

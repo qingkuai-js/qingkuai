@@ -6,7 +6,7 @@ import { analyzeResult, inputDescriptor } from "../../state"
 // Replace .qk import paths in the script with .js based on AST,
 // compatible with query parameters (e.g. ?raw).
 export function replaceQkImportSpecifiers() {
-    if (!inputDescriptor.options.replaceQkImport || !inputDescriptor.script.code) {
+    if (!inputDescriptor.options.replaceQkImports || !inputDescriptor.script.code) {
         return
     }
 
