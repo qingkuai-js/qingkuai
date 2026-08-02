@@ -316,10 +316,6 @@ export type IdentifierStatusInfo = Record<
     }
 >
 
-export interface CompileIntermediateOptions {
-    shorthandDerivedDeclaration?: boolean
-}
-
 export interface CompileResult {
     code: string
     hashId: string
@@ -352,6 +348,11 @@ export type CompileOptions = Partial<{
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
+
+export type CompileIntermediateOptions = Pick<
+    CompileOptions,
+    "shorthandDerivedDeclaration" | "allowConstReactive"
+>
 
 export type IdentifierStatus =
     | "reactive"
