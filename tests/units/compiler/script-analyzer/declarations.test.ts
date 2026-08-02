@@ -1,13 +1,24 @@
+import type { CompileOptions } from "#type-declarations/compiler"
 import type { ExpectedCompileMessage, ExpectedTopLevelIdentifier } from "#type-declarations/testing"
 
 import { expect, test } from "vitest"
-import { analyzeResult } from "../../../../src/compiler/state"
 import { objectKeys } from "../../../../src/util/shared/aliases"
 import { traverseObject } from "../../../../src/util/shared/sundry"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { analyzeScript } from "../../../../src/compiler/analyzer/script"
+import { parseTemplate } from "../../../../src/compiler/parser/template"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
+import { analyzeResult, resetCompilerState } from "../../../../src/compiler/state"
+
+function localAnalyzeWithOptions(source: string, options: CompileOptions) {
+    resetCompilerState({
+        checkMode: true,
+        ...options
+    })
+    parseTemplate(`<lang-ts>${formatSourceCode(source)}</lang-ts>`)
+    analyzeScript()
+}
 
 function localAnalyze(source: string) {
     parseTemplateTesting(`<lang-ts>${formatSourceCode(source)}</lang-ts>`, {
@@ -469,6 +480,72 @@ test("Status of pre-mutation of literals should be pending", () => {
             hoist: false,
             implicit: true,
             status: "pending"
+        }
+    ])
+})
+
+test("Const declarations are not inferred as reactive when allowConstReactive is false", () => {
+    localAnalyzeWithOptions(
+        `
+            const a = [1, 2, 3]
+            const b = obj
+            let c = count
+            var d = {}
+        `,
+        {
+            allowConstReactive: false
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "a",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "b",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "c",
+            hoist: false,
+            implicit: true,
+            status: "pending"
+        },
+        {
+            name: "d",
+            hoist: true,
+            implicit: true,
+            status: "pending"
+        }
+    ])
+})
+
+test("Explicitly marking a const as reactive errors when allowConstReactive is false", () => {
+    localAnalyzeWithOptions(
+        `
+            const a = reactive({})
+            const b = shallow({})
+            const c = raw({})
+            const d = derived(() => a)
+        `,
+        {
+            allowConstReactive: false
+        }
+    )
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [6, 22],
+            value: `Marking a \`const\` declaration with the "reactive" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
+        },
+        {
+            type: "error",
+            range: [29, 44],
+            value: `Marking a \`const\` declaration with the "shallow" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
         }
     ])
 })

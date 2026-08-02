@@ -359,6 +359,54 @@ describe("Production", () => {
                 )
             })
 
+            test("const stays raw when allowConstReactive is false", () => {
+                matchTransformedScript(
+                    `
+                        <lang-js>
+                            console.log(a, b)
+
+                            const a = obj,
+                                b = arr
+                            console.log(a, b)
+                        </lang-js>
+                        {a + b}
+                    `,
+                    formatSourceCode(`
+                        console.log(a, b)
+
+                        const a = obj,
+                            b = arr
+                        console.log(a, b)
+                    `),
+                    {
+                        allowConstReactive: false
+                    }
+                )
+            })
+
+            test("let is still reactive when allowConstReactive is false", () => {
+                matchTransformedScript(
+                    `
+                        <lang-js>
+                            console.log(c)
+
+                            let c = count
+                            console.log(c)
+                        </lang-js>
+                        {c}
+                    `,
+                    formatSourceCode(`
+                        console.log(c)
+
+                        let c = _.react(count)
+                        console.log(c.$)
+                    `),
+                    {
+                        allowConstReactive: false
+                    }
+                )
+            })
+
             test("var shallow", () => {
                 matchTransformedScript(
                     `

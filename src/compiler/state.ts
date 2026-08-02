@@ -102,6 +102,7 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             sourcemap: false,
             checkMode: false,
             replaceQkImports: false,
+            allowConstReactive: true,
             testing: TestingMode.None,
             reactivityMode: "reactive",
             interpretiveComments: false,

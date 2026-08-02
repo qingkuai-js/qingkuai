@@ -134,7 +134,7 @@ export const NoEndTagMatched = withLocation(1012, (tag: string) => {
     return `The <${tag}> tag does not have a matched end tag: </${tag}>.`
 })
 
-export const InvalidScopeDirectivePlacement = withLocation(1068, () => {
+export const InvalidScopeDirectivePlacement = withLocation(1069, () => {
     return `The "#scope" directive can only be used on components.`
 })
 
@@ -315,6 +315,10 @@ export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) 
 
 export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {
     return `Multiple nodes are assigned to the same slot("${name}") in <${component}>. Consider using a different slot name in the "#slot" directive.`
+})
+
+export const ConstReactiveDisallowedByOption = withLocation(1070, (intrinsic: string) => {
+    return `Marking a \`const\` declaration with the "${intrinsic}" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
 })
 
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {

@@ -22,6 +22,7 @@ import {
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
+    ConstReactiveDisallowedByOption,
     InvalidUsageForIntrinsicMethods,
     ShadowCompilerIntrinsicAtTopLevel,
     InvalidParameterForAliasIntrinsic,
@@ -412,6 +413,7 @@ function inferStatusByVariableDeclaration(
     const isConst = declareKeyword === "const"
     const declarationLoc = getScriptLocByNode(declaration)
     const isDestructuring = !ts.isIdentifier(declaration.name)
+    const allowConstReactive = inputDescriptor.options.allowConstReactive
     const initNode = declaration.initializer && getStriptTypeOperationsNode(declaration.initializer)
 
     if (!initNode) {
@@ -436,7 +438,9 @@ function inferStatusByVariableDeclaration(
             return isConst ? "raw" : "literal"
         }
 
-        return "pending"
+        // 当 allowConstReactive 选项被禁用时，常量声明不会参与响应式推断
+        // Constant declarations are not inferred as reactive when the allowConstReactive option is disabled.
+        return isConst && !allowConstReactive ? "raw" : "pending"
     }
 
     const callee = getStriptTypeOperationsNode(initNode.expression)!
@@ -483,7 +487,17 @@ function inferStatusByVariableDeclaration(
 
             const status = calleeName as ReactiveIntrinsics
             if (isDestructuring || !isConst || !(isLiteralArg || isFunctionLiteral(firstArg))) {
-                return status
+                if (
+                    !isConst ||
+                    allowConstReactive ||
+                    !(status === "reactive" || status === "shallow")
+                ) {
+                    return status
+                }
+
+                // 当 allowConstReactive 选项被禁用时，禁止通过 reactive/shallow 显式标记常量声明
+                // Explicitly marking a const declaration with `reactive` or `shallow` is disallowed when the allowConstReactive option is disabled.
+                return (ConstReactiveDisallowedByOption(declarationLoc, status), "raw")
             }
 
             // 通过 raw 标记常量声明的字面量值是冗余的
