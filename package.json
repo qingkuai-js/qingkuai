@@ -41,6 +41,7 @@
     "bundle": "rollup -c",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
+    "release": "tsx scripts/release.ts",
     "test:units": "vitest --run",
     "test:coverage": "vitest --run --coverage",
     "test:e2e": "npm run bundle && playwright test",
