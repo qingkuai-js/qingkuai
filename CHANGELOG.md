@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.84](https://github.com/qingkuai-js/qingkuai/compare/v1.0.83...v1.0.84) (2026-08-02)
+
+### Features
+
+- **compiler:** record TypeScript parse diagnostics and refactor error handling ([9b40a0c](https://github.com/qingkuai-js/qingkuai/commit/9b40a0c))
+- **compiler:** add `replaceQkImports` option to replace `.qk` import paths with `.js` ([1283ac3](https://github.com/qingkuai-js/qingkuai/commit/1283ac3))
+- **compiler:** add `allowConstReactive` option to disable reactive inference for const declarations ([f64ef3b](https://github.com/qingkuai-js/qingkuai/commit/f64ef3b))
+
+### Fixes
+
+- **compiler:** replace `anyValue` with `0` for default export in codegen ([1369d51](https://github.com/qingkuai-js/qingkuai/commit/1369d51))
+- **compiler:** decode HTML entities for interpolated text via `setText` ([def83e3](https://github.com/qingkuai-js/qingkuai/commit/def83e3))
+
 ## [1.0.83](https://github.com/qingkuai-js/qingkuai/compare/v1.0.82...v1.0.83) (2026-07-19)
 
 ### Refactors
