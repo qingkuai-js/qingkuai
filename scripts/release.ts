@@ -1,5 +1,5 @@
-import nodeChildProcess from "node:child_process"
 import nodeFs from "node:fs"
+import nodeChildProcess from "node:child_process"
 
 const MAIN_BRANCH = "main"
 const VERSION_RE = /^\d+\.\d+\.\d+$/
@@ -65,6 +65,22 @@ function readPackageVersion(): string {
     return version
 }
 
+// 将字符串中的正则特殊字符转义
+// Escape regex special characters in a string.
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+// 检查 CHANGELOG.md 中是否存在与版本号对应的变更记录
+// Ensure CHANGELOG.md contains a changelog section for the target version.
+function ensureChangelogEntryExists(version: string) {
+    const changelog = nodeFs.readFileSync("CHANGELOG.md", "utf8")
+    const headingRE = new RegExp(`^## \\[${escapeRegExp(version)}\\]`, "m")
+    if (!headingRE.test(changelog)) {
+        throw new Error(`CHANGELOG.md does not contain a section for version ${version}`)
+    }
+}
+
 // 将版本号最后一位 +1，如 1.0.83 → 1.0.84
 // Bump the last segment of the version, e.g. 1.0.83 → 1.0.84.
 function bumpVersion(version: string): string {
@@ -113,6 +129,8 @@ function main() {
         if (!VERSION_RE.test(version)) {
             throw new Error(`Invalid version: ${version} (expected x.y.z format)`)
         }
+
+        ensureChangelogEntryExists(version)
 
         writePackageVersion(version)
         console.log(`Version bumped to ${version}`)
