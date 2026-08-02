@@ -42,6 +42,20 @@ function switchBranch(branch: string) {
     runVisible(`git checkout ${branch}`)
 }
 
+// 确保本地 main 与远端 origin/main 保持一致
+// Ensure the local main branch is in sync with origin/main.
+function ensureMainInSyncWithRemote() {
+    runVisible("git fetch origin main")
+    const [ahead, behind] = run("git rev-list --left-right --count main...origin/main")
+        .split(/\s+/)
+        .map(Number)
+    if (ahead || behind) {
+        throw new Error(
+            `Local main is out of sync with origin/main (${ahead} ahead, ${behind} behind). Please sync before releasing.`
+        )
+    }
+}
+
 function readPackageVersion(): string {
     const packageJson = JSON.parse(nodeFs.readFileSync("package.json", "utf8"))
     const version = packageJson.version?.trim()
@@ -92,6 +106,8 @@ function main() {
             console.log(`Current branch is ${currentBranch}, switching to ${MAIN_BRANCH}...`)
             switchBranch(MAIN_BRANCH)
         }
+
+        ensureMainInSyncWithRemote()
 
         const version = resolveVersionArg() ?? bumpVersion(readPackageVersion())
         if (!VERSION_RE.test(version)) {
