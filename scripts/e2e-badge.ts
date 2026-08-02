@@ -5,6 +5,8 @@ const E2E_ROOT_DIR = "tests/e2e"
 const OUTPUT_PATH = "badges/e2e-scenarios.json"
 const GROUP_DIRS = ["framework", "apps", "issues"]
 
+main()
+
 function collectScenarioTestFiles(rootDir: string): string[] {
     const results: string[] = []
     for (const groupDir of GROUP_DIRS) {
@@ -47,16 +49,18 @@ function getBadgeColor(count: number): string {
     return "orange"
 }
 
-const scenarioFiles = collectScenarioTestFiles(E2E_ROOT_DIR)
-const count = scenarioFiles.length
-const badgeData = {
-    schemaVersion: 1,
-    label: "E2E Scenarios",
-    message: String(count),
-    color: getBadgeColor(count)
+function main() {
+    const scenarioFiles = collectScenarioTestFiles(E2E_ROOT_DIR)
+    const count = scenarioFiles.length
+    const badgeData = {
+        schemaVersion: 1,
+        label: "E2E Scenarios",
+        message: String(count),
+        color: getBadgeColor(count)
+    }
+
+    nodeFs.mkdirSync(nodePath.dirname(OUTPUT_PATH), { recursive: true })
+    nodeFs.writeFileSync(OUTPUT_PATH, `${JSON.stringify(badgeData, null, 2)}\n`)
+
+    console.log(`E2E scenarios badge generated: ${OUTPUT_PATH} -> ${badgeData.message}`)
 }
-
-nodeFs.mkdirSync(nodePath.dirname(OUTPUT_PATH), { recursive: true })
-nodeFs.writeFileSync(OUTPUT_PATH, `${JSON.stringify(badgeData, null, 2)}\n`)
-
-console.log(`E2E scenarios badge generated: ${OUTPUT_PATH} -> ${badgeData.message}`)

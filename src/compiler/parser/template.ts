@@ -594,7 +594,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 } else {
                     SelfClosingEmbeddedStyleTagWithoutSrc(tagOpenLoc, tag)
                 }
-            } else if (!isVoidNode && !isComponent) {
+            } else if (!isVoidNode && !isComponent && tag !== "slot") {
                 TagCanNotBeSelfClosing(getLocByIndex(index - 2, index), tag)
             }
             templateNode.loc.end = getPosByIndex(index)

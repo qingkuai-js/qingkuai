@@ -113,7 +113,7 @@ jobs:
       - name: Validate tag equals package version
         env:
           TAG: ${{ steps.tag.outputs.value }}
-        run: pnpm exec tsx scripts/release.ts validate-tag "$TAG"
+        run: pnpm exec tsx scripts/release-helper.ts validate-tag "$TAG"
 
       - name: Build package
         run: pnpm run build
@@ -130,7 +130,7 @@ jobs:
           TAG: ${{ steps.tag.outputs.value }}
         run: |
           notes_file="release-notes.md"
-          pnpm exec tsx scripts/release.ts notes "$TAG" "$notes_file"
+          pnpm exec tsx scripts/release-helper.ts notes "$TAG" "$notes_file"
 
           echo "path=$notes_file" >> "$GITHUB_OUTPUT"
 

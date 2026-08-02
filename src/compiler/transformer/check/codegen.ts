@@ -25,6 +25,7 @@ import { IntermediateCodeWriter } from "../writer"
 import { stringify } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
+
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
 import { isFunctionLiteral, isInlineEventHandler } from "../../ts-ast/assert"
@@ -626,11 +627,11 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     if (isTS) {
         writer.write(`export `)
         writer.write("default", exportSourceRange)
-        return writer.write(` ${ANY_VALUE} as ${COMPONENT_TYPE};`)
+        return writer.write(` 0 as any as ${COMPONENT_TYPE};`)
     }
     writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `)
     writer.write("default", exportSourceRange)
-    return writer.write(` ${ANY_VALUE};`)
+    return writer.write(` 0;`)
 }
 
 function getRangeByLoc(loc: ASTLocation): Range {

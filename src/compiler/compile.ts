@@ -1,6 +1,7 @@
 import type {
     TemplateNode,
     CompileMessage,
+    InlayHintKind,
     CompileResult,
     CompileOptions,
     StyleDescriptor,
@@ -8,21 +9,28 @@ import type {
     ASTPositionWithFlag,
     IdentifierStatusInfo,
     TopLevelIdentifierInfo,
-    CompileIntermediateOptions
+    CompileIntermediateOptions,
+    TopLevelIdentifierNodeInfo
 } from "#type-declarations/compiler"
 import type { PositionFlag } from "./enums"
 
 import ts from "typescript"
 
+import {
+    messages,
+    analyzeResult,
+    inputDescriptor,
+    resetCompilerState,
+    tsParsingDiagnostics
+} from "./state"
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
 import { analyzeTemplate } from "./analyzer/template"
+import { isValidIdentifierName } from "../util/compiler/assert"
+import { getScriptSourceIndex } from "../util/compiler/position"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
 import { generateIntermediateCode } from "./transformer/check/codegen"
-import { analyzeResult, inputDescriptor, messages, resetCompilerState } from "./state"
-import { isValidIdentifierName } from "../util/compiler/assert"
-import { getScriptSourceIndex } from "../util/compiler/position"
 
 export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
@@ -60,7 +68,12 @@ export function compileIntermediate(source: string, options: CompileIntermediate
         idStatusInfo[name] = {
             status: getIdentifierStatusForInlayHint(info),
             description: getTopLevelIdentifierInfo(name, info),
-            inlayIndexes: info.nodeInfos.map(nodeInfo => getScriptSourceIndex(nodeInfo.id.getEnd()))
+            inlays: info.nodeInfos.map(nodeInfo => {
+                return {
+                    kind: getInlayHintKind(nodeInfo),
+                    index: getScriptSourceIndex(nodeInfo.id.getEnd())
+                }
+            })
         }
     })
 
@@ -72,6 +85,7 @@ export function compileIntermediate(source: string, options: CompileIntermediate
         messages,
         templateNodes,
         positions,
+        tsParsingDiagnostics,
         writer.gtdii,
         scriptDescriptor,
         styleDescriptors,
@@ -90,6 +104,7 @@ export class CompileIntermediateResult {
         public messages: CompileMessage[],
         public templateNodes: TemplateNode[],
         public positions: ASTPositionWithFlag[],
+        public parseDiagnostics: ts.Diagnostic[],
         public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],
@@ -164,6 +179,23 @@ function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo) {
         }
         default: {
             return info.status
+        }
+    }
+}
+
+function getInlayHintKind(nodeInfo: TopLevelIdentifierNodeInfo): InlayHintKind {
+    switch (nodeInfo.declaration.kind) {
+        case ts.SyntaxKind.FunctionDeclaration: {
+            return "function"
+        }
+        case ts.SyntaxKind.ClassDeclaration: {
+            return "class"
+        }
+        case ts.SyntaxKind.EnumDeclaration: {
+            return "enum"
+        }
+        default: {
+            return "variable"
         }
     }
 }

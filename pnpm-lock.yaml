@@ -14,6 +14,9 @@ importers:
       "@jridgewell/sourcemap-codec":
         specifier: ^1.5.5
         version: 1.5.5
+      entities:
+        specifier: ^8.0.0
+        version: 8.0.0
       typescript:
         specifier: ">=6.0.3"
         version: 6.0.3
@@ -1333,6 +1336,13 @@ packages:
       {
         integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==
       }
+
+  entities@8.0.0:
+    resolution:
+      {
+        integrity: sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA==
+      }
+    engines: { node: ">=20.19.0" }
 
   environment@1.1.0:
     resolution:
@@ -3192,6 +3202,8 @@ snapshots:
   diff@8.0.4: {}
 
   emoji-regex@10.6.0: {}
+
+  entities@8.0.0: {}
 
   environment@1.1.0: {}
 

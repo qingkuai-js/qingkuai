@@ -5,6 +5,7 @@ import { eliminate } from "../eliminate"
 import { RuntimeCodeWriter } from "../writer"
 import { transformEmbeddedScript } from "./script"
 import { generateTemplateRender } from "./template"
+import { replaceQkImportSpecifiers } from "./import"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { objectAssign } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
@@ -35,6 +36,8 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const internalId = generateIdentifier.internal
     const templateFragments = getTemplateFragments(nodes)
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
+
+    replaceQkImportSpecifiers()
 
     for (const decl of analyzeResult.script.importDeclarations) {
         writer.writeScriptNode(decl).wrapLine()

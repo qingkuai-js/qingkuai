@@ -13,6 +13,5 @@
       "#type-declarations/*": ["./src/types/*"]
     }
   },
-  "exclude": ["dist", "node_modules/**/*"],
-  "include": ["src", "tests", "test-space", "scripts", "dist/temp-types", "env.d.ts"]
+  "exclude": ["dist", "node_modules"]
 }

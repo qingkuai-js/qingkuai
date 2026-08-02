@@ -307,15 +307,14 @@ export type TopLevelReferences = Record<
 export type IdentifierStatusInfo = Record<
     string,
     {
+        inlays: {
+            index: number
+            kind: InlayHintKind
+        }[]
         description: string
-        inlayIndexes: number[]
         status: IdentifierStatus
     }
 >
-
-export interface CompileIntermediateOptions {
-    shorthandDerivedDeclaration?: boolean
-}
 
 export interface CompileResult {
     code: string
@@ -341,12 +340,19 @@ export type CompileOptions = Partial<{
     debug: boolean
     sourcemap: boolean
     testing: TestingMode
+    replaceQkImports: boolean
+    allowConstReactive: boolean
     interpretiveComments: boolean
     preserveHtmlComments: boolean
     shorthandDerivedDeclaration: boolean
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
+
+export type CompileIntermediateOptions = Pick<
+    CompileOptions,
+    "shorthandDerivedDeclaration" | "allowConstReactive"
+>
 
 export type IdentifierStatus =
     | "reactive"
@@ -403,5 +409,7 @@ export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & 
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean
 }
+export type ParseDiatnosticDealtKind = "record" | "ignore" | "thrown"
+export type InlayHintKind = "variable" | "function" | "class" | "enum"
 export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"
 export type ReactiveIntrinsics = "reactive" | "raw" | "shallow" | "derived" | "alias"
