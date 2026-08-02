@@ -1,8 +1,6 @@
 import nodeFs from "node:fs"
 
-type PackageJson = {
-    version?: string
-}
+main()
 
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -34,7 +32,7 @@ function resolveReleaseNotes(changelog: string, version: string, tag: string): s
 }
 
 function readPackageVersion(): string {
-    const packageJson = JSON.parse(nodeFs.readFileSync("package.json", "utf8")) as PackageJson
+    const packageJson = JSON.parse(nodeFs.readFileSync("package.json", "utf8"))
     const version = packageJson.version?.trim()
     if (!version) {
         throw new Error("package.json version is missing")
@@ -57,27 +55,29 @@ function generateNotes(tag: string, outputPath: string) {
     nodeFs.writeFileSync(outputPath, notes)
 }
 
-const [, , command, arg1, arg2] = process.argv
+function main() {
+    const [, , command, arg1, arg2] = process.argv
 
-if (!command) {
-    throw new Error("Missing required command: validate-tag | notes")
-}
-
-if (command === "validate-tag") {
-    const tag = arg1
-    if (!tag) {
-        throw new Error("Missing required argument: tag")
-    }
-    validateTag(tag)
-} else if (command === "notes") {
-    const tag = arg1
-    const outputPath = arg2 ?? "release-notes.md"
-
-    if (!tag) {
-        throw new Error("Missing required argument: tag")
+    if (!command) {
+        throw new Error("Missing required command: validate-tag | notes")
     }
 
-    generateNotes(tag, outputPath)
-} else {
-    throw new Error(`Unknown command: ${command}`)
+    if (command === "validate-tag") {
+        const tag = arg1
+        if (!tag) {
+            throw new Error("Missing required argument: tag")
+        }
+        validateTag(tag)
+    } else if (command === "notes") {
+        const tag = arg1
+        const outputPath = arg2 ?? "release-notes.md"
+
+        if (!tag) {
+            throw new Error("Missing required argument: tag")
+        }
+
+        generateNotes(tag, outputPath)
+    } else {
+        throw new Error(`Unknown command: ${command}`)
+    }
 }
