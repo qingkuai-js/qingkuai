@@ -485,7 +485,7 @@ function generateRenderEffect(
                 })
                 writer.wrapLine().write(`${internalId}.`)
                 writer.write("setText", firstInterpolatedPart?.loc.start.index ?? -1)
-                writer.write(`(${nodeContext.id}, `).writeInterpolatedText(node).write(")")
+                writer.write(`(${nodeContext.id}, `).writeInterpolatedText(node, true).write(")")
             }
         }
 

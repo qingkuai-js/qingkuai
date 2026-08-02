@@ -258,6 +258,44 @@ test("Runtime interpolation: transformInterpolatedText handles static-only text"
     expect(writer.code).toContain('"hello"')
 })
 
+test("Runtime interpolation: transformInterpolatedText decodes HTML entities for setText", () => {
+    compileTestingSource(`
+        <lang-js>
+            let x = 1
+        </lang-js>
+        <div>{x} a &amp; b &lt;c&gt; &copy; 2024 &#39;q&#39;</div>
+    `)
+
+    const writer = new RuntimeCodeWriter(false)
+    transformInterpolatedText(writer, getTextNodeByParentTag("div")!, true)
+
+    expect(writer.code).toContain(" + \" a & b <c> © 2024 'q'\"")
+})
+
+test("Runtime interpolation: transformInterpolatedText decodes entities once and supports legacy entities", () => {
+    compileTestingSource(`
+        <lang-js>
+            let x = 1
+        </lang-js>
+        <div>{x} &amp;lt; &copy 2024</div>
+    `)
+
+    const writer = new RuntimeCodeWriter(false)
+    transformInterpolatedText(writer, getTextNodeByParentTag("div")!, true)
+
+    expect(writer.code).toContain('" &lt; © 2024"')
+})
+
+test("Runtime codegen: interpolated static text renders decoded HTML entities via setText", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let x = 1
+        </lang-js>
+        <div>{x} a &amp; b &lt;c&gt;</div>
+    `)
+    expect(code).toContain('" a & b <c>"')
+})
+
 test("Runtime interpolation: transformInterpolatedText joins multi parts", () => {
     compileTestingSource(`
         <lang-js>

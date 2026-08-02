@@ -87,8 +87,8 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return (writeParsedExpression(this, key), this)
     }
 
-    writeInterpolatedText(node: TemplateNode) {
-        return (transformInterpolatedText(this, node), this)
+    writeInterpolatedText(node: TemplateNode, decodeEntities = false) {
+        return (transformInterpolatedText(this, node, decodeEntities), this)
     }
 
     writeTemplateStr(str: string, sourceLoc: ASTLocation) {

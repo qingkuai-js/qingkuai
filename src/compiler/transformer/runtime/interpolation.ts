@@ -1,6 +1,7 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { TemplateNode } from "#type-declarations/compiler"
 
+import { decodeHTML } from "entities"
 import { CodeEditor } from "../editor"
 import { analyzeResult } from "../../state"
 import { traverseObject } from "../../../util/shared/sundry"
@@ -50,7 +51,11 @@ export function writeParsedExpression(writer: RuntimeCodeWriter, key: any, sourc
     }
 }
 
-export function transformInterpolatedText(writer: RuntimeCodeWriter, node: TemplateNode) {
+export function transformInterpolatedText(
+    writer: RuntimeCodeWriter,
+    node: TemplateNode,
+    decodeEntities = false
+) {
     if (!node.content.length) {
         return getMaybeReusedString("")
     }
@@ -73,7 +78,10 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
         if (singlePart.isInterpolated) {
             return writeParsedExpression(writer, singlePart)
         }
-        return writer.write(getMaybeReusedString(getGeneratedStaticTextContent(singlePart)!))
+        const generated = getGeneratedStaticTextContent(singlePart)!
+        return writer.write(
+            getMaybeReusedString(decodeEntities ? decodeHTML(generated) : generated)
+        )
     }
 
     for (let i = 0, j = 0; i < node.content.length; i++) {
@@ -89,10 +97,11 @@ export function transformInterpolatedText(writer: RuntimeCodeWriter, node: Templ
             if (!generated) {
                 continue
             }
+            const value = decodeEntities ? decodeHTML(generated) : generated
             if (j++) {
                 writer.write(" + ")
             }
-            writer.write(getMaybeReusedString(generated))
+            writer.write(getMaybeReusedString(value))
         }
     }
 }
