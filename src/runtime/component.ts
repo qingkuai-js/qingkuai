@@ -1,8 +1,8 @@
 import type {
     Destruction,
+    ComponentFunc,
     ComponentContext,
-    ComponentInstanceBase,
-    ComponentFunc
+    ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"

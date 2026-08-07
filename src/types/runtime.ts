@@ -1,6 +1,7 @@
 import type {
     Getter,
     Setter,
+    Prettify,
     AnyObject,
     ObjectKeys,
     GeneralFunc,
@@ -142,8 +143,9 @@ export type GeneralEffectFunc = () => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
-export type ComponentInstance<T extends QingkuaiComponent<any>> = ComponentInstanceBase &
-    ReturnType<T[typeof RENDER]>
+export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
+    ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
+>
 
 export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string
