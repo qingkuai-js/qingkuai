@@ -45,9 +45,22 @@ export interface ComponentInstanceBase {
     host: Element
     updating: boolean
     hooks: GeneralFunc[][]
-    context: ComponentContext
     parent: ComponentInstanceBase | null
+
+    /** @internal */
+    _internal: ComponentInstanceInternal
 }
+
+export type ComponentInstanceInternal = Partial<{
+    d: Destruction
+    r: AnyObject // refs
+    p: AnyObject // props
+    s: AnyObject // slots
+    R: any // default refs
+    P: any // default props
+    e: string[] // delegated events
+    a: string[] // ancestor scope chain
+}>
 
 export interface Effect {
     f: ArbitraryFunc
@@ -57,7 +70,6 @@ export interface Effect {
     k: Link[] // dependencies
     x: number // index in Destruction.e
     d: Destruction | null // destruction
-    m: ComponentInstanceBase | null // component
     c: GeneralFunc | null // cleaner between two runs
     g?: Getter // getter (WatchEffect)
     v?: any // value (WatchEffect)
@@ -108,16 +120,6 @@ export interface ProxyWrapperExtra {
     a: Map<any, Subscription> | null // async subscriptions
 }
 
-export type ComponentContext = Partial<{
-    r: AnyObject // refs
-    p: AnyObject // props
-    s: AnyObject // slots
-    R: any // default refs
-    P: any // default props
-    e: string[] // delegated events
-    a: string[] // ancestor scope chain
-}>
-
 export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper
 }
@@ -147,5 +149,5 @@ export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
     ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
 >
 
-export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
+export type ComponentFunc = (anchor: Text, context?: ComponentInstanceInternal) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

@@ -286,6 +286,7 @@ export interface ScriptAnalyzeRet {
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
+    usedEffectWatchMethods: Set<string>
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>
     reusedStringReferences: ReusedStringReference[]
@@ -390,6 +391,7 @@ export type GenerateIdentifierStaticKeys =
     | "anchor"
     | "context"
     | "internal"
+    | "instance"
     | "getterArg"
     | "setterArg"
     | "component"

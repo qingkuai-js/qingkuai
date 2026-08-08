@@ -23,7 +23,7 @@ const scenario: E2EScenarioInput = {
             }
         </lang-js>
 
-        <section data-page="async-effect-watch-manual-cleanup">
+        <section data-page="async-effect-watch-async-binding">
             <div>
                 <button id="btn-show" @click={showPanelFn}>Show panel</button>
                 <button id="btn-hide" @click={hidePanelFn}>Hide panel</button>
@@ -38,29 +38,17 @@ const scenario: E2EScenarioInput = {
     components: {
         ManualCleanupPanel: `
             <lang-js>
-                import { effect, watch, onBeforeDestroy } from "qingkuai"
-
-                let effectHandle
-                let watchHandle
-
-                // Effects/watch registered in async logic are not tracked by the
-                // component destruction lifecycle, so they must be stopped manually.
                 const registerAsync = async () => {
                     await Promise.resolve()
-                    effectHandle = effect(() => {
+                    effect(() => {
                         globalThis.__manualCleanupLeak.effectRuns++
                         globalThis.__manualCleanupStore.count
                     })
-                    watchHandle = watch(() => globalThis.__manualCleanupStore.count, () => {
+                    watch(() => globalThis.__manualCleanupStore.count, () => {
                         globalThis.__manualCleanupLeak.watchRuns++
                     })
                 }
                 registerAsync()
-
-                onBeforeDestroy(() => {
-                    effectHandle?.stop()
-                    watchHandle?.stop()
-                })
             </lang-js>
 
             <article id="manual-panel">Manual cleanup panel</article>
@@ -96,7 +84,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, watchRuns: 1 })
     })
 
-    test("async-registered effect and watch are stopped by manual cleanup on destroy", async ({
+    test("async-registered effect and watch are auto-bound and disposed on destroy", async ({
         page,
         visitScenario
     }) => {
@@ -115,9 +103,6 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect(page.locator("#manual-panel")).toHaveCount(0)
 
         const beforeUnmount = await readLeak(page)
-
-        // Without manual cleanup the async-registered effect/watch would keep firing;
-        // with `stop()` in `onBeforeDestroy` they must stay silent after unmount.
         await page.locator("#btn-inc").click()
         await expect(page.locator("#store-count")).toHaveText("Store count: 2")
 

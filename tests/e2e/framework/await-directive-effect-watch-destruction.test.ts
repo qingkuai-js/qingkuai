@@ -54,8 +54,6 @@ const scenario: E2EScenarioInput = {
     components: {
         ThenEffectPanel: `
             <lang-js>
-                import { effect, watch } from "qingkuai"
-
                 effect(() => {
                     globalThis.__awaitEffectWatchLeak.effectRuns++
                     globalThis.__awaitEffectWatchStore.count

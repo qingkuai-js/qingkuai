@@ -32,6 +32,7 @@ function newGenerateIdentifier(): GenerateIdentifier {
     return {
         anchor: "",
         context: "",
+        instance: "",
         internal: "",
         getterArg: "",
         setterArg: "",
@@ -71,6 +72,7 @@ function newAnalyzeResult(): AnalyzeResult {
             usedIntrinsicVars: new Set(),
             importIdentifiers: new Set(),
             declaratorToIntrinsic: new Map(),
+            usedEffectWatchMethods: new Set(),
             topLevelReferences: newCleanObj(),
             declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),

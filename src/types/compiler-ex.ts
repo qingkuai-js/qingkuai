@@ -24,6 +24,15 @@ export interface Camel2KebabFunc {
      * When `allowFullLower` is `false`, the original string is kept if
      * no uppercase letter appears after the first character.
      *
+     * Examples:
+     * ```ts
+     * // Convert a camelCase identifier.
+     * camel2Kebab("userName") // "user-name"
+     *
+     * // Keep a single uppercase identifier unchanged.
+     * camel2Kebab("A", false) // "A"
+     * ```
+     *
      * @param str 需要转换的字符串。\
      * The source string to convert.
      *
@@ -33,19 +42,6 @@ export interface Camel2KebabFunc {
      * @returns 转换后的 kebab-case 字符串，或按配置保留的原字符串。\
      * The converted kebab-case string, or the original string when it is
      * preserved by configuration.
-     *
-     * Examples:
-     * ```ts
-     * // Convert a camelCase identifier.
-     * camel2Kebab("userName")
-     * // => "user-name"
-     * ```
-     *
-     * ```ts
-     * // Keep a single uppercase identifier unchanged.
-     * camel2Kebab("A", false)
-     * // => "A"
-     * ```
      */
     (str: string, allowFullLower?: boolean): string
 }
@@ -64,6 +60,15 @@ export interface Kebab2CamelFunc {
      * Consecutive hyphens and trailing hyphens are ignored during
      * conversion.
      *
+     * Examples:
+     * ```ts
+     * // Convert to camelCase.
+     * kebab2Camel("user-name") // "userName"
+     *
+     * // Convert to PascalCase.
+     * kebab2Camel("user-name", true) // "UserName"
+     * ```
+     *
      * @param str 需要转换的字符串。\
      * The source string to convert.
      *
@@ -72,19 +77,6 @@ export interface Kebab2CamelFunc {
      *
      * @returns 转换后的 camelCase 或 PascalCase 字符串。\
      * The converted camelCase or PascalCase string.
-     *
-     * Examples:
-     * ```ts
-     * // Convert to camelCase.
-     * kebab2Camel("user-name")
-     * // => "userName"
-     * ```
-     *
-     * ```ts
-     * // Convert to PascalCase.
-     * kebab2Camel("user-name", true)
-     * // => "UserName"
-     * ```
      */
     (str: string, startWithUppercase?: boolean): string
 }
@@ -104,6 +96,15 @@ export interface ToPropertyKeyFunc {
      * Typical use: produce property keys that can be inserted directly
      * into generated object literals.
      *
+     * Examples:
+     * ```ts
+     * // Valid identifiers stay unquoted.
+     * toPropertyKey("userName") // "userName"
+     *
+     * // Invalid identifiers are quoted.
+     * toPropertyKey("user-name") // '"user-name"'
+     * ```
+     *
      * @param str 要转换的字符串。\
      * The input string to normalize as a property key.
      *
@@ -111,19 +112,6 @@ export interface ToPropertyKeyFunc {
      * 字符串字面量。\
      * A valid object property key, either the original identifier or a
      * quoted string literal.
-     *
-     * Examples:
-     * ```ts
-     * // Valid identifiers stay unquoted.
-     * toPropertyKey("userName")
-     * // => "userName"
-     * ```
-     *
-     * ```ts
-     * // Invalid identifiers are quoted.
-     * toPropertyKey("user-name")
-     * // => '"user-name"'
-     * ```
      */
     (str: string): string
 }
@@ -140,6 +128,15 @@ export interface FindEndBracketFunc {
      * other bracketed source fragments while skipping strings, regular
      * expressions, and comments.
      *
+     * Examples:
+     * ```ts
+     * // Nested brackets are resolved correctly.
+     * findEndBracket("{a + (b * c)}") // 12
+     *
+     * // Brackets inside comments are ignored.
+     * findEndBracket("{ a + // }\n b }") // 14
+     * ```
+     *
      * @param str 待查找的字符串，其首字符必须是 `(`、`{`、 `[` 或 `<` 之一。\
      * The source string to inspect. Its first character must be `(`, `{`,
      * `[`, or `<`.
@@ -150,19 +147,6 @@ export interface FindEndBracketFunc {
      *
      * @throws 当首字符不是受支持的开始括号时抛出异常。\
      * Throws when the first character is not a supported opening bracket.
-     *
-     * Examples:
-     * ```ts
-     * // Nested brackets are resolved correctly.
-     * findEndBracket("{a + (b * c)}")
-     * // => 12
-     * ```
-     *
-     * ```ts
-     * // Brackets inside comments are ignored.
-     * findEndBracket("{ a + // }\n b }")
-     * // => 14
-     * ```
      */
     (str: string): number
 }
@@ -179,6 +163,15 @@ export interface FindOutOfLiteralFunc {
      * expression without matching the same text inside literals. Template
      * string interpolations are still searched.
      *
+     * Examples:
+     * ```ts
+     * // Ignore text inside string literals.
+     * findOutOfLiteral('"test" value', 'value') // 7
+     *
+     * // Still search inside template interpolations.
+     * findOutOfLiteral('`a ${count + 1}`', 'count') // 5
+     * ```
+     *
      * @param str 被检索的 JavaScript 源码字符串。\
      * The JavaScript source code string to search.
      *
@@ -190,19 +183,6 @@ export interface FindOutOfLiteralFunc {
      *
      * @returns 匹配项的起始索引；未找到时返回 `-1`。\
      * The starting index of the match, or `-1` if no valid match is found.
-     *
-     * Examples:
-     * ```ts
-     * // Ignore text inside string literals.
-     * findOutOfLiteral('"test" value', 'value')
-     * // => 7
-     * ```
-     *
-     * ```ts
-     * // Still search inside template interpolations.
-     * findOutOfLiteral('`a ${count + 1}`', 'count')
-     * // => 5
-     * ```
      */
     (str: string, substr: string, startIndex?: number): number
 
@@ -210,6 +190,12 @@ export interface FindOutOfLiteralFunc {
      * 按与上方相同的规则在 JavaScript 源码中查找正则匹配项。\
      * Search JavaScript source for a RegExp match using the same rules as
      * above.
+     *
+     * Examples:
+     * ```ts
+     * // Return both the match position and matched length.
+     * findOutOfLiteral('"test" value', /value/) // [7, 5]
+     * ```
      *
      * @param str 被检索的 JavaScript 源码字符串。\
      * The JavaScript source code string to search.
@@ -223,13 +209,6 @@ export interface FindOutOfLiteralFunc {
      * @returns `[索引, 长度]` 形式的结果；未找到时返回 `[-1, 0]`。\
      * A tuple in the form `[index, length]`, or `[-1, 0]` if no valid
      * match is found.
-     *
-     * Examples:
-     * ```ts
-     * // Return both the match position and matched length.
-     * findOutOfLiteral('"test" value', /value/)
-     * // => [7, 5]
-     * ```
      */
     (str: string, pattern: RegExp, startIndex?: number): Range
 }
@@ -245,6 +224,12 @@ export interface FindOutOfCommentFunc {
      * Typical use: search source text while skipping line and block
      * comments but still treating string literals as normal text.
      *
+     * Examples:
+     * ```ts
+     * // Ignore content inside comments.
+     * findOutOfComment('// test\nvalue', 'value') // 8
+     * ```
+     *
      * @param str 被检索的 JavaScript 源码字符串。\
      * The JavaScript source code string to search.
      *
@@ -256,13 +241,6 @@ export interface FindOutOfCommentFunc {
      *
      * @returns 匹配项的起始索引；未找到时返回 `-1`。\
      * The starting index of the match, or `-1` if no valid match is found.
-     *
-     * Examples:
-     * ```ts
-     * // Ignore content inside comments.
-     * findOutOfComment('// test\nvalue', 'value')
-     * // => 8
-     * ```
      */
     (str: string, substr: string, startIndex?: number): number
 
@@ -270,6 +248,12 @@ export interface FindOutOfCommentFunc {
      * 按与上方相同的规则在 JavaScript 源码中查找正则匹配项。\
      * Search JavaScript source for a RegExp match using the same rules as
      * above.
+     *
+     * Examples:
+     * ```ts
+     * // Return the first match outside comments.
+     * findOutOfComment('// skip\nvalue', /value/) // [8, 5]
+     * ```
      *
      * @param str 被检索的 JavaScript 源码字符串。\
      * The JavaScript source code string to search.
@@ -283,13 +267,6 @@ export interface FindOutOfCommentFunc {
      * @returns `[索引, 长度]` 形式的结果；未找到时返回 `[-1, 0]`。\
      * A tuple in the form `[index, length]`, or `[-1, 0]` if no valid
      * match is found.
-     *
-     * Examples:
-     * ```ts
-     * // Return the first match outside comments.
-     * findOutOfComment('// skip\nvalue', /value/)
-     * // => [8, 5]
-     * ```
      */
     (str: string, pattern: RegExp, startIndex?: number): Range
 }
@@ -306,6 +283,12 @@ export interface FindOutOfLiteralCommentFunc {
      * excluding matches inside strings, regular expressions, line comments,
      * and block comments. Template string interpolations are still searched.
      *
+     * Examples:
+     * ```ts
+     * // Ignore both literals and comments.
+     * findOutOfLiteralComment('"test" // skip\nvalue', 'value') // 15
+     * ```
+     *
      * @param str 被检索的 JavaScript 源码字符串。\
      * The JavaScript source code string to search.
      *
@@ -317,13 +300,6 @@ export interface FindOutOfLiteralCommentFunc {
      *
      * @returns 匹配项的起始索引；未找到时返回 `-1`。\
      * The starting index of the match, or `-1` if no valid match is found.
-     *
-     * Examples:
-     * ```ts
-     * // Ignore both literals and comments.
-     * findOutOfLiteralComment('"test" // skip\nvalue', 'value')
-     * // => 15
-     * ```
      */
     (str: string, substr: string, startIndex?: number): number
 
@@ -331,6 +307,12 @@ export interface FindOutOfLiteralCommentFunc {
      * 按与上方相同的规则在 JavaScript 源码中查找正则匹配项。\
      * Search JavaScript source for a RegExp match using the same rules as
      * above.
+     *
+     * Examples:
+     * ```ts
+     * // Return the first match outside literals and comments.
+     * findOutOfLiteralComment('"test" // skip\nvalue', /value/) // [15, 5]
+     * ```
      *
      * @param str 被检索的 JavaScript 源码字符串。\
      * The JavaScript source code string to search.
@@ -344,13 +326,6 @@ export interface FindOutOfLiteralCommentFunc {
      * @returns `[索引, 长度]` 形式的结果；未找到时返回 `[-1, 0]`。\
      * A tuple in the form `[index, length]`, or `[-1, 0]` if no valid
      * match is found.
-     *
-     * Examples:
-     * ```ts
-     * // Return the first match outside literals and comments.
-     * findOutOfLiteralComment('"test" // skip\nvalue', /value/)
-     * // => [15, 5]
-     * ```
      */
     (str: string, pattern: RegExp, startIndex?: number): Range
 }
@@ -373,14 +348,6 @@ export interface ParseDirectiveValueFunc {
      * be recognized, the whole value is treated as the base expression and
      * an empty pattern list is returned.
      *
-     * @param directive 需要解析的模板指令属性。\
-     * The template directive attribute to parse.
-     *
-     * @returns 包含基础表达式、关键字位置、模式列表，以及可选诊断信息
-     * 的对象。\
-     * An object containing the base expression, keyword index, parsed
-     * patterns, and optional diagnostics.
-     *
      * Examples:
      * ```ts
      * // Assume `directive` represents `#for={item of list}`.
@@ -391,6 +358,14 @@ export interface ParseDirectiveValueFunc {
      * console.log(result.base) // 'list'
      * console.log(result.keywordIndex) // 4
      * ```
+     *
+     * @param directive 需要解析的模板指令属性。\
+     * The template directive attribute to parse.
+     *
+     * @returns 包含基础表达式、关键字位置、模式列表，以及可选诊断信息
+     * 的对象。\
+     * An object containing the base expression, keyword index, parsed
+     * patterns, and optional diagnostics.
      */
     (directive: TemplateAttribute): {
         base: string
@@ -416,14 +391,6 @@ export interface ParseEventFlagFunc {
      * When flags are duplicated, conflicting, or unrecognized, checking
      * variants may attach diagnostics.
      *
-     * @param event 需要解析的事件属性。\
-     * The event attribute to parse.
-     *
-     * @returns 包含事件名称、普通标志、包装器标志，以及可选诊断信息
-     * 的对象。\
-     * An object containing the event name, general flags, wrapper flags,
-     * and optional diagnostics.
-     *
      * Examples:
      * ```ts
      * // Assume `event` represents `@click|once|stop`.
@@ -431,9 +398,16 @@ export interface ParseEventFlagFunc {
      *
      * const result = parseEventFlag(event)
      * console.log(result.eventName) // '@click'
-     * console.log(result.generalFlag.items.map(item => item.name))
-     * // => ['once', 'stop']
+     * console.log(result.generalFlag.items.map(item => item.name)) // ['once', 'stop']
      * ```
+     *
+     * @param event 需要解析的事件属性。\
+     * The event attribute to parse.
+     *
+     * @returns 包含事件名称、普通标志、包装器标志，以及可选诊断信息
+     * 的对象。\
+     * An object containing the event name, general flags, wrapper flags,
+     * and optional diagnostics.
      */
     (event: TemplateAttribute): {
         eventName: string
@@ -455,6 +429,15 @@ export interface ParseComponentTagFunc {
      * `foo-bar.baz-qux`. Each segment is converted to a camelCase
      * identifier.
      *
+     * Examples:
+     * ```ts
+     * // Assume `componentNode.tag` is `foo-bar.baz-qux`.
+     * const componentNode: TemplateNode = getComponentNode()
+     *
+     * const parts = parseComponentTag(componentNode)
+     * console.log(parts.map(part => part.id)) // ['fooBar', 'bazQux']
+     * ```
+     *
      * @param componentNode 需要解析标签名的组件节点。\
      * The component node whose tag name should be parsed.
      *
@@ -462,16 +445,6 @@ export interface ParseComponentTagFunc {
      * 以及它在源码中的范围。\
      * An array of `ComponentTagPart` objects. Each item contains the
      * converted identifier and its source range.
-     *
-     * Examples:
-     * ```ts
-     * // Assume `componentNode.tag` is `foo-bar.baz-qux`.
-     * const componentNode: TemplateNode = getComponentNode()
-     *
-     * const parts = parseComponentTag(componentNode)
-     * console.log(parts.map(part => part.id))
-     * // => ['fooBar', 'bazQux']
-     * ```
      */
     (componentNode: TemplateNode): ComponentTagPart[]
 }
@@ -491,6 +464,25 @@ export interface ParseTemplateFunc {
      * 解析，而不是在首个错误处立即中断。\
      * When `recover` is `true`, the parser runs in checking mode and
      * tries to continue instead of stopping at the first error.
+     *
+     * Examples:
+     * ```ts
+     * // Basic usage
+     * const source = '<div #for={item, index of arr}>{ count }</div>'
+     * const ast = parseTemplate(source)
+     *
+     * // Enable error recovery mode
+     * const astWithRecovery = parseTemplate(source, {
+     *     recover: true,
+     *     checkEmptyInterpolation: true
+     * })
+     *
+     * // Custom filtering options
+     * const astCustom = parseTemplate(source, {
+     *     preserveBlankTextNodes: false,
+     *     preserveCommentNodes: true
+     * })
+     * ```
      *
      * @param source 模板源码字符串。\
      * The template source code string to parse.
@@ -522,25 +514,6 @@ export interface ParseTemplateFunc {
      * The parsed template AST node array. Invalid nodes are filtered
      * according to the active options.
      *
-     * @example
-     * ```ts
-     * // Basic usage
-     * const source = '<div #for={item, index of arr}>{ count }</div>'
-     * const ast = parseTemplate(source)
-     *
-     * // Enable error recovery mode
-     * const astWithRecovery = parseTemplate(source, {
-     *   recover: true,
-     *   checkEmptyInterpolation: true
-     * })
-     *
-     * // Custom filtering options
-     * const astCustom = parseTemplate(source, {
-     *   preserveBlankTextNodes: false,
-     *   preserveCommentNodes: true
-     * })
-     * ```
-     *
      * @throws 在非恢复模式下，遇到不可恢复的解析错误时会抛出异常。\
      * In non-recovery mode, throws when an unrecoverable parsing error is
      * encountered.
@@ -553,21 +526,14 @@ export interface FormatSourceCodeFunc {
      * 对模板字符串中书写的代码文本进行缩进规范化处理。\
      * Normalize indentation in code text written inside template strings.
      *
-     * 用模板字符串书写代码时，缩进层级会受到当前文件位置的影响，导致
-     * 生成的代码字符串中出现多余的前导空格。此方法以首行前导空格数为
-     * 基准，对全文统一移除等量的前导空格。开头和结尾处的空白行也会被
-     * 一并移除。\
+     * 用模板字符串书写代码时，缩进层级会受到当前文件位置的影响，导致生成的
+     * 代码字符串中出现多余的前导空格。此方法以首行前导空格数为基准，对全文
+     * 统一移除等量的前导空格。开头和结尾处的空白行也会被一并移除。\
      * When writing code inside a template string, the indentation is
      * affected by the file position and may introduce unwanted leading
      * spaces. This method removes all leading spaces from the first line
      * and strips the same amount from each remaining line. Blank lines
      * at the beginning and end are also removed.
-     *
-     * @param source 代码文本字符串。\
-     * The code text string to normalize.
-     *
-     * @returns 缩进规范化后的代码字符串。\
-     * The normalized code string with adjusted indentation.
      *
      * Examples:
      * ```ts
@@ -576,9 +542,14 @@ export interface FormatSourceCodeFunc {
      *     function foo() {
      *         return 1
      *     }
-     * `)
-     * // => "function foo() {\n    return 1\n}"
+     * `) // "function foo() {\n    return 1\n}"
      * ```
+     *
+     * @param source 代码文本字符串。\
+     * The code text string to normalize.
+     *
+     * @returns 缩进规范化后的代码字符串。\
+     * The normalized code string with adjusted indentation.
      */
     (source: string): string
 }

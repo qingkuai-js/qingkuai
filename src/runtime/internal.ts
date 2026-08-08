@@ -29,6 +29,17 @@ export {
     bindHandleReceiver
 } from "./reference"
 
+export {
+    watch,
+    effect,
+    preWatch,
+    preEffect,
+    postWatch,
+    postEffect,
+    syncWatch,
+    syncEffect
+} from "./reactivity/effect"
+
 export { htmlBlock } from "./directives/html"
 export { renderSlot } from "./directives/slot"
 export { targetBlock } from "./directives/target"
@@ -40,7 +51,6 @@ export { objectAssign, call } from "../util/shared/aliases"
 export { listBlock, keyedListBlock } from "./directives/list"
 export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants"
 export { derived, destructuringDerived } from "./reactivity/derived"
-export { watch, preWatch, postWatch, syncWatch } from "./reactivity/effect"
 export { listen, createEventWrapper, registerEvents, delegate } from "./event"
 export { init, mount, defineExports, dynamicComponent, getScopes } from "./component"
 export { setAttribute, setClassName, setSelectValue, setXlinkAttribute } from "./attribute"

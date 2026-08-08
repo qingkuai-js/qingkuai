@@ -1,9 +1,9 @@
 import { test, expect } from "vitest"
 
 import input from "./input-one"
-import { equalsWithKeyDirectiveValue } from "../../../../../src/compiler/optimizer/render"
 import { parseScript } from "../../../../../src/compiler/parser/script"
 import { compile, compileIntermediate } from "../../../../../src/compiler/compile"
+import { equalsWithKeyDirectiveValue } from "../../../../../src/compiler/optimizer/render"
 
 function expectValidESMSyntax(code: string, label: string) {
     expect(() => parseScript(code), label).not.toThrow()
@@ -81,8 +81,8 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
 
 test("Runtime regression: slot fallback generates valid renderSlot helper call", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "slot-fallback")
-    expect(prod.code).toContain('_.renderSlot(_ctx, "main",')
-    expect(dev.code).toContain('_.renderSlot(_ctx, "main",')
+    expect(prod.code).toContain('_.renderSlot("main",')
+    expect(dev.code).toContain('_.renderSlot("main",')
     expect(prod.code).toContain("_.UNDEF, () => {")
     expect(dev.code).toContain("_.UNDEF, () => {")
 })

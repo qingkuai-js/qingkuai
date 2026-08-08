@@ -26,6 +26,20 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     const identifierMap: Record<string, string> = newCleanObj()
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
 
+    // 注入绑定当前组件实例的 effect/watch 遮蔽闭包。
+    // Inject effect/watch shadowing closures bound to the current component instance.
+    const { usedEffectWatchMethods } = analyzeResult.script
+    if (usedEffectWatchMethods.size) {
+        for (const methodName of usedEffectWatchMethods) {
+            const isWatch = methodName.endsWith("h")
+            const paramList = `${isWatch ? "_getter, " : ""}_callback`
+            hoistWriter.write(`const ${methodName} = (${paramList}) => `)
+            hoistWriter.write(
+                `${internalId}.${methodName}(${generateIdentifier.instance}, ${paramList})\n`
+            )
+        }
+    }
+
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
     // Used to record VariableDeclarators that have already been processed.
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
@@ -99,6 +113,20 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
     })
 
+    // Exp 后缀的监视器函数的第一个参数是表达式，编译时需要将其包装为 getter 函数
+    // The first argument of the watcher function with the `Exp` suffix is
+    // an expression, which needs to be wrapped as a getter function at compile time.
+    for (const call of analyzeResult.script.watchers) {
+        const firstArg = call.arguments[0]
+        if (shouldNodeWrapAsGetter(firstArg)) {
+            editor.insert(firstArg.getEnd(), ")")
+            editor.insert(firstArg.getStart(), `() => (`)
+        }
+
+        const callee = getStriptTypeOperationsNode(call.expression)
+        editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true)
+    }
+
     // 转换响应式标识符引用
     // Transform reactive identifier references
     traverseObject(topLevelIdentifiers, (name, info) => {
@@ -119,17 +147,6 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             }
         }
     })
-
-    // 转换监视器创建调用
-    // Transform watcher creation calls
-    for (const call of analyzeResult.script.watchers) {
-        const firstArg = call.arguments[0]
-        if (shouldNodeWrapAsGetter(firstArg)) {
-            editor.insert(firstArg.getEnd(), ")")
-            editor.insert(firstArg.getStart(), `() => (`)
-        }
-        editor.insert(call.expression.getStart(), `${internalId}.`)
-    }
     replaceReusedStringReferences(editor, analyzeResult.script.reusedStringReferences)
 
     function transformRawDecalration(info: TopLevelIdentifierInfo) {

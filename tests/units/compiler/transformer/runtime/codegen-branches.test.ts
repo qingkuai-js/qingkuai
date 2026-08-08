@@ -72,7 +72,6 @@ test("Runtime codegen: defaultRefs/defaultProps with args assign to context", ()
             defaultRefs({ root: null })
             defaultProps({ title: "QK" })
         </lang-js>
-        <div></div>
     `)
     expect(code).toContain("_ctx.R = { root: null }")
     expect(code).toContain('_ctx.P = { title: "QK" }')
@@ -86,21 +85,113 @@ test("Runtime codegen: defaultRefs/defaultProps without args do not assign conte
             defaultRefs()
             defaultProps()
         </lang-js>
-        <div></div>
     `)
     expect(code).not.toContain("_ctx.R =")
     expect(code).not.toContain("_ctx.P =")
 })
 
-test("Runtime codegen: intrinsic usage path emits direct internal call", () => {
+test("Runtime codegen: watchExp rewrites to instance-bound base watch closure", () => {
     const code = compileRuntime(`
         <lang-js>
             watchExp(() => 1, () => {})
         </lang-js>
-        <div></div>
     `)
-    expect(code).toContain("_.init(_anchor, _ctx)")
-    expect(code).toContain("_.watchExp(() => 1, () => {})")
+    expect(code).toContain("const [_instance] = _.init(_anchor, _ctx)")
+    expect(code).toContain("watch(() => 1, () => {})")
+})
+
+test("Runtime codegen: injects instance-bound shadowing closures for plain effect/watch methods", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            effect(() => {})
+            preEffect(() => {})
+            postEffect(() => {})
+            syncEffect(() => {})
+            watch(() => 1, () => {})
+            preWatch(() => 1, () => {})
+            postWatch(() => 1, () => {})
+            syncWatch(() => 1, () => {})
+        </lang-js>
+        <div>text</div>
+    `)
+    expect(code).toContain("const [_instance] = _.init(_anchor, _ctx)")
+    expect(code).toContain("const effect = (_callback) => _.effect(_instance, _callback)")
+    expect(code).toContain("const preEffect = (_callback) => _.preEffect(_instance, _callback)")
+    expect(code).toContain("const postEffect = (_callback) => _.postEffect(_instance, _callback)")
+    expect(code).toContain("const syncEffect = (_callback) => _.syncEffect(_instance, _callback)")
+    expect(code).toContain(
+        "const watch = (_getter, _callback) => _.watch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain(
+        "const preWatch = (_getter, _callback) => _.preWatch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain(
+        "const postWatch = (_getter, _callback) => _.postWatch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain(
+        "const syncWatch = (_getter, _callback) => _.syncWatch(_instance, _getter, _callback)"
+    )
+})
+
+test("Runtime codegen: injects only the used effect/watch shadowing closure on demand", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            effect(() => {})
+        </lang-js>
+        <div>text</div>
+    `)
+    expect(code).toContain("const effect = (_callback) => _.effect(_instance, _callback)")
+    expect(code).not.toContain("const watch = ")
+    expect(code).not.toContain("const syncEffect = ")
+    expect(code).not.toContain("const preEffect = ")
+})
+
+test("Runtime codegen: Exp watcher variants rewrite to base watch with injected closure", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            watchExp(1 + 1, () => {})
+            preWatchExp(1 + 1, () => {})
+            postWatchExp(1 + 1, () => {})
+            syncWatchExp(1 + 1, () => {})
+        </lang-js>
+        <div>text</div>
+    `)
+    expect(code).toContain(
+        "const watch = (_getter, _callback) => _.watch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain(
+        "const preWatch = (_getter, _callback) => _.preWatch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain(
+        "const postWatch = (_getter, _callback) => _.postWatch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain(
+        "const syncWatch = (_getter, _callback) => _.syncWatch(_instance, _getter, _callback)"
+    )
+    expect(code).toContain("watch(() => (1 + 1), () => {})")
+    expect(code).toContain("preWatch(() => (1 + 1), () => {})")
+    expect(code).toContain("postWatch(() => (1 + 1), () => {})")
+    expect(code).toContain("syncWatch(() => (1 + 1), () => {})")
+})
+
+test("Runtime codegen: destructures init tuple on demand", () => {
+    expect(compileRuntime("<div>{props.name}</div>")).toContain(
+        "const [, props] = _.init(_anchor, _ctx)"
+    )
+
+    expect(compileRuntime("<div>{refs.input}</div>")).toContain(
+        "const [, , refs] = _.init(_anchor, _ctx)"
+    )
+
+    expect(compileRuntime("<div>{slots.foo}</div>")).toContain(
+        "const [, , , slots] = _.init(_anchor, _ctx)"
+    )
+
+    expect(compileRuntime("<div>{props.name} {slots.foo}</div>")).toContain(
+        "const [, props, , slots] = _.init(_anchor, _ctx)"
+    )
+
+    expect(compileRuntime("<div>{c}</div>")).toMatch(/(?<!=\s*)_.init\(_anchor, _ctx\)/)
 })
 
 test("Runtime codegen: many delegated events generate wrapped event registration list", () => {

@@ -1,8 +1,8 @@
 import type {
     Destruction,
     ComponentFunc,
-    ComponentContext,
-    ComponentInstanceBase
+    ComponentInstanceBase,
+    ComponentInstanceInternal
 } from "#type-declarations/runtime"
 import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
@@ -41,7 +41,7 @@ export const [
 ] = hooksRegisterGen()
 
 export function getScopes(scope?: string) {
-    const scopes = currentInstance?.context.a
+    const scopes = currentInstance?._internal.a
     if (!(scope = scope?.slice(1))) {
         return scopes
     }
@@ -61,25 +61,27 @@ export const mountApp: MountAppFunc = (component, target) => {
     any(component)(anchor)
 }
 
-export function init(anchor: Node, context: ComponentContext) {
+export function init(anchor: Node, context: ComponentInstanceInternal) {
     const instance: ComponentInstanceBase = {
-        context,
         hooks: any([]),
         updating: false,
+        _internal: context,
         parent: currentInstance,
         host: getParentElement(anchor)!
     }
     setCurrentInstance(instance)
-    createDestruction(currentDestruction, instance)
+    context.d = createDestruction(currentDestruction, instance)
 
     if (context.e) {
         registerEvents(context.e)
     }
-    return {
-        slots: initSlots(context.s),
-        refs: initRefs(context.r, context.R),
-        props: initProps(context.p, context.P)
-    }
+
+    return [
+        instance,
+        initProps(context.p, context.P),
+        initRefs(context.r, context.R),
+        initSlots(context.s)
+    ] as const
 }
 
 export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {

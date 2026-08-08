@@ -1,13 +1,16 @@
+import type { Getter } from "#type-declarations/tools"
+import type { GeneralEffectFunc, WatchEffectCallback } from "#type-declarations/runtime"
+
 import {
-    watch,
-    effect,
-    syncWatch,
-    postWatch,
-    preWatch,
-    preEffect,
-    postEffect,
-    syncEffect,
-    renderEffect,
+    watch as _watch,
+    effect as _effect,
+    syncWatch as _syncWatch,
+    postWatch as _postWatch,
+    preWatch as _preWatch,
+    preEffect as _preEffect,
+    postEffect as _postEffect,
+    syncEffect as _syncEffect,
+    renderEffect as _renderEffect,
     disposeEffect
 } from "../../../src/runtime/reactivity/effect"
 import {
@@ -22,9 +25,9 @@ import {
 } from "../../../src/runtime/reactivity/constants"
 import {
     sleep,
-    initDestruction,
     getErrorMessage,
-    getCurrentEffect
+    getCurrentEffect,
+    createTestInstance
 } from "../../../src/util/testing/sundry"
 import { checkEffectDependaceManager } from "./_match"
 import { NIL, NOOP } from "../../../src/runtime/constants"
@@ -42,10 +45,49 @@ import { createDestruction, destroy, pushDestructionCleaner } from "../../../src
 
 const arr: any[] = []
 const invokeMarker = vi.fn()
+const testInstance = createTestInstance()
 const warningMatcher = createWarningMatcher()
+const timings = [TIMING_UNSET, TIMING_PRE, TIMING_POST, TIMING_SYNC]
+
+const effect = (callback: GeneralEffectFunc) => {
+    const handle = _effect(testInstance, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const preEffect = (callback: GeneralEffectFunc) => {
+    const handle = _preEffect(testInstance, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const postEffect = (callback: GeneralEffectFunc) => {
+    const handle = _postEffect(testInstance, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const syncEffect = (callback: GeneralEffectFunc) => {
+    const handle = _syncEffect(testInstance, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const watch = <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
+    const handle = _watch(testInstance, getter, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const preWatch = <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
+    const handle = _preWatch(testInstance, getter, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const postWatch = <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
+    const handle = _postWatch(testInstance, getter, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const syncWatch = <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
+    const handle = _syncWatch(testInstance, getter, callback)
+    return { handle, effect: getCurrentEffect()! }
+}
+const renderEffect = (callback: GeneralEffectFunc) => {
+    _renderEffect(callback)
+    return getCurrentEffect()!
+}
+
 const watchEffectFuncs = [watch, preWatch, postWatch, syncWatch]
 const reactiveEffectFuncs = [effect, preEffect, postEffect, syncEffect]
-const timings = [TIMING_UNSET, TIMING_PRE, TIMING_POST, TIMING_SYNC]
 
 const cleanup = () => {
     emptyArr(arr)
@@ -53,7 +95,6 @@ const cleanup = () => {
     warningMatcher.mockClear()
 }
 
-initDestruction()
 beforeEach(cleanup)
 
 function makeConsecutiveNumbersArr(length: number) {
@@ -130,13 +171,12 @@ test("Functions of render effect", async () => {
 test("Functions of reactive effect", async () => {
     for (let i = 0; i < reactiveEffectFuncs.length; cleanup(), i++) {
         const value = react(1)
-        const handle = reactiveEffectFuncs[i](() => {
+        const { handle, effect } = reactiveEffectFuncs[i](() => {
             arr.push(value.$)
             return invokeMarker
         })
         expect(arr).toEqual([1])
 
-        const effect = getCurrentEffect()!
         checkEffectDependaceManager(effect, {
             destroyed: false,
             timing: timings[i],
@@ -210,7 +250,7 @@ test("Functions of watch effect", async () => {
         let cur: any = undefined
         const map = constReact(new Map([[1, 99]]))
 
-        const handle = watchEffectFuncs[i](
+        const { handle, effect } = watchEffectFuncs[i](
             () => map.get(1),
             (p, c) => {
                 ;[pre, cur] = [p, c]
@@ -221,7 +261,6 @@ test("Functions of watch effect", async () => {
         expect(pre).toBeUndefined()
         expect(cur).toBeUndefined()
 
-        const effect = getCurrentEffect()!
         checkEffectDependaceManager(effect, {
             cleaner: null,
             destroyed: false,
@@ -516,13 +555,10 @@ test("Effect should not be re-run when the value has not been modified", async (
     for (const watchFunc of watchEffectFuncs) {
         const obj = constReact({})
         invokeMarker.mockClear()
-        watchFunc(
-            () => {
-                invokeMarker()
-                return obj.a
-            },
-            () => {}
-        )
+        watchFunc(() => {
+            invokeMarker()
+            return obj.a
+        }, NOOP)
         expect(invokeMarker).toHaveBeenCalledTimes(1)
 
         const sub = constReact([])
@@ -595,7 +631,7 @@ test("Whether a runtime warning will be caused when effect depends on no reactiv
 
     for (const watchFunc of watchEffectFuncs) {
         warningMatcher.mockClear()
-        watchFunc(NOOP, () => {})
+        watchFunc(NOOP, NOOP)
         expect(warningMatcher.args[2]).toBe(NOOP)
         expect(warningMatcher).toHaveBeenCalledTimes(1)
         expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()

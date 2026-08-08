@@ -1,14 +1,19 @@
 import { any, optc } from "../../../src/util/shared/sundry"
 import { isReactive } from "../../../src/util/runtime/assert"
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { batchUpdating, effect, syncEffect } from "../../../src/runtime"
+import { createTestInstance } from "../../../src/util/testing/sundry"
 import { ITERATOR_KEYS, WRAPPER } from "../../../src/runtime/reactivity/constants"
 import { constReact, react, shallowConstReact } from "../../../src/runtime/internal"
 import { isArray, isBoolean, isNumber, isObject, isString } from "../../../src/util/shared/assert"
+import { batchUpdating, effect as _effect, syncEffect as _syncEffect } from "../../../src/runtime"
 import { arrayFrom, emptyArr, getLastElem, replaceEachItems } from "../../../src/util/shared/arrays"
 
 const arr: any[] = []
 const invokeMarker = vi.fn()
+
+const testInstance = createTestInstance()
+const effect = (fn: () => void) => _effect(testInstance, fn)
+const syncEffect = (fn: () => void) => _syncEffect(testInstance, fn)
 
 const cleanup = () => {
     emptyArr(arr)

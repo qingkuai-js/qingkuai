@@ -12,6 +12,7 @@ import {
     TIMING_SYNC,
     ITERATOR_KEYS,
     SUB_SCHEDULING,
+    EFFECT_RENDER,
     EFFECT_DISABLED,
     EFFECT_SCHEDULING,
     LINK_OWN_CHANGED,
@@ -146,10 +147,11 @@ function update() {
 
         // 首次渲染副作用时，触发组件的 onBeforeUpdate 并将组件加入 updatingComponents
         // For the first render effect, trigger the component's `onBeforeUpdate` and add it to `updatingComponents`
-        if (effect.m && !effect.m.updating) {
-            effect.m.updating = true
-            runHooks(effect.m, BEFORE_UPDATE)
-            updatingComponents.push(effect.m)
+        const instance = effect.d?.m
+        if (effect.l & EFFECT_RENDER && instance && !instance.updating) {
+            instance.updating = true
+            runHooks(instance, BEFORE_UPDATE)
+            updatingComponents.push(instance)
         }
     }
 

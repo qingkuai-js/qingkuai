@@ -54,8 +54,6 @@ export namespace __qk__lsu {
  * identifiers as raw when they are **not accessed in the template**, or when
  * they are **constants that are never reassigned**.
  *
- *
- *
  * Examples:
  * ```ts
  * // Mark the identifier as raw so it will not become reactive
@@ -76,6 +74,9 @@ export namespace __qk__lsu {
  * // the identifier is treated as a plain value
  * const options = raw({ debug: true })
  * ```
+ *
+ * @param value The value to mark as raw. Optional.
+ * @returns The same value passed in, unchanged.
  */
 export declare function raw<T>(value?: T): T
 
@@ -112,22 +113,21 @@ export declare function raw<T>(value?: T): T
  *
  * // All accesses to `userName` will be compiled to `props.user.name`
  * console.log(userName)
- * ```
  *
- * ```ts
  * // Alias a DOM ref property and modify it through the alias
  * const inputValue = alias(refs.searchInput.value)
  *
  * // compiled to: refs.searchInput.value = "hello"
  * inputValue = "hello"
- * ```
  *
- * ```ts
  * // When aliasing an identifier, destructuring must be used
  * const { user } = alias(props)
  *
  * console.log(user.name) // -> props.user.name
  * ```
+ *
+ * @param value A property access expression, or an object to destructure.
+ * @returns The original value passed in, unchanged.
  */
 export declare function alias<T>(value: T): T
 
@@ -173,26 +173,25 @@ export declare function alias<T>(value: T): T
  *
  * // Nested mutations are plain operations
  * state.count++
- * ```
  *
- * ```ts
  * // For `const`, first-level properties are shallow reactive
  * const state = shallow({
- *   count: 0,
- *   user: { name: "Alice" }
+ *     count: 0,
+ *     user: { name: "Alice" }
  * })
  *
  * state.count++        // reactive update
  * state.user.name = "" // plain nested mutation
- * ```
  *
- * ```ts
  * // Destructuring produces multiple shallow reactive identifiers
  * let { width, height } = shallow(props.size)
  *
  * width = 200 // reactive update
  * height = 100 // reactive update
  * ```
+ *
+ * @param value The value to mark as shallow reactive. Optional.
+ * @returns The same value passed in, unchanged.
  */
 export declare function shallow<T>(value?: T): T
 
@@ -229,31 +228,30 @@ export declare function shallow<T>(value?: T): T
  * ```ts
  * // For `let`, the variable and all nested properties are reactive
  * let state = reactive({
- *   count: 0,
- *   user: { name: "Alice" }
+ *     count: 0,
+ *     user: { name: "Alice" }
  * })
  *
  * state.count++           // reactive update
  * state.user.name = "Bob" // reactive update
- * ```
  *
- * ```ts
  * // For `const`, all nested properties are deeply reactive
  * const config = reactive({
- *   url: "/api",
- *   options: { timeout: 1000 }
+ *     url: "/api",
+ *     options: { timeout: 1000 }
  * })
  *
  * config.options.timeout = 2000 // reactive update
- * ```
  *
- * ```ts
  * // Destructuring with `let` produces multiple deeply reactive identifiers
  * let { width, height } = reactive(props.size)
  *
  * width = 200 // reactive update
  * height = 100 // reactive update
  * ```
+ *
+ * @param value The value to make deeply reactive. Optional.
+ * @returns The same value passed in, unchanged.
  */
 export declare function reactive<T>(value?: T): T
 
@@ -276,29 +274,29 @@ export declare function reactive<T>(value?: T): T
  * - Supports **destructuring declarations**.
  * - All identifiers declared via destructuring inherit derived reactivity.
  *
+ * Examples:
  * ```ts
  * // Basic derived value
  * const doubleCount = derived(() => state.count * 2)
  *
  * console.log(doubleCount) // returns state.count * 2
- * ```
  *
- * ```ts
  * // Destructuring derived value
  * const { age, fullName } = derived(() => ({
- *   age: user.age,
- *   fullName: user.firstName + " " + user.lastName
+ *     age: user.age,
+ *     fullName: user.firstName + " " + user.lastName
  * }))
  *
  * console.log(age)      // reactive to changes in user.age
  * console.log(fullName) // reactive to changes in user.firstName or user.lastName
- * ```
  *
- * ```ts
  * // Derived value updates automatically when dependencies change
  * state.count = 5
  * console.log(doubleCount) // automatically updates to 10
  * ```
+ *
+ * @param getter A function that computes the derived value.
+ * @returns The derived reactive value.
  */
 export declare function derived<T>(getter: Getter<T>): T
 
@@ -328,222 +326,185 @@ export declare function derived<T>(getter: Getter<T>): T
  * const doubleCount = derivedExp(state.count * 2)
  *
  * console.log(doubleCount) // returns state.count * 2
- * ```
  *
- * ```ts
  * // Destructuring a derived expression
  * const { age, fullName } = derivedExp({
- *   age: user.age,
- *   fullName: user.firstName + " " + user.lastName
+ *     age: user.age,
+ *     fullName: user.firstName + " " + user.lastName
  * })
  *
  * console.log(age)      // reactive to changes in user.age
  * console.log(fullName) // reactive to changes in user.firstName or user.lastName
- * ```
  *
- * ```ts
  * // Derived value updates automatically when dependencies change
  * state.count = 5
  * console.log(doubleCount) // automatically updates to 10
  * ```
+ *
+ * @param expression The reactive expression to derive from.
+ * @returns The derived reactive value.
  */
 export declare function derivedExp<T>(expression: T): T
 
-/**
- * Watches reactive dependencies inside an expression and invokes a callback
- * whenever any of them change.
- *
- * This method behaves like `watch`, but instead of requiring a getter
- * function, it accepts a reactive expression directly. The compiler will
- * automatically convert the expression into a getter internally.
- *
- * The `callback` receives the previous value and the updated value each time
- * the reactive dependencies of the expression change. This enables
- * side-effects or reactions to changes in reactive state.
- *
- * The returned object provides controls for managing the watcher:
- * - `stop()` completely stops the watcher and releases resources.
- * - `pause()` temporarily suspends invoking the callback.
- * - `resume()` resumes a previously paused watcher.
- *
- * Usage restrictions:
- * - This function **must be used as a function call**.
- *
- * Examples:
- * ```ts
- * const watcher = watchExp(state.count * state.multiplier, (oldVal, newVal) => {
- *     console.log(`value changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 2 // console logs: "value changed from 0 to 2"
- *
- * watcher.pause()
- * state.count = 3 // callback not called
- *
- * watcher.resume()
- * state.count = 4 // console logs: "value changed from 2 to 4"
- *
- * watcher.stop()
- * state.count = 5 // callback not called
- * ```
- *
- * ```ts
- * // Watching a combination of reactive values
- * const watcher = watchExp(state.count + state.multiplier, (oldVal, newVal) => {
- *     console.log(`sum changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1
- * state.multiplier = 2 // console logs: "sum changed from 0 to 3"
- * ```
- */
-export declare function watchExp<T>(expression: T, callback: WatcherCallback<T>): WatcherHandlers
+interface WatchExpFunc {
+    /**
+     * Watches reactive dependencies inside an expression and invokes a
+     * callback whenever any of them change.
+     *
+     * This method behaves like `watch`, but instead of requiring a getter
+     * function, it accepts a reactive expression directly. The compiler
+     * automatically converts the expression into a getter internally.
+     *
+     * Trigger timing:
+     * - The concrete trigger timing depends on the API that uses this
+     *   signature (watchExp, preWatchExp, postWatchExp, or syncWatchExp).
+     * - Non-sync variants are scheduled asynchronously; their callbacks run
+     *   after the current task settles.
+     *
+     * Callback:
+     * - Receives the previous value and the updated value each time the
+     *   reactive dependencies of the expression change.
+     *
+     * Returned object:
+     * - `stop()` completely stops the watcher and releases resources.
+     * - `pause()` temporarily suspends invoking the callback.
+     * - `resume()` resumes a previously paused watcher.
+     *
+     * Examples:
+     * ```ts
+     * const watcher = watchExp(state.count * state.multiplier, (oldVal, newVal) => {
+     *     console.log(`value changed from ${oldVal} to ${newVal}`)
+     * })
+     *
+     * state.count = 2 // console logs: "value changed from 0 to 2"
+     *
+     * watcher.pause()
+     * state.count = 3 // callback not called
+     *
+     * watcher.resume()
+     * state.count = 4 // console logs: "value changed from 2 to 4"
+     *
+     * watcher.stop()
+     * state.count = 5 // callback not called
+     * ```
+     *
+     * @param expression The reactive expression to watch.
+     * @param callback Handles value changes with `(oldVal, newVal)`.
+     * @returns A control object with stop, pause, and resume methods.
+     */
+    <T>(expression: T, callback: WatcherCallback<T>): WatcherHandlers
+}
 
-/**
- * Creates a watcher from a reactive expression that reacts with
- * **pre-DOM-update priority**.
- *
- * This method works like `preWatch`, but instead of requiring a getter
- * function, it accepts a reactive expression directly. The compiler
- * automatically converts the expression into a getter internally.
- *
- * The callback is executed **before DOM updates** and before other `watch`
- * or `postWatch` watchers. This ensures that state changes can be handled
- * immediately, ahead of UI updates.
- *
- * The returned object provides controls for managing the watcher:
- * - `stop()` completely stops the watcher and releases resources.
- * - `pause()` temporarily suspends invoking the callback.
- * - `resume()` resumes a previously paused watcher.
- *
- * Usage restrictions:
- * - This function **must be used as a function call**.
- *
- * Examples:
- * ```ts
- * const watcher = preWatchExp(state.count * state.multiplier, (oldVal, newVal) => {
- *     console.log(`value changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1 // callback executes before DOM updates
- *
- * watcher.pause()
- * state.count = 2 // callback not called
- *
- * watcher.resume()
- * state.count = 3 // callback executes before DOM updates
- *
- * watcher.stop()
- * state.count = 4 // callback not called
- * ```
- *
- * ```ts
- * // Watching a combination of reactive values with pre-DOM-update priority
- * const watcher = preWatchExp(state.count + state.multiplier, (oldVal, newVal) => {
- *     console.log(`sum changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1
- * state.multiplier = 2 // callback executes before DOM updates
- * ```
- */
-export declare function preWatchExp<T>(expression: T, callback: WatcherCallback<T>): WatcherHandlers
+export declare const watchExp: WatchExpFunc
+export declare const preWatchExp: WatchExpFunc
+export declare const postWatchExp: WatchExpFunc
+export declare const syncWatchExp: WatchExpFunc
 
-/**
- * Creates a watcher from a reactive expression that reacts with
- * **post-DOM-update priority**.
- *
- * This method behaves like `postWatch`, but instead of requiring a getter
- * function, it accepts a reactive expression directly. The compiler will
- * automatically convert the expression into a getter internally.
- *
- * The callback is executed **after DOM updates** and after other `watch`
- * or `preWatch` watchers. This is useful when side-effects should run
- * only after the UI has already been updated.
- *
- * The returned object provides controls for managing the watcher:
- * - `stop()` completely stops the watcher and releases resources.
- * - `pause()` temporarily suspends invoking the callback.
- * - `resume()` resumes a previously paused watcher.
- *
- * Usage restrictions:
- * - This function **must be used as a function call**.
- *
- * Examples:
- * ```ts
- * const watcher = postWatchExp(state.count * state.multiplier, (oldVal, newVal) => {
- *     console.log(`value changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1 // callback executes after DOM updates
- *
- * watcher.pause()
- * state.count = 2 // callback not called
- *
- * watcher.resume()
- * state.count = 3 // callback executes after DOM updates
- *
- * watcher.stop()
- * state.count = 4 // callback not called
- * ```
- *
- * ```ts
- * // Watching a combination of reactive values with post-DOM-update priority
- * const watcher = postWatchExp(state.count + state.multiplier, (oldVal, newVal) => {
- *     console.log(`sum changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1
- * state.multiplier = 2 // callback executes after DOM updates
- * ```
- */
-export declare function postWatchExp<T>(expression: T, callback: WatcherCallback<T>): WatcherHandlers
+interface WatchFunc {
+    /**
+     * Registers a watcher for a reactive source and runs a callback when
+     * the watched value changes.
+     *
+     * Typical use case: react to state transitions with side effects such
+     * as logging, DOM reads, or resource lifecycle management.
+     *
+     * Trigger timing:
+     * - The concrete trigger timing depends on the API that uses this
+     *   signature (watch, preWatch, postWatch, or syncWatch).
+     * - Non-sync variants are scheduled asynchronously; their callbacks run
+     *   after the current task settles.
+     *
+     * Callback:
+     * - Receives the previous value and current value.
+     * - May return a cleanup function that runs before the next callback
+     *   execution.
+     *
+     * Returned object:
+     * - `stop()` completely stops the watcher and releases resources.
+     * - `pause()` temporarily suspends invoking the callback.
+     * - `resume()` resumes a previously paused watcher.
+     *
+     * Examples:
+     * ```ts
+     * const handle = watch(() => count, (pre, cur) => {
+     *     // Track transitions for debugging or analytics.
+     *     console.log(`count changed from ${pre} to ${cur}`)
+     * })
+     *
+     * count = 2 // console logs: "count changed from 0 to 2"
+     *
+     * handle.pause()
+     * count = 3 // callback not called
+     *
+     * handle.resume()
+     * count = 4 // console logs: "count changed from 2 to 4"
+     *
+     * handle.stop()
+     * count = 5 // callback not called
+     * ```
+     *
+     * @param getter Returns the value to observe.
+     * @param callback Handles value changes with `(pre, cur)`.
+     * @returns A control object with stop, pause, and resume methods.
+     */
+    <T>(getter: Getter<T>, callback: WatcherCallback<T>): WatcherHandlers
+}
 
-/**
- * Creates a **synchronous watcher** from a reactive expression.
- *
- * This method behaves like `syncWatch`, but instead of requiring a getter
- * function, it accepts a reactive expression directly. The compiler will
- * automatically convert the expression into a getter internally.
- *
- * The callback is invoked **synchronously at the moment a dependency
- * changes**, ensuring the reaction happens immediately within the same
- * update cycle.
- *
- * The returned object provides controls for managing the watcher:
- * - `stop()` completely stops the watcher and releases resources.
- * - `pause()` temporarily suspends invoking the callback.
- * - `resume()` resumes a previously paused watcher.
- *
- * Examples:
- * ```ts
- * const watcher = syncWatchExp(state.count * state.multiplier, (oldVal, newVal) => {
- *     console.log(`value changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1 // callback executes immediately
- *
- * watcher.pause()
- * state.count = 2 // callback not called
- *
- * watcher.resume()
- * state.count = 3 // callback executes immediately
- *
- * watcher.stop()
- * state.count = 4 // callback not called
- * ```
- *
- * ```ts
- * // Watching a combination of reactive values synchronously
- * const watcher = syncWatchExp(state.count + state.multiplier, (oldVal, newVal) => {
- *     console.log(`sum changed from ${oldVal} to ${newVal}`)
- * })
- *
- * state.count = 1
- * state.multiplier = 2 // callback executes immediately
- * ```
- */
-export declare function syncWatchExp<T>(expression: T, callback: WatcherCallback<T>): WatcherHandlers
+export declare const watch: WatchFunc
+export declare const preWatch: WatchFunc
+export declare const postWatch: WatchFunc
+export declare const syncWatch: WatchFunc
+
+interface EffectFunc {
+    /**
+     * Registers a reactive side effect and reruns it when tracked
+     * dependencies change.
+     *
+     * Typical use case: run async requests, logging, or integration logic
+     * that should respond to reactive state updates.
+     *
+     * Trigger timing:
+     * - Dependencies are collected from reactive values accessed while the
+     *   callback executes.
+     * - The concrete trigger timing depends on the API that uses this
+     *   signature (effect, preEffect, postEffect, or syncEffect).
+     * - Non-sync variants are scheduled asynchronously; their callbacks run
+     *   after the current task settles.
+     *
+     * Returned object:
+     * - `stop()` completely stops the effect and releases resources.
+     * - `pause()` temporarily suspends rerunning the effect.
+     * - `resume()` resumes a previously paused effect.
+     *
+     * Examples:
+     * ```ts
+     * const handle = effect(() => {
+     *     // This reruns when reactive values used here change.
+     *     console.log(`current count: ${count}`)
+     * })
+     *
+     * count = 1 // console logs: "current count: 1"
+     *
+     * handle.pause()
+     * count = 2 // effect not rerun
+     *
+     * handle.resume()
+     * count = 3 // console logs: "current count: 3"
+     *
+     * handle.stop()
+     * count = 4 // effect not rerun
+     * ```
+     *
+     * @param callback Contains the side-effect logic to run.
+     * @returns A control object with stop, pause, and resume methods.
+     */
+    (callback: ArbitraryFunc): WatcherHandlers
+}
+
+export declare const effect: EffectFunc
+export declare const preEffect: EffectFunc
+export declare const postEffect: EffectFunc
+export declare const syncEffect: EffectFunc
 
 /**
  * Defines default values for component **reference attributes**.
@@ -566,9 +527,7 @@ export declare function syncWatchExp<T>(expression: T, callback: WatcherCallback
  * })
  *
  * console.log(refs.count) // 0 if not provided by the parent
- * ```
  *
- * ```ts
  * // A reference attribute that may be passed during instantiation
  * defaultRefs({ counter: 0 })
  *
@@ -576,6 +535,8 @@ export declare function syncWatchExp<T>(expression: T, callback: WatcherCallback
  *     refs.counter++
  * }
  * ```
+ *
+ * @param value An object of reference attribute defaults.
  */
 export declare function defaultRefs<T extends Record<string, any>>(value: T): void
 
@@ -599,9 +560,7 @@ export declare function defaultRefs<T extends Record<string, any>>(value: T): vo
  * })
  *
  * console.log(props.title) // "Untitled" if not provided by the parent
- * ```
  *
- * ```ts
  * // Props not passed during instantiation will use these defaults
  * defaultProps({ theme: "light" })
  *
@@ -609,6 +568,8 @@ export declare function defaultRefs<T extends Record<string, any>>(value: T): vo
  *     console.log(props.theme)
  * }
  * ```
+ *
+ * @param value An object of prop defaults.
  */
 export declare function defaultProps<T extends Record<string, any>>(value: T): void
 

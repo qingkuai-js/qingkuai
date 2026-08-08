@@ -642,7 +642,6 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     let needInsertComma = false
 
     const internalId = generateIdentifier.internal
-    const contextId = generateIdentifier.context
     const hasDefaultContent = !!nodeContext.fragment?.content.length
     const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
 
@@ -654,7 +653,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     }
 
     writer.wrapLine().write(`${internalId}.renderSlot(`)
-    writer.write(`${contextId}, ${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`)
+    writer.write(`${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`)
 
     if (
         nodeContext.dynamicAttributes.length ||

@@ -2,6 +2,7 @@ import type {
     EffectHandle,
     GeneralEffectFunc,
     QingkuaiComponent,
+    ComponentInstance,
     WatchEffectCallback
 } from "#type-declarations/runtime"
 import type { AnyObject, GeneralFunc, Getter } from "./tools"
@@ -19,17 +20,15 @@ import type { AnyObject, GeneralFunc, Getter } from "./tools"
  * Examples:
  * ```ts
  * const options: HtmlBlockOptions = {
- *   // Keep script/style escaped, but escape iframe tags explicitly.
- *   escapeTags: ["iframe"]
+ *     // Keep script/style escaped, but escape iframe tags explicitly.
+ *     escapeTags: ["iframe"]
  * }
- * ```
  *
- * ```ts
  * const options: HtmlBlockOptions = {
- *   // Disable style escaping for trusted CSS content.
- *   escapeStyle: false,
- *   // Keep script escaping enabled for safety.
- *   escapeScript: true
+ *     // Disable style escaping for trusted CSS content.
+ *     escapeStyle: false,
+ *     // Keep script escaping enabled for safety.
+ *     escapeScript: true
  * }
  * ```
  */
@@ -47,44 +46,69 @@ export interface CreateWatcher {
      * Typical use case: react to state transitions with side effects such as
      * logging, DOM reads, or resource lifecycle management.
      *
-     * The concrete trigger timing depends on the API that uses this signature
-     * (for example watch, preWatch, postWatch, or syncWatch).
+     * Binding:
+     * - The first argument is the component instance the watcher binds to.
+     *   When the component is destroyed, the watcher is cleaned up
+     *   automatically — regardless of whether it was registered in sync or
+     *   async logic.
+     * - Passing `null` instead of an instance binds the watcher to no
+     *   component, so it is never auto-cleaned; the caller must manage its
+     *   lifecycle by calling `stop()`.
      *
-     * The callback receives the previous value and current value. If the
-     * callback returns a cleanup function, it runs before the next callback
-     * execution and when the watcher is stopped.
+     * Trigger timing:
+     * - The concrete trigger timing depends on the API that uses this
+     *   signature (watch, preWatch, postWatch, or syncWatch).
+     * - Non-sync variants are scheduled asynchronously; their callbacks run
+     *   after the current task settles.
      *
-     * @param getter Returns the value to observe.
-     * @param callback Handles value changes with `(pre, cur)`.
-     * @returns A control handle with stop, pause, and resume methods.
+     * Callback:
+     * - Receives the previous value and current value.
+     * - May return a cleanup function that runs before the next callback
+     *   execution and when the watcher is stopped.
+     *
+     * Returned object:
+     * - `stop()` completely stops the watcher and releases resources.
+     * - `pause()` temporarily suspends invoking the callback.
+     * - `resume()` resumes a previously paused watcher.
      *
      * Examples:
      * ```ts
-     * const handle = watch(() => count, (pre, cur) => {
-     *   // Track transitions for debugging or analytics.
-     *   console.log("count changed", pre, cur)
+     * const handle = watch(instance, () => count, (pre, cur) => {
+     *     // Track transitions for debugging or analytics.
+     *     console.log(`count changed from ${pre} to ${cur}`)
      * })
+     *
+     * count = 2 // console logs: "count changed from 0 to 2"
      *
      * handle.pause()
-     * // Updates during pause do not trigger the callback.
+     * count = 3 // callback not called
      *
      * handle.resume()
+     * count = 4 // console logs: "count changed from 2 to 4"
+     *
      * handle.stop()
-     * ```
+     * count = 5 // callback not called
      *
-     * ```ts
-     * let timer: ReturnType<typeof setTimeout> | undefined
-     *
-     * const handle = postWatch(() => query, (pre, cur) => {
-     *   // Cancel previous async work before scheduling a new one.
-     *   timer = setTimeout(() => fetchData(cur), 300)
-     *   return () => clearTimeout(timer)
+     * // Unbound watcher: cleaned up manually.
+     * const handle = syncWatch(null, () => query, (pre, cur) => {
+     *     // React to query changes.
+     *     console.log(`query changed from ${pre} to ${cur}`)
      * })
      *
+     * query = "new" // console logs: "query changed from old to new"
      * handle.stop()
      * ```
+     *
+     * @param instance The component instance to bind the watcher to, or `null` to leave it unbound.
+     * @param getter Returns the value to observe.
+     * @param callback Handles value changes with `(pre, cur)`.
+     * @returns A control handle with stop, pause, and resume methods.
      */
-    <T>(getter: Getter<T>, callback: WatchEffectCallback<T>): EffectHandle
+    <T>(
+        instance: ComponentInstance<any> | null,
+        getter: Getter<T>,
+        callback: WatchEffectCallback<T>
+    ): EffectHandle
 }
 
 export interface CreateEffect {
@@ -95,42 +119,64 @@ export interface CreateEffect {
      * Typical use case: run async requests, logging, or integration logic
      * that should respond to reactive state updates.
      *
-     * Dependencies are collected from reactive values accessed while the
-     * callback executes. The concrete trigger timing depends on the API that
-     * uses this signature (for example effect, preEffect, postEffect, or
-     * syncEffect).
+     * Binding:
+     * - The first argument is the component instance the effect binds to.
+     *   When the component is destroyed, the effect is cleaned up
+     *   automatically — regardless of whether it was registered in sync or
+     *   async logic.
+     * - Passing `null` instead of an instance binds the effect to no
+     *   component, so it is never auto-cleaned; the caller must manage its
+     *   lifecycle by calling `stop()`.
      *
-     * If the callback returns a cleanup function, it runs before the next
-     * execution and when the effect is stopped.
+     * Trigger timing:
+     * - Dependencies are collected from reactive values accessed while the
+     *   callback executes.
+     * - The concrete trigger timing depends on the API that uses this
+     *   signature (effect, preEffect, postEffect, or syncEffect).
+     * - Non-sync variants are scheduled asynchronously; their callbacks run
+     *   after the current task settles.
      *
-     * @param callback Contains side-effect logic and optional cleanup return.
-     * @returns A control handle with stop, pause, and resume methods.
+     * Callback:
+     * - May return a cleanup function that runs before the next execution
+     *   and when the effect is stopped.
+     *
+     * Returned object:
+     * - `stop()` completely stops the effect and releases resources.
+     * - `pause()` temporarily suspends rerunning the effect.
+     * - `resume()` resumes a previously paused effect.
      *
      * Examples:
      * ```ts
-     * const handle = effect(() => {
-     *   // This reruns when reactive values used here change.
-     *   console.log("current count:", count)
+     * const handle = effect(instance, () => {
+     *     // This reruns when reactive values used here change.
+     *     console.log(`current count: ${count}`)
      * })
+     *
+     * count = 1 // console logs: "current count: 1"
      *
      * handle.pause()
+     * count = 2 // effect not rerun
+     *
      * handle.resume()
+     * count = 3 // console logs: "current count: 3"
+     *
      * handle.stop()
-     * ```
+     * count = 4 // effect not rerun
      *
-     * ```ts
-     * let timer: ReturnType<typeof setTimeout> | undefined
-     *
-     * const handle = postEffect(() => {
-     *   // Clean up the previous timer before each rerun.
-     *   timer = setTimeout(() => syncToServer(keyword), 200)
-     *   return () => clearTimeout(timer)
+     * // Unbound effect: cleaned up manually.
+     * const handle = syncEffect(null, () => {
+     *     // Sync to external services.
+     *     console.log(`syncing count: ${count}`)
      * })
      *
      * handle.stop()
      * ```
+     *
+     * @param instance The component instance to bind the effect to, or `null` to leave it unbound.
+     * @param callback Contains side-effect logic and optional cleanup return.
+     * @returns A control handle with stop, pause, and resume methods.
      */
-    (callback: GeneralEffectFunc): EffectHandle
+    (instance: ComponentInstance<any> | null, callback: GeneralEffectFunc): EffectHandle
 }
 
 export interface LifecycleHookRegister {
@@ -143,23 +189,20 @@ export interface LifecycleHookRegister {
      * The callback is invoked when the corresponding lifecycle phase is
      * reached.
      *
-     * @param callback Contains logic to run at the target lifecycle phase.
-     * @returns Returns nothing.
-     *
      * Examples:
      * ```ts
      * onMounted(() => {
-     *   // Access DOM refs after the component is mounted.
-     *   console.log("mounted", refs.panel)
-     * })
+     *     // Access DOM refs after the component is mounted.
+     *     console.log("mounted", refs.panel)
+     * }) // runs once after the component is mounted
+     *
+     * onDestroyed(() => {
+     *     // Clean up subscriptions when the component is removed.
+     *     unsubscribe()
+     * }) // runs once before the component is destroyed
      * ```
      *
-     * ```ts
-     * onDestroyed(() => {
-     *   // Clean up subscriptions when the component is removed.
-     *   unsubscribe()
-     * })
-     * ```
+     * @param callback Contains logic to run at the target lifecycle phase.
      */
     (callback: GeneralFunc): void
 }
@@ -174,21 +217,18 @@ export interface MountAppFunc {
      * If the target is a selector string, the runtime resolves it to an
      * element before mounting.
      *
-     * @param component The component to mount as the app root.
-     * @param target Mount container element or selector string.
-     * @returns Returns nothing.
-     *
      * Examples:
      * ```ts
      * // Mount by passing a real DOM element.
      * const container = document.getElementById("app")!
      * mountApp(App, container)
-     * ```
      *
-     * ```ts
      * // Mount by passing a selector.
      * mountApp(App, "#app")
      * ```
+     *
+     * @param component The component to mount as the app root.
+     * @param target Mount container element or selector string.
      */
     (component: QingkuaiComponent<any>, target: Element | string): void
 }
@@ -202,9 +242,6 @@ export interface ToRawFunc {
      *
      * If the input is not wrapped, this function returns the input as-is.
      *
-     * @param value A value that may be a Qingkuai reactive proxy.
-     * @returns The raw target for a proxy, or the original value.
-     *
      * Examples:
      * ```ts
      * const inner = {}
@@ -216,15 +253,16 @@ export interface ToRawFunc {
      * // `toRaw` restores identity to the original object.
      * console.log(toRaw(outer.inner) === inner) // true
      * console.log(toRaw(outer).inner === inner) // true
-     * ```
      *
-     * ```ts
      * const plain = { name: "Qingkuai" }
      * const raw = toRaw(plain)
      *
      * // Plain values are returned directly.
      * console.log(raw === plain) // true
      * ```
+     *
+     * @param value A value that may be a Qingkuai reactive proxy.
+     * @returns The raw target for a proxy, or the original value.
      */
     <T>(value: T): T
 }
@@ -239,30 +277,28 @@ export interface NextTickFunc {
      * Uses the microtask queue (Promise.then), so the callback runs after
      * synchronous execution finishes but before the next UI render.
      *
-     * @param callback A function to run in the next microtask. Optional.
-     * @returns A promise that resolves after the callback runs (or
-     * immediately if no callback was provided).
-     *
      * Examples:
      * ```ts
      * // Wait for reactive state updates to settle.
      * let count = 0
      *
      * effect(() => {
-     *   count++
+     *     count++
      * })
      *
      * await nextTick()
      * // At this point, all scheduled updates have completed.
      * console.log(count) // 1
-     * ```
      *
-     * ```ts
      * // Provide a callback instead of awaiting.
      * nextTick(() => {
-     *   console.log("updates finished")
+     *     console.log("updates finished")
      * })
      * ```
+     *
+     * @param callback A function to run in the next microtask. Optional.
+     * @returns A promise that resolves after the callback runs (or
+     * immediately if no callback was provided).
      */
     (callback?: GeneralFunc): Promise<void>
 }
@@ -278,10 +314,6 @@ export interface ToReactiveFunc {
      * an existing proxy. If the value was not inferred or explicitly marked
      * as reactive by the compiler, the original value is returned.
      *
-     * @param value The object that may have a reactive proxy.
-     * @returns The reactive proxy if one exists, otherwise the original
-     * value.
-     *
      * Examples:
      * ```ts
      * const obj = { count: 0 }
@@ -293,15 +325,17 @@ export interface ToReactiveFunc {
      *
      * // Changes trigger reactivity (shallow level only).
      * proxy.count++
-     * ```
      *
-     * ```ts
      * const plain = { name: "Qingkuai" }
      *
      * // If the value has no reactive proxy, return the value as-is.
      * const result = toReactive(plain)
      * console.log(result === plain) // true
      * ```
+     *
+     * @param value The object that may have a reactive proxy.
+     * @returns The reactive proxy if one exists, otherwise the original
+     * value.
      */
     <T extends AnyObject>(value: T): T
 }
@@ -318,31 +352,29 @@ export interface createStoreFunc {
      * The returned object is reactive, so any property changes will
      * automatically trigger updates in all components that access it.
      *
-     * @param value Initial state object with properties to share.
-     * @returns A reactive proxy wrapping the initial state object.
-     *
      * Examples:
      * ```ts
      * // Store module: create and export shared state.
      * import { createStore } from "qingkuai"
      *
      * export const store = createStore({
-     *   isLogin: false,
-     *   userInfo: null,
-     *   // other shared properties...
+     *     isLogin: false,
+     *     userInfo: null,
+     *     // other shared properties...
      * })
-     * ```
      *
-     * ```ts
      * // Component module: import and use the store.
      * import { store } from "./store"
      *
      * // Any changes to store.isLogin trigger updates in all components
      * // that access it.
      * if (store.isLogin) {
-     *   console.log("Logged in as:", store.userInfo.name)
+     *     console.log("Logged in as:", store.userInfo.name)
      * }
      * ```
+     *
+     * @param value Initial state object with properties to share.
+     * @returns A reactive proxy wrapping the initial state object.
      */
     <T extends AnyObject>(value: T): T
 }

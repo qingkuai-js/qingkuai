@@ -47,7 +47,18 @@ test("Runtime script: watchExp wraps non-function first argument as getter", () 
         </lang-js>
         <div>{count}</div>
     `)
-    expect(code).toContain("_.watchExp(() => (count + 1), () => {})")
+    expect(code).toContain("watch(() => (count + 1), () => {})")
+})
+
+test("Runtime script: watchExp with type assertion still rewrites to base watch", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let count = 1
+            const w = (watchExp as any)(count + 1, () => {})
+        </lang-js>
+        <div>{count}</div>
+    `)
+    expect(code).toContain("(watch as any)(() => (count + 1), () => {})")
 })
 
 test("Runtime script: destructuring derivedExp in debug emits setter tuple suffix", () => {

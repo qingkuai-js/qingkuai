@@ -6,7 +6,6 @@ import { RuntimeCodeWriter } from "../writer"
 import { transformEmbeddedScript } from "./script"
 import { generateTemplateRender } from "./template"
 import { replaceQkImportSpecifiers } from "./import"
-import { arrayFrom } from "../../../util/shared/arrays"
 import { objectAssign } from "../../../util/shared/aliases"
 import { traverseObject } from "../../../util/shared/sundry"
 import { ensureIdWithPrefix } from "../../../util/compiler/sundry"
@@ -15,8 +14,8 @@ import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragmen
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
-    const { usedIntrinsicVars } = analyzeResult.script
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
+    const { usedIntrinsicVars, usedEffectWatchMethods } = analyzeResult.script
     const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
 
     objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifier, {
@@ -25,6 +24,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         setterArg: ensureIdWithPrefix("v"),
         context: ensureIdWithPrefix("_ctx"),
         anchor: ensureIdWithPrefix("_anchor"),
+        instance: ensureIdWithPrefix("_instance"),
         component: ensureIdWithPrefix("_component"),
         compressStrings: ensureIdWithPrefix("_compressStrings")
     })
@@ -57,8 +57,16 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     }
     generateDelegateEventsRegistration(writer, contextId)
 
-    if (usedIntrinsicVars.size) {
-        writer.write(`\nconst { ${arrayFrom(usedIntrinsicVars).join(", ")} } = `)
+    const instanceId = generateIdentifier.instance
+    const accessorItems: Array<[string, boolean]> = [
+        [instanceId, usedEffectWatchMethods.size > 0],
+        ["props", usedIntrinsicVars.has("props")],
+        ["refs", usedIntrinsicVars.has("refs")],
+        ["slots", usedIntrinsicVars.has("slots")]
+    ]
+    const destructureItems = accessorItems.map(([name, used]) => (used ? name : ""))
+    if ((destructureItems.length = destructureItems.findLastIndex(Boolean) + 1)) {
+        writer.write(`const [${destructureItems.join(", ")}] = `)
     }
     writer.write(`${internalId}.init(${anchorId}, ${contextId})`)
 

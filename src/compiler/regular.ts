@@ -35,6 +35,7 @@ export const intrinsicVariableRE = /^(?:props|refs|slots)$/
 export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
 export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)Exp$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias)$/
+export const intrinsicEffectWatchMethodsRE = /^(?:effect|watch|(?:pre|post|sync)(?:Effect|Watch))$/
 export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|default(?:Props|Refs)|(?:watch|(?:pre|post|sync|)Watch)Exp)$/
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/

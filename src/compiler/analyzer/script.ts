@@ -14,7 +14,8 @@ import {
     intrinsicVariableRE,
     cannotRedeclareStatusRE,
     intrinsicWatcherMethodsRE,
-    intrinsicReactiveMethodsRE
+    intrinsicReactiveMethodsRE,
+    intrinsicEffectWatchMethodsRE
 } from "../regular"
 import {
     CannotAliasIdentifier,
@@ -96,15 +97,16 @@ function analyzeSourceFile(sourceFile: ts.SourceFile) {
             return
         }
 
-        // 记录监视器便捷注册方法的调用位置
-        // Record the call locations of intrinsic watcher registration methods.
-        if (
-            ts.isCallExpression(node) &&
-            ts.isIdentifier(node.expression) &&
-            intrinsicWatcherMethodsRE.test(node.expression.text)
-        ) {
-            analyzeResult.script.watchers.push(node)
-            return
+        // 记录监视器便捷注册方法的调用位置，并确保对应的基础 watch 方法被注入绑定闭包。
+        // Record the call locations of intrinsic watcher registration methods and ensure the
+        // corresponding base watch method gets an instance-bound shadowing closure injected.
+        if (ts.isCallExpression(node)) {
+            const callee = getStriptTypeOperationsNode(node.expression)
+            if (ts.isIdentifier(callee) && intrinsicWatcherMethodsRE.test(callee.text)) {
+                analyzeResult.script.watchers.push(node)
+                analyzeResult.script.usedEffectWatchMethods.add(callee.text.slice(0, -3))
+                return
+            }
         }
 
         if (node.inTopLevel) {
@@ -249,6 +251,10 @@ function analyzeIdentifier(node: TsNodeWithContext<ts.Identifier>) {
 
         if (intrinsicMethodsRE.test(node.text)) {
             checkUsageOfIntrinsicMethods(node)
+        }
+
+        if (intrinsicEffectWatchMethodsRE.test(node.text)) {
+            analyzeResult.script.usedEffectWatchMethods.add(node.text)
         }
     }
 }
@@ -583,11 +589,15 @@ function checkTopLevelIdentifier(id: ts.Identifier, imported = false) {
     if (imported) {
         analyzeResult.script.importIdentifiers.add(id.text)
     }
+    if (
+        intrinsicMethodsRE.test(id.text) ||
+        intrinsicVariableRE.test(id.text) ||
+        intrinsicEffectWatchMethodsRE.test(id.text)
+    ) {
+        return ShadowCompilerIntrinsicAtTopLevel(sourceLoc, id.text)
+    }
     if (id.text === "$arg") {
         IdentifierMaybeOverwritten(sourceLoc, id.text, "inline event handler")
-    }
-    if (intrinsicMethodsRE.test(id.text) || intrinsicVariableRE.test(id.text)) {
-        ShadowCompilerIntrinsicAtTopLevel(sourceLoc, id.text)
     }
 }
 

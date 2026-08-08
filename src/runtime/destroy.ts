@@ -42,7 +42,8 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
     const instance = destruction.m
     const cleaners = destruction.l
     const children = destruction.c
-    if (instance) {
+    const isOwnDestruction = instance?._internal.d === destruction
+    if (isOwnDestruction) {
         runHooks(instance, BEFORE_DESTROY)
     }
     if (cleaners) {
@@ -70,7 +71,7 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
             walkNodes(destruction, node => node.remove())
         }
     }
-    if (instance) {
+    if (isOwnDestruction) {
         runHooks(instance, AFTER_DESTROY)
     }
     destruction.c = destruction.l = destruction.e = NIL

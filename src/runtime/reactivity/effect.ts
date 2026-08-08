@@ -1,9 +1,11 @@
 import type {
     Link,
     Effect,
+    Destruction,
     EffectHandle,
     GeneralEffectFunc,
-    WatchEffectCallback
+    WatchEffectCallback,
+    ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { CreateEffect, CreateWatcher } from "#type-declarations/runtime-ex"
@@ -50,7 +52,7 @@ export function markActiveEffectNoCheck() {
 }
 
 export function renderEffect(fn: GeneralEffectFunc) {
-    return createEffect(EFFECT_RENDER, TIMING_UNSET, fn)
+    createEffect(EFFECT_RENDER, TIMING_UNSET, fn)
 }
 
 export function derivedEffect(fn: ArbitraryFunc) {
@@ -115,7 +117,6 @@ export function disposeEffect(effect: Effect, byDestruction = false) {
     }
     effect.x = -1
     effect.d = NIL
-    effect.m = NIL
     effect.v = UNDEF
     effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED
 }
@@ -124,7 +125,8 @@ function createEffect(
     flag: number,
     timing: number,
     fn: ArbitraryFunc,
-    watchCallback?: WatchEffectCallback<any>
+    watchCallback?: WatchEffectCallback<any>,
+    destruction: Destruction | null | undefined = currentDestruction
 ): Effect {
     const effect: Effect = {
         f: fn,
@@ -133,9 +135,8 @@ function createEffect(
         c: NIL,
         l: flag,
         t: timing,
-        d: currentDestruction,
-        i: getIncrementEffectId(),
-        m: flag & EFFECT_RENDER ? currentInstance : NIL
+        d: destruction,
+        i: getIncrementEffectId()
     }
     if (watchCallback) {
         effect.g = fn
@@ -152,8 +153,8 @@ function createEffect(
 
     // 将副作用记录到 Destruction
     // Record the effect onto `Destruction`
-    if (checkAndDestroyInvalidEffect(effect) && currentDestruction) {
-        const effects = (currentDestruction.e ??= [])
+    if (checkAndDestroyInvalidEffect(effect) && destruction) {
+        const effects = (destruction.e ??= [])
         effect.x = effects.length
         effects.push(effect)
     }
@@ -163,15 +164,25 @@ function createEffect(
 
 function watchEffectFuncGen() {
     return TIMINGS.map<CreateWatcher>(timing => {
-        return <T>(getter: Getter<T>, callback: WatchEffectCallback<T>) => {
-            return createEffectWithHandle(EFFECT_WATCH, timing, getter, callback)
+        return <T>(
+            instance: ComponentInstanceBase | null,
+            getter: Getter<T>,
+            callback: WatchEffectCallback<T>
+        ) => {
+            return makeEffectHandle(
+                createEffect(EFFECT_WATCH, timing, getter, callback, instance?._internal.d)
+            )
         }
     })
 }
 
 function reactiveEffectFuncGen() {
     return TIMINGS.map<CreateEffect>(timing => {
-        return (callback: GeneralEffectFunc) => createEffectWithHandle(0, timing, callback)
+        return (instance: ComponentInstanceBase | null, callback: GeneralEffectFunc) => {
+            return makeEffectHandle(
+                createEffect(0, timing, callback, undefined, instance?._internal.d)
+            )
+        }
     })
 }
 
@@ -203,8 +214,8 @@ function runEffectCollector(effect: Effect) {
     const componentInstance = currentInstance
     const parentDestruction = currentDestruction
     setCurrentDestruction(effect.d)
-    if (effect.m) {
-        setCurrentInstance(effect.m)
+    if (effect.d?.m) {
+        setCurrentInstance(effect.d.m)
     }
 
     try {
@@ -265,8 +276,7 @@ function checkAndDestroyInvalidEffect(effect: Effect) {
     return isValid
 }
 
-function createEffectWithHandle(...args: Parameters<typeof createEffect>): EffectHandle {
-    const effect = createEffect(...args)
+function makeEffectHandle(effect: Effect): EffectHandle {
     return {
         stop: () => {
             disposeEffect(effect)
