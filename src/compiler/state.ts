@@ -62,11 +62,11 @@ function newAnalyzeResult(): AnalyzeResult {
         },
         script: {
             watchers: [],
-            defaultItems: {},
             exportedBindings: [],
             exportStatements: [],
             importDeclarations: [],
             reusedStringReferences: [],
+            defaultsCalled: undefined,
             eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),
             usedIntrinsicVars: new Set(),

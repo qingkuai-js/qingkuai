@@ -507,71 +507,49 @@ export declare const postEffect: EffectFunc
 export declare const syncEffect: EffectFunc
 
 /**
- * Defines default values for component **reference attributes**.
+ * Defines default values for component bindings.
  *
- * This method specifies fallback values for reference attributes when
- * they are not provided during component instantiation. The compiler
- * uses this declaration to initialize missing reference attributes with
- * the specified defaults.
+ * This method specifies fallback values used when a binding is not provided
+ * during component instantiation. The whole argument is passed to the
+ * runtime, which initializes the missing values with the specified defaults.
+ *
+ * The argument is an object whose keys are default-value categories, each
+ * mapping to the default values for that category.
+ *
+ * For each category, only the keys marked as **optional** (`?`) in the
+ * corresponding type may be given a default value.
  *
  * Usage restrictions:
- * - This function **can only be called in the top-level scope** of an
- *   embedded script block.
+ * - This function **can only be called once**, in the top-level scope of an
+ *   embedded script block, as a standalone expression statement.
+ * - It is evaluated **in place** where it is called; values referencing
+ *   bindings declared later in the script behave like any other JavaScript
+ *   (temporal dead zone).
  *
  * Examples:
  * ```ts
- * // Define default values for reference attributes
- * defaultRefs({
- *     count: 0,
- *     isOpen: false
+ * // Define default values for the optional props and refs
+ * defaults<Props, Refs>({
+ *     props: {
+ *         pageSize: 10,
+ *         title: "Untitled"
+ *     },
+ *     refs: {
+ *         counter: 0
+ *     }
  * })
  *
- * console.log(refs.count) // 0 if not provided by the parent
- *
- * // A reference attribute that may be passed during instantiation
- * defaultRefs({ counter: 0 })
- *
- * function increment() {
- *     refs.counter++
- * }
+ * console.log(props.title)   // "Untitled" if not provided by the parent
+ * console.log(refs.counter)  // 0 if not provided by the parent
  * ```
  *
- * @param value An object of reference attribute defaults.
+ * @typeParam P The component `Props` type.
+ * @typeParam R The component `Refs` type.
+ * @param value An object whose keys are default-value categories; each
+ *   value may only include the keys that are optional in the corresponding
+ *   type.
  */
-export declare function defaultRefs<T extends Record<string, any>>(value: T): void
-
-/**
- * Defines default values for component props.
- *
- * This method specifies fallback values for props when they are not
- * provided during component instantiation. The compiler uses this
- * declaration to initialize missing props with the specified defaults.
- *
- * Usage restrictions:
- * - This function **can only be called in the top-level scope** of an
- *   embedded script block.
- *
- * Examples:
- * ```ts
- * // Define default values for props
- * defaultProps({
- *     pageSize: 10,
- *     title: "Untitled"
- * })
- *
- * console.log(props.title) // "Untitled" if not provided by the parent
- *
- * // Props not passed during instantiation will use these defaults
- * defaultProps({ theme: "light" })
- *
- * function toggleTheme() {
- *     console.log(props.theme)
- * }
- * ```
- *
- * @param value An object of prop defaults.
- */
-export declare function defaultProps<T extends Record<string, any>>(value: T): void
+export declare function defaults<P, R>(value: { props?: Prettify<Pick<P, OptionalKeysOf<P>>>; refs?: Prettify<Pick<R, OptionalKeysOf<R>>> }): void
 
 interface ReloadGetListPair {
     <T>(value: Set<T>): [T, T]
@@ -586,5 +564,7 @@ type Getter<T> = () => T
 type ArbitraryFunc = (...args: any) => any
 type WatcherCallback<T> = (oldValue: T, newValue: T) => void
 type WatcherHandlers = Record<"stop" | "pause" | "resume", () => void>
+type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
+type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
 type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element

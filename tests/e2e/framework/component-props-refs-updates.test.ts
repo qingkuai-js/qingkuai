@@ -40,14 +40,15 @@ const scenario: E2EScenarioInput = {
     components: {
         "ui/FormPanel": `
             <lang-js>
-                defaultProps({
-                    count: 0,
-                    featured: false
-                })
-
-                defaultRefs({
-                    model: 10,
-                    localSeed: 10
+                defaults({
+                    props: {
+                        count: 0,
+                        featured: false
+                    },
+                    refs: {
+                        model: 10,
+                        localSeed: 10
+                    }
                 })
 
                 const bumpModel = () => {

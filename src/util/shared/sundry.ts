@@ -26,6 +26,10 @@ export function notEqual(a: any, b: any) {
     return a !== a ? b === b : a !== b
 }
 
+export function upperFirst(s: string) {
+    return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 export function optc(v: any) {
     return OBJECT_PROTO.toString.call(v).slice(8, -1)
 }

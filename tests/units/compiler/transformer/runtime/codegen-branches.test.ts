@@ -66,28 +66,39 @@ function getTextNodeByParentTag(parentTag: string) {
     return null
 }
 
-test("Runtime codegen: defaultRefs/defaultProps with args assign to context", () => {
+test("Runtime codegen: defaults pass defaults directly to applyDefaults", () => {
     const code = compileRuntime(`
         <lang-js>
-            defaultRefs({ root: null })
-            defaultProps({ title: "QK" })
+            defaults({ refs: { root: null }, props: { title: "QK" } })
+
+            console.log(props.title)
         </lang-js>
     `)
-    expect(code).toContain("_ctx.R = { root: null }")
-    expect(code).toContain('_ctx.P = { title: "QK" }')
-    expect(code).not.toContain("defaultRefs(")
-    expect(code).not.toContain("defaultProps(")
+    expect(code).toContain('_.applyDefaults({ refs: { root: null }, props: { title: "QK" } })')
+    expect(code).toContain("const props = _.initProps(_ctx)")
+    expect(code).not.toContain("const refs = _.initRefs(_ctx)")
+    expect(code).not.toContain("defaults(")
+    expect(code).not.toContain("_ctx.D")
 })
 
-test("Runtime codegen: defaultRefs/defaultProps without args do not assign context fields", () => {
+test("Runtime codegen: defaults without args do not emit applyDefaults call", () => {
     const code = compileRuntime(`
         <lang-js>
-            defaultRefs()
-            defaultProps()
+            defaults()
         </lang-js>
     `)
-    expect(code).not.toContain("_ctx.R =")
-    expect(code).not.toContain("_ctx.P =")
+    expect(code).not.toContain("applyDefaults(")
+})
+
+test("Runtime codegen: defaults with type-assertion callee is recognized", () => {
+    const code = compileRuntime(`
+        <lang-ts>
+            ;(defaults as any)({ props: { title: "QK" } })
+            console.log(props.title)
+        </lang-ts>
+    `)
+    expect(code).toContain('_.applyDefaults({ props: { title: "QK" } })')
+    expect(code).not.toContain("defaults(")
 })
 
 test("Runtime codegen: watchExp rewrites to instance-bound base watch closure", () => {
@@ -96,7 +107,7 @@ test("Runtime codegen: watchExp rewrites to instance-bound base watch closure", 
             watchExp(() => 1, () => {})
         </lang-js>
     `)
-    expect(code).toContain("const [_instance] = _.init(_anchor, _ctx)")
+    expect(code).toContain("const _instance = _.init(_anchor, _ctx)")
     expect(code).toContain("watch(() => 1, () => {})")
 })
 
@@ -114,7 +125,7 @@ test("Runtime codegen: injects instance-bound shadowing closures for plain effec
         </lang-js>
         <div>text</div>
     `)
-    expect(code).toContain("const [_instance] = _.init(_anchor, _ctx)")
+    expect(code).toContain("const _instance = _.init(_anchor, _ctx)")
     expect(code).toContain("const effect = (_callback) => _.effect(_instance, _callback)")
     expect(code).toContain("const preEffect = (_callback) => _.preEffect(_instance, _callback)")
     expect(code).toContain("const postEffect = (_callback) => _.postEffect(_instance, _callback)")
@@ -174,24 +185,21 @@ test("Runtime codegen: Exp watcher variants rewrite to base watch with injected 
     expect(code).toContain("syncWatch(() => (1 + 1), () => {})")
 })
 
-test("Runtime codegen: destructures init tuple on demand", () => {
-    expect(compileRuntime("<div>{props.name}</div>")).toContain(
-        "const [, props] = _.init(_anchor, _ctx)"
-    )
+test("Runtime codegen: calls init accessors on demand", () => {
+    expect(compileRuntime("<div>{props.name}</div>")).toContain("const props = _.initProps(_ctx)")
 
-    expect(compileRuntime("<div>{refs.input}</div>")).toContain(
-        "const [, , refs] = _.init(_anchor, _ctx)"
-    )
+    expect(compileRuntime("<div>{refs.input}</div>")).toContain("const refs = _.initRefs(_ctx)")
 
-    expect(compileRuntime("<div>{slots.foo}</div>")).toContain(
-        "const [, , , slots] = _.init(_anchor, _ctx)"
-    )
+    expect(compileRuntime("<div>{slots.foo}</div>")).toContain("const slots = _.initSlots(_ctx)")
 
-    expect(compileRuntime("<div>{props.name} {slots.foo}</div>")).toContain(
-        "const [, props, , slots] = _.init(_anchor, _ctx)"
-    )
+    const mixedCode = compileRuntime("<div>{props.name} {slots.foo}</div>")
+    expect(mixedCode).toContain("const props = _.initProps(_ctx)")
+    expect(mixedCode).toContain("const slots = _.initSlots(_ctx)")
 
-    expect(compileRuntime("<div>{c}</div>")).toMatch(/(?<!=\s*)_.init\(_anchor, _ctx\)/)
+    const plainCode = compileRuntime("<div>{c}</div>")
+    expect(plainCode).toMatch(/(?<!=\s*)_.init\(_anchor, _ctx\)/)
+    expect(plainCode).not.toContain("initProps(")
+    expect(plainCode).not.toContain("initEvents(")
 })
 
 test("Runtime codegen: many delegated events generate wrapped event registration list", () => {
@@ -208,8 +216,9 @@ test("Runtime codegen: many delegated events generate wrapped event registration
         <button @input></button>
         <button @change></button>
     `)
-    expect(code).toContain("_ctx.e = [")
-    expect(code).toMatch(/_ctx\.e = \[[\s\S]*\n[\s\S]*\]/)
+    expect(code).not.toContain("_ctx.e =")
+    expect(code).toContain("_.initEvents([")
+    expect(code).toMatch(/_.initEvents\(\[[\s\S]*\n[\s\S]*\]\)/)
 })
 
 test("CodeEditor: result applies remove/insert/replace and keeps index map", () => {

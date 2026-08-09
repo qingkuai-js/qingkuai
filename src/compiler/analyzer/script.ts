@@ -19,6 +19,7 @@ import {
 } from "../regular"
 import {
     CannotAliasIdentifier,
+    DuplicateDefaultsCall,
     AmbiguousReactiveMarking,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
@@ -37,7 +38,6 @@ import {
     UnnecessaryReactiveMark,
     RedundantArgsForIntrinsic,
     IdentifierMaybeOverwritten,
-    DuplicateDefaultDeclaration,
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
@@ -51,7 +51,6 @@ import {
 import {
     isLiteral,
     isLeftValue,
-    isTypeOperation,
     isFunctionLiteral,
     isIdentifierAssignmentTarget
 } from "../ts-ast/assert"
@@ -64,7 +63,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
-import { walkAncestors, walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
+import { walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
     if (!inputDescriptor.script.existing) {
@@ -621,8 +620,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                 return
             }
 
-            case "defaultRefs":
-            case "defaultProps": {
+            case "defaults": {
                 if (!parent.inTopLevel) {
                     break
                 }
@@ -636,33 +634,16 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                     InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
                 }
 
-                let isValidDefinition = true
-                walkAncestors(parent, current => {
-                    if (
-                        !isTypeOperation(current) &&
-                        !ts.isSourceFile(current) &&
-                        !ts.isExpressionStatement(current)
-                    ) {
-                        return !(isValidDefinition = false)
-                    }
-                })
-                if (isValidDefinition) {
-                    const key = intrinsicName === "defaultProps" ? "props" : "refs"
-                    const existing = analyzeResult.script.defaultItems[key]
-                    if (existing) {
-                        DuplicateDefaultDeclaration(getScriptLocByNode(existing.intrinsicId), key)
-                    }
-                    if (parent.arguments.length) {
-                        analyzeResult.script.defaultItems[key] = {
-                            intrinsicId: node,
-                            value: parent.arguments[0]
-                        }
-                    } else {
-                        analyzeResult.script.defaultItems[key] = undefined
-                    }
-                    return
+                const statementParent = getStriptTypeOperationsParent(parent)
+                if (!statementParent || !ts.isExpressionStatement(statementParent)) {
+                    break
                 }
-                break
+                if (!analyzeResult.script.defaultsCalled) {
+                    analyzeResult.script.defaultsCalled = parent
+                } else {
+                    DuplicateDefaultsCall(getScriptLocByNode(node))
+                }
+                return
             }
 
             default: {

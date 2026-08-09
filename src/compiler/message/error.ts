@@ -49,8 +49,7 @@ export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string)
         case "syncWatchExp": {
             return `The compiler intrinsic "${name}" can only be used as a function call.`
         }
-        case "defaultRefs":
-        case "defaultProps": {
+        case "defaults": {
             return `The compiler intrinsic "${name}" must be called as a standalone expression at top-level scope.`
         }
     }
@@ -192,6 +191,10 @@ export const InvalidKeyDirectivePlacement = withLocation(1043, () => {
 
 export const InvalidIntrinsicMethodPlacement = withLocation(1061, (name: string) => {
     return `The compiler intrinsic method "${name}" cannot be used in template.`
+})
+
+export const DuplicateDefaultsCall = withLocation(1071, () => {
+    return `The "defaults" method can only be called once in the embedded script block.`
 })
 
 export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {

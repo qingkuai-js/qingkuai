@@ -45,12 +45,6 @@ import { getLastElem, swapDelete } from "../../util/shared/arrays"
 export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
 export const [effect, preEffect, postEffect, syncEffect] = reactiveEffectFuncGen()
 
-export function markActiveEffectNoCheck() {
-    if (activeEffect) {
-        activeEffect.l |= EFFECT_NO_CHECK
-    }
-}
-
 export function renderEffect(fn: GeneralEffectFunc) {
     createEffect(EFFECT_RENDER, TIMING_UNSET, fn)
 }

@@ -270,15 +270,6 @@ export interface ScriptAnalyzeRet {
             expression: string
         }[]
     >
-    defaultItems: Partial<
-        Record<
-            "refs" | "props",
-            {
-                intrinsicId: ts.Identifier
-                value: ts.Expression | ts.SpreadElement
-            }
-        >
-    >
     exportStatements: ts.Node[]
     watchers: ts.CallExpression[]
     fullIdentifiers: Set<string>
@@ -289,6 +280,7 @@ export interface ScriptAnalyzeRet {
     usedEffectWatchMethods: Set<string>
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>
+    defaultsCalled: ts.CallExpression | undefined
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>

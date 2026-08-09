@@ -40,6 +40,18 @@ export {
     syncEffect
 } from "./reactivity/effect"
 
+export {
+    init,
+    mount,
+    initRefs,
+    initSlots,
+    initProps,
+    getScopes,
+    applyDefaults,
+    defineExports,
+    dynamicComponent
+} from "./component"
+
 export { htmlBlock } from "./directives/html"
 export { renderSlot } from "./directives/slot"
 export { targetBlock } from "./directives/target"
@@ -51,6 +63,5 @@ export { objectAssign, call } from "../util/shared/aliases"
 export { listBlock, keyedListBlock } from "./directives/list"
 export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants"
 export { derived, destructuringDerived } from "./reactivity/derived"
-export { listen, createEventWrapper, registerEvents, delegate } from "./event"
-export { init, mount, defineExports, dynamicComponent, getScopes } from "./component"
+export { listen, createEventWrapper, initEvents, delegate } from "./event"
 export { setAttribute, setClassName, setSelectValue, setXlinkAttribute } from "./attribute"
