@@ -24,11 +24,11 @@ import { AFTER_MOUNT } from "./constants"
 import { shallowConstReact } from "./internal"
 import { isElement } from "../util/runtime/assert"
 import { invokeRender } from "./directives/render"
-import { renderEffect } from "./reactivity/effect"
 import { any, runAll } from "../util/shared/sundry"
 import { InvalidElementNode } from "./messages/error"
 import { createDestruction, destroy } from "./destroy"
 import { isFunction, isString } from "../util/shared/assert"
+import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
 // prettier-ignore
@@ -139,6 +139,7 @@ export function initProps(context: ComponentInstanceInternal) {
                     if (isFunction(val)) {
                         val = val()
                     }
+                    markActiveEffectNoCheck()
                     return val ?? context.D?.props?.[key]
                 }
             })
@@ -158,6 +159,7 @@ export function initRefs(context: ComponentInstanceInternal) {
                     transformed[key]?.[1](value)
                 },
                 get() {
+                    markActiveEffectNoCheck()
                     return transformed[key]?.[0]() ?? context.D?.refs?.[key]
                 }
             })
@@ -206,6 +208,7 @@ export function applyDefaults(defaults: DefaultValues) {
                 enumerable: true,
                 configurable: true,
                 get() {
+                    markActiveEffectNoCheck()
                     return defaults![kind]![key]
                 }
             }

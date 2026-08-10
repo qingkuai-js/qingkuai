@@ -529,7 +529,7 @@ export declare const syncEffect: EffectFunc
  * Examples:
  * ```ts
  * // Define default values for the optional props and refs
- * defaults<Props, Refs>({
+ * defaults({
  *     props: {
  *         pageSize: 10,
  *         title: "Untitled"
@@ -543,13 +543,9 @@ export declare const syncEffect: EffectFunc
  * console.log(refs.counter)  // 0 if not provided by the parent
  * ```
  *
- * @typeParam P The component `Props` type.
- * @typeParam R The component `Refs` type.
- * @param value An object whose keys are default-value categories; each
- *   value may only include the keys that are optional in the corresponding
- *   type.
+ * @param value An object whose keys are default-value categories.
  */
-export declare function defaults<P, R>(value: { props?: Prettify<Pick<P, OptionalKeysOf<P>>>; refs?: Prettify<Pick<R, OptionalKeysOf<R>>> }): void
+export declare function defaults(value: any): void
 
 interface ReloadGetListPair {
     <T>(value: Set<T>): [T, T]

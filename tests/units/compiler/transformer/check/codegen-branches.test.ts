@@ -249,3 +249,15 @@ test("#for and #catch without patterns hit invalid pattern branch", () => {
     expect(result.code).not.toContain("getListPair(")
     expect(result.code).toMatch(/\n\s*;\n/)
 })
+
+test("Check codegen: defaults call kept and imported from language-service", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            defaults({ props: { count: 0 } })
+            console.log(props)
+        </lang-ts>
+        <div>{props.count}</div>
+    `)
+    expect(result.code).toContain("defaults({ props: { count: 0 } })")
+    expect(result.code).not.toContain("applyDefaults")
+})

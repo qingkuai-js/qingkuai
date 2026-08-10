@@ -101,6 +101,37 @@ test("Runtime codegen: defaults with type-assertion callee is recognized", () =>
     expect(code).not.toContain("defaults(")
 })
 
+test("Runtime codegen: defaults with args but unused props/refs emit no applyDefaults", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            defaults({ refs: { root: null }, props: { title: "QK" } })
+
+            const local = 1
+            console.log(local)
+        </lang-js>
+        <div>{local}</div>
+    `)
+    expect(code).not.toContain("applyDefaults(")
+    expect(code).not.toContain("initProps(")
+    expect(code).not.toContain("initRefs(")
+    expect(code).not.toContain("defaults(")
+})
+
+test("Runtime codegen: defaults used only via refs emits applyDefaults and initRefs", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            defaults({ refs: { seed: 1 } })
+
+            const bump = () => refs.seed++
+        </lang-js>
+        <div>{refs.seed}</div>
+    `)
+    expect(code).toContain("_.applyDefaults({ refs: { seed: 1 } })")
+    expect(code).toContain("const refs = _.initRefs(_ctx)")
+    expect(code).not.toContain("initProps(")
+    expect(code).not.toContain("defaults(")
+})
+
 test("Runtime codegen: watchExp rewrites to instance-bound base watch closure", () => {
     const code = compileRuntime(`
         <lang-js>
