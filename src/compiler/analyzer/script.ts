@@ -609,6 +609,9 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
         const firstArg = parent.arguments[0]
         const argsLen = parent.arguments.length
         const intrinsicCallLoc = getScriptLocByNode(parent)
+        if (firstArg && ts.isSpreadElement(firstArg) && intrinsicName.endsWith("Exp")) {
+            InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
+        }
         switch (intrinsicName) {
             case "watchExp":
             case "preWatchExp":
@@ -630,9 +633,6 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                 if (argsLen > 1) {
                     RedundantArgsForIntrinsic(intrinsicCallLoc, intrinsicName, 1, argsLen)
                 }
-                if (firstArg && ts.isSpreadElement(firstArg)) {
-                    InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
-                }
 
                 const statementParent = getStriptTypeOperationsParent(parent)
                 if (!statementParent || !ts.isExpressionStatement(statementParent)) {
@@ -647,9 +647,6 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
             }
 
             default: {
-                if (firstArg && ts.isSpreadElement(firstArg)) {
-                    InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
-                }
                 if (argsLen > 1) {
                     RedundantArgsForIntrinsic(intrinsicCallLoc, intrinsicName, 1, argsLen)
                 }

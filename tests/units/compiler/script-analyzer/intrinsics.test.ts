@@ -573,3 +573,70 @@ test("Duplicate defaults calls are rejected", () => {
         }
     ])
 })
+
+test("Defaults accepts spread but rejects too many args and duplicate calls", () => {
+    localAnalyze(`
+        defaults({ props: {} }, { refs: {} })
+        defaults(...propsList)
+    `)
+    localMatchCompileMessages([
+        {
+            type: "warning",
+            range: [0, 37],
+            value: `The "defaults" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
+        },
+        {
+            type: "error",
+            range: [38, 46],
+            value: `The "defaults" method can only be called once in the embedded script block.`
+        }
+    ])
+})
+
+test("derivedExp and watchExp variants reject spread arguments", () => {
+    localAnalyze(`
+        const a = derivedExp(...items)
+        watchExp(...items, () => {})
+        preWatchExp(...items, () => {})
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [21, 29],
+            value: `The intrinsic method "derivedExp" does not support spread element as its argument.`
+        },
+        {
+            type: "error",
+            range: [40, 48],
+            value: `The intrinsic method "watchExp" does not support spread element as its argument.`
+        },
+        {
+            type: "error",
+            range: [72, 80],
+            value: `The intrinsic method "preWatchExp" does not support spread element as its argument.`
+        }
+    ])
+})
+
+test("reactive, shallow, raw and derived accept spread arguments", () => {
+    localAnalyze(`
+        const a = reactive(...items)
+        const b = shallow(...items)
+        const c = raw(...items)
+        const d = derived(...items)
+    `)
+    localMatchCompileMessages([])
+})
+
+test("alias accepts spread but still requires a mutable lvalue target", () => {
+    localAnalyze(`
+        const e = alias(...items)
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [10, 25],
+            value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+        }
+    ])
+})
