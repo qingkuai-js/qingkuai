@@ -1,4 +1,4 @@
-import type { AnyObject, ArbitraryFunc } from "#type-declarations/tools"
+import type { AnyObject, ArbitraryFunc, Thenable } from "#type-declarations/tools"
 
 export function isNull(v: any): v is null {
     return v === null
@@ -44,7 +44,7 @@ export function isNonNegativeNumber(v: any): v is number {
     return isNumber(v) && v >= 0
 }
 
-export function isPromise<T = any>(v: any): v is Promise<T> {
+export function isThenable<T = any>(v: any): v is Thenable<T> {
     return isFunction(v?.then)
 }
 

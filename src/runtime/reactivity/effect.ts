@@ -8,7 +8,7 @@ import type {
     ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
-import type { CreateEffect, CreateWatcher } from "#type-declarations/runtime-ex"
+import type { EffectFunc, WatchFunc } from "#type-declarations/runtime-ex"
 
 import {
     TIMINGS,
@@ -37,10 +37,11 @@ import {
     setCurrentDestruction
 } from "../state"
 import { NIL, UNDEF } from "../constants"
+import { objectAssign } from "../internal"
 import { getSubscription } from "./schedule"
 import { any } from "../../util/shared/sundry"
-import { EffectOrWatchHasNoDependecies } from "../messages/warn"
 import { getLastElem, swapDelete } from "../../util/shared/arrays"
+import { CreateOnDisposedComponent, EffectOrWatchHasNoDependecies } from "../messages/warn"
 
 export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
 export const [effect, preEffect, postEffect, syncEffect] = reactiveEffectFuncGen()
@@ -52,11 +53,11 @@ export function markActiveEffectNoCheck() {
 }
 
 export function renderEffect(fn: EffectCallback) {
-    createEffect(EFFECT_RENDER, TIMING_UNSET, fn)
+    createEffect(EFFECT_RENDER, TIMING_UNSET, fn, currentDestruction)
 }
 
 export function derivedEffect(fn: ArbitraryFunc) {
-    return createEffect(EFFECT_DERIVED | EFFECT_DERIVED_DIRTY, TIMING_SYNC, fn)
+    return createEffect(EFFECT_DERIVED | EFFECT_DERIVED_DIRTY, TIMING_SYNC, fn, currentDestruction)
 }
 
 export function runAndUpdateEffect(effect: Effect) {
@@ -125,8 +126,8 @@ function createEffect(
     flag: number,
     timing: number,
     fn: ArbitraryFunc,
-    watchCallback?: WatcherCallback<any>,
-    destruction: Destruction | null | undefined = currentDestruction
+    destruction: Destruction | null,
+    watchCallback?: WatcherCallback<any>
 ): Effect {
     const effect: Effect = {
         f: fn,
@@ -138,6 +139,14 @@ function createEffect(
         d: destruction,
         i: getIncrementEffectId()
     }
+    if (destruction?.d) {
+        CreateOnDisposedComponent("effect")
+        return objectAssign<Effect, Partial<Effect>>(effect, {
+            d: NIL,
+            l: flag | EFFECT_DISPOSED | EFFECT_DISABLED
+        })
+    }
+
     if (watchCallback) {
         effect.g = fn
         effect.v = UNDEF
@@ -163,24 +172,30 @@ function createEffect(
 }
 
 function watchEffectFuncGen() {
-    return TIMINGS.map<CreateWatcher>(timing => {
+    return TIMINGS.map<WatchFunc>(timing => {
         return <T>(
             instance: ComponentInstanceBase | null,
             getter: Getter<T>,
             callback: WatcherCallback<T>
         ) => {
             return makeEffectHandle(
-                createEffect(EFFECT_WATCH, timing, getter, callback, instance?._internal.d)
+                createEffect(
+                    EFFECT_WATCH,
+                    timing,
+                    getter,
+                    instance && instance._internal.d!,
+                    callback
+                )
             )
         }
     })
 }
 
 function reactiveEffectFuncGen() {
-    return TIMINGS.map<CreateEffect>(timing => {
+    return TIMINGS.map<EffectFunc>(timing => {
         return (instance: ComponentInstanceBase | null, callback: EffectCallback) => {
             return makeEffectHandle(
-                createEffect(0, timing, callback, undefined, instance?._internal.d)
+                createEffect(0, timing, callback, instance && instance._internal.d!)
             )
         }
     })
@@ -213,18 +228,13 @@ function runEffectCollector(effect: Effect) {
     let res: any
     const componentInstance = currentInstance
     const parentDestruction = currentDestruction
-    setCurrentDestruction(effect.d)
-    if (effect.d?.m) {
-        setCurrentInstance(effect.d.m)
+    if (setCurrentDestruction(effect.d)?.m) {
+        setCurrentInstance(effect.d!.m)
     }
-
-    try {
-        res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
-    } finally {
-        popRunningEffectStack()
-        setCurrentInstance(componentInstance)
-        setCurrentDestruction(parentDestruction)
-    }
+    res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
+    popRunningEffectStack()
+    setCurrentInstance(componentInstance)
+    setCurrentDestruction(parentDestruction)
 
     const collectedLinks = effect.k
     const collectedLen = collectedLinks.length

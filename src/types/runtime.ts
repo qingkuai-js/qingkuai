@@ -77,14 +77,15 @@ export interface Effect {
 }
 
 export interface Destruction {
+    d: boolean // disposed
     f: number // fragment flag
     e: Effect[] | null // effects
     p: Destruction | null // parent
     n: ChildNode | null // end node
     s: ChildNode | null // start node
-    l: GeneralFunc[] | null // cleaners
+    a: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
-    m: ComponentInstanceBase | null // component
+    m: ComponentInstance<any> | null // component
 }
 
 export interface BaseWrapper {
@@ -135,21 +136,24 @@ export type ReactiveMethods = Record<
 >
 export type RefProperty = [typeof REF_PROPERTY_ID, ObjectKeys]
 
+export type DestructuringFunc = (target: any) => any[]
 export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra
 export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
-export type DestructuringFunc = (target: any) => any[]
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
 export type EffectCallback = () => void | GeneralFunc
 export type WatcherCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 
+export type ComponentFunc = (
+    anchor: Text,
+    context?: ComponentInstanceInternal
+) => ComponentInstance<QingkuaiComponent<any>>
 export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
     ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
 >
 
 export type DefaultValues = Partial<Record<"props" | "refs", AnyObject>>
-export type ComponentFunc = (anchor: Text, context?: ComponentInstanceInternal) => void
 export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string

@@ -18,17 +18,19 @@ import {
     currentInstance,
     currentDestruction,
     setCurrentInstance,
-    backToParentDestruction
+    backToParentDestruction,
+    setCurrentDestruction
 } from "./state"
 import { AFTER_MOUNT } from "./constants"
 import { shallowConstReact } from "./internal"
 import { isElement } from "../util/runtime/assert"
 import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
-import { InvalidElementNode } from "./messages/error"
 import { createDestruction, destroy } from "./destroy"
-import { isFunction, isString } from "../util/shared/assert"
+import { CreateOnDisposedComponent } from "./messages/warn"
+import { isFunction, isThenable, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
+import { InvalidElementNode, CannotRenderComponent } from "./messages/error"
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
 // prettier-ignore
@@ -71,7 +73,6 @@ export function init(anchor: Node, context: ComponentInstanceInternal) {
     }
     setCurrentInstance(instance)
     context.d = createDestruction(currentDestruction, instance)
-
     return instance
 }
 
@@ -221,6 +222,47 @@ export function applyDefaults(defaults: DefaultValues) {
         }
     }
     context.D = defaults
+}
+
+// 渲染组件：支持同步组件方法，也支持异步组件
+// Render a component. Supports sync component functions as well as async components
+export function renderComponent(target: any, anchor: Text, context: ComponentInstanceInternal) {
+    if (isFunction(target)) {
+        target(anchor, context)
+        return
+    }
+    if (!isThenable(target)) {
+        CannotRenderComponent()
+    }
+
+    const parentInstance = currentInstance!
+    const parentDestruction = currentDestruction!
+    const parentInstanceDestruction = parentInstance._internal.d!
+    target.then((resolved: any) => {
+        // 父组件实例已销毁
+        // The parent component instance is destroyed
+        if (parentInstanceDestruction.d) {
+            return CreateOnDisposedComponent("component")
+        }
+
+        // 当前渲染 destruction 销毁时静默跳过
+        // Silently skip if the current render destruction is destroyed
+        if (parentDestruction.d) {
+            return
+        }
+
+        // 动态 import 的模块：使用其 default 导出
+        // Dynamic-import module: use its default export
+        if (!isFunction(resolved)) {
+            resolved = resolved?.default
+        }
+        if (!isFunction(resolved)) {
+            CannotRenderComponent()
+        }
+        setCurrentDestruction(parentDestruction)
+        setCurrentInstance(parentInstance)
+        resolved(anchor, context)
+    })
 }
 
 // 组件生命周期回调均为 ComponentInstance.hooks 数组中不同下标的元素，该方法生成用于注册它们的方法

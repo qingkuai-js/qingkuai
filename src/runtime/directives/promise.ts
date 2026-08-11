@@ -5,7 +5,7 @@ import { NIL } from "../constants"
 import { invokeRender } from "./render"
 import { NotPromise } from "../messages/error"
 import { renderEffect } from "../reactivity/effect"
-import { isPromise } from "../../util/shared/assert"
+import { isThenable } from "../../util/shared/assert"
 import { objectAssign } from "../../util/shared/aliases"
 import { destroy, pushDestructionCleaner } from "../destroy"
 import { currentDestruction, currentInstance } from "../state"
@@ -64,7 +64,7 @@ export function makeCancelablePromise(pms: any): CancelablePromise {
     if (pms?.[CANCELABLE]) {
         return pms
     }
-    if (!isPromise(pms)) {
+    if (!isThenable(pms)) {
         NotPromise(`"#await" directive`)
     }
 

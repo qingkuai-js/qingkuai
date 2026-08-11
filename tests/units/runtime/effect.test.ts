@@ -29,6 +29,11 @@ import {
     getCurrentEffect,
     createTestInstance
 } from "../../../src/util/testing/sundry"
+import {
+    currentDestruction,
+    setCurrentDestruction,
+    backToParentDestruction
+} from "../../../src/runtime/state"
 import { checkEffectDependaceManager } from "./_match"
 import { NIL, NOOP } from "../../../src/runtime/constants"
 import { isReactive } from "../../../src/util/runtime/assert"
@@ -40,7 +45,6 @@ import { createWarningMatcher } from "../../../src/util/testing/sundry"
 import { constReact, react } from "../../../src/runtime/reactivity/value"
 import { MaximumUpdateDepthExceeded } from "../../../src/runtime/messages/error"
 import { getRefProperty, toRaw, nextTick } from "../../../src/util/runtime/sundry"
-import { backToParentDestruction, currentDestruction } from "../../../src/runtime/state"
 import { createDestruction, destroy, pushDestructionCleaner } from "../../../src/runtime/destroy"
 
 const arr: any[] = []
@@ -127,12 +131,28 @@ test("destroy should disconnect destruction from parent/effects", () => {
     expect(nested.f).toBe(0)
     expect(nested.e).toBeNull()
     expect(nested.c).toBeNull()
-    expect(nested.l).toBeNull()
+    expect(nested.a).toBeNull()
     expect(nested.m).toBeNull()
     expect(nested.p).toBeNull()
     expect(nested.s).toBeNull()
     expect(nested.n).toBeNull()
     expect(currentDestruction).toBe(parent)
+})
+
+test("creating an effect on a destroyed destruction warns and discards", () => {
+    const parent = currentDestruction!
+    const nested = createDestruction(parent)
+    backToParentDestruction()
+    destroy(nested, false)
+
+    const callback = vi.fn()
+    setCurrentDestruction(nested)
+    const handle = _effect(testInstance, callback)
+    setCurrentDestruction(parent)
+
+    expect(callback).not.toHaveBeenCalled()
+    expect(warningMatcher.mock.calls.some(args => args.join(" ").includes("8003"))).toBe(true)
+    expect(handle).toBeDefined()
 })
 
 test("Functions of render effect", async () => {

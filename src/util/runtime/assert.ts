@@ -2,7 +2,8 @@ import type {
     RefProperty,
     ProxyWrapper,
     ReactiveValue,
-    ReactivityWrapper
+    ReactivityWrapper,
+    Destruction
 } from "#type-declarations/runtime"
 import type { AnyObject } from "#type-declarations/tools"
 

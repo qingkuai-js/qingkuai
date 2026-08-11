@@ -19,6 +19,13 @@ export function InvalidAssignment(target: string) {
     )
 }
 
+export function CreateOnDisposedComponent(purpose: string) {
+    warnWithCode(
+        8003,
+        `Attempted to create a ${purpose} after the owning component was destroyed. This usually means an async callback ran after the component was removed; the creation has been ignored.`
+    )
+}
+
 function warnWithCode(code: number, message: any, ...args: any[]) {
     const payload = isArray(message) ? message : [message, ...args]
     console.warn(`[QingKuai Warnning](${code}):`, ...payload)

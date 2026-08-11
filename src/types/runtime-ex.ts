@@ -38,7 +38,7 @@ export type HtmlBlockOptions = Partial<{
     escapeScript: boolean
 }>
 
-export interface CreateWatcher {
+export interface WatchFunc {
     /**
      * Registers a watcher for a reactive source and runs callback logic when
      * the watched value changes.
@@ -111,7 +111,7 @@ export interface CreateWatcher {
     ): EffectHandle
 }
 
-export interface CreateEffect {
+export interface EffectFunc {
     /**
      * Registers a reactive side effect and reruns it when tracked
      * dependencies change.

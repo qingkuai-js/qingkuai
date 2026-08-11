@@ -9,6 +9,15 @@ export type ObjectKeys = string | number | symbol
 export type RegExpExecRet = ReturnType<RegExp["exec"]>
 export type ArbitraryFunc<R = any> = (...args: any) => R
 
+export type Thenable<T = any> = {
+    then: (
+        onfulfilled?: (value: T) => any,
+        onrejected?: (reason: any) => any
+    ) => {
+        catch: (onrejected?: (reason: any) => any) => any
+    }
+}
+
 export type SetValue<S> = S extends Set<infer U> ? U : never
 export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
 export type MapValueType<M> = M extends Map<any, infer U> ? U : never

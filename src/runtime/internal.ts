@@ -49,6 +49,7 @@ export {
     getScopes,
     applyDefaults,
     defineExports,
+    renderComponent,
     dynamicComponent
 } from "./component"
 

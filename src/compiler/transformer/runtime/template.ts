@@ -732,10 +732,10 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     if (referenceHandleAttribute) {
         writer.write(`\n${internalId}.bindHandleReceiver(`).indent(false)
     }
-    if (maybeDynamic) {
-        writer.write(`\n${componentId}(${nodeContext.anchorId}`)
+    if ((writer.write(`\n${internalId}.renderComponent(`), maybeDynamic)) {
+        writer.write(`${componentId}, ${nodeContext.anchorId}`)
     } else {
-        writer.wrapLine().writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
+        writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
     }
 
     const hasContext = hasSlots || hasProps || hasRefs || hasScope || !node.hasActualAncestor
