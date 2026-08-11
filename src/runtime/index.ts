@@ -1,5 +1,11 @@
+export type {
+    EffectHandle,
+    EffectCallback,
+    WatcherCallback,
+    QingkuaiComponent,
+    ComponentInstance
+} from "#type-declarations/runtime"
 export type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-export type { QingkuaiComponent, ComponentInstance } from "#type-declarations/runtime"
 
 export {
     onAfterMount,

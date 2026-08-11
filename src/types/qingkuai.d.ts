@@ -6,7 +6,7 @@
 // are for type inference and validation only and have no runtime implementation.
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-import type { QingkuaiComponent as _QingkuaiComponent } from "#type-declarations/runtime"
+import type { QingkuaiComponent as _QingkuaiComponent, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
     const Sign: unique symbol
@@ -31,6 +31,11 @@ export namespace __qk__lsu {
     export const validateEventHandler: <T extends string, H extends (ev: ExtractEventKind<T>) => any>(value: T, handler: H) => void
 
     export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any
+
+    export const ExtractFirstArg: <T extends unknown[]>(...args: T) => T[0]
+    export const AssertDefaults: <P, R>(f: any, props: P, refs: R) => asserts f is (value: Prettify<DefaultsValue<P, R>>) => void
+    export const AssertRefs: <R, D>(refs: R, defaults: D) => asserts refs is R & Prettify<WithRequired<R, D extends { refs: infer DR } ? DR : never>>
+    export const AssertProps: <P, D>(props: P, defaults: D) => asserts props is P & Prettify<WithRequired<P, D extends { props: infer DP } ? DP : never>>
 }
 
 /**
@@ -392,7 +397,7 @@ interface WatchExpFunc {
      * @param callback Handles value changes with `(oldVal, newVal)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(expression: T, callback: WatcherCallback<T>): WatcherHandlers
+    <T>(expression: T, callback: WatcherCallback<T>): EffectHandle
 }
 
 export declare const watchExp: WatchExpFunc
@@ -447,7 +452,7 @@ interface WatchFunc {
      * @param callback Handles value changes with `(pre, cur)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(getter: Getter<T>, callback: WatcherCallback<T>): WatcherHandlers
+    <T>(getter: Getter<T>, callback: WatcherCallback<T>): EffectHandle
 }
 
 export declare const watch: WatchFunc
@@ -498,7 +503,7 @@ interface EffectFunc {
      * @param callback Contains the side-effect logic to run.
      * @returns A control object with stop, pause, and resume methods.
      */
-    (callback: ArbitraryFunc): WatcherHandlers
+    (callback: EffectCallback): EffectHandle
 }
 
 export declare const effect: EffectFunc
@@ -507,24 +512,21 @@ export declare const postEffect: EffectFunc
 export declare const syncEffect: EffectFunc
 
 /**
- * Defines default values for component bindings.
+ * Defines fallback values for optional component bindings.
  *
- * This method specifies fallback values used when a binding is not provided
- * during component instantiation. The whole argument is passed to the
- * runtime, which initializes the missing values with the specified defaults.
+ * The argument is an object mapping default-value categories to their
+ * default values:
+ * - `props`: default values for optional props
+ * - `refs`: default values for optional refs
  *
- * The argument is an object whose keys are default-value categories, each
- * mapping to the default values for that category.
- *
- * For each category, only the keys marked as **optional** (`?`) in the
+ * For each category, only keys declared as **optional** (`?`) in the
  * corresponding type may be given a default value.
  *
  * Usage restrictions:
- * - This function **can only be called once**, in the top-level scope of an
- *   embedded script block, as a standalone expression statement.
- * - It is evaluated **in place** where it is called; values referencing
- *   bindings declared later in the script behave like any other JavaScript
- *   (temporal dead zone).
+ * - Must be called **once**, in the **top-level scope** of an embedded
+ *   script block, as a **standalone expression statement**.
+ * - It is evaluated **in place**: values referencing bindings declared later
+ *   in the script follow JavaScript temporal dead zone rules.
  *
  * Examples:
  * ```ts
@@ -543,9 +545,18 @@ export declare const syncEffect: EffectFunc
  * console.log(refs.counter)  // 0 if not provided by the parent
  * ```
  *
- * @param value An object whose keys are default-value categories.
+ * @param a An object whose keys are default-value categories.
  */
-export declare function defaults(value: any): void
+//
+// 此处的 `defaults` 签名仅为宽松占位声明。在实际组件（.qk）中，qingkuai 编译器会在中间代码顶部
+// 生成`__qk__lsu.AssertDefaults(defaults, props, refs)` 断言，将 `defaults` 的参数类型
+// 收窄为各类型中可选键的集合，因此组件文件里 `defaults` 的签名与此处并不一致。
+//
+// The `defaults` signature here is only a loose placeholder. In realcomponents the
+// qingkuai compiler emits an `__qk__lsu.AssertDefaults(defaults, props, refs)` assertion
+// at the top of the intermediate code, narrowing the argument type to the optional keys
+// of the corresponding types, so the signature there differs from this file. This
+export declare function defaults(a: any, b: any): void
 
 interface ReloadGetListPair {
     <T>(value: Set<T>): [T, T]
@@ -558,9 +569,11 @@ interface ReloadGetListPair {
 
 type Getter<T> = () => T
 type ArbitraryFunc = (...args: any) => any
-type WatcherCallback<T> = (oldValue: T, newValue: T) => void
-type WatcherHandlers = Record<"stop" | "pause" | "resume", () => void>
 type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
+type CleanObject<T> = { -readonly [K in keyof T as K extends symbol ? never : K]: T[K] }
+type WithRequired<T, D> = Omit<T, keyof D> & Required<Pick<T, Extract<keyof D, keyof T>>>
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
+type DefaultsValue<P, R> = { props?: CleanStrictPick<P, OptionalKeysOf<P>>; refs?: CleanStrictPick<R, OptionalKeysOf<R>> }
+type CleanStrictPick<T, K extends keyof T> = [keyof Prettify<CleanObject<Pick<T, K>>>] extends [never] ? __qk__lsu.EmptyObject : Prettify<CleanObject<Pick<T, K>>>
 type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element

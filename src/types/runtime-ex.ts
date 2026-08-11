@@ -1,9 +1,9 @@
 import type {
     EffectHandle,
-    GeneralEffectFunc,
+    EffectCallback,
     QingkuaiComponent,
     ComponentInstance,
-    WatchEffectCallback
+    WatcherCallback
 } from "#type-declarations/runtime"
 import type { AnyObject, GeneralFunc, Getter } from "./tools"
 
@@ -107,7 +107,7 @@ export interface CreateWatcher {
     <T>(
         instance: ComponentInstance<any> | null,
         getter: Getter<T>,
-        callback: WatchEffectCallback<T>
+        callback: WatcherCallback<T>
     ): EffectHandle
 }
 
@@ -176,7 +176,7 @@ export interface CreateEffect {
      * @param callback Contains side-effect logic and optional cleanup return.
      * @returns A control handle with stop, pause, and resume methods.
      */
-    (instance: ComponentInstance<any> | null, callback: GeneralEffectFunc): EffectHandle
+    (instance: ComponentInstance<any> | null, callback: EffectCallback): EffectHandle
 }
 
 export interface LifecycleHookRegister {

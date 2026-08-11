@@ -34,7 +34,7 @@ export function eliminate(editor: CodeEditor) {
     if (!inputDescriptor.options.checkMode) {
         const internalId = generateIdentifier.internal
         const { usedIntrinsicVars } = analyzeResult.script
-        const defaultsCall = analyzeResult.script.defaultsCalled
+        const defaultsCall = analyzeResult.script.defaultsCall
         for (const node of analyzeResult.script.eliminatedNodes) {
             if (
                 defaultsCall &&

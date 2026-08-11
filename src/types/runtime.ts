@@ -142,9 +142,9 @@ export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 export type DestructuringFunc = (target: any) => any[]
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
-export type GeneralEffectFunc = () => void | GeneralFunc
+export type EffectCallback = () => void | GeneralFunc
+export type WatcherCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
-export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
 export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
     ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>

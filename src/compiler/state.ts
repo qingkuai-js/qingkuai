@@ -66,7 +66,7 @@ function newAnalyzeResult(): AnalyzeResult {
             exportStatements: [],
             importDeclarations: [],
             reusedStringReferences: [],
-            defaultsCalled: undefined,
+            defaultsCall: undefined,
             eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),
             usedIntrinsicVars: new Set(),

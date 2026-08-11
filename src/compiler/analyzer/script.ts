@@ -638,8 +638,8 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                 if (!statementParent || !ts.isExpressionStatement(statementParent)) {
                     break
                 }
-                if (!analyzeResult.script.defaultsCalled) {
-                    analyzeResult.script.defaultsCalled = parent
+                if (!analyzeResult.script.defaultsCall) {
+                    analyzeResult.script.defaultsCall = parent
                 } else {
                     DuplicateDefaultsCall(getScriptLocByNode(node))
                 }

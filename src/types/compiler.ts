@@ -280,7 +280,7 @@ export interface ScriptAnalyzeRet {
     usedEffectWatchMethods: Set<string>
     topLevelReferences: TopLevelReferences
     preMutatedTopLevelIdentifiers: Set<string>
-    defaultsCalled: ts.CallExpression | undefined
+    defaultsCall: ts.CallExpression | undefined
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>

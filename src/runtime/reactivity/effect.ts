@@ -3,8 +3,8 @@ import type {
     Effect,
     Destruction,
     EffectHandle,
-    GeneralEffectFunc,
-    WatchEffectCallback,
+    EffectCallback,
+    WatcherCallback,
     ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
@@ -51,7 +51,7 @@ export function markActiveEffectNoCheck() {
     }
 }
 
-export function renderEffect(fn: GeneralEffectFunc) {
+export function renderEffect(fn: EffectCallback) {
     createEffect(EFFECT_RENDER, TIMING_UNSET, fn)
 }
 
@@ -125,7 +125,7 @@ function createEffect(
     flag: number,
     timing: number,
     fn: ArbitraryFunc,
-    watchCallback?: WatchEffectCallback<any>,
+    watchCallback?: WatcherCallback<any>,
     destruction: Destruction | null | undefined = currentDestruction
 ): Effect {
     const effect: Effect = {
@@ -167,7 +167,7 @@ function watchEffectFuncGen() {
         return <T>(
             instance: ComponentInstanceBase | null,
             getter: Getter<T>,
-            callback: WatchEffectCallback<T>
+            callback: WatcherCallback<T>
         ) => {
             return makeEffectHandle(
                 createEffect(EFFECT_WATCH, timing, getter, callback, instance?._internal.d)
@@ -178,7 +178,7 @@ function watchEffectFuncGen() {
 
 function reactiveEffectFuncGen() {
     return TIMINGS.map<CreateEffect>(timing => {
-        return (instance: ComponentInstanceBase | null, callback: GeneralEffectFunc) => {
+        return (instance: ComponentInstanceBase | null, callback: EffectCallback) => {
             return makeEffectHandle(
                 createEffect(0, timing, callback, undefined, instance?._internal.d)
             )
