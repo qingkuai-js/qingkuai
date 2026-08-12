@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.0.90](https://github.com/qingkuai-js/qingkuai/compare/v1.0.84...v1.0.90) (2026-08-12)
+
+### Features
+
+- support direct rendering of async components without the `await` directive ([38ebbc3](https://github.com/qingkuai-js/qingkuai/commit/38ebbc3))
+- **compiler:** add type narrowing for the `defaults` intrinsic and `props`, `refs` identifiers ([9c607f4](https://github.com/qingkuai-js/qingkuai/commit/9c607f4))
+
+### Refactors
+
+- **compiler:** move `&handle` binding into component context ([32c11db](https://github.com/qingkuai-js/qingkuai/commit/32c11db))
+- **types:** improve type definitions for `ComponentFunc` and `AnyObject` ([9008650](https://github.com/qingkuai-js/qingkuai/commit/9008650))
+- unify `defaultProps` / `defaultRefs` into a single `defaults` intrinsic ([330ff7c](https://github.com/qingkuai-js/qingkuai/commit/330ff7c))
+- bind effect/watch methods to component instance and inject shadowing closures ([067be82](https://github.com/qingkuai-js/qingkuai/commit/067be82))
+
+### Improvements
+
+- **compiler:** call `.qk` default-import components directly, skipping the `renderComponent` call ([f75e379](https://github.com/qingkuai-js/qingkuai/commit/f75e379))
+
+### Fixes
+
+- **runtime:** correctly traverse destruction tree in the target directive ([1b8731d](https://github.com/qingkuai-js/qingkuai/commit/1b8731d), [9b21194](https://github.com/qingkuai-js/qingkuai/commit/9b21194))
+- **runtime:** fix class name handling by introducing `getClassNameString` ([82d9e89](https://github.com/qingkuai-js/qingkuai/commit/82d9e89))
+- **compiler:** apply spread argument validation to all `Exp` intrinsic variants ([2de2a8c](https://github.com/qingkuai-js/qingkuai/commit/2de2a8c))
+- keep effects alive when reading non-reactive `props` / `refs` defaults ([2a7f062](https://github.com/qingkuai-js/qingkuai/commit/2a7f062))
+
 ## [1.0.84](https://github.com/qingkuai-js/qingkuai/compare/v1.0.83...v1.0.84) (2026-08-02)
 
 ### Features
