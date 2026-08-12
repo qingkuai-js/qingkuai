@@ -249,3 +249,57 @@ test("#for and #catch without patterns hit invalid pattern branch", () => {
     expect(result.code).not.toContain("getListPair(")
     expect(result.code).toMatch(/\n\s*;\n/)
 })
+
+test("Check codegen: defaults literal kept and props/refs asserted via default-values identifier", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            defaults({ props: { count: 0 } })
+            console.log(props)
+        </lang-ts>
+        <div>{props.count}</div>
+    `)
+    expect(result.code).toContain("defaults({ props: { count: 0 } })")
+    expect(result.code).toContain(`${LSC.UTIL}.AssertDefaults(defaults, props, refs);`)
+    expect(result.code).toContain(
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.ExtractFirstArg({ props: { count: 0 } })`
+    )
+    expect(result.code).toContain(`${LSC.UTIL}.AssertProps(props, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.AssertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).not.toContain("applyDefaults")
+})
+
+test("Check codegen: JS script also keeps defaults literal and asserts via default-values identifier", () => {
+    const result = compileIntermediateResult(`
+        <lang-js>
+            defaults({ props: { count: 0 }, refs: { seed: 1 } })
+            console.log(props, refs)
+        </lang-js>
+        <div>{props.count} {refs.seed}</div>
+    `)
+    expect(result.code).not.toContain("AssertDefaults<Props, Refs>")
+    expect(result.code).toContain("defaults({ props: { count: 0 }, refs: { seed: 1 } })")
+    expect(result.code).toContain(
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.ExtractFirstArg({ props: { count: 0 }, refs: { seed: 1 } })`
+    )
+    expect(result.code).toContain(`${LSC.UTIL}.AssertProps(props, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.AssertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+})
+
+test("Check codegen: defaults spread argument is extracted via ExtractFirstArg", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            const config = { props: { count: 0 } }
+            defaults(...[config])
+            console.log(props)
+        </lang-ts>
+        <div>{props.count}</div>
+    `)
+    expect(result.code).not.toContain("= ...")
+    expect(result.code).toContain("defaults(...[config])")
+    expect(result.code).toContain(`${LSC.UTIL}.AssertDefaults(defaults, props, refs);`)
+    expect(result.code).toContain(
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.ExtractFirstArg(...[config])`
+    )
+    expect(result.code).toContain(`${LSC.UTIL}.AssertProps(props, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.AssertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+})

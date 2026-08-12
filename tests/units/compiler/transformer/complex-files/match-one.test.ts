@@ -1,9 +1,9 @@
 import { test, expect } from "vitest"
 
 import input from "./input-one"
-import { equalsWithKeyDirectiveValue } from "../../../../../src/compiler/optimizer/render"
 import { parseScript } from "../../../../../src/compiler/parser/script"
 import { compile, compileIntermediate } from "../../../../../src/compiler/compile"
+import { equalsWithKeyDirectiveValue } from "../../../../../src/compiler/optimizer/render"
 
 function expectValidESMSyntax(code: string, label: string) {
     expect(() => parseScript(code), label).not.toThrow()
@@ -57,7 +57,7 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     expect(prod.code).toContain("let mount = _.react(document.body)")
     expect(prod.code).toContain("let list = _.react([")
     expect(prodClickLiteralId).toBeTruthy()
-    expect(prod.code).toContain(`_ctx.e = [${prodClickLiteralId}]`)
+    expect(prod.code).toContain(`_.initEvents([${prodClickLiteralId}])`)
 
     expect(dev.code).toContain("_.conditionBlock([")
     expect(dev.code).toContain("_.promiseBlock(")
@@ -70,7 +70,7 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     )
     expect(dev.code).toMatch(/let \[_mount, mount\] = _\.react\(document\.body, _S\d+\)/)
     expect(dev.code).toContain("let [_list, list] = _.react([")
-    expect(dev.code).toContain('_ctx.e = ["click"]')
+    expect(dev.code).toContain('_.initEvents(["click"])')
 
     expect(prod.code.includes("_compressStrings")).toBe(true)
     expect(dev.code.includes("_compressStrings")).toBe(false)
@@ -81,8 +81,8 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
 
 test("Runtime regression: slot fallback generates valid renderSlot helper call", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "slot-fallback")
-    expect(prod.code).toContain('_.renderSlot(_ctx, "main",')
-    expect(dev.code).toContain('_.renderSlot(_ctx, "main",')
+    expect(prod.code).toContain('_.renderSlot("main",')
+    expect(dev.code).toContain('_.renderSlot("main",')
     expect(prod.code).toContain("_.UNDEF, () => {")
     expect(dev.code).toContain("_.UNDEF, () => {")
 })
@@ -91,8 +91,8 @@ test("Runtime regression: component branch keeps condition block branches separa
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "component-condition")
     expect(prod.code).toContain("_.conditionBlock([")
     expect(dev.code).toContain("_.conditionBlock([")
-    expect(prod.code).toContain("Comp(")
-    expect(dev.code).toContain("Comp(")
+    expect(prod.code).toContain("_.renderComponent(Comp, _text")
+    expect(dev.code).toContain("_.renderComponent(Comp, _text")
     expect(prod.code).not.toContain("})__ =>")
     expect(dev.code).not.toContain("})__ =>")
 })

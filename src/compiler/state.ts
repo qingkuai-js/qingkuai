@@ -32,6 +32,7 @@ function newGenerateIdentifier(): GenerateIdentifier {
     return {
         anchor: "",
         context: "",
+        instance: "",
         internal: "",
         getterArg: "",
         setterArg: "",
@@ -61,19 +62,21 @@ function newAnalyzeResult(): AnalyzeResult {
         },
         script: {
             watchers: [],
-            defaultItems: {},
             exportedBindings: [],
             exportStatements: [],
             importDeclarations: [],
             reusedStringReferences: [],
+            defaultsCall: undefined,
             eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),
             usedIntrinsicVars: new Set(),
             importIdentifiers: new Set(),
             declaratorToIntrinsic: new Map(),
+            usedEffectWatchMethods: new Set(),
             topLevelReferences: newCleanObj(),
             declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),
+            qkDefaultImportIdentifiers: new Set(),
             preMutatedTopLevelIdentifiers: new Set()
         },
         reusedStrings: newCleanObj()

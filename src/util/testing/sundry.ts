@@ -1,4 +1,5 @@
 import type { GeneralFunc } from "#type-declarations/tools"
+import type { ComponentInstanceBase } from "#type-declarations/runtime"
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
 import { NIL } from "../../runtime/constants"
@@ -30,6 +31,19 @@ export function getCurrentEffect() {
         return null
     }
     return getLastElem(currentDestruction.e)
+}
+
+export function createTestInstance() {
+    return (
+        initDestruction(),
+        {
+            _internal: {
+                get d() {
+                    return currentDestruction
+                }
+            }
+        } as unknown as ComponentInstanceBase
+    )
 }
 
 // 通过传入触发指定错误的方法，捕获后返回错误信息

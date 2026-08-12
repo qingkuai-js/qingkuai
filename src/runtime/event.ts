@@ -13,12 +13,16 @@ import {
     EVENT_PREVENT,
     EVENT_PASSIVE
 } from "../util/shared/flags"
-import { eventRegisterInfo } from "./state"
 import { call } from "../util/shared/aliases"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { any, createProxy } from "../util/shared/sundry"
+import { currentInstance, eventRegisterInfo } from "./state"
 import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP, KEY_NAME_FLAG } from "./constants"
+
+export function initEvents(events: string[]) {
+    registerEvents((currentInstance!._internal.e = events))
+}
 
 // 包装带有键位标志的事件
 // Wrap events with key flags.

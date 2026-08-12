@@ -10,7 +10,7 @@ export function invokeRender(
     parentDestruction: Destruction | null
 ) {
     const originalInstance = currentInstance
-    const destruction = createDestruction(parentDestruction)
+    const destruction = createDestruction(parentDestruction, instance)
     if (instance) {
         setCurrentInstance(instance)
     }

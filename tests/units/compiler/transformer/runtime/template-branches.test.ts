@@ -16,7 +16,28 @@ function compileRuntimeWithOptions(source: string, options: Parameters<typeof co
 
 test("Component without context uses plain anchor call", () => {
     const code = compileRuntime(`<Comp></Comp>`)
+    expect(code).toContain("_.renderComponent(Comp, _text1")
+})
+
+test("Component default-imported from .qk is called directly without renderComponent", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Comp from "./Foo.qk"
+        </lang-js>
+        <Comp />
+    `)
     expect(code).toContain("Comp(_text1")
+    expect(code).not.toContain("_.renderComponent(Comp")
+})
+
+test("Component default-imported from non-qk still uses renderComponent", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Comp from "./Foo"
+        </lang-js>
+        <Comp></Comp>
+    `)
+    expect(code).toContain("_.renderComponent(Comp, _text1")
 })
 
 test("Component #scope passes parent scope attribute in context", () => {
@@ -26,7 +47,7 @@ test("Component #scope passes parent scope attribute in context", () => {
         </lang-css>
         <Comp #scope></Comp>
     `)
-    expect(code).toContain("Comp(_text1, {")
+    expect(code).toContain("_.renderComponent(Comp, _text1, {")
     expect(code).toContain("_.getScopes(")
 })
 
@@ -49,7 +70,7 @@ test("Slot without attrs uses UNDEF props and fallback closure", () => {
             </slot>
         </Comp>
     `)
-    expect(code).toContain('_.renderSlot(_ctx, "default",')
+    expect(code).toContain('_.renderSlot("default",')
     expect(code).toContain("_.UNDEF, () => {")
 })
 
@@ -60,12 +81,12 @@ test("Slot with dynamic and static attrs builds slot props object", () => {
         </lang-js>
         <slot name="main" !title={label} fixed></slot>
     `)
-    expect(code).toContain('_.renderSlot(_ctx, "main",')
+    expect(code).toContain('_.renderSlot("main",')
     expect(code).toContain("title: label")
     expect(code).toContain("fixed: true")
 })
 
-test("Component refs skip &handle in r block and bind separately", () => {
+test("Component refs skip &handle in r block and pass setter via context.h", () => {
     const code = compileRuntime(`
         <lang-js>
             let model = ""
@@ -75,9 +96,10 @@ test("Component refs skip &handle in r block and bind separately", () => {
     `)
     expect(code).toContain("r: {")
     expect(code).toContain("value: [")
-    expect(code).toContain("_.bindHandleReceiver")
-    expect(code).toContain("Comp(_text1, {")
+    expect(code).toContain("h: ")
     expect(code).not.toContain("handle: [")
+    expect(code).not.toContain("bindHandleReceiver")
+    expect(code).toContain("_.renderComponent(Comp, _text1, {")
 })
 
 test("Await then catch without inline then keeps NIL placeholder", () => {
@@ -168,7 +190,7 @@ test("Debug mode keeps generation parseable for same branches", () => {
         true
     )
     expect(code).toContain("_.promiseBlock(")
-    expect(code).toContain("Comp(")
+    expect(code).toContain("_.renderComponent(Comp, _text1, {")
     expect(code).toContain("p: {")
     expect(code).not.toContain("r:")
 })
@@ -476,9 +498,9 @@ test("nested component: child component renders as default slot", () => {
             <Bar />
         </Foo>
     `)
-    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain("_.renderComponent(Foo, _text1, {")
     expect(code).toContain('["default"]: (_anchor')
-    expect(code).toContain("Bar(_anchor")
+    expect(code).toContain("_.renderComponent(Bar, _anchor")
 })
 
 test("nested component: multiple child components with different slot names", () => {
@@ -488,9 +510,9 @@ test("nested component: multiple child components with different slot names", ()
             <Baz #slot={"footer"} />
         </Foo>
     `)
-    expect(code).toContain("Foo(_text1, {")
-    expect(code).toContain("Bar(_anchor")
-    expect(code).toContain("Baz(_anchor")
+    expect(code).toContain("_.renderComponent(Foo, _text1, {")
+    expect(code).toContain("_.renderComponent(Bar, _anchor")
+    expect(code).toContain("_.renderComponent(Baz, _anchor")
 })
 
 test("nested component: child component with named and default slots", () => {
@@ -501,9 +523,9 @@ test("nested component: child component with named and default slots", () => {
         </Foo>
     `)
     expect(code).toContain("header: (_anchor")
-    expect(code).toContain("Bar(_anchor")
+    expect(code).toContain("_.renderComponent(Bar, _anchor")
     expect(code).toContain('["default"]: (_anchor')
-    expect(code).toContain("Baz(_anchor")
+    expect(code).toContain("_.renderComponent(Baz, _anchor")
 })
 
 test("nested component: deeply nested three levels", () => {
@@ -514,19 +536,19 @@ test("nested component: deeply nested three levels", () => {
             </B>
         </A>
     `)
-    expect(code).toContain("A(_text1, {")
-    expect(code).toContain("B(_anchor1, {")
-    expect(code).toContain("C(_anchor")
+    expect(code).toContain("_.renderComponent(A, _text1, {")
+    expect(code).toContain("_.renderComponent(B, _anchor1, {")
+    expect(code).toContain("_.renderComponent(C, _anchor")
 })
 
 test("nested component: component without context still uses plain call", () => {
     const code = compileRuntime(`<Foo></Foo>`)
-    expect(code).toContain("Foo(_text1")
+    expect(code).toContain("_.renderComponent(Foo, _text1")
 })
 
 test("root-level component without scope inherits ancestor scope", () => {
     const code = compileRuntime(`<Foo></Foo>`)
-    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain("_.renderComponent(Foo, _text1, {")
     expect(code).toContain("_.getScopes()")
 })
 
@@ -537,6 +559,6 @@ test("root-level component without scope and with styles emits scopes", () => {
         </lang-css>
         <Foo></Foo>
     `)
-    expect(code).toContain("Foo(_text1, {")
+    expect(code).toContain("_.renderComponent(Foo, _text1, {")
     expect(code).toContain("_.getScopes()")
 })

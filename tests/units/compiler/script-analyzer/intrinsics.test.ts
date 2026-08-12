@@ -26,8 +26,7 @@ describe("Invalid usages of intrinsic methods", () => {
     test("Not in the top level", () => {
         localAnalyze(`
             {
-                defaultProps()
-                defaultRefs()
+                defaults()
                 reactive()
                 shallow()
                 raw()
@@ -38,42 +37,37 @@ describe("Invalid usages of intrinsic methods", () => {
         localMatchCompileMessages([
             {
                 type: "error",
-                range: [6, 18],
-                value: `The compiler intrinsic "defaultProps" must be called as a standalone expression at top-level scope.`
+                range: [6, 14],
+                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
-                range: [25, 36],
-                value: `The compiler intrinsic "defaultRefs" must be called as a standalone expression at top-level scope.`
-            },
-            {
-                type: "error",
-                range: [43, 51],
+                range: [21, 29],
                 value: `The compiler intrinsic "reactive" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
-                range: [58, 65],
+                range: [36, 43],
                 value: `The compiler intrinsic "shallow" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
-                range: [72, 75],
+                range: [50, 53],
                 value: `The compiler intrinsic "raw" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
-                range: [82, 89],
+                range: [60, 67],
                 value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
-                range: [96, 103],
+                range: [74, 81],
                 value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
-                range: [96, 101],
+                range: [74, 79],
                 value: `The compiler intrinsic "alias" must be called at top-level scope to mark the variable initializer.`
             }
         ])
@@ -81,28 +75,28 @@ describe("Invalid usages of intrinsic methods", () => {
 
     test("Not standalone calls", () => {
         localAnalyze(`
-            const a = defaultProps
-            true ? defaultRefs() : null
+            const a = defaults
+            true ? defaults() : null
 
             if(condition){
-                defaultProps()
+                defaults()
             }
         `)
         localMatchCompileMessages([
             {
                 type: "error",
-                range: [10, 22],
-                value: `The compiler intrinsic "defaultProps" must be called as a standalone expression at top-level scope.`
+                range: [10, 18],
+                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
-                range: [30, 41],
-                value: `The compiler intrinsic "defaultRefs" must be called as a standalone expression at top-level scope.`
+                range: [26, 34],
+                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
             },
             {
                 type: "error",
-                range: [71, 83],
-                value: `The compiler intrinsic "defaultProps" must be called as a standalone expression at top-level scope.`
+                range: [64, 72],
+                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
             }
         ])
     })
@@ -434,8 +428,7 @@ test("Shadow compiler intrinsic identifiers", () => {
                 var shallow =5
                 using raw = 6
                 class derived {}
-                function defaultProps() {}
-                enum defaultRefs {}
+                function defaults() {}
                 import watchExp from ""
                 import { postWatchExp } from ""
                 import { ___ as syncWatchExp } from ""
@@ -478,27 +471,22 @@ test("Shadow compiler intrinsic identifiers", () => {
         },
         {
             type: "error",
-            range: [194, 206],
-            value: `Compiler intrinsic identifier "defaultProps" cannot be shadowed at top-level scope.`
+            range: [194, 202],
+            value: `Compiler intrinsic identifier "defaults" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [217, 228],
-            value: `Compiler intrinsic identifier "defaultRefs" cannot be shadowed at top-level scope.`
-        },
-        {
-            type: "error",
-            range: [239, 247],
+            range: [215, 223],
             value: `Compiler intrinsic identifier "watchExp" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [265, 277],
+            range: [241, 253],
             value: `Compiler intrinsic identifier "postWatchExp" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
-            range: [304, 316],
+            range: [280, 292],
             value: `Compiler intrinsic identifier "syncWatchExp" cannot be shadowed at top-level scope.`
         }
     ])
@@ -550,7 +538,7 @@ test("Analyzer emits errors for top-level await, namespace and reserved identifi
 test("Analyzer validates intrinsic argument count and spread arguments", () => {
     localAnalyze(`
         watchExp(1, 2, 3)
-        defaultProps(...x, y)
+        defaults(...x, y)
         reactive(...x)
     `)
 
@@ -572,30 +560,83 @@ test("Analyzer rejects aliasing plain identifier and intrinsics inside using dec
     expect(messages.length).toBeGreaterThan(0)
 })
 
-test("Duplicate default definitions", () => {
+test("Duplicate defaults calls are rejected", () => {
     localAnalyze(`
-        defaultProps({})
-        defaultProps({})
+        defaults({ props: {} })
+        defaults({ refs: {} })
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [24, 32],
+            value: `The "defaults" method can only be called once in the embedded script block.`
+        }
+    ])
+})
 
-        defaultRefs({})
-        defaultRefs({})
-        defaultRefs({})
+test("Defaults accepts spread but rejects too many args and duplicate calls", () => {
+    localAnalyze(`
+        defaults({ props: {} }, { refs: {} })
+        defaults(...propsList)
     `)
     localMatchCompileMessages([
         {
             type: "warning",
-            range: [0, 12],
-            value: `This default value definition for "props" is ignored because it is overridden by a later one.`
+            range: [0, 37],
+            value: `The "defaults" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
         },
         {
-            type: "warning",
-            range: [35, 46],
-            value: `This default value definition for "refs" is ignored because it is overridden by a later one.`
+            type: "error",
+            range: [38, 46],
+            value: `The "defaults" method can only be called once in the embedded script block.`
+        }
+    ])
+})
+
+test("derivedExp and watchExp variants reject spread arguments", () => {
+    localAnalyze(`
+        const a = derivedExp(...items)
+        watchExp(...items, () => {})
+        preWatchExp(...items, () => {})
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [21, 29],
+            value: `The intrinsic method "derivedExp" does not support spread element as its argument.`
         },
         {
-            type: "warning",
-            range: [51, 62],
-            value: `This default value definition for "refs" is ignored because it is overridden by a later one.`
+            type: "error",
+            range: [40, 48],
+            value: `The intrinsic method "watchExp" does not support spread element as its argument.`
+        },
+        {
+            type: "error",
+            range: [72, 80],
+            value: `The intrinsic method "preWatchExp" does not support spread element as its argument.`
+        }
+    ])
+})
+
+test("reactive, shallow, raw and derived accept spread arguments", () => {
+    localAnalyze(`
+        const a = reactive(...items)
+        const b = shallow(...items)
+        const c = raw(...items)
+        const d = derived(...items)
+    `)
+    localMatchCompileMessages([])
+})
+
+test("alias accepts spread but still requires a mutable lvalue target", () => {
+    localAnalyze(`
+        const e = alias(...items)
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [10, 25],
+            value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
         }
     ])
 })

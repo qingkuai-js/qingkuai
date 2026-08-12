@@ -1,6 +1,7 @@
 import type {
     Getter,
     Setter,
+    Prettify,
     AnyObject,
     ObjectKeys,
     GeneralFunc,
@@ -44,9 +45,24 @@ export interface ComponentInstanceBase {
     host: Element
     updating: boolean
     hooks: GeneralFunc[][]
-    context: ComponentContext
     parent: ComponentInstanceBase | null
+
+    /** @internal */
+    _internal: ComponentInstanceInternal
 }
+
+export type ComponentInstanceInternal = Partial<{
+    d: Destruction
+    D: DefaultValues // defaults
+    s: AnyObject // raw slots
+    h: Setter // handle setter
+    p: AnyObject // raw props
+    P: AnyObject // bound props
+    r: AnyObject // raw refs
+    R: AnyObject // bound refs
+    e: string[] // delegated events
+    a: string[] // ancestor scope chain
+}>
 
 export interface Effect {
     f: ArbitraryFunc
@@ -56,21 +72,21 @@ export interface Effect {
     k: Link[] // dependencies
     x: number // index in Destruction.e
     d: Destruction | null // destruction
-    m: ComponentInstanceBase | null // component
     c: GeneralFunc | null // cleaner between two runs
     g?: Getter // getter (WatchEffect)
     v?: any // value (WatchEffect)
 }
 
 export interface Destruction {
+    d: boolean // disposed
     f: number // fragment flag
     e: Effect[] | null // effects
     p: Destruction | null // parent
     n: ChildNode | null // end node
     s: ChildNode | null // start node
-    l: GeneralFunc[] | null // cleaners
+    a: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
-    m: ComponentInstanceBase | null // component
+    m: ComponentInstance<any> | null // component
 }
 
 export interface BaseWrapper {
@@ -107,16 +123,6 @@ export interface ProxyWrapperExtra {
     a: Map<any, Subscription> | null // async subscriptions
 }
 
-export type ComponentContext = Partial<{
-    r: AnyObject // refs
-    p: AnyObject // props
-    s: AnyObject // slots
-    R: any // default refs
-    P: any // default props
-    e: string[] // delegated events
-    a: string[] // ancestor scope chain
-}>
-
 export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper
 }
@@ -131,19 +137,24 @@ export type ReactiveMethods = Record<
 >
 export type RefProperty = [typeof REF_PROPERTY_ID, ObjectKeys]
 
+export type DestructuringFunc = (target: any) => any[]
 export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra
 export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
-export type DestructuringFunc = (target: any) => any[]
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
-export type GeneralEffectFunc = () => void | GeneralFunc
+export type EffectCallback = () => void | GeneralFunc
+export type WatcherCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
-export type WatchEffectCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 
-export type ComponentInstance<T extends QingkuaiComponent<any>> = ComponentInstanceBase &
-    ReturnType<T[typeof RENDER]>
+export type ComponentFunc = (
+    anchor: Text,
+    context?: ComponentInstanceInternal
+) => ComponentInstance<QingkuaiComponent<any>>
+export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
+    ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
+>
 
-export type ComponentFunc = (anchor: Text, options?: ComponentContext) => void
-export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string
+export type DefaultValues = Partial<Record<"props" | "refs", AnyObject>>
+export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string

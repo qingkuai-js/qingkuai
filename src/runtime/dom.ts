@@ -146,7 +146,7 @@ function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
 // 将祖先 scope 链中的所有 scope 属性设置到根元素上
 // Apply all scope attributes from the ancestor scope chain to root elements
 function attachScopesToRoot(node: Element | DocumentFragment): void {
-    const scopes = currentInstance?.context.a
+    const scopes = currentInstance?._internal.a
     if (!scopes?.length) {
         return
     }

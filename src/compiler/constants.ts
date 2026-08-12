@@ -39,6 +39,7 @@ export const PRESERVED_IDPREFIX = "__qk__"
 export const LSC = {
     UTIL: PRESERVED_IDPREFIX + "lsu",
     COMPONENT: PRESERVED_IDPREFIX + "component",
+    DEFAULT_VALUES: PRESERVED_IDPREFIX + "defaultValues",
     GET_TYPE_DELAY_MARKING: PRESERVED_IDPREFIX + "lsu.getTypeDelayMarking"
 }
 

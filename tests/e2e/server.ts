@@ -167,6 +167,7 @@ function normalizeComponentKey(componentName: string) {
         .replace(/^\.\//, "")
         .replace(/^\//, "")
         .replace(/\.js$/, "")
+        .replace(/\.qk$/, "")
 }
 
 function parseScenarioRoute(pathname: string) {

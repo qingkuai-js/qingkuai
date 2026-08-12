@@ -11,7 +11,6 @@ export type E2EScenarioInput = Omit<E2EScenario, "name">
 export interface E2EScenario {
     name: string
     input: string
-
     compileOptions?: CompileOptions
     components?: Record<string, string>
 }

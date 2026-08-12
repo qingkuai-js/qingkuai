@@ -27,9 +27,11 @@ const scenario: E2EScenarioInput = {
     components: {
         "layout/PropCard": `
             <lang-js>
-                defaultProps({
-                    count: 0,
-                    featured: false
+                defaults({
+                    props: {
+                        count: 0,
+                        featured: false
+                    }
                 })
             </lang-js>
 

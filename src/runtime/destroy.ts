@@ -14,7 +14,7 @@ export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     if (!currentDestruction) {
         return
     }
-    ;(currentDestruction.l ??= []).push(cleaner)
+    ;(currentDestruction.a ??= []).push(cleaner)
 }
 
 export function createDestruction(
@@ -25,9 +25,10 @@ export function createDestruction(
         f: 0,
         e: NIL,
         c: NIL,
-        l: NIL,
+        a: NIL,
         s: NIL,
         n: NIL,
+        d: false,
         m: instance,
         p: parentDestruction
     }
@@ -39,10 +40,11 @@ export function createDestruction(
 
 export function destroy(destruction: Destruction, detachNodes = true, detachFromParent = true) {
     const effects = destruction.e
-    const instance = destruction.m
-    const cleaners = destruction.l
+    const cleaners = destruction.a
     const children = destruction.c
-    if (instance) {
+    const instance = destruction.m
+    const isComponentOwned = instance?._internal.d === destruction
+    if (isComponentOwned) {
         runHooks(instance, BEFORE_DESTROY)
     }
     if (cleaners) {
@@ -70,9 +72,10 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
             walkNodes(destruction, node => node.remove())
         }
     }
-    if (instance) {
+    if (isComponentOwned) {
         runHooks(instance, AFTER_DESTROY)
     }
-    destruction.c = destruction.l = destruction.e = NIL
+    destruction.d = true
+    destruction.c = destruction.a = destruction.e = NIL
     destruction.s = destruction.n = destruction.m = destruction.p = NIL
 }

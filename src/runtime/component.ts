@@ -1,8 +1,9 @@
 import type {
+    DefaultValues,
     Destruction,
-    ComponentContext,
+    ComponentFunc,
     ComponentInstanceBase,
-    ComponentFunc
+    ComponentInstanceInternal
 } from "#type-declarations/runtime"
 import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
@@ -17,18 +18,19 @@ import {
     currentInstance,
     currentDestruction,
     setCurrentInstance,
-    backToParentDestruction
+    backToParentDestruction,
+    setCurrentDestruction
 } from "./state"
-import { constReact } from "./internal"
-import { registerEvents } from "./event"
 import { AFTER_MOUNT } from "./constants"
 import { isElement } from "../util/runtime/assert"
 import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
-import { InvalidElementNode } from "./messages/error"
 import { createDestruction, destroy } from "./destroy"
-import { isFunction, isString } from "../util/shared/assert"
+import { CreateOnDisposedComponent } from "./messages/warn"
+import { bindHandleReceiver, shallowConstReact } from "./internal"
+import { isFunction, isThenable, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
+import { InvalidElementNode, CannotRenderComponent } from "./messages/error"
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
 // prettier-ignore
@@ -41,7 +43,7 @@ export const [
 ] = hooksRegisterGen()
 
 export function getScopes(scope?: string) {
-    const scopes = currentInstance?.context.a
+    const scopes = currentInstance?._internal.a
     if (!(scope = scope?.slice(1))) {
         return scopes
     }
@@ -61,25 +63,20 @@ export const mountApp: MountAppFunc = (component, target) => {
     any(component)(anchor)
 }
 
-export function init(anchor: Node, context: ComponentContext) {
+export function init(anchor: Node, context: ComponentInstanceInternal) {
     const instance: ComponentInstanceBase = {
-        context,
         hooks: any([]),
         updating: false,
+        _internal: context,
         parent: currentInstance,
         host: getParentElement(anchor)!
     }
+    if (context.h) {
+        bindHandleReceiver(instance, context.h)
+    }
     setCurrentInstance(instance)
-    createDestruction(currentDestruction, instance)
-
-    if (context.e) {
-        registerEvents(context.e)
-    }
-    return {
-        slots: initSlots(context.s),
-        refs: initRefs(context.r, context.R),
-        props: initProps(context.p, context.P)
-    }
+    context.d = createDestruction(currentDestruction, instance)
+    return instance
 }
 
 export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
@@ -134,6 +131,143 @@ export function defineExports(target: any, transformed: Record<string, Getter>) 
     return defineProperties(target, descriptors)
 }
 
+export function initProps(context: ComponentInstanceInternal) {
+    const transformed = context.p
+    const ret: AnyObject = (context.P = {})
+    if (transformed) {
+        for (const key of reflectOwnKeys(transformed)) {
+            defineProperty(ret, key, {
+                enumerable: true,
+                get() {
+                    let val = transformed[key]
+                    if (isFunction(val)) {
+                        val = val()
+                    }
+                    markActiveEffectNoCheck()
+                    return val ?? context.D?.props?.[key]
+                }
+            })
+        }
+    }
+    return ret
+}
+
+export function initRefs(context: ComponentInstanceInternal) {
+    const transformed = context.r
+    const ret: AnyObject = (context.R = {})
+    if (transformed) {
+        for (const key of reflectOwnKeys(transformed)) {
+            defineProperty(ret, key, {
+                enumerable: true,
+                set(value) {
+                    transformed[key]?.[1](value)
+                },
+                get() {
+                    markActiveEffectNoCheck()
+                    return transformed[key]?.[0]() ?? context.D?.refs?.[key]
+                }
+            })
+        }
+    }
+    return ret
+}
+
+export function initSlots(context: ComponentInstanceInternal) {
+    const ret: AnyObject = {}
+    const transformed = context.s
+    if (transformed) {
+        for (const key of reflectOwnKeys(transformed)) {
+            defineProperty(ret, key, {
+                enumerable: true,
+                get() {
+                    return !!transformed[key]
+                }
+            })
+        }
+    }
+    return ret
+}
+
+export function applyDefaults(defaults: DefaultValues) {
+    const defaultKindMappings = [
+        ["props", "P"],
+        ["refs", "R", true]
+    ] as const
+    const context = currentInstance!._internal
+    for (const [kind, bound, writable] of defaultKindMappings) {
+        const target = context[bound]
+        const values = defaults[kind]
+        if (!values || !target) {
+            continue
+        }
+        if (writable) {
+            defaults[kind] = shallowConstReact(values)
+        }
+        for (const key of reflectOwnKeys(values)) {
+            if (key in target) {
+                continue
+            }
+
+            const descriptor: PropertyDescriptor = {
+                enumerable: true,
+                configurable: true,
+                get() {
+                    markActiveEffectNoCheck()
+                    return defaults![kind]![key]
+                }
+            }
+            if (writable) {
+                descriptor.set = function (value) {
+                    defaults![kind]![key] = value
+                }
+            }
+            defineProperty(target, key, descriptor)
+        }
+    }
+    context.D = defaults
+}
+
+// 渲染组件：支持同步组件方法，也支持异步组件
+// Render a component. Supports sync component functions as well as async components
+export function renderComponent(target: any, anchor: Text, context: ComponentInstanceInternal) {
+    if (isFunction(target)) {
+        target(anchor, context)
+        return
+    }
+    if (!isThenable(target)) {
+        CannotRenderComponent()
+    }
+
+    const parentInstance = currentInstance!
+    const parentDestruction = currentDestruction!
+    const parentInstanceDestruction = parentInstance._internal.d!
+    target.then((resolved: any) => {
+        // 父组件实例已销毁
+        // The parent component instance is destroyed
+        if (parentInstanceDestruction.d) {
+            return CreateOnDisposedComponent("component")
+        }
+
+        // 当前渲染 destruction 销毁时静默跳过
+        // Silently skip if the current render destruction is destroyed
+        if (parentDestruction.d) {
+            return
+        }
+
+        // 动态 import 的模块：使用其 default 导出
+        // Dynamic-import module: use its default export
+        if (!isFunction(resolved)) {
+            resolved = resolved?.default
+        }
+        if (!isFunction(resolved)) {
+            CannotRenderComponent()
+        }
+        setCurrentDestruction(parentDestruction)
+        setCurrentInstance(parentInstance)
+        resolved(anchor, context)
+    })
+}
+
 // 组件生命周期回调均为 ComponentInstance.hooks 数组中不同下标的元素，该方法生成用于注册它们的方法
 // Component lifecycle callbacks are stored as elements at different indices
 // in `ComponentInstance.hooks`; this method generates functions for registering them
@@ -145,68 +279,4 @@ function hooksRegisterGen(): LifecycleHookRegister[] {
         })
     }
     return hookRegisters
-}
-
-function initSlots(transformed?: AnyObject) {
-    const ret: AnyObject = {}
-    if (transformed) {
-        for (const key of reflectOwnKeys(transformed)) {
-            defineProperty(ret, key, {
-                get() {
-                    return !!transformed[key]
-                },
-                enumerable: true
-            })
-        }
-    }
-    return ret
-}
-
-function initRefs(transformed?: AnyObject, ret: AnyObject = {}) {
-    if (((ret = constReact(ret)), transformed)) {
-        for (const key of reflectOwnKeys(transformed)) {
-            defineProperty(ret, key, {
-                get() {
-                    markActiveEffectNoCheck()
-                    return transformed[key]?.[0]() ?? ret[key]
-                },
-                set(value) {
-                    transformed[key]?.[1](value)
-                },
-                enumerable: true
-            })
-        }
-    }
-    return ret
-}
-
-function initProps(transformed?: AnyObject, defaults?: AnyObject) {
-    const ret: AnyObject = {}
-    if (defaults) {
-        for (const key of reflectOwnKeys(defaults)) {
-            defineProperty(ret, key, {
-                get() {
-                    return defaults[key]
-                },
-                enumerable: true,
-                configurable: true
-            })
-        }
-    }
-    if (transformed) {
-        for (const key of reflectOwnKeys(transformed)) {
-            defineProperty(ret, key, {
-                get() {
-                    let val = transformed[key]
-                    if (isFunction(val)) {
-                        val = val()
-                    }
-                    markActiveEffectNoCheck()
-                    return val ?? defaults?.[key]
-                },
-                enumerable: true
-            })
-        }
-    }
-    return ret
 }

@@ -33,9 +33,11 @@ const scenario: E2EScenarioInput = {
     components: {
         "events/EventEmitterCard": `
             <lang-js>
-                defaultProps({
-                    step: 1,
-                    label: "default"
+                defaults({
+                    props: {
+                        step: 1,
+                        label: "default"
+                    }
                 })
 
                 const emitSaved = () => {

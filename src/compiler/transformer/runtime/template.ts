@@ -642,7 +642,6 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     let needInsertComma = false
 
     const internalId = generateIdentifier.internal
-    const contextId = generateIdentifier.context
     const hasDefaultContent = !!nodeContext.fragment?.content.length
     const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
 
@@ -654,7 +653,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     }
 
     writer.wrapLine().write(`${internalId}.renderSlot(`)
-    writer.write(`${contextId}, ${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`)
+    writer.write(`${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`)
 
     if (
         nodeContext.dynamicAttributes.length ||
@@ -698,14 +697,16 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     let needInsertComma = false
 
     const node = nodeContext.node
+    const parsedExpr = getParsedExpression(node)
+    const maybeDynamic = parsedExpr?.reactive
     const internalId = generateIdentifier.internal
     const componentId = generateIdentifier.component
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
-    const maybeDynamic = getParsedExpression(node)?.reactive
     const scopeDirective = nodeContext.attributesMap["#scope"]
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
     const isE2eTesting = inputDescriptor.options.testing === TestingMode.E2e
+    const { topLevelIdentifiers, qkDefaultImportIdentifiers } = analyzeResult.script
 
     const hasSlots = node.children.some(child => {
         return child.componentTag || getTemplateNodeContext(child).fragment!.content.length
@@ -719,6 +720,20 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
     const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting))
 
+    const hasContext =
+        hasSlots ||
+        hasProps ||
+        hasRefs ||
+        hasScope ||
+        !node.hasActualAncestor ||
+        !!referenceHandleAttribute
+
+    const isQkDirectComponent =
+        parsedExpr &&
+        ts.isIdentifier(parsedExpr.node) &&
+        !topLevelIdentifiers[parsedExpr.node.text] &&
+        qkDefaultImportIdentifiers.has(parsedExpr.node.text)
+
     const insertTrailingComma = () => {
         if (needInsertComma) {
             writer.writeLine(",")
@@ -730,16 +745,18 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`)
         writer.writeParsedExpression(node).write(`), ${componentId} => {`).indent(false)
     }
-    if (referenceHandleAttribute) {
-        writer.write(`\n${internalId}.bindHandleReceiver(`).indent(false)
-    }
-    if (maybeDynamic) {
-        writer.write(`\n${componentId}(${nodeContext.anchorId}`)
+    if (!isQkDirectComponent) {
+        writer.write(`\n${internalId}.renderComponent(`)
+
+        if (maybeDynamic) {
+            writer.write(`${componentId}, ${nodeContext.anchorId}`)
+        } else {
+            writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
+        }
     } else {
-        writer.wrapLine().writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
+        writer.write(`\n`).writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
     }
 
-    const hasContext = hasSlots || hasProps || hasRefs || hasScope || !node.hasActualAncestor
     if (hasContext) {
         writer.write(", {").indent()
     }
@@ -812,6 +829,12 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.dedent().write("}")
     }
 
+    if (referenceHandleAttribute) {
+        insertTrailingComma().write(`h: ${setterArgId} => (`)
+        writer.writeParsedExpression(referenceHandleAttribute)
+        writer.write(` = ${setterArgId})`)
+    }
+
     if (hasSlots) {
         insertTrailingComma().write("s: {").indent()
         needInsertComma = false
@@ -854,11 +877,6 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.write(`)`)
     }
 
-    if (referenceHandleAttribute) {
-        writer.write(", ").wrapLine().write(`${setterArgId} => (`)
-        writer.writeParsedExpression(referenceHandleAttribute)
-        writer.write(` = ${setterArgId})`).dedent().write(")")
-    }
     if (maybeDynamic) {
         writer.dedent().write("})")
     }

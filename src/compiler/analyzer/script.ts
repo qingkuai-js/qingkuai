@@ -14,10 +14,12 @@ import {
     intrinsicVariableRE,
     cannotRedeclareStatusRE,
     intrinsicWatcherMethodsRE,
-    intrinsicReactiveMethodsRE
+    intrinsicReactiveMethodsRE,
+    intrinsicEffectWatchMethodsRE
 } from "../regular"
 import {
     CannotAliasIdentifier,
+    DuplicateDefaultsCall,
     AmbiguousReactiveMarking,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
@@ -36,7 +38,6 @@ import {
     UnnecessaryReactiveMark,
     RedundantArgsForIntrinsic,
     IdentifierMaybeOverwritten,
-    DuplicateDefaultDeclaration,
     DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
@@ -50,7 +51,6 @@ import {
 import {
     isLiteral,
     isLeftValue,
-    isTypeOperation,
     isFunctionLiteral,
     isIdentifierAssignmentTarget
 } from "../ts-ast/assert"
@@ -63,7 +63,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
-import { walkAncestors, walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
+import { walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
     if (!inputDescriptor.script.existing) {
@@ -96,15 +96,16 @@ function analyzeSourceFile(sourceFile: ts.SourceFile) {
             return
         }
 
-        // 记录监视器便捷注册方法的调用位置
-        // Record the call locations of intrinsic watcher registration methods.
-        if (
-            ts.isCallExpression(node) &&
-            ts.isIdentifier(node.expression) &&
-            intrinsicWatcherMethodsRE.test(node.expression.text)
-        ) {
-            analyzeResult.script.watchers.push(node)
-            return
+        // 记录监视器便捷注册方法的调用位置，并确保对应的基础 watch 方法被注入绑定闭包。
+        // Record the call locations of intrinsic watcher registration methods and ensure the
+        // corresponding base watch method gets an instance-bound shadowing closure injected.
+        if (ts.isCallExpression(node)) {
+            const callee = getStriptTypeOperationsNode(node.expression)
+            if (ts.isIdentifier(callee) && intrinsicWatcherMethodsRE.test(callee.text)) {
+                analyzeResult.script.watchers.push(node)
+                analyzeResult.script.usedEffectWatchMethods.add(callee.text.slice(0, -3))
+                return
+            }
         }
 
         if (node.inTopLevel) {
@@ -173,6 +174,14 @@ function analyzeSourceFile(sourceFile: ts.SourceFile) {
                     }
 
                     if (importDeclaration.importClause?.name) {
+                        if (
+                            ts.isStringLiteral(importDeclaration.moduleSpecifier) &&
+                            importDeclaration.moduleSpecifier.text.endsWith(".qk")
+                        ) {
+                            analyzeResult.script.qkDefaultImportIdentifiers.add(
+                                importDeclaration.importClause.name.text
+                            )
+                        }
                         checkTopLevelIdentifier(importDeclaration.importClause.name, true)
                         return
                     }
@@ -249,6 +258,10 @@ function analyzeIdentifier(node: TsNodeWithContext<ts.Identifier>) {
 
         if (intrinsicMethodsRE.test(node.text)) {
             checkUsageOfIntrinsicMethods(node)
+        }
+
+        if (intrinsicEffectWatchMethodsRE.test(node.text)) {
+            analyzeResult.script.usedEffectWatchMethods.add(node.text)
         }
     }
 }
@@ -583,11 +596,15 @@ function checkTopLevelIdentifier(id: ts.Identifier, imported = false) {
     if (imported) {
         analyzeResult.script.importIdentifiers.add(id.text)
     }
+    if (
+        intrinsicMethodsRE.test(id.text) ||
+        intrinsicVariableRE.test(id.text) ||
+        intrinsicEffectWatchMethodsRE.test(id.text)
+    ) {
+        return ShadowCompilerIntrinsicAtTopLevel(sourceLoc, id.text)
+    }
     if (id.text === "$arg") {
         IdentifierMaybeOverwritten(sourceLoc, id.text, "inline event handler")
-    }
-    if (intrinsicMethodsRE.test(id.text) || intrinsicVariableRE.test(id.text)) {
-        ShadowCompilerIntrinsicAtTopLevel(sourceLoc, id.text)
     }
 }
 
@@ -600,6 +617,9 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
         const firstArg = parent.arguments[0]
         const argsLen = parent.arguments.length
         const intrinsicCallLoc = getScriptLocByNode(parent)
+        if (firstArg && ts.isSpreadElement(firstArg) && intrinsicName.endsWith("Exp")) {
+            InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
+        }
         switch (intrinsicName) {
             case "watchExp":
             case "preWatchExp":
@@ -611,8 +631,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                 return
             }
 
-            case "defaultRefs":
-            case "defaultProps": {
+            case "defaults": {
                 if (!parent.inTopLevel) {
                     break
                 }
@@ -622,43 +641,20 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>) {
                 if (argsLen > 1) {
                     RedundantArgsForIntrinsic(intrinsicCallLoc, intrinsicName, 1, argsLen)
                 }
-                if (firstArg && ts.isSpreadElement(firstArg)) {
-                    InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
-                }
 
-                let isValidDefinition = true
-                walkAncestors(parent, current => {
-                    if (
-                        !isTypeOperation(current) &&
-                        !ts.isSourceFile(current) &&
-                        !ts.isExpressionStatement(current)
-                    ) {
-                        return !(isValidDefinition = false)
-                    }
-                })
-                if (isValidDefinition) {
-                    const key = intrinsicName === "defaultProps" ? "props" : "refs"
-                    const existing = analyzeResult.script.defaultItems[key]
-                    if (existing) {
-                        DuplicateDefaultDeclaration(getScriptLocByNode(existing.intrinsicId), key)
-                    }
-                    if (parent.arguments.length) {
-                        analyzeResult.script.defaultItems[key] = {
-                            intrinsicId: node,
-                            value: parent.arguments[0]
-                        }
-                    } else {
-                        analyzeResult.script.defaultItems[key] = undefined
-                    }
-                    return
+                const statementParent = getStriptTypeOperationsParent(parent)
+                if (!statementParent || !ts.isExpressionStatement(statementParent)) {
+                    break
                 }
-                break
+                if (!analyzeResult.script.defaultsCall) {
+                    analyzeResult.script.defaultsCall = parent
+                } else {
+                    DuplicateDefaultsCall(getScriptLocByNode(node))
+                }
+                return
             }
 
             default: {
-                if (firstArg && ts.isSpreadElement(firstArg)) {
-                    InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
-                }
                 if (argsLen > 1) {
                     RedundantArgsForIntrinsic(intrinsicCallLoc, intrinsicName, 1, argsLen)
                 }

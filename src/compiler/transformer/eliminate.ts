@@ -1,7 +1,7 @@
 import ts from "typescript"
 
 import { CodeEditor } from "./editor"
-import { analyzeResult, inputDescriptor } from "../state"
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../state"
 
 export function eliminate(editor: CodeEditor) {
     for (const decl of analyzeResult.script.importDeclarations) {
@@ -32,8 +32,24 @@ export function eliminate(editor: CodeEditor) {
     }
 
     if (!inputDescriptor.options.checkMode) {
+        const internalId = generateIdentifier.internal
+        const { usedIntrinsicVars } = analyzeResult.script
+        const defaultsCall = analyzeResult.script.defaultsCall
         for (const node of analyzeResult.script.eliminatedNodes) {
-            editor.remove(node.getStart(), node.getEnd())
+            if (
+                defaultsCall &&
+                node === defaultsCall &&
+                defaultsCall.arguments.length &&
+                ["props", "refs"].some(s => usedIntrinsicVars.has(s))
+            ) {
+                editor.replace(
+                    defaultsCall.expression.getStart(),
+                    defaultsCall.expression.getEnd(),
+                    `${internalId}.applyDefaults`
+                )
+            } else {
+                editor.remove(node.getStart(), node.getEnd())
+            }
         }
     }
 }

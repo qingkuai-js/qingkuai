@@ -15,6 +15,13 @@ export function NotArrayOrSet(attr: string, target: string): never {
     )
 }
 
+export function CannotRenderComponent(): never {
+    throwErrorWithCode(
+        2007,
+        `Cannot render the component: the given value is neither a component function nor a promise resolving to a component function.`
+    )
+}
+
 export function DuplicateKey(key: string): never {
     throwErrorWithCode(
         2003,

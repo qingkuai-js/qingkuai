@@ -6,18 +6,16 @@ import { RuntimeCodeWriter } from "../writer"
 import { transformEmbeddedScript } from "./script"
 import { generateTemplateRender } from "./template"
 import { replaceQkImportSpecifiers } from "./import"
-import { arrayFrom } from "../../../util/shared/arrays"
 import { objectAssign } from "../../../util/shared/aliases"
-import { traverseObject } from "../../../util/shared/sundry"
 import { ensureIdWithPrefix } from "../../../util/compiler/sundry"
+import { traverseObject, upperFirst } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragment"
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
-    const { usedIntrinsicVars } = analyzeResult.script
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
-    const { refs: defaultRefs, props: defaultProps } = analyzeResult.script.defaultItems
+    const { usedIntrinsicVars, usedEffectWatchMethods } = analyzeResult.script
 
     objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifier, {
         internal: ensureIdWithPrefix("_"),
@@ -25,6 +23,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         setterArg: ensureIdWithPrefix("v"),
         context: ensureIdWithPrefix("_ctx"),
         anchor: ensureIdWithPrefix("_anchor"),
+        instance: ensureIdWithPrefix("_instance"),
         component: ensureIdWithPrefix("_component"),
         compressStrings: ensureIdWithPrefix("_compressStrings")
     })
@@ -49,18 +48,20 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
     writer.write(`export default function (${anchorId}, ${contextId} = {}) {`).indent()
 
-    if (defaultRefs) {
-        writer.write(`${contextId}.R = `).writeScriptNode(defaultRefs.value).wrapLine()
+    const instanceId = generateIdentifier.instance
+    if (!usedEffectWatchMethods.size) {
+        writer.write(`${internalId}.init(${anchorId}, ${contextId})`)
+    } else {
+        writer.write(`const ${instanceId} = ${internalId}.init(${anchorId}, ${contextId})`)
     }
-    if (defaultProps) {
-        writer.write(`${contextId}.P = `).writeScriptNode(defaultProps.value).wrapLine()
+    for (const method of ["props", "refs", "slots"]) {
+        if (usedIntrinsicVars.has(method)) {
+            writer.write(
+                `\n\nconst ${method} = ${internalId}.init${upperFirst(method)}(${contextId})`
+            )
+        }
     }
-    generateDelegateEventsRegistration(writer, contextId)
-
-    if (usedIntrinsicVars.size) {
-        writer.write(`\nconst { ${arrayFrom(usedIntrinsicVars).join(", ")} } = `)
-    }
-    writer.write(`${internalId}.init(${anchorId}, ${contextId})`)
+    generateDelegateEventsRegistration(writer)
 
     if (!hoistWriter.empty) {
         writer.wrapLine().write(hoistWriter.code)
@@ -73,9 +74,10 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     return (generateTemplateRender(writer, nodes), writer.dedent().write("}"))
 }
 
-// 将需要委托的事件名称列表设置到 context.e
-// Assign the list of event names that need to be delegated to `context.e`.
-function generateDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId: string) {
+// 生成委托事件的 initEvents 调用（内联事件数组，在 init 之后调用）
+// Emit the delegated-event `initEvents` call with the inlined event array
+// (invoked after `init`).
+function generateDelegateEventsRegistration(writer: RuntimeCodeWriter) {
     const passiveEvents: string[] = []
     const nonPassiveEvents: string[] = []
     const { delegateEvents } = analyzeResult.template
@@ -89,13 +91,13 @@ function generateDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId
     const passiveLen = passiveEvents.length
     const nonPassiveLen = nonPassiveEvents.length
     if (!passiveLen && !nonPassiveLen) {
-        return false
+        return
     }
 
     const shouldWrapLine = passiveLen + nonPassiveLen > 8
     const seperator = ", " + (shouldWrapLine ? "\n" : "")
     const concatSeperatorCount = passiveLen ? (nonPassiveLen ? 2 : 1) : 0
-    writer.write(`${contextId}.e = [`)
+    writer.wrapLine().write(`${generateIdentifier.internal}.initEvents([`)
 
     if (shouldWrapLine) {
         writer.indent()
@@ -107,5 +109,5 @@ function generateDelegateEventsRegistration(writer: RuntimeCodeWriter, contextId
     if (shouldWrapLine) {
         writer.dedent()
     }
-    return (writer.write("]").wrapLine(), true)
+    writer.write("])")
 }

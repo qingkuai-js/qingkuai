@@ -270,15 +270,6 @@ export interface ScriptAnalyzeRet {
             expression: string
         }[]
     >
-    defaultItems: Partial<
-        Record<
-            "refs" | "props",
-            {
-                intrinsicId: ts.Identifier
-                value: ts.Expression | ts.SpreadElement
-            }
-        >
-    >
     exportStatements: ts.Node[]
     watchers: ts.CallExpression[]
     fullIdentifiers: Set<string>
@@ -286,8 +277,11 @@ export interface ScriptAnalyzeRet {
     usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
+    usedEffectWatchMethods: Set<string>
     topLevelReferences: TopLevelReferences
+    qkDefaultImportIdentifiers: Set<string>
     preMutatedTopLevelIdentifiers: Set<string>
+    defaultsCall: ts.CallExpression | undefined
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>
@@ -390,6 +384,7 @@ export type GenerateIdentifierStaticKeys =
     | "anchor"
     | "context"
     | "internal"
+    | "instance"
     | "getterArg"
     | "setterArg"
     | "component"

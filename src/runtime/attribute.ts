@@ -10,24 +10,7 @@ import { ATTRIBUTE_PREFIX, XLINK_NAMESPACE_URI } from "./constants"
 import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert"
 
 export function setClassName(elem: Element, value: ClassAttrValue) {
-    let className = ""
-    if (isString(value)) {
-        className = value
-    } else if (isArray(value)) {
-        for (let i = 0; i < value.length; i++) {
-            if (isString(value[i])) {
-                className += value[i]
-            } else {
-                className += getClassNameWithObject(value[i])
-            }
-            if (i < value.length - 1) {
-                className += " "
-            }
-        }
-    } else {
-        className += getClassNameWithObject(value)
-    }
-
+    const className = getClassNameString(value)
     if (className != any(elem)[ATTRIBUTE_PREFIX + "class"]) {
         if (!className) {
             elem.removeAttribute("class")
@@ -135,4 +118,21 @@ function getClassNameWithObject(o: AnyObject) {
         }
     }
     return className
+}
+
+function getClassNameString(value: any): string {
+    if (isString(value)) {
+        return value
+    }
+    if (isArray(value)) {
+        let className = ""
+        for (let i = 0; i < value.length; i++) {
+            className += getClassNameString(value[i])
+            if (i < value.length - 1) {
+                className += " "
+            }
+        }
+        return className
+    }
+    return getClassNameWithObject(value)
 }
