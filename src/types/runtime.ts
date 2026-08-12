@@ -157,4 +157,4 @@ export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
 >
 
 export type DefaultValues = Partial<Record<"props" | "refs", AnyObject>>
-export type ClassAttrValue = (string | Record<string, any>)[] | Record<string, any> | string
+export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string
