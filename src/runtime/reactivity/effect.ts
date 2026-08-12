@@ -225,13 +225,13 @@ function runEffectCollector(effect: Effect) {
     effect.l &= ~EFFECT_NO_CHECK
     pushRunningEffectStack(effect)
 
-    let res: any
     const componentInstance = currentInstance
     const parentDestruction = currentDestruction
     if (setCurrentDestruction(effect.d)?.m) {
         setCurrentInstance(effect.d!.m)
     }
-    res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
+
+    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
     popRunningEffectStack()
     setCurrentInstance(componentInstance)
     setCurrentDestruction(parentDestruction)
