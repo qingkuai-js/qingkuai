@@ -279,6 +279,7 @@ export interface ScriptAnalyzeRet {
     exportedBindings: ExportBinding[]
     usedEffectWatchMethods: Set<string>
     topLevelReferences: TopLevelReferences
+    qkDefaultImportIdentifiers: Set<string>
     preMutatedTopLevelIdentifiers: Set<string>
     defaultsCall: ts.CallExpression | undefined
     reusedStringReferences: ReusedStringReference[]

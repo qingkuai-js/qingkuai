@@ -19,6 +19,27 @@ test("Component without context uses plain anchor call", () => {
     expect(code).toContain("_.renderComponent(Comp, _text1")
 })
 
+test("Component default-imported from .qk is called directly without renderComponent", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Comp from "./Foo.qk"
+        </lang-js>
+        <Comp />
+    `)
+    expect(code).toContain("Comp(_text1")
+    expect(code).not.toContain("_.renderComponent(Comp")
+})
+
+test("Component default-imported from non-qk still uses renderComponent", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Comp from "./Foo"
+        </lang-js>
+        <Comp></Comp>
+    `)
+    expect(code).toContain("_.renderComponent(Comp, _text1")
+})
+
 test("Component #scope passes parent scope attribute in context", () => {
     const code = compileRuntime(`
         <lang-css>

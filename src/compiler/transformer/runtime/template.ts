@@ -697,14 +697,16 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     let needInsertComma = false
 
     const node = nodeContext.node
+    const parsedExpr = getParsedExpression(node)
+    const maybeDynamic = parsedExpr?.reactive
     const internalId = generateIdentifier.internal
     const componentId = generateIdentifier.component
     const getterArgId = generateIdentifier.getterArg
     const setterArgId = generateIdentifier.setterArg
-    const maybeDynamic = getParsedExpression(node)?.reactive
     const scopeDirective = nodeContext.attributesMap["#scope"]
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
     const isE2eTesting = inputDescriptor.options.testing === TestingMode.E2e
+    const { topLevelIdentifiers, qkDefaultImportIdentifiers } = analyzeResult.script
 
     const hasSlots = node.children.some(child => {
         return child.componentTag || getTemplateNodeContext(child).fragment!.content.length
@@ -726,6 +728,12 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         !node.hasActualAncestor ||
         !!referenceHandleAttribute
 
+    const isQkDirectComponent =
+        parsedExpr &&
+        ts.isIdentifier(parsedExpr.node) &&
+        !topLevelIdentifiers[parsedExpr.node.text] &&
+        qkDefaultImportIdentifiers.has(parsedExpr.node.text)
+
     const insertTrailingComma = () => {
         if (needInsertComma) {
             writer.writeLine(",")
@@ -737,10 +745,16 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`)
         writer.writeParsedExpression(node).write(`), ${componentId} => {`).indent(false)
     }
-    if ((writer.write(`\n${internalId}.renderComponent(`), maybeDynamic)) {
-        writer.write(`${componentId}, ${nodeContext.anchorId}`)
+    if (!isQkDirectComponent) {
+        writer.write(`\n${internalId}.renderComponent(`)
+
+        if (maybeDynamic) {
+            writer.write(`${componentId}, ${nodeContext.anchorId}`)
+        } else {
+            writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
+        }
     } else {
-        writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
+        writer.write(`\n`).writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
     }
 
     if (hasContext) {

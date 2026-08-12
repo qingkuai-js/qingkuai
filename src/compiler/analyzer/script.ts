@@ -174,6 +174,14 @@ function analyzeSourceFile(sourceFile: ts.SourceFile) {
                     }
 
                     if (importDeclaration.importClause?.name) {
+                        if (
+                            ts.isStringLiteral(importDeclaration.moduleSpecifier) &&
+                            importDeclaration.moduleSpecifier.text.endsWith(".qk")
+                        ) {
+                            analyzeResult.script.qkDefaultImportIdentifiers.add(
+                                importDeclaration.importClause.name.text
+                            )
+                        }
                         checkTopLevelIdentifier(importDeclaration.importClause.name, true)
                         return
                     }

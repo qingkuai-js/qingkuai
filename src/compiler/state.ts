@@ -76,6 +76,7 @@ function newAnalyzeResult(): AnalyzeResult {
             topLevelReferences: newCleanObj(),
             declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),
+            qkDefaultImportIdentifiers: new Set(),
             preMutatedTopLevelIdentifiers: new Set()
         },
         reusedStrings: newCleanObj()
