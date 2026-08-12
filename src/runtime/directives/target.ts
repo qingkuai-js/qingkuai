@@ -1,5 +1,7 @@
+import type { Destruction } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
+import { NIL } from "../constants"
 import { invokeRender } from "./render"
 import { renderEffect } from "../reactivity/effect"
 import { walkNodes } from "../../util/runtime/sundry"
@@ -24,7 +26,7 @@ export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFun
             InvalidElementNode(`"#target" directive`)
         }
         if (newTarget !== oldTarget) {
-            walkNodes(destruction, node => {
+            walkTargetNodes(destruction, node => {
                 if (newTarget === anchor) {
                     insertBefore(anchor, node)
                 } else {
@@ -34,4 +36,12 @@ export function targetBlock(anchor: Text, getValue: Getter, render: ArbitraryFun
         }
         oldTarget = newTarget
     })
+}
+
+function walkTargetNodes(destruction: Destruction, callback: (node: ChildNode) => void) {
+    if ((walkNodes(destruction, callback), destruction.c)) {
+        for (const child of destruction.c) {
+            walkTargetNodes(child, callback)
+        }
+    }
 }
