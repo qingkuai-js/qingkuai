@@ -718,6 +718,14 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
     const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting))
 
+    const hasContext =
+        hasSlots ||
+        hasProps ||
+        hasRefs ||
+        hasScope ||
+        !node.hasActualAncestor ||
+        !!referenceHandleAttribute
+
     const insertTrailingComma = () => {
         if (needInsertComma) {
             writer.writeLine(",")
@@ -729,16 +737,12 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`)
         writer.writeParsedExpression(node).write(`), ${componentId} => {`).indent(false)
     }
-    if (referenceHandleAttribute) {
-        writer.write(`\n${internalId}.bindHandleReceiver(`).indent(false)
-    }
     if ((writer.write(`\n${internalId}.renderComponent(`), maybeDynamic)) {
         writer.write(`${componentId}, ${nodeContext.anchorId}`)
     } else {
         writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
     }
 
-    const hasContext = hasSlots || hasProps || hasRefs || hasScope || !node.hasActualAncestor
     if (hasContext) {
         writer.write(", {").indent()
     }
@@ -811,6 +815,12 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.dedent().write("}")
     }
 
+    if (referenceHandleAttribute) {
+        insertTrailingComma().write(`h: ${setterArgId} => (`)
+        writer.writeParsedExpression(referenceHandleAttribute)
+        writer.write(` = ${setterArgId})`)
+    }
+
     if (hasSlots) {
         insertTrailingComma().write("s: {").indent()
         needInsertComma = false
@@ -853,11 +863,6 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.write(`)`)
     }
 
-    if (referenceHandleAttribute) {
-        writer.write(", ").wrapLine().write(`${setterArgId} => (`)
-        writer.writeParsedExpression(referenceHandleAttribute)
-        writer.write(` = ${setterArgId})`).dedent().write(")")
-    }
     if (maybeDynamic) {
         writer.dedent().write("})")
     }

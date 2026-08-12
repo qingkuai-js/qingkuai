@@ -65,7 +65,7 @@ test("Slot with dynamic and static attrs builds slot props object", () => {
     expect(code).toContain("fixed: true")
 })
 
-test("Component refs skip &handle in r block and bind separately", () => {
+test("Component refs skip &handle in r block and pass setter via context.h", () => {
     const code = compileRuntime(`
         <lang-js>
             let model = ""
@@ -75,9 +75,10 @@ test("Component refs skip &handle in r block and bind separately", () => {
     `)
     expect(code).toContain("r: {")
     expect(code).toContain("value: [")
-    expect(code).toContain("_.bindHandleReceiver")
-    expect(code).toContain("_.renderComponent(Comp, _text1, {")
+    expect(code).toContain("h: ")
     expect(code).not.toContain("handle: [")
+    expect(code).not.toContain("bindHandleReceiver")
+    expect(code).toContain("_.renderComponent(Comp, _text1, {")
 })
 
 test("Await then catch without inline then keeps NIL placeholder", () => {

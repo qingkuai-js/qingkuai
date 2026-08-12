@@ -22,12 +22,12 @@ import {
     setCurrentDestruction
 } from "./state"
 import { AFTER_MOUNT } from "./constants"
-import { shallowConstReact } from "./internal"
 import { isElement } from "../util/runtime/assert"
 import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
 import { createDestruction, destroy } from "./destroy"
 import { CreateOnDisposedComponent } from "./messages/warn"
+import { bindHandleReceiver, shallowConstReact } from "./internal"
 import { isFunction, isThenable, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
 import { InvalidElementNode, CannotRenderComponent } from "./messages/error"
@@ -70,6 +70,9 @@ export function init(anchor: Node, context: ComponentInstanceInternal) {
         _internal: context,
         parent: currentInstance,
         host: getParentElement(anchor)!
+    }
+    if (context.h) {
+        bindHandleReceiver(instance, context.h)
     }
     setCurrentInstance(instance)
     context.d = createDestruction(currentDestruction, instance)

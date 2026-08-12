@@ -55,6 +55,7 @@ export type ComponentInstanceInternal = Partial<{
     d: Destruction
     D: DefaultValues // defaults
     s: AnyObject // raw slots
+    h: Setter // handle setter
     p: AnyObject // raw props
     P: AnyObject // bound props
     r: AnyObject // raw refs
