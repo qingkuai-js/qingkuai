@@ -1,12 +1,16 @@
 import type {
-    DefaultValues,
     Destruction,
+    DefaultValues,
     ComponentFunc,
     ComponentInstanceBase,
     ComponentInstanceInternal
 } from "#type-declarations/runtime"
+import type {
+    MountAppFunc,
+    LifecycleHookRegister,
+    GetCurrentInstanceFunc
+} from "#type-declarations/runtime-ex"
 import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
-import type { LifecycleHookRegister, MountAppFunc } from "#type-declarations/runtime-ex"
 
 import {
     objectKeys,
@@ -18,8 +22,8 @@ import {
     currentInstance,
     currentDestruction,
     setCurrentInstance,
-    backToParentDestruction,
-    setCurrentDestruction
+    setCurrentDestruction,
+    backToParentDestruction
 } from "./state"
 import { AFTER_MOUNT } from "./constants"
 import { isElement } from "../util/runtime/assert"
@@ -61,6 +65,10 @@ export const mountApp: MountAppFunc = (component, target) => {
     const anchor = newTextNode()
     appendChild(target, anchor)
     any(component)(anchor)
+}
+
+export const getCurrentInstance: GetCurrentInstanceFunc = () => {
+    return currentInstance as any
 }
 
 export function init(anchor: Node, context: ComponentInstanceInternal) {
