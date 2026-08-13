@@ -49,7 +49,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writer.write(`export default function (${anchorId}, ${contextId} = {}) {`).indent()
 
     const instanceId = generateIdentifier.instance
-    if (!usedEffectWatchMethods.size) {
+    if (!usedEffectWatchMethods.size && !analyzeResult.script.exportedBindings.length) {
         writer.write(`${internalId}.init(${anchorId}, ${contextId})`)
     } else {
         writer.write(`const ${instanceId} = ${internalId}.init(${anchorId}, ${contextId})`)
