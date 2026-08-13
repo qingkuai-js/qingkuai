@@ -111,7 +111,10 @@ export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
 
 export function runHooks(instance: ComponentInstanceBase, index: number) {
     if (instance.hooks[index]?.length) {
+        const originalInstance = currentInstance
+        setCurrentInstance(instance)
         runAll(instance.hooks[index]!)
+        setCurrentInstance(originalInstance)
     }
 }
 
