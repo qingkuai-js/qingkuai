@@ -11,6 +11,7 @@ import { renderIndexPage, renderScenarioPage } from "./page-template"
 import { e2eScenarios, getE2EScenario, isE2EScenarioName } from "./scenarios"
 
 const workspaceDir = process.cwd()
+const moduleRoutePrefix = "modules/"
 const scenarioRoutePrefix = "/scenarios/"
 const componentRoutePrefix = "components/"
 const scenarioCodeCache = new Map<string, string>()
@@ -74,6 +75,19 @@ const server = nodeHttp.createServer((request, response) => {
             } catch (error) {
                 respondText(response, 500, formatError(error))
             }
+            return
+        }
+
+        if (subPath.startsWith(moduleRoutePrefix)) {
+            const modulePath = normalizeComponentKey(
+                decodeURIComponent(subPath.slice(moduleRoutePrefix.length))
+            )
+            const moduleSource = getScenarioModuleSource(scenarioName, modulePath)
+            if (moduleSource === undefined) {
+                respondText(response, 404, `Unknown module: ${url.pathname}`)
+                return
+            }
+            respondJavaScript(response, moduleSource)
             return
         }
 
@@ -158,6 +172,19 @@ function getScenarioComponentSource(scenarioName: string, componentName: string)
         }
     }
 
+    return undefined
+}
+
+function getScenarioModuleSource(scenarioName: string, moduleName: string) {
+    const scenario = getE2EScenario(scenarioName)
+    if (!scenario.modules) {
+        return undefined
+    }
+    for (const [rawKey, source] of Object.entries(scenario.modules)) {
+        if (normalizeComponentKey(rawKey) === moduleName) {
+            return source
+        }
+    }
     return undefined
 }
 

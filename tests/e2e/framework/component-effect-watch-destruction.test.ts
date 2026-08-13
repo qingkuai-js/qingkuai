@@ -1,25 +1,13 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing"
 
 import { defineE2ETestFile } from "../scenario-module"
 
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import { createStore } from "qingkuai"
             import SyncPanel from "./components/SyncEffectWatchPanel"
-
-            const store = createStore({ count: 0 })
-            globalThis.__syncEffectWatchStore = store
-            globalThis.__syncEffectWatchLeak = {
-                effect: 0,
-                preEffect: 0,
-                postEffect: 0,
-                syncEffect: 0,
-                watch: 0,
-                preWatch: 0,
-                postWatch: 0,
-                syncWatch: 0
-            }
+            import ExternalPanel from "./components/ExternalPanel"
+            import { store } from "./modules/effect-registry.js"
 
             let showPanel = false
 
@@ -40,96 +28,100 @@ const scenario: E2EScenarioInput = {
             </div>
 
             <p id="store-count">Store count: {store.count}</p>
+            <p id="sync-leak">
+                effect:{store.effect},preEffect:{store.preEffect},postEffect:{store.postEffect},syncEffect:{store.syncEffect},watch:{store.watch},preWatch:{store.preWatch},postWatch:{store.postWatch},syncWatch:{store.syncWatch}
+            </p>
+            <p id="store-double">Store double: {store.double}</p>
+            <p id="store-watch">Store watch: {store.lastWatch}</p>
 
             <SyncPanel #if={showPanel} />
+            <ExternalPanel #if={showPanel} />
         </section>
     `,
     components: {
         SyncEffectWatchPanel: `
             <lang-js>
+                import { store } from "../modules/effect-registry.js"
+
                 effect(() => {
-                    globalThis.__syncEffectWatchLeak.effect++
-                    globalThis.__syncEffectWatchStore.count
+                    store.effect++
+                    store.count
                 })
                 preEffect(() => {
-                    globalThis.__syncEffectWatchLeak.preEffect++
-                    globalThis.__syncEffectWatchStore.count
+                    store.preEffect++
+                    store.count
                 })
                 postEffect(() => {
-                    globalThis.__syncEffectWatchLeak.postEffect++
-                    globalThis.__syncEffectWatchStore.count
+                    store.postEffect++
+                    store.count
                 })
                 syncEffect(() => {
-                    globalThis.__syncEffectWatchLeak.syncEffect++
-                    globalThis.__syncEffectWatchStore.count
+                    store.syncEffect++
+                    store.count
                 })
-                watch(() => globalThis.__syncEffectWatchStore.count, () => {
-                    globalThis.__syncEffectWatchLeak.watch++
+                watch(() => store.count, () => {
+                    store.watch++
                 })
-                preWatch(() => globalThis.__syncEffectWatchStore.count, () => {
-                    globalThis.__syncEffectWatchLeak.preWatch++
+                preWatch(() => store.count, () => {
+                    store.preWatch++
                 })
-                postWatch(() => globalThis.__syncEffectWatchStore.count, () => {
-                    globalThis.__syncEffectWatchLeak.postWatch++
+                postWatch(() => store.count, () => {
+                    store.postWatch++
                 })
-                syncWatch(() => globalThis.__syncEffectWatchStore.count, () => {
-                    globalThis.__syncEffectWatchLeak.syncWatch++
+                syncWatch(() => store.count, () => {
+                    store.syncWatch++
                 })
             </lang-js>
 
             <article id="sync-panel">Sync effect watch panel</article>
+        `,
+        ExternalPanel: `
+            <lang-js>
+                import { store, registerEffect, registerWatch } from "../modules/effect-registry.js"
+
+                registerEffect(effect, () => {
+                    store.double = store.count * 2
+                })
+
+                registerWatch(watch, () => store.count, (pre, cur) => {
+                    store.lastWatch = pre + "->" + cur
+                })
+            </lang-js>
+
+            <article id="external-panel">External registration panel</article>
         `
-    }
-}
+    },
+    modules: {
+        "effect-registry": `
+            import { createStore } from "qingkuai"
 
-export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
-    const readLeak = (page: E2EPageEvaluator) => {
-        return page.evaluate(() => {
-            return { ...(globalThis as any).__syncEffectWatchLeak }
-        })
-    }
-
-    test("all effect/watch timing variants register in sync setup and react to store changes", async ({
-        page,
-        visitScenario
-    }) => {
-        await visitScenario(scenario)
-
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#sync-panel")).toHaveText("Sync effect watch panel")
-
-        // On mount each effect variant runs once; watchers wait for the first change.
-        await expect
-            .poll(() => readLeak(page))
-            .toEqual({
-                effect: 1,
-                preEffect: 1,
-                postEffect: 1,
-                syncEffect: 1,
+            export const store = createStore({
+                count: 0,
+                double: 0,
+                lastWatch: "",
+                effect: 0,
+                preEffect: 0,
+                postEffect: 0,
+                syncEffect: 0,
                 watch: 0,
                 preWatch: 0,
                 postWatch: 0,
                 syncWatch: 0
             })
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
+            export function registerEffect(effect, fn) {
+                effect(fn)
+            }
 
-        await expect
-            .poll(() => readLeak(page))
-            .toEqual({
-                effect: 2,
-                preEffect: 2,
-                postEffect: 2,
-                syncEffect: 2,
-                watch: 1,
-                preWatch: 1,
-                postWatch: 1,
-                syncWatch: 1
-            })
-    })
+            export function registerWatch(watch, getter, onUpdate) {
+                watch(getter, onUpdate)
+            }
+        `
+    }
+}
 
-    test("all effect/watch timing variants are disposed when the sync component unmounts", async ({
+export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
+    test("all effect/watch timing variants are disposed when the component unmounts", async ({
         page,
         visitScenario
     }) => {
@@ -141,28 +133,62 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         // Establish a baseline where every variant fired once after a change.
         await page.locator("#btn-inc").click()
         await expect(page.locator("#store-count")).toHaveText("Store count: 1")
-        await expect
-            .poll(() => readLeak(page))
-            .toEqual({
-                effect: 2,
-                preEffect: 2,
-                postEffect: 2,
-                syncEffect: 2,
-                watch: 1,
-                preWatch: 1,
-                postWatch: 1,
-                syncWatch: 1
-            })
+        await expect(page.locator("#sync-leak")).toHaveText(
+            "effect:2,preEffect:2,postEffect:2,syncEffect:2,watch:1,preWatch:1,postWatch:1,syncWatch:1"
+        )
 
         await page.locator("#btn-hide").click()
         await expect(page.locator("#sync-panel")).toHaveCount(0)
 
-        const beforeUnmount = await readLeak(page)
+        const beforeUnmount = await page.locator("#sync-leak").innerText()
 
         await page.locator("#btn-inc").click()
         await expect(page.locator("#store-count")).toHaveText("Store count: 2")
 
         // Disposed effect/watch must not re-fire.
-        await expect.poll(() => readLeak(page)).toEqual(beforeUnmount)
+        await expect(page.locator("#sync-leak")).toHaveText(beforeUnmount)
+    })
+
+    test("external module registrations drive an imported store while mounted", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario(scenario)
+
+        await page.locator("#btn-show").click()
+        await expect(page.locator("#external-panel")).toBeVisible()
+
+        await expect(page.locator("#store-double")).toHaveText("Store double: 0")
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: ")
+
+        await page.locator("#btn-inc").click()
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
+        await expect(page.locator("#store-double")).toHaveText("Store double: 2")
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1")
+    })
+
+    test("external module registrations are disposed when the component unmounts", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario(scenario)
+
+        await page.locator("#btn-show").click()
+        await expect(page.locator("#external-panel")).toBeVisible()
+
+        await page.locator("#btn-inc").click()
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
+        await expect(page.locator("#store-double")).toHaveText("Store double: 2")
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1")
+
+        await page.locator("#btn-hide").click()
+        await expect(page.locator("#external-panel")).toHaveCount(0)
+
+        // Destroying the component disposes the registered effect/watch; the
+        // derived store values must stay frozen when the store changes again.
+        await page.locator("#btn-inc").click()
+        await expect(page.locator("#store-count")).toHaveText("Store count: 2")
+        await expect(page.locator("#store-double")).toHaveText("Store double: 2")
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1")
     })
 })
