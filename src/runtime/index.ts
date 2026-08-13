@@ -5,7 +5,7 @@ export type {
     QingkuaiComponent,
     ComponentInstance
 } from "#type-declarations/runtime"
-export type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
+export type { HtmlBlockOptions, EffectFunc, WatchFunc } from "#type-declarations/runtime-ex"
 
 export {
     onAfterMount,
