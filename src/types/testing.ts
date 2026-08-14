@@ -12,6 +12,7 @@ export interface E2EScenario {
     name: string
     input: string
     compileOptions?: CompileOptions
+    modules?: Record<string, string>
     components?: Record<string, string>
 }
 

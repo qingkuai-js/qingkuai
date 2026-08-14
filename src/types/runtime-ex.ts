@@ -1,11 +1,11 @@
 import type {
     EffectHandle,
     EffectCallback,
+    WatcherCallback,
     QingkuaiComponent,
-    ComponentInstance,
-    WatcherCallback
+    ComponentInstance
 } from "#type-declarations/runtime"
-import type { AnyObject, GeneralFunc, Getter } from "./tools"
+import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools"
 
 /**
  * Configures escaping behavior for HTML block rendering.
@@ -377,4 +377,42 @@ export interface createStoreFunc {
      * @returns A reactive proxy wrapping the initial state object.
      */
     <T extends AnyObject>(value: T): T
+}
+
+export interface GetCurrentInstanceFunc {
+    /**
+     * Returns the component instance that is currently being initialized or
+     * updated.
+     *
+     * Typical use case: access the current component's host element or the
+     * exported data mounted on its instance, or register watchers, effects,
+     * and lifecycle hooks that are bound to the current component. The
+     * obtained instance can also be passed to `watch` or `effect` from
+     * external logic, so the watcher or effect is cleaned up automatically
+     * when the component is destroyed.
+     *
+     * This method only returns the correct instance during synchronous
+     * execution of a component's setup, render, or lifecycle hooks. The
+     * result is unreliable in asynchronous logic such as `setTimeout`,
+     * `Promise.then`, or event handlers — call it synchronously and capture
+     * the instance before using it later.
+     *
+     * The generic `E` describes the type of the component's exported data,
+     * which is mounted on the instance, producing a typed instance reference.
+     *
+     * Examples:
+     * ```ts
+     * // Get the current component instance.
+     * const instance = getCurrentInstance()
+     *
+     * // Passing a generic provides correct type hints.
+     * const component = getCurrentInstance<{ count: number }>()
+     * ```
+     *
+     * @returns The current component instance, or `null` when no component
+     * is active. The result is unreliable in asynchronous logic.
+     */
+    <E extends Record<string, any> | void = void>(): ComponentInstance<
+        QingkuaiComponent<() => E>
+    > | null
 }

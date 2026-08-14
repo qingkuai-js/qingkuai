@@ -422,15 +422,14 @@ describe("Production", () => {
                         {a} {b}, {c}
                     `,
                     formatSourceCode(`
-                        const _b = _.shallowReact(_.UNDEF)
                         const _c = _.shallowReact(_.UNDEF)
-                        console.log(a, _b.$, _c.$)
+                        console.log(a, b, _c.$)
 
                         var a = 1,
-                            b = obj; _b.$ = b;
-                            var c = null; _c.$ = c;
+                            b = obj,
+                            c = null; _c.$ = c;
                         _c.$ = 1
-                        console.log(a, _b.$, _c.$)
+                        console.log(a, b, _c.$)
                     `)
                 )
             })
@@ -452,9 +451,9 @@ describe("Production", () => {
                         console.log(a, b, c)
 
                         let a = _.shallowReact(1),
-                            b = _.shallowReact(obj)
-                        let c = _.shallowReact(arr)
-                        console.log(a.$, b.$, c.$)
+                            b = obj
+                        let c = arr
+                        console.log(a.$, b, c)
                     `)
                 )
             })
@@ -557,14 +556,10 @@ describe("Production", () => {
                         {(a, b, c, d)}
                     `,
                     formatSourceCode(`
-                        const _a = _.shallowReact(_.UNDEF)
-                        const _b = _.shallowReact(_.UNDEF)
-                        const _c = _.shallowReact(_.UNDEF)
-                        const _d = _.shallowReact(_.UNDEF)
-                        console.log(_a.$, _b.$, _c.$, _d.$)
+                        console.log(a, b, c, d)
 
-                        var [a, [b, ...c], ...d] = ""; [_a.$, _b.$, _c.$, _d.$] = [a, b, c, d];
-                        console.log(_a.$, _b.$, _c.$, _d.$)
+                        var [a, [b, ...c], ...d] = ""
+                        console.log(a, b, c, d)
                     `)
                 )
             })
@@ -583,8 +578,8 @@ describe("Production", () => {
                     formatSourceCode(`
                         console.log(a, b, c)
 
-                        let [a, b, c] = _.destructuringShallowReact(([a, [b], ...c]) => [[a, 1], [b, 1], [c, 0]], arr)
-                        console.log(a.$, b.$, c)
+                        let [a, [b], ...c] = arr
+                        console.log(a, b, c)
                     `)
                 )
             })

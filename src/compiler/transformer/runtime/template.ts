@@ -28,11 +28,6 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
-import {
-    ensureIdWithPrefix,
-    getAttributeBaseName,
-    ensureIdWithNumSuffix
-} from "../../../util/compiler/sundry"
 import { TestingMode } from "../../enums"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
@@ -44,6 +39,7 @@ import { equalsWithKeyDirectiveValue } from "../../optimizer/render"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert"
+import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
@@ -123,8 +119,8 @@ export function generateTemplateRender(
     if (isRoot) {
         const anchorId = generateIdentifier.anchor
         const internalId = generateIdentifier.internal
+        const instanceId = generateIdentifier.instance
         const getterArgId = generateIdentifier.getterArg
-        const instanceId = ensureIdWithPrefix("instance")
         const exportedBindings = new Map<string, string>()
         const hasComponentFragment = !!componentFragment?.content.length
         for (const binding of analyzeResult.script.exportedBindings) {
@@ -140,14 +136,7 @@ export function generateTemplateRender(
             }
             return
         }
-
-        writer.write(`\nconst ${instanceId} = ${internalId}.mount(`)
-
-        if (hasComponentFragment) {
-            writer.write(`${anchorId}, ${componentFragment.id}`)
-        }
-        writer.write(")").wrapLine().write("return ")
-        writer.write(`${internalId}.defineExports(${instanceId}, {`).indent(false)
+        writer.write(`\n${internalId}.defineExports(${instanceId}, {`).indent(false)
 
         for (const [exported, local] of exportedBindings) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
@@ -157,6 +146,12 @@ export function generateTemplateRender(
             writer.write(`:  ${getterArgId} => (${transformed}),`)
         }
         writer.dedent().write(`})`)
+        writer.write(`\nreturn ${internalId}.mount(`)
+
+        if (hasComponentFragment) {
+            writer.write(`${anchorId}, ${componentFragment.id}`)
+        }
+        writer.write(")")
     }
 }
 

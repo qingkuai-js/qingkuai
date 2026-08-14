@@ -569,10 +569,10 @@ interface ReloadGetListPair {
 
 type Getter<T> = () => T
 type ArbitraryFunc = (...args: any) => any
+type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
 type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
 type CleanObject<T> = { -readonly [K in keyof T as K extends symbol ? never : K]: T[K] }
-type WithRequired<T, D> = Omit<T, keyof D> & Required<Pick<T, Extract<keyof D, keyof T>>>
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
 type DefaultsValue<P, R> = { props?: CleanStrictPick<P, OptionalKeysOf<P>>; refs?: CleanStrictPick<R, OptionalKeysOf<R>> }
 type CleanStrictPick<T, K extends keyof T> = [keyof Prettify<CleanObject<Pick<T, K>>>] extends [never] ? __qk__lsu.EmptyObject : Prettify<CleanObject<Pick<T, K>>>

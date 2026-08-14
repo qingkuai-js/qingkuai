@@ -408,6 +408,15 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
     }
 }
 
+// 推断可变声明（let/var）非字面量初始值的状态：默认 reactive 模式下保持 pending（由模板访问确认），
+// shallow 模式下回到 literal（由"是否被赋值"决定是否升级为 shallow，未赋值保持非响应式）。
+// In the default reactive mode, a mutable declaration with a non-literal initial value stays
+// pending (confirmed by template access); in shallow mode it falls back to literal and is only
+// upgraded to shallow when actually mutated.
+function inferShallowMutableStatus(): IdentifierStatus {
+    return inputDescriptor.options.reactivityMode === "shallow" ? "literal" : "pending"
+}
+
 // 推断顶级作用域标识符的响应式状态
 // Infer the reactive status of top-level scope identifiers.
 function inferStatusByVariableDeclaration(
@@ -453,17 +462,24 @@ function inferStatusByVariableDeclaration(
 
         // 当 allowConstReactive 选项被禁用时，常量声明不会参与响应式推断
         // Constant declarations are not inferred as reactive when the allowConstReactive option is disabled.
-        return isConst && !allowConstReactive ? "raw" : "pending"
+        if (isConst) {
+            return allowConstReactive ? "pending" : "raw"
+        }
+
+        // 可变声明（let/var）：shallow 模式下非字面量需"被赋值"才升级为 shallow。
+        // Mutable declarations: in shallow mode, non-literal initializers are only
+        // upgraded to shallow when actually mutated.
+        return inferShallowMutableStatus()
     }
 
     const callee = getStriptTypeOperationsNode(initNode.expression)!
     if (!ts.isIdentifier(callee)) {
-        return "pending"
+        return isConst ? "pending" : inferShallowMutableStatus()
     }
 
     const calleeName = callee.text
     if (!intrinsicReactiveMethodsRE.test(calleeName)) {
-        return "pending"
+        return isConst ? "pending" : inferShallowMutableStatus()
     }
 
     // 检查是否混用了简洁衍生响应式声明语法和标记响应式声明语法

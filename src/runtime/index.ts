@@ -5,7 +5,7 @@ export type {
     QingkuaiComponent,
     ComponentInstance
 } from "#type-declarations/runtime"
-export type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
+export type { HtmlBlockOptions, EffectFunc, WatchFunc } from "#type-declarations/runtime-ex"
 
 export {
     onAfterMount,
@@ -40,8 +40,8 @@ export {
 } from "./reactivity/optimization"
 
 export { version } from "./meta"
-export { mountApp } from "./component"
+export { DESTRUCT_HTML } from "./constants"
 export { toRaw } from "../util/runtime/sundry"
 export { nextTick } from "../util/runtime/sundry"
-export { DESTRUCT_HTML } from "./constants"
+export { mountApp, getCurrentInstance } from "./component"
 export { createStore, createShallowStore, toReactive, toShallowReactive } from "./reactivity/value"

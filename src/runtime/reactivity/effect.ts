@@ -225,7 +225,7 @@ function runEffectCollector(effect: Effect) {
     effect.l &= ~EFFECT_NO_CHECK
     pushRunningEffectStack(effect)
 
-    const componentInstance = currentInstance
+    const originalInstance = currentInstance
     const parentDestruction = currentDestruction
     if (setCurrentDestruction(effect.d)?.m) {
         setCurrentInstance(effect.d!.m)
@@ -233,7 +233,7 @@ function runEffectCollector(effect: Effect) {
 
     const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
     popRunningEffectStack()
-    setCurrentInstance(componentInstance)
+    setCurrentInstance(originalInstance)
     setCurrentDestruction(parentDestruction)
 
     const collectedLinks = effect.k

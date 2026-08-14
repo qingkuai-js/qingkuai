@@ -119,3 +119,49 @@ test("Runtime: colliding export names result in last one in handle", () => {
     expect(code).toContain("_.defineExports(")
     expect(code).toContain("same:  __ => (b),")
 })
+
+test("Runtime: exports are defined on the instance before mount", () => {
+    const { code, messages: compileMessages } = compile(
+        `
+            <lang-js>
+                export let count = reactive(0)
+                function inc() {
+                    count++
+                }
+                export { inc as increase }
+            </lang-js>
+
+            <div>{count}</div>
+        `,
+        {
+            debug: false
+        }
+    )
+
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
+    expect(code).toContain("const _instance = _.init(")
+    expect(code).toContain("_.defineExports(_instance,")
+    expect(code.indexOf("_.defineExports(")).toBeGreaterThan(-1)
+    expect(code.indexOf("return _.mount(")).toBeGreaterThan(code.indexOf("_.defineExports("))
+})
+
+test("Runtime: no exports keeps init uncaptured", () => {
+    const { code, messages: compileMessages } = compile(
+        `
+            <lang-js>
+                let count = reactive(0)
+            </lang-js>
+
+            <div>{count}</div>
+        `,
+        {
+            debug: false
+        }
+    )
+
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
+    expect(code).toContain("_.init(_anchor, _ctx)")
+    expect(code).not.toContain("const _instance = _.init(")
+    expect(code).not.toContain("_.defineExports(")
+    expect(code).toContain("return _.mount(")
+})
