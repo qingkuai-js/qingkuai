@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.91](https://github.com/qingkuai-js/qingkuai/compare/v1.0.90...v1.0.91) (2026-08-15)
+
+### Features
+
+- add `getCurrentInstance` function to get the current component instance outside a component ([17896ac](https://github.com/qingkuai-js/qingkuai/commit/17896ac))
+- export `EffectFunc` and `WatchFunc` types ([ea03992](https://github.com/qingkuai-js/qingkuai/commit/ea03992))
+
+### Tests
+
+- support external modules in E2E scenarios; add `effect`/`watch` external registration tests ([be49ab0](https://github.com/qingkuai-js/qingkuai/commit/be49ab0))
+
+### Fixes
+
+- restore the current instance when running component hooks to avoid instance context confusion inside hooks ([d86328b](https://github.com/qingkuai-js/qingkuai/commit/d86328b))
+- ensure exports are defined before mounting so hooks can access the correct component instance ([7f7832f](https://github.com/qingkuai-js/qingkuai/commit/7f7832f))
+- fix literal inference for non-literal `let`/`var` declarations in shallow mode before they are modified by assignments ([38adf90](https://github.com/qingkuai-js/qingkuai/commit/38adf90))
+- make the `WithRequired` utility type extraction exclude properties that were already required ([504fb81](https://github.com/qingkuai-js/qingkuai/commit/504fb81))
+
 ## [1.0.90](https://github.com/qingkuai-js/qingkuai/compare/v1.0.84...v1.0.90) (2026-08-12)
 
 ### Features
