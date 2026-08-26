@@ -59,6 +59,7 @@ export type ComponentInstanceInternal = Partial<{
     p: AnyObject // raw props
     P: AnyObject // bound props
     r: AnyObject // raw refs
+    c: AnyObject // contexts
     R: AnyObject // bound refs
     e: string[] // delegated events
     a: string[] // ancestor scope chain
@@ -156,5 +157,5 @@ export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
     ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
 >
 
-export type DefaultValues = Partial<Record<"props" | "refs", AnyObject>>
 export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string
+export type DefaultValues = Partial<Record<"props" | "refs" | "contexts", AnyObject>>

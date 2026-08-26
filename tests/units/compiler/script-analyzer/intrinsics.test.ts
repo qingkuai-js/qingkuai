@@ -1,9 +1,9 @@
 import type { ExpectedCompileMessage } from "#type-declarations/testing"
 
 import { describe, test, expect } from "vitest"
-import { messages } from "../../../../src/compiler/state"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { analyzeScript } from "../../../../src/compiler/analyzer/script"
+import { messages, analyzeResult } from "../../../../src/compiler/state"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 
@@ -38,7 +38,7 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [6, 14],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
+                value: `The compiler intrinsic "defaults" must be a function call at the top-level scope.`
             },
             {
                 type: "error",
@@ -86,17 +86,17 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [10, 18],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
-            },
-            {
-                type: "error",
-                range: [26, 34],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
+                value: `The compiler intrinsic "defaults" must be a function call at the top-level scope.`
             },
             {
                 type: "error",
                 range: [64, 72],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
+                value: `The compiler intrinsic "defaults" must be a function call at the top-level scope.`
+            },
+            {
+                type: "error",
+                range: [64, 72],
+                value: `The compiler intrinsic method "defaults" can only be called once in the embedded script block.`
             }
         ])
     })
@@ -196,19 +196,9 @@ describe("Invalid usages of intrinsic methods", () => {
                 value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
-                type: "warning",
-                range: [54, 74],
-                value: `The "alias" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
-            },
-            {
                 type: "error",
                 range: [54, 74],
                 value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
-            },
-            {
-                type: "warning",
-                range: [99, 114],
-                value: `The "alias" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
             },
             {
                 type: "error",
@@ -535,17 +525,20 @@ test("Analyzer emits errors for top-level await, namespace and reserved identifi
     expect(messages.length).toBeGreaterThanOrEqual(3)
 })
 
-test("Analyzer validates intrinsic argument count and spread arguments", () => {
+test("Analyzer validates intrinsic usage in non-variable-declaration calls", () => {
     localAnalyze(`
         watchExp(1, 2, 3)
         defaults(...x, y)
         reactive(...x)
     `)
 
-    const errors = messages.filter(item => item.type === "error")
-    const warnings = messages.filter(item => item.type === "warning")
-    expect(errors.length).toBeGreaterThan(0)
-    expect(warnings.length).toBeGreaterThan(0)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [36, 44],
+            value: `The compiler intrinsic "reactive" must be called at top-level scope to mark the variable initializer.`
+        }
+    ])
 })
 
 test("Analyzer rejects aliasing plain identifier and intrinsics inside using declarations", () => {
@@ -569,26 +562,21 @@ test("Duplicate defaults calls are rejected", () => {
         {
             type: "error",
             range: [24, 32],
-            value: `The "defaults" method can only be called once in the embedded script block.`
+            value: `The compiler intrinsic method "defaults" can only be called once in the embedded script block.`
         }
     ])
 })
 
-test("Defaults accepts spread but rejects too many args and duplicate calls", () => {
+test("Defaults accepts spread but rejects duplicate calls", () => {
     localAnalyze(`
         defaults({ props: {} }, { refs: {} })
         defaults(...propsList)
     `)
     localMatchCompileMessages([
         {
-            type: "warning",
-            range: [0, 37],
-            value: `The "defaults" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
-        },
-        {
             type: "error",
             range: [38, 46],
-            value: `The "defaults" method can only be called once in the embedded script block.`
+            value: `The compiler intrinsic method "defaults" can only be called once in the embedded script block.`
         }
     ])
 })
@@ -639,4 +627,87 @@ test("alias accepts spread but still requires a mutable lvalue target", () => {
             value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
         }
     ])
+})
+
+// setContext 是值语义：允许 spread 展开、不限制参数数量，原样存储。
+// setContext stores values as-is: spread and extra args are allowed.
+test("setContext allows spread and extra arguments", () => {
+    localAnalyze(`
+        setContext("theme", ...rest)
+        setContext("theme", mode, "extra")
+    `)
+    expect(analyzeResult.script.setContextExpCalls.length).toBe(0)
+    expect(analyzeResult.script.usedIntrinsics.has("setContext")).toBe(true)
+})
+
+test("contexts references enter usedIntrinsics", () => {
+    localAnalyze(`
+        console.log(contexts.theme)
+    `)
+    expect(analyzeResult.script.usedIntrinsics.has("contexts")).toBe(true)
+})
+
+test("setContextGetter is tracked via usedIntrinsics, not setContextExpCalls", () => {
+    localAnalyze(`
+        setContextGetter("theme", () => mode)
+    `)
+    expect(analyzeResult.script.usedIntrinsics.has("setContextGetter")).toBe(true)
+    expect(analyzeResult.script.setContextExpCalls.length).toBe(0)
+})
+
+test("local setContext shadows the built-in so no calls or usage are recorded", () => {
+    localAnalyze(`
+        {
+            const setContext = (k, v) => {}
+            setContext("theme", 1)
+        }
+    `)
+    expect(analyzeResult.script.setContextExpCalls.length).toBe(0)
+    expect(analyzeResult.script.usedIntrinsics.has("setContext")).toBe(false)
+})
+
+test("local watchExp shadows the built-in so no calls or usage are recorded", () => {
+    localAnalyze(`
+        {
+            const watchExp = () => {}
+            watchExp(() => count, () => {})
+        }
+    `)
+    expect(analyzeResult.script.watchExpCalls.length).toBe(0)
+    expect(analyzeResult.script.usedIntrinsics.has("watch")).toBe(false)
+})
+
+test("setContextExp with a spread argument aborts compilation", () => {
+    localAnalyze(`
+        setContextExp(...args)
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [14, 21],
+            value: `The intrinsic method "setContextExp" does not support spread element as its argument.`
+        }
+    ])
+})
+
+test("setContextExp must be used as a function call", () => {
+    localAnalyze(`
+        const x = setContextExp
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [10, 23],
+            value: `The compiler intrinsic "setContextExp" can only be used as a function call.`
+        }
+    ])
+})
+
+test("setContextGetter performs no compile checks (spread and extra args allowed)", () => {
+    localAnalyze(`
+        setContextGetter("theme", () => mode, "extra")
+        setContextGetter(...args)
+    `)
+    localMatchCompileMessages([])
+    expect(analyzeResult.script.usedIntrinsics.has("setContextGetter")).toBe(true)
 })

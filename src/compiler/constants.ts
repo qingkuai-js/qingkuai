@@ -87,6 +87,24 @@ export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
     })
 }, {})
 
+export const BOUND_INSTANCE_INTRINSIC_MAP: Record<string, string> = {
+    effect: "effect",
+    watch: "watch",
+    preEffect: "preEffect",
+    preWatch: "preWatch",
+    postEffect: "postEffect",
+    postWatch: "postWatch",
+    syncEffect: "syncEffect",
+    syncWatch: "syncWatch",
+    watchExp: "watch",
+    preWatchExp: "preWatch",
+    postWatchExp: "postWatch",
+    syncWatchExp: "syncWatch",
+    setContext: "setContext",
+    setContextExp: "setContextGetter",
+    setContextGetter: "setContextGetter"
+}
+
 export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
     checkTemplateStructure: true,
     preserveBlankTextNodes: true,

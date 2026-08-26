@@ -29,7 +29,7 @@ export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scop
     return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
-export const UnnecessaryScopeDirective = withLocation(9015, () => {
+export const UnnecessaryScopeDirective = withLocation(9014, () => {
     return `The "#scope" directive has no effect because the current component has no scoped styles.`
 })
 
@@ -66,13 +66,6 @@ export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
 export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
     return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 })
-
-export const RedundantArgsForIntrinsic = withLocation(
-    9014,
-    (intrinsic: string, expected: number, got: number) => {
-        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
-    }
-)
 
 export function isCompileWarning(v: any): v is CompileWarning {
     return v instanceof QingkuaiCompileWarning

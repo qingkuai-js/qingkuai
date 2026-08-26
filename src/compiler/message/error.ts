@@ -46,11 +46,12 @@ export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string)
         case "watchExp":
         case "preWatchExp":
         case "postWatchExp":
-        case "syncWatchExp": {
+        case "syncWatchExp":
+        case "setContextExp": {
             return `The compiler intrinsic "${name}" can only be used as a function call.`
         }
         case "defaults": {
-            return `The compiler intrinsic "${name}" must be called as a standalone expression at top-level scope.`
+            return `The compiler intrinsic "${name}" must be a function call at the top-level scope.`
         }
     }
     return `The compiler intrinsic "${name}" must be called at top-level scope to mark the variable initializer.`
@@ -193,10 +194,6 @@ export const InvalidIntrinsicMethodPlacement = withLocation(1061, (name: string)
     return `The compiler intrinsic method "${name}" cannot be used in template.`
 })
 
-export const DuplicateDefaultsCall = withLocation(1071, () => {
-    return `The "defaults" method can only be called once in the embedded script block.`
-})
-
 export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {
     return "The value for static attribute must be quoted with single or double quote."
 })
@@ -283,6 +280,10 @@ export const InvalidParameterForAliasIntrinsic = withLocation(1024, () => {
 
 export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrinsic: string) => {
     return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
+})
+
+export const DuplicateDefaultsCall = withLocation(1071, () => {
+    return `The compiler intrinsic method "defaults" can only be called once in the embedded script block.`
 })
 
 export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: string) => {

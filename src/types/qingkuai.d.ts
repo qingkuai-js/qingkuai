@@ -6,15 +6,10 @@
 // are for type inference and validation only and have no runtime implementation.
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-import type { QingkuaiComponent as _QingkuaiComponent, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
+import type { QingkuaiComponent, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
-    const Sign: unique symbol
-    type QingkuaiComponent<F extends ArbitraryFunc> = _QingkuaiComponent<F>
-
-    export interface EmptyObject {
-        [Sign]?: never
-    }
+    export type EmptyObject = Record<never, never>
 
     export const anyValue: any
     export const getListPair: ReloadGetListPair
@@ -30,12 +25,17 @@ export namespace __qk__lsu {
     export const validateHandleReceiver: <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E) => void
     export const validateEventHandler: <T extends string, H extends (ev: ExtractEventKind<T>) => any>(value: T, handler: H) => void
 
+    export const extractFirstArg: <T extends unknown[]>(...args: T) => T[0]
     export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any
 
-    export const ExtractFirstArg: <T extends unknown[]>(...args: T) => T[0]
-    export const AssertDefaults: <P, R>(f: any, props: P, refs: R) => asserts f is (value: Prettify<DefaultsValue<P, R>>) => void
-    export const AssertRefs: <R, D>(refs: R, defaults: D) => asserts refs is R & Prettify<WithRequired<R, D extends { refs: infer DR } ? DR : never>>
-    export const AssertProps: <P, D>(props: P, defaults: D) => asserts props is P & Prettify<WithRequired<P, D extends { props: infer DP } ? DP : never>>
+    export const assertRefs: <R, D>(refs: R, defaults: D) => asserts refs is R & Prettify<WithRequired<R, D extends { refs: infer DR } ? DR : never>>
+    export const assertProps: <P, D>(props: P, defaults: D) => asserts props is P & Prettify<WithRequired<P, D extends { props: infer DP } ? DP : never>>
+    export const assertContexts: <C, D>(contexts: C, defaults: D) => asserts contexts is C & Prettify<WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
+
+    export const assertSetContext: <C>(fn: any, contexts: C) => asserts fn is <K extends keyof C>(key: K, value: C[K]) => void
+    export const assertSetContextExp: <C>(fn: any, contexts: C) => asserts fn is <K extends keyof C>(key: K, value: C[K]) => void
+    export const assertSetContextGetter: <C>(fn: any, contexts: C) => asserts fn is <K extends keyof C>(key: K, getter: Getter<C[K]>) => void
+    export const assertDefaults: <P, R, C>(fn: any, props: P, refs: R, contexts: C) => asserts fn is (value: Prettify<DefaultsValue<P, R, C>>) => void
 }
 
 /**
@@ -545,18 +545,122 @@ export declare const syncEffect: EffectFunc
  * console.log(refs.counter)  // 0 if not provided by the parent
  * ```
  *
- * @param a An object whose keys are default-value categories.
+ * @param value An object whose keys are default-value categories.
  */
 //
-// 此处的 `defaults` 签名仅为宽松占位声明。在实际组件（.qk）中，qingkuai 编译器会在中间代码顶部
-// 生成`__qk__lsu.AssertDefaults(defaults, props, refs)` 断言，将 `defaults` 的参数类型
-// 收窄为各类型中可选键的集合，因此组件文件里 `defaults` 的签名与此处并不一致。
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const defaults: unknown
+
+/**
+ * Writes a context value into the current component's contexts layer.
+ *
+ * The value written here is readable from this component and all of its
+ * descendants through the `contexts` identifier. Each component has its own
+ * contexts layer whose prototype is the parent's layer, so:0
+ *
+ * - Writing a key here shadows any same-named key inherited from the parent;
+ *   the parent value is unaffected.
+ * - Descendants read the nearest value along the prototype chain.
+ *
+ * This is a compiler intrinsic available inside `.qk` component scripts. The
+ * compiler binds it to the current component instance.
+ *
+ * To store a reactive value, pass a **getter**. The getter is stored
+ * as-is and **not invoked automatically** — descendants must call it to
+ * obtain the live value.
+ *
+ * Examples:
+ * ```ts
+ * // Set a static value
+ * setContext("theme", "dark")
+ *
+ * // Set a reactive value
+ * let count = reactive(0)
+ * setContext("getCount", () => count)
+ *
+ * // Reactive read in a descendant:
+ * contexts.getCount()
+ * ```
+ *
+ * @param key The context key.
+ * @param value The context value, or a getter to be invoked by readers.
+ */
 //
-// The `defaults` signature here is only a loose placeholder. In realcomponents the
-// qingkuai compiler emits an `__qk__lsu.AssertDefaults(defaults, props, refs)` assertion
-// at the top of the intermediate code, narrowing the argument type to the optional keys
-// of the corresponding types, so the signature there differs from this file. This
-export declare function defaults(a: any, b: any): void
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const setContext: unknown
+
+/**
+ * Writes a reactive getter into the current component's contexts layer.
+ *
+ * Unlike `setContext`, this intrinsic expects a getter function. The
+ * compiler binds the call to the current component instance, and runtime
+ * wraps the getter so descendants can read `contexts.key` directly while
+ * staying reactive.
+ *
+ * Each component has its own contexts layer whose prototype is the parent's
+ * layer, so:
+ *
+ * - Writing a key here shadows any same-named key inherited from the parent;
+ *   the parent value is unaffected.
+ * - Descendants read the nearest value along the prototype chain.
+ *
+ * This intrinsic must be called as a standalone expression.
+ *
+ * Examples:
+ * ```ts
+ * // Set a reactive value as a context getter.
+ * let count = shallow(0)
+ * setContextGetter("count", () => count)
+ *
+ * // Reactive read in a descendant:
+ * contexts.count
+ * ```
+ *
+ * @param key The context key.
+ * @param getter The getter used to resolve the context value.
+ */
+//
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const setContextGetter: unknown
+
+/**
+ * Writes a reactive value into the current component's contexts layer.
+ *
+ * Unlike `setContext`, the value is passed directly — descendants access it
+ * as a property and it stays reactive automatically, with no need to call
+ * anything.
+ *
+ * Each component has its own contexts layer whose prototype is the parent's
+ * layer, so:
+ *
+ * - Writing a key here shadows any same-named key inherited from the parent;
+ *   the parent value is unaffected.
+ * - Descendants read the nearest value along the prototype chain.
+ *
+ * This is a compiler intrinsic available inside `.qk` component scripts. The
+ * compiler binds it to the current component instance and wraps the value so
+ * that reading the context yields the live reactive value.
+ *
+ * Examples:
+ * ```ts
+ * // Set a reactive value as a context expression.
+ * let count = shallow(0)
+ * setContextExp("count", count)
+ *
+ * // Reactive read in a descendant:
+ * contexts.count
+ * ```
+ *
+ * @param key The context key.
+ * @param exp The reactive value to store.
+ */
+//
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const setContextExp: unknown
 
 interface ReloadGetListPair {
     <T>(value: Set<T>): [T, T]
@@ -571,9 +675,10 @@ type Getter<T> = () => T
 type ArbitraryFunc = (...args: any) => any
 type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
 type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
+type CleanContextsPick<T> = Prettify<{ -readonly [K in keyof T]?: T[K] }>
 type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
 type CleanObject<T> = { -readonly [K in keyof T as K extends symbol ? never : K]: T[K] }
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
-type DefaultsValue<P, R> = { props?: CleanStrictPick<P, OptionalKeysOf<P>>; refs?: CleanStrictPick<R, OptionalKeysOf<R>> }
+type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P, OptionalKeysOf<P>>; refs?: CleanStrictPick<R, OptionalKeysOf<R>>; contexts?: CleanContextsPick<C> }
 type CleanStrictPick<T, K extends keyof T> = [keyof Prettify<CleanObject<Pick<T, K>>>] extends [never] ? __qk__lsu.EmptyObject : Prettify<CleanObject<Pick<T, K>>>
 type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element

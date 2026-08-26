@@ -47,9 +47,12 @@ export {
     initSlots,
     initProps,
     getScopes,
+    setContext,
+    initContexts,
     applyDefaults,
     defineExports,
     renderComponent,
+    setContextGetter,
     dynamicComponent
 } from "./component"
 
@@ -59,6 +62,7 @@ export { targetBlock } from "./directives/target"
 export { renderEffect } from "./reactivity/effect"
 export { promiseBlock } from "./directives/promise"
 export { alias, destructuringAlias } from "./debug"
+export { makeExpGetter } from "../util/runtime/sundry"
 export { conditionBlock } from "./directives/condition"
 export { objectAssign, call } from "../util/shared/aliases"
 export { listBlock, keyedListBlock } from "./directives/list"

@@ -259,12 +259,12 @@ test("Check codegen: defaults literal kept and props/refs asserted via default-v
         <div>{props.count}</div>
     `)
     expect(result.code).toContain("defaults({ props: { count: 0 } })")
-    expect(result.code).toContain(`${LSC.UTIL}.AssertDefaults(defaults, props, refs);`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
     expect(result.code).toContain(
-        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.ExtractFirstArg({ props: { count: 0 } })`
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg({ props: { count: 0 } })`
     )
-    expect(result.code).toContain(`${LSC.UTIL}.AssertProps(props, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).toContain(`${LSC.UTIL}.AssertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`)
     expect(result.code).not.toContain("applyDefaults")
 })
 
@@ -279,13 +279,13 @@ test("Check codegen: JS script also keeps defaults literal and asserts via defau
     expect(result.code).not.toContain("AssertDefaults<Props, Refs>")
     expect(result.code).toContain("defaults({ props: { count: 0 }, refs: { seed: 1 } })")
     expect(result.code).toContain(
-        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.ExtractFirstArg({ props: { count: 0 }, refs: { seed: 1 } })`
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg({ props: { count: 0 }, refs: { seed: 1 } })`
     )
-    expect(result.code).toContain(`${LSC.UTIL}.AssertProps(props, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).toContain(`${LSC.UTIL}.AssertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`)
 })
 
-test("Check codegen: defaults spread argument is extracted via ExtractFirstArg", () => {
+test("Check codegen: defaults spread argument is extracted via extractFirstArg", () => {
     const result = compileIntermediateResult(`
         <lang-ts>
             const config = { props: { count: 0 } }
@@ -296,10 +296,61 @@ test("Check codegen: defaults spread argument is extracted via ExtractFirstArg",
     `)
     expect(result.code).not.toContain("= ...")
     expect(result.code).toContain("defaults(...[config])")
-    expect(result.code).toContain(`${LSC.UTIL}.AssertDefaults(defaults, props, refs);`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
     expect(result.code).toContain(
-        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.ExtractFirstArg(...[config])`
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg(...[config])`
     )
-    expect(result.code).toContain(`${LSC.UTIL}.AssertProps(props, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).toContain(`${LSC.UTIL}.AssertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`)
+})
+
+test("Check codegen: contexts usage emits assertDefaults with contexts and assertContexts", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            defaults({ contexts: { theme: "light" } })
+            setContext("theme", 1)
+            console.log(contexts.theme)
+        </lang-ts>
+        <div>{contexts.theme}</div>
+    `)
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
+    expect(result.code).toContain(`${LSC.UTIL}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`)
+})
+
+test("Check codegen: setContext usage emits a single top-level assertSetContext assertion", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            const mode = reactive("dark")
+            setContext("theme", mode)
+            setContext("version", 1)
+            console.log(contexts.theme)
+        </lang-ts>
+        <div>{contexts.theme}</div>
+    `)
+    expect(result.code).toContain('setContext("theme", mode)')
+    expect(result.code).toContain("__qk__lsu.assertSetContext(setContext, contexts)")
+})
+
+test("Check codegen: setContextGetter usage emits a single top-level assertSetContextGetter assertion", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            const mode = reactive("dark")
+            setContextGetter("theme", () => mode)
+            console.log(contexts.theme)
+        </lang-ts>
+        <div>{contexts.theme}</div>
+    `)
+    expect(result.code).toContain('setContextGetter("theme", () => mode)')
+    expect(result.code).toContain("__qk__lsu.assertSetContextGetter(setContextGetter, contexts)")
+})
+
+test("Check codegen: assertDefaults always passes contexts for language-service assertions", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            console.log(props)
+        </lang-ts>
+        <div>{props.count}</div>
+    `)
+    expect(result.code).not.toContain("assertContexts")
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
 })

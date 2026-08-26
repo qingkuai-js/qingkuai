@@ -7,6 +7,9 @@ import type {
 } from "#type-declarations/runtime"
 import type {
     MountAppFunc,
+    SetContextFunc,
+    GetContextsFunc,
+    SetContextGetterFunc,
     LifecycleHookRegister,
     GetCurrentInstanceFunc
 } from "#type-declarations/runtime-ex"
@@ -14,6 +17,7 @@ import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 
 import {
     objectKeys,
+    objectCreate,
     reflectOwnKeys,
     defineProperty,
     defineProperties
@@ -25,11 +29,12 @@ import {
     setCurrentDestruction,
     backToParentDestruction
 } from "./state"
-import { AFTER_MOUNT } from "./constants"
 import { isElement } from "../util/runtime/assert"
 import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
+import { makeExpGetter } from "../util/runtime/sundry"
 import { createDestruction, destroy } from "./destroy"
+import { AFTER_MOUNT, NIL, EXP_GETTER } from "./constants"
 import { CreateOnDisposedComponent } from "./messages/warn"
 import { bindHandleReceiver, shallowConstReact } from "./internal"
 import { isFunction, isThenable, isString } from "../util/shared/assert"
@@ -71,6 +76,30 @@ export const getCurrentInstance: GetCurrentInstanceFunc = () => {
     return currentInstance as any
 }
 
+export const getContexts: GetContextsFunc = instance => {
+    return instance._internal.c!
+}
+
+export const setContext: SetContextFunc = (instance, key, value) => {
+    const context = instance._internal
+    defineProperty(context.c, key, {
+        enumerable: true,
+        configurable: true,
+        get() {
+            let val = value
+            if (val?.[EXP_GETTER]) {
+                val = val.f()
+            }
+            markActiveEffectNoCheck()
+            return val ?? context.D?.contexts?.[key]
+        }
+    })
+}
+
+export const setContextGetter: SetContextGetterFunc = (instance, key, getter) => {
+    setContext(instance, key, makeExpGetter(getter))
+}
+
 export function init(anchor: Node, context: ComponentInstanceInternal) {
     const instance: ComponentInstanceBase = {
         hooks: any([]),
@@ -82,9 +111,9 @@ export function init(anchor: Node, context: ComponentInstanceInternal) {
     if (context.h) {
         bindHandleReceiver(instance, context.h)
     }
-    setCurrentInstance(instance)
     context.d = createDestruction(currentDestruction, instance)
-    return instance
+    context.c = objectCreate(currentInstance?._internal.c ?? NIL)
+    return setCurrentInstance(instance)
 }
 
 export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
@@ -199,9 +228,14 @@ export function initSlots(context: ComponentInstanceInternal) {
     return ret
 }
 
+export function initContexts(context: ComponentInstanceInternal) {
+    return context.c
+}
+
 export function applyDefaults(defaults: DefaultValues) {
     const defaultKindMappings = [
         ["props", "P"],
+        ["contexts", "c"],
         ["refs", "R", true]
     ] as const
     const context = currentInstance!._internal

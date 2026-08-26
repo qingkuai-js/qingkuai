@@ -29,16 +29,18 @@ export const jsValueCharRE = /[A-Za-z0-9_$]/
 export const jsStringLiteralQuoteRE = /[`'"]/
 export const jsDestructuringEqualTokenRE = /\s*=\s*/
 export const jsValidIdentifierRE = /^[A-Za-z_$][A-Za-z0-9_$]*$/
-export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/
+export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|await)$/ // TODO: convert to a set of keywords
 
-export const intrinsicVariableRE = /^(?:props|refs|slots)$/
+// TODO: These regexes need to be converted into constant sets.
 export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
-export const intrinsicWatcherMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)Exp$/
+export const intrinsicVariableRE = /^(?:props|refs|slots|contexts)$/
+export const intrinsicWatchExpMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)Exp$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias)$/
 export const intrinsicEffectWatchMethodsRE = /^(?:effect|watch|(?:pre|post|sync)(?:Effect|Watch))$/
-export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|(?:watch|(?:pre|post|sync|)Watch)Exp)$/
+export const shouldBeCheckedIntrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|setContextExp|(?:watch|(?:pre|post|sync|)Watch)Exp)$/
+export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|setContext(?:Exp|Getter)?|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?)$/
 
-export const keyboardEventNamesRE = /^key(?:up|down|press)$/
+export const keyboardEventNamesRE = /^key(?:up|down|press)$/ // TODO: convert to a set of event names.
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
 
 export const formattingPreWhitespaceRE = /^\n?[\s]*\n/

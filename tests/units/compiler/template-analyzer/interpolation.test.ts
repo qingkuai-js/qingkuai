@@ -26,8 +26,7 @@ test("Compiler intrinsic method cannot be used in template expressions", () => {
 
 test("props are tracked as intrinsic vars and mark expression reactive", () => {
     analyzeTemplateOnly(`<div>{props.count}</div>`)
-
-    expect(analyzeResult.script.usedIntrinsicVars.has("props")).toBe(true)
+    expect(analyzeResult.script.usedIntrinsics.has("props")).toBe(true)
 
     const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
     expect(parsedExpression?.reactive).toBe(true)
@@ -35,8 +34,15 @@ test("props are tracked as intrinsic vars and mark expression reactive", () => {
 
 test("refs are tracked as intrinsic vars and mark expression reactive", () => {
     analyzeTemplateOnly(`<div>{refs.input}</div>`)
+    expect(analyzeResult.script.usedIntrinsics.has("refs")).toBe(true)
 
-    expect(analyzeResult.script.usedIntrinsicVars.has("refs")).toBe(true)
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("contexts are tracked as intrinsic vars and mark expression reactive", () => {
+    analyzeTemplateOnly(`<div>{contexts.theme}</div>`)
+    expect(analyzeResult.script.usedIntrinsics.has("contexts")).toBe(true)
 
     const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
     expect(parsedExpression?.reactive).toBe(true)
@@ -71,9 +77,8 @@ test("Invalid shorthand dynamic attribute name reports error", () => {
 
 test("Interpolation reactivity: props and refs access is reactive", () => {
     analyzeTemplateOnly(`<div>{props.count + refs.input}</div>`)
-
-    expect(analyzeResult.script.usedIntrinsicVars.has("props")).toBe(true)
-    expect(analyzeResult.script.usedIntrinsicVars.has("refs")).toBe(true)
+    expect(analyzeResult.script.usedIntrinsics.has("props")).toBe(true)
+    expect(analyzeResult.script.usedIntrinsics.has("refs")).toBe(true)
 
     const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
     expect(parsedExpression?.reactive).toBe(true)

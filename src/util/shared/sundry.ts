@@ -1,9 +1,9 @@
 import type { FormatSourceCodeFunc } from "#type-declarations/compiler-ex"
 import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
 
-import { objectKeys } from "../shared/aliases"
 import { objectAssign, setPrototypeOf } from "./aliases"
 import { NIL, OBJECT_PROTO } from "../../runtime/constants"
+import { objectCreate, objectKeys } from "../shared/aliases"
 import { formattingPreWhitespaceRE, formattingUselessWhitespaceRE } from "../../compiler/regular"
 
 export const formatSourceCode: FormatSourceCodeFunc = (code: string) => {
@@ -19,7 +19,7 @@ export function any(v: any) {
 }
 
 export function newCleanObj() {
-    return Object.create(NIL)
+    return objectCreate(NIL)
 }
 
 export function notEqual(a: any, b: any) {

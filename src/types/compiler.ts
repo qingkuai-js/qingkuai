@@ -271,13 +271,13 @@ export interface ScriptAnalyzeRet {
         }[]
     >
     exportStatements: ts.Node[]
-    watchers: ts.CallExpression[]
+    usedIntrinsics: Set<string>
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<ts.Node>
-    usedIntrinsicVars: Set<string>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
-    usedEffectWatchMethods: Set<string>
+    watchExpCalls: ts.CallExpression[]
+    setContextExpCalls: ts.CallExpression[]
     topLevelReferences: TopLevelReferences
     qkDefaultImportIdentifiers: Set<string>
     preMutatedTopLevelIdentifiers: Set<string>

@@ -93,12 +93,17 @@ export function analyzeInterpolation(
             const parsedDirective = nodeContext.contextIdentifiers[idName]
             const sourceRange = nodeRange.map(n => n + startSourceIndex) as Range
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[idName]
-            if (!topLevelIdentifier && !parsedDirective && intrinsicMethodsRE.test(idName)) {
+            if (
+                !parsedDirective &&
+                !topLevelIdentifier &&
+                node.isBindingReference &&
+                intrinsicMethodsRE.test(idName)
+            ) {
                 InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), idName)
             }
             if (node.isBindingReference && !parsedDirective) {
                 if (intrinsicVariableRE.test(idName)) {
-                    analyzeResult.script.usedIntrinsicVars.add(idName)
+                    analyzeResult.script.usedIntrinsics.add(idName)
                 }
                 if (topLevelIdentifier) {
                     const status = topLevelIdentifier.status
@@ -141,9 +146,9 @@ export function analyzeInterpolation(
             // 以下四种情况可以判断该插值表达式具有响应性
             // The following four cases can determine that the interpolation is reactive:
 
-            // 1. 访问 `props` 或 `refs`
-            // 1. Accessing `props` or `refs`.
-            if (idName === "props" || idName === "refs") {
+            // 1. 访问 `props`、`refs` 或 `contexts`
+            // 1. Accessing `props`, `refs`, or `contexts`.
+            if (idName === "props" || idName === "refs" || idName === "contexts") {
                 parsedExpression.reactive ||= true
             }
             analyzeResult.script.fullIdentifiers.add(idName)

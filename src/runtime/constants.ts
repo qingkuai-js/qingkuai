@@ -20,6 +20,7 @@ export const TOARRAY = (v: any) => [v]
 
 export const ATTRIBUTE_PREFIX = "__qk__attr"
 export const EVENT_FLAG = "__qk__event_flag"
+export const EXP_GETTER = "__qk__exp_getter"
 export const DELEGATE_PREFIX = "__qk__delegate"
 export const NODE_CONTEXT = "__qk__node_context"
 export const FRAGMENT_FLAG = "__qk__fragment_flag"

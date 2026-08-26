@@ -12,6 +12,7 @@ import {
 import { RuntimeCodeWriter } from "../writer"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { jsDestructuringEqualTokenRE } from "../../regular"
+import { BOUND_INSTANCE_INTRINSIC_MAP } from "../../constants"
 import { findOutOfComment } from "../../../util/compiler/string"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { replaceReusedStringReferences } from "../../optimizer/compress"
@@ -19,6 +20,8 @@ import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
 export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: CodeEditor) {
+    const shadowEnclosures = new Set<string>()
+    const instanceId = generateIdentifier.instance
     const internalId = generateIdentifier.internal
     const debugMode = inputDescriptor.options.debug
     const scriptSource = inputDescriptor.script.code
@@ -26,18 +29,16 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     const identifierMap: Record<string, string> = newCleanObj()
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
 
-    // 注入绑定当前组件实例的 effect/watch 遮蔽闭包。
-    // Inject effect/watch shadowing closures bound to the current component instance.
-    const { usedEffectWatchMethods } = analyzeResult.script
-    if (usedEffectWatchMethods.size) {
-        for (const methodName of usedEffectWatchMethods) {
-            const isWatch = methodName.endsWith("h")
-            const paramList = `${isWatch ? "_getter, " : ""}_callback`
-            hoistWriter.write(`const ${methodName} = (${paramList}) => `)
-            hoistWriter.write(
-                `${internalId}.${methodName}(${generateIdentifier.instance}, ${paramList})\n`
-            )
+    // 注入绑定当前组件实例的遮蔽闭包。
+    // Inject instance-bound shadowing closures for the used built-in methods
+    for (const methodName of analyzeResult.script.usedIntrinsics) {
+        const boundName = BOUND_INSTANCE_INTRINSIC_MAP[methodName]
+        if (!boundName || shadowEnclosures.has(boundName)) {
+            continue
         }
+        shadowEnclosures.add(boundName)
+        hoistWriter.write(`const ${boundName} = (...args) => `)
+        hoistWriter.writeLine(`${internalId}.${boundName}(${instanceId}, ...args)`)
     }
 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
@@ -116,7 +117,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // Exp 后缀的监视器函数的第一个参数是表达式，编译时需要将其包装为 getter 函数
     // The first argument of the watcher function with the `Exp` suffix is
     // an expression, which needs to be wrapped as a getter function at compile time.
-    for (const call of analyzeResult.script.watchers) {
+    for (const call of analyzeResult.script.watchExpCalls) {
         const firstArg = call.arguments[0]
         if (shouldNodeWrapAsGetter(firstArg)) {
             editor.insert(firstArg.getEnd(), ")")
@@ -125,6 +126,14 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
         const callee = getStriptTypeOperationsNode(call.expression)
         editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true)
+    }
+
+    // setContextExp("key", exp) -> setContextGetter("key", () => (exp))
+    for (const call of analyzeResult.script.setContextExpCalls) {
+        const valueArg = call.arguments[1]
+        editor.insert(valueArg.getEnd(), ")")
+        editor.insert(valueArg.getStart(), `() => (`)
+        editor.replace(...getNodeRange(call.expression), "setContextGetter", true)
     }
 
     // 转换响应式标识符引用

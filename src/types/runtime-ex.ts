@@ -412,7 +412,83 @@ export interface GetCurrentInstanceFunc {
      * @returns The current component instance, or `null` when no component
      * is active. The result is unreliable in asynchronous logic.
      */
-    <E extends Record<string, any> | void = void>(): ComponentInstance<
-        QingkuaiComponent<() => E>
-    > | null
+    (): ComponentInstance<QingkuaiComponent<any>> | null
+}
+
+export interface SetContextFunc {
+    /**
+     * Writes a context value into the contexts layer of the specified
+     * component instance.
+     *
+     * The write lands on the instance's own layer, shadowing any same-named
+     * key inherited from the parent; the parent value is unaffected.
+     *
+     * Examples:
+     * ```ts
+     * // Set a static value
+     * setContext(instance, "theme", "dark")
+     *
+     * // Set a reactive value
+     * let theme = reactive(0)
+     * setContext(instance, "getCount", () => count)
+     *
+     * // Reactive read in a descendant:
+     * contexts.getCount()
+     * ```
+     *
+     * @param instance The target component instance
+     * @param key The context key.
+     * @param value The context value.
+     */
+    (instance: ComponentInstance<any>, key: PropertyKey, value: any): void
+}
+
+export interface SetContextGetterFunc {
+    /**
+     * Writes a context value as a getter into the contexts layer of the
+     * specified component instance.
+     *
+     * Unlike `setContext`, which stores a static value, `setContextGetter`
+     * stores a getter function. When `contexts[key]` is read anywhere in the
+     * component tree, the getter is **automatically invoked by the framework**
+     * — the user never calls `getter()` manually. This enables:
+     *
+     * - **Lazy evaluation**: the getter runs only when the value is actually
+     *   read.
+     * - **Reactive tracking**: if the getter accesses reactive state, the
+     *   framework automatically tracks dependencies and schedules updates when
+     *   they change.
+     *
+     * Use `setContext` when the value is static or you want to store a function
+     * as a plain value (without auto-invocation). Use `setContextGetter` when
+     * the value should be recomputed on each read and/or needs reactive tracking.
+     *
+     * Examples:
+     * ```ts
+     * // Set a reactive value as a context getter.
+     * let count = shallow(0)
+     * setContextGetter(instance, "count", () => count)
+     *
+     * // Reactive read in a descendant:
+     * contexts.count
+     * ```
+     *
+     * @param instance The target component instance
+     * @param key The context key.
+     * @param getter The getter function that returns the current context value.
+     */
+    (instance: ComponentInstance<any>, key: PropertyKey, getter: Getter): void
+}
+
+export interface GetContextsFunc {
+    /**
+     * Returns the contexts chain-head object of the specified component
+     * instance.
+     *
+     * Reads inherit parent/ancestor contexts along the prototype chain
+     * automatically.
+     *
+     * @param instance The target component instance.
+     */
+    (instance: ComponentInstance<any>): Record<PropertyKey, any> | null
 }

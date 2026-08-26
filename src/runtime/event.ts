@@ -13,10 +13,10 @@ import {
     EVENT_PREVENT,
     EVENT_PASSIVE
 } from "../util/shared/flags"
-import { call } from "../util/shared/aliases"
 import { pushDestructionCleaner } from "./destroy"
 import { isUndefined } from "../util/shared/assert"
 import { any, createProxy } from "../util/shared/sundry"
+import { call, objectCreate } from "../util/shared/aliases"
 import { currentInstance, eventRegisterInfo } from "./state"
 import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP, KEY_NAME_FLAG } from "./constants"
 
@@ -133,7 +133,7 @@ function dispatch(event: Event, passive: boolean) {
             delete any(elem)[flagKey]
             delete any(elem)[handlerKey]
         }
-        const wrappedEvent = createProxy(Object.create(event), {
+        const wrappedEvent = createProxy(objectCreate(event), {
             get(_, property: keyof Event) {
                 if (property === "currentTarget") {
                     return elem
