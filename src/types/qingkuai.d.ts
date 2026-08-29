@@ -6,13 +6,24 @@
 // are for type inference and validation only and have no runtime implementation.
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-import type { QingkuaiComponent, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
+import type { QingkuaiComponent, ComponentInstance, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
-    export type EmptyObject = Record<never, never>
+    const Sign: unique symbol
+
+    export interface EmptyObject {
+        [Sign]?: never
+    }
 
     export const anyValue: any
-    export const getListPair: ReloadGetListPair
+    export const getListPair: {
+        <T>(value: Set<T>): [T, T]
+        <K, V>(value: Map<K, V>): [V, K]
+        <T>(value: Array<T>): [T, number]
+        (value: number): [number, number]
+        (value: string): [string, number]
+        <K extends string | number | symbol, V>(value: Record<K, V>): [V, K]
+    }
     export const getReturnType: <T extends ArbitraryFunc>(fn: T) => ReturnType<T>
     export const getTypeDelayMarking: (slotName: string, attrName: string, value: any) => void
 
@@ -22,20 +33,31 @@ export namespace __qk__lsu {
     export const validateHtmlBlockOptions: <T extends HtmlBlockOptions>(value: T) => void
     export const validateReferenceGroup: <T extends Set<any> | Array<any>>(value: T) => void
     export const validateTargetDirectiveValue: <T extends Element | string>(value: T) => void
-    export const validateHandleReceiver: <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E) => void
     export const validateEventHandler: <T extends string, H extends (ev: ExtractEventKind<T>) => any>(value: T, handler: H) => void
+
+    export const validateHandleReceiver: {
+        <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E): void
+        <C extends QingkuaiComponent<any>, R extends ComponentInstance<C> | null | undefined>(component: C, receiver: R): void
+    }
 
     export const extractFirstArg: <T extends unknown[]>(...args: T) => T[0]
     export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any
 
-    export const assertRefs: <R, D>(refs: R, defaults: D) => asserts refs is R & Prettify<WithRequired<R, D extends { refs: infer DR } ? DR : never>>
-    export const assertProps: <P, D>(props: P, defaults: D) => asserts props is P & Prettify<WithRequired<P, D extends { props: infer DP } ? DP : never>>
-    export const assertContexts: <C, D>(contexts: C, defaults: D) => asserts contexts is C & Prettify<WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
+    // The predicates below flatten the generic parameter (e.g. `P & Required<...>`) into a
+    // single mapped type. TS2677 cannot statically prove the flattened type assignable back
+    // to the generic parameter at declaration time, but the language service always
+    // instantiates these assertions at use sites, where assignability holds.
+    // @ts-expect-error: TS2677
+    export const assertRefs: <R, D>(refs: R, defaults: D) => asserts refs is RefsAssertFn<R, D>
+    // @ts-expect-error: TS2677
+    export const assertProps: <P, D>(props: P, defaults: D) => asserts props is PropsAssertFn<P, D>
+    // @ts-expect-error: TS2677
+    export const assertContexts: <C, D>(contexts: C, defaults: D) => asserts contexts is ContextsAssertFn<C, D>
 
-    export const assertSetContext: <C>(fn: any, contexts: C) => asserts fn is <K extends keyof C>(key: K, value: C[K]) => void
-    export const assertSetContextExp: <C>(fn: any, contexts: C) => asserts fn is <K extends keyof C>(key: K, value: C[K]) => void
-    export const assertSetContextGetter: <C>(fn: any, contexts: C) => asserts fn is <K extends keyof C>(key: K, getter: Getter<C[K]>) => void
-    export const assertDefaults: <P, R, C>(fn: any, props: P, refs: R, contexts: C) => asserts fn is (value: Prettify<DefaultsValue<P, R, C>>) => void
+    export const assertSetContext: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>
+    export const assertSetContextExp: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>
+    export const assertSetContextGetter: <C>(fn: any, contexts: C) => asserts fn is SetContextGetterAssertFn<C>
+    export const assertDefaults: <P, R, C>(fn: any, props: P, refs: R, contexts: C) => asserts fn is DefaultsAssertFn<P, R, C>
 }
 
 /**
@@ -675,10 +697,16 @@ type Getter<T> = () => T
 type ArbitraryFunc = (...args: any) => any
 type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
 type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
-type CleanContextsPick<T> = Prettify<{ -readonly [K in keyof T]?: T[K] }>
 type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
-type CleanObject<T> = { -readonly [K in keyof T as K extends symbol ? never : K]: T[K] }
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
-type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P, OptionalKeysOf<P>>; refs?: CleanStrictPick<R, OptionalKeysOf<R>>; contexts?: CleanContextsPick<C> }
-type CleanStrictPick<T, K extends keyof T> = [keyof Prettify<CleanObject<Pick<T, K>>>] extends [never] ? __qk__lsu.EmptyObject : Prettify<CleanObject<Pick<T, K>>>
+type CleanOptionalPick<T> = Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>
+type CleanStrictPick<T> = [keyof CleanOptionalPick<T>] extends [never] ? __qk__lsu.EmptyObject : CleanOptionalPick<T>
+type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P>; refs?: CleanStrictPick<R>; contexts?: CleanStrictPick<C> }
 type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element
+
+type DefaultsAssertFn<P, R, C> = (value: Prettify<DefaultsValue<P, R, C>>) => void
+type RefsAssertFn<R, D> = Prettify<R & WithRequired<R, D extends { refs: infer DR } ? DR : never>>
+type PropsAssertFn<P, D> = Prettify<P & WithRequired<P, D extends { props: infer DP } ? DP : never>>
+type ContextsAssertFn<C, D> = Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
+type SetContextAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, value: C[K]) => void
+type SetContextGetterAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, getter: Getter<C[K]>) => void

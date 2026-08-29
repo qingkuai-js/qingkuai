@@ -1,11 +1,140 @@
 import type {
+    COMPONENT,
     EffectHandle,
     EffectCallback,
+    ComponentMember,
     WatcherCallback,
     QingkuaiComponent,
     ComponentInstance
 } from "#type-declarations/runtime"
 import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools"
+
+/**
+ * Recovers the component type that produced a component instance.
+ *
+ * The instance type carries its component type through an invisible
+ * type-level channel (see {@link ComponentInstance}) — this helper extracts
+ * it. Typical use case: deriving the component's contract types (see
+ * {@link ComponentProps}, {@link ComponentContexts}, ... ) from an instance
+ * obtained at an entry point such as `getCurrentInstance` or an `&handle`
+ * receiver.
+ *
+ * Falls back to `QingkuaiComponent<any>` (permissive) for instances that do
+ * not carry the channel.
+ *
+ * Examples:
+ * ```ts
+ * type Comp = ComponentOfInstance<typeof instance>
+ * type Contexts = ComponentContexts<Comp>
+ * ```
+ *
+ * @template I A component instance type.
+ */
+export type ComponentOfInstance<I> = I extends {
+    [COMPONENT]?: infer T
+}
+    ? T
+    : QingkuaiComponent<any>
+
+/**
+ * Extracts the **props contract** of a Qingkuai component.
+ *
+ * The props contract describes the properties a parent may pass to the
+ * component, as declared by the component itself. Typical use case: reading
+ * component prop types when writing wrapper components or higher-order
+ * component utilities.
+ *
+ * When the component does not carry a props contract (for example, a value
+ * typed as `QingkuaiComponent<any>`), the result degrades to a permissive
+ * record type.
+ *
+ * Examples:
+ * ```ts
+ * type Props = ComponentProps<typeof Counter>
+ * ```
+ *
+ * @template T A Qingkuai component type.
+ */
+export type ComponentProps<T extends QingkuaiComponent<any>> = ComponentMember<T, "props">
+
+/**
+ * Extracts the **refs contract** of a Qingkuai component.
+ *
+ * The refs contract describes the template references the component exposes
+ * to its parent through `&`-prefixed attributes. Typical use case: reading
+ * component ref types when writing wrapper components or debugging tools.
+ *
+ * When the component does not carry a refs contract (for example, a value
+ * typed as `QingkuaiComponent<any>`), the result degrades to a permissive
+ * record type.
+ *
+ * Examples:
+ * ```ts
+ * type Refs = ComponentRefs<typeof Form>
+ * ```
+ *
+ * @template T A Qingkuai component type.
+ */
+export type ComponentRefs<T extends QingkuaiComponent<any>> = ComponentMember<T, "refs">
+
+/**
+ * Extracts the **slots contract** of a Qingkuai component.
+ *
+ * The slots contract describes the named slots the component accepts from
+ * its parent. Typical use case: reading slot types when writing wrapper
+ * components or slot-forwarding utilities.
+ *
+ * When the component does not carry a slots contract (for example, a value
+ * typed as `QingkuaiComponent<any>`), the result degrades to a permissive
+ * record type.
+ *
+ * Examples:
+ * ```ts
+ * type Slots = ComponentSlots<typeof Layout>
+ * ```
+ *
+ * @template T A Qingkuai component type.
+ */
+export type ComponentSlots<T extends QingkuaiComponent<any>> = ComponentMember<T, "slots">
+
+/**
+ * Extracts the **contexts contract** of a Qingkuai component.
+ *
+ * The contexts contract describes the key/value mapping the component writes
+ * through `setContext`-related APIs and reads through the `contexts`
+ * identifier. Typical use case: type-checking runtime context writes (see
+ * `setContext` and `setContextGetter`) or reading context types in tooling.
+ *
+ * When the component does not carry a contexts contract (for example, a value
+ * typed as `QingkuaiComponent<any>`), the result degrades to a permissive
+ * record type.
+ *
+ * Examples:
+ * ```ts
+ * type Contexts = ComponentContexts<typeof ThemeProvider>
+ * ```
+ *
+ * @template T A Qingkuai component type.
+ */
+export type ComponentContexts<T extends QingkuaiComponent<any>> = ComponentMember<T, "contexts">
+
+/**
+ * Extracts the **exported data** of a Qingkuai component.
+ *
+ * The exported data is mounted on the component instance, producing the
+ * instance type (see {@link ComponentInstance}). Typical use case: reading
+ * the data a component exports when passing instances between modules or
+ * writing component utilities.
+ *
+ * Examples:
+ * ```ts
+ * type Exports = ComponentExports<typeof Counter>
+ * ```
+ *
+ * @template T A Qingkuai component type.
+ */
+export type ComponentExports<T extends QingkuaiComponent<any>> =
+    T extends QingkuaiComponent<infer F> ? ReturnType<F> : any
 
 /**
  * Configures escaping behavior for HTML block rendering.
@@ -384,41 +513,50 @@ export interface GetCurrentInstanceFunc {
      * Returns the component instance that is currently being initialized or
      * updated.
      *
-     * Typical use case: access the current component's host element or the
-     * exported data mounted on its instance, or register watchers, effects,
-     * and lifecycle hooks that are bound to the current component. The
-     * obtained instance can also be passed to `watch` or `effect` from
-     * external logic, so the watcher or effect is cleaned up automatically
-     * when the component is destroyed.
+     * Typical use case: pass the instance to external APIs (framework APIs
+     * like `setContext`, or third-party functions that accept instances), or
+     * register watchers, effects, and lifecycle hooks that are bound to the
+     * current component. The obtained instance can also be passed to `watch`
+     * or `effect` from external logic, so the watcher or effect is cleaned up
+     * automatically when the component is destroyed.
      *
-     * This method only returns the correct instance during synchronous
-     * execution of a component's setup, render, or lifecycle hooks. The
-     * result is unreliable in asynchronous logic such as `setTimeout`,
-     * `Promise.then`, or event handlers — call it synchronously and capture
-     * the instance before using it later.
-     *
-     * The generic `E` describes the type of the component's exported data,
-     * which is mounted on the instance, producing a typed instance reference.
+     * Note：
+     * - This function only returns the correct instance during synchronous
+     *   execution of a component's initialization or update phase. The result
+     *   is unreliable in asynchronous logic such as `setTimeout`,
+     *   `Promise.then`, or event handlers — call it synchronously and capture
+     *   the instance before using it later.
+     * - Exported data is mounted on the instance only after the component's
+     *   `mount` completes. Reading exports synchronously during initialization
+     *   returns `undefined`, even when the type suggests otherwise.
      *
      * Examples:
      * ```ts
-     * // Get the current component instance.
+     * // Get the current component instance (permissive typing).
      * const instance = getCurrentInstance()
      *
-     * // Passing a generic provides correct type hints.
-     * const component = getCurrentInstance<{ count: number }>()
+     * // Pass a component type for contract-typed access.
+     * const typed = getCurrentInstance<typeof Comp>()
+     * const typedContexts = getContexts(typed)
+     * typedContexts.theme
      * ```
      *
      * @returns The current component instance, or `null` when no component
-     * is active. The result is unreliable in asynchronous logic.
+     * is active.
      */
-    (): ComponentInstance<QingkuaiComponent<any>> | null
+    <T extends QingkuaiComponent<any> = QingkuaiComponent<any>>(): ComponentInstance<T> | null
 }
 
 export interface SetContextFunc {
     /**
      * Writes a context value into the contexts layer of the specified
      * component instance.
+     *
+     * The context contract of the component is honored: `key` must be one of
+     * the context keys declared by the component (see
+     * {@link ComponentContexts}), and `value` must match the corresponding
+     * declared type. When the component declares no context keys, the call
+     * degrades to a permissive signature.
      *
      * The write lands on the instance's own layer, shadowing any same-named
      * key inherited from the parent; the parent value is unaffected.
@@ -440,13 +578,27 @@ export interface SetContextFunc {
      * @param key The context key.
      * @param value The context value.
      */
-    (instance: ComponentInstance<any>, key: PropertyKey, value: any): void
+    <I extends ComponentInstance<any>, K extends PropertyKey>(
+        instance: I,
+        ...args: keyof InstanceContexts<I> extends never
+            ? [key: PropertyKey, value: any]
+            : [
+                  key: K & keyof InstanceContexts<I>,
+                  value: InstanceContexts<I>[K & keyof InstanceContexts<I>]
+              ]
+    ): void
 }
 
 export interface SetContextGetterFunc {
     /**
      * Writes a context value as a getter into the contexts layer of the
      * specified component instance.
+     *
+     * The context contract of the component is honored: `key` must be one of
+     * the context keys declared by the component (see
+     * {@link ComponentContexts}), and the getter must return the
+     * corresponding declared type. When the component declares no context
+     * keys, the call degrades to a permissive signature.
      *
      * Unlike `setContext`, which stores a static value, `setContextGetter`
      * stores a getter function. When `contexts[key]` is read anywhere in the
@@ -477,7 +629,15 @@ export interface SetContextGetterFunc {
      * @param key The context key.
      * @param getter The getter function that returns the current context value.
      */
-    (instance: ComponentInstance<any>, key: PropertyKey, getter: Getter): void
+    <I extends ComponentInstance<any>, K extends PropertyKey>(
+        instance: I,
+        ...args: keyof InstanceContexts<I> extends never
+            ? [key: PropertyKey, getter: Getter<any>]
+            : [
+                  key: K & keyof InstanceContexts<I>,
+                  getter: Getter<InstanceContexts<I>[K & keyof InstanceContexts<I>]>
+              ]
+    ): void
 }
 
 export interface GetContextsFunc {
@@ -485,10 +645,16 @@ export interface GetContextsFunc {
      * Returns the contexts chain-head object of the specified component
      * instance.
      *
+     * The returned object is typed with the context contract of the
+     * component (see {@link ComponentContexts}) — declared context keys and
+     * their value types are preserved.
+     *
      * Reads inherit parent/ancestor contexts along the prototype chain
      * automatically.
      *
      * @param instance The target component instance.
      */
-    (instance: ComponentInstance<any>): Record<PropertyKey, any> | null
+    <I extends ComponentInstance<any>>(instance: I): InstanceContexts<I> | null
 }
+
+type InstanceContexts<I extends ComponentInstance<any>> = ComponentContexts<ComponentOfInstance<I>>

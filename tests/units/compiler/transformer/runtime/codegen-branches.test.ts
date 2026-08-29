@@ -479,8 +479,8 @@ test("IntermediateCodeWriter: range write fills stoi for uncovered source span",
 
     expect(writer.code).toBe("X")
     expect(writer.indexMap.stoi[1]).toBe(0)
-    expect(writer.indexMap.stoi[2]).toBe(0)
-    expect(writer.indexMap.stoi[3]).toBe(0)
+    expect(writer.indexMap.stoi[2]).toBe(1)
+    expect(writer.indexMap.stoi[3]).toBe(1)
 })
 
 test("IntermediateCodeWriter: writeEditedScript consumes intermediate editor output", () => {
@@ -496,7 +496,7 @@ test("IntermediateCodeWriter: writeEditedScript consumes intermediate editor out
     writer.writeEditedScript(editor)
 
     expect(writer.code).toBe("aQb")
-    expect(writer.indexMap.itos.length).toBe(3)
+    expect(writer.indexMap.itos.length).toBe(4)
 })
 
 test("Runtime codegen: contexts usage emits initContexts", () => {

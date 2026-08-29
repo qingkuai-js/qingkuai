@@ -197,6 +197,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
     private stoi: number[]
     private itos: number[] = []
     private nextSourceIndex = -1
+    private indexMapGot = false
 
     public gtdii: number[] = [] // Get Type Delay Intermediate Indexes
 
@@ -206,6 +207,10 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
     }
 
     get indexMap() {
+        if (!this.indexMapGot) {
+            this.indexMapGot = true
+            this.itos.push(this.stoi.length - 1)
+        }
         return {
             itos: this.itos,
             stoi: this.stoi

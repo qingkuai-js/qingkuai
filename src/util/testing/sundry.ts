@@ -1,5 +1,9 @@
+import type {
+    COMPONENT,
+    QingkuaiComponent,
+    ComponentInstanceBase
+} from "#type-declarations/runtime"
 import type { GeneralFunc } from "#type-declarations/tools"
-import type { ComponentInstanceBase } from "#type-declarations/runtime"
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
 import { NIL } from "../../runtime/constants"
@@ -42,7 +46,9 @@ export function createTestInstance() {
                     return currentDestruction
                 }
             }
-        } as unknown as ComponentInstanceBase
+        } as unknown as ComponentInstanceBase & {
+            [COMPONENT]: QingkuaiComponent<any>
+        }
     )
 }
 

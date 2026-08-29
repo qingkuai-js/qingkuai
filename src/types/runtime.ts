@@ -7,6 +7,7 @@ import type {
     GeneralFunc,
     ArbitraryFunc
 } from "#type-declarations/tools"
+import type { ComponentExports } from "./runtime-ex"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
 
@@ -15,7 +16,8 @@ interface CancelablePromiseExtra {
     [CANCELABLE]: boolean
 }
 
-declare const RENDER: unique symbol
+export declare const RENDER: unique symbol
+export declare const COMPONENT: unique symbol
 
 export interface PropertyInfo {
     v: any // value
@@ -129,7 +131,7 @@ export type ReactiveValue<T extends AnyObject> = T & {
 }
 
 export type QingkuaiComponent<F extends ArbitraryFunc> = {
-    [RENDER]: F
+    [RENDER]: Parameters<F>[0] extends unknown ? ArbitraryFunc : F
 }
 
 export type ReactiveMethods = Record<
@@ -153,9 +155,19 @@ export type ComponentFunc = (
     anchor: Text,
     context?: ComponentInstanceInternal
 ) => ComponentInstance<QingkuaiComponent<any>>
+
 export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
-    ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
+    ComponentInstanceBase & Readonly<ComponentExports<T>> & { [COMPONENT]?: T }
 >
+
+export type ComponentMember<T extends QingkuaiComponent<any>, K> =
+    T extends QingkuaiComponent<infer F>
+        ? F extends (ctx: infer C) => any
+            ? K extends keyof C
+                ? C[K]
+                : any
+            : any
+        : any
 
 export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string
 export type DefaultValues = Partial<Record<"props" | "refs" | "contexts", AnyObject>>

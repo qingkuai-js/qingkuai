@@ -77,7 +77,7 @@ export const getCurrentInstance: GetCurrentInstanceFunc = () => {
 }
 
 export const getContexts: GetContextsFunc = instance => {
-    return instance._internal.c!
+    return any(instance._internal.c!)
 }
 
 export const setContext: SetContextFunc = (instance, key, value) => {
@@ -97,7 +97,7 @@ export const setContext: SetContextFunc = (instance, key, value) => {
 }
 
 export const setContextGetter: SetContextGetterFunc = (instance, key, getter) => {
-    setContext(instance, key, makeExpGetter(getter))
+    any(setContext)(instance, key, makeExpGetter(getter))
 }
 
 export function init(anchor: Node, context: ComponentInstanceInternal) {

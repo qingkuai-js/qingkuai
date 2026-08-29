@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest"
 
 import {
+    init,
     setContext,
     getContexts,
     initContexts,
@@ -132,6 +133,18 @@ describe("contexts runtime", () => {
         const instance = makeInstance()
         setContext(instance, "k", 1)
         expect(getContexts(instance)).toBe(instance._internal.c)
+    })
+
+    test("contexts layer chains to the parent instance's layer", () => {
+        const makeAnchor = () => ({ parentElement: {} as Element }) as unknown as Text
+
+        const parentContext: any = {}
+        init(makeAnchor(), parentContext)
+
+        const childContext: any = {}
+        init(makeAnchor(), childContext)
+
+        expect(Object.getPrototypeOf(childContext.c)).toBe(parentContext.c)
     })
 
     test("re-setting the same key applies the last write", () => {

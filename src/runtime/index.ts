@@ -8,6 +8,11 @@ export type {
 export type {
     EffectFunc,
     WatchFunc,
+    ComponentRefs,
+    ComponentProps,
+    ComponentSlots,
+    ComponentExports,
+    ComponentContexts,
     SetContextFunc,
     GetContextsFunc,
     HtmlBlockOptions,
