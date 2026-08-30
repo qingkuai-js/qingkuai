@@ -6,14 +6,12 @@
 // are for type inference and validation only and have no runtime implementation.
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-import type { QingkuaiComponent, ComponentInstance, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
+import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { ComponentInstance, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
-    const Sign: unique symbol
-
-    export interface EmptyObject {
-        [Sign]?: never
-    }
+    export type EmptyObject = _EmptyObject
+    export type QingkuaiComponent<T extends ArbitraryFunc> = _QingkuaiComponent<T>
 
     export const anyValue: any
     export const getListPair: {
@@ -710,3 +708,5 @@ type PropsAssertFn<P, D> = Prettify<P & WithRequired<P, D extends { props: infer
 type ContextsAssertFn<C, D> = Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
 type SetContextAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, value: C[K]) => void
 type SetContextGetterAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, getter: Getter<C[K]>) => void
+
+export {}

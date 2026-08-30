@@ -1,9 +1,6 @@
-import type {
-    COMPONENT,
-    QingkuaiComponent,
-    ComponentInstanceBase
-} from "#type-declarations/runtime"
 import type { GeneralFunc } from "#type-declarations/tools"
+import type { ComponentInstanceBase } from "#type-declarations/runtime"
+import type { COMPONENT, QingkuaiComponent } from "@qingkuai/virtual/brand"
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
 import { NIL } from "../../runtime/constants"

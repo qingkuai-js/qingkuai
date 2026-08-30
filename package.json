@@ -36,7 +36,6 @@
   },
   "scripts": {
     "lint": "eslint",
-    "prepare": "husky",
     "dev": "rollup -c -w",
     "bundle": "rollup -c",
     "typecheck": "tsc --noEmit",
@@ -52,6 +51,8 @@
     "test:e2e-serve": "npm run bundle && PLAYWRIGHT_PORT=34173 tsx tests/e2e/server.ts",
     "build": "rimraf dist && npm run build-types && npm run bundle",
     "build-types": "npx tsc && tsx scripts/build-types.ts && rimraf dist/temp-types",
+    "prepare": "husky",
+    "postinstall": "tsx scripts/install-brand.ts",
     "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/qingkuai/syncs'"
   },
   "lint-staged": {

@@ -2,8 +2,7 @@ export type {
     EffectHandle,
     EffectCallback,
     WatcherCallback,
-    ComponentInstance,
-    QingkuaiComponent
+    ComponentInstance
 } from "#type-declarations/runtime"
 export type {
     EffectFunc,

@@ -1,5 +1,3 @@
-import { describe, expect, expectTypeOf, test } from "vitest"
-
 import type {
     ComponentRefs,
     ComponentProps,
@@ -8,14 +6,18 @@ import type {
     ComponentContexts,
     ComponentOfInstance
 } from "../../../src/types/runtime-ex"
+import type { EmptyObject } from "../../../src/types/brand"
+import type { QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { __qk__lsu as LSU } from "../../../src/types/qingkuai"
+import type { ComponentInstance } from "../../../src/types/runtime"
+
 import {
     setContext,
     getContexts,
     setContextGetter,
     getCurrentInstance
 } from "../../../src/runtime/component"
-import type { __qk__lsu as LSU } from "../../../src/types/qingkuai"
-import type { QingkuaiComponent, ComponentInstance } from "../../../src/types/runtime"
+import { describe, expect, expectTypeOf, test } from "vitest"
 
 // validateHandleReceiver 声明于语言服务 d.ts，无运行时实现，此处仅借用其签名
 // validateHandleReceiver is declared in the language-service d.ts with no
@@ -58,15 +60,38 @@ declare const bareComp: QingkuaiComponent<
 >
 declare const bareInstance: ComponentInstance<typeof bareComp>
 
-// 显式空 contexts 契约的组件：降级为宽松签名
-// A component with an explicitly empty contexts contract: degrades to a permissive signature
+// 显式空 contexts 契约的组件：签名收窄为 key: never，任何写入均为类型错误
+// An explicitly empty contexts contract: the signature collapses to
+// key: never — every write is a type error
 declare const emptyCtxComp: QingkuaiComponent<
     (ctx: { props: {}; refs: {}; slots: {}; contexts: {} }) => void
 >
 declare const emptyCtxInstance: ComponentInstance<typeof emptyCtxComp>
 
+// EmptyObject 标记契约（LS 对未声明 contexts 的组件注入的形态）：同样收窄为
+// key: never
+// A marker-based EmptyObject contract (injected by the LS for components
+// without declared contexts): likewise collapses to key: never
+declare const markerEmptyComp: QingkuaiComponent<
+    (ctx: { props: {}; refs: {}; slots: {}; contexts: EmptyObject }) => void
+>
+declare const markerEmptyInstance: ComponentInstance<typeof markerEmptyComp>
+
+// symbol 键的 contexts 契约：与字符串键平权，严格校验
+// A symbol-keyed context contract: enforced strictly like string keys
+declare const symKey: unique symbol
+declare const symComp: QingkuaiComponent<
+    (ctx: { props: {}; refs: {}; slots: {}; contexts: { [symKey]: string } }) => void
+>
+declare const symInstance: ComponentInstance<typeof symComp>
+
 // 以下 exercise 函数仅用于承载类型断言，绝不执行——实例在运行时是 undefined，
 // 类型检查由 tsc --noEmit 完成，@ts-expect-error 行由 tsc 验证确有错误
+//
+// The following exercise functions are only for carrying type assertions and
+// are never executed — the instances are undefined at runtime, and type checking
+// is performed by tsc --noEmit; the @ts-expect-error lines are verified by tsc to
+// indeed be errors
 describe("component contract utility types", () => {
     test("extracts the props contract", () => {
         expectTypeOf<ComponentProps<typeof strictComp>>().toEqualTypeOf<{
@@ -151,18 +176,41 @@ describe("setContext contract checking", () => {
             setContext(strictInstance, "theme", 123)
 
             // @ts-expect-error — getter must return a number
-            setContextGetter(strictInstance, "getCount", () => "not-a-number")
+            setContext(strictInstance, "getCount", () => "not-a-number")
         }
         expect(typeof exercise).toBe("function")
     })
 
-    test("degrades to a permissive signature without a context contract", () => {
+    test("permissive only for unannotated or any-typed components", () => {
         const exercise = () => {
             setContext(anyInstance, "anything", 123)
             setContext(bareInstance, "anything", { deep: true })
-            setContext(emptyCtxInstance, "anything", null)
             setContextGetter(anyInstance, "anything", () => "x")
+
+            // @ts-expect-error — no key was allowed
+            setContext(emptyCtxInstance, "anything", null)
+
+            // @ts-expect-error — no key was allowed
             setContextGetter(emptyCtxInstance, "anything", () => "x")
+
+            // @ts-expect-error — no key was allowed
+            setContext(markerEmptyInstance, "anything", null)
+
+            // @ts-expect-error — no key was allowed
+            setContextGetter(markerEmptyInstance, "anything", () => "x")
+        }
+        expect(typeof exercise).toBe("function")
+    })
+
+    test("enforces symbol-keyed context contracts", () => {
+        const exercise = () => {
+            setContext(symInstance, symKey, "dark")
+            setContextGetter(symInstance, symKey, () => "dark")
+
+            // @ts-expect-error — key not in the context contract
+            setContext(symInstance, "other", "x")
+            // @ts-expect-error — value must be a string
+            setContext(symInstance, symKey, 123)
         }
         expect(typeof exercise).toBe("function")
     })

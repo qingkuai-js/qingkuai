@@ -1,13 +1,14 @@
 import type {
-    COMPONENT,
     EffectHandle,
     EffectCallback,
     ComponentMember,
     WatcherCallback,
-    QingkuaiComponent,
-    ComponentInstance
+    ComponentInstance,
+    InstanceContexts,
+    DeclaredContextKeys
 } from "#type-declarations/runtime"
 import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools"
+import type { COMPONENT, EMPTY_SIGN, QingkuaiComponent } from "@qingkuai/virtual/brand"
 
 /**
  * Recovers the component type that produced a component instance.
@@ -578,14 +579,10 @@ export interface SetContextFunc {
      * @param key The context key.
      * @param value The context value.
      */
-    <I extends ComponentInstance<any>, K extends PropertyKey>(
+    <I extends ComponentInstance<any>, K extends DeclaredContextKeys<I>>(
         instance: I,
-        ...args: keyof InstanceContexts<I> extends never
-            ? [key: PropertyKey, value: any]
-            : [
-                  key: K & keyof InstanceContexts<I>,
-                  value: InstanceContexts<I>[K & keyof InstanceContexts<I>]
-              ]
+        key: K,
+        value: K extends never ? never : InstanceContexts<I>[K]
     ): void
 }
 
@@ -629,14 +626,10 @@ export interface SetContextGetterFunc {
      * @param key The context key.
      * @param getter The getter function that returns the current context value.
      */
-    <I extends ComponentInstance<any>, K extends PropertyKey>(
+    <I extends ComponentInstance<any>, K extends DeclaredContextKeys<I>>(
         instance: I,
-        ...args: keyof InstanceContexts<I> extends never
-            ? [key: PropertyKey, getter: Getter<any>]
-            : [
-                  key: K & keyof InstanceContexts<I>,
-                  getter: Getter<InstanceContexts<I>[K & keyof InstanceContexts<I>]>
-              ]
+        key: K,
+        getter: K extends never ? never : Getter<InstanceContexts<I>[K]>
     ): void
 }
 
@@ -656,5 +649,3 @@ export interface GetContextsFunc {
      */
     <I extends ComponentInstance<any>>(instance: I): InstanceContexts<I> | null
 }
-
-type InstanceContexts<I extends ComponentInstance<any>> = ComponentContexts<ComponentOfInstance<I>>

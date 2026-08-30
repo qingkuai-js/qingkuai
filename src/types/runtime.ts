@@ -7,17 +7,15 @@ import type {
     GeneralFunc,
     ArbitraryFunc
 } from "#type-declarations/tools"
-import type { ComponentExports } from "./runtime-ex"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
+import type { COMPONENT, EMPTY_SIGN, QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { ComponentContexts, ComponentExports, ComponentOfInstance } from "./runtime-ex"
 
 interface CancelablePromiseExtra {
     cancel: GeneralFunc
     [CANCELABLE]: boolean
 }
-
-export declare const RENDER: unique symbol
-export declare const COMPONENT: unique symbol
 
 export interface PropertyInfo {
     v: any // value
@@ -130,10 +128,6 @@ export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper
 }
 
-export type QingkuaiComponent<F extends ArbitraryFunc> = {
-    [RENDER]: Parameters<F>[0] extends unknown ? ArbitraryFunc : F
-}
-
 export type ReactiveMethods = Record<
     number,
     Record<ObjectKeys, ArbitraryFunc> & { [WRAPPER]?: any }
@@ -168,6 +162,14 @@ export type ComponentMember<T extends QingkuaiComponent<any>, K> =
                 : any
             : any
         : any
+
+export type DeclaredContextKeys<I extends ComponentInstance<any>> = Exclude<
+    keyof InstanceContexts<I>,
+    typeof EMPTY_SIGN
+>
+export type InstanceContexts<I extends ComponentInstance<any>> = ComponentContexts<
+    ComponentOfInstance<I>
+>
 
 export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string
 export type DefaultValues = Partial<Record<"props" | "refs" | "contexts", AnyObject>>
