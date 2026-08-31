@@ -3,8 +3,8 @@ import type {
     Effect,
     Destruction,
     EffectHandle,
+    WatchCallback,
     EffectCallback,
-    WatcherCallback,
     ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
@@ -127,7 +127,7 @@ function createEffect(
     timing: number,
     fn: ArbitraryFunc,
     destruction: Destruction | null,
-    watchCallback?: WatcherCallback<any>
+    watchCallback?: WatchCallback<any>
 ): Effect {
     const effect: Effect = {
         f: fn,
@@ -176,7 +176,7 @@ function watchEffectFuncGen() {
         return <T>(
             instance: ComponentInstanceBase | null,
             getter: Getter<T>,
-            callback: WatcherCallback<T>
+            callback: WatchCallback<T>
         ) => {
             return makeEffectHandle(
                 createEffect(

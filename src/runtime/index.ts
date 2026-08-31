@@ -1,21 +1,20 @@
 export type {
     EffectHandle,
+    WatchCallback,
     EffectCallback,
-    WatcherCallback,
-    ComponentInstance
+    BoundWatchFunc,
+    BoundEffectFunc,
+    ComponentInstance,
+    BoundLifecycleFunc
 } from "#type-declarations/runtime"
+
 export type {
-    EffectFunc,
-    WatchFunc,
-    ComponentRefs,
     ComponentProps,
+    ComponentRefs,
     ComponentSlots,
     ComponentExports,
     ComponentContexts,
-    SetContextFunc,
-    GetContextsFunc,
-    HtmlBlockOptions,
-    SetContextGetterFunc
+    HtmlBlockOptions
 } from "#type-declarations/runtime-ex"
 
 export {

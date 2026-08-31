@@ -5,7 +5,7 @@ import { defineE2ETestFile } from "../scenario-module"
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import { getCurrentInstance, getContexts, onAfterMount } from "qingkuai"
+            import { getCurrentInstance, getContexts } from "qingkuai"
             import { captureInstance, writeContext } from "./modules/context-registry.js"
             import ContextCard from "./components/ContextCard"
             import ContextBadge from "./components/ContextBadge"

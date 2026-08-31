@@ -7,7 +7,7 @@
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiComponent } from "@qingkuai/virtual/brand"
-import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
+import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatchCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
     export type EmptyObject = _EmptyObject
@@ -418,7 +418,7 @@ interface WatchExpFunc {
      * @param callback Handles value changes with `(oldVal, newVal)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(expression: T, callback: WatcherCallback<T>): EffectHandle
+    <T>(expression: T, callback: WatchCallback<T>): EffectHandle
 }
 
 export declare const watchExp: WatchExpFunc
@@ -473,7 +473,7 @@ interface WatchFunc {
      * @param callback Handles value changes with `(pre, cur)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(getter: Getter<T>, callback: WatcherCallback<T>): EffectHandle
+    <T>(getter: Getter<T>, callback: WatchCallback<T>): EffectHandle
 }
 
 export declare const watch: WatchFunc
@@ -683,16 +683,39 @@ export declare const setContextGetter: unknown
 // Placeholder signature: actually determined by the AssertDefaults assertion at the top.
 export declare const setContextExp: unknown
 
-interface ReloadGetListPair {
-    <T>(value: Set<T>): [T, T]
-    <K, V>(value: Map<K, V>): [V, K]
-    <T>(value: Array<T>): [T, number]
-    (value: number): [number, number]
-    (value: string): [string, number]
-    <K extends string | number | symbol, V>(value: Record<K, V>): [V, K]
+export interface BoundLifecycleHookRegister {
+    /**
+     * Registers a callback to run at the corresponding component lifecycle
+     * phase. The target component is the one whose built-in binding resolves
+     * this call — the instance is injected automatically.
+     *
+     * Example:
+     * ```qk
+     * <lang-ts>
+     *     let divElement: HTMLDivElement | null = null
+     *
+     *     // Access the divElement after the component is mounted
+     *     onAfterMount(() => {
+     *         console.log("mounted", divElement)
+     *     })
+     * </lang-ts>
+     *
+     * <div &handle={divElement}></div>
+     * ```
+     *
+     * @param callback Contains logic to run at the target lifecycle phase.
+     */
+    (callback: GeneralFunc): void
 }
 
+export declare const onAfterMount: BoundLifecycleHookRegister
+export declare const onBeforeUpdate: BoundLifecycleHookRegister
+export declare const onAfterUpdate: BoundLifecycleHookRegister
+export declare const onBeforeDestroy: BoundLifecycleHookRegister
+export declare const onAfterDestroy: BoundLifecycleHookRegister
+
 type Getter<T> = () => T
+type GeneralFunc = () => void
 type ArbitraryFunc = (...args: any) => any
 type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
 type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never

@@ -102,7 +102,6 @@ export const setContextGetter: SetContextGetterFunc = (instance, key, getter) =>
 
 export function init(anchor: Node, context: ComponentInstanceInternal) {
     const instance: ComponentInstanceBase = {
-        hooks: any([]),
         updating: false,
         _internal: context,
         parent: currentInstance,
@@ -111,6 +110,7 @@ export function init(anchor: Node, context: ComponentInstanceInternal) {
     if (context.h) {
         bindHandleReceiver(instance, context.h)
     }
+    context.f = NIL
     context.d = createDestruction(currentDestruction, instance)
     context.c = objectCreate(currentInstance?._internal.c ?? NIL)
     return setCurrentInstance(instance)
@@ -139,10 +139,11 @@ export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
 }
 
 export function runHooks(instance: ComponentInstanceBase, index: number) {
-    if (instance.hooks[index]?.length) {
+    const hooks = instance._internal.f?.[index]
+    if (hooks?.length) {
         const originalInstance = currentInstance
         setCurrentInstance(instance)
-        runAll(instance.hooks[index]!)
+        runAll(hooks)
         setCurrentInstance(originalInstance)
     }
 }
@@ -313,14 +314,17 @@ export function renderComponent(target: any, anchor: Text, context: ComponentIns
     })
 }
 
-// 组件生命周期回调均为 ComponentInstance.hooks 数组中不同下标的元素，该方法生成用于注册它们的方法
+// 组件生命周期回调均为 _internal.f 数组中不同下标的元素，该方法生成用于注册
+// 它们的方法；注册目标实例需显式传入，组件内经内建绑定闭包自动注入
 // Component lifecycle callbacks are stored as elements at different indices
-// in `ComponentInstance.hooks`; this method generates functions for registering them
+// in `_internalf; this method generates functions for registering them. The
+// target instance must be passed explicitly — inside components the built-in
+// binding closures inject it automatically
 function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 1; i < 6; i++) {
-        hookRegisters.push(callback => {
-            ;(currentInstance!.hooks[i] ??= []).push(callback)
+        hookRegisters.push((instance, callback) => {
+            ;((instance._internal.f ??= [])[i] ??= []).push(callback)
         })
     }
     return hookRegisters

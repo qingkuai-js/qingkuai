@@ -33,12 +33,13 @@ export const jsStartRegexKeywordsRE = /(?:return|throw|case|delete|void|typeof|a
 
 // TODO: These regexes need to be converted into constant sets.
 export const cannotRedeclareStatusRE = /^(?:derived|alias)$/
-export const intrinsicVariableRE = /^(?:props|refs|slots|contexts)$/
+export const intrinsicVariableRE = /^(?:props|refs|slots|contexts|instance)$/
 export const intrinsicWatchExpMethodsRE = /^(?:watch|(?:pre|post|sync)Watch)Exp$/
 export const intrinsicReactiveMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias)$/
 export const intrinsicEffectWatchMethodsRE = /^(?:effect|watch|(?:pre|post|sync)(?:Effect|Watch))$/
 export const shouldBeCheckedIntrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|setContextExp|(?:watch|(?:pre|post|sync|)Watch)Exp)$/
-export const intrinsicMethodsRE = /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|setContext(?:Exp|Getter)?|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?)$/
+export const intrinsicMethodsRE =
+    /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|setContext(?:Exp|Getter)?|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?|on(?:AfterMount|(?:Before|After)(?:Update|Destroy)))$/
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/ // TODO: convert to a set of event names.
 export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)

@@ -102,7 +102,12 @@ export const BOUND_INSTANCE_INTRINSIC_MAP: Record<string, string> = {
     syncWatchExp: "syncWatch",
     setContext: "setContext",
     setContextExp: "setContextGetter",
-    setContextGetter: "setContextGetter"
+    setContextGetter: "setContextGetter",
+    onAfterMount: "onAfterMount",
+    onBeforeUpdate: "onBeforeUpdate",
+    onAfterUpdate: "onAfterUpdate",
+    onBeforeDestroy: "onBeforeDestroy",
+    onAfterDestroy: "onAfterDestroy"
 }
 
 export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {

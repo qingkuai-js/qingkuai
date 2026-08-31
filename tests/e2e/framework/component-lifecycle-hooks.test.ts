@@ -45,8 +45,6 @@ const scenario: E2EScenarioInput = {
     components: {
         "ui/LifecycleMonitor": `
             <lang-js>
-                import { onAfterMount, onBeforeUpdate, onAfterUpdate, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.appendLog("after-mount")
                 })

@@ -53,8 +53,6 @@ const scenario: E2EScenarioInput = {
     components: {
         BranchPanel: `
             <lang-js>
-                import { onAfterMount, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.log("if-mount-" + props.id)
                 })

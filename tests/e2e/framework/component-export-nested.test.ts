@@ -74,8 +74,6 @@ const scenario: E2EScenarioInput = {
         `,
         "export/ChildComponent": `
             <lang-js>
-                import { onAfterMount } from "qingkuai"
-
                 export let count = 0
 
                 function increment() {

@@ -46,8 +46,6 @@ const scenario: E2EScenarioInput = {
     components: {
         PanelOne: `
             <lang-js>
-                import { onAfterMount, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.log("panel-one-mount-" + props.id)
                 })
@@ -65,8 +63,6 @@ const scenario: E2EScenarioInput = {
         `,
         PanelTwo: `
             <lang-js>
-                import { onAfterMount, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.log("panel-two-mount-" + props.id)
                 })

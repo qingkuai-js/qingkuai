@@ -44,7 +44,6 @@ export interface TraverseInfo {
 export interface ComponentInstanceBase {
     host: Element
     updating: boolean
-    hooks: GeneralFunc[][]
     parent: ComponentInstanceBase | null
 
     /** @internal */
@@ -63,6 +62,7 @@ export type ComponentInstanceInternal = Partial<{
     R: AnyObject // bound refs
     e: string[] // delegated events
     a: string[] // ancestor scope chain
+    f: GeneralFunc[][] | null // lifecycle hooks
 }>
 
 export interface Effect {
@@ -142,7 +142,7 @@ export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
 export type EffectCallback = () => void | GeneralFunc
-export type WatcherCallback<T> = (pre: T, cur: T) => void | GeneralFunc
+export type WatchCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 
 export type ComponentFunc = (
@@ -173,3 +173,7 @@ export type InstanceContexts<I extends ComponentInstance<any>> = ComponentContex
 
 export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string
 export type DefaultValues = Partial<Record<"props" | "refs" | "contexts", AnyObject>>
+
+export type BoundLifecycleFunc = (callback: GeneralFunc) => void
+export type BoundEffectFunc = (callback: EffectCallback) => EffectHandle
+export type BoundWatchFunc = <T>(getter: Getter<T>, callback: WatchCallback<T>) => EffectHandle

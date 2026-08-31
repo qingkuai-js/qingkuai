@@ -51,6 +51,11 @@ export {
     initContexts,
     applyDefaults,
     defineExports,
+    onAfterMount,
+    onBeforeUpdate,
+    onAfterUpdate,
+    onBeforeDestroy,
+    onAfterDestroy,
     renderComponent,
     setContextGetter,
     dynamicComponent

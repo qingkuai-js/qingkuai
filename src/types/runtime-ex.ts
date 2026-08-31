@@ -2,13 +2,13 @@ import type {
     EffectHandle,
     EffectCallback,
     ComponentMember,
-    WatcherCallback,
+    WatchCallback,
     ComponentInstance,
     InstanceContexts,
     DeclaredContextKeys
 } from "#type-declarations/runtime"
 import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools"
-import type { COMPONENT, EMPTY_SIGN, QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { COMPONENT, QingkuaiComponent } from "@qingkuai/virtual/brand"
 
 /**
  * Recovers the component type that produced a component instance.
@@ -237,7 +237,7 @@ export interface WatchFunc {
     <T>(
         instance: ComponentInstance<any> | null,
         getter: Getter<T>,
-        callback: WatcherCallback<T>
+        callback: WatchCallback<T>
     ): EffectHandle
 }
 
@@ -319,22 +319,21 @@ export interface LifecycleHookRegister {
      * The callback is invoked when the corresponding lifecycle phase is
      * reached.
      *
-     * Examples:
-     * ```ts
-     * onMounted(() => {
-     *     // Access DOM refs after the component is mounted.
-     *     console.log("mounted", refs.panel)
-     * }) // runs once after the component is mounted
+     * The target instance must be passed explicitly — this is the external
+     * form. Inside components the built-in binding closures inject the
+     * instance automatically, so the hook is called with the callback alone.
      *
-     * onDestroyed(() => {
-     *     // Clean up subscriptions when the component is removed.
+     * Example:
+     * ```ts
+     * onMounted(instance, () => {
      *     unsubscribe()
      * }) // runs once before the component is destroyed
      * ```
      *
+     * @param instance The target component instance.
      * @param callback Contains logic to run at the target lifecycle phase.
      */
-    (callback: GeneralFunc): void
+    (instance: ComponentInstance<any>, callback: GeneralFunc): void
 }
 
 export interface MountAppFunc {

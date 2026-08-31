@@ -1,5 +1,5 @@
 import type { Getter } from "#type-declarations/tools"
-import type { EffectCallback, WatcherCallback } from "#type-declarations/runtime"
+import type { EffectCallback, WatchCallback } from "#type-declarations/runtime"
 
 import {
     watch as _watch,
@@ -69,19 +69,19 @@ const syncEffect = (callback: EffectCallback) => {
     const handle = _syncEffect(testInstance, callback)
     return { handle, effect: getCurrentEffect()! }
 }
-const watch = <T>(getter: Getter<T>, callback: WatcherCallback<T>) => {
+const watch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
     const handle = _watch(testInstance, getter, callback)
     return { handle, effect: getCurrentEffect()! }
 }
-const preWatch = <T>(getter: Getter<T>, callback: WatcherCallback<T>) => {
+const preWatch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
     const handle = _preWatch(testInstance, getter, callback)
     return { handle, effect: getCurrentEffect()! }
 }
-const postWatch = <T>(getter: Getter<T>, callback: WatcherCallback<T>) => {
+const postWatch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
     const handle = _postWatch(testInstance, getter, callback)
     return { handle, effect: getCurrentEffect()! }
 }
-const syncWatch = <T>(getter: Getter<T>, callback: WatcherCallback<T>) => {
+const syncWatch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
     const handle = _syncWatch(testInstance, getter, callback)
     return { handle, effect: getCurrentEffect()! }
 }
