@@ -6,9 +6,7 @@ import { RuntimeCodeWriter } from "../writer"
 import { transformEmbeddedScript } from "./script"
 import { generateTemplateRender } from "./template"
 import { replaceQkImportSpecifiers } from "./import"
-import { arrayFrom } from "../../../util/shared/arrays"
 import { objectAssign } from "../../../util/shared/aliases"
-import { BOUND_INSTANCE_INTRINSIC_MAP } from "../../constants"
 import { ensureIdWithPrefix } from "../../../util/compiler/sundry"
 import { traverseObject, upperFirst } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
@@ -16,12 +14,8 @@ import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragmen
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
-    const { usedIntrinsics, exportedBindings } = analyzeResult.script
+    const { usedIntrinsics } = analyzeResult.script
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
-
-    const hasInstanceBoundIntrinsic = arrayFrom(usedIntrinsics).some(name => {
-        return !!BOUND_INSTANCE_INTRINSIC_MAP[name]
-    })
 
     objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifier, {
         internal: ensureIdWithPrefix("_"),
@@ -29,7 +23,6 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         setterArg: ensureIdWithPrefix("v"),
         context: ensureIdWithPrefix("_ctx"),
         anchor: ensureIdWithPrefix("_anchor"),
-        instance: ensureIdWithPrefix("_instance"),
         component: ensureIdWithPrefix("_component"),
         compressStrings: ensureIdWithPrefix("_compressStrings")
     })
@@ -39,7 +32,6 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const anchorId = generateIdentifier.anchor
     const contextId = generateIdentifier.context
     const internalId = generateIdentifier.internal
-    const instanceId = generateIdentifier.instance
     const templateFragments = getTemplateFragments(nodes)
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
@@ -53,18 +45,12 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writeStringLiteralsDeclarations(writer, templateFragments)
     writeFragmentGetterDeclarations(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
-    writer.write(`export default function (${anchorId}, ${contextId} = {}) {`).indent()
+    writer.write(`export default function (${anchorId}, ${contextId} = {}) {`)
+    writer.indent().write(`const instance = ${internalId}.init(${anchorId}, ${contextId})`)
 
-    if (!hasInstanceBoundIntrinsic && !exportedBindings.length) {
-        writer.writeLine(`${internalId}.init(${anchorId}, ${contextId})`)
-    } else {
-        writer.write(`const ${instanceId} = ${internalId}.init(${anchorId}, ${contextId})`)
-    }
-    for (const method of ["props", "refs", "slots", "contexts"]) {
-        if (usedIntrinsics.has(method)) {
-            writer.write(
-                `\nconst ${method} = ${internalId}.init${upperFirst(method)}(${contextId})`
-            )
+    for (const id of ["props", "refs", "slots", "contexts"]) {
+        if (usedIntrinsics.has(id)) {
+            writer.write(`\nconst ${id} = ${internalId}.init${upperFirst(id)}(${contextId})`)
         }
     }
     generateDelegateEventsRegistration(writer)

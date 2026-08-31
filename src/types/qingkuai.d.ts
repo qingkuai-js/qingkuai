@@ -7,11 +7,12 @@
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
 import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiComponent } from "@qingkuai/virtual/brand"
-import type { ComponentInstance, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
+import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
     export type EmptyObject = _EmptyObject
     export type QingkuaiComponent<T extends ArbitraryFunc> = _QingkuaiComponent<T>
+    export type ComponentInstance<T extends QingkuaiComponent<any>> = _ComponentInstance<T>
 
     export const anyValue: any
     export const getListPair: {

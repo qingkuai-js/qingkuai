@@ -139,8 +139,8 @@ test("Runtime: exports are defined on the instance before mount", () => {
     )
 
     expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("const _instance = _.init(")
-    expect(code).toContain("_.defineExports(_instance,")
+    expect(code).toContain("const instance = _.init(")
+    expect(code).toContain("_.defineExports(instance,")
     expect(code.indexOf("_.defineExports(")).toBeGreaterThan(-1)
     expect(code.indexOf("return _.mount(")).toBeGreaterThan(code.indexOf("_.defineExports("))
 })
@@ -160,8 +160,7 @@ test("Runtime: no exports keeps init uncaptured", () => {
     )
 
     expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.init(_anchor, _ctx)")
-    expect(code).not.toContain("const _instance = _.init(")
+    expect(code).toContain("const instance = _.init(_anchor, _ctx)")
     expect(code).not.toContain("_.defineExports(")
     expect(code).toContain("return _.mount(")
 })

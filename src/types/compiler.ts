@@ -384,7 +384,6 @@ export type GenerateIdentifierStaticKeys =
     | "anchor"
     | "context"
     | "internal"
-    | "instance"
     | "getterArg"
     | "setterArg"
     | "component"

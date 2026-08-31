@@ -21,7 +21,6 @@ import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
 export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: CodeEditor) {
     const shadowEnclosures = new Set<string>()
-    const instanceId = generateIdentifier.instance
     const internalId = generateIdentifier.internal
     const debugMode = inputDescriptor.options.debug
     const scriptSource = inputDescriptor.script.code
@@ -38,7 +37,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
         shadowEnclosures.add(boundName)
         hoistWriter.write(`const ${boundName} = (...args) => `)
-        hoistWriter.writeLine(`${internalId}.${boundName}(${instanceId}, ...args)`)
+        hoistWriter.writeLine(`${internalId}.${boundName}(instance, ...args)`)
     }
 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator

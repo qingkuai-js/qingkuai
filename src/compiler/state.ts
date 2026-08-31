@@ -32,7 +32,6 @@ function newGenerateIdentifier(): GenerateIdentifier {
     return {
         anchor: "",
         context: "",
-        instance: "",
         internal: "",
         getterArg: "",
         setterArg: "",

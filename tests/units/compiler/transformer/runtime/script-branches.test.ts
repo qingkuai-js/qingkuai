@@ -119,12 +119,12 @@ test("Runtime script: setContext stores as-is, setContextExp wraps as getter", (
         <div>{contexts.theme}</div>
     `
     )
-    expect(code).toContain("const setContext = (...args) => _.setContext(_instance, ...args)")
+    expect(code).toContain("const setContext = (...args) => _.setContext(instance, ...args)")
     expect(code).toContain(
-        "const setContextGetter = (...args) => _.setContextGetter(_instance, ...args)"
+        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)"
     )
     expect(code).not.toContain(
-        "const setContextExp = (key, exp) => _.setContextExp(_instance, key, exp)"
+        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
     )
     expect(code).toContain("const contexts = _.initContexts(_ctx)")
     expect(code).toContain('setContext("theme", mode)')
@@ -133,7 +133,7 @@ test("Runtime script: setContext stores as-is, setContextExp wraps as getter", (
     expect(code).toContain('setContextGetter("themeExp", () => (mode))')
 })
 
-test("Runtime script: setContext without template usage still captures _instance", () => {
+test("Runtime script: setContext without template usage still captures instance", () => {
     const code = compileRuntime(
         `
         <lang-js>
@@ -142,12 +142,12 @@ test("Runtime script: setContext without template usage still captures _instance
         <div></div>
     `
     )
-    expect(code).toContain("const _instance = _.init(")
-    expect(code).toContain("const setContext = (...args) => _.setContext(_instance, ...args)")
+    expect(code).toContain("const instance = _.init(")
+    expect(code).toContain("const setContext = (...args) => _.setContext(instance, ...args)")
 
     expect(code).not.toContain("_.initContexts(")
     expect(code).not.toContain(
-        "const setContextExp = (key, exp) => _.setContextExp(_instance, key, exp)"
+        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
     )
 })
 
@@ -161,14 +161,14 @@ test("Runtime script: setContextExp without setContext still injects setContextG
         <div></div>
     `
     )
-    expect(code).toContain("const _instance = _.init(")
+    expect(code).toContain("const instance = _.init(")
     expect(code).toContain(
-        "const setContextGetter = (...args) => _.setContextGetter(_instance, ...args)"
+        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)"
     )
     expect(code).not.toContain(
-        "const setContextExp = (key, exp) => _.setContextExp(_instance, key, exp)"
+        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
     )
-    expect(code).not.toContain("const setContext = (...args) => _.setContext(_instance, ...args)")
+    expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)")
     expect(code).toContain('setContextGetter("theme", () => (mode))')
 })
 
@@ -182,9 +182,9 @@ test("Runtime script: setContextGetter injects dedicated closure", () => {
         <div></div>
     `
     )
-    expect(code).toContain("const _instance = _.init(")
+    expect(code).toContain("const instance = _.init(")
     expect(code).toContain(
-        "const setContextGetter = (...args) => _.setContextGetter(_instance, ...args)"
+        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)"
     )
-    expect(code).not.toContain("const setContext = (...args) => _.setContext(_instance, ...args)")
+    expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)")
 })

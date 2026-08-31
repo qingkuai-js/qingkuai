@@ -88,7 +88,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         "defaults",
         "setContext",
         "setContextExp",
-        "setContextGetter"
+        "setContextGetter",
+        "onAfterMount",
+        "onBeforeUpdate",
+        "onAfterUpdate",
+        "onBeforeDestroy",
+        "onAfterDestroy"
     ]
     eliminate(embeddedScriptEditor)
     writer.writeLine(`import { ${needImportItems.join(", ")} } from "qingkuai/language-service";\n`)

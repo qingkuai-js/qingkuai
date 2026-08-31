@@ -119,7 +119,6 @@ export function generateTemplateRender(
     if (isRoot) {
         const anchorId = generateIdentifier.anchor
         const internalId = generateIdentifier.internal
-        const instanceId = generateIdentifier.instance
         const getterArgId = generateIdentifier.getterArg
         const exportedBindings = new Map<string, string>()
         const hasComponentFragment = !!componentFragment?.content.length
@@ -136,7 +135,7 @@ export function generateTemplateRender(
             }
             return
         }
-        writer.write(`\n${internalId}.defineExports(${instanceId}, {`).indent(false)
+        writer.write(`\n${internalId}.defineExports(instance, {`).indent(false)
 
         for (const [exported, local] of exportedBindings) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]

@@ -154,7 +154,7 @@ test("Runtime codegen: watchExp rewrites to instance-bound base watch closure", 
             watchExp(() => 1, () => {})
         </lang-js>
     `)
-    expect(code).toContain("const _instance = _.init(_anchor, _ctx)")
+    expect(code).toContain("const instance = _.init(_anchor, _ctx)")
     expect(code).toContain("watch(() => 1, () => {})")
 })
 
@@ -172,15 +172,15 @@ test("Runtime codegen: injects instance-bound shadowing closures for plain effec
         </lang-js>
         <div>text</div>
     `)
-    expect(code).toContain("const _instance = _.init(_anchor, _ctx)")
-    expect(code).toContain("const effect = (...args) => _.effect(_instance, ...args)")
-    expect(code).toContain("const preEffect = (...args) => _.preEffect(_instance, ...args)")
-    expect(code).toContain("const postEffect = (...args) => _.postEffect(_instance, ...args)")
-    expect(code).toContain("const syncEffect = (...args) => _.syncEffect(_instance, ...args)")
-    expect(code).toContain("const watch = (...args) => _.watch(_instance, ...args)")
-    expect(code).toContain("const preWatch = (...args) => _.preWatch(_instance, ...args)")
-    expect(code).toContain("const postWatch = (...args) => _.postWatch(_instance, ...args)")
-    expect(code).toContain("const syncWatch = (...args) => _.syncWatch(_instance, ...args)")
+    expect(code).toContain("const instance = _.init(_anchor, _ctx)")
+    expect(code).toContain("const effect = (...args) => _.effect(instance, ...args)")
+    expect(code).toContain("const preEffect = (...args) => _.preEffect(instance, ...args)")
+    expect(code).toContain("const postEffect = (...args) => _.postEffect(instance, ...args)")
+    expect(code).toContain("const syncEffect = (...args) => _.syncEffect(instance, ...args)")
+    expect(code).toContain("const watch = (...args) => _.watch(instance, ...args)")
+    expect(code).toContain("const preWatch = (...args) => _.preWatch(instance, ...args)")
+    expect(code).toContain("const postWatch = (...args) => _.postWatch(instance, ...args)")
+    expect(code).toContain("const syncWatch = (...args) => _.syncWatch(instance, ...args)")
 })
 
 test("Runtime codegen: injects only the used effect/watch shadowing closure on demand", () => {
@@ -190,7 +190,7 @@ test("Runtime codegen: injects only the used effect/watch shadowing closure on d
         </lang-js>
         <div>text</div>
     `)
-    expect(code).toContain("const effect = (...args) => _.effect(_instance, ...args)")
+    expect(code).toContain("const effect = (...args) => _.effect(instance, ...args)")
     expect(code).not.toContain("const watch = ")
     expect(code).not.toContain("const syncEffect = ")
     expect(code).not.toContain("const preEffect = ")
@@ -206,10 +206,10 @@ test("Runtime codegen: Exp watcher variants rewrite to base watch with injected 
         </lang-js>
         <div>text</div>
     `)
-    expect(code).toContain("const watch = (...args) => _.watch(_instance, ...args)")
-    expect(code).toContain("const preWatch = (...args) => _.preWatch(_instance, ...args)")
-    expect(code).toContain("const postWatch = (...args) => _.postWatch(_instance, ...args)")
-    expect(code).toContain("const syncWatch = (...args) => _.syncWatch(_instance, ...args)")
+    expect(code).toContain("const watch = (...args) => _.watch(instance, ...args)")
+    expect(code).toContain("const preWatch = (...args) => _.preWatch(instance, ...args)")
+    expect(code).toContain("const postWatch = (...args) => _.postWatch(instance, ...args)")
+    expect(code).toContain("const syncWatch = (...args) => _.syncWatch(instance, ...args)")
     expect(code).toContain("watch(() => (1 + 1), () => {})")
     expect(code).toContain("preWatch(() => (1 + 1), () => {})")
     expect(code).toContain("postWatch(() => (1 + 1), () => {})")
@@ -228,7 +228,7 @@ test("Runtime codegen: calls init accessors on demand", () => {
     expect(mixedCode).toContain("const slots = _.initSlots(_ctx)")
 
     const plainCode = compileRuntime("<div>{c}</div>")
-    expect(plainCode).toMatch(/(?<!=\s*)_.init\(_anchor, _ctx\)/)
+    expect(plainCode).toContain("const instance = _.init(_anchor, _ctx)")
     expect(plainCode).not.toContain("initProps(")
     expect(plainCode).not.toContain("initEvents(")
 })
@@ -512,7 +512,7 @@ test("Runtime codegen: contexts usage emits initContexts", () => {
     expect(code).toContain("const contexts = _.initContexts(_ctx)")
 })
 
-test("Runtime codegen: only setContext usage captures _instance without contexts variable", () => {
+test("Runtime codegen: only setContext usage captures instance without contexts variable", () => {
     const code = compileRuntime(
         `
         <lang-js>
@@ -521,6 +521,6 @@ test("Runtime codegen: only setContext usage captures _instance without contexts
         <div></div>
     `
     )
-    expect(code).toContain("const _instance = _.init(")
+    expect(code).toContain("const instance = _.init(")
     expect(code).not.toContain("initContexts")
 })
