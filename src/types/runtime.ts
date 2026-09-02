@@ -1,7 +1,6 @@
 import type {
     Getter,
     Setter,
-    Prettify,
     AnyObject,
     ObjectKeys,
     GeneralFunc,
@@ -150,9 +149,8 @@ export type ComponentFunc = (
     context?: ComponentInstanceInternal
 ) => ComponentInstance<QingkuaiComponent<any>>
 
-export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
-    ComponentInstanceBase & Readonly<ComponentExports<T>> & { [COMPONENT]?: T }
->
+export type ComponentInstance<T extends QingkuaiComponent<any>> = ComponentInstanceBase &
+    Readonly<ComponentExports<T>> & { [COMPONENT]?: T }
 
 export type ComponentMember<T extends QingkuaiComponent<any>, K> =
     T extends QingkuaiComponent<infer F>

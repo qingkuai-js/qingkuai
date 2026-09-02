@@ -14,6 +14,8 @@ export type {
     ComponentSlots,
     ComponentExports,
     ComponentContexts,
+    ComponentShape,
+    DeclareComponent,
     HtmlBlockOptions
 } from "#type-declarations/runtime-ex"
 

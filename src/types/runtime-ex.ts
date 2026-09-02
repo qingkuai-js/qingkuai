@@ -8,7 +8,7 @@ import type {
     DeclaredContextKeys
 } from "#type-declarations/runtime"
 import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools"
-import type { COMPONENT, QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { COMPONENT, EmptyObject, QingkuaiComponent } from "@qingkuai/virtual/brand"
 
 /**
  * Recovers the component type that produced a component instance.
@@ -36,6 +36,50 @@ export type ComponentOfInstance<I> = I extends {
 }
     ? T
     : QingkuaiComponent<any>
+
+/**
+ * The shape accepted by {@link DeclareComponent}, five optional members, one
+ * per component layer. Omitted members default to `EmptyObject`, matching the
+ * compiled behavior of components that declare nothing for the corresponding
+ * layer.
+ */
+export type ComponentShape = {
+    props?: AnyObject
+    refs?: AnyObject
+    slots?: AnyObject
+    contexts?: AnyObject
+    exports?: AnyObject
+}
+
+/**
+ * Manually declares a component shape, producing the component type that
+ * compiled `.qk` components carry. For wrapper contracts, component-typed
+ * module parameters, and type-level stubs.
+ *
+ * The shape has five optional members. Omitted members default to
+ * `EmptyObject`, matching the compiled behavior of components that declare
+ * nothing for the corresponding layer.
+ *
+ * Component types with different shapes are mutually exclusive.
+ *
+ * Examples:
+ * ```ts
+ * type Dialog = DeclareComponent<{
+ *     props: { title: string }
+ *     exports: { open: () => void }
+ * }>
+ * ```
+ *
+ * @template S The manually declared component shape.
+ */
+export type DeclareComponent<S extends ComponentShape> = QingkuaiComponent<
+    (ctx: {
+        props: S["props"] extends AnyObject ? S["props"] : EmptyObject
+        refs: S["refs"] extends AnyObject ? S["refs"] : EmptyObject
+        slots: S["slots"] extends AnyObject ? S["slots"] : EmptyObject
+        contexts: S["contexts"] extends AnyObject ? S["contexts"] : EmptyObject
+    }) => S["exports"] extends AnyObject ? S["exports"] : void
+>
 
 /**
  * Extracts the **props contract** of a Qingkuai component.

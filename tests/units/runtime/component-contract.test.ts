@@ -1,4 +1,5 @@
 import type {
+    DeclareComponent,
     ComponentRefs,
     ComponentProps,
     ComponentSlots,
@@ -43,9 +44,38 @@ type StrictRender = (ctx: {
     exportA: string
     methodB: () => void
 }
+
+type Declared = DeclareComponent<{
+    props: {
+        title: string
+        count?: number
+    }
+    refs: {
+        input: HTMLInputElement
+    }
+    contexts: {
+        theme: string
+        getCount: () => number
+    }
+    exports: {
+        exportA: string
+        methodB: () => void
+    }
+    slots: {
+        header: (context: { subtitle: string }) => void
+    }
+}>
+
 type StrictInstance = ComponentInstance<typeof strictComp>
 
+declare const shapeA: DeclareComponent<{
+    props: { x: 1 }
+}>
+declare const shapeB: DeclareComponent<{
+    props: { y: 2 }
+}>
 declare const strictInstance: StrictInstance
+declare const declaredInst: ComponentInstance<Declared>
 declare const strictComp: QingkuaiComponent<StrictRender>
 
 declare const anyComp: QingkuaiComponent<any>
@@ -137,15 +167,6 @@ describe("component instance type channel", () => {
     test("instance exposes exported data but not the contract layers", () => {
         expectTypeOf<StrictInstance["exportA"]>().toEqualTypeOf<string>()
         expectTypeOf<StrictInstance>().not.toHaveProperty("contexts")
-    })
-
-    test("recovers the component type through the phantom channel", () => {
-        expectTypeOf<ComponentOfInstance<StrictInstance>>().toEqualTypeOf<
-            QingkuaiComponent<StrictRender>
-        >()
-        expectTypeOf<ComponentOfInstance<ComponentInstance<typeof anyComp>>>().toEqualTypeOf<
-            QingkuaiComponent<any>
-        >()
     })
 })
 
@@ -261,6 +282,80 @@ describe("typed instance entry points", () => {
 
             const loose = getCurrentInstance()
             expectTypeOf(loose).toEqualTypeOf<ComponentInstance<typeof anyComp> | null>()
+        }
+        expect(typeof exercise).toBe("function")
+    })
+})
+
+describe("DeclareComponent", () => {
+    test("extracts all five dimensions exactly", () => {
+        expectTypeOf<ComponentProps<Declared>>().toEqualTypeOf<{
+            title: string
+            count?: number
+        }>()
+        expectTypeOf<ComponentRefs<Declared>>().toEqualTypeOf<{
+            input: HTMLInputElement
+        }>()
+        expectTypeOf<ComponentSlots<Declared>>().toEqualTypeOf<{
+            header: (context: { subtitle: string }) => void
+        }>()
+        expectTypeOf<ComponentContexts<Declared>>().toEqualTypeOf<{
+            theme: string
+            getCount: () => number
+        }>()
+        expectTypeOf<ComponentExports<Declared>>().toEqualTypeOf<{
+            exportA: string
+            methodB: () => void
+        }>()
+    })
+
+    test("round-trips with compiled components", () => {
+        expectTypeOf<ComponentProps<Declared>>().toEqualTypeOf<ComponentProps<typeof strictComp>>()
+        expectTypeOf<ComponentContexts<Declared>>().toEqualTypeOf<
+            ComponentContexts<typeof strictComp>
+        >()
+        expectTypeOf<ComponentExports<Declared>>().toEqualTypeOf<
+            ComponentExports<typeof strictComp>
+        >()
+    })
+
+    test("omitted members default to EmptyObject", () => {
+        type Empty = DeclareComponent<{}>
+        expectTypeOf<ComponentProps<Empty>>().toEqualTypeOf<EmptyObject>()
+        expectTypeOf<ComponentContexts<Empty>>().toEqualTypeOf<EmptyObject>()
+        expectTypeOf<ComponentExports<Empty>>().toEqualTypeOf<void>()
+    })
+
+    test("instance exposes contract members and exports", () => {
+        const exercise = () => {
+            expectTypeOf(declaredInst.exportA).toEqualTypeOf<string>()
+            expectTypeOf(getContexts(declaredInst)!.theme).toEqualTypeOf<string>()
+        }
+        expect(typeof exercise).toBe("function")
+    })
+
+    test("recovers the component type through the phantom channel", () => {
+        expectTypeOf<ComponentOfInstance<StrictInstance>>().toEqualTypeOf<
+            QingkuaiComponent<StrictRender>
+        >()
+        expectTypeOf<ComponentOfInstance<ComponentInstance<typeof anyComp>>>().toEqualTypeOf<
+            QingkuaiComponent<any>
+        >()
+    })
+
+    test("recovers the component type through the phantom channel", () => {
+        expectTypeOf<ComponentOfInstance<StrictInstance>>().toEqualTypeOf<
+            QingkuaiComponent<StrictRender>
+        >()
+        expectTypeOf<ComponentOfInstance<ComponentInstance<typeof anyComp>>>().toEqualTypeOf<
+            QingkuaiComponent<any>
+        >()
+    })
+
+    test("discriminates different shapes at the brand level", () => {
+        const exercise = () => {
+            // @ts-expect-error — 不同形状的组件类型互斥
+            const wrong: typeof shapeB = shapeA
         }
         expect(typeof exercise).toBe("function")
     })
