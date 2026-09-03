@@ -72,6 +72,9 @@ export class CodeEditor {
             sourceIndex: number,
             key: keyof typeof PositionFlag = "Sourcemap"
         ) => {
+            if (!inputDescriptor.positions.length) {
+                return
+            }
             if (isPositionFlagSetAtIndex(PositionFlag[key], this.startSourceIndex + sourceIndex)) {
                 this.indexToSourceIndex[generateIndex] = this.startSourceIndex + sourceIndex
             }
