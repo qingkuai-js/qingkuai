@@ -175,3 +175,18 @@ export type DefaultValues = Partial<Record<"props" | "refs" | "contexts", AnyObj
 export type BoundLifecycleFunc = (callback: GeneralFunc) => void
 export type BoundEffectFunc = (callback: EffectCallback) => EffectHandle
 export type BoundWatchFunc = <T>(getter: Getter<T>, callback: WatchCallback<T>) => EffectHandle
+
+export type BoundSetContextFunc<T extends QingkuaiComponent<any>> = [
+    Exclude<keyof ComponentContexts<T>, typeof EMPTY_SIGN>
+] extends [never]
+    ? (key: never, value: never) => void
+    : <K extends keyof ComponentContexts<T>>(key: K, value: ComponentContexts<T>[K]) => void
+
+export type BoundSetContextGetterFunc<T extends QingkuaiComponent<any>> = [
+    Exclude<keyof ComponentContexts<T>, typeof EMPTY_SIGN>
+] extends [never]
+    ? (key: never, getter: never) => void
+    : <K extends keyof ComponentContexts<T>>(
+          key: K,
+          getter: Getter<ComponentContexts<T>[K]>
+      ) => void

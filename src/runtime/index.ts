@@ -5,7 +5,9 @@ export type {
     BoundWatchFunc,
     BoundEffectFunc,
     ComponentInstance,
-    BoundLifecycleFunc
+    BoundLifecycleFunc,
+    BoundSetContextFunc,
+    BoundSetContextGetterFunc
 } from "#type-declarations/runtime"
 
 export type {

@@ -10,7 +10,11 @@ import type {
 import type { EmptyObject } from "../../../src/types/brand"
 import type { QingkuaiComponent } from "@qingkuai/virtual/brand"
 import type { __qk__lsu as LSU } from "../../../src/types/qingkuai"
-import type { ComponentInstance } from "../../../src/types/runtime"
+import type {
+    ComponentInstance,
+    BoundSetContextFunc,
+    BoundSetContextGetterFunc
+} from "../../../src/types/runtime"
 
 import {
     setContext,
@@ -239,6 +243,74 @@ describe("setContext contract checking", () => {
     test("getContexts preserves the contract type", () => {
         const exercise = () => getContexts(strictInstance)!.theme
         expectTypeOf<ReturnType<typeof exercise>>().toEqualTypeOf<string>()
+    })
+})
+
+describe("bound setContext utility types", () => {
+    test("enforces keys and value types on a contract-declaring component", () => {
+        const exercise = () => {
+            const set: BoundSetContextFunc<typeof strictComp> = null as any
+            set("theme", "dark")
+            set("getCount", () => 42)
+
+            const setGetter: BoundSetContextGetterFunc<typeof strictComp> = null as any
+            setGetter("getCount", () => () => 42)
+
+            // @ts-expect-error — "unknown" is not in the context contract
+            set("unknown", "x")
+            // @ts-expect-error — value must be a string
+            set("theme", 123)
+            // @ts-expect-error — "unknown" is not in the context contract
+            setGetter("unknown", () => "x")
+            // @ts-expect-error — getter must return a number
+            setGetter("theme", () => 123)
+        }
+        expect(typeof exercise).toBe("function")
+    })
+
+    test("permissive only for unannotated or any-typed components", () => {
+        const exercise = () => {
+            const set: BoundSetContextFunc<typeof anyComp> = null as any
+            const bare: BoundSetContextFunc<typeof bareComp> = null as any
+            const bareGetter: BoundSetContextGetterFunc<typeof bareComp> = null as any
+
+            set("anything", 123)
+            bare("anything", { deep: true })
+            bareGetter("anything", () => "x")
+        }
+        expect(typeof exercise).toBe("function")
+    })
+
+    test("collapses to key: never for explicitly empty contexts contracts", () => {
+        const exercise = () => {
+            const emptySet: BoundSetContextFunc<typeof emptyCtxComp> = null as any
+            const markerSet: BoundSetContextFunc<typeof markerEmptyComp> = null as any
+            const markerSetGetter: BoundSetContextGetterFunc<typeof markerEmptyComp> = null as any
+
+            // @ts-expect-error — no key was allowed
+            emptySet("anything", null)
+
+            // @ts-expect-error — no key was allowed
+            markerSet("anything", null)
+
+            // @ts-expect-error — no key was allowed
+            markerSetGetter("anything", () => "x")
+        }
+        expect(typeof exercise).toBe("function")
+    })
+
+    test("enforces symbol-keyed context contracts", () => {
+        const exercise = () => {
+            const set: BoundSetContextFunc<typeof symComp> = null as any
+            set(symKey, "dark")
+
+            // @ts-expect-error — key not in the context contract
+            set("other", "x")
+
+            // @ts-expect-error — value must be a string
+            set(symKey, 123)
+        }
+        expect(typeof exercise).toBe("function")
     })
 })
 
