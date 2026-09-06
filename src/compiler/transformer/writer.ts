@@ -269,10 +269,10 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
                 this.writeCharacter(str[i], sourceIndex, isLast ? indexOrRange[1] : -1)
             }
             for (let i = str.length; i < indexOrRange[1] - indexOrRange[0]; i++) {
-                if (this.indexMap.stoi[indexOrRange[0] + i] !== -1) {
+                if (this.stoi[indexOrRange[0] + i] !== -1) {
                     continue
                 }
-                this.indexMap.stoi[indexOrRange[0] + i] = this.indexMap.itos.length - 1
+                this.stoi[indexOrRange[0] + i] = this.itos.length - 1
             }
         }
         return this
