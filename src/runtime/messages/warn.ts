@@ -19,6 +19,13 @@ export function InvalidAssignment(target: string) {
     )
 }
 
+export function LifecycleHookRegisteredAfterPhase(name: string) {
+    warnWithCode(
+        8004,
+        `The lifecycle hook "${name}" was registered after its corresponding phase had already passed, so the callback will never be triggered. The registration has been ignored.`
+    )
+}
+
 export function CreateOnDisposedComponent(purpose: string) {
     warnWithCode(
         8003,

@@ -35,8 +35,8 @@ import { runHooks } from "../component"
 import { runAndUpdateEffect } from "./effect"
 import { nextTick } from "../../util/runtime/sundry"
 import { MaximumUpdateDepthExceeded } from "../messages/error"
-import { RESOLVED, AFTER_UPDATE, BEFORE_UPDATE } from "../constants"
 import { isIteratorKey, isProxyWrapper } from "../../util/runtime/assert"
+import { RESOLVED, AFTER_UPDATE, BEFORE_UPDATE, COMPONENT_UPDATING } from "../constants"
 
 export function getSubscription(
     wrapper: ReactivityWrapper,
@@ -148,8 +148,8 @@ function update() {
         // 首次渲染副作用时，触发组件的 onBeforeUpdate 并将组件加入 updatingComponents
         // For the first render effect, trigger the component's `onBeforeUpdate` and add it to `updatingComponents`
         const instance = effect.d?.m
-        if (effect.l & EFFECT_RENDER && instance && !instance.updating) {
-            instance.updating = true
+        if (instance && effect.l & EFFECT_RENDER && !(instance._internal.l! & COMPONENT_UPDATING)) {
+            instance._internal.l = instance._internal.l! | COMPONENT_UPDATING
             runHooks(instance, BEFORE_UPDATE)
             updatingComponents.push(instance)
         }
@@ -158,7 +158,7 @@ function update() {
     // 所有副作用执行完后，触发 updatingComponents 中组件的 onAfterUpdate
     // After all effects finish, trigger `onAfterUpdate` for all components in `updatingComponents`
     for (const component of updatingComponents) {
-        component.updating = false
+        component._internal.l = component._internal.l! & ~COMPONENT_UPDATING
         runHooks(component, AFTER_UPDATE)
     }
 

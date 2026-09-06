@@ -16,6 +16,16 @@ import type {
 import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 
 import {
+    NIL,
+    COMPONENT_MOUNTED,
+    EXP_GETTER,
+    AFTER_MOUNT,
+    BEFORE_UPDATE,
+    AFTER_UPDATE,
+    BEFORE_DESTROY,
+    AFTER_DESTROY
+} from "./constants"
+import {
     objectKeys,
     objectCreate,
     reflectOwnKeys,
@@ -34,12 +44,11 @@ import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
 import { makeExpGetter } from "../util/runtime/sundry"
 import { createDestruction, destroy } from "./destroy"
-import { AFTER_MOUNT, NIL, EXP_GETTER } from "./constants"
-import { CreateOnDisposedComponent } from "./messages/warn"
 import { bindHandleReceiver, shallowConstReact } from "./internal"
 import { isFunction, isThenable, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
 import { InvalidElementNode, CannotRenderComponent } from "./messages/error"
+import { CreateOnDisposedComponent, LifecycleHookRegisteredAfterPhase } from "./messages/warn"
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
 // prettier-ignore
@@ -102,7 +111,6 @@ export const setContextGetter: SetContextGetterFunc = (instance, key, getter) =>
 
 export function init(anchor: Node, context: ComponentInstanceInternal) {
     const instance: ComponentInstanceBase = {
-        updating: false,
         _internal: context,
         parent: currentInstance,
         host: getParentElement(anchor)!
@@ -110,6 +118,7 @@ export function init(anchor: Node, context: ComponentInstanceInternal) {
     if (context.h) {
         bindHandleReceiver(instance, context.h)
     }
+    context.l = 0
     context.f = NIL
     context.d = createDestruction(currentDestruction, instance)
     context.c = objectCreate(currentInstance?._internal.c ?? NIL)
@@ -157,6 +166,7 @@ export function mount(anchor?: ChildNode, fragment?: Node) {
     runHooks(instance, AFTER_MOUNT)
     backToParentDestruction()
     setCurrentInstance(instance.parent)
+    instance._internal.l = (instance._internal.l ?? 0) | COMPONENT_MOUNTED
     return instance
 }
 
@@ -314,17 +324,23 @@ export function renderComponent(target: any, anchor: Text, context: ComponentIns
     })
 }
 
-// 组件生命周期回调均为 _internal.f 数组中不同下标的元素，该方法生成用于注册
-// 它们的方法；注册目标实例需显式传入，组件内经内建绑定闭包自动注入
-// Component lifecycle callbacks are stored as elements at different indices
-// in `_internalf; this method generates functions for registering them. The
-// target instance must be passed explicitly — inside components the built-in
-// binding closures inject it automatically
 function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 1; i < 6; i++) {
         hookRegisters.push((instance, callback) => {
-            ;((instance._internal.f ??= [])[i] ??= []).push(callback)
+            const context = instance._internal
+            if (
+                (i == AFTER_MOUNT && (context.l ?? 0) & COMPONENT_MOUNTED) ||
+                ((i == BEFORE_DESTROY || i == AFTER_DESTROY) && context.d?.d)
+            ) {
+                const HOOK_NAMES = {
+                    [AFTER_MOUNT]: "onAfterMount",
+                    [BEFORE_DESTROY]: "onBeforeDestroy",
+                    [AFTER_DESTROY]: "onAfterDestroy"
+                }
+                return LifecycleHookRegisteredAfterPhase(HOOK_NAMES[i])
+            }
+            ;((context.f ??= [])[i] ??= []).push(callback)
         })
     }
     return hookRegisters

@@ -42,7 +42,6 @@ export interface TraverseInfo {
 
 export interface ComponentInstanceBase {
     host: Element
-    updating: boolean
     parent: ComponentInstanceBase | null
 
     /** @internal */
@@ -51,6 +50,7 @@ export interface ComponentInstanceBase {
 
 export type ComponentInstanceInternal = Partial<{
     d: Destruction
+    l: number // flag
     D: DefaultValues // defaults
     s: AnyObject // raw slots
     h: Setter // handle setter
