@@ -110,6 +110,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Run postinstall
+        run: pnpm run postinstall
+
       - name: Validate tag equals package version
         env:
           TAG: ${{ steps.tag.outputs.value }}
