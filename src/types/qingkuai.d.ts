@@ -719,7 +719,7 @@ type GeneralFunc = () => void
 type ArbitraryFunc = (...args: any) => any
 type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
 type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
-type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
+type ExtractEventKind<K> = K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : Event
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
 type CleanOptionalPick<T> = Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>
 type CleanStrictPick<T> = [keyof CleanOptionalPick<T>] extends [never] ? __qk__lsu.EmptyObject : CleanOptionalPick<T>
