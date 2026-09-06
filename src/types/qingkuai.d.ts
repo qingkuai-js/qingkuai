@@ -539,6 +539,7 @@ export declare const syncEffect: EffectFunc
  * default values:
  * - `props`: default values for optional props
  * - `refs`: default values for optional refs
+ * - `contexts`: default values for optional contexts
  *
  * For each category, only keys declared as **optional** (`?`) in the
  * corresponding type may be given a default value.
@@ -559,6 +560,9 @@ export declare const syncEffect: EffectFunc
  *     },
  *     refs: {
  *         counter: 0
+ *     },
+ *     contexts: {
+ *        theme: "light"
  *     }
  * })
  *
