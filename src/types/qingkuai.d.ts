@@ -10,6 +10,7 @@ import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiCompone
 import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatchCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
+    export type Prettify<T> = _Prettify<T>
     export type EmptyObject = _EmptyObject
     export type QingkuaiComponent<T extends ArbitraryFunc> = _QingkuaiComponent<T>
     export type ComponentInstance<T extends QingkuaiComponent<any>> = _ComponentInstance<T>
@@ -722,18 +723,18 @@ type Getter<T> = () => T
 type GeneralFunc = () => void
 type ArbitraryFunc = (...args: any) => any
 type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
-type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
+type _Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 type ExtractEventKind<K> = K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : Event
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
-type CleanOptionalPick<T> = Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>
+type CleanOptionalPick<T> = _Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>
 type CleanStrictPick<T> = [keyof CleanOptionalPick<T>] extends [never] ? __qk__lsu.EmptyObject : CleanOptionalPick<T>
 type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P>; refs?: CleanStrictPick<R>; contexts?: CleanStrictPick<C> }
 type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element
 
-type DefaultsAssertFn<P, R, C> = (value: Prettify<DefaultsValue<P, R, C>>) => void
-type RefsAssertFn<R, D> = Prettify<R & WithRequired<R, D extends { refs: infer DR } ? DR : never>>
-type PropsAssertFn<P, D> = Prettify<P & WithRequired<P, D extends { props: infer DP } ? DP : never>>
-type ContextsAssertFn<C, D> = Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
+type DefaultsAssertFn<P, R, C> = (value: _Prettify<DefaultsValue<P, R, C>>) => void
+type RefsAssertFn<R, D> = _Prettify<R & WithRequired<R, D extends { refs: infer DR } ? DR : never>>
+type PropsAssertFn<P, D> = _Prettify<P & WithRequired<P, D extends { props: infer DP } ? DP : never>>
+type ContextsAssertFn<C, D> = _Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
 type SetContextAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, value: C[K]) => void
 type SetContextGetterAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, getter: Getter<C[K]>) => void
 
