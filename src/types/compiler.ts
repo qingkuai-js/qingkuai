@@ -381,8 +381,8 @@ export type SelectionCacheItem = {
 export type SelectionCache = Record<string, SelectionCacheItem[]>
 
 export type GenerateIdentifierStaticKeys =
+    | "meta"
     | "anchor"
-    | "context"
     | "internal"
     | "getterArg"
     | "setterArg"

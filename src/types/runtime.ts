@@ -45,10 +45,10 @@ export interface ComponentInstanceBase {
     parent: ComponentInstanceBase | null
 
     /** @internal */
-    _internal: ComponentInstanceInternal
+    _internal: ComponentMeta
 }
 
-export type ComponentInstanceInternal = Partial<{
+export type ComponentMeta = Partial<{
     d: Destruction
     l: number // flag
     D: DefaultValues // defaults
@@ -146,7 +146,7 @@ export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 
 export type ComponentFunc = (
     anchor: Text,
-    context?: ComponentInstanceInternal
+    meta?: ComponentMeta
 ) => ComponentInstance<QingkuaiComponent<any>>
 
 export type ComponentInstance<T extends QingkuaiComponent<any>> = ComponentInstanceBase &

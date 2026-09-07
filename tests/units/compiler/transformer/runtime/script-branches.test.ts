@@ -126,7 +126,7 @@ test("Runtime script: setContext stores as-is, setContextExp wraps as getter", (
     expect(code).not.toContain(
         "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
     )
-    expect(code).toContain("const contexts = _.initContexts(_ctx)")
+    expect(code).toContain("const contexts = _.initContexts(_meta)")
     expect(code).toContain('setContext("theme", mode)')
     expect(code).toContain('setContext("version", 1)')
     expect(code).toContain('setContext("handler", handler)')

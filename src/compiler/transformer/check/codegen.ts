@@ -637,7 +637,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
     // 生成组件函数和导出语句
     // Generate component function and export statement
-    writer.write(`\n\nconst ${LSC.COMPONENT} = (_) => {`)
+    writer.write(`\n\nconst ${LSC.COMPONENT} = (meta) => {`)
 
     if (exportBindings.length) {
         writer.indent().write(`return {`).indent(false)

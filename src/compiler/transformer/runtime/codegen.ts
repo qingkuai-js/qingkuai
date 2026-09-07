@@ -21,7 +21,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
         internal: ensureIdWithPrefix("_"),
         getterArg: ensureIdWithPrefix("_"),
         setterArg: ensureIdWithPrefix("v"),
-        context: ensureIdWithPrefix("_ctx"),
+        meta: ensureIdWithPrefix("_meta"),
         anchor: ensureIdWithPrefix("_anchor"),
         component: ensureIdWithPrefix("_component"),
         compressStrings: ensureIdWithPrefix("_compressStrings")
@@ -29,8 +29,8 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
 
     const writer = new RuntimeCodeWriter(true)
     const hoistWriter = new RuntimeCodeWriter()
+    const metaId = generateIdentifier.meta
     const anchorId = generateIdentifier.anchor
-    const contextId = generateIdentifier.context
     const internalId = generateIdentifier.internal
     const templateFragments = getTemplateFragments(nodes)
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
@@ -45,12 +45,12 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     writeStringLiteralsDeclarations(writer, templateFragments)
     writeFragmentGetterDeclarations(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
-    writer.write(`export default function (${anchorId}, ${contextId} = {}) {`)
-    writer.indent().write(`const instance = ${internalId}.init(${anchorId}, ${contextId})`)
+    writer.write(`export default function (${anchorId}, ${metaId} = {}) {`)
+    writer.indent().write(`const instance = ${internalId}.init(${anchorId}, ${metaId})`)
 
     for (const id of ["props", "refs", "slots", "contexts"]) {
         if (usedIntrinsics.has(id)) {
-            writer.write(`\nconst ${id} = ${internalId}.init${upperFirst(id)}(${contextId})`)
+            writer.write(`\nconst ${id} = ${internalId}.init${upperFirst(id)}(${metaId})`)
         }
     }
     generateDelegateEventsRegistration(writer)

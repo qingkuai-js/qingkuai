@@ -160,7 +160,7 @@ test("Runtime: no exports keeps init uncaptured", () => {
     )
 
     expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("const instance = _.init(_anchor, _ctx)")
+    expect(code).toContain("const instance = _.init(_anchor, _meta)")
     expect(code).not.toContain("_.defineExports(")
     expect(code).toContain("return _.mount(")
 })

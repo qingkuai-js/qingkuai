@@ -30,8 +30,8 @@ export function resetCompilerState(options: Partial<InputOptions>) {
 
 function newGenerateIdentifier(): GenerateIdentifier {
     return {
+        meta: "",
         anchor: "",
-        context: "",
         internal: "",
         getterArg: "",
         setterArg: "",

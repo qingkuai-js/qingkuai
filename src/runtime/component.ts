@@ -2,8 +2,8 @@ import type {
     Destruction,
     DefaultValues,
     ComponentFunc,
-    ComponentInstanceBase,
-    ComponentInstanceInternal
+    ComponentMeta,
+    ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type {
     MountAppFunc,
@@ -17,13 +17,11 @@ import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 
 import {
     NIL,
-    COMPONENT_MOUNTED,
     EXP_GETTER,
     AFTER_MOUNT,
-    BEFORE_UPDATE,
-    AFTER_UPDATE,
     BEFORE_DESTROY,
-    AFTER_DESTROY
+    AFTER_DESTROY,
+    COMPONENT_MOUNTED
 } from "./constants"
 import {
     objectKeys,
@@ -90,8 +88,8 @@ export const getContexts: GetContextsFunc = instance => {
 }
 
 export const setContext: SetContextFunc = (instance, key, value) => {
-    const context = instance._internal
-    defineProperty(context.c, key, {
+    const meta = instance._internal
+    defineProperty(meta.c, key, {
         enumerable: true,
         configurable: true,
         get() {
@@ -100,7 +98,7 @@ export const setContext: SetContextFunc = (instance, key, value) => {
                 val = val.f()
             }
             markActiveEffectNoCheck()
-            return val ?? context.D?.contexts?.[key]
+            return val ?? meta.D?.contexts?.[key]
         }
     })
 }
@@ -109,19 +107,19 @@ export const setContextGetter: SetContextGetterFunc = (instance, key, getter) =>
     any(setContext)(instance, key, makeExpGetter(getter))
 }
 
-export function init(anchor: Node, context: ComponentInstanceInternal) {
+export function init(anchor: Node, meta: ComponentMeta) {
     const instance: ComponentInstanceBase = {
-        _internal: context,
+        _internal: meta,
         parent: currentInstance,
         host: getParentElement(anchor)!
     }
-    if (context.h) {
-        bindHandleReceiver(instance, context.h)
+    if (meta.h) {
+        bindHandleReceiver(instance, meta.h)
     }
-    context.l = 0
-    context.f = NIL
-    context.d = createDestruction(currentDestruction, instance)
-    context.c = objectCreate(currentInstance?._internal.c ?? NIL)
+    meta.l = 0
+    meta.f = NIL
+    meta.d = createDestruction(currentDestruction, instance)
+    meta.c = objectCreate(currentInstance?._internal.c ?? NIL)
     return setCurrentInstance(instance)
 }
 
@@ -182,9 +180,9 @@ export function defineExports(target: any, transformed: Record<string, Getter>) 
     return defineProperties(target, descriptors)
 }
 
-export function initProps(context: ComponentInstanceInternal) {
-    const transformed = context.p
-    const ret: AnyObject = (context.P = {})
+export function initProps(meta: ComponentMeta) {
+    const transformed = meta.p
+    const ret: AnyObject = (meta.P = {})
     if (transformed) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
@@ -195,7 +193,7 @@ export function initProps(context: ComponentInstanceInternal) {
                         val = val()
                     }
                     markActiveEffectNoCheck()
-                    return val ?? context.D?.props?.[key]
+                    return val ?? meta.D?.props?.[key]
                 }
             })
         }
@@ -203,9 +201,9 @@ export function initProps(context: ComponentInstanceInternal) {
     return ret
 }
 
-export function initRefs(context: ComponentInstanceInternal) {
-    const transformed = context.r
-    const ret: AnyObject = (context.R = {})
+export function initRefs(meta: ComponentMeta) {
+    const transformed = meta.r
+    const ret: AnyObject = (meta.R = {})
     if (transformed) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
@@ -215,7 +213,7 @@ export function initRefs(context: ComponentInstanceInternal) {
                 },
                 get() {
                     markActiveEffectNoCheck()
-                    return transformed[key]?.[0]() ?? context.D?.refs?.[key]
+                    return transformed[key]?.[0]() ?? meta.D?.refs?.[key]
                 }
             })
         }
@@ -223,9 +221,9 @@ export function initRefs(context: ComponentInstanceInternal) {
     return ret
 }
 
-export function initSlots(context: ComponentInstanceInternal) {
+export function initSlots(meta: ComponentMeta) {
     const ret: AnyObject = {}
-    const transformed = context.s
+    const transformed = meta.s
     if (transformed) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
@@ -239,8 +237,8 @@ export function initSlots(context: ComponentInstanceInternal) {
     return ret
 }
 
-export function initContexts(context: ComponentInstanceInternal) {
-    return context.c
+export function initContexts(meta: ComponentMeta) {
+    return meta.c
 }
 
 export function applyDefaults(defaults: DefaultValues) {
@@ -249,9 +247,9 @@ export function applyDefaults(defaults: DefaultValues) {
         ["contexts", "c"],
         ["refs", "R", true]
     ] as const
-    const context = currentInstance!._internal
+    const meta = currentInstance!._internal
     for (const [kind, bound, writable] of defaultKindMappings) {
-        const target = context[bound]
+        const target = meta[bound]
         const values = defaults[kind]
         if (!values || !target) {
             continue
@@ -280,14 +278,14 @@ export function applyDefaults(defaults: DefaultValues) {
             defineProperty(target, key, descriptor)
         }
     }
-    context.D = defaults
+    meta.D = defaults
 }
 
 // 渲染组件：支持同步组件方法，也支持异步组件
 // Render a component. Supports sync component functions as well as async components
-export function renderComponent(target: any, anchor: Text, context: ComponentInstanceInternal) {
+export function renderComponent(target: any, anchor: Text, meta: ComponentMeta) {
     if (isFunction(target)) {
-        target(anchor, context)
+        target(anchor, meta)
         return
     }
     if (!isThenable(target)) {
@@ -320,7 +318,7 @@ export function renderComponent(target: any, anchor: Text, context: ComponentIns
         }
         setCurrentDestruction(parentDestruction)
         setCurrentInstance(parentInstance)
-        resolved(anchor, context)
+        resolved(anchor, meta)
     })
 }
 
@@ -328,10 +326,10 @@ function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 1; i < 6; i++) {
         hookRegisters.push((instance, callback) => {
-            const context = instance._internal
+            const meta = instance._internal
             if (
-                (i == AFTER_MOUNT && (context.l ?? 0) & COMPONENT_MOUNTED) ||
-                ((i == BEFORE_DESTROY || i == AFTER_DESTROY) && context.d?.d)
+                (i == AFTER_MOUNT && (meta.l ?? 0) & COMPONENT_MOUNTED) ||
+                ((i == BEFORE_DESTROY || i == AFTER_DESTROY) && meta.d?.d)
             ) {
                 const HOOK_NAMES = {
                     [AFTER_MOUNT]: "onAfterMount",
@@ -340,7 +338,7 @@ function hooksRegisterGen(): LifecycleHookRegister[] {
                 }
                 return LifecycleHookRegisteredAfterPhase(HOOK_NAMES[i])
             }
-            ;((context.f ??= [])[i] ??= []).push(callback)
+            ;((meta.f ??= [])[i] ??= []).push(callback)
         })
     }
     return hookRegisters

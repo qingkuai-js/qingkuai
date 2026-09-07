@@ -141,7 +141,7 @@ export function generateTemplateRender(
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
             const transformed = topLevelIdentifier?.transformTo || local
             writer.wrapLine()
-            writeContextKey(exported, writer)
+            writeMetaKey(exported, writer)
             writer.write(`:  ${getterArgId} => (${transformed}),`)
         }
         writer.dedent().write(`})`)
@@ -658,7 +658,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
         for (const attribute of nodeContext.dynamicAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer)
+            writeMetaKey(baseName, writer)
             writer.write(": ").writeParsedExpression(attribute)
         }
         for (const attribute of nodeContext.staticAttributes) {
@@ -667,7 +667,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
                 continue
             }
             insertTrailingComma()
-            writeContextKey(attribute.name.raw, writer).write(": ")
+            writeMetaKey(attribute.name.raw, writer).write(": ")
             writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true")
         }
         writer.dedent().write("}")
@@ -714,7 +714,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
     const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting))
 
-    const hasContext =
+    const hasMeta =
         hasSlots ||
         hasProps ||
         hasRefs ||
@@ -751,7 +751,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         writer.write(`\n`).writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
     }
 
-    if (hasContext) {
+    if (hasMeta) {
         writer.write(", {").indent()
     }
 
@@ -761,7 +761,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.staticAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer, true).write(": ")
+            writeMetaKey(baseName, writer, true).write(": ")
 
             if (!attribute.equalSign) {
                 writer.write("true")
@@ -776,7 +776,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = getParsedExpression(event)!
             const baseName = getParsedEventInfo(event)!.eventName.slice(1)
             insertTrailingComma()
-            writeContextKey(baseName, writer, true)
+            writeMetaKey(baseName, writer, true)
             writer.write(": ").write(`${getterArgId} => (`)
 
             if (isInlineEventHandler(expression.node)) {
@@ -791,7 +791,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.dynamicAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer, true).write(": ")
+            writeMetaKey(baseName, writer, true).write(": ")
             writer.write(`${getterArgId} => (`).writeParsedExpression(attribute).write(")")
         }
 
@@ -812,7 +812,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             ) {
                 insertTrailingComma()
             }
-            writeContextKey(getAttributeBaseName(attribute.name.raw), writer, true)
+            writeMetaKey(getAttributeBaseName(attribute.name.raw), writer, true)
             writer.write(": [").indent().write(`${getterArgId} => (`)
             writeParsedExpression(writer, attribute, false)
             writer.writeLine("),")
@@ -845,7 +845,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
             const slotName = expression ? (expression.node as ts.StringLiteral).text : "default"
             insertTrailingComma()
-            writeContextKey(slotName, writer, true).write(`: (${anchorId}`)
+            writeMetaKey(slotName, writer, true).write(`: (${anchorId}`)
 
             if (patterns?.length) {
                 writer.write(", ")
@@ -865,7 +865,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         insertTrailingComma().write(`a: ${internalId}.getScopes()`)
     }
 
-    if (hasContext) {
+    if (hasMeta) {
         writer.dedent().write("})")
     } else {
         writer.write(`)`)
@@ -904,7 +904,7 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
     return false
 }
 
-function writeContextKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
+function writeMetaKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
     if (toCamel) {
         str = kebab2Camel(str)
     }
