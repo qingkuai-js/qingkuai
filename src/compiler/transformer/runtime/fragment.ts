@@ -150,13 +150,22 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             }
 
             if (SPREAD_TAG === node.tag) {
-                const selectableParent =
-                    fragment.nodeContext === nodeContext ? null : getSelectableParentNode(node)
-                generate(
-                    node.children,
-                    fragment,
-                    selectableParent && getTemplateNodeContext(selectableParent)
-                )
+                let parentContext: TemplateNodeContext | null = null
+                if (nodeContext !== fragment.nodeContext) {
+                    for (let cur = node.parent; cur; ) {
+                        if (SPREAD_TAG === cur.tag) {
+                            const curNodeContext = getTemplateNodeContext(cur)
+                            if (curNodeContext.sortedDirectives.length) {
+                                break
+                            }
+                        }
+                        if ("slot" !== cur.tag && !cur.isEmbedded && !cur.componentTag) {
+                            parentContext = getTemplateNodeContext(cur)
+                            break
+                        }
+                    }
+                }
+                generate(node.children, fragment, parentContext)
                 continue
             }
 
