@@ -90,7 +90,12 @@ export function generateTemplateRender(
         }
         if (hasFragmentContent) {
             writeFragmentSelections(writer, nodeContext.fragment!)
-            generateRenderEffect(writer, [node], node)
+
+            if ("slot" !== node.tag) {
+                generateRenderEffect(writer, [node], node)
+            } else {
+                generateRenderEffect(writer, node.children, null)
+            }
         }
 
         /**
