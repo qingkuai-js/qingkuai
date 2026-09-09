@@ -231,6 +231,7 @@ export interface TemplateNodeContext {
     shouldBeSelected: boolean
     selectableChildCount: number
     fragment: TemplateFragment | null
+    anchorBracket: TemplateFragment | null
     eventListeners: TemplateAttribute[]
     sortedDirectives: TemplateAttribute[]
     staticAttributes: TemplateAttribute[]

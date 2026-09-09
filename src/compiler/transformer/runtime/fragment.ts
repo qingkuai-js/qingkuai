@@ -37,18 +37,25 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
     const fragments: TemplateFragment[] = []
     const existingFragmentContentMap: Record<string, TemplateFragment> = newCleanObj()
 
-    function extendFragments(nodeContext: TemplateNodeContext | null) {
-        const fragment: TemplateFragment = {
+    const newTemplateFragment = (defaults: Partial<TemplateFragment>) => {
+        const empty: TemplateFragment = {
             id: "",
             flag: 0,
             content: [],
-            nodeContext,
             getterId: "",
             selections: [],
+            nodeContext: null,
             getWith: undefined,
             directChildrenCount: 0,
             usedCompressString: false
         }
+        return Object.assign(empty, defaults)
+    }
+
+    function extendFragments(nodeContext: TemplateNodeContext | null) {
+        const fragment = newTemplateFragment({
+            nodeContext
+        })
         if ((fragments.push(fragment), nodeContext)) {
             return (nodeContext.fragment = fragment)
         } else {
@@ -115,13 +122,45 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                 generate(nodes, existingFragment, null)
             }
 
+            const createAnchorBracket = () => {
+                if (
+                    !nodeContext.sortedDirectives.some(directive => {
+                        return CREATE_ANCHOR_DIRECTIVES.has(directive.name.raw)
+                    })
+                ) {
+                    return
+                }
+
+                const bracketFragment = newTemplateFragment({
+                    content: [
+                        {
+                            isText: true,
+                            value: " "
+                        }
+                    ],
+                    selections: [
+                        {
+                            index: 0,
+                            parent: undefined,
+                            replaceWithText: false,
+                            id: ensureIdWithNumSuffix("_text")
+                        }
+                    ],
+                    directChildrenCount: 1,
+                    id: ensureIdWithNumSuffix("_fragment")
+                })
+                fragments.push((nodeContext.anchorBracket = bracketFragment))
+            }
+
             if ("slot" === node.tag) {
                 createFragmentWithAnchor(node.children)
+                createAnchorBracket()
                 continue
             }
 
             if (node.componentTag) {
                 createFragmentWithAnchor([])
+                createAnchorBracket()
 
                 for (const child of node.children) {
                     const childContext = getTemplateNodeContext(child)
@@ -163,6 +202,10 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                             parentContext = getTemplateNodeContext(cur)
                             break
                         }
+                        // slot/组件/嵌入标签与透明 spread 均不是可选父级，继续向上查找
+                        // slot/component/embedded tags and transparent spreads are not
+                        // selectable parents; keep walking up the ancestor chain
+                        cur = cur.parent
                     }
                 }
                 generate(node.children, fragment, parentContext)
@@ -425,25 +468,6 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
         })
     }
     return writer
-}
-
-function getSelectableParentNode(node: TemplateNode) {
-    const isSelectableNode = (node: TemplateNode) => {
-        switch (node.tag) {
-            case "slot":
-            case SPREAD_TAG: {
-                return false
-            }
-            default: {
-                return !node.isEmbedded && !node.componentTag
-            }
-        }
-    }
-
-    while (node.parent && !isSelectableNode(node.parent)) {
-        node = node.parent
-    }
-    return node.parent
 }
 
 function getPrevHasDirectiveSibling(node: TemplateNode) {

@@ -30,6 +30,7 @@ import {
 } from "../../../util/compiler/template"
 import { TestingMode } from "../../enums"
 import { DELEGATABLE_EVENTS } from "../../constants"
+import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
 import { kebab2Camel } from "../../../util/compiler/string"
@@ -366,6 +367,7 @@ function generateDirectiveBlock(
         }
         writer.write(" => {").indent(false)
         insert?.context?.()
+        writeAnchorBracket(writer, nodeContext)
 
         const childEnclosure = generateNextDirective()
         return () => {
@@ -382,6 +384,24 @@ function generateDirectiveBlock(
         const delta = nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1
         return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext)
     }
+}
+
+function writeAnchorBracket(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
+    const bracket = nodeContext.anchorBracket
+    if (!bracket) {
+        return
+    }
+
+    const internalId = generateIdentifier.internal
+    const outerAnchorId = nodeContext.anchorId
+    const trailingAnchorId = bracket.selections[0].id
+    const interpretive = inputDescriptor.options.interpretiveComments ? "/* LEADING_ANCHOR */ " : ""
+    writer.write(
+        `\nconst ${bracket.id} = ${bracket.getterId}(${interpretive}${FRAG_LEADING_ANCHOR})`
+    )
+    writer.write(`\nconst ${trailingAnchorId} = ${internalId}.getChild(${bracket.id})`)
+    writer.write(`\n${internalId}.insertBefore(${outerAnchorId}, ${bracket.id})`)
+    nodeContext.anchorId = trailingAnchorId
 }
 
 function generateRenderEffect(

@@ -75,22 +75,21 @@ export function getChild(node: Element, index = 0) {
 // Create an HTML fragment getter that returns a cloned instance
 // of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
-    let content: ChildNode | DocumentFragment | undefined
+    let content: DocumentFragment | undefined
     return (flag = 0) => {
-        const isOrphan = flag & FRAG_ORPHAN_CONTENT
         if (isUndefined(content)) {
             const template = DOCUMENT!.createElement("template")
             template.innerHTML = arr ? restoreHtmlForFragment(html, arr) : html
-
-            const fragmentContent = template.content
-            if (flag & FRAG_LEADING_ANCHOR) {
-                ;(content = fragmentContent).prepend(newTextNode())
-            } else {
-                content = isOrphan ? fragmentContent.firstChild! : fragmentContent
-            }
+            content = template.content
         }
 
-        const ret = content.cloneNode(true) as any
+        let ret = content.cloneNode(true) as any
+        const isOrphan = flag & FRAG_ORPHAN_CONTENT
+        if (flag & FRAG_LEADING_ANCHOR) {
+            ret.prepend(newTextNode())
+        } else if (isOrphan) {
+            ret = ret.firstChild!
+        }
         if (flag & FRAGMENT_ROOT) {
             attachScopesToRoot(ret)
         }

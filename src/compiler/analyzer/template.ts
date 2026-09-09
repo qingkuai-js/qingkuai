@@ -46,6 +46,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 id: "",
                 anchorId: "",
                 fragment: null,
+                anchorBracket: null,
                 eventListeners: [],
                 sortedDirectives: [],
                 staticAttributes: [],
