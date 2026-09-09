@@ -40,6 +40,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         slotNamesType = `Record<${slotNamesType}, boolean>`
     }
 
+    const LSU = LSC.UTIL
     const isTS = inputDescriptor.script.isTS
     const writer = new IntermediateCodeWriter()
     const embeddedScriptEditor = new CodeEditor(
@@ -61,12 +62,13 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         ? [scriptTagOpenRange[0] + 1, scriptTagOpenRange[1]]
         : undefined
 
-    const ANY_VALUE = `${LSC.UTIL}.anyValue`
-    const SLOT_NAMES_TYPE = slotNamesType || `${LSC.UTIL}.EmptyObject`
-    const COMPONENT_TYPE = `${LSC.UTIL}.QingkuaiComponent<typeof ${LSC.COMPONENT}>`
+    const ANY_VALUE = `${LSU}.anyValue`
+    const SLOT_TYPE = `Readonly<${slotNamesType || `${LSU}.EmptyObject`}>`
+    const COMPONENT_TYPE = `${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>`
+    const INSTANCE_TYPE = `${LSU}.ComponentInstance<${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>>`
 
     const needImportItems: string[] = [
-        LSC.UTIL,
+        LSU,
         "raw",
         "alias",
         "derived",
@@ -102,22 +104,24 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         writer.writeScriptNode(decl).writeLine(";")
     }
     if (isTS) {
-        writer.writeLine(`const slots: Readonly<${SLOT_NAMES_TYPE}> = ${ANY_VALUE};\n`)
+        writer.writeLine(`const slots:${SLOT_TYPE} = ${ANY_VALUE};`)
+        writer.writeLine(`const instance: ${INSTANCE_TYPE} = ${ANY_VALUE};\n`)
     } else {
-        writer.writeLine(`/** @type { Readonly<${SLOT_NAMES_TYPE}> } */ const slots = 0;\n`)
+        writer.writeLine(`/** @type {${SLOT_TYPE} } */ const slots = 0;\n`)
+        writer.writeLine(`/** @type {${INSTANCE_TYPE} } */ const instance = 0;\n`)
     }
-    writer.writeLine(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
-    writer.writeLine(`${LSC.UTIL}.assertSetContext(setContext, contexts);`)
-    writer.writeLine(`${LSC.UTIL}.assertSetContextGetter(setContextGetter, contexts);`)
-    writer.writeLine(`${LSC.UTIL}.assertSetContextExp(setContextExp, contexts);`)
+    writer.writeLine(`${LSU}.assertDefaults(defaults, props, refs, contexts);`)
+    writer.writeLine(`${LSU}.assertSetContext(setContext, contexts);`)
+    writer.writeLine(`${LSU}.assertSetContextGetter(setContextGetter, contexts);`)
+    writer.writeLine(`${LSU}.assertSetContextExp(setContextExp, contexts);`)
 
     if (defaultsCall?.arguments.length) {
         const arg = defaultsCall.arguments[0]
         const snippets: (string | { value: string; sourceRange: Range })[] = [
-            `;\nconst ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg(${arg.getText()});`,
-            `\n${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES});`,
-            `\n${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`,
-            `\n${LSC.UTIL}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`
+            `;\nconst ${LSC.DEFAULT_VALUES} = ${LSU}.extractFirstArg(${arg.getText()});`,
+            `\n${LSU}.assertProps(props, ${LSC.DEFAULT_VALUES});`,
+            `\n${LSU}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`,
+            `\n${LSU}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`
         ]
         embeddedScriptEditor.insertMulti(defaultsCall.getEnd(), snippets)
     }
@@ -132,10 +136,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             declarator.initializer &&
             isFunctionLiteral(getStriptTypeOperationsNode(declarator.initializer))
         ) {
-            embeddedScriptEditor.insert(
-                declarator.initializer.getStart()!,
-                `${LSC.UTIL}.getReturnType(`
-            )
+            embeddedScriptEditor.insert(declarator.initializer.getStart()!, `${LSU}.getReturnType(`)
             embeddedScriptEditor.insert(declarator.initializer.getEnd(), ")")
         }
     })
@@ -210,7 +211,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             )
                         }
                         if (generatePatterns(writer, directive)) {
-                            writer.write(`${LSC.UTIL}.getListPair(`)
+                            writer.write(`${LSU}.getListPair(`)
 
                             if (parsedExpression) {
                                 writer.write(parsedExpression.source, valueEnd - expressionLen)
@@ -255,7 +256,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (!parsedExpression) {
                             writeInvalidExpression(writer, rawValue, valueRange)
                         } else {
-                            writer.wrapLine().write(`${LSC.UTIL}.validateHtmlBlockOptions(`)
+                            writer.wrapLine().write(`${LSU}.validateHtmlBlockOptions(`)
                             writer.write(rawValue, valueRange).write(");")
                         }
                         break
@@ -265,7 +266,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         if (!parsedExpression) {
                             writeInvalidExpression(writer, rawValue, valueRange)
                         } else {
-                            writer.wrapLine().write(`${LSC.UTIL}.validateTargetDirectiveValue(`)
+                            writer.wrapLine().write(`${LSU}.validateTargetDirectiveValue(`)
                             writer.write(rawValue, valueRange).write(");")
                         }
                         break
@@ -324,13 +325,13 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const referenceHandleAttr = nodeContext.attributesMap["&handle"]
                 const referenceHandleExp = getParsedExpression(referenceHandleAttr)
                 if (referenceHandleExp) {
-                    writer.write(`${LSC.UTIL}.validateHandleReceiver(${node.componentTag}, `)
+                    writer.write(`${LSU}.validateHandleReceiver(${node.componentTag}, `)
                     writeParsedExpression(writer, referenceHandleExp).write(");").wrapLine()
                 }
                 if (node.rawTag !== node.tag || !getParsedExpression(node)) {
                     writer.write(ANY_VALUE)
                 } else {
-                    writer.write(`${LSC.UTIL}.confirmComponent(`)
+                    writer.write(`${LSU}.confirmComponent(`)
                     writer.write(node.componentTag, startTagNameRange).write(")")
                 }
                 if (node.typeArgument) {
@@ -440,7 +441,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     event.name.loc.start.index,
                     event.name.loc.start.index + eventInfo.eventName.length
                 ]
-                const validatorCall = `${LSC.UTIL}.validateEventHandler("${baseName}", `
+                const validatorCall = `${LSU}.validateEventHandler("${baseName}", `
 
                 if (isSpread || isSlot) {
                     writer.wrapLine()
@@ -556,7 +557,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 const writeValue = (vname?: string, vparm?: string, ending = "") => {
                     if ((writer.wrapLine(), vname)) {
-                        writer.write(`${LSC.UTIL}.validate${vname}(`)
+                        writer.write(`${LSU}.validate${vname}(`)
 
                         if (vparm) {
                             writer.write(vparm + ", ")
