@@ -103,7 +103,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
             }
 
             // 记录监视器便捷注册方法的调用位置
-            // Record the call locations of intrinsic watcher
+            // Record the call locations of built-in watcher registration methods
             if (intrinsicWatchExpMethodsRE.test(callee.text)) {
                 analyzeResult.script.watchExpCalls.push(node)
                 return
@@ -373,7 +373,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
                         }
 
                         // 添加 alias 内建方法参数并去除路径表达式前缀下划线
-                        // Add the argument of the alias intrinsic method and
+                        // Add the argument of the alias built-in method and
                         // remove the underscore prefix from the path expression.
                         if (aliasExpression) {
                             aliasExpression = firstArg.getText() + aliasExpression.slice(1)
@@ -637,8 +637,8 @@ function checkTopLevelIdentifier(id: ts.Identifier, imported = false) {
     }
 }
 
-// 检查编译器内置方法的使用是否合法
-// Validate the usage of compiler intrinsic methods.
+// 检查内建方法的使用是否合法
+// Validate the usage of built-in methods.
 function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>): void {
     const intrinsicName = node.text
     const parent = getStriptTypeOperationsParent(node)!

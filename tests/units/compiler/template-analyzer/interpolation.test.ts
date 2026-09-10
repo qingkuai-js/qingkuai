@@ -14,12 +14,12 @@ function analyzeTemplateOnly(source: string) {
     return nodes
 }
 
-test("Compiler intrinsic method cannot be used in template expressions", () => {
+test("Built-in methods cannot be used in template expressions", () => {
     analyzeTemplateAndMatchMessages(`<div>{raw(1)}</div>`, [
         {
             type: "error",
             range: [6, 9],
-            value: `The compiler intrinsic method "raw" cannot be used in template.`
+            value: `The built-in method "raw" cannot be used in template.`
         }
     ])
 })

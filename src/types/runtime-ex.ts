@@ -53,7 +53,7 @@ export type ComponentShape = {
 
 /**
  * Manually declares a component shape, producing the component type that
- * compiled `.qk` components carry. For wrapper contracts, component-typed
+ * compiled component files carry. For wrapper contracts, component-typed
  * module parameters, and type-level stubs.
  *
  * The shape has five optional members. Omitted members default to

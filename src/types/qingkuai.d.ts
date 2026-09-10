@@ -589,7 +589,7 @@ export declare const defaults: unknown
  *   the parent value is unaffected.
  * - Descendants read the nearest value along the prototype chain.
  *
- * This is a compiler intrinsic available inside `.qk` component scripts. The
+ * This is a built-in method available inside component files. The
  * compiler binds it to the current component instance.
  *
  * To store a reactive value, pass a **getter**. The getter is stored
@@ -620,7 +620,7 @@ export declare const setContext: unknown
 /**
  * Writes a reactive getter into the current component's contexts layer.
  *
- * Unlike `setContext`, this intrinsic expects a getter function. The
+ * Unlike `setContext`, this built-in method expects a getter function. The
  * compiler binds the call to the current component instance, and runtime
  * wraps the getter so descendants can read `contexts.key` directly while
  * staying reactive.
@@ -632,7 +632,7 @@ export declare const setContext: unknown
  *   the parent value is unaffected.
  * - Descendants read the nearest value along the prototype chain.
  *
- * This intrinsic must be called as a standalone expression.
+ * This built-in method must be called as a standalone expression.
  *
  * Examples:
  * ```ts
@@ -666,7 +666,7 @@ export declare const setContextGetter: unknown
  *   the parent value is unaffected.
  * - Descendants read the nearest value along the prototype chain.
  *
- * This is a compiler intrinsic available inside `.qk` component scripts. The
+ * This is a built-in method available inside component files. The
  * compiler binds it to the current component instance and wraps the value so
  * that reading the context yields the live reactive value.
  *

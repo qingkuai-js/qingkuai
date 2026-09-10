@@ -207,7 +207,7 @@ describe("Whether invalid template structure will cause parsing error", () => {
                 {
                     type: "error",
                     range: [0, 5],
-                    value: "The <html> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file."
+                    value: "The <html> tag cannot be used in component files, as it cannot be embedded inside <body>, however you can define it in the entry HTML file."
                 }
             ]
         )

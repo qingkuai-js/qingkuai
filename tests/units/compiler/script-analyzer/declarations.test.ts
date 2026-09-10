@@ -540,12 +540,12 @@ test("Explicitly marking a const as reactive errors when allowConstReactive is f
         {
             type: "error",
             range: [6, 22],
-            value: `Marking a \`const\` declaration with the "reactive" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
+            value: `Marking a \`const\` declaration with the "reactive" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
         },
         {
             type: "error",
             range: [29, 44],
-            value: `Marking a \`const\` declaration with the "shallow" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
+            value: `Marking a \`const\` declaration with the "shallow" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
         }
     ])
 })

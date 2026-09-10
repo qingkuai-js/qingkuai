@@ -48,13 +48,13 @@ export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string)
         case "postWatchExp":
         case "syncWatchExp":
         case "setContextExp": {
-            return `The compiler intrinsic "${name}" can only be used as a function call.`
+            return `The built-in method "${name}" can only be used as a function call.`
         }
         case "defaults": {
-            return `The compiler intrinsic "${name}" must be a function call at the top-level scope.`
+            return `The built-in method "${name}" must be a function call at the top-level scope.`
         }
     }
-    return `The compiler intrinsic "${name}" must be called at top-level scope to mark the variable initializer.`
+    return `The built-in method "${name}" must be called at top-level scope to mark the variable initializer.`
 })
 
 export const InvalidReferenceAttribute = withLocation(
@@ -191,7 +191,7 @@ export const InvalidKeyDirectivePlacement = withLocation(1043, () => {
 })
 
 export const InvalidIntrinsicMethodPlacement = withLocation(1061, (name: string) => {
-    return `The compiler intrinsic method "${name}" cannot be used in template.`
+    return `The built-in method "${name}" cannot be used in template.`
 })
 
 export const InvalidValueEnclosureForStaticAttribute = withLocation(1006, () => {
@@ -207,7 +207,7 @@ export const NoNameForInterpolatedAttribute = withLocation(1005, (char: string) 
 })
 
 export const ShadowCompilerIntrinsicAtTopLevel = withLocation(1020, (name: string) => {
-    return `Compiler intrinsic identifier "${name}" cannot be shadowed at top-level scope.`
+    return `Built-in identifier "${name}" cannot be shadowed at top-level scope.`
 })
 
 export const InvalidAliasDestructuringDeclaration = withLocation(1025, (kind: string) => {
@@ -235,7 +235,7 @@ export const EmbeddedStyleTagWithSrcCanHaveNoContent = withLocation(1067, (tag: 
 })
 
 export const InvalidSpreadElementArgForIntrinsic = withLocation(1059, (intrinsic: string) => {
-    return `The intrinsic method "${intrinsic}" does not support spread element as its argument.`
+    return `The built-in method "${intrinsic}" does not support spread element as its argument.`
 })
 
 export const InvalidSlotDirectivePlacement = withLocation(1036, () => {
@@ -247,7 +247,7 @@ export const InvalidSlotName = withLocation(1038, () => {
 })
 
 export const CannotAliasIdentifier = withLocation(1053, () => {
-    return `The "alias" intrinsic cannot be used to create an alias for a standalone identifier.`
+    return `The "alias" built-in method cannot be used to create an alias for a standalone identifier.`
 })
 
 export const EmbeddedLangNotInTopLevel = withLocation(1010, (tag: string) => {
@@ -275,15 +275,15 @@ export const ConflictingReactivityModes = withLocation(1062, (tag: string) => {
 })
 
 export const InvalidParameterForAliasIntrinsic = withLocation(1024, () => {
-    return `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+    return `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
 })
 
 export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrinsic: string) => {
-    return `The compiler intrinsic "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
+    return `The built-in method "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })
 
 export const DuplicateDefaultsCall = withLocation(1071, () => {
-    return `The compiler intrinsic method "defaults" can only be called once in the embedded script block.`
+    return `The built-in method "defaults" can only be called once in the embedded script block.`
 })
 
 export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: string) => {
@@ -322,11 +322,11 @@ export const DuplicateSlotAssignment = withLocation(1051, (component: string, na
 })
 
 export const ConstReactiveDisallowedByOption = withLocation(1070, (intrinsic: string) => {
-    return `Marking a \`const\` declaration with the "${intrinsic}" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
+    return `Marking a \`const\` declaration with the "${intrinsic}" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
 })
 
 export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
-    return `The <${tag}> tag cannot be used in components file, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
+    return `The <${tag}> tag cannot be used in component files, as it cannot be embedded inside <body>, however you can define it in the entry HTML file.`
 })
 
 export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
@@ -334,7 +334,7 @@ export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
 })
 
 export const AmbiguousReactiveMarking = withLocation(1023, (name: string) => {
-    return `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("${name}") method is ambiguous.`
+    return `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking built-in method("${name}") is ambiguous.`
 })
 
 export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
