@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     TemplateNode,
     CompileMessage,
@@ -104,7 +106,7 @@ export class CompileIntermediateResult {
         public messages: CompileMessage[],
         public templateNodes: TemplateNode[],
         public positions: ASTPositionWithFlag[],
-        public parseDiagnostics: ts.Diagnostic[],
+        public parseDiagnostics: TS.Diagnostic[],
         public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],
@@ -146,7 +148,7 @@ function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
             return "raw (template unused)"
         }
         case "raw": {
-            const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+            const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
             const intrinsicName = analyzeResult.script.declaratorToIntrinsic
                 .get(declarator)
                 ?.getText()

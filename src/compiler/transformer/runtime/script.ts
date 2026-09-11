@@ -1,3 +1,4 @@
+import type TS from "typescript"
 import type { CodeEditor } from "../editor"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
 
@@ -43,12 +44,12 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
     // Used to record VariableDeclarators that have already been processed.
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
-    const processedItems = new Set<ts.VariableDeclaration | ts.EnumDeclaration>()
+    const processedItems = new Set<TS.VariableDeclaration | TS.EnumDeclaration>()
 
     // 调试模式下衍生响应式值标识符在编译后不能是常量，因为目标被修改后需要通过 setter 同步修原始始标识符
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
     // because when the target is modified, the original identifier needs to be synchronized via a setter.
-    const convertToLetKeywordDecs = new Map<ts.VariableDeclaration, ts.VariableDeclarationList>()
+    const convertToLetKeywordDecs = new Map<TS.VariableDeclaration, TS.VariableDeclarationList>()
     if (debugMode) {
         traverseObject(topLevelIdentifiers, (_, value) => {
             const declaration = value.nodeInfos[0].declaration
@@ -57,7 +58,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 ts.isVariableDeclarationList(declaration) &&
                 getVariableDeclareKeyword(declaration) === "const"
             ) {
-                const declarator = value.nodeInfos[0].declarator as ts.VariableDeclaration
+                const declarator = value.nodeInfos[0].declarator as TS.VariableDeclaration
                 convertToLetKeywordDecs.set(declarator, declaration)
             }
         })
@@ -173,7 +174,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
     function transformDerivedDeclaration(name: string, info: TopLevelIdentifierInfo) {
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
         const intrinsicInfo = getIntrinsicInfo(declarator)!
         const byExpression = intrinsicInfo.id.text === "derivedExp"
         if (!destructuringIdentifierNames) {
@@ -239,9 +240,9 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function transformAliasDeclaration(_: string, info: TopLevelIdentifierInfo) {
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const { declarations } = info.nodeInfos[0].declaration as ts.VariableDeclarationList
+        const { declarations } = info.nodeInfos[0].declaration as TS.VariableDeclarationList
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
         const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
 
@@ -249,7 +250,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         // Remove any trailing comma from the VariableDeclarator.
         if (!debugMode) {
             if (declarations.length !== 1) {
-                let declaratorToRemoveEndComma: ts.VariableDeclaration
+                let declaratorToRemoveEndComma: TS.VariableDeclaration
                 const declaratorIndex = declarations.indexOf(declarator)
                 if (declaratorIndex !== declarations.length - 1) {
                     declaratorToRemoveEndComma = declarator
@@ -348,8 +349,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             const isFunctionDeclaration = ts.isFunctionDeclaration(firstDeclaration)
             if (!isFunctionDeclaration) {
                 for (const nodeInfo of info.nodeInfos) {
-                    const declarator = nodeInfo.declarator as ts.VariableDeclaration
-                    const declaration = nodeInfo.declaration as ts.VariableDeclarationList
+                    const declarator = nodeInfo.declarator as TS.VariableDeclaration
+                    const declaration = nodeInfo.declaration as TS.VariableDeclarationList
                     if (processedItems.has(declarator)) {
                         continue
                     }
@@ -407,8 +408,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
 
         // VariableDeclaration(non-var)
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
-        const declaration = info.nodeInfos[0].declaration as ts.VariableDeclarationList
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+        const declaration = info.nodeInfos[0].declaration as TS.VariableDeclarationList
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
         const isConst = getVariableDeclareKeyword(declaration) !== "let"
         if (!declarator.initializer) {
@@ -520,7 +521,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function replaceIntrinsicCall(
-        declarator: ts.VariableDeclaration,
+        declarator: TS.VariableDeclaration,
         newName: string,
         insertArg?: (hasArg: boolean) => string | undefined
     ) {
@@ -549,7 +550,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
     }
 
-    function replaceCommaWithSemi(declarator: ts.VariableDeclaration) {
+    function replaceCommaWithSemi(declarator: TS.VariableDeclaration) {
         const declaratorEnd = declarator.getEnd()
         const commaIndex = findEndCommaIndexOfVariableDeclarator(declarator)
         if (commaIndex !== -1) {
@@ -571,9 +572,9 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         return (hoistWriter.write(`const ${setterId} = ${generateSetterCode(target)}\n`), setterId)
     }
 
-    function transformNonDestructuringDeclaratorId(declarator: ts.VariableDeclaration) {
+    function transformNonDestructuringDeclaratorId(declarator: TS.VariableDeclaration) {
         if (debugMode) {
-            const idNode = declarator.name as ts.Identifier
+            const idNode = declarator.name as TS.Identifier
             editor.replace(
                 idNode.getStart(),
                 idNode.getEnd(),
@@ -584,7 +585,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function transformDestructuringEqualSign(
-        declarator: ts.VariableDeclaration,
+        declarator: TS.VariableDeclaration,
         returns: string[]
     ) {
         const [matchedIndex, matchedLen] = findOutOfComment(
@@ -600,7 +601,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 }
 
-function shouldNodeWrapAsGetter(node: ts.Node) {
+function shouldNodeWrapAsGetter(node: TS.Node) {
     switch (getStriptTypeOperationsNode(node).kind) {
         case ts.SyntaxKind.ArrowFunction:
         case ts.SyntaxKind.FunctionExpression: {
@@ -627,7 +628,7 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
             return true
         }
         case ts.SyntaxKind.VariableDeclarationList: {
-            const declarationList = firstDeclaration as ts.VariableDeclarationList
+            const declarationList = firstDeclaration as TS.VariableDeclarationList
             switch (getVariableDeclareKeyword(declarationList)) {
                 case "var": {
                     return true
@@ -643,16 +644,16 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
     }
 }
 
-function getIntrinsicInfo(declarator: ts.VariableDeclaration) {
+function getIntrinsicInfo(declarator: TS.VariableDeclaration) {
     const id = analyzeResult.script.declaratorToIntrinsic.get(declarator)!
     if (id) {
         return {
             id,
-            call: getStriptTypeOperationsParent(id) as ts.CallExpression
+            call: getStriptTypeOperationsParent(id) as TS.CallExpression
         }
     }
 }
 
-function findEndCommaIndexOfVariableDeclarator(declarator: ts.VariableDeclaration) {
+function findEndCommaIndexOfVariableDeclarator(declarator: TS.VariableDeclaration) {
     return findOutOfComment(inputDescriptor.script.code.slice(declarator.getEnd()), ",")
 }

@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type { Range } from "#type-declarations/compiler"
 import type { FindNodesPredicate } from "#type-declarations/ts-ast"
 
@@ -8,12 +10,12 @@ import { PositionFlag } from "../enums"
 import { markPositionFlag } from "../../util/compiler/position"
 import { isLastNodeOfParenthesis, isTypeOperation } from "./assert"
 
-export function getNodeRange(node: ts.Node): Range {
+export function getNodeRange(node: TS.Node): Range {
     return [node.getStart(), node.getEnd()]
 }
 
-export function findFirstChildUntil<T extends ts.Node>(
-    sourceFile: ts.SourceFile,
+export function findFirstChildUntil<T extends TS.Node>(
+    sourceFile: TS.SourceFile,
     predicate: FindNodesPredicate<T>
 ): T | null {
     let result: T | null = null
@@ -25,8 +27,8 @@ export function findFirstChildUntil<T extends ts.Node>(
     return result
 }
 
-export function findFirstAncestorUntil<T extends ts.Node>(
-    node: ts.Node,
+export function findFirstAncestorUntil<T extends TS.Node>(
+    node: TS.Node,
     predicate: FindNodesPredicate<T>
 ): T | null {
     for (let current = node.parent; current; current = current.parent) {
@@ -37,7 +39,7 @@ export function findFirstAncestorUntil<T extends ts.Node>(
     return null
 }
 
-export function getVariableDeclareKeyword(node: ts.VariableDeclarationList) {
+export function getVariableDeclareKeyword(node: TS.VariableDeclarationList) {
     if (node.flags & ts.NodeFlags.Let) {
         return "let"
     }
@@ -53,7 +55,7 @@ export function getVariableDeclareKeyword(node: ts.VariableDeclarationList) {
     return "var"
 }
 
-export function markNeedSourcemap(node: ts.Node, startSourceIndex: number) {
+export function markNeedSourcemap(node: TS.Node, startSourceIndex: number) {
     markPositionFlag(PositionFlag.SourcemapEnd, startSourceIndex + node.getEnd())
     markPositionFlag(PositionFlag.SourcemapStart, startSourceIndex + node.getStart())
 }
@@ -72,7 +74,7 @@ export function markNeedSourcemap(node: ts.Node, startSourceIndex: number) {
  * @returns 剥离类型操作后的父节点，如果没有父节点则返回 null\
  * The parent node after stripping type operations, or null if there is no parent node.
  */
-export function getStriptTypeOperationsParent<T extends ts.Node>(
+export function getStriptTypeOperationsParent<T extends TS.Node>(
     node: T,
     omitParenthesis = true
 ): T["parent"] | null {
@@ -90,7 +92,7 @@ export function getStriptTypeOperationsParent<T extends ts.Node>(
 
 // 获取括号表达式内最末尾的节点（即最后一个被括号包裹的节点）
 // Get the last node inside a parenthesized expression (i.e., the last node wrapped by parentheses).
-export function getLastNodeOfParenthesis(node: ts.Node): ts.Node {
+export function getLastNodeOfParenthesis(node: TS.Node): TS.Node {
     if (!ts.isParenthesizedExpression(node)) {
         return node
     }
@@ -108,7 +110,7 @@ export function getLastNodeOfParenthesis(node: ts.Node): ts.Node {
 
 // 获取剥离类型操作后的节点
 // Get the node after stripping type operations.
-export function getStriptTypeOperationsNode(node: ts.Node, omitParenthesis = true): ts.Node {
+export function getStriptTypeOperationsNode(node: TS.Node, omitParenthesis = true): TS.Node {
     if (omitParenthesis && ts.isParenthesizedExpression(node)) {
         return getStriptTypeOperationsNode(getLastNodeOfParenthesis(node), omitParenthesis)
     }

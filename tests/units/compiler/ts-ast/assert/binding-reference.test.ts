@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect, test } from "vitest"
@@ -5,9 +7,9 @@ import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk"
 import { parseTsScript } from "../../../../../src/util/testing/ts-ast"
 import { isBindingReference } from "../../../../../src/compiler/ts-ast/assert"
 
-function collectIdentifiers(source: string): Map<string, ts.Identifier[]> {
+function collectIdentifiers(source: string): Map<string, TS.Identifier[]> {
     const sourceFile = parseTsScript(source)
-    const map = new Map<string, ts.Identifier[]>()
+    const map = new Map<string, TS.Identifier[]>()
     walkTsNode(sourceFile, node => {
         if (ts.isIdentifier(node)) {
             const name = node.text

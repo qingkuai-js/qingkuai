@@ -1,11 +1,11 @@
-import ts from "typescript"
+import type TS from "typescript"
 
 import { expect, test } from "vitest"
 import { inputDescriptor } from "../../../../../src/compiler/state"
 import { parseExpression } from "../../../../../src/compiler/parser/script"
 import { isUpdateExpression } from "../../../../../src/compiler/ts-ast/assert"
 
-function expectIsUpdateExpression<T extends ts.Node>(source: string) {
+function expectIsUpdateExpression<T extends TS.Node>(source: string) {
     const expression = parseExpression(source, 0)!
     inputDescriptor.script.isTS = true
     return expect(isUpdateExpression(expression), `source: "${source}"`)

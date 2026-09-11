@@ -1,8 +1,7 @@
+import type TS from "typescript"
 import type { CodeEditor } from "./editor"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 import type { ASTLocation, ASTPosition, Range, TemplateNode } from "#type-declarations/compiler"
-
-import ts from "typescript"
 
 import {
     getPosByIndex,
@@ -102,7 +101,7 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return (this.writeCharacter("", sourceLoc.end.index), this)
     }
 
-    writeScriptNode(node: ts.Node, dedent = true) {
+    writeScriptNode(node: TS.Node, dedent = true) {
         if (node) {
             const range = getNodeRange(node)
             const str = inputDescriptor.script.code.slice(...range)
@@ -217,7 +216,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
         }
     }
 
-    writeScriptNode(node: ts.Node) {
+    writeScriptNode(node: TS.Node) {
         const startSourceIndex = inputDescriptor.script.loc.start.index
         return this.write(
             inputDescriptor.source.slice(

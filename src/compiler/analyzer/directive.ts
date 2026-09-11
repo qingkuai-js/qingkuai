@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     TemplateNode,
     ParsedPattern,
@@ -209,7 +211,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             }
 
             if (directive.valueEnclosure !== "none") {
-                const patterns: ts.ArrayBindingElement[] = []
+                const patterns: TS.ArrayBindingElement[] = []
                 const parseResult = parseContextPattern(rawValue, valueStartSourceIndex)
 
                 const reportInvalidPattern = (start: number, end: number) => {
@@ -334,7 +336,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
     function recordContextPatterns(
         parsedDirective: ParsedDirective,
-        patternNodes: ts.ArrayBindingElement[]
+        patternNodes: TS.ArrayBindingElement[]
     ) {
         for (const patternNode of patternNodes) {
             const validIdentifiers = new Set<string>()

@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     TsNodeWithContext,
     TopLevelDeclaratorNode,
@@ -79,18 +81,18 @@ export function analyzeScript() {
     inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
 }
 
-function analyzeSourceFile(sourceFile: ts.SourceFile): void {
+function analyzeSourceFile(sourceFile: TS.SourceFile): void {
     walkTsNodeWithContext(sourceFile, node => {
         markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
         collectReusedStringReference(node, analyzeResult.script.reusedStringReferences)
 
         if (ts.isIdentifier(node)) {
-            analyzeIdentifier(node as TsNodeWithContext<ts.Identifier>)
+            analyzeIdentifier(node as TsNodeWithContext<TS.Identifier>)
             return
         }
 
         if (ts.isVariableDeclarationList(node)) {
-            analyzeVariableDeclarationList(node as TsNodeWithContext<ts.VariableDeclarationList>)
+            analyzeVariableDeclarationList(node as TsNodeWithContext<TS.VariableDeclarationList>)
             return
         }
 
@@ -128,7 +130,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
                 }
 
                 case ts.SyntaxKind.EnumDeclaration: {
-                    const enumDeclaration = node as TsNodeWithContext<ts.EnumDeclaration>
+                    const enumDeclaration = node as TsNodeWithContext<TS.EnumDeclaration>
                     updateTopLevelIdentifiers(
                         enumDeclaration.name,
                         false,
@@ -141,7 +143,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
                 }
 
                 case ts.SyntaxKind.ClassDeclaration: {
-                    const classDeclaration = node as TsNodeWithContext<ts.ClassDeclaration>
+                    const classDeclaration = node as TsNodeWithContext<TS.ClassDeclaration>
                     if (classDeclaration.name) {
                         updateTopLevelIdentifiers(
                             classDeclaration.name,
@@ -156,7 +158,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
                 }
 
                 case ts.SyntaxKind.FunctionDeclaration: {
-                    const functionDeclaration = node as TsNodeWithContext<ts.FunctionDeclaration>
+                    const functionDeclaration = node as TsNodeWithContext<TS.FunctionDeclaration>
                     if (functionDeclaration.name) {
                         updateTopLevelIdentifiers(
                             functionDeclaration.name,
@@ -171,7 +173,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
                 }
 
                 case ts.SyntaxKind.ImportDeclaration: {
-                    const importDeclaration = node as TsNodeWithContext<ts.ImportDeclaration>
+                    const importDeclaration = node as TsNodeWithContext<TS.ImportDeclaration>
                     const phaseModifier = importDeclaration.importClause?.phaseModifier
                     analyzeResult.script.importDeclarations.push(importDeclaration)
 
@@ -212,7 +214,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
 
                 case ts.SyntaxKind.ImportEqualsDeclaration: {
                     const importEqualsDeclaration =
-                        node as TsNodeWithContext<ts.ImportEqualsDeclaration>
+                        node as TsNodeWithContext<TS.ImportEqualsDeclaration>
                     checkTopLevelIdentifier(importEqualsDeclaration.name, true)
                     analyzeResult.script.importDeclarations.push(importEqualsDeclaration)
                     return
@@ -222,7 +224,7 @@ function analyzeSourceFile(sourceFile: ts.SourceFile): void {
     })
 }
 
-function analyzeIdentifier(node: TsNodeWithContext<ts.Identifier>): void {
+function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
     analyzeResult.script.fullIdentifiers.add(node.text)
 
     if (node.text.startsWith(PRESERVED_IDPREFIX)) {
@@ -277,7 +279,7 @@ function analyzeIdentifier(node: TsNodeWithContext<ts.Identifier>): void {
     }
 }
 
-function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDeclarationList>) {
+function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDeclarationList>) {
     const declareKeyword = getVariableDeclareKeyword(node)
     if (declareKeyword === "var" ? !isInHoistableTopLevel(node) : !node.inTopLevel) {
         return
@@ -432,8 +434,8 @@ function inferShallowMutableStatus(): IdentifierStatus {
 // 推断顶级作用域标识符的响应式状态
 // Infer the reactive status of top-level scope identifiers.
 function inferStatusByVariableDeclaration(
-    declaration: ts.VariableDeclaration,
-    declarationList: ts.VariableDeclarationList
+    declaration: TS.VariableDeclaration,
+    declarationList: TS.VariableDeclarationList
 ): IdentifierStatus {
     const declareKeyword = getVariableDeclareKeyword(declarationList)
     if (declareKeyword === "using") {
@@ -530,7 +532,7 @@ function inferStatusByVariableDeclaration(
 // 更新顶级作用域标识符信息
 // Update top-level scope identifier information.
 function updateTopLevelIdentifiers(
-    id: ts.Identifier,
+    id: TS.Identifier,
     hoist: boolean,
     implicit: boolean,
     status: IdentifierStatus,
@@ -592,7 +594,7 @@ function updateTopLevelIdentifiers(
 
 // 检查顶级作用域标识符格式
 // Validate top-level scope identifier formatting.
-function checkTopLevelIdentifier(id: ts.Identifier, imported = false) {
+function checkTopLevelIdentifier(id: TS.Identifier, imported = false) {
     const sourceLoc = getScriptLocByNode(id)
     if (imported) {
         analyzeResult.script.importIdentifiers.add(id.text)
@@ -611,7 +613,7 @@ function checkTopLevelIdentifier(id: ts.Identifier, imported = false) {
 
 // 检查内建方法的使用是否合法
 // Validate the usage of built-in methods.
-function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>): void {
+function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): void {
     const intrinsicName = node.text
     const parent = getStriptTypeOperationsParent(node)!
 
@@ -689,7 +691,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<ts.Identifier>): v
                 CannotAliasIdentifier(intrinsicCallLoc)
             }
 
-            const declarationList = grandParentNode.parent as ts.VariableDeclarationList
+            const declarationList = grandParentNode.parent as TS.VariableDeclarationList
             if (getVariableDeclareKeyword(declarationList) === "using") {
                 IntrinsicNotAllowedInUsingDeclaration(
                     getScriptLocByNode(grandParentNode),

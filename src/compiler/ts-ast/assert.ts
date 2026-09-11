@@ -1,3 +1,4 @@
+import type TS from "typescript"
 import type { NamedNode, ScopeBoundary } from "#type-declarations/ts-ast"
 
 import ts from "typescript"
@@ -7,7 +8,7 @@ import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./su
 
 // 判断节点是否为类型操作，如 as、<> 等
 // Determine whether the node is a type operation, e.g. `as`, `<>`, etc.
-export function isTypeOperation(node: ts.Node) {
+export function isTypeOperation(node: TS.Node) {
     return (
         ts.isAsExpression(node) ||
         ts.isNonNullExpression(node) ||
@@ -16,11 +17,11 @@ export function isTypeOperation(node: ts.Node) {
     )
 }
 
-export function hasParseError(sourceFile: ts.SourceFile) {
+export function hasParseError(sourceFile: TS.SourceFile) {
     return any(sourceFile).parseDiagnostics?.length > 0
 }
 
-export function isLiteral(node: ts.Node) {
+export function isLiteral(node: TS.Node) {
     switch (node.kind) {
         case ts.SyntaxKind.TrueKeyword:
         case ts.SyntaxKind.FalseKeyword:
@@ -34,10 +35,10 @@ export function isLiteral(node: ts.Node) {
             return true
         }
         case ts.SyntaxKind.Identifier: {
-            return (node as ts.Identifier).text === "undefined"
+            return (node as TS.Identifier).text === "undefined"
         }
         case ts.SyntaxKind.BinaryExpression: {
-            const binaryExpression = node as ts.BinaryExpression
+            const binaryExpression = node as TS.BinaryExpression
             if (binaryExpression.operatorToken.kind === ts.SyntaxKind.CommaToken) {
                 return isLiteral(binaryExpression.right)
             }
@@ -46,11 +47,11 @@ export function isLiteral(node: ts.Node) {
     return false
 }
 
-export function isValidContextPattern(node: ts.ArrayBindingElement) {
+export function isValidContextPattern(node: TS.ArrayBindingElement) {
     return ts.isOmittedExpression(node) || !node.dotDotDotToken
 }
 
-export function isParameterProperty(param: ts.ParameterDeclaration) {
+export function isParameterProperty(param: TS.ParameterDeclaration) {
     return !!param.modifiers?.some(mod => {
         return (
             mod.kind === ts.SyntaxKind.PublicKeyword ||
@@ -61,11 +62,11 @@ export function isParameterProperty(param: ts.ParameterDeclaration) {
     })
 }
 
-export function isFunctionLiteral(node: ts.Node) {
+export function isFunctionLiteral(node: TS.Node) {
     return ts.isFunctionExpression(node) || ts.isArrowFunction(node)
 }
 
-export function isArrayBindingNameIdentifier(node: ts.ArrayBindingElement) {
+export function isArrayBindingNameIdentifier(node: TS.ArrayBindingElement) {
     if (ts.isOmittedExpression(node) || node.dotDotDotToken) {
         return false
     }
@@ -74,7 +75,7 @@ export function isArrayBindingNameIdentifier(node: ts.ArrayBindingElement) {
 
 // 判断节点是否为括号表达式的最后一个节点
 // Determine whether the node is the last node of a parenthesized expression.
-export function isLastNodeOfParenthesis(node: ts.Node) {
+export function isLastNodeOfParenthesis(node: TS.Node) {
     if (!node.parent) {
         return false
     }
@@ -93,8 +94,8 @@ export function isLastNodeOfParenthesis(node: ts.Node) {
 // 判断节点是否为更新表达式（++ 或 --）
 // Determine whether the node is an update expression (++, --).
 export function isUpdateExpression(
-    node: ts.Node
-): node is ts.PrefixUnaryExpression | ts.PostfixUnaryExpression {
+    node: TS.Node
+): node is TS.PrefixUnaryExpression | TS.PostfixUnaryExpression {
     node = getStriptTypeOperationsNode(node)!
 
     if (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) {
@@ -110,7 +111,7 @@ export function isUpdateExpression(
 
 // 判断节点是否为赋值表达式
 // Determine whether the node is an assignment expression.
-export function isAssignmentExpression(node: ts.Node): node is ts.BinaryExpression {
+export function isAssignmentExpression(node: TS.Node): node is TS.BinaryExpression {
     node = getStriptTypeOperationsNode(node)!
 
     if (!ts.isBinaryExpression(node)) {
@@ -143,8 +144,8 @@ export function isAssignmentExpression(node: ts.Node): node is ts.BinaryExpressi
 
 // 判断标识符节点是否为赋值目标
 // Determine whether the identifier node is an assignment target.
-export function isIdentifierAssignmentTarget(identifier: ts.Identifier) {
-    for (let current: ts.Node = identifier; current; ) {
+export function isIdentifierAssignmentTarget(identifier: TS.Identifier) {
+    for (let current: TS.Node = identifier; current; ) {
         const parent = getStriptTypeOperationsParent(current)
         if (!parent) {
             return false
@@ -163,7 +164,7 @@ export function isIdentifierAssignmentTarget(identifier: ts.Identifier) {
                 break
             }
             case ts.SyntaxKind.PropertyAssignment: {
-                if (current === (parent as ts.PropertyAssignment).initializer) {
+                if (current === (parent as TS.PropertyAssignment).initializer) {
                     break
                 }
                 return false
@@ -181,7 +182,7 @@ export function isIdentifierAssignmentTarget(identifier: ts.Identifier) {
 
 // 判断是否为值标识符引用
 // Determine whether this is a value identifier reference.
-export function isBindingReference(node: ts.Node) {
+export function isBindingReference(node: TS.Node) {
     if (!ts.isIdentifier(node)) {
         return false
     }
@@ -231,7 +232,7 @@ export function isBindingReference(node: ts.Node) {
         }
 
         case ts.SyntaxKind.BindingElement: {
-            const bindingElement = node.parent as ts.BindingElement
+            const bindingElement = node.parent as TS.BindingElement
             return node !== bindingElement.propertyName && node !== bindingElement.name
         }
     }
@@ -240,7 +241,7 @@ export function isBindingReference(node: ts.Node) {
 
 // 判断节点是否为作用域边界
 // Determine whether the node is a scope boundary.
-export function isScopeBoundary(node: ts.Node): node is ScopeBoundary {
+export function isScopeBoundary(node: TS.Node): node is ScopeBoundary {
     switch (node.kind) {
         case ts.SyntaxKind.Block:
         case ts.SyntaxKind.SourceFile:
@@ -254,11 +255,11 @@ export function isScopeBoundary(node: ts.Node): node is ScopeBoundary {
             const parentNode = node.parent
             switch (parentNode.kind) {
                 case ts.SyntaxKind.ArrowFunction: {
-                    const arrowFunction = parentNode as ts.ArrowFunction
+                    const arrowFunction = parentNode as TS.ArrowFunction
                     return node === arrowFunction.body
                 }
                 case ts.SyntaxKind.ForStatement: {
-                    const forStatement = parentNode as ts.ForStatement
+                    const forStatement = parentNode as TS.ForStatement
                     return (
                         node === forStatement.statement ||
                         node === forStatement.condition ||
@@ -267,7 +268,7 @@ export function isScopeBoundary(node: ts.Node): node is ScopeBoundary {
                 }
                 case ts.SyntaxKind.ForInStatement:
                 case ts.SyntaxKind.ForOfStatement: {
-                    const forInOrOfStatement = parentNode as ts.ForInStatement | ts.ForOfStatement
+                    const forInOrOfStatement = parentNode as TS.ForInStatement | TS.ForOfStatement
                     return node === forInOrOfStatement.statement
                 }
                 default: {
@@ -280,7 +281,7 @@ export function isScopeBoundary(node: ts.Node): node is ScopeBoundary {
 
 // 判断节点是否为不可提升作用域边界的上下文
 // Determine whether the node is within a non-hoistable scope boundary context.
-export function isNonHoistableScopeBoundary(node: ts.Node) {
+export function isNonHoistableScopeBoundary(node: TS.Node) {
     const parentNode = node.parent
     switch (node.kind) {
         case ts.SyntaxKind.SourceFile:
@@ -304,7 +305,7 @@ export function isNonHoistableScopeBoundary(node: ts.Node) {
     return ts.isArrowFunction(parentNode) && node === parentNode.body
 }
 
-export function isLeftValue(node: ts.Node): boolean {
+export function isLeftValue(node: TS.Node): boolean {
     if (ts.isSourceFile(node)) {
         return false
     }
@@ -319,7 +320,7 @@ export function isLeftValue(node: ts.Node): boolean {
     return false
 }
 
-export function isInlineEventHandler(node: ts.Node) {
+export function isInlineEventHandler(node: TS.Node) {
     switch (node.kind) {
         case ts.SyntaxKind.Identifier:
         case ts.SyntaxKind.ArrowFunction:
@@ -334,7 +335,7 @@ export function isInlineEventHandler(node: ts.Node) {
     }
 }
 
-export function isSimpleHandlerReference(node: ts.Node) {
+export function isSimpleHandlerReference(node: TS.Node) {
     switch (node.kind) {
         case ts.SyntaxKind.Identifier:
         case ts.SyntaxKind.PropertyAccessExpression:
@@ -347,16 +348,16 @@ export function isSimpleHandlerReference(node: ts.Node) {
     }
 }
 
-export function isPropertyEqual(a: ts.Node, b: ts.Node): boolean {
+export function isPropertyEqual(a: TS.Node, b: TS.Node): boolean {
     const [x, y] = [a, b].map(node => {
         switch ((node = getStriptTypeOperationsNode(node)!).kind) {
             case ts.SyntaxKind.Identifier: {
-                return (node as ts.Identifier).text
+                return (node as TS.Identifier).text
             }
             case ts.SyntaxKind.StringLiteral:
             case ts.SyntaxKind.NumericLiteral:
             case ts.SyntaxKind.NoSubstitutionTemplateLiteral: {
-                return String((node as ts.LiteralExpression).text)
+                return String((node as TS.LiteralExpression).text)
             }
             default: {
                 return null
@@ -366,7 +367,7 @@ export function isPropertyEqual(a: ts.Node, b: ts.Node): boolean {
     return x !== null && y !== null && x === y
 }
 
-export function isExpressionEqual(a: ts.Node, b: ts.Node): boolean {
+export function isExpressionEqual(a: TS.Node, b: TS.Node): boolean {
     ;[a, b] = [a, b].map(node => getStriptTypeOperationsNode(node)!)
 
     if (a.kind !== b.kind) {
@@ -395,6 +396,6 @@ export function isExpressionEqual(a: ts.Node, b: ts.Node): boolean {
     }
 }
 
-export function isMemberAccessExpression(node: ts.Node) {
+export function isMemberAccessExpression(node: TS.Node) {
     return ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)
 }

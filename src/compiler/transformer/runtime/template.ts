@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     TemplateNode,
     TemplateAttribute,
@@ -868,7 +870,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = slotDirective && getParsedExpression(slotDirective)
             const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
-            const slotName = expression ? (expression.node as ts.StringLiteral).text : "default"
+            const slotName = expression ? (expression.node as TS.StringLiteral).text : "default"
             insertTrailingComma()
             writeMetaKey(slotName, writer, true).write(`: (${anchorId}`)
 

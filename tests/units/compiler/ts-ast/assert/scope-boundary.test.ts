@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect, test } from "vitest"
@@ -29,7 +31,7 @@ test("ScopeBoundary: function block", () => {
             const value = 2
         }
     `)
-    const functionBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const functionBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isFunctionDeclaration(node.parent)
     })!
     expect(isScopeBoundary(functionBlock)).toBeTruthy()
@@ -85,7 +87,7 @@ test("NonHoistable: function block", () => {
             const value = 2
         }
     `)
-    const functionBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const functionBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isFunctionDeclaration(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(functionBlock)).toBeTruthy()
@@ -99,7 +101,7 @@ test("NonHoistable: class method block", () => {
             }
         }
     `)
-    const classMethodBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const classMethodBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isMethodDeclaration(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(classMethodBlock)).toBeTruthy()
@@ -113,7 +115,7 @@ test("NonHoistable: constructor block", () => {
             }
         }
     `)
-    const constructorBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const constructorBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isConstructorDeclaration(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(constructorBlock)).toBeTruthy()
@@ -128,7 +130,7 @@ test("NonHoistable: get accessor block", () => {
             }
         }
     `)
-    const getAccessorBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const getAccessorBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isGetAccessorDeclaration(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(getAccessorBlock)).toBeTruthy()
@@ -142,7 +144,7 @@ test("NonHoistable: set accessor block", () => {
             }
         }
     `)
-    const setAccessorBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const setAccessorBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isSetAccessorDeclaration(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(setAccessorBlock)).toBeTruthy()
@@ -154,7 +156,7 @@ test("NonHoistable: arrow function block body", () => {
             const nested = 7
         }
     `)
-    const arrowBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const arrowBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isArrowFunction(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(arrowBlock)).toBeTruthy()
@@ -174,7 +176,7 @@ test("NonHoistable: if block is false", () => {
             const value = 9
         }
     `)
-    const ifBlock = findFirstChildUntil(sourceFile, (node): node is ts.Block => {
+    const ifBlock = findFirstChildUntil(sourceFile, (node): node is TS.Block => {
         return ts.isBlock(node) && !!node.parent && ts.isIfStatement(node.parent)
     })!
     expect(isNonHoistableScopeBoundary(ifBlock)).toBeFalsy()

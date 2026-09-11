@@ -1,7 +1,6 @@
+import type TS from "typescript"
 import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
 import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler"
-
-import ts from "typescript"
 
 import { parseContextPattern } from "./script"
 import { inputDescriptor, messages } from "../state"
@@ -54,7 +53,7 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
 
         // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
         // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
-        const patterns: ts.ArrayBindingElement[] = []
+        const patterns: TS.ArrayBindingElement[] = []
         for (const element of pattern.elements) {
             if (isValidContextPattern(element)) {
                 patterns.push(element)

@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { analyzeResult } from "../state"
@@ -5,13 +7,13 @@ import { InvalidExportStatement } from "../message/error"
 import { walkBindingNameIdentifiers } from "../ts-ast/walk"
 import { getScriptLocByNode } from "../../util/compiler/position"
 
-export function analyzeExports(sourceFile: ts.SourceFile) {
+export function analyzeExports(sourceFile: TS.SourceFile) {
     for (const statement of sourceFile.statements) {
         switch (statement.kind) {
             // export = ...
             // export default ...
             case ts.SyntaxKind.ExportAssignment: {
-                const exportAssignment = statement as ts.ExportAssignment
+                const exportAssignment = statement as TS.ExportAssignment
                 const exportFormat = exportAssignment.isExportEquals
                     ? "Assignment export"
                     : "Default export"
@@ -21,7 +23,7 @@ export function analyzeExports(sourceFile: ts.SourceFile) {
             }
 
             case ts.SyntaxKind.ExportDeclaration: {
-                const exportDeclaration = statement as ts.ExportDeclaration
+                const exportDeclaration = statement as TS.ExportDeclaration
                 analyzeResult.script.exportStatements.push(exportDeclaration)
 
                 const moduleSpecifier = exportDeclaration.moduleSpecifier

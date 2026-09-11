@@ -1,5 +1,7 @@
-import ts from "typescript"
+import type TS from "typescript"
 import type { ParseDiatnosticDealtKind } from "#type-declarations/compiler"
+
+import ts from "typescript"
 
 import { walkTsNode } from "../ts-ast/walk"
 import { any } from "../../util/shared/sundry"
@@ -66,7 +68,7 @@ export function parseContextPattern(source: string, startSourceIndex: number) {
     return offsetStartAndEndGetter(firstDeclaration.name, -7)
 }
 
-function offsetStartAndEndGetter<T extends ts.Node>(root: T, offset: number): T {
+function offsetStartAndEndGetter<T extends TS.Node>(root: T, offset: number): T {
     walkTsNode(root, node => {
         const end = node.getEnd()
         const text = node.getText()
@@ -94,7 +96,7 @@ function createSourceFile(
     )
     if (hasParseError(sourceFile)) {
         let message = "Syntax error"
-        const diagnostics: ts.Diagnostic[] = any(sourceFile).parseDiagnostics
+        const diagnostics: TS.Diagnostic[] = any(sourceFile).parseDiagnostics
         if (isString(diagnostics[0].messageText)) {
             message = diagnostics[0].messageText
         } else {

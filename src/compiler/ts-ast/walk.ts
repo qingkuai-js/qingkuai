@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     NamedNode,
     ScopeBoundary,
@@ -31,7 +33,7 @@ export function walkAncestors(
     }
 }
 
-export function walkTsNode(node: ts.Node, callback: (node: ts.Node) => boolean | void) {
+export function walkTsNode(node: TS.Node, callback: (node: TS.Node) => boolean | void) {
     if (callback(node) === true) {
         return true
     }
@@ -42,7 +44,7 @@ export function walkTsNode(node: ts.Node, callback: (node: ts.Node) => boolean |
     }
 }
 
-export function walkTsNodeWithContext(node: ts.Node, callback: (node: TsNodeWithContext) => void) {
+export function walkTsNodeWithContext(node: TS.Node, callback: (node: TsNodeWithContext) => void) {
     callback(attchContextToNode(node))
     ts.forEachChild(node, child => {
         walkTsNodeWithContext(child, callback)
@@ -57,15 +59,15 @@ export function walkTsNodeWithContext(node: ts.Node, callback: (node: TsNodeWith
 // Note: When analyzing access paths of destructuring patterns using this method,
 // precise static access paths can only be obtained if the pattern does not use rest elements.
 export function walkBindingNameIdentifiers(
-    pattern: ts.BindingName,
-    callback: (id: ts.Identifier, path: string) => void
+    pattern: TS.BindingName,
+    callback: (id: TS.Identifier, path: string) => void
 ) {
     const result = {
         hasRestElement: false,
         specifiedDefaultValue: false
     }
 
-    ;(function extract(from: ts.BindingName, path: string): void | boolean {
+    ;(function extract(from: TS.BindingName, path: string): void | boolean {
         if (ts.isIdentifier(from)) {
             return callback(from, path)
         }
@@ -115,7 +117,7 @@ export function walkBindingNameIdentifiers(
     return result
 }
 
-function attchContextToNode(node: ts.Node) {
+function attchContextToNode(node: TS.Node) {
     let inTopLevel: boolean
     let scopeIdentifiers: Set<string> | undefined
 
@@ -153,12 +155,12 @@ function attchContextToNode(node: ts.Node) {
 // 记录上下文中含有的作用域标识符
 // Record the scope identifiers present in the context.
 function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
-    const patterns: ts.BindingName[] = []
-    const declarations: ts.VariableDeclaration[] = []
-    const parent = getStriptTypeOperationsParent(node, false)! as ts.Node
+    const patterns: TS.BindingName[] = []
+    const declarations: TS.VariableDeclaration[] = []
+    const parent = getStriptTypeOperationsParent(node, false)! as TS.Node
     const statements = "statements" in node ? node.statements : [node]
 
-    const extendScopeIdentifiers = (scope: TsNodeWithContext, id: ts.Identifier) => {
+    const extendScopeIdentifiers = (scope: TsNodeWithContext, id: TS.Identifier) => {
         if (
             intrinsicMethodsRE.test(id.text) ||
             intrinsicVariableRE.test(id.text) ||
@@ -170,7 +172,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
 
     switch (parent.kind) {
         case ts.SyntaxKind.CatchClause: {
-            const catchClause = parent as ts.CatchClause
+            const catchClause = parent as TS.CatchClause
             if (catchClause.variableDeclaration && catchClause.variableDeclaration.name) {
                 patterns.push(catchClause.variableDeclaration.name)
             }
@@ -201,7 +203,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
 
         default: {
             if ("parameters" in parent) {
-                for (const parameter of parent.parameters as ts.NodeArray<ts.ParameterDeclaration>) {
+                for (const parameter of parent.parameters as TS.NodeArray<TS.ParameterDeclaration>) {
                     if (ts.isConstructorDeclaration(parent) && isParameterProperty(parameter)) {
                         continue
                     }
@@ -218,7 +220,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
     for (const statement of statements) {
         switch (statement.kind) {
             case ts.SyntaxKind.VariableStatement: {
-                const declarationList = (statement as ts.VariableStatement).declarationList
+                const declarationList = (statement as TS.VariableStatement).declarationList
                 for (const declaration of declarationList.declarations) {
                     declarations.push(declaration)
                 }
@@ -248,7 +250,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
         walkBindingNameIdentifiers(declaration.name, identifier => {
             let scopeNode: TsNodeWithContext = node
             const declareKeyword = getVariableDeclareKeyword(
-                declaration.parent as ts.VariableDeclarationList
+                declaration.parent as TS.VariableDeclarationList
             )
             if (declareKeyword === "var" && !node.isNonHoistableScopeBoundary) {
                 scopeNode = getNonHoistableScope(node)!

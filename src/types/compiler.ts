@@ -1,4 +1,5 @@
-import type ts from "typescript"
+import type TS from "typescript"
+
 import type { Pair } from "#type-declarations/tools"
 import type { TestingMode } from "../compiler/enums"
 import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
@@ -159,7 +160,7 @@ export interface ComponentTagPart {
 export interface ParsedPattern {
     sourceRange: Range
     directive: ParsedDirective
-    node: ts.ArrayBindingElement
+    node: TS.ArrayBindingElement
     declaredIdentifiers: Set<string>
 }
 export interface ParsedDirective {
@@ -188,7 +189,7 @@ export interface ReusedStringReference {
 }
 export interface ParsedExpression {
     source: string
-    node: ts.Expression
+    node: TS.Expression
     reactive: boolean
     startSourceIndex: number
     contextReferences: ContextReference[]
@@ -209,7 +210,7 @@ export interface GeneratedSelectorInfo {
     targetAttribute?: TemplateAttribute
 }
 export interface TopLevelIdentifierNodeInfo {
-    id: ts.Identifier
+    id: TS.Identifier
     declarator: TopLevelDeclaratorNode
     declaration: TopLevelDeclarationNode
     destructuringIdentifierNames?: string[]
@@ -265,28 +266,28 @@ export interface TemplateAnalyzeRet {
 }
 export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
-        ts.VariableDeclaration,
+        TS.VariableDeclaration,
         {
             property: string
             expression: string
         }[]
     >
-    exportStatements: ts.Node[]
+    exportStatements: TS.Node[]
     usedIntrinsics: Set<string>
     fullIdentifiers: Set<string>
-    eliminatedNodes: Set<ts.Node>
+    eliminatedNodes: Set<TS.Node>
     importIdentifiers: Set<string>
     exportedBindings: ExportBinding[]
-    watchExpCalls: ts.CallExpression[]
-    setContextExpCalls: ts.CallExpression[]
+    watchExpCalls: TS.CallExpression[]
+    setContextExpCalls: TS.CallExpression[]
     topLevelReferences: TopLevelReferences
     qkDefaultImportIdentifiers: Set<string>
     preMutatedTopLevelIdentifiers: Set<string>
-    defaultsCall: ts.CallExpression | undefined
+    defaultsCall: TS.CallExpression | undefined
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>
-    importDeclarations: (ts.ImportDeclaration | ts.ImportEqualsDeclaration)[]
+    declaratorToIntrinsic: Map<TS.VariableDeclaration, TS.Identifier>
+    importDeclarations: (TS.ImportDeclaration | TS.ImportEqualsDeclaration)[]
 }
 
 export type Range = Pair<number>
