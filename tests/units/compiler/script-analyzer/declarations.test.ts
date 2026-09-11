@@ -293,8 +293,8 @@ test("Redeclarations for derived reactive value", () => {
         {
             name: "$g",
             hoist: true,
-            implicit: false,
-            status: "derived"
+            implicit: true,
+            status: "pending"
         },
         {
             name: "h",
@@ -343,21 +343,6 @@ test("Redeclarations for derived reactive value", () => {
         {
             type: "error",
             range: [183, 184],
-            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
-        },
-        {
-            type: "warning",
-            range: [203, 214],
-            value: unnecessaryDerived
-        },
-        {
-            type: "warning",
-            range: [219, 225],
-            value: unnecessaryDerived
-        },
-        {
-            type: "error",
-            range: [219, 221],
             value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
         },
         {
@@ -445,7 +430,7 @@ test("Literals will be updated later", () => {
     ])
 })
 
-test("Shorthand derived declaration is invalid for destructuring declarations", () => {
+test("Identifiers prefixed with $ in destructuring declarations are treated as ordinary bindings", () => {
     localAnalyze(`
         const {$a, $b} = obj
     `)

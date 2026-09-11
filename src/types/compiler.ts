@@ -339,15 +339,11 @@ export type CompileOptions = Partial<{
     allowConstReactive: boolean
     interpretiveComments: boolean
     preserveHtmlComments: boolean
-    shorthandDerivedDeclaration: boolean
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
 
-export type CompileIntermediateOptions = Pick<
-    CompileOptions,
-    "shorthandDerivedDeclaration" | "allowConstReactive"
->
+export type CompileIntermediateOptions = Pick<CompileOptions, "allowConstReactive">
 
 export type IdentifierStatus =
     | "reactive"

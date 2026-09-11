@@ -62,7 +62,7 @@ describe("Production", () => {
     })
 
     describe("Shorthand", () => {
-        it("should wrap the argument as a getter", () => {
+        it("should not treat identifiers prefixed with $ as derived reactive values", () => {
             matchTransformedScript(
                 `
                     <lang-js>
@@ -77,41 +77,10 @@ describe("Production", () => {
                 formatSourceCode(`
                     console.log($a, $b, $c)
 
-                    const $a = _.derived(() => (obj))
-                    const $b = _.derived(() => (count + 1))
-                    const $c = _.derived(() => (outter?.inner))
-                    console.log($a.$, $b.$, $c.$)
-                `)
-            )
-        })
-
-        it("should not warp the argument as a getter", () => {
-            matchTransformedScript(
-                `
-                    <lang-ts>
-                        console.log($a, $b, $c)
-
-                        const $a = (() => obj as any) as any
-                        const $b = function<T>(count: T): T {
-                            return count + 1
-                        }
-                        let $c = function anonymous() {
-                            return outter?.inner
-                        }
-                        console.log($a, $b, $c)
-                    </lang-ts>
-                `,
-                formatSourceCode(`
+                    const $a = obj
+                    const $b = count + 1
+                    const $c = outter?.inner
                     console.log($a, $b, $c)
-
-                    const $a = _.derived((() => obj as any) as any)
-                    const $b = _.derived(function<T>(count: T): T {
-                        return count + 1
-                    })
-                    let $c = _.derived(function anonymous() {
-                        return outter?.inner
-                    })
-                    console.log($a.$, $b.$, $c.$)
                 `)
             )
         })
@@ -188,7 +157,7 @@ describe("Development", () => {
     })
 
     describe("Shorthand", () => {
-        it("should wrap the argument as a getter", () => {
+        it("should not treat identifiers prefixed with $ as derived reactive values", () => {
             matchTransformedScript(
                 `
                     <lang-js>
@@ -201,56 +170,19 @@ describe("Development", () => {
                     </lang-js>
                 `,
                 formatSourceCode(`
-                    const _S1 = v => ($a = v)
-                    const _S2 = v => ($b = v)
-                    const _S3 = v => ($c = v)
                     console.log($a, $b, $c)
 
-                    let [_$a, $a] = _.derived(() => (obj), _S1)
-                    let [_$b, $b] = _.derived(() => (count + 1), _S2)
-                    let [_$c, $c] = _.derived(() => (outter?.inner), _S3)
-                    console.log(_$a.$, _$b.$, _$c.$)
-                `)
-            )
-        })
-
-        it("should not warp the argument as a getter", () => {
-            matchTransformedScript(
-                `
-                    <lang-ts>
-                        console.log($a, $b, $c)
-
-                        const $a = (() => obj as any) as any
-                        const $b = function<T>(count: T): T {
-                            return count + 1
-                        }
-                        let $c = function anonymous() {
-                            return outter?.inner
-                        }
-                        console.log($a, $b, $c)
-                    </lang-ts>
-                `,
-                formatSourceCode(`
-                    const _S1 = v => ($a = v)
-                    const _S2 = v => ($b = v)
-                    const _S3 = v => ($c = v)
+                    const $a = obj
+                    const $b = count + 1
+                    const $c = outter?.inner
                     console.log($a, $b, $c)
-
-                    let [_$a, $a] = _.derived((() => obj as any) as any, _S1)
-                    let [_$b, $b] = _.derived(function<T>(count: T): T {
-                        return count + 1
-                    }, _S2)
-                    let [_$c, $c] = _.derived(function anonymous() {
-                        return outter?.inner
-                    }, _S3)
-                    console.log(_$a.$, _$b.$, _$c.$)
                 `)
             )
         })
     })
 })
 
-it("should not be transformed as derived reactive value when shorthandDerivedDeclaration is false", () => {
+it("should never transform the identifiers prefixed with $ as derived reactive values", () => {
     for (let i = 0; i < 2; i++) {
         _matchTransformedScript(
             `
@@ -262,8 +194,7 @@ it("should not be transformed as derived reactive value when shorthandDerivedDec
                 const $a = obj
             `),
             {
-                debug: !!i,
-                shorthandDerivedDeclaration: false
+                debug: !!i
             }
         )
     }

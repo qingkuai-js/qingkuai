@@ -109,8 +109,7 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             reactivityMode: "reactive",
             interpretiveComments: false,
             whitespace: "trim-collapse",
-            preserveHtmlComments: false,
-            shorthandDerivedDeclaration: true
+            preserveHtmlComments: false
         }
     }
     if (!options.hashId) {

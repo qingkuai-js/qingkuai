@@ -370,37 +370,6 @@ describe("Unnecessary reactive marking", () => {
             }
         ])
     })
-
-    test("Shorthand derived", () => {
-        localAnalyze(`
-                const $a = 1
-                const $b = ""
-                const $c = null
-                const $d = undefined
-            `)
-        localMatchCompileMessages([
-            {
-                type: "warning",
-                range: [6, 12],
-                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
-            },
-            {
-                type: "warning",
-                range: [19, 26],
-                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
-            },
-            {
-                type: "warning",
-                range: [33, 42],
-                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
-            },
-            {
-                type: "warning",
-                range: [49, 63],
-                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
-            }
-        ])
-    })
 })
 
 test("Shadow built-in identifiers", () => {
@@ -478,36 +447,6 @@ test("Shadow built-in identifiers", () => {
             type: "error",
             range: [280, 292],
             value: `Built-in identifier "syncWatchExp" cannot be shadowed at top-level scope.`
-        }
-    ])
-})
-
-test("Shorthand derived declaration with built-in method", () => {
-    localAnalyze(`
-        const $a = derived(() => {})
-        let $b = reactive()
-        const $c = raw(1)
-    `)
-    localMatchCompileMessages([
-        {
-            type: "warning",
-            range: [6, 28],
-            value: `Mixing two syntactic forms to declare derived reactive value is not recommended.`
-        },
-        {
-            type: "error",
-            range: [33, 48],
-            value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking built-in method("reactive") is ambiguous.`
-        },
-        {
-            type: "warning",
-            range: [33, 48],
-            value: `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
-        },
-        {
-            type: "error",
-            range: [55, 66],
-            value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking built-in method("raw") is ambiguous.`
         }
     ])
 })

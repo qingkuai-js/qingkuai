@@ -282,7 +282,7 @@ export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrins
     return `The built-in method "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })
 
-export const DuplicateDefaultsCall = withLocation(1071, () => {
+export const DuplicateDefaultsCall = withLocation(1023, () => {
     return `The built-in method "defaults" can only be called once in the embedded script block.`
 })
 
@@ -331,10 +331,6 @@ export const UsedDisallowedTag = withLocation(1014, (tag: string) => {
 
 export const TSModuleDeclarationsAreNotSupported = withLocation(1052, () => {
     return `Namespace declarations are not allowed in component embedded scripts because the embedded script block are wrapped inside a component function.`
-})
-
-export const AmbiguousReactiveMarking = withLocation(1023, (name: string) => {
-    return `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking built-in method("${name}") is ambiguous.`
 })
 
 export const InvalidTargetDirectivePlacement = withLocation(1040, () => {

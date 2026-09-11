@@ -21,7 +21,6 @@ import {
 import {
     CannotAliasIdentifier,
     DuplicateDefaultsCall,
-    AmbiguousReactiveMarking,
     TopLevelAwaitNotBeSupported,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -38,7 +37,6 @@ import {
     RedundantRawMark,
     UnnecessaryReactiveMark,
     IdentifierMaybeOverwritten,
-    DeclareDerivedMixedSyntaticForms,
     UnnecessaryMutableDerivedDeclaration
 } from "../message/warn"
 import {
@@ -423,6 +421,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<ts.VariableDecla
 
 // 推断可变声明（let/var）非字面量初始值的状态：默认 reactive 模式下保持 pending（由模板访问确认），
 // shallow 模式下回到 literal（由"是否被赋值"决定是否升级为 shallow，未赋值保持非响应式）。
+//
 // In the default reactive mode, a mutable declaration with a non-literal initial value stays
 // pending (confirmed by template access); in shallow mode it falls back to literal and is only
 // upgraded to shallow when actually mutated.
@@ -441,10 +440,6 @@ function inferStatusByVariableDeclaration(
         return "raw"
     }
 
-    const isShorthandDerived =
-        ts.isIdentifier(declaration.name) &&
-        declaration.name.text.startsWith("$") &&
-        inputDescriptor.options.shorthandDerivedDeclaration
     const isConst = declareKeyword === "const"
     const declarationLoc = getScriptLocByNode(declaration)
     const isDestructuring = !ts.isIdentifier(declaration.name)
@@ -457,15 +452,6 @@ function inferStatusByVariableDeclaration(
 
     if (!ts.isCallExpression(initNode)) {
         const isLiteralInit = isLiteral(initNode)
-        if (isShorthandDerived) {
-            if (!isLiteralInit) {
-                return "derived"
-            }
-
-            // 初始值为字面量值的简写衍生响应式声明无意义，退化为使用原始值
-            // Shorthand derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
-            return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
-        }
 
         // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
         // Constant declarations with literal initial values have no reactive semantics and are downgraded to using the raw value.
@@ -495,16 +481,6 @@ function inferStatusByVariableDeclaration(
         return isConst ? "pending" : inferShallowMutableStatus()
     }
 
-    // 检查是否混用了简洁衍生响应式声明语法和标记响应式声明语法
-    // Check whether concise derived reactive declarations and marked reactive declarations are mixed.
-    if (isShorthandDerived) {
-        if (calleeName === "derived" || calleeName === "derivedExp") {
-            DeclareDerivedMixedSyntaticForms(declarationLoc)
-        } else {
-            AmbiguousReactiveMarking(declarationLoc, calleeName)
-        }
-    }
-
     const firstArg = initNode.arguments[0]
     const isLiteralArg = !firstArg || isLiteral(firstArg)
     switch (calleeName) {
@@ -515,18 +491,14 @@ function inferStatusByVariableDeclaration(
         case "derived":
         case "derivedExp": {
             if (isLiteralArg) {
-                // 初始值为字面量值的简写衍生响应式声明无意义，退化为使用原始值
-                // Shorthand derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
+                // 初始值为字面量值的衍生响应式声明无意义，退化为使用原始值
+                // Derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
                 return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
             }
             return "derived"
         }
 
         default: {
-            if (isShorthandDerived) {
-                return "derived"
-            }
-
             const status = calleeName as ReactiveIntrinsics
             if (isDestructuring || !isConst || !(isLiteralArg || isFunctionLiteral(firstArg))) {
                 if (

@@ -174,37 +174,18 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     function transformDerivedDeclaration(name: string, info: TopLevelIdentifierInfo) {
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
         const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
-        const withIntrinsic = analyzeResult.script.declaratorToIntrinsic.has(declarator)
-        const intrinsicInfo = withIntrinsic ? getIntrinsicInfo(declarator) : undefined
-        const byExpression = intrinsicInfo?.id.text === "derivedExp"
+        const intrinsicInfo = getIntrinsicInfo(declarator)!
+        const byExpression = intrinsicInfo.id.text === "derivedExp"
         if (!destructuringIdentifierNames) {
-            if (intrinsicInfo) {
-                const firstArg = intrinsicInfo.call.arguments[0]
-                if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
-                    editor.insert(firstArg.getEnd(), ")")
-                    editor.insert(firstArg.getStart(), "() => (")
-                }
-                if (debugMode) {
-                    editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`)
-                }
-                replaceIntrinsicCall(declarator, "derived")
-            } else {
-                // 断言：此时一定存在初始值（不然会退化为原始值）
-                // Assertion: at this point, an initializer must exist
-                // (otherwise it would have been downgraded to the raw value).
-                const initNode = declarator.initializer!
-                const shouldWrapAsGetter = shouldNodeWrapAsGetter(initNode)
-                editor.insertMulti(initNode.getStart(), [
-                    internalId,
-                    ".derived(",
-                    shouldWrapAsGetter ? "() => (" : ""
-                ])
-                editor.insertMulti(initNode.getEnd(), [
-                    shouldWrapAsGetter ? ")" : "",
-                    debugMode ? `, ${generateHoistSetter(name)}` : "",
-                    ")"
-                ])
+            const firstArg = intrinsicInfo.call.arguments[0]
+            if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
+                editor.insert(firstArg.getEnd(), ")")
+                editor.insert(firstArg.getStart(), "() => (")
             }
+            if (debugMode) {
+                editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`)
+            }
+            replaceIntrinsicCall(declarator, "derived")
             return transformNonDestructuringDeclaratorId(declarator)
         }
 
@@ -212,7 +193,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             return
         }
 
-        const firstArg = intrinsicInfo!.call.arguments[0]
+        const firstArg = intrinsicInfo.call.arguments[0]
         if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
             editor.insert(firstArg.getEnd(), ")")
             editor.insert(firstArg.getStart(), "() => (")

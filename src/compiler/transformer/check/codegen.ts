@@ -23,11 +23,10 @@ import { eliminate } from "../eliminate"
 import { LSC, SPREAD_TAG } from "../../constants"
 import { IntermediateCodeWriter } from "../writer"
 import { stringify } from "../../../util/shared/aliases"
+import { isInlineEventHandler } from "../../ts-ast/assert"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../../state"
-import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
-import { isFunctionLiteral, isInlineEventHandler } from "../../ts-ast/assert"
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
     let slotNamesType = ""
@@ -51,7 +50,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     const importDeclarations = analyzeResult.script.importDeclarations
     const scriptTagOpenRange = inputDescriptor.script.startTagOpenRange
     const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
-    const declaratorToIntrinsic = analyzeResult.script.declaratorToIntrinsic
     const exportBindings = analyzeResult.script.exportedBindings.filter(item => {
         if (item.local !== item.exported) {
             return !!topLevelIdentifiers[item.exported]
@@ -125,21 +123,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         ]
         embeddedScriptEditor.insertMulti(defaultsCall.getEnd(), snippets)
     }
-
-    traverseObject(topLevelIdentifiers, (_, info) => {
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
-        if (info.status !== "derived" || declaratorToIntrinsic.has(declarator)) {
-            return
-        }
-
-        if (
-            declarator.initializer &&
-            isFunctionLiteral(getStriptTypeOperationsNode(declarator.initializer))
-        ) {
-            embeddedScriptEditor.insert(declarator.initializer.getStart()!, `${LSU}.getReturnType(`)
-            embeddedScriptEditor.insert(declarator.initializer.getEnd(), ")")
-        }
-    })
     writer.wrapLine().writeEditedScript(embeddedScriptEditor)
     writer.write(";", inputDescriptor.script.loc.end.index).wrapLine(2)
 

@@ -67,7 +67,7 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
         idStatusInfo[name] = {
             status: getIdentifierStatusForInlayHint(info),
-            description: getTopLevelIdentifierInfo(name, info),
+            description: getTopLevelIdentifierInfo(info),
             inlays: info.nodeInfos.map(nodeInfo => {
                 return {
                     kind: getInlayHintKind(nodeInfo),
@@ -137,7 +137,7 @@ export class CompileIntermediateResult {
     }
 }
 
-function getTopLevelIdentifierInfo(name: string, info: TopLevelIdentifierInfo) {
+function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
     switch (info.status) {
         case "literal": {
             return "raw (never mutated)"
@@ -152,9 +152,6 @@ function getTopLevelIdentifierInfo(name: string, info: TopLevelIdentifierInfo) {
                 ?.getText()
             if (intrinsicName === "raw") {
                 return "raw (explicit raw)"
-            }
-            if (inputDescriptor.options.shorthandDerivedDeclaration && name.startsWith("$")) {
-                return "raw (constant literal, downgraded)"
             }
             return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
         }

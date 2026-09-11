@@ -21,15 +21,11 @@ export const UnnecessaryReactiveMark = withLocation(9001, (status: IdentifierSta
     }reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
 })
 
-export const DeclareDerivedMixedSyntaticForms = withLocation(9003, () => {
-    return "Mixing two syntactic forms to declare derived reactive value is not recommended."
-})
-
 export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scope: string) => {
     return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
-export const UnnecessaryScopeDirective = withLocation(9014, () => {
+export const UnnecessaryScopeDirective = withLocation(9003, () => {
     return `The "#scope" directive has no effect because the current component has no scoped styles.`
 })
 
