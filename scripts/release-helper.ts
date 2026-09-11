@@ -1,14 +1,10 @@
 import nodeFs from "node:fs"
 
-main()
-
-function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
+import { changelogSectionHeadingRE, readPackageVersion, readSync } from "../src/util/scripts/sundry"
 
 function resolveReleaseNotes(changelog: string, version: string, tag: string): string {
     const lines = changelog.split("\n")
-    const sectionPattern = new RegExp(`^## \\[${escapeRegExp(version)}\\]`)
+    const sectionPattern = changelogSectionHeadingRE(version)
 
     const startIndex = lines.findIndex(line => sectionPattern.test(line))
     if (startIndex < 0) {
@@ -31,15 +27,6 @@ function resolveReleaseNotes(changelog: string, version: string, tag: string): s
     return `${section}\n`
 }
 
-function readPackageVersion(): string {
-    const packageJson = JSON.parse(nodeFs.readFileSync("package.json", "utf8"))
-    const version = packageJson.version?.trim()
-    if (!version) {
-        throw new Error("package.json version is missing")
-    }
-    return version
-}
-
 function validateTag(tag: string) {
     const version = readPackageVersion()
     const expectedTag = `v${version}`
@@ -50,7 +37,7 @@ function validateTag(tag: string) {
 
 function generateNotes(tag: string, outputPath: string) {
     const version = readPackageVersion()
-    const changelog = nodeFs.readFileSync("CHANGELOG.md", "utf8")
+    const changelog = readSync("CHANGELOG.md")
     const notes = resolveReleaseNotes(changelog, version, tag)
     nodeFs.writeFileSync(outputPath, notes)
 }
@@ -81,3 +68,5 @@ function main() {
         throw new Error(`Unknown command: ${command}`)
     }
 }
+
+main()

@@ -3,6 +3,7 @@ import nodeUrl from "node:url"
 import nodePath from "node:path"
 
 import ts from "typescript"
+import { readSync } from "../src/util/scripts/sundry"
 import { whitespaceRE } from "../src/compiler/regular"
 import { formatSourceCode } from "../src/util/shared/sundry"
 import { CodeEditor } from "../src/compiler/transformer/editor"
@@ -89,10 +90,6 @@ function main() {
         // above the const declarations referencing them in the generated d.ts files
         injectCallSignatureDocs(filePath)
     }
-}
-
-function readSync(filePath: string): string {
-    return fsExtra.readFileSync(filePath, "utf-8")
 }
 
 function injectCallSignatureDocs(targetDtsPath: string) {
