@@ -282,6 +282,17 @@ describe("Invalid usages of built-in methods", () => {
         `)
         localMatchCompileMessages([])
     })
+
+    test("Valid calls with explicit type arguments", () => {
+        localAnalyze(`
+            const a = derived!<string[]>(_)
+            const b = (derivedExp satisfies any)<number[]>(_)
+            const c = raw!<string[]>(_)
+            const d = alias<string>(_.a.b)
+            watchExp<number[]>(_)
+        `)
+        localMatchCompileMessages([])
+    })
 })
 
 describe("Unnecessary reactive marking", () => {

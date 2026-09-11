@@ -7,8 +7,6 @@ import type {
 } from "#type-declarations/compiler"
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
 
-import ts from "typescript"
-
 import {
     getStartTagNameLoc,
     getParsedExpression,

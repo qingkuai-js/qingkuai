@@ -79,6 +79,31 @@ test("Dotted component tag keeps property chain in confirmComponent", () => {
     expect(result.code).toContain("__qk__lsu.confirmComponent(NS.Comp)")
 })
 
+test("Generic type arguments on intrinsic declarations are preserved in intermediate code", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            let count = 0
+            const a = derived<string[]>(() => [])
+            const b = raw!<number[]>(count)
+            console.log(a, b)
+        </lang-ts>
+        <div>{count}</div>
+    `)
+    expect(result.code).toContain("derived<string[]>(")
+    expect(result.code).toContain("raw!<number[]>(")
+})
+
+test("Generic type arguments on watchExp calls are preserved in intermediate code", () => {
+    const result = compileIntermediateResult(`
+        <lang-ts>
+            let count = 0
+            watchExp<number[]>(count + 1, () => {})
+        </lang-ts>
+        <div>{count}</div>
+    `)
+    expect(result.code).toContain("watchExp<number[]>(")
+})
+
 test("Component #slot with invalid value falls back to default slot and writes invalid expression", () => {
     const result = compileIntermediateResult(`
         <lang-js>
