@@ -15,13 +15,153 @@ function analyzeTemplateOnly(source: string) {
 }
 
 test("Built-in methods cannot be used in template expressions", () => {
-    analyzeTemplateAndMatchMessages(`<div>{raw(1)}</div>`, [
+    analyzeTemplateAndMatchMessages(`<div>{reactive(1)}</div>`, [
+        {
+            type: "error",
+            range: [6, 14],
+            value: `The built-in method "reactive" cannot be used in template.`
+        }
+    ])
+})
+
+test("raw used in template requires the call form", () => {
+    analyzeTemplateAndMatchMessages(`<div>{raw}</div>`, [
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" cannot be used in template.`
+            value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
         }
     ])
+})
+
+test("raw passed around in template requires the call form", () => {
+    analyzeTemplateAndMatchMessages(`<div>{fn(raw)}</div>`, [
+        {
+            type: "error",
+            range: [9, 12],
+            value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+        }
+    ])
+})
+
+test("raw used in template requires an argument", () => {
+    analyzeTemplateAndMatchMessages(`<div>{raw()}</div>`, [
+        {
+            type: "error",
+            range: [6, 9],
+            value: `The built-in method "raw" must be passed an argument when used as an untracked read.`
+        }
+    ])
+})
+
+test("raw used in template accepts only one argument", () => {
+    analyzeTemplateAndMatchMessages(`<div>{raw(a, b)}</div>`, [
+        {
+            type: "error",
+            range: [6, 9],
+            value: `The built-in method "raw" can only be passed one argument when used as an untracked read.`
+        }
+    ])
+})
+
+test("nested raw calls only report a warning", () => {
+    analyzeTemplateAndMatchMessages(`<div>{raw(raw(a))}</div>`, [
+        {
+            type: "warning",
+            range: [10, 13],
+            value: `Nesting "raw" calls is redundant because the argument is already read without tracking.`
+        }
+    ])
+})
+
+test("member access on raw in template requires the call form", () => {
+    analyzeTemplateAndMatchMessages(`<div>{raw.x}</div>`, [
+        {
+            type: "error",
+            range: [6, 9],
+            value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+        }
+    ])
+})
+
+test("raw callee wrapped in parentheses or type operations is still a raw call", () => {
+    analyzeTemplateAndMatchMessages(
+        `
+        <lang-ts>
+            let config = load()
+            function load() {
+                return { label: "l" }
+            }
+        </lang-ts>
+        <div>{(raw as any)(config)}</div>
+        <div>{raw!(config)}</div>
+    `,
+        []
+    )
+    const expressions = [...analyzeResult.template.parsedExpressions.values()]
+    expect(expressions[0]?.rawCallExpressions).toHaveLength(1)
+    expect(expressions[1]?.rawCallExpressions).toHaveLength(1)
+})
+
+test("raw read does not promote pending identifiers and records untracked references", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let config = load()
+            function load() {
+                return { label: "l" }
+            }
+        </lang-js>
+        <div>{raw(config)}</div>
+    `)
+    expect(analyzeResult.script.topLevelIdentifiers["config"]?.status).toBe("pending")
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(false)
+    expect(parsedExpression?.topLevelReferences["config"]).toEqual([
+        { declared: true, range: [4, 10], shorthand: false, untracked: true }
+    ])
+    expect(analyzeResult.script.topLevelIdentifiers["config"]?.usedExpressions.size).toBe(0)
+})
+
+test("identifier promoted by tracked read elsewhere stays untracked in raw expressions", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let count = 0
+            function inc() {
+                count++
+            }
+        </lang-js>
+        <div>{count}</div><div>{raw(count) + 1}</div>
+    `)
+    expect(analyzeResult.script.topLevelIdentifiers["count"]?.status).toBe("reactive")
+
+    const expressions = [...analyzeResult.template.parsedExpressions.values()]
+    expect(expressions[0]?.reactive).toBe(true)
+    expect(expressions[1]?.reactive).toBe(false)
+    expect(analyzeResult.script.topLevelIdentifiers["count"]?.usedExpressions.size).toBe(1)
+})
+
+test("member accesses of reactive values inside raw arguments are untracked", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let user = reactive({ name: "q", detail: {} })
+        </lang-js>
+        <div>{user.name + raw(user).detail}</div>
+    `)
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+    expect(parsedExpression?.topLevelReferences["user"].some(item => !item.untracked)).toBe(true)
+    expect(parsedExpression?.topLevelReferences["user"].some(item => item.untracked)).toBe(true)
+})
+
+test("reference attribute value wrapped with raw is valid and not promoted", () => {
+    analyzeTemplateAndMatchMessages(`
+        <lang-js>
+            let plain = ""
+        </lang-js>
+        <input &value={raw(plain)} />
+    `)
+    expect(analyzeResult.script.topLevelIdentifiers["plain"]?.status).toBe("literal")
 })
 
 test("props are tracked as intrinsic vars and mark expression reactive", () => {

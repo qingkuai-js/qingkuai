@@ -25,6 +25,10 @@ export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scop
     return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
+export const RedundantNestedRawCall = withLocation(9014, () => {
+    return `Nesting "raw" calls is redundant because the argument is already read without tracking.`
+})
+
 export const UnnecessaryScopeDirective = withLocation(9003, () => {
     return `The "#scope" directive has no effect because the current component has no scoped styles.`
 })

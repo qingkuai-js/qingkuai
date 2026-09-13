@@ -136,6 +136,19 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         editor.replace(...getNodeRange(call.expression), "setContextGetter", true)
     }
 
+    // raw(expr) -> _.noTracking(expr)，使脚本表达式内的读取不追踪依赖；
+    // 仅替换 callee，类型参数 `<T>` 原位保留（产物允许携带 TS 类型，擦除由 vite-plugin 完成）
+    // raw(expr) -> _.noTracking(expr), so reads in script expressions track no dependency.
+    // Only the callee is replaced, leaving type arguments `<T>` in place (the output may carry
+    // TS types, which are erased downstream by vite-plugin).
+    for (const call of analyzeResult.script.rawReadCalls) {
+        const callee = getStriptTypeOperationsNode(call.expression)!
+        const firstArg = call.arguments[0]
+        editor.insert(firstArg.getEnd(), `)`)
+        editor.insert(firstArg.getStart(), `() => (`)
+        editor.replace(...getNodeRange(callee), `${internalId}.noTracking`, true)
+    }
+
     // 转换响应式标识符引用
     // Transform reactive identifier references
     traverseObject(topLevelIdentifiers, (name, info) => {

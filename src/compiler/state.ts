@@ -61,6 +61,7 @@ function newAnalyzeResult(): AnalyzeResult {
             validReferenceAttributes: new Set()
         },
         script: {
+            rawReadCalls: [],
             watchExpCalls: [],
             exportedBindings: [],
             exportStatements: [],

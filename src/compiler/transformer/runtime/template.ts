@@ -597,7 +597,7 @@ function generateRenderEffect(
                         writer.write(", ")
                     }
                     if (type !== "getter") {
-                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
+                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute, true)
                         writer.write(` = ${setterArgId}`).write(")")
                     }
                     writer.write(")")
@@ -844,7 +844,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             writeParsedExpression(writer, attribute, false)
             writer.writeLine("),")
             writer.write(`${setterArgId} => (`)
-            writer.writeParsedExpression(attribute)
+            writer.writeParsedExpression(attribute, true)
             writer.write(` = ${setterArgId})`).dedent().write("]")
         }
         writer.dedent().write("}")
@@ -852,7 +852,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
     if (referenceHandleAttribute) {
         insertTrailingComma().write(`h: ${setterArgId} => (`)
-        writer.writeParsedExpression(referenceHandleAttribute)
+        writer.writeParsedExpression(referenceHandleAttribute, true)
         writer.write(` = ${setterArgId})`)
     }
 

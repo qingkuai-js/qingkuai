@@ -194,6 +194,7 @@ export interface ParsedExpression {
     startSourceIndex: number
     contextReferences: ContextReference[]
     topLevelReferences: TopLevelReferences
+    rawCallExpressions: TS.CallExpression[]
     reusedStringReferences: ReusedStringReference[]
 }
 export interface GeneratedSelectorInfo {
@@ -277,6 +278,7 @@ export interface ScriptAnalyzeRet {
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<TS.Node>
     importIdentifiers: Set<string>
+    rawReadCalls: TS.CallExpression[]
     exportedBindings: ExportBinding[]
     watchExpCalls: TS.CallExpression[]
     setContextExpCalls: TS.CallExpression[]
@@ -298,6 +300,7 @@ export type TopLevelReferences = Record<
         range: Range
         declared: boolean
         shorthand: boolean
+        untracked?: boolean
     }[]
 >
 export type IdentifierStatusInfo = Record<

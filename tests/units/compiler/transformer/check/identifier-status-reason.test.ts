@@ -57,7 +57,7 @@ test("Intermediate: function call in template does not count as direct identifie
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-indirect-access")
     expect(result.identifierStatusInfo).toMatchObject({
         state: {
-            description: "raw (template unused)"
+            description: "raw (unused in template)"
         },
         getCount: {
             description: "raw (never mutated)"
@@ -77,7 +77,7 @@ test("Intermediate: object literal not used in template is raw with not-accessed
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-not-accessed")
     expect(result.identifierStatusInfo).toMatchObject({
         state: {
-            description: "raw (template unused)"
+            description: "raw (unused in template)"
         }
     })
 })

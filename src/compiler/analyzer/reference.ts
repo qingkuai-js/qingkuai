@@ -1,8 +1,13 @@
+import type TS from "typescript"
+
 import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
+
+import ts from "typescript"
 
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
-import { isLeftValue } from "../ts-ast/assert"
+import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
+import { isLeftValue, isRawCallExpression } from "../ts-ast/assert"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
@@ -32,13 +37,33 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
         attribute.value.raw,
         attribute.value.loc.start.index
     )
-    if (target && isLeftValue(target)) {
+
+    // 校验左值时剥掉 raw 包裹，使用内层表达式
+    // Unwrap raw to validate the inner expression as the left value.
+    const effectiveTarget = target && getUnwrappedRawTarget(target)
+    if (effectiveTarget && isLeftValue(effectiveTarget)) {
         if (checkResult) {
             analyzeResult.template.validReferenceAttributes.add(attribute)
         }
     } else {
         InvalidReferenceAttributeValue(getNonWhiteSpaceLocByLoc(attribute.value.loc))
     }
+}
+
+function getUnwrappedRawTarget(target: TS.Expression | null) {
+    if (!target) {
+        return target
+    }
+
+    const expression = getStriptTypeOperationsNode(target)
+    if (
+        isRawCallExpression(expression) &&
+        expression.arguments.length === 1 &&
+        !ts.isSpreadElement(expression.arguments[0])
+    ) {
+        return expression.arguments[0]
+    }
+    return expression
 }
 
 function checkReferenceAttribute(node: TemplateNode, attribute: TemplateAttribute) {

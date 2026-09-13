@@ -62,11 +62,13 @@ export {
 } from "./component"
 
 export { htmlBlock } from "./directives/html"
+export { toRaw } from "../util/runtime/sundry"
 export { renderSlot } from "./directives/slot"
 export { targetBlock } from "./directives/target"
 export { renderEffect } from "./reactivity/effect"
 export { promiseBlock } from "./directives/promise"
 export { alias, destructuringAlias } from "./debug"
+export { noTracking } from "./reactivity/optimization"
 export { makeExpGetter } from "../util/runtime/sundry"
 export { conditionBlock } from "./directives/condition"
 export { objectAssign, call } from "../util/shared/aliases"

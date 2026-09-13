@@ -61,48 +61,73 @@ export namespace __qk__lsu {
 }
 
 /**
- * Marks a variable declaration as a **raw value**, preventing the Qingkuai
- * compiler from injecting any reactive semantics for the associated
- * identifier.
+ * `raw` has two usages depending on where it appears:
  *
- * When a value is wrapped with `raw`, the declared identifier will be treated
- * as a normal JavaScript variable. Reads and writes will not be transformed
- * into reactive access, dependency tracking, or update operations.
+ * 1. **Declaration marking** — used in the initializer of a top-level variable
+ *    declaration (argument optional). The compiler skips reactivity inference
+ *    for the declared identifier and treats it as a normal JavaScript
+ *    variable: no reactive semantics are injected, and reads and writes are
+ *    not transformed into reactive access, dependency tracking, or update
+ *    operations.
  *
- * This helper is mainly used in component embedded script blocks to
- * explicitly disable reactive instrumentation for specific variables.
+ *    Usage restrictions:
+ *    - This usage **must be in the top-level scope** of an embedded script
+ *      block.
+ *    - It is intended for **variable declarations only**.
  *
- * Usage restrictions:
- * - This function **must be used in the top-level scope** of an embedded
- *   script block.
- * - It is intended for **variable declarations only**.
+ *    In most cases this marking is unnecessary because Qingkuai automatically
+ *    treats identifiers as raw when they are **not accessed in the template**,
+ *    or when they are **constants that are never reassigned**.
  *
- * In most cases `raw` is unnecessary because Qingkuai automatically treats
- * identifiers as raw when they are **not accessed in the template**, or when
- * they are **constants that are never reassigned**.
+ * ```qk
+ * <lang-ts>
+ *     // Mark the identifier as raw so it will not become reactive
+ *     const config = raw({ baseURL: "/api" })
  *
- * Examples:
- * ```ts
- * // Mark the identifier as raw so it will not become reactive
- * const config = raw({ baseURL: "/api" })
+ *     // Access remains normal JavaScript behavior
+ *     console.log(config.baseURL)
  *
- * // Access remains normal JavaScript behavior
- * console.log(config.baseURL)
+ *     // Disable reactive instrumentation for a mutable variable
+ *     let counter = raw(0)
  *
- * // Disable reactive instrumentation for a mutable variable
- * let counter = raw(0)
+ *     counter++ // normal increment without reactive tracking
  *
- * counter++ // normal increment without reactive tracking
- *
- * // Usually unnecessary: unused or immutable values are already raw
- * const version = "1.0.0"
- *
- * // raw is only needed when explicitly guaranteeing that
- * // the identifier is treated as a plain value
- * const options = raw({ debug: true })
+ *     // raw is only needed when explicitly guaranteeing that
+ *     // the identifier is treated as a plain value
+ *     const options = raw({ debug: true })
+ * </lang-ts>
  * ```
  *
- * @param value The value to mark as raw. Optional.
+ * 2. **Untracked read** — used in template interpolation blocks (text
+ *    interpolations, dynamic attribute values, directive values, event values
+ *    and reference attribute values) as well as in embedded script expressions
+ *    such as `effect` / `watch` / `derived` callbacks, with exactly one
+ *    required argument. The expression is evaluated without dependency
+ *    tracking.
+ *
+ *    It also affects the compiler's reactivity inference: the identifiers read
+ *    inside are not treated as accessed in the template, so the inference
+ *    rules — deriving a reactive status from script mutations, or from
+ *    reference-attribute usage — do not apply to them, and they stay raw
+ *    unless a tracked read elsewhere promotes them.
+ *
+ *    It is "untracked" rather than "frozen": when other tracked dependencies
+ *    trigger a re-run, the raw part is evaluated again with the latest value.
+ *
+ * ```qk
+ * <p>{user.name + raw(config).label}</p>
+ * <li #for={item of raw(list)}>{item}</li>
+ * <Comp !cfg={raw(config)} />
+ * <input &value={raw(text)} />
+ *
+ * effect(() => {
+ *     console.log(raw(config).label)
+ * })
+ * ```
+ *
+ * @param value The value to mark as raw in declaration marking, or the
+ *   expression to read without tracking in untracked reads. Optional in
+ *   declaration marking, required in untracked reads.
  * @returns The same value passed in, unchanged.
  */
 export declare function raw<T>(value?: T): T

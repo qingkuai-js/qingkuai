@@ -66,10 +66,11 @@ export function compileIntermediate(source: string, options: CompileIntermediate
 
     const writer = generateIntermediateCode(templateNodes)
     const idStatusInfo: IdentifierStatusInfo = newCleanObj()
+    const untrackedReadNames = collectUntrackedTemplateReadNames()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
         idStatusInfo[name] = {
             status: getIdentifierStatusForInlayHint(info),
-            description: getTopLevelIdentifierInfo(info),
+            description: getTopLevelIdentifierInfo(info, untrackedReadNames.has(name)),
             inlays: info.nodeInfos.map(nodeInfo => {
                 return {
                     kind: getInlayHintKind(nodeInfo),
@@ -139,36 +140,6 @@ export class CompileIntermediateResult {
     }
 }
 
-function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
-    switch (info.status) {
-        case "literal": {
-            return "raw (never mutated)"
-        }
-        case "pending": {
-            return "raw (template unused)"
-        }
-        case "raw": {
-            const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
-            const intrinsicName = analyzeResult.script.declaratorToIntrinsic
-                .get(declarator)
-                ?.getText()
-            if (intrinsicName === "raw") {
-                return "raw (explicit raw)"
-            }
-            return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
-        }
-        case "alias": {
-            if (isValidIdentifierName(info.aliasTarget)) {
-                return "raw (invalid alias)"
-            }
-            return `alias -> ${info.aliasTarget}`
-        }
-        default: {
-            return info.status
-        }
-    }
-}
-
 function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo) {
     switch (info.status) {
         case "literal":
@@ -195,6 +166,57 @@ function getInlayHintKind(nodeInfo: TopLevelIdentifierNodeInfo): InlayHintKind {
         }
         default: {
             return "variable"
+        }
+    }
+}
+
+// 收集在模板中仅以非追踪方式（raw 参数子树内）被读取的顶层标识符名称
+// Collect names of top-level identifiers that are only read untracked
+// (inside the argument subtree of a raw call) in the template.
+function collectUntrackedTemplateReadNames() {
+    const names = new Set<string>()
+    const trackedNames = new Set<string>()
+    for (const parsedExpression of analyzeResult.template.parsedExpressions.values()) {
+        traverseObject(parsedExpression.topLevelReferences, (name, references) => {
+            if (references.some(reference => !reference.untracked)) {
+                trackedNames.add(name)
+            } else {
+                names.add(name)
+            }
+        })
+    }
+    for (const name of trackedNames) {
+        names.delete(name)
+    }
+    return names
+}
+
+function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo, untrackedInTemplate = false) {
+    switch (info.status) {
+        case "literal": {
+            return "raw (never mutated)"
+        }
+        case "alias": {
+            if (isValidIdentifierName(info.aliasTarget)) {
+                return "raw (invalid alias)"
+            }
+            return `alias -> ${info.aliasTarget}`
+        }
+        case "raw": {
+            const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+            const intrinsicName = analyzeResult.script.declaratorToIntrinsic
+                .get(declarator)
+                ?.getText()
+            if (intrinsicName === "raw") {
+                return "raw (explicit raw)"
+            }
+            return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
+        }
+        case "pending": {
+            return `raw (${untrackedInTemplate ? "untracked" : "unused"} in template)`
+        }
+        default: {
+            return info.status
         }
     }
 }

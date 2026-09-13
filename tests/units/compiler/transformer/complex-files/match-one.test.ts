@@ -198,7 +198,7 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
     expect(result.slotNames).toEqual(["main"])
     expect(result.identifierStatusInfo).toMatchObject({
         title: {
-            description: "raw (template unused)"
+            description: "raw (unused in template)"
         },
         showPanel: {
             status: "reactive"

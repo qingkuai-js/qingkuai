@@ -53,7 +53,7 @@ describe("Invalid usages of built-in methods", () => {
             {
                 type: "error",
                 range: [50, 53],
-                value: `The built-in method "raw" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "raw" must be passed an argument when used as an untracked read.`
             },
             {
                 type: "error",
@@ -119,11 +119,6 @@ describe("Invalid usages of built-in methods", () => {
                 type: "error",
                 range: [19, 26],
                 value: `The built-in method "shallow" must be called at top-level scope to mark the variable initializer.`
-            },
-            {
-                type: "error",
-                range: [34, 37],
-                value: `The built-in method "raw" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
@@ -660,4 +655,104 @@ test("setContextGetter performs no compile checks (spread and extra args allowed
     `)
     localMatchCompileMessages([])
     expect(analyzeResult.script.usedIntrinsics.has("setContextGetter")).toBe(true)
+})
+
+describe("Untracked raw reads in script expressions", () => {
+    test("raw call in a callback is recorded as an untracked read", () => {
+        localAnalyze(`
+            let config = load()
+            effect(() => {
+                console.log(raw(config).label)
+            })
+        `)
+        localMatchCompileMessages([])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(1)
+    })
+
+    test("raw call without argument reports error 1071", () => {
+        localAnalyze(`
+            effect(() => {
+                console.log(raw())
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [31, 34],
+                value: `The built-in method "raw" must be passed an argument when used as an untracked read.`
+            }
+        ])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
+    })
+
+    test("raw call with multiple arguments reports error 1072", () => {
+        localAnalyze(`
+            effect(() => {
+                console.log(raw(a, b))
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [31, 34],
+                value: `The built-in method "raw" can only be passed one argument when used as an untracked read.`
+            }
+        ])
+    })
+
+    test("nested raw calls report a redundancy warning", () => {
+        localAnalyze(`
+            effect(() => {
+                console.log(raw(raw(config)))
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "warning",
+                range: [35, 38],
+                value: `Nesting "raw" calls is redundant because the argument is already read without tracking.`
+            }
+        ])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(2)
+    })
+
+    test("bare raw reference in script keeps error 1021", () => {
+        localAnalyze(`
+            const handler = raw
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [16, 19],
+                value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+            }
+        ])
+    })
+
+    test("passing raw as a value reports the call-form error instead of being recorded", () => {
+        localAnalyze(`
+            function call(fn) {
+                return fn()
+            }
+            effect(() => {
+                call(raw)
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [62, 65],
+                value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+            }
+        ])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
+    })
+
+    test("declaration initializer raw keeps the marking semantics", () => {
+        localAnalyze(`
+            let config = raw(load())
+        `)
+        localMatchCompileMessages([])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
+    })
 })

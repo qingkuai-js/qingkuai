@@ -82,8 +82,8 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return this
     }
 
-    writeParsedExpression(key: any) {
-        return (writeParsedExpression(this, key), this)
+    writeParsedExpression(key: any, eliminateRaw = false) {
+        return (writeParsedExpression(this, key, true, eliminateRaw), this)
     }
 
     writeInterpolatedText(node: TemplateNode, decodeEntities = false) {

@@ -21,8 +21,11 @@ export function equalsWithKeyDirectiveValue(
     const expNode = getStriptTypeOperationsNode(parsedExpression.node)
     if (ts.isIdentifier(expNode)) {
         contextIdentifier = expNode.text
-    } else if (isMemberAccessExpression(expNode) && ts.isIdentifier(expNode.expression)) {
-        contextIdentifier = expNode.expression.text
+    } else if (isMemberAccessExpression(expNode)) {
+        const expression = getStriptTypeOperationsNode(expNode.expression)
+        if (ts.isIdentifier(expression)) {
+            contextIdentifier = expression.text
+        }
     }
 
     const parsedDirective = nodeContext.contextIdentifiers[contextIdentifier!]

@@ -1,5 +1,11 @@
 import type TS from "typescript"
-import type { NamedNode, ScopeBoundary } from "#type-declarations/ts-ast"
+
+import type {
+    NamedNode,
+    ScopeBoundary,
+    TypeOperation,
+    MemberAccessExpression
+} from "#type-declarations/ts-ast"
 
 import ts from "typescript"
 
@@ -8,7 +14,7 @@ import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./su
 
 // 判断节点是否为类型操作，如 as、<> 等
 // Determine whether the node is a type operation, e.g. `as`, `<>`, etc.
-export function isTypeOperation(node: TS.Node) {
+export function isTypeOperation(node: TS.Node): node is TypeOperation {
     return (
         ts.isAsExpression(node) ||
         ts.isNonNullExpression(node) ||
@@ -305,21 +311,6 @@ export function isNonHoistableScopeBoundary(node: TS.Node) {
     return ts.isArrowFunction(parentNode) && node === parentNode.body
 }
 
-export function isLeftValue(node: TS.Node): boolean {
-    if (ts.isSourceFile(node)) {
-        return false
-    }
-    node = getStriptTypeOperationsNode(node)!
-
-    if (isMemberAccessExpression(node)) {
-        return !node.questionDotToken && isLeftValue(node.expression)
-    }
-    if (ts.isIdentifier(node)) {
-        return node.text !== "undefined"
-    }
-    return false
-}
-
 export function isInlineEventHandler(node: TS.Node) {
     switch (node.kind) {
         case ts.SyntaxKind.Identifier:
@@ -396,6 +387,37 @@ export function isExpressionEqual(a: TS.Node, b: TS.Node): boolean {
     }
 }
 
-export function isMemberAccessExpression(node: TS.Node) {
-    return ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)
+export function isRawCallExpression(node: TS.Node): node is TS.CallExpression {
+    if (!ts.isCallExpression(node)) {
+        return false
+    }
+
+    const callee = getStriptTypeOperationsNode(node.expression)
+    return ts.isIdentifier(callee) && callee.text === "raw"
+}
+
+export function isMemberAccessExpression(node: TS.Node): node is MemberAccessExpression {
+    const strippedNode = getStriptTypeOperationsNode(node)
+    return (
+        ts.isNonNullExpression(strippedNode) ||
+        ts.isElementAccessExpression(strippedNode) ||
+        ts.isPropertyAccessExpression(strippedNode)
+    )
+}
+
+export function isLeftValue(node: TS.Node): boolean {
+    if (ts.isSourceFile(node)) {
+        return false
+    }
+    node = getStriptTypeOperationsNode(node)!
+
+    if (isMemberAccessExpression(node)) {
+        return (
+            !ts.isNonNullExpression(node) && !node.questionDotToken && isLeftValue(node.expression)
+        )
+    }
+    if (ts.isIdentifier(node)) {
+        return node.text !== "undefined"
+    }
+    return false
 }

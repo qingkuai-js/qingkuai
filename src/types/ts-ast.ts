@@ -30,6 +30,17 @@ export type TopLevelDeclarationNode =
     | TS.ClassDeclaration
     | TS.EnumDeclaration
 
+export type MemberAccessExpression =
+    | TS.PropertyAccessExpression
+    | TS.ElementAccessExpression
+    | TS.NonNullExpression
+
+export type TypeOperation =
+    | TS.AsExpression
+    | TS.NonNullExpression
+    | TS.SatisfiesExpression
+    | TS.TypeAssertion
+
 export type TopLevelDeclaratorNode =
     | TS.VariableDeclaration
     | Exclude<TopLevelDeclarationNode, TS.VariableDeclarationList>

@@ -246,6 +246,18 @@ export const InvalidSlotName = withLocation(1038, () => {
     return `The "#slot" directive requires a string literal slot name after "from" keyword.`
 })
 
+export const DuplicateDefaultsCall = withLocation(1023, () => {
+    return `The built-in method "defaults" can only be called once in the embedded script block.`
+})
+
+export const RawReadRequiresArgument = withLocation(1071, () => {
+    return `The built-in method "raw" must be passed an argument when used as an untracked read.`
+})
+
+export const RawReadRequiresSingleArgument = withLocation(1072, () => {
+    return `The built-in method "raw" can only be passed one argument when used as an untracked read.`
+})
+
 export const CannotAliasIdentifier = withLocation(1053, () => {
     return `The "alias" built-in method cannot be used to create an alias for a standalone identifier.`
 })
@@ -282,8 +294,8 @@ export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrins
     return `The built-in method "${intrinsic}" cannot be used in a "using" or "await using" declaration.`
 })
 
-export const DuplicateDefaultsCall = withLocation(1023, () => {
-    return `The built-in method "defaults" can only be called once in the embedded script block.`
+export const RawReadRequiresCallForm = withLocation(1073, () => {
+    return `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
 })
 
 export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: string) => {

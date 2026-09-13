@@ -23,7 +23,10 @@ import {
 import {
     CannotAliasIdentifier,
     DuplicateDefaultsCall,
+    RawReadRequiresArgument,
+    RawReadRequiresCallForm,
     TopLevelAwaitNotBeSupported,
+    RawReadRequiresSingleArgument,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
     ConstReactiveDisallowedByOption,
@@ -37,6 +40,7 @@ import {
 } from "../message/error"
 import {
     RedundantRawMark,
+    RedundantNestedRawCall,
     UnnecessaryReactiveMark,
     IdentifierMaybeOverwritten,
     UnnecessaryMutableDerivedDeclaration
@@ -52,6 +56,7 @@ import {
     isLiteral,
     isLeftValue,
     isFunctionLiteral,
+    isRawCallExpression,
     isIdentifierAssignmentTarget
 } from "../ts-ast/assert"
 import { analyzeExports } from "./exports"
@@ -63,7 +68,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
-import { walkBindingNameIdentifiers, walkTsNodeWithContext } from "../ts-ast/walk"
+import { walkBindingNameIdentifiers, walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
     if (!inputDescriptor.script.existing) {
@@ -611,10 +616,36 @@ function checkTopLevelIdentifier(id: TS.Identifier, imported = false) {
     }
 }
 
+// 记录脚本表达式中的 raw(expr) 非追踪读取
+// Record untracked reads `raw(expr)` in script expressions
+function recordUntrackedRawRead(call: TS.CallExpression): void {
+    const calleeLoc = getScriptLocByNode(call.expression)
+    const args = call.arguments
+    if (args.length === 0) {
+        return RawReadRequiresArgument(calleeLoc)
+    }
+    if (args.length > 1 || ts.isSpreadElement(args[0])) {
+        return RawReadRequiresSingleArgument(calleeLoc)
+    }
+
+    let nestedCallee: TS.Expression | undefined
+    walkTsNode(args[0], node => {
+        if (isRawCallExpression(node)) {
+            nestedCallee = node.expression
+            return true
+        }
+    })
+    if (nestedCallee) {
+        RedundantNestedRawCall(getScriptLocByNode(nestedCallee))
+    }
+    analyzeResult.script.rawReadCalls.push(call)
+}
+
 // 检查内建方法的使用是否合法
 // Validate the usage of built-in methods.
 function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): void {
     const intrinsicName = node.text
+    const isRaw = intrinsicName === "raw"
     const parent = getStriptTypeOperationsParent(node)!
 
     const throwInvalidUageError = () => {
@@ -622,7 +653,10 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
     }
 
     if (!ts.isCallExpression(parent)) {
-        return throwInvalidUageError()
+        if (!isRaw) {
+            return throwInvalidUageError()
+        }
+        return RawReadRequiresCallForm(getScriptLocByNode(node))
     }
 
     switch (intrinsicName) {
@@ -680,6 +714,14 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
 
             const grandParentNode = getStriptTypeOperationsParent(parent)!
             if (!parent.inTopLevel || !ts.isVariableDeclaration(grandParentNode)) {
+                if (isRaw) {
+                    if (getStriptTypeOperationsNode(parent.expression) === node) {
+                        recordUntrackedRawRead(parent)
+                    } else {
+                        RawReadRequiresCallForm(getScriptLocByNode(node))
+                    }
+                    break
+                }
                 return throwInvalidUageError()
             }
             if (
