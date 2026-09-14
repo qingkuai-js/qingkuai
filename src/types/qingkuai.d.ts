@@ -361,7 +361,9 @@ export declare function derived<T>(getter: Getter<T>): T
  *
  * The key difference from `derived` is that `derivedExp` accepts a direct
  * expression instead of a getter function. The compiler automatically
- * converts the expression into a getter internally.
+ * converts the expression into a getter internally. This keeps the code
+ * close to how the value is actually used — simpler to write and easier
+ * to read.
  *
  * Usage restrictions:
  * - This function **must be used in the top-level scope** of an embedded
@@ -405,7 +407,9 @@ interface WatchExpFunc {
      *
      * This method behaves like `watch`, but instead of requiring a getter
      * function, it accepts a reactive expression directly. The compiler
-     * automatically converts the expression into a getter internally.
+     * automatically converts the expression into a getter internally. This
+     * keeps the code close to how the value is actually used — simpler to
+     * write and easier to read.
      *
      * Trigger timing:
      * - The concrete trigger timing depends on the API that uses this
@@ -682,7 +686,8 @@ export declare const setContextGetter: unknown
  *
  * Unlike `setContext`, the value is passed directly — descendants access it
  * as a property and it stays reactive automatically, with no need to call
- * anything.
+ * anything. The compiler automatically wraps the expression into a getter
+ * internally, which simplifies writing and improves readability.
  *
  * Each component has its own contexts layer whose prototype is the parent's
  * layer, so:

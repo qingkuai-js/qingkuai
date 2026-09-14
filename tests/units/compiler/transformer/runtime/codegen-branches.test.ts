@@ -148,14 +148,14 @@ test("Runtime codegen: defaults used only via contexts emits applyDefaults and i
     expect(code).not.toContain("defaults(")
 })
 
-test("Runtime codegen: watchExp rewrites to instance-bound base watch closure", () => {
+test("Runtime codegen: watchExp always wraps its first argument as getter", () => {
     const code = compileRuntime(`
         <lang-js>
             watchExp(() => 1, () => {})
         </lang-js>
     `)
     expect(code).toContain("const instance = _.init(_anchor, _meta)")
-    expect(code).toContain("watch(() => 1, () => {})")
+    expect(code).toContain("watch(() => (() => 1), () => {})")
 })
 
 test("Runtime codegen: injects instance-bound shadowing closures for plain effect/watch methods", () => {

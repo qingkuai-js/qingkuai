@@ -490,16 +490,24 @@ function inferStatusByVariableDeclaration(
 
     const firstArg = initNode.arguments[0]
     const isLiteralArg = !firstArg || isLiteral(firstArg)
+    const isLiteralArgFull = isLiteralArg || (firstArg && isFunctionLiteral(firstArg))
+
     switch (calleeName) {
         case "alias": {
             return "alias"
         }
 
-        case "derived":
-        case "derivedExp": {
+        // 初始值为字面量值的衍生响应式声明无意义，退化为使用原始值
+        // Derived reactive declarations with literal initial values
+        // are meaningless and are downgraded to using the raw value.
+        case "derived": {
             if (isLiteralArg) {
-                // 初始值为字面量值的衍生响应式声明无意义，退化为使用原始值
-                // Derived reactive declarations with literal initial values are meaningless and are downgraded to using the raw value.
+                return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
+            }
+            return "derived"
+        }
+        case "derivedExp": {
+            if (isLiteralArg || isLiteralArgFull) {
                 return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
             }
             return "derived"

@@ -376,6 +376,26 @@ describe("Unnecessary reactive marking", () => {
             }
         ])
     })
+
+    test("DerivedExp with function literals", () => {
+        localAnalyze(`
+                const f = derivedExp(() => 1)
+                const g = derivedExp(function () { return 1 })
+                const h = derived(() => 1)
+            `)
+        localMatchCompileMessages([
+            {
+                type: "warning",
+                range: [6, 29],
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            },
+            {
+                type: "warning",
+                range: [36, 76],
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            }
+        ])
+    })
 })
 
 test("Shadow built-in identifiers", () => {

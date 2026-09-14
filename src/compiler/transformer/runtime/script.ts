@@ -114,15 +114,13 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
     })
 
-    // Exp 后缀的监视器函数的第一个参数是表达式，编译时需要将其包装为 getter 函数
+    // Exp 后缀的监视器函数的第一个参数是表达式，编译时无条件包装为 getter 函数
     // The first argument of the watcher function with the `Exp` suffix is
-    // an expression, which needs to be wrapped as a getter function at compile time.
+    // an expression, which is always wrapped as a getter function at compile time.
     for (const call of analyzeResult.script.watchExpCalls) {
         const firstArg = call.arguments[0]
-        if (shouldNodeWrapAsGetter(firstArg)) {
-            editor.insert(firstArg.getEnd(), ")")
-            editor.insert(firstArg.getStart(), `() => (`)
-        }
+        editor.insert(firstArg.getEnd(), ")")
+        editor.insert(firstArg.getStart(), `() => (`)
 
         const callee = getStriptTypeOperationsNode(call.expression)
         editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true)
@@ -192,7 +190,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         const byExpression = intrinsicInfo.id.text === "derivedExp"
         if (!destructuringIdentifierNames) {
             const firstArg = intrinsicInfo.call.arguments[0]
-            if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
+            if (byExpression) {
                 editor.insert(firstArg.getEnd(), ")")
                 editor.insert(firstArg.getStart(), "() => (")
             }
@@ -208,7 +206,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
 
         const firstArg = intrinsicInfo.call.arguments[0]
-        if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
+        if (byExpression) {
             editor.insert(firstArg.getEnd(), ")")
             editor.insert(firstArg.getStart(), "() => (")
         }
@@ -612,16 +610,6 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             `) => [${returns.join(", ")}], `
         )
     }
-}
-
-function shouldNodeWrapAsGetter(node: TS.Node) {
-    switch (getStriptTypeOperationsNode(node).kind) {
-        case ts.SyntaxKind.ArrowFunction:
-        case ts.SyntaxKind.FunctionExpression: {
-            return false
-        }
-    }
-    return true
 }
 
 function generateSetterCode(target: string) {

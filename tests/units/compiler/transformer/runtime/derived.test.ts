@@ -85,6 +85,29 @@ describe("Production", () => {
             )
         })
     })
+
+    describe("Destructuring", () => {
+        it("should transform destructuring derived declaration into destructuringDerived", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let src = { code: 1, msg: "ok" }
+                        let list = [1, 2]
+                        const { code, msg } = derived(() => src)
+                        const [first, second] = derived(() => list)
+                        console.log(code, msg, first, second)
+                    </lang-js>
+                `,
+                formatSourceCode(`
+                    let src = { code: 1, msg: "ok" }
+                    let list = [1, 2]
+                    const [code, msg] = _.destructuringDerived(({ code, msg }) => [code, msg], () => src, 2)
+                    const [first, second] = _.destructuringDerived(([first, second]) => [first, second], () => list, 2)
+                    console.log(code.$, msg.$, first.$, second.$)
+                `)
+            )
+        })
+    })
 })
 
 describe("Development", () => {
@@ -176,6 +199,27 @@ describe("Development", () => {
                     const $b = count + 1
                     const $c = outter?.inner
                     console.log($a, $b, $c)
+                `)
+            )
+        })
+    })
+
+    describe("Destructuring", () => {
+        it("should transform destructuring derived declaration into destructuringDerived with debug setters", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let src = { code: 1, msg: "ok" }
+                        const { code, msg } = derived(() => src)
+                        console.log(code, msg)
+                    </lang-js>
+                `,
+                formatSourceCode(`
+                    const _S1 = v => (code = v)
+                    const _S2 = v => (msg = v)
+                    let src = { code: 1, msg: "ok" }
+                    let [[_code, code], [_msg, msg]]= _.destructuringDerived(({ code, msg }) => [code, msg], () => src, 2, [_S1, _S2])
+                    console.log(_code.$, _msg.$)
                 `)
             )
         })

@@ -39,7 +39,7 @@ test("Runtime script: alias shorthand reference rewrites object shorthand", () =
     expect(code).toContain("{ a: a[_.REFERENCE_VALUE] }")
 })
 
-test("Runtime script: watchExp wraps non-function first argument as getter", () => {
+test("Runtime script: watchExp always wraps its first argument as getter", () => {
     const code = compileRuntime(`
         <lang-js>
             let count = 1
@@ -48,6 +48,17 @@ test("Runtime script: watchExp wraps non-function first argument as getter", () 
         <div>{count}</div>
     `)
     expect(code).toContain("watch(() => (count + 1), () => {})")
+})
+
+test("Runtime script: watchExp wraps function literal argument instead of using it as getter", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let count = 1
+            watchExp(() => count, () => {})
+        </lang-js>
+        <div>{count}</div>
+    `)
+    expect(code).toContain("watch(() => (() => count), () => {})")
 })
 
 test("Runtime script: watchExp with type assertion still rewrites to base watch", () => {
