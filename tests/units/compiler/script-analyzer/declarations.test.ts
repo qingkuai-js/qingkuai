@@ -534,3 +534,192 @@ test("Explicitly marking a const as reactive errors when allowConstReactive is f
         }
     ])
 })
+
+test("requireReactivityMark: unmarked top-level variable declarations raise 1074", () => {
+    localAnalyzeWithOptions(
+        `
+            let progress = "pending"
+            const done = true
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [4, 24],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        },
+        {
+            type: "error",
+            range: [31, 42],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        }
+    ])
+})
+
+test("requireReactivityMark: raw mark on a const literal is the canonical form", () => {
+    localAnalyzeWithOptions(
+        `
+            const n = raw(0)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "n",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        }
+    ])
+    localMatchCompileMessages([])
+})
+
+test("requireReactivityMark: reactive/shallow mark on a const literal keeps the downgrade warning", () => {
+    localAnalyzeWithOptions(
+        `
+            const a = reactive(1)
+            const b = shallow("")
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "a",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "b",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "warning",
+            range: [6, 21],
+            value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+        },
+        {
+            type: "warning",
+            range: [28, 43],
+            value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+        }
+    ])
+})
+
+test("requireReactivityMark: explicit marks keep their statuses", () => {
+    localAnalyzeWithOptions(
+        `
+            let state = reactive({ count: 0 })
+            const count = alias(state.count)
+            const double = derived(() => count * 2)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "state",
+            hoist: false,
+            implicit: false,
+            status: "reactive"
+        },
+        {
+            name: "count",
+            hoist: false,
+            implicit: false,
+            status: "alias"
+        },
+        {
+            name: "double",
+            hoist: false,
+            implicit: false,
+            status: "derived"
+        }
+    ])
+    localMatchCompileMessages([])
+})
+
+test("requireReactivityMark: derivedExp with a function literal degrades to raw", () => {
+    localAnalyzeWithOptions(
+        `
+            const f = derivedExp(() => 1)
+            const g = derived(() => 1)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "f",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "g",
+            hoist: false,
+            implicit: false,
+            status: "derived"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "warning",
+            range: [6, 29],
+            value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+        }
+    ])
+})
+
+test("requireReactivityMark: destructuring declarations", () => {
+    localAnalyzeWithOptions(
+        `
+            let obj = reactive({ a: 1, code: 2 })
+            const { a } = obj
+            const { code } = reactive(obj)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "obj",
+            hoist: false,
+            implicit: false,
+            status: "reactive"
+        },
+        {
+            name: "a",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "code",
+            hoist: false,
+            implicit: false,
+            status: "reactive"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [44, 55],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        }
+    ])
+})

@@ -111,7 +111,8 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             reactivityMode: "reactive",
             interpretiveComments: false,
             whitespace: "trim-collapse",
-            preserveHtmlComments: false
+            preserveHtmlComments: false,
+            requireReactivityMark: false
         }
     }
     if (!options.hashId) {

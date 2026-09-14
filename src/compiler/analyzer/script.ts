@@ -5,8 +5,8 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/ts-ast"
-import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
+import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler"
 
 import ts from "typescript"
 
@@ -30,6 +30,7 @@ import {
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
     ConstReactiveDisallowedByOption,
+    ExplicitReactivityMarkRequired,
     InvalidUsageForIntrinsicMethods,
     ShadowCompilerIntrinsicAtTopLevel,
     InvalidParameterForAliasIntrinsic,
@@ -426,16 +427,6 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
     }
 }
 
-// 推断可变声明（let/var）非字面量初始值的状态：默认 reactive 模式下保持 pending（由模板访问确认），
-// shallow 模式下回到 literal（由"是否被赋值"决定是否升级为 shallow，未赋值保持非响应式）。
-//
-// In the default reactive mode, a mutable declaration with a non-literal initial value stays
-// pending (confirmed by template access); in shallow mode it falls back to literal and is only
-// upgraded to shallow when actually mutated.
-function inferShallowMutableStatus(): IdentifierStatus {
-    return inputDescriptor.options.reactivityMode === "shallow" ? "literal" : "pending"
-}
-
 // 推断顶级作用域标识符的响应式状态
 // Infer the reactive status of top-level scope identifiers.
 function inferStatusByVariableDeclaration(
@@ -451,14 +442,20 @@ function inferStatusByVariableDeclaration(
     const declarationLoc = getScriptLocByNode(declaration)
     const isDestructuring = !ts.isIdentifier(declaration.name)
     const allowConstReactive = inputDescriptor.options.allowConstReactive
+    const shallowMode = inputDescriptor.options.reactivityMode === "shallow"
     const initNode = declaration.initializer && getStriptTypeOperationsNode(declaration.initializer)
 
     if (!initNode) {
         return isConst ? "raw" : "literal"
     }
 
+    const isLiteralInit = isLiteral(initNode)
+    const requireMark = inputDescriptor.options.requireReactivityMark
+
     if (!ts.isCallExpression(initNode)) {
-        const isLiteralInit = isLiteral(initNode)
+        if (requireMark) {
+            return (ExplicitReactivityMarkRequired(declarationLoc), "raw")
+        }
 
         // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
         // Constant declarations with literal initial values have no reactive semantics and are downgraded to using the raw value.
@@ -475,19 +472,21 @@ function inferStatusByVariableDeclaration(
         // 可变声明（let/var）：shallow 模式下非字面量需"被赋值"才升级为 shallow。
         // Mutable declarations: in shallow mode, non-literal initializers are only
         // upgraded to shallow when actually mutated.
-        return inferShallowMutableStatus()
+        return shallowMode ? "literal" : "pending"
     }
 
     const callee = getStriptTypeOperationsNode(initNode.expression)!
-    if (!ts.isIdentifier(callee)) {
-        return isConst ? "pending" : inferShallowMutableStatus()
+    if (!ts.isIdentifier(callee) || !intrinsicReactiveMethodsRE.test(callee.text)) {
+        if (!requireMark) {
+            if (isConst) {
+                return "pending"
+            }
+            return shallowMode ? "literal" : "pending"
+        }
+        return (ExplicitReactivityMarkRequired(declarationLoc), "raw")
     }
 
     const calleeName = callee.text
-    if (!intrinsicReactiveMethodsRE.test(calleeName)) {
-        return isConst ? "pending" : inferShallowMutableStatus()
-    }
-
     const firstArg = initNode.arguments[0]
     const isLiteralArg = !firstArg || isLiteral(firstArg)
     const isLiteralArgFull = isLiteralArg || (firstArg && isFunctionLiteral(firstArg))
@@ -515,29 +514,31 @@ function inferStatusByVariableDeclaration(
 
         default: {
             const status = calleeName as ReactiveIntrinsics
-            if (isDestructuring || !isConst || !(isLiteralArg || isFunctionLiteral(firstArg))) {
-                if (
-                    !isConst ||
-                    allowConstReactive ||
-                    !(status === "reactive" || status === "shallow")
-                ) {
-                    return status
+
+            // const 声明的字面量/函数字面量初始值会被退化规则忽略其标记
+            // Markers on a const declaration with a literal/function-literal
+            // initial value are ignored by the degeneration rule.
+            if (isConst && !isDestructuring && (isLiteralArg || isLiteralArgFull)) {
+                if (status === "raw") {
+                    // requireReactivityMark 模式下 raw 是规范形态，不再提示冗余
+                    // Under requireReactivityMark `raw` is canonical,
+                    // so the redundancy warning is suppressed.
+                    return requireMark ? "raw" : (RedundantRawMark(declarationLoc), "raw")
                 }
 
-                // 当 allowConstReactive 选项被禁用时，禁止通过 reactive/shallow 显式标记常量声明
-                // Explicitly marking a const declaration with `reactive` or `shallow` is disallowed when the allowConstReactive option is disabled.
+                // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
+                // Marking a literal value in a constant declaration with `reactive`
+                // or `shallow` is meaningless and is downgraded to using the raw value.
+                return (UnnecessaryReactiveMark(declarationLoc, status), "raw")
+            }
+
+            // 当 allowConstReactive 选项被禁用时，禁止通过 reactive/shallow 显式标记常量声明
+            // Explicitly marking a const declaration with `reactive` or `shallow`
+            // is disallowed when the allowConstReactive option is disabled.
+            if (isConst && !allowConstReactive && (status === "reactive" || status === "shallow")) {
                 return (ConstReactiveDisallowedByOption(declarationLoc, status), "raw")
             }
-
-            // 通过 raw 标记常量声明的字面量值是冗余的
-            // Marking a literal value in a constant declaration with `raw` is redundant.
-            if (calleeName === "raw") {
-                return (RedundantRawMark(declarationLoc), "raw")
-            }
-
-            // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
-            // Marking a literal value in a constant declaration with `reactive` or `shallow` is meaningless and is downgraded to using the raw value.
-            return (UnnecessaryReactiveMark(declarationLoc, status), "raw")
+            return status
         }
     }
 }

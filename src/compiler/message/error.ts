@@ -349,6 +349,10 @@ export const InvalidTargetDirectivePlacement = withLocation(1040, () => {
     return `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`
 })
 
+export const ExplicitReactivityMarkRequired = withLocation(1074, () => {
+    return `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+})
+
 export const InvalidShorthandAttributeName = withLocation(1049, (name: string) => {
     return `Invalid name for shorthand ${getSpecialAttrDescription(name)}: "${name}". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
 })
