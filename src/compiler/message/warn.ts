@@ -33,6 +33,10 @@ export const UnnecessaryScopeDirective = withLocation(9003, () => {
     return `The "#scope" directive has no effect because the current component has no scoped styles.`
 })
 
+export const StatefulUnkeyedForList = withLocation(9015, () => {
+    return `The "#for" list items contain internal state that may leak between items without a "#key".`
+})
+
 export const RedundantRawMark = withLocation(9005, () => {
     return `Marking a const with a literal initializer as raw is redundant, as it is treated as raw by default.`
 })

@@ -284,7 +284,7 @@ test("The SPREAD_TAG can only accept directives as attributes", () => {
         }
     ])
     analyzeTemplateAndMatchMessages(
-        `<qk:spread id="" !custom={_} @click={_}  &value={_} #for={_}></qk:spread>`,
+        `<qk:spread id="" !custom={_} @click={_}  &value={_} #for={_} #key={_}></qk:spread>`,
         [
             {
                 type: "error",

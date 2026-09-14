@@ -24,20 +24,35 @@ import { SPREAD_TAG } from "../constants"
 import { analyzeAttributes } from "./attribute"
 import { analyzeStaticTextContent } from "./text"
 import { newCleanObj } from "../../util/shared/sundry"
-import { UnnecessarySpreadTag } from "../message/warn"
 import { objectAssign } from "../../util/shared/aliases"
 import { analyzeResult, inputDescriptor } from "../state"
 import { shouldBeSelectedAttrStartCharRE } from "../regular"
 import { isHtmlDirectiveChild } from "../../util/compiler/assert"
+import { StatefulUnkeyedForList, UnnecessarySpreadTag } from "../message/warn"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 import { getLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
+    const reportedUnkeyedLists = new Set<TemplateNode>()
+
+    const checkStatefulUnkeyedForList = (listAncestors: TemplateNode[]) => {
+        for (const listNode of listAncestors) {
+            const listContext = getTemplateNodeContext(listNode)
+            if (listContext.attributesMap["#key"] || reportedUnkeyedLists.has(listNode)) {
+                continue
+            }
+            reportedUnkeyedLists.add(listNode)
+            StatefulUnkeyedForList(getStartTagOpenLoc(listNode))
+        }
+    }
+
     walkTemplateNodes(nodes, node => {
         let nodeContext: TemplateNodeContext
+        let parentListAncestors: TemplateNode[] = []
         let parentContextIdentifiers: Record<string, ParsedDirective> | undefined
         if (node.parent) {
-            parentContextIdentifiers = getTemplateNodeContext(node.parent)?.contextIdentifiers
+            parentListAncestors = getTemplateNodeContext(node.parent).listAncestors
+            parentContextIdentifiers = getTemplateNodeContext(node.parent).contextIdentifiers
         }
         analyzeResult.template.nodeContexts.set(
             node,
@@ -55,6 +70,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 selectableChildCount: 0,
                 shouldBeSelected: false,
                 attributesMap: newCleanObj(),
+                listAncestors: [...parentListAncestors],
                 contextIdentifiers: objectAssign(newCleanObj(), parentContextIdentifiers)
             })
         )
@@ -103,13 +119,22 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 }
             }
         }
+        if (nodeContext.attributesMap["#for"]) {
+            nodeContext.listAncestors.push(node)
+        }
     })
+
     walkTemplateNodes(nodes, node => {
         if (node.componentTag) {
             checkSlotAssignment(node)
         }
         if (!inputDescriptor.options.checkMode) {
             evaluateTemplateNodeSelection(node)
+        }
+
+        const nodeContext = getTemplateNodeContext(node)
+        if (node.componentTag || nodeContext.referenceAttributes.length) {
+            checkStatefulUnkeyedForList(nodeContext.listAncestors)
         }
     })
 }
