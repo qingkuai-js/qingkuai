@@ -723,3 +723,49 @@ test("requireReactivityMark: destructuring declarations", () => {
         }
     ])
 })
+
+test("requireReactivityMark: a call to a non-built-in method raises 1074", () => {
+    localAnalyzeWithOptions(
+        `
+            const value = loadValue()
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "value",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [6, 25],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        }
+    ])
+})
+
+test("shallow mode: non-built-in call initializer stays literal until mutated", () => {
+    localAnalyzeWithOptions(
+        `
+            let value = loadValue()
+        `,
+        {
+            reactivityMode: "shallow"
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "value",
+            hoist: false,
+            implicit: true,
+            status: "literal"
+        }
+    ])
+    localMatchCompileMessages([])
+})

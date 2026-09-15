@@ -14,6 +14,9 @@ const scenario: E2EScenarioInput = {
             let plain = ""
             let watched = ""
             let visible = true
+            let prefix = reactive("p1")
+            let left = reactive(1)
+            let right = reactive(2)
 
             effect(() => {
                 watched = user.name + " / " + raw(config).label
@@ -25,6 +28,14 @@ const scenario: E2EScenarioInput = {
                 }
                 user.name = "u2"
             }
+
+            const bumpLeft = () => {
+                left += 1
+            }
+
+            const renamePrefix = () => {
+                prefix = "p2"
+            }
         </lang-js>
 
         <section data-page="raw-read">
@@ -33,6 +44,7 @@ const scenario: E2EScenarioInput = {
             <p id="mixed">{user.name + " / " + raw(config).label}</p>
             <p id="untracked-reactive">{raw(user).name}</p>
             <p id="watched">{watched}</p>
+            <p id="no-tracking">{prefix + ":" + raw(left + right)}</p>
 
             <input id="plain-input" &value={raw(plain)} />
             <p id="plain-mirror">{plain.length}</p>
@@ -44,6 +56,8 @@ const scenario: E2EScenarioInput = {
             <button id="toggle" @click={visible = !visible}>toggle</button>
 
             <button id="update" @click={update}>update</button>
+            <button id="bump-left" @click={bumpLeft}>bump left</button>
+            <button id="rename-prefix" @click={renamePrefix}>rename prefix</button>
         </section>
     `
 }
@@ -110,5 +124,26 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await page.locator("#plain-input").fill("abc")
         await expect(page.locator("#plain-input")).toHaveValue("abc")
         await expect(page.locator("#plain-mirror")).toHaveText("0")
+    })
+
+    test("complex raw expressions are untracked but re-read when other dependencies rerun", async ({
+        page,
+        visitScenario
+    }) => {
+        await visitScenario(scenario)
+        await expect(page.locator("#no-tracking")).toHaveText("p1:3")
+
+        await page.locator("#bump-left").click()
+
+        // left 的变更不触发重跑，因为它是被 raw 包裹的复合表达式的一部分
+        // Changes to `left` do not trigger a rerun because it is part of a
+        // complex expression wrapped in raw.
+        await expect(page.locator("#no-tracking")).toHaveText("p1:3")
+
+        await page.locator("#rename-prefix").click()
+
+        // prefix 是被追踪的依赖，重跑时 raw 部分读取最新的 left/right
+        // `prefix` is tracked, so the rerun reads the latest left/right in the raw part.
+        await expect(page.locator("#no-tracking")).toHaveText("p2:4")
     })
 })
