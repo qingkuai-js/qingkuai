@@ -98,7 +98,7 @@ export namespace __qk__lsu {
  * </lang-ts>
  * ```
  *
- * 2. **Untracked read** — used in template interpolation blocks (text
+ * 2. **Non-reactive read** — used in template interpolation blocks (text
  *    interpolations, dynamic attribute values, directive values, event values
  *    and reference attribute values) as well as in embedded script expressions
  *    such as `effect` / `watch` / `derived` callbacks, with exactly one
@@ -111,7 +111,7 @@ export namespace __qk__lsu {
  *    reference-attribute usage — do not apply to them, and they stay raw
  *    unless a tracked read elsewhere promotes them.
  *
- *    It is "untracked" rather than "frozen": when other tracked dependencies
+ *    It is "non-reactive" rather than "frozen": when other tracked dependencies
  *    trigger a re-run, the raw part is evaluated again with the latest value.
  *
  * ```qk
@@ -126,8 +126,8 @@ export namespace __qk__lsu {
  * ```
  *
  * @param value The value to mark as raw in declaration marking, or the
- *   expression to read without tracking in untracked reads. Optional in
- *   declaration marking, required in untracked reads.
+ *   expression to read without tracking in non-reactive reads. Optional in
+ *   declaration marking, required in non-reactive reads.
  * @returns The same value passed in, unchanged.
  */
 export declare function raw<T>(value?: T): T

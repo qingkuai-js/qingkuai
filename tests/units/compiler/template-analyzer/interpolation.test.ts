@@ -29,7 +29,7 @@ test("raw used in template requires the call form", () => {
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
         }
     ])
 })
@@ -39,7 +39,7 @@ test("raw passed around in template requires the call form", () => {
         {
             type: "error",
             range: [9, 12],
-            value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
         }
     ])
 })
@@ -49,7 +49,7 @@ test("raw used in template requires an argument", () => {
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" must be passed an argument when used as an untracked read.`
+            value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
         }
     ])
 })
@@ -59,7 +59,7 @@ test("raw used in template accepts only one argument", () => {
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" can only be passed one argument when used as an untracked read.`
+            value: `The built-in method "raw" can only be passed one argument when used as a non-reactive read.`
         }
     ])
 })
@@ -79,7 +79,7 @@ test("member access on raw in template requires the call form", () => {
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
         }
     ])
 })
@@ -123,7 +123,7 @@ test("raw read does not promote pending identifiers and records untracked refere
     expect(analyzeResult.script.topLevelIdentifiers["config"]?.usedExpressions.size).toBe(0)
 })
 
-test("identifier promoted by tracked read elsewhere stays untracked in raw expressions", () => {
+test("identifier promoted by tracked read elsewhere stays non-reactive in raw expressions", () => {
     analyzeTemplateOnly(`
         <lang-js>
             let count = 0
@@ -141,7 +141,7 @@ test("identifier promoted by tracked read elsewhere stays untracked in raw expre
     expect(analyzeResult.script.topLevelIdentifiers["count"]?.usedExpressions.size).toBe(1)
 })
 
-test("member accesses of reactive values inside raw arguments are untracked", () => {
+test("member accesses of reactive values inside raw arguments are non-reactive", () => {
     analyzeTemplateOnly(`
         <lang-js>
             let user = reactive({ name: "q", detail: {} })

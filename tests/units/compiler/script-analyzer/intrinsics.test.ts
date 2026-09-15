@@ -53,7 +53,7 @@ describe("Invalid usages of built-in methods", () => {
             {
                 type: "error",
                 range: [50, 53],
-                value: `The built-in method "raw" must be passed an argument when used as an untracked read.`
+                value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
             },
             {
                 type: "error",
@@ -704,8 +704,8 @@ test("setContextGetter performs no compile checks (spread and extra args allowed
     expect(analyzeResult.script.usedIntrinsics.has("setContextGetter")).toBe(true)
 })
 
-describe("Untracked raw reads in script expressions", () => {
-    test("raw call in a callback is recorded as an untracked read", () => {
+describe("Non-reactive raw reads in script expressions", () => {
+    test("raw call in a callback is recorded as a non-reactive read", () => {
         localAnalyze(`
             let config = load()
             effect(() => {
@@ -726,7 +726,7 @@ describe("Untracked raw reads in script expressions", () => {
             {
                 type: "error",
                 range: [31, 34],
-                value: `The built-in method "raw" must be passed an argument when used as an untracked read.`
+                value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
             }
         ])
         expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
@@ -742,7 +742,7 @@ describe("Untracked raw reads in script expressions", () => {
             {
                 type: "error",
                 range: [31, 34],
-                value: `The built-in method "raw" can only be passed one argument when used as an untracked read.`
+                value: `The built-in method "raw" can only be passed one argument when used as a non-reactive read.`
             }
         ])
     })
@@ -771,7 +771,7 @@ describe("Untracked raw reads in script expressions", () => {
             {
                 type: "error",
                 range: [16, 19],
-                value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+                value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
             }
         ])
     })
@@ -789,7 +789,7 @@ describe("Untracked raw reads in script expressions", () => {
             {
                 type: "error",
                 range: [62, 65],
-                value: `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+                value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
             }
         ])
         expect(analyzeResult.script.rawReadCalls).toHaveLength(0)

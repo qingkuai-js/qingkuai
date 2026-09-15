@@ -126,7 +126,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect(page.locator("#plain-mirror")).toHaveText("0")
     })
 
-    test("complex raw expressions are untracked but re-read when other dependencies rerun", async ({
+    test("complex raw expressions are non-reactive but re-read when other dependencies rerun", async ({
         page,
         visitScenario
     }) => {

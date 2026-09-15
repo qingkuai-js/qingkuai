@@ -251,11 +251,11 @@ export const DuplicateDefaultsCall = withLocation(1023, () => {
 })
 
 export const RawReadRequiresArgument = withLocation(1071, () => {
-    return `The built-in method "raw" must be passed an argument when used as an untracked read.`
+    return `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
 })
 
 export const RawReadRequiresSingleArgument = withLocation(1072, () => {
-    return `The built-in method "raw" can only be passed one argument when used as an untracked read.`
+    return `The built-in method "raw" can only be passed one argument when used as a non-reactive read.`
 })
 
 export const CannotAliasIdentifier = withLocation(1053, () => {
@@ -295,7 +295,7 @@ export const IntrinsicNotAllowedInUsingDeclaration = withLocation(1054, (intrins
 })
 
 export const RawReadRequiresCallForm = withLocation(1073, () => {
-    return `The built-in method "raw" must be used in the call form "raw(expr)" when used as an untracked read.`
+    return `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
 })
 
 export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: string) => {

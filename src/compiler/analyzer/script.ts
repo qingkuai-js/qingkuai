@@ -625,9 +625,9 @@ function checkTopLevelIdentifier(id: TS.Identifier, imported = false) {
     }
 }
 
-// 记录脚本表达式中的 raw(expr) 非追踪读取
-// Record untracked reads `raw(expr)` in script expressions
-function recordUntrackedRawRead(call: TS.CallExpression): void {
+// 记录脚本表达式中的 raw(expr) 非响应式读取
+// Record non-reactive reads `raw(expr)` in script expressions
+function recordNonReactiveRead(call: TS.CallExpression): void {
     const calleeLoc = getScriptLocByNode(call.expression)
     const args = call.arguments
     if (args.length === 0) {
@@ -727,7 +727,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
             if (!parent.inTopLevel || !ts.isVariableDeclaration(grandParentNode)) {
                 if (isRaw) {
                     if (getStriptTypeOperationsNode(parent.expression) === node) {
-                        recordUntrackedRawRead(parent)
+                        recordNonReactiveRead(parent)
                     } else {
                         RawReadRequiresCallForm(getScriptLocByNode(node))
                     }

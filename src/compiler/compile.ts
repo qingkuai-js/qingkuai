@@ -171,8 +171,8 @@ function getInlayHintKind(nodeInfo: TopLevelIdentifierNodeInfo): InlayHintKind {
     }
 }
 
-// 收集在模板中仅以非追踪方式（raw 参数子树内）被读取的顶层标识符名称
-// Collect names of top-level identifiers that are only read untracked
+// 收集在模板中仅以非响应式方式（raw 参数子树内）被读取的顶层标识符名称
+// Collect names of top-level identifiers that are only read in non-reactive reads
 // (inside the argument subtree of a raw call) in the template.
 function collectUntrackedTemplateReadNames() {
     const names = new Set<string>()
@@ -239,7 +239,7 @@ function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo, untrackedInTemp
             return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
         }
         case "pending": {
-            return `raw (${untrackedInTemplate ? "untracked" : "unused"} in template)`
+            return `raw (${untrackedInTemplate ? "no reactive read" : "unused"} in template)`
         }
         default: {
             return info.status

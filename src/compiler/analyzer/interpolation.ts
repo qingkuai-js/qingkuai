@@ -123,7 +123,7 @@ export function analyzeInterpolation(
                         ts.isCallExpression(parent) &&
                         getStriptTypeOperationsNode(parent.expression) === node
                     ) {
-                        recordTemplateRawCall(parsedExpression, parent)
+                        recordNonReactiveRawCall(parsedExpression, parent)
                     } else {
                         RawReadRequiresCallForm(getLocByIndex(...sourceRange))
                     }
@@ -301,10 +301,10 @@ function isInRawArgument(rawCallExpressions: TS.CallExpression[], range: Range) 
     })
 }
 
-// 记录模板插值中的 raw(expr) 非追踪读取调用，并校验调用形式与嵌套冗余；
-// Record untracked reads `raw(expr)` in template interpolations,
+// 记录模板插值中的 raw(expr) 非响应式读取调用，并校验调用形式与嵌套冗余；
+// Record non-reactive reads `raw(expr)` in template interpolations,
 // validating the call forms and nested redundancy.
-function recordTemplateRawCall(parsedExpression: ParsedExpression, call: TS.CallExpression) {
+function recordNonReactiveRawCall(parsedExpression: ParsedExpression, call: TS.CallExpression) {
     const args = call.arguments
     const startSourceIndex = parsedExpression.startSourceIndex
     const calleeLoc = getLocByIndex(

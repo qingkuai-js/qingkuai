@@ -217,7 +217,7 @@ test("Intermediate: derived intrinsic keeps derived status", () => {
     })
 })
 
-test("Intermediate: identifier only read inside raw is marked untracked in template", () => {
+test("Intermediate: identifier only read inside raw is marked non-reactive in template", () => {
     const source = formatSourceCode(`
         <lang-js>
             let config = { value: 1 }
@@ -228,7 +228,7 @@ test("Intermediate: identifier only read inside raw is marked untracked in templ
     const result = compileIntermediateAndAssertNoErrors(source, "id-status-untracked")
     expect(result.identifierStatusInfo).toMatchObject({
         config: {
-            description: "raw (untracked in template)"
+            description: "raw (no reactive read in template)"
         }
     })
 })
