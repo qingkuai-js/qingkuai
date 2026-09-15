@@ -43,7 +43,7 @@ export const toReactive: ToReactiveFunc = value => {
     return proxyCache.get(toRaw(value))?.p ?? value
 }
 
-export const toShallowReactive: ToReactiveFunc = value => {
+export const toShallow: ToReactiveFunc = value => {
     return shallowProxyCache.get(value)?.p ?? value
 }
 
