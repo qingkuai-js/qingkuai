@@ -242,6 +242,18 @@ test("Keyed list with text equal to key still generates setText for node text", 
     expect(code).toContain("_.setText(")
 })
 
+test("Nested member access key matches key-directive optimization", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let list = [{ nested: { id: 1 } }]
+        </lang-js>
+        <div #for={item of list} #key={item.nested.id}>{item.nested.id}</div>
+    `)
+    expect(code).toContain("_.keyedListBlock(")
+    expect(code).toContain("_.setText(")
+    expect(code).not.toContain("_.renderEffect(")
+})
+
 test("Keyed list with extra text keeps setText update", () => {
     const code = compileRuntime(`
         <lang-js>
