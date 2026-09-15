@@ -177,7 +177,6 @@ describe("Invalid usages of built-in methods", () => {
             let a = alias(1)
             let { b } = alias({})
             const [c, d] = alias(getObj(), a++)
-            const { e, f: { g } } = alias(h.i, j.k)
         `)
         localMatchCompileMessages([
             {
@@ -194,13 +193,16 @@ describe("Invalid usages of built-in methods", () => {
                 type: "error",
                 range: [54, 74],
                 value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
-            },
-            {
-                type: "error",
-                range: [99, 114],
-                value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
             }
         ])
+    })
+
+    test("Arguments after the first are ignored", () => {
+        localAnalyze(`
+            const a = alias(props.x, fallback)
+            const { b } = alias(props.y, fallback, other)
+        `)
+        localMatchCompileMessages([])
     })
 
     test("Default values are not allowed in destructuring pattern of alias declaration", () => {
@@ -372,6 +374,31 @@ describe("Unnecessary reactive marking", () => {
             {
                 type: "warning",
                 range: [105, 130],
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            }
+        ])
+    })
+
+    test("Derived marker with literals", () => {
+        localAnalyze(`
+                const a = derived(1)
+                const b = derived("")
+                const c = derived(null)
+            `)
+        localMatchCompileMessages([
+            {
+                type: "warning",
+                range: [6, 20],
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            },
+            {
+                type: "warning",
+                range: [27, 42],
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            },
+            {
+                type: "warning",
+                range: [49, 66],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             }
         ])
@@ -581,15 +608,15 @@ test("reactive, shallow, raw and derived accept spread arguments", () => {
     localMatchCompileMessages([])
 })
 
-test("alias accepts spread but still requires a mutable lvalue target", () => {
+test("alias rejects a spread element as its first argument", () => {
     localAnalyze(`
         const e = alias(...items)
     `)
     localMatchCompileMessages([
         {
             type: "error",
-            range: [10, 25],
-            value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
+            range: [16, 24],
+            value: `The built-in method "alias" does not support spread element as its argument.`
         }
     ])
 })

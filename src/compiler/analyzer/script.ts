@@ -716,7 +716,9 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
             const firstArg = parent.arguments[0]
             const intrinsicCallLoc = getScriptLocByNode(parent)
             if (intrinsicName === "alias") {
-                if (parent.arguments.length !== 1 || !isLeftValue(firstArg)) {
+                if (firstArg && ts.isSpreadElement(firstArg)) {
+                    InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
+                } else if (!firstArg || !isLeftValue(firstArg)) {
                     InvalidParameterForAliasIntrinsic(intrinsicCallLoc)
                 }
             }

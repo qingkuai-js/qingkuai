@@ -25,10 +25,11 @@ import {
     resetCompilerState,
     tsParsingDiagnostics
 } from "./state"
+import { isLeftValue } from "./ts-ast/assert"
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
 import { analyzeTemplate } from "./analyzer/template"
-import { isValidIdentifierName } from "../util/compiler/assert"
+import { getStriptTypeOperationsParent } from "./ts-ast/sundry"
 import { getScriptSourceIndex } from "../util/compiler/position"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
@@ -191,14 +192,39 @@ function collectUntrackedTemplateReadNames() {
     return names
 }
 
+// 判断 alias 声明是否为非法形态，判断条件与 `checkUsageOfIntrinsicMethods` 保持一致：
+// 首参缺失、首参是展开元素、首参不是左值，或直接别名一个独立标识符时视为非法；
+// 首个参数之后的其余参数会被忽略，不影响合法性判断。
+//
+// Determine whether an alias declaration is invalid. The conditions mirror those in
+// `checkUsageOfIntrinsicMethods`: invalid when the first argument is missing, is a
+// spread element, is not a left value, or aliases a standalone identifier. Arguments
+// after the first are ignored and do not affect validity.
+function isInvalidAliasDeclaration(info: TopLevelIdentifierInfo) {
+    const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+    const callee = analyzeResult.script.declaratorToIntrinsic.get(declarator)
+    const call = callee && getStriptTypeOperationsParent(callee)
+    if (!info.aliasTarget || !call || !ts.isCallExpression(call)) {
+        return true
+    }
+
+    const firstArg = call.arguments[0]
+    return (
+        !firstArg ||
+        !isLeftValue(firstArg) ||
+        ts.isSpreadElement(firstArg) ||
+        (ts.isIdentifier(firstArg) && ts.isIdentifier(declarator.name))
+    )
+}
+
 function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo, untrackedInTemplate = false) {
     switch (info.status) {
         case "literal": {
             return "raw (never mutated)"
         }
         case "alias": {
-            if (isValidIdentifierName(info.aliasTarget)) {
-                return "raw (invalid alias)"
+            if (isInvalidAliasDeclaration(info)) {
+                return "alias (invalid)"
             }
             return `alias -> ${info.aliasTarget}`
         }
