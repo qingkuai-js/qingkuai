@@ -1,5 +1,7 @@
 import type TS from "typescript"
+
 import type { CodeEditor } from "../editor"
+import type { TsNodeWithContext } from "#type-declarations/ts-ast"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
 
 import ts from "typescript"
@@ -12,6 +14,7 @@ import {
 } from "../../ts-ast/sundry"
 import { RuntimeCodeWriter } from "../writer"
 import { arrayFrom } from "../../../util/shared/arrays"
+import { isShadowedIdentifier } from "../../ts-ast/context"
 import { jsDestructuringEqualTokenRE } from "../../regular"
 import { BOUND_INSTANCE_INTRINSIC_MAP } from "../../constants"
 import { findOutOfComment } from "../../../util/compiler/string"
@@ -27,6 +30,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     const scriptSource = inputDescriptor.script.code
     const undefId = `${generateIdentifier.internal}.UNDEF`
     const identifierMap: Record<string, string> = newCleanObj()
+    const rawArgumentBitmap = new Uint8Array(editor.sourceLength)
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
 
     // 注入绑定当前组件实例的遮蔽闭包。
@@ -134,17 +138,48 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         editor.replace(...getNodeRange(call.expression), "setContextGetter", true)
     }
 
-    // raw(expr) -> _.noTracking(expr)，使脚本表达式内的读取不追踪依赖；
-    // 仅替换 callee，类型参数 `<T>` 原位保留（产物允许携带 TS 类型，擦除由 vite-plugin 完成）
-    // raw(expr) -> _.noTracking(expr), so reads in script expressions track no dependency.
-    // Only the callee is replaced, leaving type arguments `<T>` in place (the output may carry
-    // TS types, which are erased downstream by vite-plugin).
+    // 非响应式读取转换
+    // Non-reactive reads are transformed
     for (const call of analyzeResult.script.rawReadCalls) {
+        const arg = call.arguments[0]
+        const identifier = getStriptTypeOperationsNode(arg)
         const callee = getStriptTypeOperationsNode(call.expression)!
-        const firstArg = call.arguments[0]
-        editor.insert(firstArg.getEnd(), `)`)
-        editor.insert(firstArg.getStart(), `() => (`)
-        editor.replace(...getNodeRange(callee), `${internalId}.noTracking`, true)
+
+        // 被遮蔽的引用解析到局部绑定，按未知标识符处理
+        //
+        // A reference shadowed by a nested scope resolves to a local binding and is
+        // treated as an unknown identifier.
+        if (identifier && ts.isIdentifier(identifier)) {
+            const status = isShadowedIdentifier(
+                identifier as TsNodeWithContext<TS.Identifier>,
+                identifier.text
+            )
+                ? undefined
+                : topLevelIdentifiers[identifier.text]?.status
+
+            // 原始值标识符：去掉 raw 包裹直接读取
+            // Raw-value identifier: removing the raw wrapper is enough.
+            if (status === "raw" || status === "literal" || status === "pending") {
+                editor.remove(callee.getStart(), arg.getStart())
+                editor.remove(arg.getEnd(), call.getEnd())
+                continue
+            }
+
+            // reactive/shallow/未知标识符：读取原始标识符
+            // reactive/shallow/unknown identifiers: read the raw identifier.
+            if (status !== "derived" && status !== "alias") {
+                rawArgumentBitmap.fill(1, identifier.getStart(), identifier.getEnd())
+                editor.replace(...getNodeRange(callee), `${internalId}.toRaw`, true)
+                continue
+            }
+        }
+
+        // derived/alias 标识符与其余表达式：可能在 effect 内求值，暂停追踪并解包
+        // derived/alias identifiers and other expressions: they may run inside
+        // effects, so pause tracking and unwrap.
+        editor.insert(arg.getEnd(), `)`)
+        editor.insert(arg.getStart(), `() => (`)
+        editor.replace(...getNodeRange(callee), `${internalId}.noTrackingToRaw`, true)
     }
 
     // 转换响应式标识符引用
@@ -160,7 +195,9 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                     continue
                 }
                 if (!reference.shorthand) {
-                    editor.replace(...reference.range, `${transofrmedTo}`, true)
+                    if (!rawArgumentBitmap[reference.range[0]]) {
+                        editor.replace(...reference.range, `${transofrmedTo}`, true)
+                    }
                 } else {
                     editor.insert(reference.range[1], `: ${transofrmedTo}`, reference.range)
                 }

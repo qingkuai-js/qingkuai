@@ -32,11 +32,11 @@ import {
 } from "../../../util/compiler/template"
 import { TestingMode } from "../../enums"
 import { DELEGATABLE_EVENTS } from "../../constants"
-import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
 import { kebab2Camel } from "../../../util/compiler/string"
 import { getMaybeReusedString } from "../../optimizer/compress"
+import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags"
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
@@ -453,7 +453,7 @@ function generateRenderEffect(
             return generate(nodes, index + 1, createRenderEffect)
         }
 
-        const generateSetAttributeCall = (attribute: TemplateAttribute) => {
+        const generateSetAttributeCall = (attribute: TemplateAttribute, outsideEffect: boolean) => {
             const baseName = getAttributeBaseName(attribute.name.raw)
             const interpolationSourceIndex = attribute.equalSign
                 ? attribute.value.loc.start.index
@@ -475,14 +475,15 @@ function generateRenderEffect(
                     )
                     writer.write(", ")
                 }
-                writer.writeParsedExpression(attribute)
+                writer.writeParsedExpression(attribute, false, outsideEffect)
                 writer.write(`${staticClassAttr ? "]" : ""})`)
                 return
             }
             if (baseName === "value" && node.tag === "select") {
                 writer.wrapLine().write(`${internalId}.`)
                 writer.write(`setSelectValue`, interpolationSourceIndex)
-                writer.write(`(${nodeContext.id}, `).writeParsedExpression(attribute).write(")")
+                writer.write(`(${nodeContext.id}, `)
+                writer.writeParsedExpression(attribute, false, outsideEffect).write(")")
                 return
             }
 
@@ -492,10 +493,10 @@ function generateRenderEffect(
             writer.wrapLine().write(`${internalId}.`)
             writer.write(method, interpolationSourceIndex)
             writer.write(`(${nodeContext.id}, ${getMaybeReusedString(attrName)}, `)
-            writer.writeParsedExpression(attribute).write(")")
+            writer.writeParsedExpression(attribute, false, outsideEffect).write(")")
         }
 
-        const writeSetTextCall = () => {
+        const writeSetTextCall = (outsideEffect: boolean) => {
             if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
                 if (createRenderEffect) {
                     generateRenderEffectCall()
@@ -506,7 +507,8 @@ function generateRenderEffect(
                 })
                 writer.wrapLine().write(`${internalId}.`)
                 writer.write("setText", firstInterpolatedPart?.loc.start.index ?? -1)
-                writer.write(`(${nodeContext.id}, `).writeInterpolatedText(node, true).write(")")
+                writer.write(`(${nodeContext.id}, `)
+                writer.writeInterpolatedText(node, true, outsideEffect).write(")")
             }
         }
 
@@ -518,7 +520,7 @@ function generateRenderEffect(
                 continue
             }
             if (
-                getParsedExpression(attribute)!.reactive &&
+                getParsedExpression(attribute)?.reactive &&
                 !equalsWithKeyDirectiveValue(nodeContext, attribute)
             ) {
                 dynamicAttrsWithEffect.push(attribute)
@@ -528,7 +530,7 @@ function generateRenderEffect(
         }
         if (!createRenderEffect) {
             for (const attribute of dynamicAttrsWithoutEffect) {
-                generateSetAttributeCall(attribute)
+                generateSetAttributeCall(attribute, true)
             }
 
             // event handlers
@@ -555,18 +557,18 @@ function generateRenderEffect(
                     !isInlineEventHandler(stripedTypeExpressionNode) &&
                     isSimpleHandlerReference(stripedTypeExpressionNode)
                 ) {
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                 } else if (isFunctionLiteral(stripedTypeExpressionNode)) {
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                 } else if (!isInlineEventHandler(stripedTypeExpressionNode)) {
                     writer.write(`function ($arg){`).indent()
                     writer.write(`${internalId}.call(`)
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                     writer.write(`, this, $arg)`)
                     writer.dedent().write("}")
                 } else {
                     writer.write(`$arg => {`).indent()
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                     writer.dedent().write("}")
                 }
                 if (wrapperFlag.value) {
@@ -635,17 +637,17 @@ function generateRenderEffect(
             }
 
             if (!textContentHasRenderEffect && !textContentManagedBySelector) {
-                writeSetTextCall()
+                writeSetTextCall(true)
             }
             dfs()
         }
 
         if (createRenderEffect) {
             for (const attribute of dynamicAttrsWithEffect) {
-                generateSetAttributeCall(attribute)
+                generateSetAttributeCall(attribute, false)
             }
             if (textContentHasRenderEffect) {
-                writeSetTextCall()
+                writeSetTextCall(false)
             }
             dfs()
         }
@@ -772,10 +774,13 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         if (maybeDynamic) {
             writer.write(`${componentId}, ${nodeContext.anchorId}`)
         } else {
-            writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
+            writer.writeParsedExpression(node, false, true).write(`, ${nodeContext.anchorId}`)
         }
     } else {
-        writer.write(`\n`).writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
+        writer
+            .write(`\n`)
+            .writeParsedExpression(node, false, true)
+            .write(`(${nodeContext.anchorId}`)
     }
 
     if (hasMeta) {
@@ -808,10 +813,10 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
             if (isInlineEventHandler(expression.node)) {
                 writer.write(`$arg => {`).indent()
-                writer.writeParsedExpression(event)
+                writer.writeParsedExpression(event, false, true)
                 writer.dedent().write("}")
             } else {
-                writer.writeParsedExpression(event)
+                writer.writeParsedExpression(event, false, true)
             }
             writer.write(")")
         }
@@ -953,7 +958,7 @@ function doesTextContentHasRenderEffect(node: TemplateNode) {
 
     if (
         !node.content.some(part => {
-            return part.isInterpolated && getParsedExpression(part)!.reactive
+            return part.isInterpolated && getParsedExpression(part)?.reactive
         })
     ) {
         return false

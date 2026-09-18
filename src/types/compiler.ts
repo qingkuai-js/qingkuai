@@ -278,7 +278,6 @@ export interface ScriptAnalyzeRet {
     usedIntrinsics: Set<string>
     fullIdentifiers: Set<string>
     eliminatedNodes: Set<TS.Node>
-    importIdentifiers: Set<string>
     rawReadCalls: TS.CallExpression[]
     exportedBindings: ExportBinding[]
     watchExpCalls: TS.CallExpression[]
@@ -291,6 +290,11 @@ export interface ScriptAnalyzeRet {
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
     declaratorToIntrinsic: Map<TS.VariableDeclaration, TS.Identifier>
     importDeclarations: (TS.ImportDeclaration | TS.ImportEqualsDeclaration)[]
+}
+
+export interface RawArgumentInfo {
+    range: Range
+    kind: "unwrap" | "plain"
 }
 
 export type Range = Pair<number>

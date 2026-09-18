@@ -28,6 +28,10 @@ export class CodeEditor {
         return this.indexToSourceIndex[index]
     }
 
+    get sourceLength() {
+        return this.source.length
+    }
+
     remove(start: number, end: number) {
         this.replacements[start] ??= {}
         this.replacements[start].removedLength = Math.max(

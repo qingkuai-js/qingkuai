@@ -15,11 +15,8 @@ import {
     isParameterProperty,
     isNonHoistableScopeBoundary
 } from "./assert"
-import { TestingMode } from "../enums"
-import { inputDescriptor } from "../state"
 import { getNonHoistableScope } from "./context"
 import { objectAssign } from "../../util/shared/aliases"
-import { intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 import { getStriptTypeOperationsParent, getVariableDeclareKeyword } from "./sundry"
 
 export function walkAncestors(
@@ -119,28 +116,17 @@ export function walkBindingNameIdentifiers(
 
 function attchContextToNode(node: TS.Node) {
     let inTopLevel: boolean
-    let scopeIdentifiers: Set<string> | undefined
-
     const nodeWithContext = node as TsNodeWithContext
     const currentIsScopeBoundary = isScopeBoundary(node)
     const contextedParent = nodeWithContext.parent as TsNodeWithContext | null
-    if (!ts.isSourceFile(nodeWithContext)) {
-        if (!currentIsScopeBoundary) {
-            scopeIdentifiers = contextedParent?.scopeIdentifiers
-        } else {
-            scopeIdentifiers = new Set(contextedParent?.scopeIdentifiers)
-        }
-    }
-
     if (!contextedParent || ts.isSourceFile(contextedParent)) {
         inTopLevel = true
     } else {
         inTopLevel = contextedParent.inTopLevel && !contextedParent.isScopeBoundary
     }
-
     objectAssign(nodeWithContext, {
         inTopLevel,
-        scopeIdentifiers,
+        scopeIdentifiers: undefined,
         isScopeBoundary: currentIsScopeBoundary,
         isBindingReference: isBindingReference(nodeWithContext),
         isNonHoistableScopeBoundary: isNonHoistableScopeBoundary(nodeWithContext)
@@ -159,17 +145,6 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
     const declarations: TS.VariableDeclaration[] = []
     const parent = getStriptTypeOperationsParent(node, false)! as TS.Node
     const statements = "statements" in node ? node.statements : [node]
-
-    const extendScopeIdentifiers = (scope: TsNodeWithContext, id: TS.Identifier) => {
-        if (
-            intrinsicMethodsRE.test(id.text) ||
-            intrinsicVariableRE.test(id.text) ||
-            inputDescriptor.options.testing === TestingMode.Unit
-        ) {
-            ;(scope.scopeIdentifiers ??= new Set()).add(id.text)
-        }
-    }
-
     switch (parent.kind) {
         case ts.SyntaxKind.CatchClause: {
             const catchClause = parent as TS.CatchClause
@@ -196,7 +171,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
         case ts.SyntaxKind.FunctionDeclaration: {
             const namedNode = parent as NamedNode
             if (namedNode.name && ts.isIdentifier(namedNode.name)) {
-                extendScopeIdentifiers(node, namedNode.name)
+                ;(node.scopeIdentifiers ??= new Set()).add(namedNode.name.text)
             }
             // fallthrough
         }
@@ -214,7 +189,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
     }
     for (const pattern of patterns) {
         walkBindingNameIdentifiers(pattern, identifier => {
-            extendScopeIdentifiers(node, identifier)
+            ;(node.scopeIdentifiers ??= new Set()).add(identifier.text)
         })
     }
     for (const statement of statements) {
@@ -240,7 +215,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
             case ts.SyntaxKind.FunctionDeclaration: {
                 const namedNode = statement as NamedNode
                 if (namedNode.name && ts.isIdentifier(namedNode.name)) {
-                    extendScopeIdentifiers(node, namedNode.name)
+                    ;(node.scopeIdentifiers ??= new Set()).add(namedNode.name.text)
                 }
                 break
             }
@@ -256,7 +231,7 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
                 scopeNode = getNonHoistableScope(node)!
             }
             if (!ts.isSourceFile(scopeNode)) {
-                extendScopeIdentifiers(scopeNode, identifier)
+                ;(scopeNode.scopeIdentifiers ??= new Set()).add(identifier.text)
             }
         })
     }

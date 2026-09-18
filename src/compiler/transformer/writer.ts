@@ -82,14 +82,6 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return this
     }
 
-    writeParsedExpression(key: any, eliminateRaw = false) {
-        return (writeParsedExpression(this, key, true, eliminateRaw), this)
-    }
-
-    writeInterpolatedText(node: TemplateNode, decodeEntities = false) {
-        return (transformInterpolatedText(this, node, decodeEntities), this)
-    }
-
     writeTemplateStr(str: string, sourceLoc: ASTLocation) {
         this.writeCharacter(str[0], sourceLoc.start.index)
         markPositionFlag(PositionFlag.SourcemapEnd, sourceLoc.end.index)
@@ -143,6 +135,14 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
             this.writeCharacter("", editor.getSourceIndex(editedContent.length) ?? -1, false)
         }
         return isEmbeddedScript ? this.indent(false) : this
+    }
+
+    writeParsedExpression(key: any, eliminateRaw = false, outsideEffect = false) {
+        return (writeParsedExpression(this, key, true, eliminateRaw, outsideEffect), this)
+    }
+
+    writeInterpolatedText(node: TemplateNode, decodeEntities = false, outsideEffect = false) {
+        return (transformInterpolatedText(this, node, decodeEntities, outsideEffect), this)
     }
 
     protected get indentStr() {

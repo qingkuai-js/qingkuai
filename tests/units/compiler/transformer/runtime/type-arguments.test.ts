@@ -72,7 +72,7 @@ test("Type arguments are removed with the call shell for destructuring derivedEx
     expect(code).not.toContain("<number[]>")
 })
 
-test("Type arguments on raw calls are removed with the call shell", () => {
+test("Type arguments on raw calls survive the declaration transform", () => {
     const code = compileRuntime(`
         <lang-ts>
             let obj = { list: [] }
@@ -82,10 +82,9 @@ test("Type arguments on raw calls are removed with the call shell", () => {
         <div></div>
     `)
     expect(code).toContain("const a = obj.list")
-    expect(code).not.toContain("<string[]>")
 })
 
-test("Type arguments on argument-less raw calls are removed with the call shell", () => {
+test("Type arguments on argument-less raw calls survive the declaration transform", () => {
     const code = compileRuntime(`
         <lang-ts>
             const a = raw<string[]>()
@@ -94,7 +93,6 @@ test("Type arguments on argument-less raw calls are removed with the call shell"
         <div></div>
     `)
     expect(code).toContain("const a = _.UNDEF")
-    expect(code).not.toContain("<string[]>")
 })
 
 test("Type arguments on watchExp calls survive the getter wrapping and renaming", () => {

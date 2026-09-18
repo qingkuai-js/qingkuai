@@ -63,7 +63,7 @@ const scenario: E2EScenarioInput = {
 }
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
-    test("raw reads do not update the DOM while tracked reads do", async ({
+    test("raw reads establish no dependencies but re-read with fresh values on re-run", async ({
         page,
         visitScenario
     }) => {
@@ -76,12 +76,9 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await page.locator("#update").click()
         await expect(page.locator("#tracked")).toHaveText("u2")
-        await expect(page.locator("#untracked")).toHaveText("v1")
-        await expect(page.locator("#untracked-reactive")).toHaveText("u1")
+        await expect(page.locator("#untracked")).toHaveText("v2")
+        await expect(page.locator("#untracked-reactive")).toHaveText("u2")
 
-        // effect 重跑时 raw 部分按最新值求值：update 已把 config 改为 v2
-        // When the effect re-runs, the raw part is evaluated with the
-        // latest value: update has changed config to v2
         await expect(page.locator("#watched")).toHaveText("u2 / v2")
     })
 
@@ -94,7 +91,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect(page.locator("#mixed")).toHaveText("u2 / v2")
     })
 
-    test("whole-block raw inside a branch renders once and re-evaluates on re-render", async ({
+    test("raw reads inside a branch re-read with the current value on re-render", async ({
         page,
         visitScenario
     }) => {
@@ -104,13 +101,11 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await page.locator("#update").click()
         await expect(page.locator("#branch-tracked")).toHaveText("u2")
-        await expect(page.locator("#branch-raw")).toHaveText("u1")
+        await expect(page.locator("#branch-raw")).toHaveText("u2")
 
-        // 分支销毁重建（条件切换）时重新求值，取得当前值
-        // When the branch is destroyed and rebuilt (condition toggled),
-        // it re-evaluates and gets the current value
         await page.locator("#toggle").click()
         await expect(page.locator("#branch-raw")).toHaveCount(0)
+
         await page.locator("#toggle").click()
         await expect(page.locator("#branch-raw")).toHaveText("u2")
     })
@@ -134,16 +129,8 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await expect(page.locator("#no-tracking")).toHaveText("p1:3")
 
         await page.locator("#bump-left").click()
-
-        // left 的变更不触发重跑，因为它是被 raw 包裹的复合表达式的一部分
-        // Changes to `left` do not trigger a rerun because it is part of a
-        // complex expression wrapped in raw.
         await expect(page.locator("#no-tracking")).toHaveText("p1:3")
-
         await page.locator("#rename-prefix").click()
-
-        // prefix 是被追踪的依赖，重跑时 raw 部分读取最新的 left/right
-        // `prefix` is tracked, so the rerun reads the latest left/right in the raw part.
         await expect(page.locator("#no-tracking")).toHaveText("p2:4")
     })
 })

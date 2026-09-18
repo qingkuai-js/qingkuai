@@ -72,7 +72,6 @@ function newAnalyzeResult(): AnalyzeResult {
             eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),
             reusedStringReferences: [],
-            importIdentifiers: new Set(),
             declaratorToIntrinsic: new Map(),
             topLevelReferences: newCleanObj(),
             declaratorToAliasInfos: new Map(),

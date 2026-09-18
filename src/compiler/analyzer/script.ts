@@ -64,11 +64,11 @@ import { analyzeExports } from "./exports"
 import { PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
-import { isInHoistableTopLevel } from "../ts-ast/context"
 import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
 import { collectReusedStringReference } from "../optimizer/compress"
+import { isInHoistableTopLevel, isShadowedIdentifier } from "../ts-ast/context"
 import { walkBindingNameIdentifiers, walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk"
 
 export function analyzeScript() {
@@ -104,7 +104,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
 
         if (ts.isCallExpression(node)) {
             const callee = getStriptTypeOperationsNode(node.expression)
-            if (!ts.isIdentifier(callee) || node.scopeIdentifiers?.has(callee.text)) {
+            if (!ts.isIdentifier(callee) || isShadowedIdentifier(node, callee.text)) {
                 return
             }
 
@@ -197,7 +197,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                                 importDeclaration.importClause.name.text
                             )
                         }
-                        checkTopLevelIdentifier(importDeclaration.importClause.name, true)
+                        checkTopLevelIdentifier(importDeclaration.importClause.name)
                         return
                     }
 
@@ -206,14 +206,14 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                         return
                     }
                     if (ts.isNamespaceImport(namedBindings)) {
-                        checkTopLevelIdentifier(namedBindings.name, true)
+                        checkTopLevelIdentifier(namedBindings.name)
                         return
                     }
                     for (const specifier of namedBindings.elements) {
                         if (specifier.isTypeOnly) {
                             continue
                         }
-                        checkTopLevelIdentifier(specifier.name, true)
+                        checkTopLevelIdentifier(specifier.name)
                     }
                     return
                 }
@@ -221,7 +221,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                 case ts.SyntaxKind.ImportEqualsDeclaration: {
                     const importEqualsDeclaration =
                         node as TsNodeWithContext<TS.ImportEqualsDeclaration>
-                    checkTopLevelIdentifier(importEqualsDeclaration.name, true)
+                    checkTopLevelIdentifier(importEqualsDeclaration.name)
                     analyzeResult.script.importDeclarations.push(importEqualsDeclaration)
                     return
                 }
@@ -237,7 +237,7 @@ function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
         return UsedForbiddenIdentifierFormat(getScriptLocByNode(node))
     }
 
-    if (node.scopeIdentifiers?.has(node.text) || !node.isBindingReference) {
+    if (!node.isBindingReference || isShadowedIdentifier(node, node.text)) {
         return
     }
 
@@ -608,11 +608,8 @@ function updateTopLevelIdentifiers(
 
 // 检查顶级作用域标识符格式
 // Validate top-level scope identifier formatting.
-function checkTopLevelIdentifier(id: TS.Identifier, imported = false) {
+function checkTopLevelIdentifier(id: TS.Identifier) {
     const sourceLoc = getScriptLocByNode(id)
-    if (imported) {
-        analyzeResult.script.importIdentifiers.add(id.text)
-    }
     if (
         intrinsicMethodsRE.test(id.text) ||
         intrinsicVariableRE.test(id.text) ||

@@ -2,6 +2,7 @@ import ts from "typescript"
 
 import { expect, test } from "vitest"
 import { parseTsScript } from "../../../../src/util/testing/ts-ast"
+import { isShadowedIdentifier } from "../../../../src/compiler/ts-ast/context"
 import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk"
 
 function checkScopeIdentifiersByMatrix(source: string, full: string[][]) {
@@ -16,8 +17,12 @@ function checkScopeIdentifiersByMatrix(source: string, full: string[][]) {
             return
         }
 
-        const expected = full[parseInt(match[1], 10) - 1].sort()
-        expect(Array.from(node.scopeIdentifiers ?? []).sort(), match[0]).toEqual(expected)
+        const expected = full[parseInt(match[1], 10) - 1]
+        new Set(full.flat()).forEach(name => {
+            expect(isShadowedIdentifier(node, name), `${match[0]}:${name}`).toBe(
+                expected.includes(name)
+            )
+        })
     })
 }
 

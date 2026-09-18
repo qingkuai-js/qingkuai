@@ -33,11 +33,6 @@ import {
     getTemplateNodeContext
 } from "../../util/compiler/template"
 import {
-    isRawCallExpression,
-    isMemberAccessExpression,
-    isIdentifierAssignmentTarget
-} from "../ts-ast/assert"
-import {
     markNeedSourcemap,
     getStriptTypeOperationsNode,
     getStriptTypeOperationsParent
@@ -48,9 +43,11 @@ import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
 import { RedundantNestedRawCall } from "../message/warn"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
+import { isShadowedIdentifier } from "../ts-ast/context"
 import { walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk"
 import { analyzeResult, inputDescriptor, messages } from "../state"
 import { collectReusedStringReference } from "../optimizer/compress"
+import { isRawCallExpression, isIdentifierAssignmentTarget } from "../ts-ast/assert"
 import { endSemicolonRE, intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 parsedExpressions
@@ -96,20 +93,54 @@ export function analyzeInterpolation(
         return null
     }
 
+    // 判断标识符是否位于某个 raw 调用的参数子树内（此时其读取不计为模板访问）
+    // Determine whether the identifier lies inside the argument subtree of a raw call
+    // (its read does not count as a template access).
+    const isInRawArgument = (node: TS.Node) => {
+        return parsedExpression.rawCallExpressions.some(call => {
+            if (call.arguments.length !== 1 || ts.isSpreadElement(call.arguments[0])) {
+                return false
+            }
+
+            const arg = call.arguments[0]
+            const range: Range = [node.getStart(), node.getEnd()]
+            return range[0] >= arg.getStart() && range[1] <= arg.getEnd()
+        })
+    }
+
     walkTsNodeWithContext(expression, node => {
         markNeedSourcemap(node, startSourceIndex)
         collectReusedStringReference(node, parsedExpression.reusedStringReferences)
+
+        // 属性访问、调用表达式未被 raw 包裹时，插值块具有响应性
+        // The interpolation block is reactive when property access or call expressions are not wrapped by `raw`.
+        if (
+            ts.isElementAccessExpression(node) ||
+            ts.isPropertyAccessExpression(node) ||
+            (ts.isCallExpression(node) && !isRawCallExpression(node))
+        ) {
+            parsedExpression.reactive ||= !isInRawArgument(node)
+        }
 
         // 通过模板中对顶级作用域标识符不同的使用方式确定其响应式状态
         // Determine the reactive status of top-level scope identifiers
         // based on their different usage patterns in the template.
         if (ts.isIdentifier(node)) {
             const idName = node.text
+            const untracked = isInRawArgument(node)
             const nodeRange: Range = [node.getStart(), node.getEnd()]
             const parsedDirective = nodeContext.contextIdentifiers[idName]
             const sourceRange = nodeRange.map(n => n + startSourceIndex) as Range
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[idName]
-            const untracked = isInRawArgument(parsedExpression.rawCallExpressions, nodeRange)
+            analyzeResult.script.fullIdentifiers.add(idName)
+
+            // 被嵌套作用域遮蔽的引用：跳过 intrinsic 检测、顶层引用记录与响应性推断
+            // References shadowed by a nested scope: skip intrinsic detection,
+            // top-level reference recording and reactivity inference.
+            if (node.isBindingReference && isShadowedIdentifier(node, idName)) {
+                return
+            }
+
             if (
                 !parsedDirective &&
                 !topLevelIdentifier &&
@@ -154,10 +185,10 @@ export function analyzeInterpolation(
                         topLevelIdentifier.usedExpressions.add(parsedExpression)
                     }
                     ;(topLevelReferences[idName] ??= []).push({
+                        untracked,
                         declared: true,
                         range: nodeRange,
-                        shorthand: ts.isShorthandPropertyAssignment(node.parent),
-                        untracked
+                        shorthand: ts.isShorthandPropertyAssignment(node.parent)
                     })
                 }
             }
@@ -175,12 +206,11 @@ export function analyzeInterpolation(
                     shorthand: ts.isShorthandPropertyAssignment(node)
                 })
             }
-            analyzeResult.script.fullIdentifiers.add(idName)
 
-            // 以下四种情况可以判断该插值表达式具有响应性；raw 参数子树内的读取不计入
+            // 以下三种情况可以判断该插值表达式具有响应性；raw 参数子树内的读取不计入
             // The following four cases determine that the interpolation is reactive,
             // except for reads inside the argument subtree of a `raw` call.
-            if (untracked) {
+            if (untracked || parsedExpression.reactive) {
                 return
             }
 
@@ -190,29 +220,23 @@ export function analyzeInterpolation(
                 parsedExpression.reactive ||= true
             }
 
-            // 2. 访问顶部作用域标识符且其状态不是 `literal` 或 `pending`
-            // 2. Accessing a top-level scope identifier whose status is not `literal` or `pending`.
-            if (
+            // 2. 访问推导或标记为响应式的顶部作用域标识符
+            // 2. Accessing a top-level scope identifier whose status is one of the reactive types
+            else if (
                 topLevelIdentifier &&
+                topLevelIdentifier.status !== "raw" &&
                 topLevelIdentifier.status !== "literal" &&
                 topLevelIdentifier.status !== "pending"
             ) {
                 parsedExpression.reactive ||= true
             }
 
-            // 3. 访问导入标识符且该访问了其属性
-            // 3. Accessing an imported identifier whose property is accessed.
-            if (
-                node.isBindingReference &&
-                analyzeResult.script.importIdentifiers.has(idName) &&
-                isMemberAccessExpression(getStriptTypeOperationsParent(node)!)
+            // 3. 访问指令上下文标识符，且该指令上下文标识符所在的指令具有响应式表达式
+            // 3. Accessing a directive context identifier whose directive has reactive expressions.
+            else if (
+                parsedDirective &&
+                getParsedExpression(parsedDirective.src.directive)?.reactive
             ) {
-                parsedExpression.reactive ||= true
-            }
-
-            // 4. 访问指令上下文标识符，且该指令上下文标识符所在的指令具有响应式表达式
-            // 4. Accessing a directive context identifier whose directive has reactive expressions.
-            if (parsedDirective && getParsedExpression(parsedDirective.src.directive)?.reactive) {
                 parsedExpression.reactive ||= true
             }
         }
@@ -284,20 +308,6 @@ function shouldContextIdentifierBeTransformed(
 
     return !parsedForDirective.patterns.some(parsedPattern => {
         return parsedPattern.declaredIdentifiers.has(identifierName)
-    })
-}
-
-// 判断标识符是否位于某个 raw 调用的参数子树内（此时其读取不计为模板访问）
-// Determine whether the identifier lies inside the argument subtree of a raw call
-// (its read does not count as a template access).
-function isInRawArgument(rawCallExpressions: TS.CallExpression[], range: Range) {
-    return rawCallExpressions.some(call => {
-        if (call.arguments.length !== 1 || ts.isSpreadElement(call.arguments[0])) {
-            return false
-        }
-
-        const arg = call.arguments[0]
-        return range[0] >= arg.getStart() && range[1] <= arg.getEnd()
     })
 }
 

@@ -243,6 +243,62 @@ test("Interpolation reactivity: non-literal top-level identifier is reactive", (
     expect(parsedExpression?.reactive).toBe(true)
 })
 
+test("Interpolation reactivity: raw marked identifier is not reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            const a = raw(1)
+        </lang-js>
+        <div>{a}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(false)
+})
+
+test("Interpolation reactivity: degenerated const literal is not reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            const msg = "hi"
+        </lang-js>
+        <div>{msg}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(false)
+})
+
+test("Interpolation reactivity: member access on raw object is reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            let count = reactive(0)
+            const obj = raw({
+                get double() {
+                    return count * 2
+                }
+            })
+        </lang-js>
+        <div>{obj.double}</div>
+    `)
+
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
+    expect(parsedExpression?.reactive).toBe(true)
+})
+
+test("Interpolation reactivity: dynamic attribute with raw identifier is not reactive", () => {
+    analyzeTemplateOnly(`
+        <lang-js>
+            const title = raw("t")
+        </lang-js>
+        <div !title={title}></div>
+    `)
+
+    const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
+        exp => exp?.source.trim() === "title"
+    )
+    expect(parsedExpression).toBeTruthy()
+    expect(parsedExpression?.reactive).toBe(false)
+})
+
 test("Interpolation reactivity: literal top-level identifier is not reactive", () => {
     analyzeTemplateOnly(`
         <lang-js>
@@ -299,12 +355,12 @@ test("Interpolation reactivity: reactive #for context access is reactive", () =>
 test("Interpolation reactivity: non-reactive #for context access is not reactive", () => {
     analyzeTemplateOnly(`
         <div #for={item of [1, 2]}>
-            <span>{item.name}</span>
+            <span>{item}</span>
         </div>
     `)
 
     const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
-        exp => exp?.source.trim() === "item.name"
+        exp => exp?.source.trim() === "item"
     )
     expect(parsedExpression).toBeTruthy()
     expect(parsedExpression?.reactive).toBe(false)

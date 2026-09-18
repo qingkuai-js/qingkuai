@@ -5,8 +5,8 @@ import ts from "typescript"
 
 import { decodeHTML } from "entities"
 import { CodeEditor } from "../editor"
+import { getRawArgumentInfo } from "../../optimizer/raw"
 import { traverseObject } from "../../../util/shared/sundry"
-import { getRawToRawArgumentRange } from "../../optimizer/raw"
 import { analyzeResult, generateIdentifier } from "../../state"
 import { isArrayBindingNameIdentifier } from "../../ts-ast/assert"
 import { getMaybeReusedString, replaceReusedStringReferences } from "../../optimizer/compress"
@@ -17,14 +17,14 @@ export function writeParsedExpression(
     key: any,
     sourcemap = true,
     eliminateRaw = false,
-    allowEliminate = true
+    outsideEffect = false
 ) {
     const parsedExpression = getParsedExpression(key)!
     const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
     const overriddenRanges = transformRawCalls(
         editor,
         eliminateRaw,
-        allowEliminate,
+        outsideEffect,
         parsedExpression
     )
     replaceReusedStringReferences(editor, parsedExpression.reusedStringReferences)
@@ -34,7 +34,7 @@ export function writeParsedExpression(
             for (const reference of value) {
                 if (reference.shorthand) {
                     editor.insert(reference.range[1], `: ${topLevelIdentifier.transformTo}`)
-                } else if (!overriddenRanges.has(rangeKeyOf(reference.range))) {
+                } else if (!overriddenRanges[reference.range[0]]) {
                     editor.replace(...reference.range, topLevelIdentifier.transformTo, true)
                 }
             }
@@ -69,7 +69,8 @@ export function writeParsedExpression(
 export function transformInterpolatedText(
     writer: RuntimeCodeWriter,
     node: TemplateNode,
-    decodeEntities = false
+    decodeEntities = false,
+    outsideEffect = false
 ) {
     if (!node.content.length) {
         return getMaybeReusedString("")
@@ -91,7 +92,7 @@ export function transformInterpolatedText(
 
     if (partCount === 1) {
         if (singlePart.isInterpolated) {
-            return writeParsedExpression(writer, singlePart)
+            return writeParsedExpression(writer, singlePart, true, false, outsideEffect)
         }
         const generated = getGeneratedStaticTextContent(singlePart)!
         return writer.write(
@@ -106,7 +107,7 @@ export function transformInterpolatedText(
                 writer.write(getMaybeReusedString(""))
             }
             writer.write(" + (")
-            writeParsedExpression(writer, part, true, false, false).write(")")
+            writeParsedExpression(writer, part, true, false, outsideEffect).write(")")
         } else {
             const generated = getGeneratedStaticTextContent(part)
             if (!generated) {
@@ -121,43 +122,76 @@ export function transformInterpolatedText(
     }
 }
 
-function rangeKeyOf(range: Range) {
-    return `${range[0]}-${range[1]}`
-}
-
 function transformRawCalls(
     editor: CodeEditor,
     eliminateRaw: boolean,
-    allowEliminate: boolean,
+    outsideEffect: boolean,
     parsedExpression: ParsedExpression
 ) {
-    const overridden = new Set<string>()
+    // - topLevelRefs：顶部作用域标识符引用的位置位图
+    // - overridden：raw 实参中保持原始标识符（不添加 .$）的位置位图
+    //
+    // - topLevelRefs: a position bitmap of top-level identifier references
+    // - overridden: a position bitmap of raw arguments kept as raw identifiers (without .$)
+    const overridden = new Uint8Array(parsedExpression.source.length)
+    const topLevelRefs = new Uint8Array(parsedExpression.source.length)
+    traverseObject(parsedExpression.topLevelReferences, (_, references) => {
+        for (const reference of references) {
+            topLevelRefs.fill(1, reference.range[0], reference.range[1])
+        }
+    })
     for (const call of parsedExpression.rawCallExpressions) {
         if (call.arguments.length !== 1 || ts.isSpreadElement(call.arguments[0])) {
             continue
         }
 
         const arg = call.arguments[0]
+        const callExp = call.expression
         const argRange: Range = [arg.getStart(), arg.getEnd()]
         const callRange: Range = [call.getStart(), call.getEnd()]
-        const calleeRange: Range = [call.expression.getStart(), call.expression.getEnd()]
-        if (eliminateRaw || (allowEliminate && parsedExpression.node === call)) {
-            // 消除：整块 raw 的读取都在 renderEffect 外求值（或赋值目标必须是普通左值），
-            // raw 包裹无运行时意义
-            // Eliminate: reads of a whole-block raw are evaluated outside renderEffects
-            // (or the position is an assignment target requiring a plain lvalue), so the
-            // raw wrapper has no runtime meaning.
+        const calleeRange: Range = [callExp.getStart(), callExp.getEnd()]
+
+        // 引用属性 setter 中的 raw 调用直接移除
+        // raw calls inside property setters are removed directly
+        if (eliminateRaw) {
             editor.remove(calleeRange[0], argRange[0])
             editor.remove(argRange[1], callRange[1])
-        } else {
-            const toRawRange = getRawToRawArgumentRange(call)
-            if (toRawRange) {
-                overridden.add(rangeKeyOf(toRawRange))
-                editor.replace(...calleeRange, `${generateIdentifier.internal}.toRaw`, true)
-            } else {
-                editor.replace(...calleeRange, `${generateIdentifier.internal}.noTracking`, true)
+            continue
+        }
+
+        // 位图命中为顶部作用域标识符，按其状态分类；未命中统一按 "unwrap" 处理
+        // A bitmap hit is a top-level scope identifier classified by its status;
+        // a miss is treated uniformly as "unwrap".
+        const argumentInfo = getRawArgumentInfo(call, topLevelRefs)
+
+        // 读取原始标识符，交由 toRaw 解包
+        // Reads the raw identifier and unwraps it with toRaw.
+        if (argumentInfo?.kind === "unwrap") {
+            overridden.fill(1, argumentInfo.range[0], argumentInfo.range[1])
+            editor.replace(...calleeRange, `${generateIdentifier.internal}.toRaw`, true)
+        }
+
+        // 不带响应性能力的标识符：直接读取即可
+        // Identifiers carrying no reactive capability: a plain read is enough.
+        else if (argumentInfo?.kind === "plain") {
+            editor.remove(calleeRange[0], argRange[0])
+            editor.remove(argRange[1], callRange[1])
+        }
+
+        // derived/alias 与其余表达式：effect 外直接解包，effect 内需暂停追踪
+        // derived/alias and other expressions: unwrap directly outside effects;
+        // pause tracking inside effects.
+        else {
+            if (!outsideEffect) {
+                editor.replace(
+                    ...calleeRange,
+                    `${generateIdentifier.internal}.noTrackingToRaw`,
+                    true
+                )
                 editor.insert(argRange[0], "() => (")
                 editor.insert(callRange[1] - 1, ")")
+            } else {
+                editor.replace(...calleeRange, `${generateIdentifier.internal}.toRaw`, true)
             }
         }
     }
