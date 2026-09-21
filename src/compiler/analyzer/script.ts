@@ -5,8 +5,8 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/ts-ast"
-import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler"
+import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import ts from "typescript"
 
@@ -64,6 +64,7 @@ import { analyzeExports } from "./exports"
 import { PRESERVED_IDPREFIX } from "../constants"
 import { stringify } from "../../util/shared/aliases"
 import { getLastElem } from "../../util/shared/arrays"
+import { traverseObject } from "../../util/shared/sundry"
 import { analyzeResult, inputDescriptor } from "../state"
 import { parseExpression, parseScript } from "../parser/script"
 import { getScriptLocByNode } from "../../util/compiler/position"
@@ -228,6 +229,51 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
             }
         }
     })
+
+    // 收集 derived(Exp) 声明参数内读取的顶层标识符名，供模板分析阶段做访问传播
+    // Collect the top-level identifier names read within the arguments of `derived(Exp)`
+    // declarations for access propagation during the template analysis phase.
+    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
+    const rawArgumentBitMap = new Uint8Array(inputDescriptor.script.code.length)
+    for (const call of analyzeResult.script.rawReadCalls) {
+        rawArgumentBitMap.fill(1, ...getNodeRange(call.arguments[0]))
+    }
+    traverseObject(analyzeResult.script.topLevelIdentifiers, (_, info) => {
+        if (info.status !== "derived") {
+            return
+        }
+        for (const { declarator } of info.nodeInfos) {
+            if (!ts.isVariableDeclaration(declarator) || !declarator.initializer) {
+                continue
+            }
+
+            const initNode = getStriptTypeOperationsNode(declarator.initializer)
+            if (!ts.isCallExpression(initNode)) {
+                continue
+            }
+
+            const callee = getStriptTypeOperationsNode(initNode.expression)
+            if (!ts.isIdentifier(callee)) {
+                continue
+            }
+            walkTsNodeWithContext(initNode.arguments[0], node => {
+                if (
+                    !ts.isIdentifier(node) ||
+                    !node.isBindingReference ||
+                    !topLevelIdentifiers[node.text] ||
+                    isIdentifierAssignmentTarget(node) ||
+                    isShadowedIdentifier(node, node.text)
+                ) {
+                    return
+                }
+                if (!rawArgumentBitMap[node.getStart()]) {
+                    info.sourceReads.add(node.text)
+                } else {
+                    info.untrackedSourceReads.add(node.text)
+                }
+            })
+        }
+    })
 }
 
 function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
@@ -253,19 +299,14 @@ function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
     })
 
     // 提前记录被修改的顶级标识符，以便在后续分析中正确推断其响应性状态
-    // Record mutated top-level identifiers in advance to
-    // correctly infer their reactive status in subsequent analysis.
-    if (
-        // prettier-ignore
-        (
-            topLevelIdentifier?.status === "literal" ||
-            (!topLevelIdentifier && !preMutatedTopLevelIdentifiers.has(node.text))
-        ) &&
-        isIdentifierAssignmentTarget(node)
-    ) {
-        if (topLevelIdentifier?.status === "literal") {
-            topLevelIdentifier.status = "pending"
-        } else {
+    // Record mutated top-level identifiers in advance to correctly infer their
+    // reactive status in subsequent analysis.
+    if (isIdentifierAssignmentTarget(node)) {
+        if (topLevelIdentifier) {
+            if (topLevelIdentifier.status === "literal") {
+                topLevelIdentifier.status = "pending"
+            }
+        } else if (!preMutatedTopLevelIdentifiers.has(node.text)) {
             preMutatedTopLevelIdentifiers.add(node.text)
         }
     }
@@ -561,7 +602,8 @@ function updateTopLevelIdentifiers(
         destructuringIdentifierNames
     }
     const existing = analyzeResult.script.topLevelIdentifiers[id.text]
-    if (status === "literal" && analyzeResult.script.preMutatedTopLevelIdentifiers.has(id.text)) {
+    const mutatedBeforeDeclaration = analyzeResult.script.preMutatedTopLevelIdentifiers.has(id.text)
+    if (status === "literal" && mutatedBeforeDeclaration) {
         status = "pending"
     }
     if (existing) {
@@ -599,8 +641,12 @@ function updateTopLevelIdentifiers(
             accessor,
             aliasTarget: "",
             transformTo: "",
+            propagated: false,
             nodeInfos: [nodeInfo],
-            usedExpressions: new Set()
+            untrackedAccess: false,
+            sourceReads: new Set(),
+            usedExpressions: new Set(),
+            untrackedSourceReads: new Set()
         }
     }
     checkTopLevelIdentifier(id)

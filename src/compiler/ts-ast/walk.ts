@@ -41,8 +41,17 @@ export function walkTsNode(node: TS.Node, callback: (node: TS.Node) => boolean |
     }
 }
 
-export function walkTsNodeWithContext(node: TS.Node, callback: (node: TsNodeWithContext) => void) {
-    callback(attchContextToNode(node))
+// 回调返回 true 时跳过当前节点的子树（节点本身仍会被访问并附加上下文），
+// 与 walkTsNode 的中断语义一致
+// Returning true from the callback skips the node's subtree (the node itself is
+// still visited and context-annotated), matching walkTsNode's abort semantics.
+export function walkTsNodeWithContext(
+    node: TS.Node,
+    callback: (node: TsNodeWithContext) => boolean | void
+) {
+    if (callback(attchContextToNode(node)) === true) {
+        return
+    }
     ts.forEachChild(node, child => {
         walkTsNodeWithContext(child, callback)
     })

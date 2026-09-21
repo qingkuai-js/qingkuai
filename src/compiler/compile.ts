@@ -67,17 +67,16 @@ export function compileIntermediate(source: string, options: CompileIntermediate
 
     const writer = generateIntermediateCode(templateNodes)
     const idStatusInfo: IdentifierStatusInfo = newCleanObj()
-    const untrackedReadNames = collectUntrackedTemplateReadNames()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
         idStatusInfo[name] = {
-            status: getIdentifierStatusForInlayHint(info),
-            description: getTopLevelIdentifierInfo(info, untrackedReadNames.has(name)),
             inlays: info.nodeInfos.map(nodeInfo => {
                 return {
                     kind: getInlayHintKind(nodeInfo),
                     index: getScriptSourceIndex(nodeInfo.id.getEnd())
                 }
-            })
+            }),
+            description: getTopLevelIdentifierInfo(info),
+            status: getIdentifierStatusForInlayHint(info)
         }
     })
 
@@ -171,27 +170,6 @@ function getInlayHintKind(nodeInfo: TopLevelIdentifierNodeInfo): InlayHintKind {
     }
 }
 
-// 收集在模板中仅以非响应式方式（raw 参数子树内）被读取的顶层标识符名称
-// Collect names of top-level identifiers that are only read in non-reactive reads
-// (inside the argument subtree of a raw call) in the template.
-function collectUntrackedTemplateReadNames() {
-    const names = new Set<string>()
-    const trackedNames = new Set<string>()
-    for (const parsedExpression of analyzeResult.template.parsedExpressions.values()) {
-        traverseObject(parsedExpression.topLevelReferences, (name, references) => {
-            if (references.some(reference => !reference.untracked)) {
-                trackedNames.add(name)
-            } else {
-                names.add(name)
-            }
-        })
-    }
-    for (const name of trackedNames) {
-        names.delete(name)
-    }
-    return names
-}
-
 // 判断 alias 声明是否为非法形态，判断条件与 `checkUsageOfIntrinsicMethods` 保持一致：
 // 首参缺失、首参是展开元素、首参不是左值，或直接别名一个独立标识符时视为非法；
 // 首个参数之后的其余参数会被忽略，不影响合法性判断。
@@ -217,7 +195,7 @@ function isInvalidAliasDeclaration(info: TopLevelIdentifierInfo) {
     )
 }
 
-function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo, untrackedInTemplate = false) {
+function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
     switch (info.status) {
         case "literal": {
             return "raw (never mutated)"
@@ -239,7 +217,7 @@ function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo, untrackedInTemp
             return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
         }
         case "pending": {
-            return `raw (${untrackedInTemplate ? "no reactive read" : "unused"} in template)`
+            return `raw (${info.untrackedAccess ? "untracked" : "not accessed"} in template)`
         }
         default: {
             return info.status

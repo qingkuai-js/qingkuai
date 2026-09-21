@@ -59,7 +59,7 @@ test("Property and element access generate a render effect", () => {
         <p>{msg.length}</p>
     `)
     expect(code).toContain("_.renderEffect(() => {")
-    expect(code).toContain("_.setText(_text11, list[0])")
+    expect(code).toContain("_.setText(_text1, list[0])")
     expect(code).toContain("_.setText(_text2, msg.length)")
 })
 

@@ -13,13 +13,23 @@ const scenario: E2EScenarioInput = {
             const incBase = () => {
                 base++
             }
+
+            let count = 1
+
+            const setCountTwo = () => {
+                count = 2
+            }
+
+            const filtered = derivedExp([1, 2, 3].filter(i => i < count).length)
         </lang-js>
 
         <section data-page="reactivity-derived-e2e">
             <h1 id="title">Derived Reactivity</h1>
             <p id="double">Double: {doubled}</p>
             <p id="computed">Computed: {computed}</p>
+            <p id="filtered">Filtered: {filtered}</p>
             <button id="btn-inc" @click={incBase}>Inc base</button>
+            <button id="btn-count" @click={setCountTwo}>Set count</button>
         </section>
     `
 }
@@ -29,9 +39,13 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await visitScenario(scenario)
         await expect(page.locator("#double")).toHaveText("Double: 2")
         await expect(page.locator("#computed")).toHaveText("Computed: 11")
+        await expect(page.locator("#filtered")).toHaveText("Filtered: 0")
 
         await page.locator("#btn-inc").click()
         await expect(page.locator("#double")).toHaveText("Double: 4")
         await expect(page.locator("#computed")).toHaveText("Computed: 12")
+
+        await page.locator("#btn-count").click()
+        await expect(page.locator("#filtered")).toHaveText("Filtered: 1")
     })
 })

@@ -86,6 +86,104 @@ describe("Production", () => {
         })
     })
 
+    describe("Propagation", () => {
+        it("should promote mutated sources of template-accessed derivedExp", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derivedExp(count * 2)
+                    </lang-js>
+
+                    <p>{ double }</p>
+                `,
+                formatSourceCode(`
+                    let count = _.react(0)
+                    function setCount(v) {
+                        count.$ = v
+                    }
+                    const double = _.derived(() => (count.$ * 2))
+                `)
+            )
+        })
+
+        it("should promote mutated sources read inside nested callbacks of derivedExp", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derivedExp([1, 2, 3].filter(i => i < count).length)
+                    </lang-js>
+
+                    <p>{ double }</p>
+                `,
+                formatSourceCode(`
+                    let count = _.react(0)
+                    function setCount(v) {
+                        count.$ = v
+                    }
+                    const double = _.derived(() => ([1, 2, 3].filter(i => i < count.$).length))
+                `)
+            )
+        })
+
+        it("should promote mutated sources of template-accessed derived getters", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derived(() => {
+                            return count * 2
+                        })
+                    </lang-js>
+
+                    <p>{ double }</p>
+                `,
+                formatSourceCode(`
+                    let count = _.react(0)
+                    function setCount(v) {
+                        count.$ = v
+                    }
+                    const double = _.derived(() => {
+                        return count.$ * 2
+                    })
+                `)
+            )
+        })
+
+        it("should not promote sources when the derived value is not accessed in template", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derivedExp(count * 2)
+                    </lang-js>
+
+                    <p>static text</p>
+                `,
+                formatSourceCode(`
+                    let count = 0
+                    function setCount(v) {
+                        count = v
+                    }
+                    const double = _.derived(() => (count * 2))
+                `)
+            )
+        })
+    })
+
     describe("Destructuring", () => {
         it("should transform destructuring derived declaration into destructuringDerived", () => {
             matchTransformedScript(

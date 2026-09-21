@@ -7,7 +7,7 @@ export function EffectOrWatchHasNoDependecies(fn: ArbitraryFunc, by: string) {
         8001,
         `No reactive values were dependant during the execution of effect${
             by ? " that created with " + by : ""
-        }. The effect has been dstroyed because it will no longer be triggered in future. By: %O`,
+        }. The effect has been destroyed because it will no longer be triggered in future. By: %O`,
         fn
     )
 }
@@ -35,5 +35,5 @@ export function CreateOnDisposedComponent(purpose: string) {
 
 function warnWithCode(code: number, message: any, ...args: any[]) {
     const payload = isArray(message) ? message : [message, ...args]
-    console.warn(`[QingKuai Warnning](${code}):`, ...payload)
+    console.warn(`[QingKuai Warning](${code}):`, ...payload)
 }

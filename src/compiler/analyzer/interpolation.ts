@@ -7,7 +7,8 @@ import type {
     ContextReference,
     ParsedExpression,
     TopLevelReferences,
-    TemplateNodeContext
+    TemplateNodeContext,
+    TopLevelIdentifierInfo
 } from "#type-declarations/compiler"
 
 import ts from "typescript"
@@ -167,7 +168,12 @@ export function analyzeInterpolation(
                     analyzeResult.script.usedIntrinsics.add(idName)
                 }
                 if (topLevelIdentifier) {
-                    if (!untracked) {
+                    if (untracked) {
+                        if (topLevelIdentifier.status === "derived") {
+                            markUntrackedDerivedSources(topLevelIdentifier)
+                        }
+                        topLevelIdentifier.untrackedAccess = true
+                    } else {
                         const status = topLevelIdentifier.status
                         if (
                             // prettier-ignore
@@ -181,6 +187,9 @@ export function analyzeInterpolation(
                                 exp.reactive = true
                             }
                             topLevelIdentifier.status = inputDescriptor.options.reactivityMode
+                        }
+                        if (status === "derived") {
+                            propagateDerivedSourceAccess(topLevelIdentifier, parsedExpression)
                         }
                         topLevelIdentifier.usedExpressions.add(parsedExpression)
                     }
@@ -286,6 +295,60 @@ export function analyzeTemplateAsExpression(
         markPositionFlag(PositionFlag.SourcemapEnd, loc.end.index)
         parsedExpression.source = " ".repeat(nameSub) + parsedExpression.source
     }
+}
+
+// 将模板对衍生值的访问传播到源：pending 源提升为当前响应性模式，衍生源沿链递归，raw 读取的源标记为非响应式访问
+// Propagate template accesses of derived values to their sources: pending sources are promoted,
+// derived sources recurse down the chain, and raw-read sources are marked untracked.
+function propagateDerivedSourceAccess(
+    derivedInfo: TopLevelIdentifierInfo,
+    parsedExpression: ParsedExpression
+) {
+    if (derivedInfo.propagated) {
+        return
+    }
+    for (const sourceName of derivedInfo.sourceReads) {
+        const sourceInfo = analyzeResult.script.topLevelIdentifiers[sourceName]
+        if (!sourceInfo) {
+            continue
+        }
+        if (sourceInfo.status === "pending") {
+            sourceInfo.usedExpressions.add(parsedExpression)
+            sourceInfo.status = inputDescriptor.options.reactivityMode
+        } else if (sourceInfo.status === "derived") {
+            propagateDerivedSourceAccess(sourceInfo, parsedExpression)
+        }
+    }
+    for (const sourceName of derivedInfo.untrackedSourceReads) {
+        const sourceInfo = analyzeResult.script.topLevelIdentifiers[sourceName]
+        if (!sourceInfo) {
+            continue
+        }
+        if (sourceInfo.status === "derived") {
+            markUntrackedDerivedSources(sourceInfo)
+        }
+        sourceInfo.untrackedAccess = true
+    }
+    derivedInfo.propagated = true
+}
+
+// 为衍生值参数内读取的源标记非响应式访问，衍生源沿链递归
+// Mark sources read within a derived argument as untracked, recursing down derived chains.
+function markUntrackedDerivedSources(derivedInfo: TopLevelIdentifierInfo) {
+    if (derivedInfo.untrackedAccess) {
+        return
+    }
+    for (const sourceName of [...derivedInfo.sourceReads, ...derivedInfo.untrackedSourceReads]) {
+        const sourceInfo = analyzeResult.script.topLevelIdentifiers[sourceName]
+        if (!sourceInfo) {
+            continue
+        }
+        if (sourceInfo.status === "derived") {
+            markUntrackedDerivedSources(sourceInfo)
+        }
+        sourceInfo.untrackedAccess = true
+    }
+    derivedInfo.untrackedAccess = true
 }
 
 // #key 指令中访问 #for 指令声明的标识符不需要转换

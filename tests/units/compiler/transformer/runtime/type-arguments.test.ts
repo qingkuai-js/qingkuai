@@ -52,8 +52,9 @@ test("Type arguments are removed with the call shell for destructuring derivedEx
         </lang-ts>
         <div>{a} {b}</div>
     `)
-    expect(code).toContain("destructuringDerived(([a, b]) => [a, b], () => (src), 2)")
     expect(code).not.toContain("<number[]>")
+    expect(code).toContain("let src = _.react([1, 2])")
+    expect(code).toContain("destructuringDerived(([a, b]) => [a, b], () => (src.$), 2)")
 })
 
 test("Type arguments are removed with the call shell for destructuring derivedExp in debug mode", () => {

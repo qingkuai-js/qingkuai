@@ -220,9 +220,13 @@ export interface TopLevelIdentifierInfo {
     hoist: boolean
     implicit: boolean
     accessor: boolean
+    propagated: boolean
     aliasTarget: string
     transformTo: string
     status: IdentifierStatus
+    untrackedAccess: boolean
+    sourceReads: Set<string>
+    untrackedSourceReads: Set<string>
     usedExpressions: Set<ParsedExpression>
     nodeInfos: TopLevelIdentifierNodeInfo[]
 }
