@@ -114,7 +114,7 @@ function createSourceFile(
                 for (const item of diagnostics) {
                     tsParsingDiagnostics.push({
                         ...item,
-                        start: startSourceIndex + diagnostics[0].start!
+                        start: startSourceIndex + item.start!
                     })
                 }
             }
