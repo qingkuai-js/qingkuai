@@ -16,6 +16,7 @@
     "package.json"
   ],
   "exports": {
+    "./package.json": "./package.json",
     ".": {
       "types": "./dist/types/runtime/index.d.ts",
       "import": "./dist/esm/runtime/index.js",
