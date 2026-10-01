@@ -15,12 +15,12 @@ import {
 } from "./constants"
 import { destroy } from "../destroy"
 import { invokeRender } from "./render"
+import { optc } from "../../util/shared/sundry"
 import { NIL, REFLECT, UNDEF } from "../constants"
 import { arrayFrom } from "../../util/shared/arrays"
 import { walkNodes } from "../../util/runtime/sundry"
 import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { reactiveNotEqual } from "../../util/runtime/sundry"
-import { newCleanObj, optc } from "../../util/shared/sundry"
 import { FRAG_WHOLE_CONTENT } from "../../util/shared/flags"
 import { DuplicateKey, NonTraverse } from "../messages/error"
 import { currentDestruction, currentInstance } from "../state"
@@ -35,16 +35,16 @@ export function keyedListBlock(
     render: ArbitraryFunc
 ) {
     let holesCount = 0
-    let oldKeys: string[] = []
+    let oldKeys: any[] = []
     let traversable!: Traversable
-    let infos: Record<string, TraverseInfo | undefined> = newCleanObj()
+    let infos = new Map<any, TraverseInfo>()
 
     const componentInstance = currentInstance!
     const parentDestruction = currentDestruction
 
     const mountKeyedInfo = (
         reference: ChildNode,
-        key: string,
+        key: any,
         index: number,
         runtimeRender: ArbitraryFunc
     ) => {
@@ -57,20 +57,20 @@ export function keyedListBlock(
             info.s = runtimeRender(reference, info.c)
         }
         info.d = invokeRender(render, componentInstance, parentDestruction)
-        infos[key] = info
+        infos.set(key, info)
     }
 
-    const removeKeyedInfo = (key: string, detachNodes: boolean) => {
-        const info = infos[key]
+    const removeKeyedInfo = (key: any, detachNodes: boolean) => {
+        const info = infos.get(key)
         if (!info) {
             return false
         }
         destroy(info.d, detachNodes)
-        infos[key] = UNDEF
+        infos.delete(key)
         return true
     }
 
-    const removeAllKeyedInfos = (oldKeys: string[]) => {
+    const removeAllKeyedInfos = (oldKeys: any[]) => {
         const oldLength = oldKeys.length
         if (!oldLength) {
             return 0
@@ -78,11 +78,11 @@ export function keyedListBlock(
 
         let removedCount = 0
         let nodesDetached = false
-        const firstInfo = infos[oldKeys[0]]
+        const firstInfo = infos.get(oldKeys[0])
         const wholeContent = !!(firstInfo && isWholeContentDestruction(firstInfo.d))
         for (let i = 0; i < oldLength; i++) {
             const key = oldKeys[i]
-            const info = infos[key]
+            const info = infos.get(key)
             if (!info) {
                 continue
             }
@@ -91,7 +91,7 @@ export function keyedListBlock(
                 nodesDetached = true
             }
             destroy(info.d, !nodesDetached)
-            infos[key] = UNDEF
+            infos.delete(key)
             removedCount++
         }
         return removedCount
@@ -104,7 +104,7 @@ export function keyedListBlock(
         const newLength = traversable.l
         if (newLength === 0) {
             holesCount += removeAllKeyedInfos(oldKeys)
-            infos = newCleanObj()
+            infos = new Map()
             holesCount = 0
             oldKeys = []
             return
@@ -115,37 +115,29 @@ export function keyedListBlock(
                 m: NIL,
                 x: NIL
             }
-            const newKeys: string[] = Array(newLength)
-            const keyVisited: Record<string, number> = newCleanObj()
+            const newKeys: any[] = Array(newLength)
+            const keyVisited = new Map<any, number>()
             for (let i = 0; i < newLength; i++) {
                 fillContext(traversable, i, keyContext)
-                const key = "" + getKey(keyContext.m, keyContext.x)
-                if (!isUndefined(keyVisited[key])) {
+                const key = getKey(keyContext.m, keyContext.x)
+                if (keyVisited.has(key)) {
                     DuplicateKey(key)
                 }
-                keyVisited[key] = i
+                keyVisited.set(key, i)
                 newKeys[i] = key
             }
 
             for (let i = newLength - 1; i >= 0; i--) {
                 const reference =
                     i < newLength - 1
-                        ? (getFirstNodeOfDestruction(infos[newKeys[i + 1]]!.d) ?? anchor)
+                        ? (getFirstNodeOfDestruction(infos.get(newKeys[i + 1])!.d) ?? anchor)
                         : anchor
                 mountKeyedInfo(reference, newKeys[i], i, render)
             }
             oldKeys = newKeys
 
             if (holesCount > 256 && holesCount > oldKeys.length) {
-                const compacted: Record<string, TraverseInfo> = newCleanObj()
-                for (let i = 0; i < oldKeys.length; i++) {
-                    const key = oldKeys[i]
-                    const value = infos[key]
-                    if (!isUndefined(value)) {
-                        compacted[key] = value
-                    }
-                }
-                infos = compacted
+                infos = new Map(infos)
                 holesCount = 0
             }
             return
@@ -155,16 +147,16 @@ export function keyedListBlock(
             m: NIL,
             x: NIL
         }
-        const newKeys: string[] = Array(newLength)
-        const keyToNewIndex: Record<string, number> = newCleanObj()
+        const newKeys: any[] = Array(newLength)
+        const keyToNewIndex = new Map<any, number>()
         for (let i = 0; i < newLength; i++) {
             fillContext(traversable, i, keyContext)
 
-            const key = "" + getKey(keyContext.m, keyContext.x)
-            if (!isUndefined(keyToNewIndex[key])) {
+            const key = getKey(keyContext.m, keyContext.x)
+            if (keyToNewIndex.has(key)) {
                 DuplicateKey(key)
             }
-            keyToNewIndex[key] = i
+            keyToNewIndex.set(key, i)
             newKeys[i] = key
         }
 
@@ -177,7 +169,7 @@ export function keyedListBlock(
             if (oldKey !== newKey) {
                 break
             }
-            updateBlock(infos[oldKey]!, traversable, start)
+            updateBlock(infos.get(oldKey)!, traversable, start)
         }
         for (; oldEnd >= start && newEnd >= start; oldEnd--, newEnd--) {
             const oldKey = oldKeys[oldEnd]
@@ -185,29 +177,21 @@ export function keyedListBlock(
             if (oldKey !== newKey) {
                 break
             }
-            updateBlock(infos[oldKey]!, traversable, newEnd)
+            updateBlock(infos.get(oldKey)!, traversable, newEnd)
         }
 
         if (start > oldEnd) {
             for (let i = newEnd; i >= start; i--) {
                 const reference =
                     i < newLength - 1
-                        ? (getFirstNodeOfDestruction(infos[newKeys[i + 1]]!.d) ?? anchor)
+                        ? (getFirstNodeOfDestruction(infos.get(newKeys[i + 1])!.d) ?? anchor)
                         : anchor
                 mountKeyedInfo(reference, newKeys[i], i, render)
             }
             oldKeys = newKeys
 
             if (holesCount > 256 && holesCount > oldKeys.length) {
-                const compacted: Record<string, TraverseInfo> = newCleanObj()
-                for (let i = 0; i < oldKeys.length; i++) {
-                    const key = oldKeys[i]
-                    const value = infos[key]
-                    if (!isUndefined(value)) {
-                        compacted[key] = value
-                    }
-                }
-                infos = compacted
+                infos = new Map(infos)
                 holesCount = 0
             }
             return
@@ -219,18 +203,10 @@ export function keyedListBlock(
                     holesCount++
                 }
             }
-
             oldKeys = newKeys
+
             if (holesCount > 256 && holesCount > oldKeys.length) {
-                const compacted: Record<string, TraverseInfo> = newCleanObj()
-                for (let i = 0; i < oldKeys.length; i++) {
-                    const key = oldKeys[i]
-                    const value = infos[key]
-                    if (!isUndefined(value)) {
-                        compacted[key] = value
-                    }
-                }
-                infos = compacted
+                infos = new Map(infos)
                 holesCount = 0
             }
             return
@@ -253,7 +229,7 @@ export function keyedListBlock(
                 continue
             }
 
-            const newIndex = keyToNewIndex[oldKey]
+            const newIndex = keyToNewIndex.get(oldKey)
             if (isUndefined(newIndex) || newIndex < newStart || newIndex > newEnd) {
                 if (removeKeyedInfo(oldKey, true)) {
                     holesCount++
@@ -269,8 +245,7 @@ export function keyedListBlock(
             } else {
                 moved = true
             }
-
-            updateBlock(infos[oldKey]!, traversable, newIndex)
+            updateBlock(infos.get(oldKey)!, traversable, newIndex)
             patched++
         }
 
@@ -281,7 +256,7 @@ export function keyedListBlock(
             const newKey = newKeys[newIndex]
             const reference =
                 newIndex < newLength - 1
-                    ? (getFirstNodeOfDestruction(infos[newKeys[newIndex + 1]]!.d) ?? anchor)
+                    ? (getFirstNodeOfDestruction(infos.get(newKeys[newIndex + 1])!.d) ?? anchor)
                     : anchor
 
             if (newIndexToOldIndexMap[i] === 0) {
@@ -294,31 +269,23 @@ export function keyedListBlock(
             }
 
             if (stableCursor < 0 || i !== stableIndexes[stableCursor]) {
-                walkNodes(infos[newKey]!.d, node => {
+                walkNodes(infos.get(newKey)!.d, node => {
                     insertBefore(reference, node)
                 })
             } else {
                 stableCursor--
             }
         }
-
         oldKeys = newKeys
+
         if (holesCount > 256 && holesCount > oldKeys.length) {
-            const compacted: Record<string, TraverseInfo> = newCleanObj()
-            for (let i = 0; i < oldKeys.length; i++) {
-                const key = oldKeys[i]
-                const value = infos[key]
-                if (!isUndefined(value)) {
-                    compacted[key] = value
-                }
-            }
-            infos = compacted
+            infos = new Map(infos)
             holesCount = 0
         }
     })
 
     return (key: any) => {
-        const info = infos["" + key]
+        const info = infos.get(key)
         if (!info) {
             return UNDEF
         }

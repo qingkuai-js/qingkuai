@@ -22,7 +22,7 @@ export function CannotRenderComponent(): never {
     )
 }
 
-export function DuplicateKey(key: string): never {
+export function DuplicateKey(key: unknown): never {
     throwErrorWithCode(
         2003,
         `Duplicate value for "#key" directive, duplicate item: ${stringify(key)}.`

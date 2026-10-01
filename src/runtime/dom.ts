@@ -2,8 +2,8 @@ import { setAttribute } from "./internal"
 import { any } from "../util/shared/sundry"
 import { arrayFrom } from "../util/shared/arrays"
 import { isElement } from "../util/runtime/assert"
-import { isString, isUndefined } from "../util/shared/assert"
 import { currentDestruction, currentInstance } from "./state"
+import { isNumber, isString, isUndefined } from "../util/shared/assert"
 import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, ATTRIBUTE_PREFIX } from "./constants"
 import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags"
 
@@ -20,7 +20,7 @@ export function selectElement(selector: string) {
 }
 
 export function setText(text: any, content: any) {
-    if (!isString(content)) {
+    if (!isString(content) && !isNumber(content)) {
         content = "" + content
     }
     if (content !== text[NODE_CONTEXT]) {
