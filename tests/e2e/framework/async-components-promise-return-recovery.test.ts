@@ -7,14 +7,17 @@ const scenario: E2EScenarioInput = {
         <lang-js>
             import AsyncOne from "./components/AsyncOne"
 
+            let resolveLoadOne = () => {}
             let asyncComponentPromise = new Promise(() => {})
 
-            async function getComponent() {
-                await new Promise(resolve => setTimeout(resolve, 20))
-                return AsyncOne
+            const finishLoadOne = () => resolveLoadOne()
+
+            const loadOne = () => {
+                asyncComponentPromise = new Promise(resolve => {
+                    resolveLoadOne = () => resolve(AsyncOne)
+                })
             }
 
-            const loadOne = () => (asyncComponentPromise = getComponent())
             const failOne = () => {
                 asyncComponentPromise = new Promise((_, reject) => {
                     setTimeout(() => reject("promise failed"), 5)
@@ -24,6 +27,7 @@ const scenario: E2EScenarioInput = {
 
         <section data-page="async-components-promise-return-recovery">
             <button id="load-one" @click={loadOne}>Load one</button>
+            <button id="finish-one" @click={finishLoadOne}>Finish one</button>
             <button id="fail-one" @click={failOne}>Fail one</button>
 
             <div
@@ -58,6 +62,9 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await page.locator("#load-one").click()
         await expect(page.locator("#async-loading")).toHaveText("Loading...")
         await expect(page.locator("#async-error")).toHaveCount(0)
+
+        await page.locator("#finish-one").click()
         await expect(page.locator("#async-one")).toHaveText("Async One")
+        await expect(page.locator("#async-loading")).toHaveCount(0)
     })
 })

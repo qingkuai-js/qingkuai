@@ -6,6 +6,8 @@ const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
             const createPendingPromise = () => new Promise(() => {})
+
+            let resolveLoadOne = () => {}
             let asyncComponentPromise = createPendingPromise()
 
             const loadMissing = () => {
@@ -14,14 +16,16 @@ const scenario: E2EScenarioInput = {
 
             const loadOne = () => {
                 asyncComponentPromise = new Promise(resolve => {
-                    setTimeout(() => resolve(import("./components/AsyncOne")), 20)
+                    resolveLoadOne = () => resolve(import("./components/AsyncOne"))
                 })
             }
+            const finishLoadOne = () => resolveLoadOne()
         </lang-js>
 
         <section data-page="async-components-dynamic-import-recovery">
             <button id="load-missing" @click={loadMissing}>Load missing</button>
             <button id="load-one" @click={loadOne}>Load one</button>
+            <button id="finish-one" @click={finishLoadOne}>Finish one</button>
             
             <div
                 id="async-loading"
@@ -55,6 +59,9 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await page.locator("#load-one").click()
         await expect(page.locator("#async-loading")).toHaveText("Loading...")
         await expect(page.locator("#async-error")).toHaveCount(0)
+
+        await page.locator("#finish-one").click()
         await expect(page.locator("#async-one")).toHaveText("Async One")
+        await expect(page.locator("#async-loading")).toHaveCount(0)
     })
 })
