@@ -121,6 +121,9 @@ jobs:
       - name: Build package
         run: pnpm run build
 
+      - name: Strip install-time lifecycle scripts from published package
+        run: pnpm exec tsx scripts/strip-install-scripts.ts
+
       - name: Pack npm tarball
         run: npm pack
 
