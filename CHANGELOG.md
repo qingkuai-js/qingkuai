@@ -1,5 +1,64 @@
 # Changelog
 
+## [1.0.100](https://github.com/qingkuai-js/qingkuai/compare/v1.0.91...v1.0.100) (2026-10-07)
+
+### Features
+
+- add component context APIs ([b430f6e](https://github.com/qingkuai-js/qingkuai/commit/b430f6e))
+- enhance component contract types and improve context handling ([f910744](https://github.com/qingkuai-js/qingkuai/commit/f910744))
+- add `instance` intrinsic identifier ([0c17af5](https://github.com/qingkuai-js/qingkuai/commit/0c17af5))
+- add intrinsic methods for lifecycle hooks ([efa822e](https://github.com/qingkuai-js/qingkuai/commit/efa822e))
+- add `DeclareComponent` type and enhance `ComponentShape` definition ([e961b28](https://github.com/qingkuai-js/qingkuai/commit/e961b28))
+- enhance type generation with JSDoc injection ([4dc7c66](https://github.com/qingkuai-js/qingkuai/commit/4dc7c66))
+- enhance `injectCallSignatureDocs` to improve declaration handling and documentation generation ([344487b](https://github.com/qingkuai-js/qingkuai/commit/344487b))
+- add `BoundSetContextFunc` and `BoundSetContextGetterFunc` for enhanced context management ([996e0fe](https://github.com/qingkuai-js/qingkuai/commit/996e0fe))
+- implement lifecycle hook registration guards ([4dd0f20](https://github.com/qingkuai-js/qingkuai/commit/4dd0f20))
+- add default values for optional `contexts` in documentation ([8a57c0e](https://github.com/qingkuai-js/qingkuai/commit/8a57c0e))
+- expose `Prettify` utility in `__qk__lsu` namespace ([0505bc9](https://github.com/qingkuai-js/qingkuai/commit/0505bc9))
+- add anchor bracket for component and slot tags with directives ([2c986f9](https://github.com/qingkuai-js/qingkuai/commit/2c986f9))
+- add `raw(expr)` untracked template reads with reactivity inference exclusion and noTracking-based codegen ([15e03b5](https://github.com/qingkuai-js/qingkuai/commit/15e03b5))
+- add `requireReactivityMark` option and error 1074 for unmarked declarations ([fbeb648](https://github.com/qingkuai-js/qingkuai/commit/fbeb648))
+- add warning 9015 for stateful items in `#for` lists that do not use `#key` ([258ed61](https://github.com/qingkuai-js/qingkuai/commit/258ed61))
+- enhance alias validation and add tests for invalid usages ([62a549c](https://github.com/qingkuai-js/qingkuai/commit/62a549c))
+- classify template reads as tracked or untracked for implicit inference and propagate derived source access through nested callbacks ([e2ca925](https://github.com/qingkuai-js/qingkuai/commit/e2ca925))
+
+### Refactors
+
+- enhance brand handling with single source ([c6650f8](https://github.com/qingkuai-js/qingkuai/commit/c6650f8))
+- rename `context` to `meta` for improved clarity and consistency across the codebase ([dd72d7e](https://github.com/qingkuai-js/qingkuai/commit/dd72d7e))
+- generate `instance` intrinsic in check mode ([4297bbd](https://github.com/qingkuai-js/qingkuai/commit/4297bbd))
+- replace `intrinsic` with `built-in` in comments and error messages ([9d264db](https://github.com/qingkuai-js/qingkuai/commit/9d264db))
+- remove shorthand derived declaration support and related report information ([9913be0](https://github.com/qingkuai-js/qingkuai/commit/9913be0))
+- consolidate utility functions into sundry module and update references ([16208fb](https://github.com/qingkuai-js/qingkuai/commit/16208fb))
+- add tests for preserving generic type arguments ([adecb92](https://github.com/qingkuai-js/qingkuai/commit/adecb92))
+- use `import type TS` for typescript type usages while keeping the value namespace import for runtime access ([ea5079d](https://github.com/qingkuai-js/qingkuai/commit/ea5079d))
+- rename `toShallowReactive` to `toShallow` for consistency ([772edb4](https://github.com/qingkuai-js/qingkuai/commit/772edb4))
+- rename `untracked reads` to `non-reactive reads` for clarity ([aa4673d](https://github.com/qingkuai-js/qingkuai/commit/aa4673d))
+- classify `raw` reads by identifier status to emit `toRaw` or direct reads ([936ffd6](https://github.com/qingkuai-js/qingkuai/commit/936ffd6))
+
+### Improvements
+
+- compare `#for` `key` as raw values via `Map` and assign numbers to text nodes directly to avoid number-to-string conversions ([2e9dd4b](https://github.com/qingkuai-js/qingkuai/commit/2e9dd4b))
+
+### Tests
+
+- add `E2E` and unit tests for derived value recomputation ([7d85a00](https://github.com/qingkuai-js/qingkuai/commit/7d85a00))
+- add tests for `raw` expression handling and reactivity mark requirements ([2583a51](https://github.com/qingkuai-js/qingkuai/commit/2583a51))
+- replace short-timer `pending` windows with controllable `deferred` promises in async recovery tests ([f05f243](https://github.com/qingkuai-js/qingkuai/commit/f05f243))
+
+### Fixes
+
+- correct `stoi` mapping in `IntermediateCodeWriter` for accurate index tracking ([4f88334](https://github.com/qingkuai-js/qingkuai/commit/4f88334))
+- update `ExtractEventKind` to use `HTMLElementEventMap` for accurate event type extraction ([d3015d7](https://github.com/qingkuai-js/qingkuai/commit/d3015d7))
+- add `postinstall` step to `CI` and `release` workflows ([3e87e94](https://github.com/qingkuai-js/qingkuai/commit/3e87e94))
+- incorrect `parentNodeContext` for nested `qk:spread` ([44f5b36](https://github.com/qingkuai-js/qingkuai/commit/44f5b36))
+- render dynamic content correctly in `slot`s ([ec907d3](https://github.com/qingkuai-js/qingkuai/commit/ec907d3))
+- always wrap `Exp` built-in method arguments as `getter`s and degenerate `derivedExp` function-literal initializers ([fb6d052](https://github.com/qingkuai-js/qingkuai/commit/fb6d052))
+- walk nested member access chains when matching text content against the `#key` directive to omit redundant render effects ([63ee209](https://github.com/qingkuai-js/qingkuai/commit/63ee209))
+- correct start position assignment for `TS` parse diagnostics to ensure distinct offsets ([4c2c101](https://github.com/qingkuai-js/qingkuai/commit/4c2c101))
+- add missing export for package.json in `exports` field ([0817486](https://github.com/qingkuai-js/qingkuai/commit/0817486))
+- strip residual assertion and type markers from initializer-less reactive declarations ([30d1c26](https://github.com/qingkuai-js/qingkuai/commit/30d1c26))
+
 ## [1.0.91](https://github.com/qingkuai-js/qingkuai/compare/v1.0.90...v1.0.91) (2026-08-15)
 
 ### Features
