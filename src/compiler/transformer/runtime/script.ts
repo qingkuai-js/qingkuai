@@ -461,6 +461,13 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
         const isConst = getVariableDeclareKeyword(declaration) !== "let"
         if (!declarator.initializer) {
+            const { exclamationToken, type } = declarator
+            if (exclamationToken || type) {
+                editor.remove(
+                    exclamationToken ? exclamationToken.getStart() : declarator.name.getEnd(),
+                    (type ?? exclamationToken)!.getEnd()
+                )
+            }
             if (!debugMode) {
                 editor.insert(declarator.name.getEnd(), ` = ${defaultReactCallee}()`)
             } else {
