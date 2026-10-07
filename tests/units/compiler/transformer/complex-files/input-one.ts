@@ -62,10 +62,9 @@ export default formatSourceCode(`
 
 		<div #html={rawHtml}>{rawText}</div>
 
-		<div #for={item of 3} #key={item}>
-			<div !class={selected === item ? "danger" : ""}></div>
-			<button @click={select(item)}></button>
-		</div>
+	<div #for={item of 3} #key={item} !class={selected === item ? "danger" : ""}>
+		<button @click={select(item)}></button>
+	</div>
 	</div>
 
 	<div>{count}</div>

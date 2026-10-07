@@ -30,33 +30,54 @@ test("getForBlockSelectorInfos collects selector operations from compiled templa
         formatSourceCode(`
             <lang-js>
                 let items = [{ id: "a" }]
-                let foo = { a: "x" }
+                let selected = reactive("a")
             </lang-js>
-            <div #for={item of items} #key={item.id}>
-                {foo[item.id]}
-                <div class="a b" !class={foo[item.id]} !title={foo[item.id]}></div>
-                <use !xlink:href={foo[item.id]}></use>
-                <select !value={foo[item.id]}></select>
+            <div #for={item of items} #key={item.id} class="a b" !class={selected === item.id ? "on" : "off"} !title={selected === item.id}>
+                <span>{selected === item.id}</span>
             </div>
         `)
     )
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const infos = getForBlockSelectorInfos(forNodeContext)
-    expect(infos.some(item => item.operation.method === "setText")).toBe(true)
     expect(infos.some(item => item.operation.method === "setClassName")).toBe(true)
-    expect(infos.some(item => item.operation.method === "setXlinkAttribute")).toBe(true)
     expect(
         infos.some(
             item => item.operation.method === "setAttribute" && item.operation.attrName === "title"
         )
     ).toBe(true)
 
-    // !value on <select> is intentionally excluded from selector optimization.
+    // The inner text interpolation of the item cannot be taken over by the
+    // selector (setText writing nodeValue is a no-op for element nodes)
+    expect(infos.some(item => item.operation.method === "setText")).toBe(false)
+
+    compile(
+        formatSourceCode(`
+            <lang-js>
+                let items = [{ id: "a" }]
+                let selected = reactive("a")
+            </lang-js>
+            <use #for={item of items} #key={item.id} !xlink:href={selected === item.id ? "#a" : "#b"}></use>
+        `)
+    )
+    const useContext = getForNodeContextFromAnalyzeResult()!
     expect(
-        infos.some(
-            item => item.operation.method === "setAttribute" && item.operation.attrName === "value"
+        getForBlockSelectorInfos(useContext).some(
+            item => item.operation.method === "setXlinkAttribute"
         )
-    ).toBe(false)
+    ).toBe(true)
+
+    // !value on <select> is intentionally excluded from selector optimization.
+    compile(
+        formatSourceCode(`
+            <lang-js>
+                let items = [{ id: "a" }]
+                let selected = reactive("a")
+            </lang-js>
+            <select #for={item of items} #key={item.id} !value={selected === item.id}></select>
+        `)
+    )
+    const selectContext = getForNodeContextFromAnalyzeResult()!
+    expect(getForBlockSelectorInfos(selectContext)).toEqual([])
 })
 
 test("hasSelectorForAttribute and hasSelectorForTextNode work with compiled selector infos", () => {
@@ -64,20 +85,15 @@ test("hasSelectorForAttribute and hasSelectorForTextNode work with compiled sele
         formatSourceCode(`
             <lang-js>
                 let items = [{ id: "a" }]
-                let foo = { a: "x" }
+                let selected = reactive("a")
             </lang-js>
-            <div #for={item of items} #key={item.id}>
-                {foo[item.id]}
-                <div !title={foo[item.id]}></div>
-                <select !value={foo[item.id]}></select>
+            <div #for={item of items} #key={item.id} !title={selected === item.id}>
+                <span>{selected === item.id}</span>
             </div>
         `)
     )
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const infos = getForBlockSelectorInfos(forNodeContext)
-
-    const textInfo = infos.find(item => item.operation.method === "setText")!
-    expect(hasSelectorForTextNode(infos, textInfo.targetNodeContext)).toBe(true)
 
     const titleInfo = infos.find(
         item => item.operation.method === "setAttribute" && item.operation.attrName === "title"
@@ -86,16 +102,12 @@ test("hasSelectorForAttribute and hasSelectorForTextNode work with compiled sele
         hasSelectorForAttribute(infos, titleInfo.targetNodeContext, titleInfo.targetAttribute!)
     ).toBe(true)
 
-    const selectNodeContext = Array.from(analyzeResult.template.nodeContexts.values()).find(
-        item => item.node.tag === "select"
+    // 项内层文本插值不再由选择器接管
+    const textNodeContext = Array.from(analyzeResult.template.nodeContexts.values()).find(
+        item => item.node.tag === ""
     )
-    const selectValueAttr = selectNodeContext?.dynamicAttributes.find(attr => {
-        return attr.name.raw === "!value"
-    })
-
-    expect(selectNodeContext).toBeTruthy()
-    expect(selectValueAttr).toBeTruthy()
-    expect(hasSelectorForAttribute(infos, selectNodeContext!, selectValueAttr!)).toBe(false)
+    expect(textNodeContext).toBeTruthy()
+    expect(hasSelectorForTextNode(infos, textNodeContext!)).toBe(false)
 })
 
 test("writeSelectorDeclaration emits update wrapper from compiled selector info", () => {
@@ -103,24 +115,22 @@ test("writeSelectorDeclaration emits update wrapper from compiled selector info"
         formatSourceCode(`
             <lang-js>
                 let items = [{ id: "a" }]
-                let foo = { a: "x" }
+                let selected = reactive("a")
             </lang-js>
-            <div #for={item of items} #key={item.id}>
-                {foo[item.id]}
-            </div>
+            <div #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"}></div>
         `)
     )
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const selectorInfo = getForBlockSelectorInfos(forNodeContext).find(item => {
-        return item.operation.method === "setText"
+        return item.operation.method === "setClassName"
     })!
     const writer = new RuntimeCodeWriter(false)
     writeSelectorDeclaration(writer, selectorInfo, "getNode")
     expect(writer.code).toContain(`const ${selectorInfo.id} = (() => {`)
     expect(writer.code).toContain("const prevNode = getNode(prevValue)")
     expect(writer.code).toContain("const node = getNode(key)")
-    expect(writer.code).toContain("setText(prevNode")
-    expect(writer.code).toContain("setText(node")
+    expect(writer.code).toContain("setClassName(prevNode")
+    expect(writer.code).toContain("setClassName(node")
 })
 
 test("getForBlockSelectorInfos returns empty for invalid #key expression node types", () => {
@@ -222,7 +232,8 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                     {foo[item.id]}
                 </div>
             `),
-            expectedEmpty: false
+            // const 声明的 reactive 代理读取（transformTo 不带 .$）与成员访问依赖都不能优化
+            expectedEmpty: true
         },
         {
             source: formatSourceCode(`
@@ -235,6 +246,16 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                 </div>
             `),
             expectedEmpty: true
+        },
+        {
+            source: formatSourceCode(`
+                <lang-js>
+                    let items = [{ id: "a" }]
+                    let selected = reactive("a")
+                </lang-js>
+                <div #for={item of items} #key={item.id} !title={selected === item.id}></div>
+            `),
+            expectedEmpty: false
         }
     ]
 
@@ -247,7 +268,13 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
             expect(infos).toEqual([])
         } else {
             expect(infos.length).toBeGreaterThan(0)
-            expect(infos.some(item => item.operation.method === "setText")).toBe(true)
+            expect(
+                infos.some(
+                    item =>
+                        item.operation.method === "setAttribute" &&
+                        item.operation.attrName === "title"
+                )
+            ).toBe(true)
         }
     }
 })
@@ -257,11 +284,10 @@ test("getForBlockSelectorInfos ignores dynamic attributes without parsable expre
         formatSourceCode(`
             <lang-js>
                 let items = [{ id: "a" }]
-                let foo = { a: "x" }
+                let selected = reactive("a")
             </lang-js>
-            <div #for={item of items} #key={item.id}>
+            <div #for={item of items} #key={item.id} !title={selected === item.id}>
                 <div !title></div>
-                <div !title={foo[item.id]}></div>
             </div>
         `)
     )
@@ -307,6 +333,8 @@ test("getForBlockSelectorInfos rejects selector expressions with extra binding r
 })
 
 test("writeSelectorDeclaration handles shorthand refs and repeated key ranges", () => {
+    // The dependency reference in the object literal shorthand cannot fall on either
+    // side of the equality comparison, and is no longer taken over by the selector.
     compile(
         formatSourceCode(`
             <lang-js>
@@ -320,12 +348,24 @@ test("writeSelectorDeclaration handles shorthand refs and repeated key ranges", 
     )
 
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const selectorInfo = getForBlockSelectorInfos(forNodeContext).find(item => {
-        return item.operation.method === "setText"
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
+
+    compile(
+        formatSourceCode(`
+            <lang-js>
+                let items = [{ id: "a" }]
+                let selected = reactive("a")
+            </lang-js>
+            <div #for={item of items} #key={item.id} !class={(selected === item.id) + (selected === item.id)}></div>
+        `)
+    )
+
+    const repeatedForNodeContext = getForNodeContextFromAnalyzeResult()!
+    const selectorInfo = getForBlockSelectorInfos(repeatedForNodeContext).find(item => {
+        return item.operation.method === "setClassName"
     })!
     const writer = new RuntimeCodeWriter(false)
     writeSelectorDeclaration(writer, selectorInfo, "getNode")
-    expect(writer.code).toContain("foo: prevValue")
-    expect(writer.code).toContain("foo")
-    expect(writer.code).toContain("[key]")
+    expect(writer.code.match(/prevValue === key/g)).toHaveLength(2)
+    expect(writer.code.match(/selected\.\$ === key/g)).toHaveLength(2)
 })

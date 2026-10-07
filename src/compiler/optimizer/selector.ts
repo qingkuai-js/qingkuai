@@ -1,6 +1,5 @@
 import type {
     Range,
-    TemplateNode,
     ParsedExpression,
     TemplateAttribute,
     TemplateNodeContext,
@@ -10,16 +9,12 @@ import type { RuntimeCodeWriter } from "../transformer/writer"
 
 import ts from "typescript"
 
-import {
-    getParsedDirective,
-    getParsedExpression,
-    getTemplateNodeContext
-} from "../../util/compiler/template"
 import { walkTsNode } from "../ts-ast/walk"
 import { getMaybeReusedString } from "./compress"
 import { CodeEditor } from "../transformer/editor"
 import { analyzeResult, generateIdentifier } from "../state"
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
+import { getParsedDirective, getParsedExpression } from "../../util/compiler/template"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../util/compiler/sundry"
 import { isBindingReference, isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert"
 
@@ -44,82 +39,44 @@ export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
         return []
     }
 
+    const node = forNodeContext.node
+    if (node.componentTag || node.tag === "slot") {
+        return []
+    }
+
     const ret: GeneratedSelectorInfo[] = []
-    walk(forNodeContext.node, node => {
-        const nodeContext = getTemplateNodeContext(node)
-        if (node.componentTag || node.tag === "slot") {
-            return
+    for (const attribute of forNodeContext.dynamicAttributes) {
+        const expression = getParsedExpression(attribute)
+        if (!expression) {
+            continue
         }
 
-        if (node.tag === "") {
-            const textPart = node.content.find(item => item.isInterpolated)
-            if (!textPart) {
-                return
-            }
-
-            const textExpression = getParsedExpression(textPart)
-            if (!textExpression) {
-                return
-            }
-
-            const selectorValidation = validateSelectorExpression(
-                textExpression,
-                parsedForDirective,
-                parsedKeyExpression
-            )
-            if (!selectorValidation) {
-                return
-            }
-
-            ret.push({
-                keyDirective,
-                forNodeContext,
-                targetNodeContext: nodeContext,
-                targetTextPart: textPart,
-                expressionKey: textPart,
-                operation: {
-                    method: "setText"
-                },
-                id: ensureIdWithNumSuffix("_selector"),
-                topLevelIdentifierName: selectorValidation.topLevelIdentifierName,
-                topLevelTransformedTo: selectorValidation.topLevelTransformedTo
-            })
-            return
+        const operation = getSelectorOperation(forNodeContext, attribute)
+        if (!operation) {
+            continue
         }
 
-        for (const attribute of nodeContext.dynamicAttributes) {
-            const expression = getParsedExpression(attribute)
-            if (!expression) {
-                continue
-            }
-
-            const operation = getSelectorOperation(nodeContext, attribute)
-            if (!operation) {
-                continue
-            }
-
-            const selectorValidation = validateSelectorExpression(
-                expression,
-                parsedForDirective,
-                parsedKeyExpression
-            )
-            if (!selectorValidation) {
-                continue
-            }
-
-            ret.push({
-                operation,
-                keyDirective,
-                forNodeContext,
-                targetNodeContext: nodeContext,
-                expressionKey: attribute,
-                targetAttribute: attribute,
-                id: ensureIdWithNumSuffix("_selector"),
-                topLevelIdentifierName: selectorValidation.topLevelIdentifierName,
-                topLevelTransformedTo: selectorValidation.topLevelTransformedTo
-            })
+        const selectorValidation = validateSelectorExpression(
+            expression,
+            parsedForDirective,
+            parsedKeyExpression
+        )
+        if (!selectorValidation) {
+            continue
         }
-    })
+
+        ret.push({
+            operation,
+            keyDirective,
+            forNodeContext,
+            targetNodeContext: forNodeContext,
+            expressionKey: attribute,
+            targetAttribute: attribute,
+            id: ensureIdWithNumSuffix("_selector"),
+            topLevelIdentifierName: selectorValidation.topLevelIdentifierName,
+            topLevelTransformedTo: selectorValidation.topLevelTransformedTo
+        })
+    }
     return ret
 }
 
@@ -211,6 +168,16 @@ function validateSelectorExpression(
         return
     }
 
+    // 依赖必须是响应式单元读取：const 声明的 reactive 代理引用恒定不变，
+    // 以其为 key 的选择器既不会被重新触发，其值也永远不会命中任何列表项 key
+    //
+    // The dependency must be a reactive unit read: the reactive proxy reference
+    // declared by const is always constant, and the selector with it as the key
+    // will neither be retriggered nor will its value ever hit any list item key.
+    if (!topLevelInfo.transformTo.endsWith(".$")) {
+        return
+    }
+
     if (!expression.contextReferences.length) {
         return
     }
@@ -237,6 +204,20 @@ function validateSelectorExpression(
         if (!isRangeCovered(reference.range, normalizedKeyRanges)) {
             return
         }
+    }
+
+    // 每个依赖引用与 key 引用都必须恰好落在某个 `===` / `!==` 比较的两侧：只有相等
+    // 判断能保证依赖值变化时，除新旧 key 对应的两项外，其余列表项的渲染结果不会改变
+    //
+    // Each dependency reference and key reference must fall on either side of
+    // a `===` / `!==` comparison: only equality judgment can ensure that when
+    // the dependency value changes, the rendering results of other list items
+    // will not change except for the two corresponding to the new and old keys.
+    const topLevelRanges: Range[] = expression.topLevelReferences[topLevelIdentifierName].map(
+        item => item.range
+    )
+    if (!areRangesPairedInEquality(expression.node, topLevelRanges, normalizedKeyRanges)) {
+        return
     }
 
     let valid = true
@@ -360,11 +341,48 @@ function writeSelectorExpression(
     writer.writeEditedScript(editor)
 }
 
-function walk(node: TemplateNode, callback: (node: TemplateNode) => void) {
-    callback(node)
-    for (const child of node.children) {
-        walk(child, callback)
-    }
+function areRangesPairedInEquality(
+    expression: ParsedExpression["node"],
+    topLevelRanges: Range[],
+    keyRanges: Range[]
+) {
+    const coveredTopLevels = new Array(topLevelRanges.length).fill(false)
+    const coveredKeys = new Array(keyRanges.length).fill(false)
+
+    walkTsNode(expression, node => {
+        if (
+            !ts.isBinaryExpression(node) ||
+            (node.operatorToken.kind !== ts.SyntaxKind.EqualsEqualsEqualsToken &&
+                node.operatorToken.kind !== ts.SyntaxKind.ExclamationEqualsEqualsToken)
+        ) {
+            return
+        }
+
+        const isSameRange = (compared: ts.Expression, range: Range) => {
+            return compared.getStart() === range[0] && compared.getEnd() === range[1]
+        }
+        for (let i = 0; i < topLevelRanges.length; i++) {
+            if (coveredTopLevels[i]) {
+                continue
+            }
+            for (let j = 0; j < keyRanges.length; j++) {
+                if (coveredKeys[j]) {
+                    continue
+                }
+                if (
+                    (isSameRange(node.left, topLevelRanges[i]) &&
+                        isSameRange(node.right, keyRanges[j])) ||
+                    (isSameRange(node.left, keyRanges[j]) &&
+                        isSameRange(node.right, topLevelRanges[i]))
+                ) {
+                    coveredTopLevels[i] = coveredKeys[j] = true
+                    break
+                }
+            }
+        }
+    })
+
+    return coveredTopLevels.every(Boolean) && coveredKeys.every(Boolean)
 }
 
 function isRangeCovered(range: Range, ranges: Range[]) {

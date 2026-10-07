@@ -515,8 +515,10 @@ function generateRenderEffect(
         // dynamic attributes
         const dynamicAttrsWithEffect: TemplateAttribute[] = []
         const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
+        const dynamicAttrsManagedBySelector: TemplateAttribute[] = []
         for (const attribute of nodeContext.dynamicAttributes) {
             if (hasSelectorForAttribute(selectorInfos, nodeContext, attribute)) {
+                dynamicAttrsManagedBySelector.push(attribute)
                 continue
             }
             if (
@@ -530,6 +532,9 @@ function generateRenderEffect(
         }
         if (!createRenderEffect) {
             for (const attribute of dynamicAttrsWithoutEffect) {
+                generateSetAttributeCall(attribute, true)
+            }
+            for (const attribute of dynamicAttrsManagedBySelector) {
                 generateSetAttributeCall(attribute, true)
             }
 
@@ -636,7 +641,7 @@ function generateRenderEffect(
                 }
             }
 
-            if (!textContentHasRenderEffect && !textContentManagedBySelector) {
+            if (!textContentHasRenderEffect) {
                 writeSetTextCall(true)
             }
             dfs()
