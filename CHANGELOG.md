@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.100](https://github.com/qingkuai-js/qingkuai/compare/v1.0.91...v1.0.100) (2026-10-07)
+## [1.0.101](https://github.com/qingkuai-js/qingkuai/compare/v1.0.91...v1.0.101) (2026-10-07)
 
 ### Features
 
@@ -58,6 +58,7 @@
 - correct start position assignment for `TS` parse diagnostics to ensure distinct offsets ([4c2c101](https://github.com/qingkuai-js/qingkuai/commit/4c2c101))
 - add missing export for package.json in `exports` field ([0817486](https://github.com/qingkuai-js/qingkuai/commit/0817486))
 - strip residual assertion and type markers from initializer-less reactive declarations ([30d1c26](https://github.com/qingkuai-js/qingkuai/commit/30d1c26))
+- strip install-time lifecycle scripts (`postinstall`, `prepare`) from the published package so plain `npm install` no longer fails on the unshipped `scripts/install-brand.ts` ([dc60e19](https://github.com/qingkuai-js/qingkuai/commit/dc60e19))
 
 ## [1.0.91](https://github.com/qingkuai-js/qingkuai/compare/v1.0.90...v1.0.91) (2026-08-15)
 
