@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect } from "vitest"
@@ -11,8 +13,8 @@ export function parseTsScript(source: string) {
     return parseScript(formatSourceCode(source))
 }
 
-export function findIdentifier(sourceFile: ts.SourceFile, name: string): ts.Identifier {
-    let result: ts.Identifier | null = null
+export function findIdentifier(sourceFile: TS.SourceFile, name: string): TS.Identifier {
+    let result: TS.Identifier | null = null
     walkTsNode(sourceFile, node => {
         if (ts.isIdentifier(node) && node.text === name) {
             result = node

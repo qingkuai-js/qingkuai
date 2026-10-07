@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     TemplateNode,
     CompileMessage,
@@ -23,10 +25,11 @@ import {
     resetCompilerState,
     tsParsingDiagnostics
 } from "./state"
+import { isLeftValue } from "./ts-ast/assert"
 import { analyzeScript } from "./analyzer/script"
 import { parseTemplate } from "./parser/template"
 import { analyzeTemplate } from "./analyzer/template"
-import { isValidIdentifierName } from "../util/compiler/assert"
+import { getStriptTypeOperationsParent } from "./ts-ast/sundry"
 import { getScriptSourceIndex } from "../util/compiler/position"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
@@ -66,14 +69,14 @@ export function compileIntermediate(source: string, options: CompileIntermediate
     const idStatusInfo: IdentifierStatusInfo = newCleanObj()
     traverseObject(analyzeResult.script.topLevelIdentifiers, (name, info) => {
         idStatusInfo[name] = {
-            status: getIdentifierStatusForInlayHint(info),
-            description: getTopLevelIdentifierInfo(name, info),
             inlays: info.nodeInfos.map(nodeInfo => {
                 return {
                     kind: getInlayHintKind(nodeInfo),
                     index: getScriptSourceIndex(nodeInfo.id.getEnd())
                 }
-            })
+            }),
+            description: getTopLevelIdentifierInfo(info),
+            status: getIdentifierStatusForInlayHint(info)
         }
     })
 
@@ -104,7 +107,7 @@ export class CompileIntermediateResult {
         public messages: CompileMessage[],
         public templateNodes: TemplateNode[],
         public positions: ASTPositionWithFlag[],
-        public parseDiagnostics: ts.Diagnostic[],
+        public parseDiagnostics: TS.Diagnostic[],
         public getTypeDelayInterIndexes: number[],
         public scriptDescriptor: ScriptDescriptor,
         public styleDescriptors: StyleDescriptor[],
@@ -137,39 +140,6 @@ export class CompileIntermediateResult {
     }
 }
 
-function getTopLevelIdentifierInfo(name: string, info: TopLevelIdentifierInfo) {
-    switch (info.status) {
-        case "literal": {
-            return "raw (never mutated)"
-        }
-        case "pending": {
-            return "raw (template unused)"
-        }
-        case "raw": {
-            const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
-            const intrinsicName = analyzeResult.script.declaratorToIntrinsic
-                .get(declarator)
-                ?.getText()
-            if (intrinsicName === "raw") {
-                return "raw (explicit raw)"
-            }
-            if (inputDescriptor.options.shorthandDerivedDeclaration && name.startsWith("$")) {
-                return "raw (constant literal, downgraded)"
-            }
-            return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
-        }
-        case "alias": {
-            if (isValidIdentifierName(info.aliasTarget)) {
-                return "raw (invalid alias)"
-            }
-            return `alias -> ${info.aliasTarget}`
-        }
-        default: {
-            return info.status
-        }
-    }
-}
-
 function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo) {
     switch (info.status) {
         case "literal":
@@ -196,6 +166,61 @@ function getInlayHintKind(nodeInfo: TopLevelIdentifierNodeInfo): InlayHintKind {
         }
         default: {
             return "variable"
+        }
+    }
+}
+
+// 判断 alias 声明是否为非法形态，判断条件与 `checkUsageOfIntrinsicMethods` 保持一致：
+// 首参缺失、首参是展开元素、首参不是左值，或直接别名一个独立标识符时视为非法；
+// 首个参数之后的其余参数会被忽略，不影响合法性判断。
+//
+// Determine whether an alias declaration is invalid. The conditions mirror those in
+// `checkUsageOfIntrinsicMethods`: invalid when the first argument is missing, is a
+// spread element, is not a left value, or aliases a standalone identifier. Arguments
+// after the first are ignored and do not affect validity.
+function isInvalidAliasDeclaration(info: TopLevelIdentifierInfo) {
+    const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+    const callee = analyzeResult.script.declaratorToIntrinsic.get(declarator)
+    const call = callee && getStriptTypeOperationsParent(callee)
+    if (!info.aliasTarget || !call || !ts.isCallExpression(call)) {
+        return true
+    }
+
+    const firstArg = call.arguments[0]
+    return (
+        !firstArg ||
+        !isLeftValue(firstArg) ||
+        ts.isSpreadElement(firstArg) ||
+        (ts.isIdentifier(firstArg) && ts.isIdentifier(declarator.name))
+    )
+}
+
+function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
+    switch (info.status) {
+        case "literal": {
+            return "raw (never mutated)"
+        }
+        case "alias": {
+            if (isInvalidAliasDeclaration(info)) {
+                return "alias (invalid)"
+            }
+            return `alias -> ${info.aliasTarget}`
+        }
+        case "raw": {
+            const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+            const intrinsicName = analyzeResult.script.declaratorToIntrinsic
+                .get(declarator)
+                ?.getText()
+            if (intrinsicName === "raw") {
+                return "raw (explicit raw)"
+            }
+            return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
+        }
+        case "pending": {
+            return `raw (${info.untrackedAccess ? "untracked" : "not accessed"} in template)`
+        }
+        default: {
+            return info.status
         }
     }
 }

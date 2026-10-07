@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect, test } from "vitest"
@@ -21,7 +23,7 @@ function expectIsVarDeclarationList(source: string) {
 
 function collectVariableDeclarationLists(source: string) {
     const sourceFile = parseTsScript(source)
-    const result: ts.VariableDeclarationList[] = []
+    const result: TS.VariableDeclarationList[] = []
     walkTsNode(sourceFile, node => {
         if (ts.isVariableDeclarationList(node)) {
             result.push(node)

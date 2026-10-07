@@ -5,7 +5,6 @@ import { defineE2ETestFile } from "../scenario-module"
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import { onAfterUpdate, onBeforeUpdate } from "qingkuai"
             import LeafPanel from "./components/LeafPanel"
 
             let show = true

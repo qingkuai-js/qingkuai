@@ -6,18 +6,24 @@
 // are for type inference and validation only and have no runtime implementation.
 
 import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-import type { QingkuaiComponent as _QingkuaiComponent, EffectCallback, EffectHandle, WatcherCallback } from "#type-declarations/runtime"
+import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatchCallback } from "#type-declarations/runtime"
 
 export namespace __qk__lsu {
-    const Sign: unique symbol
-    type QingkuaiComponent<F extends ArbitraryFunc> = _QingkuaiComponent<F>
-
-    export interface EmptyObject {
-        [Sign]?: never
-    }
+    export type Prettify<T> = _Prettify<T>
+    export type EmptyObject = _EmptyObject
+    export type QingkuaiComponent<T extends ArbitraryFunc> = _QingkuaiComponent<T>
+    export type ComponentInstance<T extends QingkuaiComponent<any>> = _ComponentInstance<T>
 
     export const anyValue: any
-    export const getListPair: ReloadGetListPair
+    export const getListPair: {
+        <T>(value: Set<T>): [T, T]
+        <K, V>(value: Map<K, V>): [V, K]
+        <T>(value: Array<T>): [T, number]
+        (value: number): [number, number]
+        (value: string): [string, number]
+        <K extends string | number | symbol, V>(value: Record<K, V>): [V, K]
+    }
     export const getReturnType: <T extends ArbitraryFunc>(fn: T) => ReturnType<T>
     export const getTypeDelayMarking: (slotName: string, attrName: string, value: any) => void
 
@@ -27,60 +33,101 @@ export namespace __qk__lsu {
     export const validateHtmlBlockOptions: <T extends HtmlBlockOptions>(value: T) => void
     export const validateReferenceGroup: <T extends Set<any> | Array<any>>(value: T) => void
     export const validateTargetDirectiveValue: <T extends Element | string>(value: T) => void
-    export const validateHandleReceiver: <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E) => void
-    export const validateEventHandler: <T extends string, H extends (ev: ExtractEventKind<T>) => any>(value: T, handler: H) => void
+    export const validateEventHandler: <T extends string>(value: T, handler: (e: ExtractEventKind<T>) => void) => void
 
+    export const validateHandleReceiver: {
+        <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E): void
+        <C extends QingkuaiComponent<any>, R extends ComponentInstance<C> | null | undefined>(component: C, receiver: R): void
+    }
+
+    export const extractFirstArg: <T extends unknown[]>(...args: T) => T[0]
     export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any
 
-    export const ExtractFirstArg: <T extends unknown[]>(...args: T) => T[0]
-    export const AssertDefaults: <P, R>(f: any, props: P, refs: R) => asserts f is (value: Prettify<DefaultsValue<P, R>>) => void
-    export const AssertRefs: <R, D>(refs: R, defaults: D) => asserts refs is R & Prettify<WithRequired<R, D extends { refs: infer DR } ? DR : never>>
-    export const AssertProps: <P, D>(props: P, defaults: D) => asserts props is P & Prettify<WithRequired<P, D extends { props: infer DP } ? DP : never>>
+    // The predicates below flatten the generic parameter (e.g. `P & Required<...>`) into a
+    // single mapped type. TS2677 cannot statically prove the flattened type assignable back
+    // to the generic parameter at declaration time, but the language service always
+    // instantiates these assertions at use sites, where assignability holds.
+    // @ts-expect-error: TS2677
+    export const assertRefs: <R, D>(refs: R, defaults: D) => asserts refs is RefsAssertFn<R, D>
+    // @ts-expect-error: TS2677
+    export const assertProps: <P, D>(props: P, defaults: D) => asserts props is PropsAssertFn<P, D>
+    // @ts-expect-error: TS2677
+    export const assertContexts: <C, D>(contexts: C, defaults: D) => asserts contexts is ContextsAssertFn<C, D>
+
+    export const assertSetContext: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>
+    export const assertSetContextExp: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>
+    export const assertSetContextGetter: <C>(fn: any, contexts: C) => asserts fn is SetContextGetterAssertFn<C>
+    export const assertDefaults: <P, R, C>(fn: any, props: P, refs: R, contexts: C) => asserts fn is DefaultsAssertFn<P, R, C>
 }
 
 /**
- * Marks a variable declaration as a **raw value**, preventing the Qingkuai
- * compiler from injecting any reactive semantics for the associated
- * identifier.
+ * `raw` has two usages depending on where it appears:
  *
- * When a value is wrapped with `raw`, the declared identifier will be treated
- * as a normal JavaScript variable. Reads and writes will not be transformed
- * into reactive access, dependency tracking, or update operations.
+ * 1. **Declaration marking** — used in the initializer of a top-level variable
+ *    declaration (argument optional). The compiler skips reactivity inference
+ *    for the declared identifier and treats it as a normal JavaScript
+ *    variable: no reactive semantics are injected, and reads and writes are
+ *    not transformed into reactive access, dependency tracking, or update
+ *    operations.
  *
- * This helper is mainly used in component embedded script blocks to
- * explicitly disable reactive instrumentation for specific variables.
+ *    Usage restrictions:
+ *    - This usage **must be in the top-level scope** of an embedded script
+ *      block.
+ *    - It is intended for **variable declarations only**.
  *
- * Usage restrictions:
- * - This function **must be used in the top-level scope** of an embedded
- *   script block.
- * - It is intended for **variable declarations only**.
+ *    In most cases this marking is unnecessary because Qingkuai automatically
+ *    treats identifiers as raw when they are **not accessed in the template**,
+ *    or when they are **constants that are never reassigned**.
  *
- * In most cases `raw` is unnecessary because Qingkuai automatically treats
- * identifiers as raw when they are **not accessed in the template**, or when
- * they are **constants that are never reassigned**.
+ * ```qk
+ * <lang-ts>
+ *     // Mark the identifier as raw so it will not become reactive
+ *     const config = raw({ baseURL: "/api" })
  *
- * Examples:
- * ```ts
- * // Mark the identifier as raw so it will not become reactive
- * const config = raw({ baseURL: "/api" })
+ *     // Access remains normal JavaScript behavior
+ *     console.log(config.baseURL)
  *
- * // Access remains normal JavaScript behavior
- * console.log(config.baseURL)
+ *     // Disable reactive instrumentation for a mutable variable
+ *     let counter = raw(0)
  *
- * // Disable reactive instrumentation for a mutable variable
- * let counter = raw(0)
+ *     counter++ // normal increment without reactive tracking
  *
- * counter++ // normal increment without reactive tracking
- *
- * // Usually unnecessary: unused or immutable values are already raw
- * const version = "1.0.0"
- *
- * // raw is only needed when explicitly guaranteeing that
- * // the identifier is treated as a plain value
- * const options = raw({ debug: true })
+ *     // raw is only needed when explicitly guaranteeing that
+ *     // the identifier is treated as a plain value
+ *     const options = raw({ debug: true })
+ * </lang-ts>
  * ```
  *
- * @param value The value to mark as raw. Optional.
+ * 2. **Non-reactive read** — used in template interpolation blocks (text
+ *    interpolations, dynamic attribute values, directive values, event values
+ *    and reference attribute values) as well as in embedded script expressions
+ *    such as `effect` / `watch` / `derived` callbacks, with exactly one
+ *    required argument. The expression is evaluated without dependency
+ *    tracking.
+ *
+ *    It also affects the compiler's reactivity inference: the identifiers read
+ *    inside are not treated as accessed in the template, so the inference
+ *    rules — deriving a reactive status from script mutations, or from
+ *    reference-attribute usage — do not apply to them, and they stay raw
+ *    unless a tracked read elsewhere promotes them.
+ *
+ *    It is "non-reactive" rather than "frozen": when other tracked dependencies
+ *    trigger a re-run, the raw part is evaluated again with the latest value.
+ *
+ * ```qk
+ * <p>{user.name + raw(config).label}</p>
+ * <li #for={item of raw(list)}>{item}</li>
+ * <Comp !cfg={raw(config)} />
+ * <input &value={raw(text)} />
+ *
+ * effect(() => {
+ *     console.log(raw(config).label)
+ * })
+ * ```
+ *
+ * @param value The value to mark as raw in declaration marking, or the
+ *   expression to read without tracking in non-reactive reads. Optional in
+ *   declaration marking, required in non-reactive reads.
  * @returns The same value passed in, unchanged.
  */
 export declare function raw<T>(value?: T): T
@@ -314,7 +361,9 @@ export declare function derived<T>(getter: Getter<T>): T
  *
  * The key difference from `derived` is that `derivedExp` accepts a direct
  * expression instead of a getter function. The compiler automatically
- * converts the expression into a getter internally.
+ * converts the expression into a getter internally. This keeps the code
+ * close to how the value is actually used — simpler to write and easier
+ * to read.
  *
  * Usage restrictions:
  * - This function **must be used in the top-level scope** of an embedded
@@ -358,7 +407,9 @@ interface WatchExpFunc {
      *
      * This method behaves like `watch`, but instead of requiring a getter
      * function, it accepts a reactive expression directly. The compiler
-     * automatically converts the expression into a getter internally.
+     * automatically converts the expression into a getter internally. This
+     * keeps the code close to how the value is actually used — simpler to
+     * write and easier to read.
      *
      * Trigger timing:
      * - The concrete trigger timing depends on the API that uses this
@@ -397,7 +448,7 @@ interface WatchExpFunc {
      * @param callback Handles value changes with `(oldVal, newVal)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(expression: T, callback: WatcherCallback<T>): EffectHandle
+    <T>(expression: T, callback: WatchCallback<T>): EffectHandle
 }
 
 export declare const watchExp: WatchExpFunc
@@ -452,7 +503,7 @@ interface WatchFunc {
      * @param callback Handles value changes with `(pre, cur)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(getter: Getter<T>, callback: WatcherCallback<T>): EffectHandle
+    <T>(getter: Getter<T>, callback: WatchCallback<T>): EffectHandle
 }
 
 export declare const watch: WatchFunc
@@ -518,6 +569,7 @@ export declare const syncEffect: EffectFunc
  * default values:
  * - `props`: default values for optional props
  * - `refs`: default values for optional refs
+ * - `contexts`: default values for optional contexts
  *
  * For each category, only keys declared as **optional** (`?`) in the
  * corresponding type may be given a default value.
@@ -538,6 +590,9 @@ export declare const syncEffect: EffectFunc
  *     },
  *     refs: {
  *         counter: 0
+ *     },
+ *     contexts: {
+ *        theme: "light"
  *     }
  * })
  *
@@ -545,35 +600,172 @@ export declare const syncEffect: EffectFunc
  * console.log(refs.counter)  // 0 if not provided by the parent
  * ```
  *
- * @param a An object whose keys are default-value categories.
+ * @param value An object whose keys are default-value categories.
  */
 //
-// 此处的 `defaults` 签名仅为宽松占位声明。在实际组件（.qk）中，qingkuai 编译器会在中间代码顶部
-// 生成`__qk__lsu.AssertDefaults(defaults, props, refs)` 断言，将 `defaults` 的参数类型
-// 收窄为各类型中可选键的集合，因此组件文件里 `defaults` 的签名与此处并不一致。
-//
-// The `defaults` signature here is only a loose placeholder. In realcomponents the
-// qingkuai compiler emits an `__qk__lsu.AssertDefaults(defaults, props, refs)` assertion
-// at the top of the intermediate code, narrowing the argument type to the optional keys
-// of the corresponding types, so the signature there differs from this file. This
-export declare function defaults(a: any, b: any): void
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const defaults: unknown
 
-interface ReloadGetListPair {
-    <T>(value: Set<T>): [T, T]
-    <K, V>(value: Map<K, V>): [V, K]
-    <T>(value: Array<T>): [T, number]
-    (value: number): [number, number]
-    (value: string): [string, number]
-    <K extends string | number | symbol, V>(value: Record<K, V>): [V, K]
+/**
+ * Writes a context value into the current component's contexts layer.
+ *
+ * The value written here is readable from this component and all of its
+ * descendants through the `contexts` identifier. Each component has its own
+ * contexts layer whose prototype is the parent's layer, so:0
+ *
+ * - Writing a key here shadows any same-named key inherited from the parent;
+ *   the parent value is unaffected.
+ * - Descendants read the nearest value along the prototype chain.
+ *
+ * This is a built-in method available inside component files. The
+ * compiler binds it to the current component instance.
+ *
+ * To store a reactive value, pass a **getter**. The getter is stored
+ * as-is and **not invoked automatically** — descendants must call it to
+ * obtain the live value.
+ *
+ * Examples:
+ * ```ts
+ * // Set a static value
+ * setContext("theme", "dark")
+ *
+ * // Set a reactive value
+ * let count = reactive(0)
+ * setContext("getCount", () => count)
+ *
+ * // Reactive read in a descendant:
+ * contexts.getCount()
+ * ```
+ *
+ * @param key The context key.
+ * @param value The context value, or a getter to be invoked by readers.
+ */
+//
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const setContext: unknown
+
+/**
+ * Writes a reactive getter into the current component's contexts layer.
+ *
+ * Unlike `setContext`, this built-in method expects a getter function. The
+ * compiler binds the call to the current component instance, and runtime
+ * wraps the getter so descendants can read `contexts.key` directly while
+ * staying reactive.
+ *
+ * Each component has its own contexts layer whose prototype is the parent's
+ * layer, so:
+ *
+ * - Writing a key here shadows any same-named key inherited from the parent;
+ *   the parent value is unaffected.
+ * - Descendants read the nearest value along the prototype chain.
+ *
+ * This built-in method must be called as a standalone expression.
+ *
+ * Examples:
+ * ```ts
+ * // Set a reactive value as a context getter.
+ * let count = shallow(0)
+ * setContextGetter("count", () => count)
+ *
+ * // Reactive read in a descendant:
+ * contexts.count
+ * ```
+ *
+ * @param key The context key.
+ * @param getter The getter used to resolve the context value.
+ */
+//
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const setContextGetter: unknown
+
+/**
+ * Writes a reactive value into the current component's contexts layer.
+ *
+ * Unlike `setContext`, the value is passed directly — descendants access it
+ * as a property and it stays reactive automatically, with no need to call
+ * anything. The compiler automatically wraps the expression into a getter
+ * internally, which simplifies writing and improves readability.
+ *
+ * Each component has its own contexts layer whose prototype is the parent's
+ * layer, so:
+ *
+ * - Writing a key here shadows any same-named key inherited from the parent;
+ *   the parent value is unaffected.
+ * - Descendants read the nearest value along the prototype chain.
+ *
+ * This is a built-in method available inside component files. The
+ * compiler binds it to the current component instance and wraps the value so
+ * that reading the context yields the live reactive value.
+ *
+ * Examples:
+ * ```ts
+ * // Set a reactive value as a context expression.
+ * let count = shallow(0)
+ * setContextExp("count", count)
+ *
+ * // Reactive read in a descendant:
+ * contexts.count
+ * ```
+ *
+ * @param key The context key.
+ * @param exp The reactive value to store.
+ */
+//
+// 占位签名：实际由顶部 AssertDefaults 断言确定
+// Placeholder signature: actually determined by the AssertDefaults assertion at the top.
+export declare const setContextExp: unknown
+
+export interface BoundLifecycleHookRegister {
+    /**
+     * Registers a callback to run at the corresponding component lifecycle
+     * phase. The target component is the one whose built-in binding resolves
+     * this call — the instance is injected automatically.
+     *
+     * Example:
+     * ```qk
+     * <lang-ts>
+     *     let divElement: HTMLDivElement | null = null
+     *
+     *     // Access the divElement after the component is mounted
+     *     onAfterMount(() => {
+     *         console.log("mounted", divElement)
+     *     })
+     * </lang-ts>
+     *
+     * <div &handle={divElement}></div>
+     * ```
+     *
+     * @param callback Contains logic to run at the target lifecycle phase.
+     */
+    (callback: GeneralFunc): void
 }
 
+export declare const onAfterMount: BoundLifecycleHookRegister
+export declare const onBeforeUpdate: BoundLifecycleHookRegister
+export declare const onAfterUpdate: BoundLifecycleHookRegister
+export declare const onBeforeDestroy: BoundLifecycleHookRegister
+export declare const onAfterDestroy: BoundLifecycleHookRegister
+
 type Getter<T> = () => T
+type GeneralFunc = () => void
 type ArbitraryFunc = (...args: any) => any
 type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
-type Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
-type ExtractEventKind<K> = K extends keyof ElementEventMap ? ElementEventMap[K] : Event
-type CleanObject<T> = { -readonly [K in keyof T as K extends symbol ? never : K]: T[K] }
+type _Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
+type ExtractEventKind<K> = K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : Event
 type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
-type DefaultsValue<P, R> = { props?: CleanStrictPick<P, OptionalKeysOf<P>>; refs?: CleanStrictPick<R, OptionalKeysOf<R>> }
-type CleanStrictPick<T, K extends keyof T> = [keyof Prettify<CleanObject<Pick<T, K>>>] extends [never] ? __qk__lsu.EmptyObject : Prettify<CleanObject<Pick<T, K>>>
+type CleanOptionalPick<T> = _Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>
+type CleanStrictPick<T> = [keyof CleanOptionalPick<T>] extends [never] ? __qk__lsu.EmptyObject : CleanOptionalPick<T>
+type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P>; refs?: CleanStrictPick<R>; contexts?: CleanStrictPick<C> }
 type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element
+
+type DefaultsAssertFn<P, R, C> = (value: _Prettify<DefaultsValue<P, R, C>>) => void
+type RefsAssertFn<R, D> = _Prettify<R & WithRequired<R, D extends { refs: infer DR } ? DR : never>>
+type PropsAssertFn<P, D> = _Prettify<P & WithRequired<P, D extends { props: infer DP } ? DP : never>>
+type ContextsAssertFn<C, D> = _Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
+type SetContextAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, value: C[K]) => void
+type SetContextGetterAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, getter: Getter<C[K]>) => void
+
+export {}

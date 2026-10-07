@@ -69,7 +69,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             .toContain('Duplicate value for "#key" directive')
     })
 
-    test("throws runtime error when keyed for keys collide after string conversion", async ({
+    test("treats keys of different types as distinct instead of colliding after string conversion", async ({
         page,
         visitScenario
     }) => {
@@ -80,9 +80,9 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await visitScenario(scenario)
         await page.locator("#create-stringified-duplicate-key").click()
-
-        await expect
-            .poll(() => pageErrors.join("\n"))
-            .toContain('Duplicate value for "#key" directive')
+        await expect(page.locator(".duplicate-key-item")).toHaveCount(2)
+        await expect(page.locator(".duplicate-key-item").nth(0)).toHaveText("Number one")
+        await expect(page.locator(".duplicate-key-item").nth(1)).toHaveText("String one")
+        expect(pageErrors.join("\n")).not.toContain('Duplicate value for "#key" directive')
     })
 })

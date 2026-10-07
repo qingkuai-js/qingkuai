@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect, test } from "vitest"
@@ -120,7 +122,7 @@ test("Property equality: literal text and unsupported nodes", () => {
 
     const unsupportedSource = parseTsScript("a + b; x")
     const unsupported = findFirstChildUntil(unsupportedSource, ts.isBinaryExpression)
-    const identifier = findFirstChildUntil(unsupportedSource, (node): node is ts.Identifier => {
+    const identifier = findFirstChildUntil(unsupportedSource, (node): node is TS.Identifier => {
         return ts.isIdentifier(node) && node.text === "x"
     })
     expect(unsupported).toBeTruthy()
@@ -130,7 +132,7 @@ test("Property equality: literal text and unsupported nodes", () => {
 
 test("Expression equality: element access and unsupported same-kind nodes", () => {
     const elementSource = parseTsScript("a[b]; a[b]")
-    const elementAccesses: ts.ElementAccessExpression[] = []
+    const elementAccesses: TS.ElementAccessExpression[] = []
     walkTsNode(elementSource, node => {
         if (ts.isElementAccessExpression(node)) {
             elementAccesses.push(node)
@@ -140,7 +142,7 @@ test("Expression equality: element access and unsupported same-kind nodes", () =
     expect(isExpressionEqual(elementAccesses[0]!, elementAccesses[1]!)).toBe(true)
 
     const binarySource = parseTsScript("a + b; a + b")
-    const binaries: ts.BinaryExpression[] = []
+    const binaries: TS.BinaryExpression[] = []
     walkTsNode(binarySource, node => {
         if (ts.isBinaryExpression(node)) {
             binaries.push(node)
@@ -150,7 +152,7 @@ test("Expression equality: element access and unsupported same-kind nodes", () =
     expect(isExpressionEqual(binaries[0]!, binaries[1]!)).toBe(false)
 
     const idSource = parseTsScript("a; a")
-    const ids: ts.Identifier[] = []
+    const ids: TS.Identifier[] = []
     walkTsNode(idSource, node => {
         if (ts.isIdentifier(node) && node.text === "a") {
             ids.push(node)

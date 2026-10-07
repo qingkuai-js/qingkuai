@@ -1,9 +1,9 @@
 import type { ExpectedCompileMessage } from "#type-declarations/testing"
 
 import { describe, test, expect } from "vitest"
-import { messages } from "../../../../src/compiler/state"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
 import { analyzeScript } from "../../../../src/compiler/analyzer/script"
+import { messages, analyzeResult } from "../../../../src/compiler/state"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 
@@ -22,7 +22,7 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
     matchCompileMessages(expected)
 }
 
-describe("Invalid usages of intrinsic methods", () => {
+describe("Invalid usages of built-in methods", () => {
     test("Not in the top level", () => {
         localAnalyze(`
             {
@@ -38,37 +38,37 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [6, 14],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
+                value: `The built-in method "defaults" must be a function call at the top-level scope.`
             },
             {
                 type: "error",
                 range: [21, 29],
-                value: `The compiler intrinsic "reactive" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "reactive" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [36, 43],
-                value: `The compiler intrinsic "shallow" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "shallow" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [50, 53],
-                value: `The compiler intrinsic "raw" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
             },
             {
                 type: "error",
                 range: [60, 67],
-                value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [74, 81],
-                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+                value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [74, 79],
-                value: `The compiler intrinsic "alias" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "alias" must be called at top-level scope to mark the variable initializer.`
             }
         ])
     })
@@ -86,17 +86,17 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [10, 18],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
-            },
-            {
-                type: "error",
-                range: [26, 34],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
+                value: `The built-in method "defaults" must be a function call at the top-level scope.`
             },
             {
                 type: "error",
                 range: [64, 72],
-                value: `The compiler intrinsic "defaults" must be called as a standalone expression at top-level scope.`
+                value: `The built-in method "defaults" must be a function call at the top-level scope.`
+            },
+            {
+                type: "error",
+                range: [64, 72],
+                value: `The built-in method "defaults" can only be called once in the embedded script block.`
             }
         ])
     })
@@ -113,32 +113,27 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [10, 18],
-                value: `The compiler intrinsic "reactive" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "reactive" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [19, 26],
-                value: `The compiler intrinsic "shallow" must be called at top-level scope to mark the variable initializer.`
-            },
-            {
-                type: "error",
-                range: [34, 37],
-                value: `The compiler intrinsic "raw" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "shallow" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [42, 49],
-                value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [53, 60],
-                value: `The compiler intrinsic "derived" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "derived" must be called at top-level scope to mark the variable initializer.`
             },
             {
                 type: "error",
                 range: [69, 74],
-                value: `The compiler intrinsic "alias" must be called at top-level scope to mark the variable initializer.`
+                value: `The built-in method "alias" must be called at top-level scope to mark the variable initializer.`
             }
         ])
     })
@@ -157,22 +152,22 @@ describe("Invalid usages of intrinsic methods", () => {
             {
                 type: "error",
                 range: [0, 8],
-                value: `The compiler intrinsic "watchExp" can only be used as a function call.`
+                value: `The built-in method "watchExp" can only be used as a function call.`
             },
             {
                 type: "error",
                 range: [21, 32],
-                value: `The compiler intrinsic "preWatchExp" can only be used as a function call.`
+                value: `The built-in method "preWatchExp" can only be used as a function call.`
             },
             {
                 type: "error",
                 range: [35, 47],
-                value: `The compiler intrinsic "postWatchExp" can only be used as a function call.`
+                value: `The built-in method "postWatchExp" can only be used as a function call.`
             },
             {
                 type: "error",
                 range: [51, 63],
-                value: `The compiler intrinsic "syncWatchExp" can only be used as a function call.`
+                value: `The built-in method "syncWatchExp" can only be used as a function call.`
             }
         ])
     })
@@ -182,40 +177,32 @@ describe("Invalid usages of intrinsic methods", () => {
             let a = alias(1)
             let { b } = alias({})
             const [c, d] = alias(getObj(), a++)
-            const { e, f: { g } } = alias(h.i, j.k)
         `)
         localMatchCompileMessages([
             {
                 type: "error",
                 range: [8, 16],
-                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+                value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [29, 38],
-                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
-            },
-            {
-                type: "warning",
-                range: [54, 74],
-                value: `The "alias" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
+                value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
             },
             {
                 type: "error",
                 range: [54, 74],
-                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
-            },
-            {
-                type: "warning",
-                range: [99, 114],
-                value: `The "alias" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
-            },
-            {
-                type: "error",
-                range: [99, 114],
-                value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+                value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
             }
         ])
+    })
+
+    test("Arguments after the first are ignored", () => {
+        localAnalyze(`
+            const a = alias(props.x, fallback)
+            const { b } = alias(props.y, fallback, other)
+        `)
+        localMatchCompileMessages([])
     })
 
     test("Default values are not allowed in destructuring pattern of alias declaration", () => {
@@ -289,6 +276,17 @@ describe("Invalid usages of intrinsic methods", () => {
             const a = shallow!(_)
             const b = (reactive as any)(_)
             const c = (raw satisfies any)(_)
+        `)
+        localMatchCompileMessages([])
+    })
+
+    test("Valid calls with explicit type arguments", () => {
+        localAnalyze(`
+            const a = derived!<string[]>(_)
+            const b = (derivedExp satisfies any)<number[]>(_)
+            const c = raw!<string[]>(_)
+            const d = alias<string>(_.a.b)
+            watchExp<number[]>(_)
         `)
         localMatchCompileMessages([])
     })
@@ -381,39 +379,53 @@ describe("Unnecessary reactive marking", () => {
         ])
     })
 
-    test("Shorthand derived", () => {
+    test("Derived marker with literals", () => {
         localAnalyze(`
-                const $a = 1
-                const $b = ""
-                const $c = null
-                const $d = undefined
+                const a = derived(1)
+                const b = derived("")
+                const c = derived(null)
             `)
         localMatchCompileMessages([
             {
                 type: "warning",
-                range: [6, 12],
+                range: [6, 20],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [19, 26],
+                range: [27, 42],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [33, 42],
+                range: [49, 66],
+                value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            }
+        ])
+    })
+
+    test("DerivedExp with function literals", () => {
+        localAnalyze(`
+                const f = derivedExp(() => 1)
+                const g = derivedExp(function () { return 1 })
+                const h = derived(() => 1)
+            `)
+        localMatchCompileMessages([
+            {
+                type: "warning",
+                range: [6, 29],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             },
             {
                 type: "warning",
-                range: [49, 63],
+                range: [36, 76],
                 value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
             }
         ])
     })
 })
 
-test("Shadow compiler intrinsic identifiers", () => {
+test("Shadow built-in identifiers", () => {
     localAnalyze(`
                 if(true){
                     const props = 1
@@ -437,87 +449,57 @@ test("Shadow compiler intrinsic identifiers", () => {
         {
             type: "error",
             range: [81, 86],
-            value: `Compiler intrinsic identifier "props" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "props" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [97, 101],
-            value: `Compiler intrinsic identifier "refs" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "refs" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [112, 117],
-            value: `Compiler intrinsic identifier "slots" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "slots" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [126, 134],
-            value: `Compiler intrinsic identifier "reactive" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "reactive" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [143, 150],
-            value: `Compiler intrinsic identifier "shallow" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "shallow" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [160, 163],
-            value: `Compiler intrinsic identifier "raw" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "raw" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [174, 181],
-            value: `Compiler intrinsic identifier "derived" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "derived" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [194, 202],
-            value: `Compiler intrinsic identifier "defaults" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "defaults" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [215, 223],
-            value: `Compiler intrinsic identifier "watchExp" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "watchExp" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [241, 253],
-            value: `Compiler intrinsic identifier "postWatchExp" cannot be shadowed at top-level scope.`
+            value: `Built-in identifier "postWatchExp" cannot be shadowed at top-level scope.`
         },
         {
             type: "error",
             range: [280, 292],
-            value: `Compiler intrinsic identifier "syncWatchExp" cannot be shadowed at top-level scope.`
-        }
-    ])
-})
-
-test("Shorthand derived declaration with compiler intrinsic method", () => {
-    localAnalyze(`
-        const $a = derived(() => {})
-        let $b = reactive()
-        const $c = raw(1)
-    `)
-    localMatchCompileMessages([
-        {
-            type: "warning",
-            range: [6, 28],
-            value: `Mixing two syntactic forms to declare derived reactive value is not recommended.`
-        },
-        {
-            type: "error",
-            range: [33, 48],
-            value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("reactive") method is ambiguous.`
-        },
-        {
-            type: "warning",
-            range: [33, 48],
-            value: `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
-        },
-        {
-            type: "error",
-            range: [55, 66],
-            value: `Using both the shorthand derived value declaration(with the "$" prefix) and a different reactive-marking intrinsic("raw") method is ambiguous.`
+            value: `Built-in identifier "syncWatchExp" cannot be shadowed at top-level scope.`
         }
     ])
 })
@@ -535,17 +517,20 @@ test("Analyzer emits errors for top-level await, namespace and reserved identifi
     expect(messages.length).toBeGreaterThanOrEqual(3)
 })
 
-test("Analyzer validates intrinsic argument count and spread arguments", () => {
+test("Analyzer validates intrinsic usage in non-variable-declaration calls", () => {
     localAnalyze(`
         watchExp(1, 2, 3)
         defaults(...x, y)
         reactive(...x)
     `)
 
-    const errors = messages.filter(item => item.type === "error")
-    const warnings = messages.filter(item => item.type === "warning")
-    expect(errors.length).toBeGreaterThan(0)
-    expect(warnings.length).toBeGreaterThan(0)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [36, 44],
+            value: `The built-in method "reactive" must be called at top-level scope to mark the variable initializer.`
+        }
+    ])
 })
 
 test("Analyzer rejects aliasing plain identifier and intrinsics inside using declarations", () => {
@@ -569,26 +554,21 @@ test("Duplicate defaults calls are rejected", () => {
         {
             type: "error",
             range: [24, 32],
-            value: `The "defaults" method can only be called once in the embedded script block.`
+            value: `The built-in method "defaults" can only be called once in the embedded script block.`
         }
     ])
 })
 
-test("Defaults accepts spread but rejects too many args and duplicate calls", () => {
+test("Defaults accepts spread but rejects duplicate calls", () => {
     localAnalyze(`
         defaults({ props: {} }, { refs: {} })
         defaults(...propsList)
     `)
     localMatchCompileMessages([
         {
-            type: "warning",
-            range: [0, 37],
-            value: `The "defaults" intrinsic expects exactly 1 argument, but got 2. The redundant arguments will be ignored.`
-        },
-        {
             type: "error",
             range: [38, 46],
-            value: `The "defaults" method can only be called once in the embedded script block.`
+            value: `The built-in method "defaults" can only be called once in the embedded script block.`
         }
     ])
 })
@@ -603,17 +583,17 @@ test("derivedExp and watchExp variants reject spread arguments", () => {
         {
             type: "error",
             range: [21, 29],
-            value: `The intrinsic method "derivedExp" does not support spread element as its argument.`
+            value: `The built-in method "derivedExp" does not support spread element as its argument.`
         },
         {
             type: "error",
             range: [40, 48],
-            value: `The intrinsic method "watchExp" does not support spread element as its argument.`
+            value: `The built-in method "watchExp" does not support spread element as its argument.`
         },
         {
             type: "error",
             range: [72, 80],
-            value: `The intrinsic method "preWatchExp" does not support spread element as its argument.`
+            value: `The built-in method "preWatchExp" does not support spread element as its argument.`
         }
     ])
 })
@@ -628,15 +608,198 @@ test("reactive, shallow, raw and derived accept spread arguments", () => {
     localMatchCompileMessages([])
 })
 
-test("alias accepts spread but still requires a mutable lvalue target", () => {
+test("alias rejects a spread element as its first argument", () => {
     localAnalyze(`
         const e = alias(...items)
     `)
     localMatchCompileMessages([
         {
             type: "error",
-            range: [10, 25],
-            value: `The compiler intrinsic "alias" must accept exactly one mutable target(lvalue) as its argument.`
+            range: [16, 24],
+            value: `The built-in method "alias" does not support spread element as its argument.`
         }
     ])
+})
+
+// setContext 是值语义：允许 spread 展开、不限制参数数量，原样存储。
+// setContext stores values as-is: spread and extra args are allowed.
+test("setContext allows spread and extra arguments", () => {
+    localAnalyze(`
+        setContext("theme", ...rest)
+        setContext("theme", mode, "extra")
+    `)
+    expect(analyzeResult.script.setContextExpCalls.length).toBe(0)
+    expect(analyzeResult.script.usedIntrinsics.has("setContext")).toBe(true)
+})
+
+test("contexts references enter usedIntrinsics", () => {
+    localAnalyze(`
+        console.log(contexts.theme)
+    `)
+    expect(analyzeResult.script.usedIntrinsics.has("contexts")).toBe(true)
+})
+
+test("setContextGetter is tracked via usedIntrinsics, not setContextExpCalls", () => {
+    localAnalyze(`
+        setContextGetter("theme", () => mode)
+    `)
+    expect(analyzeResult.script.usedIntrinsics.has("setContextGetter")).toBe(true)
+    expect(analyzeResult.script.setContextExpCalls.length).toBe(0)
+})
+
+test("local setContext shadows the built-in so no calls or usage are recorded", () => {
+    localAnalyze(`
+        {
+            const setContext = (k, v) => {}
+            setContext("theme", 1)
+        }
+    `)
+    expect(analyzeResult.script.setContextExpCalls.length).toBe(0)
+    expect(analyzeResult.script.usedIntrinsics.has("setContext")).toBe(false)
+})
+
+test("local watchExp shadows the built-in so no calls or usage are recorded", () => {
+    localAnalyze(`
+        {
+            const watchExp = () => {}
+            watchExp(() => count, () => {})
+        }
+    `)
+    expect(analyzeResult.script.watchExpCalls.length).toBe(0)
+    expect(analyzeResult.script.usedIntrinsics.has("watch")).toBe(false)
+})
+
+test("setContextExp with a spread argument aborts compilation", () => {
+    localAnalyze(`
+        setContextExp(...args)
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [14, 21],
+            value: `The built-in method "setContextExp" does not support spread element as its argument.`
+        }
+    ])
+})
+
+test("setContextExp must be used as a function call", () => {
+    localAnalyze(`
+        const x = setContextExp
+    `)
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [10, 23],
+            value: `The built-in method "setContextExp" can only be used as a function call.`
+        }
+    ])
+})
+
+test("setContextGetter performs no compile checks (spread and extra args allowed)", () => {
+    localAnalyze(`
+        setContextGetter("theme", () => mode, "extra")
+        setContextGetter(...args)
+    `)
+    localMatchCompileMessages([])
+    expect(analyzeResult.script.usedIntrinsics.has("setContextGetter")).toBe(true)
+})
+
+describe("Non-reactive raw reads in script expressions", () => {
+    test("raw call in a callback is recorded as a non-reactive read", () => {
+        localAnalyze(`
+            let config = load()
+            effect(() => {
+                console.log(raw(config).label)
+            })
+        `)
+        localMatchCompileMessages([])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(1)
+    })
+
+    test("raw call without argument reports error 1071", () => {
+        localAnalyze(`
+            effect(() => {
+                console.log(raw())
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [31, 34],
+                value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
+            }
+        ])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
+    })
+
+    test("raw call with multiple arguments reports error 1072", () => {
+        localAnalyze(`
+            effect(() => {
+                console.log(raw(a, b))
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [31, 34],
+                value: `The built-in method "raw" can only be passed one argument when used as a non-reactive read.`
+            }
+        ])
+    })
+
+    test("nested raw calls report a redundancy warning", () => {
+        localAnalyze(`
+            effect(() => {
+                console.log(raw(raw(config)))
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "warning",
+                range: [35, 38],
+                value: `Nesting "raw" calls is redundant because the argument is already read without tracking.`
+            }
+        ])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(2)
+    })
+
+    test("bare raw reference in script keeps error 1021", () => {
+        localAnalyze(`
+            const handler = raw
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [16, 19],
+                value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
+            }
+        ])
+    })
+
+    test("passing raw as a value reports the call-form error instead of being recorded", () => {
+        localAnalyze(`
+            function call(fn) {
+                return fn()
+            }
+            effect(() => {
+                call(raw)
+            })
+        `)
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [62, 65],
+                value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
+            }
+        ])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
+    })
+
+    test("declaration initializer raw keeps the marking semantics", () => {
+        localAnalyze(`
+            let config = raw(load())
+        `)
+        localMatchCompileMessages([])
+        expect(analyzeResult.script.rawReadCalls).toHaveLength(0)
+    })
 })

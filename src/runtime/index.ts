@@ -1,11 +1,25 @@
 export type {
     EffectHandle,
+    WatchCallback,
     EffectCallback,
-    WatcherCallback,
-    QingkuaiComponent,
-    ComponentInstance
+    BoundWatchFunc,
+    BoundEffectFunc,
+    ComponentInstance,
+    BoundLifecycleFunc,
+    BoundSetContextFunc,
+    BoundSetContextGetterFunc
 } from "#type-declarations/runtime"
-export type { HtmlBlockOptions, EffectFunc, WatchFunc } from "#type-declarations/runtime-ex"
+
+export type {
+    ComponentProps,
+    ComponentRefs,
+    ComponentSlots,
+    ComponentExports,
+    ComponentContexts,
+    ComponentShape,
+    DeclareComponent,
+    HtmlBlockOptions
+} from "#type-declarations/runtime-ex"
 
 export {
     onAfterMount,
@@ -39,9 +53,15 @@ export {
     batchAndNoTracking
 } from "./reactivity/optimization"
 
+export {
+    mountApp,
+    setContext,
+    getContexts,
+    setContextGetter,
+    getCurrentInstance
+} from "./component"
 export { version } from "./meta"
 export { DESTRUCT_HTML } from "./constants"
 export { toRaw } from "../util/runtime/sundry"
 export { nextTick } from "../util/runtime/sundry"
-export { mountApp, getCurrentInstance } from "./component"
-export { createStore, createShallowStore, toReactive, toShallowReactive } from "./reactivity/value"
+export { createStore, createShallowStore, toReactive, toShallow } from "./reactivity/value"

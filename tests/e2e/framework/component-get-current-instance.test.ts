@@ -5,7 +5,7 @@ import { defineE2ETestFile } from "../scenario-module"
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import { getCurrentInstance, onAfterMount } from "qingkuai"
+            import { getCurrentInstance } from "qingkuai"
             import InstanceProbe from "./components/InstanceProbe"
 
             let log = ""
@@ -52,13 +52,6 @@ const scenario: E2EScenarioInput = {
         InstanceProbe: `
             <lang-js>
                 import { getCurrentInstance } from "qingkuai"
-                import {
-                    onAfterMount,
-                    onBeforeUpdate,
-                    onAfterUpdate,
-                    onBeforeDestroy,
-                    onAfterDestroy
-                } from "qingkuai"
 
                 export let label = "probe"
                 export let count = reactive(0)

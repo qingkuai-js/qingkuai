@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     TemplateNode,
     TemplateAttribute,
@@ -34,6 +36,7 @@ import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
 import { kebab2Camel } from "../../../util/compiler/string"
 import { getMaybeReusedString } from "../../optimizer/compress"
+import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags"
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render"
 import { writeContextDeclaration, writeContextPatterns } from "./context"
@@ -90,7 +93,12 @@ export function generateTemplateRender(
         }
         if (hasFragmentContent) {
             writeFragmentSelections(writer, nodeContext.fragment!)
-            generateRenderEffect(writer, [node], node)
+
+            if ("slot" !== node.tag) {
+                generateRenderEffect(writer, [node], node)
+            } else {
+                generateRenderEffect(writer, node.children, null)
+            }
         }
 
         /**
@@ -119,7 +127,6 @@ export function generateTemplateRender(
     if (isRoot) {
         const anchorId = generateIdentifier.anchor
         const internalId = generateIdentifier.internal
-        const instanceId = generateIdentifier.instance
         const getterArgId = generateIdentifier.getterArg
         const exportedBindings = new Map<string, string>()
         const hasComponentFragment = !!componentFragment?.content.length
@@ -136,13 +143,13 @@ export function generateTemplateRender(
             }
             return
         }
-        writer.write(`\n${internalId}.defineExports(${instanceId}, {`).indent(false)
+        writer.write(`\n${internalId}.defineExports(instance, {`).indent(false)
 
         for (const [exported, local] of exportedBindings) {
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
             const transformed = topLevelIdentifier?.transformTo || local
             writer.wrapLine()
-            writeContextKey(exported, writer)
+            writeMetaKey(exported, writer)
             writer.write(`:  ${getterArgId} => (${transformed}),`)
         }
         writer.dedent().write(`})`)
@@ -362,6 +369,7 @@ function generateDirectiveBlock(
         }
         writer.write(" => {").indent(false)
         insert?.context?.()
+        writeAnchorBracket(writer, nodeContext)
 
         const childEnclosure = generateNextDirective()
         return () => {
@@ -378,6 +386,24 @@ function generateDirectiveBlock(
         const delta = nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1
         return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext)
     }
+}
+
+function writeAnchorBracket(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
+    const bracket = nodeContext.anchorBracket
+    if (!bracket) {
+        return
+    }
+
+    const internalId = generateIdentifier.internal
+    const outerAnchorId = nodeContext.anchorId
+    const trailingAnchorId = bracket.selections[0].id
+    const interpretive = inputDescriptor.options.interpretiveComments ? "/* LEADING_ANCHOR */ " : ""
+    writer.write(
+        `\nconst ${bracket.id} = ${bracket.getterId}(${interpretive}${FRAG_LEADING_ANCHOR})`
+    )
+    writer.write(`\nconst ${trailingAnchorId} = ${internalId}.getChild(${bracket.id})`)
+    writer.write(`\n${internalId}.insertBefore(${outerAnchorId}, ${bracket.id})`)
+    nodeContext.anchorId = trailingAnchorId
 }
 
 function generateRenderEffect(
@@ -427,7 +453,7 @@ function generateRenderEffect(
             return generate(nodes, index + 1, createRenderEffect)
         }
 
-        const generateSetAttributeCall = (attribute: TemplateAttribute) => {
+        const generateSetAttributeCall = (attribute: TemplateAttribute, outsideEffect: boolean) => {
             const baseName = getAttributeBaseName(attribute.name.raw)
             const interpolationSourceIndex = attribute.equalSign
                 ? attribute.value.loc.start.index
@@ -449,14 +475,15 @@ function generateRenderEffect(
                     )
                     writer.write(", ")
                 }
-                writer.writeParsedExpression(attribute)
+                writer.writeParsedExpression(attribute, false, outsideEffect)
                 writer.write(`${staticClassAttr ? "]" : ""})`)
                 return
             }
             if (baseName === "value" && node.tag === "select") {
                 writer.wrapLine().write(`${internalId}.`)
                 writer.write(`setSelectValue`, interpolationSourceIndex)
-                writer.write(`(${nodeContext.id}, `).writeParsedExpression(attribute).write(")")
+                writer.write(`(${nodeContext.id}, `)
+                writer.writeParsedExpression(attribute, false, outsideEffect).write(")")
                 return
             }
 
@@ -466,10 +493,10 @@ function generateRenderEffect(
             writer.wrapLine().write(`${internalId}.`)
             writer.write(method, interpolationSourceIndex)
             writer.write(`(${nodeContext.id}, ${getMaybeReusedString(attrName)}, `)
-            writer.writeParsedExpression(attribute).write(")")
+            writer.writeParsedExpression(attribute, false, outsideEffect).write(")")
         }
 
-        const writeSetTextCall = () => {
+        const writeSetTextCall = (outsideEffect: boolean) => {
             if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
                 if (createRenderEffect) {
                     generateRenderEffectCall()
@@ -480,7 +507,8 @@ function generateRenderEffect(
                 })
                 writer.wrapLine().write(`${internalId}.`)
                 writer.write("setText", firstInterpolatedPart?.loc.start.index ?? -1)
-                writer.write(`(${nodeContext.id}, `).writeInterpolatedText(node, true).write(")")
+                writer.write(`(${nodeContext.id}, `)
+                writer.writeInterpolatedText(node, true, outsideEffect).write(")")
             }
         }
 
@@ -492,7 +520,7 @@ function generateRenderEffect(
                 continue
             }
             if (
-                getParsedExpression(attribute)!.reactive &&
+                getParsedExpression(attribute)?.reactive &&
                 !equalsWithKeyDirectiveValue(nodeContext, attribute)
             ) {
                 dynamicAttrsWithEffect.push(attribute)
@@ -502,7 +530,7 @@ function generateRenderEffect(
         }
         if (!createRenderEffect) {
             for (const attribute of dynamicAttrsWithoutEffect) {
-                generateSetAttributeCall(attribute)
+                generateSetAttributeCall(attribute, true)
             }
 
             // event handlers
@@ -529,18 +557,18 @@ function generateRenderEffect(
                     !isInlineEventHandler(stripedTypeExpressionNode) &&
                     isSimpleHandlerReference(stripedTypeExpressionNode)
                 ) {
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                 } else if (isFunctionLiteral(stripedTypeExpressionNode)) {
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                 } else if (!isInlineEventHandler(stripedTypeExpressionNode)) {
                     writer.write(`function ($arg){`).indent()
                     writer.write(`${internalId}.call(`)
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                     writer.write(`, this, $arg)`)
                     writer.dedent().write("}")
                 } else {
                     writer.write(`$arg => {`).indent()
-                    writer.writeParsedExpression(event)
+                    writer.writeParsedExpression(event, false, true)
                     writer.dedent().write("}")
                 }
                 if (wrapperFlag.value) {
@@ -571,7 +599,7 @@ function generateRenderEffect(
                         writer.write(", ")
                     }
                     if (type !== "getter") {
-                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute)
+                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute, true)
                         writer.write(` = ${setterArgId}`).write(")")
                     }
                     writer.write(")")
@@ -609,17 +637,17 @@ function generateRenderEffect(
             }
 
             if (!textContentHasRenderEffect && !textContentManagedBySelector) {
-                writeSetTextCall()
+                writeSetTextCall(true)
             }
             dfs()
         }
 
         if (createRenderEffect) {
             for (const attribute of dynamicAttrsWithEffect) {
-                generateSetAttributeCall(attribute)
+                generateSetAttributeCall(attribute, false)
             }
             if (textContentHasRenderEffect) {
-                writeSetTextCall()
+                writeSetTextCall(false)
             }
             dfs()
         }
@@ -659,7 +687,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
         for (const attribute of nodeContext.dynamicAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer)
+            writeMetaKey(baseName, writer)
             writer.write(": ").writeParsedExpression(attribute)
         }
         for (const attribute of nodeContext.staticAttributes) {
@@ -668,7 +696,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
                 continue
             }
             insertTrailingComma()
-            writeContextKey(attribute.name.raw, writer).write(": ")
+            writeMetaKey(attribute.name.raw, writer).write(": ")
             writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true")
         }
         writer.dedent().write("}")
@@ -715,7 +743,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
     const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
     const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting))
 
-    const hasContext =
+    const hasMeta =
         hasSlots ||
         hasProps ||
         hasRefs ||
@@ -746,13 +774,16 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         if (maybeDynamic) {
             writer.write(`${componentId}, ${nodeContext.anchorId}`)
         } else {
-            writer.writeParsedExpression(node).write(`, ${nodeContext.anchorId}`)
+            writer.writeParsedExpression(node, false, true).write(`, ${nodeContext.anchorId}`)
         }
     } else {
-        writer.write(`\n`).writeParsedExpression(node).write(`(${nodeContext.anchorId}`)
+        writer
+            .write(`\n`)
+            .writeParsedExpression(node, false, true)
+            .write(`(${nodeContext.anchorId}`)
     }
 
-    if (hasContext) {
+    if (hasMeta) {
         writer.write(", {").indent()
     }
 
@@ -762,7 +793,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         for (const attribute of nodeContext.staticAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer, true).write(": ")
+            writeMetaKey(baseName, writer, true).write(": ")
 
             if (!attribute.equalSign) {
                 writer.write("true")
@@ -777,22 +808,22 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = getParsedExpression(event)!
             const baseName = getParsedEventInfo(event)!.eventName.slice(1)
             insertTrailingComma()
-            writeContextKey(baseName, writer, true)
+            writeMetaKey(baseName, writer, true)
             writer.write(": ").write(`${getterArgId} => (`)
 
             if (isInlineEventHandler(expression.node)) {
                 writer.write(`$arg => {`).indent()
-                writer.writeParsedExpression(event)
+                writer.writeParsedExpression(event, false, true)
                 writer.dedent().write("}")
             } else {
-                writer.writeParsedExpression(event)
+                writer.writeParsedExpression(event, false, true)
             }
             writer.write(")")
         }
         for (const attribute of nodeContext.dynamicAttributes) {
             const baseName = getAttributeBaseName(attribute.name.raw)
             insertTrailingComma()
-            writeContextKey(baseName, writer, true).write(": ")
+            writeMetaKey(baseName, writer, true).write(": ")
             writer.write(`${getterArgId} => (`).writeParsedExpression(attribute).write(")")
         }
 
@@ -813,12 +844,12 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             ) {
                 insertTrailingComma()
             }
-            writeContextKey(getAttributeBaseName(attribute.name.raw), writer, true)
+            writeMetaKey(getAttributeBaseName(attribute.name.raw), writer, true)
             writer.write(": [").indent().write(`${getterArgId} => (`)
             writeParsedExpression(writer, attribute, false)
             writer.writeLine("),")
             writer.write(`${setterArgId} => (`)
-            writer.writeParsedExpression(attribute)
+            writer.writeParsedExpression(attribute, true)
             writer.write(` = ${setterArgId})`).dedent().write("]")
         }
         writer.dedent().write("}")
@@ -826,7 +857,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
 
     if (referenceHandleAttribute) {
         insertTrailingComma().write(`h: ${setterArgId} => (`)
-        writer.writeParsedExpression(referenceHandleAttribute)
+        writer.writeParsedExpression(referenceHandleAttribute, true)
         writer.write(` = ${setterArgId})`)
     }
 
@@ -844,9 +875,9 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const expression = slotDirective && getParsedExpression(slotDirective)
             const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
             const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
-            const slotName = expression ? (expression.node as ts.StringLiteral).text : "default"
+            const slotName = expression ? (expression.node as TS.StringLiteral).text : "default"
             insertTrailingComma()
-            writeContextKey(slotName, writer, true).write(`: (${anchorId}`)
+            writeMetaKey(slotName, writer, true).write(`: (${anchorId}`)
 
             if (patterns?.length) {
                 writer.write(", ")
@@ -866,7 +897,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         insertTrailingComma().write(`a: ${internalId}.getScopes()`)
     }
 
-    if (hasContext) {
+    if (hasMeta) {
         writer.dedent().write("})")
     } else {
         writer.write(`)`)
@@ -905,7 +936,7 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
     return false
 }
 
-function writeContextKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
+function writeMetaKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
     if (toCamel) {
         str = kebab2Camel(str)
     }
@@ -927,7 +958,7 @@ function doesTextContentHasRenderEffect(node: TemplateNode) {
 
     if (
         !node.content.some(part => {
-            return part.isInterpolated && getParsedExpression(part)!.reactive
+            return part.isInterpolated && getParsedExpression(part)?.reactive
         })
     ) {
         return false

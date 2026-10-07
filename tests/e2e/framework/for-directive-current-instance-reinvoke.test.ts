@@ -5,7 +5,6 @@ import { defineE2ETestFile } from "../scenario-module"
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import { onAfterUpdate, onBeforeUpdate } from "qingkuai"
             import RowPanel from "./components/RowPanel"
 
             let nextId = 2

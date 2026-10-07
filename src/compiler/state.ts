@@ -1,4 +1,5 @@
-import type ts from "typescript"
+import type TS from "typescript"
+
 import type {
     InputOptions,
     AnalyzeResult,
@@ -17,7 +18,7 @@ import { newASTLocation } from "../util/compiler/position"
 export let messages: CompileMessage[] = []
 export let analyzeResult = newAnalyzeResult()
 export let inputDescriptor = newInputDescriptor({})
-export let tsParsingDiagnostics: ts.Diagnostic[] = []
+export let tsParsingDiagnostics: TS.Diagnostic[] = []
 export let generateIdentifier = newGenerateIdentifier()
 
 export function resetCompilerState(options: Partial<InputOptions>) {
@@ -30,9 +31,8 @@ export function resetCompilerState(options: Partial<InputOptions>) {
 
 function newGenerateIdentifier(): GenerateIdentifier {
     return {
+        meta: "",
         anchor: "",
-        context: "",
-        instance: "",
         internal: "",
         getterArg: "",
         setterArg: "",
@@ -61,18 +61,18 @@ function newAnalyzeResult(): AnalyzeResult {
             validReferenceAttributes: new Set()
         },
         script: {
-            watchers: [],
+            rawReadCalls: [],
+            watchExpCalls: [],
             exportedBindings: [],
             exportStatements: [],
+            setContextExpCalls: [],
             importDeclarations: [],
-            reusedStringReferences: [],
             defaultsCall: undefined,
+            usedIntrinsics: new Set(),
             eliminatedNodes: new Set(),
             fullIdentifiers: new Set(),
-            usedIntrinsicVars: new Set(),
-            importIdentifiers: new Set(),
+            reusedStringReferences: [],
             declaratorToIntrinsic: new Map(),
-            usedEffectWatchMethods: new Set(),
             topLevelReferences: newCleanObj(),
             declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),
@@ -111,7 +111,7 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             interpretiveComments: false,
             whitespace: "trim-collapse",
             preserveHtmlComments: false,
-            shorthandDerivedDeclaration: true
+            requireReactivityMark: false
         }
     }
     if (!options.hashId) {

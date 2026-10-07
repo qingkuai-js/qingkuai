@@ -41,8 +41,6 @@ const scenario: E2EScenarioInput = {
     components: {
         TogglePanel: `
             <lang-js>
-                import { onAfterMount, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.log("after-mount")
                 })

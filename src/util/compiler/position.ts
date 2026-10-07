@@ -1,7 +1,8 @@
+import type TS from "typescript"
+
 import type { Range } from "#type-declarations/compiler"
 import type { ASTLocation, ASTPosition, ASTPositionWithFlag } from "#type-declarations/compiler"
 
-import ts from "typescript"
 import { PositionFlag } from "../../compiler/enums"
 import { whitespaceRE } from "../../compiler/regular"
 import { inputDescriptor } from "../../compiler/state"
@@ -46,7 +47,7 @@ export function getRangeByLocation(loc: ASTLocation): Range {
     return [loc.start.index, loc.end.index]
 }
 
-export function getScriptLocByNode(node: ts.Node) {
+export function getScriptLocByNode(node: TS.Node) {
     return getScriptLocByIndex(node.getStart(), node.getEnd())
 }
 

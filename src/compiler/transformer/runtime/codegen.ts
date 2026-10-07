@@ -14,51 +14,43 @@ import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragmen
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress"
 
 export function generateRuntimeCode(nodes: TemplateNode[]) {
+    const { usedIntrinsics } = analyzeResult.script
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script
-    const { usedIntrinsicVars, usedEffectWatchMethods } = analyzeResult.script
 
     objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifier, {
         internal: ensureIdWithPrefix("_"),
         getterArg: ensureIdWithPrefix("_"),
         setterArg: ensureIdWithPrefix("v"),
-        context: ensureIdWithPrefix("_ctx"),
+        meta: ensureIdWithPrefix("_meta"),
         anchor: ensureIdWithPrefix("_anchor"),
-        instance: ensureIdWithPrefix("_instance"),
         component: ensureIdWithPrefix("_component"),
         compressStrings: ensureIdWithPrefix("_compressStrings")
     })
 
     const writer = new RuntimeCodeWriter(true)
     const hoistWriter = new RuntimeCodeWriter()
+    const metaId = generateIdentifier.meta
     const anchorId = generateIdentifier.anchor
-    const contextId = generateIdentifier.context
     const internalId = generateIdentifier.internal
     const templateFragments = getTemplateFragments(nodes)
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index)
 
     replaceQkImportSpecifiers()
+    eliminate(embeddedScriptEditor)
+    writer.write(`import * as ${internalId} from "qingkuai/internal"`).wrapLine(2)
 
     for (const decl of analyzeResult.script.importDeclarations) {
         writer.writeScriptNode(decl).wrapLine()
     }
-    eliminate(embeddedScriptEditor)
-    writer.write(`import * as ${internalId} from "qingkuai/internal"`).wrapLine(2)
     writeStringLiteralsDeclarations(writer, templateFragments)
     writeFragmentGetterDeclarations(writer, templateFragments)
     transformEmbeddedScript(hoistWriter, embeddedScriptEditor)
-    writer.write(`export default function (${anchorId}, ${contextId} = {}) {`).indent()
+    writer.write(`export default function (${anchorId}, ${metaId} = {}) {`)
+    writer.indent().write(`const instance = ${internalId}.init(${anchorId}, ${metaId})`)
 
-    const instanceId = generateIdentifier.instance
-    if (!usedEffectWatchMethods.size && !analyzeResult.script.exportedBindings.length) {
-        writer.write(`${internalId}.init(${anchorId}, ${contextId})`)
-    } else {
-        writer.write(`const ${instanceId} = ${internalId}.init(${anchorId}, ${contextId})`)
-    }
-    for (const method of ["props", "refs", "slots"]) {
-        if (usedIntrinsicVars.has(method)) {
-            writer.write(
-                `\n\nconst ${method} = ${internalId}.init${upperFirst(method)}(${contextId})`
-            )
+    for (const id of ["props", "refs", "slots", "contexts"]) {
+        if (usedIntrinsics.has(id)) {
+            writer.write(`\nconst ${id} = ${internalId}.init${upperFirst(id)}(${metaId})`)
         }
     }
     generateDelegateEventsRegistration(writer)

@@ -91,8 +91,8 @@ test("Runtime regression: component branch keeps condition block branches separa
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "component-condition")
     expect(prod.code).toContain("_.conditionBlock([")
     expect(dev.code).toContain("_.conditionBlock([")
-    expect(prod.code).toContain("_.renderComponent(Comp, _text")
-    expect(dev.code).toContain("_.renderComponent(Comp, _text")
+    expect(prod.code).toContain("_.renderComponent(Comp, _text2")
+    expect(dev.code).toContain("_.renderComponent(Comp, _text2")
     expect(prod.code).not.toContain("})__ =>")
     expect(dev.code).not.toContain("})__ =>")
 })
@@ -198,7 +198,7 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
     expect(result.slotNames).toEqual(["main"])
     expect(result.identifierStatusInfo).toMatchObject({
         title: {
-            description: "raw (template unused)"
+            description: "raw (not accessed in template)"
         },
         showPanel: {
             status: "reactive"

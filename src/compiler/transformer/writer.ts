@@ -1,8 +1,7 @@
+import type TS from "typescript"
 import type { CodeEditor } from "./editor"
 import type { SourceMapLine, SourceMapMappings } from "@jridgewell/sourcemap-codec"
 import type { ASTLocation, ASTPosition, Range, TemplateNode } from "#type-declarations/compiler"
-
-import ts from "typescript"
 
 import {
     getPosByIndex,
@@ -83,14 +82,6 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return this
     }
 
-    writeParsedExpression(key: any) {
-        return (writeParsedExpression(this, key), this)
-    }
-
-    writeInterpolatedText(node: TemplateNode, decodeEntities = false) {
-        return (transformInterpolatedText(this, node, decodeEntities), this)
-    }
-
     writeTemplateStr(str: string, sourceLoc: ASTLocation) {
         this.writeCharacter(str[0], sourceLoc.start.index)
         markPositionFlag(PositionFlag.SourcemapEnd, sourceLoc.end.index)
@@ -102,7 +93,7 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
         return (this.writeCharacter("", sourceLoc.end.index), this)
     }
 
-    writeScriptNode(node: ts.Node, dedent = true) {
+    writeScriptNode(node: TS.Node, dedent = true) {
         if (node) {
             const range = getNodeRange(node)
             const str = inputDescriptor.script.code.slice(...range)
@@ -144,6 +135,14 @@ export class RuntimeCodeWriter extends BaseCodeWriter {
             this.writeCharacter("", editor.getSourceIndex(editedContent.length) ?? -1, false)
         }
         return isEmbeddedScript ? this.indent(false) : this
+    }
+
+    writeParsedExpression(key: any, eliminateRaw = false, outsideEffect = false) {
+        return (writeParsedExpression(this, key, true, eliminateRaw, outsideEffect), this)
+    }
+
+    writeInterpolatedText(node: TemplateNode, decodeEntities = false, outsideEffect = false) {
+        return (transformInterpolatedText(this, node, decodeEntities, outsideEffect), this)
     }
 
     protected get indentStr() {
@@ -197,6 +196,7 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
     private stoi: number[]
     private itos: number[] = []
     private nextSourceIndex = -1
+    private indexMapGot = false
 
     public gtdii: number[] = [] // Get Type Delay Intermediate Indexes
 
@@ -206,13 +206,17 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
     }
 
     get indexMap() {
+        if (!this.indexMapGot) {
+            this.indexMapGot = true
+            this.itos.push(this.stoi.length - 1)
+        }
         return {
             itos: this.itos,
             stoi: this.stoi
         }
     }
 
-    writeScriptNode(node: ts.Node) {
+    writeScriptNode(node: TS.Node) {
         const startSourceIndex = inputDescriptor.script.loc.start.index
         return this.write(
             inputDescriptor.source.slice(
@@ -264,10 +268,10 @@ export class IntermediateCodeWriter extends BaseCodeWriter {
                 this.writeCharacter(str[i], sourceIndex, isLast ? indexOrRange[1] : -1)
             }
             for (let i = str.length; i < indexOrRange[1] - indexOrRange[0]; i++) {
-                if (this.indexMap.stoi[indexOrRange[0] + i] !== -1) {
+                if (this.stoi[indexOrRange[0] + i] !== -1) {
                     continue
                 }
-                this.indexMap.stoi[indexOrRange[0] + i] = this.indexMap.itos.length - 1
+                this.stoi[indexOrRange[0] + i] = this.itos.length - 1
             }
         }
         return this

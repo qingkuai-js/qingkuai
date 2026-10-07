@@ -62,7 +62,7 @@ describe("Production", () => {
     })
 
     describe("Shorthand", () => {
-        it("should wrap the argument as a getter", () => {
+        it("should not treat identifiers prefixed with $ as derived reactive values", () => {
             matchTransformedScript(
                 `
                     <lang-js>
@@ -77,41 +77,131 @@ describe("Production", () => {
                 formatSourceCode(`
                     console.log($a, $b, $c)
 
-                    const $a = _.derived(() => (obj))
-                    const $b = _.derived(() => (count + 1))
-                    const $c = _.derived(() => (outter?.inner))
-                    console.log($a.$, $b.$, $c.$)
+                    const $a = obj
+                    const $b = count + 1
+                    const $c = outter?.inner
+                    console.log($a, $b, $c)
+                `)
+            )
+        })
+    })
+
+    describe("Propagation", () => {
+        it("should promote mutated sources of template-accessed derivedExp", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derivedExp(count * 2)
+                    </lang-js>
+
+                    <p>{ double }</p>
+                `,
+                formatSourceCode(`
+                    let count = _.react(0)
+                    function setCount(v) {
+                        count.$ = v
+                    }
+                    const double = _.derived(() => (count.$ * 2))
                 `)
             )
         })
 
-        it("should not warp the argument as a getter", () => {
+        it("should promote mutated sources read inside nested callbacks of derivedExp", () => {
             matchTransformedScript(
                 `
-                    <lang-ts>
-                        console.log($a, $b, $c)
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derivedExp([1, 2, 3].filter(i => i < count).length)
+                    </lang-js>
 
-                        const $a = (() => obj as any) as any
-                        const $b = function<T>(count: T): T {
-                            return count + 1
-                        }
-                        let $c = function anonymous() {
-                            return outter?.inner
-                        }
-                        console.log($a, $b, $c)
-                    </lang-ts>
+                    <p>{ double }</p>
                 `,
                 formatSourceCode(`
-                    console.log($a, $b, $c)
+                    let count = _.react(0)
+                    function setCount(v) {
+                        count.$ = v
+                    }
+                    const double = _.derived(() => ([1, 2, 3].filter(i => i < count.$).length))
+                `)
+            )
+        })
 
-                    const $a = _.derived((() => obj as any) as any)
-                    const $b = _.derived(function<T>(count: T): T {
-                        return count + 1
+        it("should promote mutated sources of template-accessed derived getters", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derived(() => {
+                            return count * 2
+                        })
+                    </lang-js>
+
+                    <p>{ double }</p>
+                `,
+                formatSourceCode(`
+                    let count = _.react(0)
+                    function setCount(v) {
+                        count.$ = v
+                    }
+                    const double = _.derived(() => {
+                        return count.$ * 2
                     })
-                    let $c = _.derived(function anonymous() {
-                        return outter?.inner
-                    })
-                    console.log($a.$, $b.$, $c.$)
+                `)
+            )
+        })
+
+        it("should not promote sources when the derived value is not accessed in template", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let count = 0
+                        function setCount(v) {
+                            count = v
+                        }
+                        const double = derivedExp(count * 2)
+                    </lang-js>
+
+                    <p>static text</p>
+                `,
+                formatSourceCode(`
+                    let count = 0
+                    function setCount(v) {
+                        count = v
+                    }
+                    const double = _.derived(() => (count * 2))
+                `)
+            )
+        })
+    })
+
+    describe("Destructuring", () => {
+        it("should transform destructuring derived declaration into destructuringDerived", () => {
+            matchTransformedScript(
+                `
+                    <lang-js>
+                        let src = { code: 1, msg: "ok" }
+                        let list = [1, 2]
+                        const { code, msg } = derived(() => src)
+                        const [first, second] = derived(() => list)
+                        console.log(code, msg, first, second)
+                    </lang-js>
+                `,
+                formatSourceCode(`
+                    let src = { code: 1, msg: "ok" }
+                    let list = [1, 2]
+                    const [code, msg] = _.destructuringDerived(({ code, msg }) => [code, msg], () => src, 2)
+                    const [first, second] = _.destructuringDerived(([first, second]) => [first, second], () => list, 2)
+                    console.log(code.$, msg.$, first.$, second.$)
                 `)
             )
         })
@@ -188,7 +278,7 @@ describe("Development", () => {
     })
 
     describe("Shorthand", () => {
-        it("should wrap the argument as a getter", () => {
+        it("should not treat identifiers prefixed with $ as derived reactive values", () => {
             matchTransformedScript(
                 `
                     <lang-js>
@@ -201,56 +291,40 @@ describe("Development", () => {
                     </lang-js>
                 `,
                 formatSourceCode(`
-                    const _S1 = v => ($a = v)
-                    const _S2 = v => ($b = v)
-                    const _S3 = v => ($c = v)
                     console.log($a, $b, $c)
 
-                    let [_$a, $a] = _.derived(() => (obj), _S1)
-                    let [_$b, $b] = _.derived(() => (count + 1), _S2)
-                    let [_$c, $c] = _.derived(() => (outter?.inner), _S3)
-                    console.log(_$a.$, _$b.$, _$c.$)
+                    const $a = obj
+                    const $b = count + 1
+                    const $c = outter?.inner
+                    console.log($a, $b, $c)
                 `)
             )
         })
+    })
 
-        it("should not warp the argument as a getter", () => {
+    describe("Destructuring", () => {
+        it("should transform destructuring derived declaration into destructuringDerived with debug setters", () => {
             matchTransformedScript(
                 `
-                    <lang-ts>
-                        console.log($a, $b, $c)
-
-                        const $a = (() => obj as any) as any
-                        const $b = function<T>(count: T): T {
-                            return count + 1
-                        }
-                        let $c = function anonymous() {
-                            return outter?.inner
-                        }
-                        console.log($a, $b, $c)
-                    </lang-ts>
+                    <lang-js>
+                        let src = { code: 1, msg: "ok" }
+                        const { code, msg } = derived(() => src)
+                        console.log(code, msg)
+                    </lang-js>
                 `,
                 formatSourceCode(`
-                    const _S1 = v => ($a = v)
-                    const _S2 = v => ($b = v)
-                    const _S3 = v => ($c = v)
-                    console.log($a, $b, $c)
-
-                    let [_$a, $a] = _.derived((() => obj as any) as any, _S1)
-                    let [_$b, $b] = _.derived(function<T>(count: T): T {
-                        return count + 1
-                    }, _S2)
-                    let [_$c, $c] = _.derived(function anonymous() {
-                        return outter?.inner
-                    }, _S3)
-                    console.log(_$a.$, _$b.$, _$c.$)
+                    const _S1 = v => (code = v)
+                    const _S2 = v => (msg = v)
+                    let src = { code: 1, msg: "ok" }
+                    let [[_code, code], [_msg, msg]]= _.destructuringDerived(({ code, msg }) => [code, msg], () => src, 2, [_S1, _S2])
+                    console.log(_code.$, _msg.$)
                 `)
             )
         })
     })
 })
 
-it("should not be transformed as derived reactive value when shorthandDerivedDeclaration is false", () => {
+it("should never transform the identifiers prefixed with $ as derived reactive values", () => {
     for (let i = 0; i < 2; i++) {
         _matchTransformedScript(
             `
@@ -262,8 +336,7 @@ it("should not be transformed as derived reactive value when shorthandDerivedDec
                 const $a = obj
             `),
             {
-                debug: !!i,
-                shorthandDerivedDeclaration: false
+                debug: !!i
             }
         )
     }

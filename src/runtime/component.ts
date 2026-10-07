@@ -2,18 +2,30 @@ import type {
     Destruction,
     DefaultValues,
     ComponentFunc,
-    ComponentInstanceBase,
-    ComponentInstanceInternal
+    ComponentMeta,
+    ComponentInstanceBase
 } from "#type-declarations/runtime"
 import type {
     MountAppFunc,
+    SetContextFunc,
+    GetContextsFunc,
+    SetContextGetterFunc,
     LifecycleHookRegister,
     GetCurrentInstanceFunc
 } from "#type-declarations/runtime-ex"
 import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
 
 import {
+    NIL,
+    EXP_GETTER,
+    AFTER_MOUNT,
+    BEFORE_DESTROY,
+    AFTER_DESTROY,
+    COMPONENT_MOUNTED
+} from "./constants"
+import {
     objectKeys,
+    objectCreate,
     reflectOwnKeys,
     defineProperty,
     defineProperties
@@ -25,16 +37,16 @@ import {
     setCurrentDestruction,
     backToParentDestruction
 } from "./state"
-import { AFTER_MOUNT } from "./constants"
 import { isElement } from "../util/runtime/assert"
 import { invokeRender } from "./directives/render"
 import { any, runAll } from "../util/shared/sundry"
+import { makeExpGetter } from "../util/runtime/sundry"
 import { createDestruction, destroy } from "./destroy"
-import { CreateOnDisposedComponent } from "./messages/warn"
 import { bindHandleReceiver, shallowConstReact } from "./internal"
 import { isFunction, isThenable, isString } from "../util/shared/assert"
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect"
 import { InvalidElementNode, CannotRenderComponent } from "./messages/error"
+import { CreateOnDisposedComponent, LifecycleHookRegisteredAfterPhase } from "./messages/warn"
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
 // prettier-ignore
@@ -71,20 +83,44 @@ export const getCurrentInstance: GetCurrentInstanceFunc = () => {
     return currentInstance as any
 }
 
-export function init(anchor: Node, context: ComponentInstanceInternal) {
+export const getContexts: GetContextsFunc = instance => {
+    return any(instance._internal.c!)
+}
+
+export const setContext: SetContextFunc = (instance, key, value) => {
+    const meta = instance._internal
+    defineProperty(meta.c, key, {
+        enumerable: true,
+        configurable: true,
+        get() {
+            let val = value
+            if (val?.[EXP_GETTER]) {
+                val = val.f()
+            }
+            markActiveEffectNoCheck()
+            return val ?? meta.D?.contexts?.[key]
+        }
+    })
+}
+
+export const setContextGetter: SetContextGetterFunc = (instance, key, getter) => {
+    any(setContext)(instance, key, makeExpGetter(getter))
+}
+
+export function init(anchor: Node, meta: ComponentMeta) {
     const instance: ComponentInstanceBase = {
-        hooks: any([]),
-        updating: false,
-        _internal: context,
+        _internal: meta,
         parent: currentInstance,
         host: getParentElement(anchor)!
     }
-    if (context.h) {
-        bindHandleReceiver(instance, context.h)
+    if (meta.h) {
+        bindHandleReceiver(instance, meta.h)
     }
-    setCurrentInstance(instance)
-    context.d = createDestruction(currentDestruction, instance)
-    return instance
+    meta.l = 0
+    meta.f = NIL
+    meta.d = createDestruction(currentDestruction, instance)
+    meta.c = objectCreate(currentInstance?._internal.c ?? NIL)
+    return setCurrentInstance(instance)
 }
 
 export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
@@ -110,10 +146,11 @@ export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
 }
 
 export function runHooks(instance: ComponentInstanceBase, index: number) {
-    if (instance.hooks[index]?.length) {
+    const hooks = instance._internal.f?.[index]
+    if (hooks?.length) {
         const originalInstance = currentInstance
         setCurrentInstance(instance)
-        runAll(instance.hooks[index]!)
+        runAll(hooks)
         setCurrentInstance(originalInstance)
     }
 }
@@ -127,6 +164,7 @@ export function mount(anchor?: ChildNode, fragment?: Node) {
     runHooks(instance, AFTER_MOUNT)
     backToParentDestruction()
     setCurrentInstance(instance.parent)
+    instance._internal.l = (instance._internal.l ?? 0) | COMPONENT_MOUNTED
     return instance
 }
 
@@ -142,9 +180,9 @@ export function defineExports(target: any, transformed: Record<string, Getter>) 
     return defineProperties(target, descriptors)
 }
 
-export function initProps(context: ComponentInstanceInternal) {
-    const transformed = context.p
-    const ret: AnyObject = (context.P = {})
+export function initProps(meta: ComponentMeta) {
+    const transformed = meta.p
+    const ret: AnyObject = (meta.P = {})
     if (transformed) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
@@ -155,7 +193,7 @@ export function initProps(context: ComponentInstanceInternal) {
                         val = val()
                     }
                     markActiveEffectNoCheck()
-                    return val ?? context.D?.props?.[key]
+                    return val ?? meta.D?.props?.[key]
                 }
             })
         }
@@ -163,9 +201,9 @@ export function initProps(context: ComponentInstanceInternal) {
     return ret
 }
 
-export function initRefs(context: ComponentInstanceInternal) {
-    const transformed = context.r
-    const ret: AnyObject = (context.R = {})
+export function initRefs(meta: ComponentMeta) {
+    const transformed = meta.r
+    const ret: AnyObject = (meta.R = {})
     if (transformed) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
@@ -175,7 +213,7 @@ export function initRefs(context: ComponentInstanceInternal) {
                 },
                 get() {
                     markActiveEffectNoCheck()
-                    return transformed[key]?.[0]() ?? context.D?.refs?.[key]
+                    return transformed[key]?.[0]() ?? meta.D?.refs?.[key]
                 }
             })
         }
@@ -183,9 +221,9 @@ export function initRefs(context: ComponentInstanceInternal) {
     return ret
 }
 
-export function initSlots(context: ComponentInstanceInternal) {
+export function initSlots(meta: ComponentMeta) {
     const ret: AnyObject = {}
-    const transformed = context.s
+    const transformed = meta.s
     if (transformed) {
         for (const key of reflectOwnKeys(transformed)) {
             defineProperty(ret, key, {
@@ -199,14 +237,19 @@ export function initSlots(context: ComponentInstanceInternal) {
     return ret
 }
 
+export function initContexts(meta: ComponentMeta) {
+    return meta.c
+}
+
 export function applyDefaults(defaults: DefaultValues) {
     const defaultKindMappings = [
         ["props", "P"],
+        ["contexts", "c"],
         ["refs", "R", true]
     ] as const
-    const context = currentInstance!._internal
+    const meta = currentInstance!._internal
     for (const [kind, bound, writable] of defaultKindMappings) {
-        const target = context[bound]
+        const target = meta[bound]
         const values = defaults[kind]
         if (!values || !target) {
             continue
@@ -235,14 +278,14 @@ export function applyDefaults(defaults: DefaultValues) {
             defineProperty(target, key, descriptor)
         }
     }
-    context.D = defaults
+    meta.D = defaults
 }
 
 // 渲染组件：支持同步组件方法，也支持异步组件
 // Render a component. Supports sync component functions as well as async components
-export function renderComponent(target: any, anchor: Text, context: ComponentInstanceInternal) {
+export function renderComponent(target: any, anchor: Text, meta: ComponentMeta) {
     if (isFunction(target)) {
-        target(anchor, context)
+        target(anchor, meta)
         return
     }
     if (!isThenable(target)) {
@@ -275,18 +318,27 @@ export function renderComponent(target: any, anchor: Text, context: ComponentIns
         }
         setCurrentDestruction(parentDestruction)
         setCurrentInstance(parentInstance)
-        resolved(anchor, context)
+        resolved(anchor, meta)
     })
 }
 
-// 组件生命周期回调均为 ComponentInstance.hooks 数组中不同下标的元素，该方法生成用于注册它们的方法
-// Component lifecycle callbacks are stored as elements at different indices
-// in `ComponentInstance.hooks`; this method generates functions for registering them
 function hooksRegisterGen(): LifecycleHookRegister[] {
     const hookRegisters: LifecycleHookRegister[] = []
     for (let i = 1; i < 6; i++) {
-        hookRegisters.push(callback => {
-            ;(currentInstance!.hooks[i] ??= []).push(callback)
+        hookRegisters.push((instance, callback) => {
+            const meta = instance._internal
+            if (
+                (i == AFTER_MOUNT && (meta.l ?? 0) & COMPONENT_MOUNTED) ||
+                ((i == BEFORE_DESTROY || i == AFTER_DESTROY) && meta.d?.d)
+            ) {
+                const HOOK_NAMES = {
+                    [AFTER_MOUNT]: "onAfterMount",
+                    [BEFORE_DESTROY]: "onBeforeDestroy",
+                    [AFTER_DESTROY]: "onAfterDestroy"
+                }
+                return LifecycleHookRegisteredAfterPhase(HOOK_NAMES[i])
+            }
+            ;((meta.f ??= [])[i] ??= []).push(callback)
         })
     }
     return hookRegisters

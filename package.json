@@ -3,7 +3,7 @@
   "license": "MIT",
   "author": "lgq",
   "type": "module",
-  "version": "1.0.91",
+  "version": "1.0.100",
   "sideEffects": false,
   "repository": {
     "type": "git",
@@ -16,6 +16,7 @@
     "package.json"
   ],
   "exports": {
+    "./package.json": "./package.json",
     ".": {
       "types": "./dist/types/runtime/index.d.ts",
       "import": "./dist/esm/runtime/index.js",
@@ -36,7 +37,6 @@
   },
   "scripts": {
     "lint": "eslint",
-    "prepare": "husky",
     "dev": "rollup -c -w",
     "bundle": "rollup -c",
     "typecheck": "tsc --noEmit",
@@ -47,11 +47,13 @@
     "test:e2e": "npm run bundle && playwright test",
     "test:e2e-badge": "tsx scripts/e2e-badge.ts",
     "test": "npm run test:units && npm run test:e2e",
-    "test:e2e-quick": "playwright test --project=chromium-debug",
-    "test:e2e-prod": "PROD_ONLY=1 npm run bundle && playwright test",
-    "test:e2e-serve": "npm run bundle && PLAYWRIGHT_PORT=34173 tsx tests/e2e/server.ts",
+    "test:e2e:quick": "playwright test --project=chromium-debug",
+    "test:e2e:prod": "PROD_ONLY=1 npm run bundle && playwright test",
+    "test:e2e:serve": "npm run bundle && PLAYWRIGHT_PORT=34173 tsx tests/e2e/server.ts",
     "build": "rimraf dist && npm run build-types && npm run bundle",
     "build-types": "npx tsc && tsx scripts/build-types.ts && rimraf dist/temp-types",
+    "prepare": "husky",
+    "postinstall": "tsx scripts/install-brand.ts",
     "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/qingkuai/syncs'"
   },
   "lint-staged": {

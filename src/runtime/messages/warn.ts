@@ -7,7 +7,7 @@ export function EffectOrWatchHasNoDependecies(fn: ArbitraryFunc, by: string) {
         8001,
         `No reactive values were dependant during the execution of effect${
             by ? " that created with " + by : ""
-        }. The effect has been dstroyed because it will no longer be triggered in future. By: %O`,
+        }. The effect has been destroyed because it will no longer be triggered in future. By: %O`,
         fn
     )
 }
@@ -16,6 +16,13 @@ export function InvalidAssignment(target: string) {
     warnWithCode(
         8002,
         `An assignment to the ${target} is invalid, and this operation has been ignored.`
+    )
+}
+
+export function LifecycleHookRegisteredAfterPhase(name: string) {
+    warnWithCode(
+        8004,
+        `The lifecycle hook "${name}" was registered after its corresponding phase had already passed, so the callback will never be triggered. The registration has been ignored.`
     )
 }
 
@@ -28,5 +35,5 @@ export function CreateOnDisposedComponent(purpose: string) {
 
 function warnWithCode(code: number, message: any, ...args: any[]) {
     const payload = isArray(message) ? message : [message, ...args]
-    console.warn(`[QingKuai Warnning](${code}):`, ...payload)
+    console.warn(`[QingKuai Warning](${code}):`, ...payload)
 }

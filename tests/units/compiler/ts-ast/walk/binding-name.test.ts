@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect, test } from "vitest"
@@ -38,7 +40,7 @@ function extractIdentifiers(source: string) {
 
 test("Whether default value is specified", () => {
     function expectedDefaultValueIsSpecified(source: string, expected: boolean) {
-        const pattern: ts.ArrayBindingPattern = parseContextPattern(source, 0)!
+        const pattern: TS.ArrayBindingPattern = parseContextPattern(source, 0)!
         expect(
             walkBindingNameIdentifiers(pattern, NOOP).specifiedDefaultValue,
             `source: ${source}`

@@ -47,19 +47,30 @@ export {
     initSlots,
     initProps,
     getScopes,
+    setContext,
+    initContexts,
     applyDefaults,
     defineExports,
+    onAfterMount,
+    onBeforeUpdate,
+    onAfterUpdate,
+    onBeforeDestroy,
+    onAfterDestroy,
     renderComponent,
+    setContextGetter,
     dynamicComponent
 } from "./component"
 
 export { htmlBlock } from "./directives/html"
+export { toRaw } from "../util/runtime/sundry"
 export { renderSlot } from "./directives/slot"
 export { targetBlock } from "./directives/target"
 export { renderEffect } from "./reactivity/effect"
 export { promiseBlock } from "./directives/promise"
 export { alias, destructuringAlias } from "./debug"
+export { makeExpGetter } from "../util/runtime/sundry"
 export { conditionBlock } from "./directives/condition"
+export { noTrackingToRaw } from "./reactivity/optimization"
 export { objectAssign, call } from "../util/shared/aliases"
 export { listBlock, keyedListBlock } from "./directives/list"
 export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants"

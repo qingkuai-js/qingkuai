@@ -28,6 +28,10 @@ export class CodeEditor {
         return this.indexToSourceIndex[index]
     }
 
+    get sourceLength() {
+        return this.source.length
+    }
+
     remove(start: number, end: number) {
         this.replacements[start] ??= {}
         this.replacements[start].removedLength = Math.max(
@@ -72,6 +76,9 @@ export class CodeEditor {
             sourceIndex: number,
             key: keyof typeof PositionFlag = "Sourcemap"
         ) => {
+            if (!inputDescriptor.positions.length) {
+                return
+            }
             if (isPositionFlagSetAtIndex(PositionFlag[key], this.startSourceIndex + sourceIndex)) {
                 this.indexToSourceIndex[generateIndex] = this.startSourceIndex + sourceIndex
             }

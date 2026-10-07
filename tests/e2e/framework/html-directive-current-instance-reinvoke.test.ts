@@ -5,8 +5,6 @@ import { defineE2ETestFile } from "../scenario-module"
 const scenario: E2EScenarioInput = {
     input: `
         <lang-js>
-            import { onAfterUpdate, onBeforeUpdate } from "qingkuai"
-
             let htmlText = '<span id="html-a">A</span>'
             let tick = 0
 

@@ -40,7 +40,7 @@ export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
     }
 
     const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
-    if (ts.isIdentifier(keyNode) && isMemberAccessExpression(keyNode)) {
+    if (!ts.isIdentifier(keyNode) && !isMemberAccessExpression(keyNode)) {
         return []
     }
 

@@ -1,4 +1,7 @@
+import type TS from "typescript"
+
 import type { CodeEditor } from "../editor"
+import type { TsNodeWithContext } from "#type-declarations/ts-ast"
 import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
 
 import ts from "typescript"
@@ -11,7 +14,9 @@ import {
 } from "../../ts-ast/sundry"
 import { RuntimeCodeWriter } from "../writer"
 import { arrayFrom } from "../../../util/shared/arrays"
+import { isShadowedIdentifier } from "../../ts-ast/context"
 import { jsDestructuringEqualTokenRE } from "../../regular"
+import { BOUND_INSTANCE_INTRINSIC_MAP } from "../../constants"
 import { findOutOfComment } from "../../../util/compiler/string"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { replaceReusedStringReferences } from "../../optimizer/compress"
@@ -19,36 +24,36 @@ import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
 
 export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: CodeEditor) {
+    const shadowEnclosures = new Set<string>()
     const internalId = generateIdentifier.internal
     const debugMode = inputDescriptor.options.debug
     const scriptSource = inputDescriptor.script.code
     const undefId = `${generateIdentifier.internal}.UNDEF`
     const identifierMap: Record<string, string> = newCleanObj()
+    const rawArgumentBitmap = new Uint8Array(editor.sourceLength)
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
 
-    // 注入绑定当前组件实例的 effect/watch 遮蔽闭包。
-    // Inject effect/watch shadowing closures bound to the current component instance.
-    const { usedEffectWatchMethods } = analyzeResult.script
-    if (usedEffectWatchMethods.size) {
-        for (const methodName of usedEffectWatchMethods) {
-            const isWatch = methodName.endsWith("h")
-            const paramList = `${isWatch ? "_getter, " : ""}_callback`
-            hoistWriter.write(`const ${methodName} = (${paramList}) => `)
-            hoistWriter.write(
-                `${internalId}.${methodName}(${generateIdentifier.instance}, ${paramList})\n`
-            )
+    // 注入绑定当前组件实例的遮蔽闭包。
+    // Inject instance-bound shadowing closures for the used built-in methods
+    for (const methodName of analyzeResult.script.usedIntrinsics) {
+        const boundName = BOUND_INSTANCE_INTRINSIC_MAP[methodName]
+        if (!boundName || shadowEnclosures.has(boundName)) {
+            continue
         }
+        shadowEnclosures.add(boundName)
+        hoistWriter.write(`const ${boundName} = (...args) => `)
+        hoistWriter.writeLine(`${internalId}.${boundName}(instance, ...args)`)
     }
 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
     // Used to record VariableDeclarators that have already been processed.
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
-    const processedItems = new Set<ts.VariableDeclaration | ts.EnumDeclaration>()
+    const processedItems = new Set<TS.VariableDeclaration | TS.EnumDeclaration>()
 
     // 调试模式下衍生响应式值标识符在编译后不能是常量，因为目标被修改后需要通过 setter 同步修原始始标识符
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
     // because when the target is modified, the original identifier needs to be synchronized via a setter.
-    const convertToLetKeywordDecs = new Map<ts.VariableDeclaration, ts.VariableDeclarationList>()
+    const convertToLetKeywordDecs = new Map<TS.VariableDeclaration, TS.VariableDeclarationList>()
     if (debugMode) {
         traverseObject(topLevelIdentifiers, (_, value) => {
             const declaration = value.nodeInfos[0].declaration
@@ -57,7 +62,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 ts.isVariableDeclarationList(declaration) &&
                 getVariableDeclareKeyword(declaration) === "const"
             ) {
-                const declarator = value.nodeInfos[0].declarator as ts.VariableDeclaration
+                const declarator = value.nodeInfos[0].declarator as TS.VariableDeclaration
                 convertToLetKeywordDecs.set(declarator, declaration)
             }
         })
@@ -113,18 +118,68 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
     })
 
-    // Exp 后缀的监视器函数的第一个参数是表达式，编译时需要将其包装为 getter 函数
+    // Exp 后缀的监视器函数的第一个参数是表达式，编译时无条件包装为 getter 函数
     // The first argument of the watcher function with the `Exp` suffix is
-    // an expression, which needs to be wrapped as a getter function at compile time.
-    for (const call of analyzeResult.script.watchers) {
+    // an expression, which is always wrapped as a getter function at compile time.
+    for (const call of analyzeResult.script.watchExpCalls) {
         const firstArg = call.arguments[0]
-        if (shouldNodeWrapAsGetter(firstArg)) {
-            editor.insert(firstArg.getEnd(), ")")
-            editor.insert(firstArg.getStart(), `() => (`)
-        }
+        editor.insert(firstArg.getEnd(), ")")
+        editor.insert(firstArg.getStart(), `() => (`)
 
         const callee = getStriptTypeOperationsNode(call.expression)
         editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true)
+    }
+
+    // setContextExp("key", exp) -> setContextGetter("key", () => (exp))
+    for (const call of analyzeResult.script.setContextExpCalls) {
+        const valueArg = call.arguments[1]
+        editor.insert(valueArg.getEnd(), ")")
+        editor.insert(valueArg.getStart(), `() => (`)
+        editor.replace(...getNodeRange(call.expression), "setContextGetter", true)
+    }
+
+    // 非响应式读取转换
+    // Non-reactive reads are transformed
+    for (const call of analyzeResult.script.rawReadCalls) {
+        const arg = call.arguments[0]
+        const identifier = getStriptTypeOperationsNode(arg)
+        const callee = getStriptTypeOperationsNode(call.expression)!
+
+        // 被遮蔽的引用解析到局部绑定，按未知标识符处理
+        //
+        // A reference shadowed by a nested scope resolves to a local binding and is
+        // treated as an unknown identifier.
+        if (identifier && ts.isIdentifier(identifier)) {
+            const status = isShadowedIdentifier(
+                identifier as TsNodeWithContext<TS.Identifier>,
+                identifier.text
+            )
+                ? undefined
+                : topLevelIdentifiers[identifier.text]?.status
+
+            // 原始值标识符：去掉 raw 包裹直接读取
+            // Raw-value identifier: removing the raw wrapper is enough.
+            if (status === "raw" || status === "literal" || status === "pending") {
+                editor.remove(callee.getStart(), arg.getStart())
+                editor.remove(arg.getEnd(), call.getEnd())
+                continue
+            }
+
+            // reactive/shallow/未知标识符：读取原始标识符
+            // reactive/shallow/unknown identifiers: read the raw identifier.
+            if (status !== "derived" && status !== "alias") {
+                rawArgumentBitmap.fill(1, identifier.getStart(), identifier.getEnd())
+                editor.replace(...getNodeRange(callee), `${internalId}.toRaw`, true)
+                continue
+            }
+        }
+
+        // derived/alias 标识符与其余表达式：可能在 effect 内求值，暂停追踪并解包
+        // derived/alias identifiers and other expressions: they may run inside
+        // effects, so pause tracking and unwrap.
+        editor.insert(arg.getEnd(), `)`)
+        editor.insert(arg.getStart(), `() => (`)
+        editor.replace(...getNodeRange(callee), `${internalId}.noTrackingToRaw`, true)
     }
 
     // 转换响应式标识符引用
@@ -140,7 +195,9 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                     continue
                 }
                 if (!reference.shorthand) {
-                    editor.replace(...reference.range, `${transofrmedTo}`, true)
+                    if (!rawArgumentBitmap[reference.range[0]]) {
+                        editor.replace(...reference.range, `${transofrmedTo}`, true)
+                    }
                 } else {
                     editor.insert(reference.range[1], `: ${transofrmedTo}`, reference.range)
                 }
@@ -165,38 +222,19 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
     function transformDerivedDeclaration(name: string, info: TopLevelIdentifierInfo) {
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
-        const withIntrinsic = analyzeResult.script.declaratorToIntrinsic.has(declarator)
-        const intrinsicInfo = withIntrinsic ? getIntrinsicInfo(declarator) : undefined
-        const byExpression = intrinsicInfo?.id.text === "derivedExp"
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+        const intrinsicInfo = getIntrinsicInfo(declarator)!
+        const byExpression = intrinsicInfo.id.text === "derivedExp"
         if (!destructuringIdentifierNames) {
-            if (intrinsicInfo) {
-                const firstArg = intrinsicInfo.call.arguments[0]
-                if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
-                    editor.insert(firstArg.getEnd(), ")")
-                    editor.insert(firstArg.getStart(), "() => (")
-                }
-                if (debugMode) {
-                    editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`)
-                }
-                replaceIntrinsicCall(declarator, "derived")
-            } else {
-                // 断言：此时一定存在初始值（不然会退化为原始值）
-                // Assertion: at this point, an initializer must exist
-                // (otherwise it would have been downgraded to the raw value).
-                const initNode = declarator.initializer!
-                const shouldWrapAsGetter = shouldNodeWrapAsGetter(initNode)
-                editor.insertMulti(initNode.getStart(), [
-                    internalId,
-                    ".derived(",
-                    shouldWrapAsGetter ? "() => (" : ""
-                ])
-                editor.insertMulti(initNode.getEnd(), [
-                    shouldWrapAsGetter ? ")" : "",
-                    debugMode ? `, ${generateHoistSetter(name)}` : "",
-                    ")"
-                ])
+            const firstArg = intrinsicInfo.call.arguments[0]
+            if (byExpression) {
+                editor.insert(firstArg.getEnd(), ")")
+                editor.insert(firstArg.getStart(), "() => (")
             }
+            if (debugMode) {
+                editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`)
+            }
+            replaceIntrinsicCall(declarator, "derived")
             return transformNonDestructuringDeclaratorId(declarator)
         }
 
@@ -204,8 +242,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             return
         }
 
-        const firstArg = intrinsicInfo!.call.arguments[0]
-        if (byExpression && shouldNodeWrapAsGetter(firstArg)) {
+        const firstArg = intrinsicInfo.call.arguments[0]
+        if (byExpression) {
             editor.insert(firstArg.getEnd(), ")")
             editor.insert(firstArg.getStart(), "() => (")
         }
@@ -250,9 +288,9 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function transformAliasDeclaration(_: string, info: TopLevelIdentifierInfo) {
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const { declarations } = info.nodeInfos[0].declaration as ts.VariableDeclarationList
+        const { declarations } = info.nodeInfos[0].declaration as TS.VariableDeclarationList
         const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
         const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
 
@@ -260,7 +298,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         // Remove any trailing comma from the VariableDeclarator.
         if (!debugMode) {
             if (declarations.length !== 1) {
-                let declaratorToRemoveEndComma: ts.VariableDeclaration
+                let declaratorToRemoveEndComma: TS.VariableDeclaration
                 const declaratorIndex = declarations.indexOf(declarator)
                 if (declaratorIndex !== declarations.length - 1) {
                     declaratorToRemoveEndComma = declarator
@@ -359,8 +397,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             const isFunctionDeclaration = ts.isFunctionDeclaration(firstDeclaration)
             if (!isFunctionDeclaration) {
                 for (const nodeInfo of info.nodeInfos) {
-                    const declarator = nodeInfo.declarator as ts.VariableDeclaration
-                    const declaration = nodeInfo.declaration as ts.VariableDeclarationList
+                    const declarator = nodeInfo.declarator as TS.VariableDeclaration
+                    const declaration = nodeInfo.declaration as TS.VariableDeclarationList
                     if (processedItems.has(declarator)) {
                         continue
                     }
@@ -418,11 +456,18 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
 
         // VariableDeclaration(non-var)
-        const declarator = info.nodeInfos[0].declarator as ts.VariableDeclaration
-        const declaration = info.nodeInfos[0].declaration as ts.VariableDeclarationList
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
+        const declaration = info.nodeInfos[0].declaration as TS.VariableDeclarationList
         const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
         const isConst = getVariableDeclareKeyword(declaration) !== "let"
         if (!declarator.initializer) {
+            const { exclamationToken, type } = declarator
+            if (exclamationToken || type) {
+                editor.remove(
+                    exclamationToken ? exclamationToken.getStart() : declarator.name.getEnd(),
+                    (type ?? exclamationToken)!.getEnd()
+                )
+            }
             if (!debugMode) {
                 editor.insert(declarator.name.getEnd(), ` = ${defaultReactCallee}()`)
             } else {
@@ -531,7 +576,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function replaceIntrinsicCall(
-        declarator: ts.VariableDeclaration,
+        declarator: TS.VariableDeclaration,
         newName: string,
         insertArg?: (hasArg: boolean) => string | undefined
     ) {
@@ -560,7 +605,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         }
     }
 
-    function replaceCommaWithSemi(declarator: ts.VariableDeclaration) {
+    function replaceCommaWithSemi(declarator: TS.VariableDeclaration) {
         const declaratorEnd = declarator.getEnd()
         const commaIndex = findEndCommaIndexOfVariableDeclarator(declarator)
         if (commaIndex !== -1) {
@@ -582,9 +627,9 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         return (hoistWriter.write(`const ${setterId} = ${generateSetterCode(target)}\n`), setterId)
     }
 
-    function transformNonDestructuringDeclaratorId(declarator: ts.VariableDeclaration) {
+    function transformNonDestructuringDeclaratorId(declarator: TS.VariableDeclaration) {
         if (debugMode) {
-            const idNode = declarator.name as ts.Identifier
+            const idNode = declarator.name as TS.Identifier
             editor.replace(
                 idNode.getStart(),
                 idNode.getEnd(),
@@ -595,7 +640,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     }
 
     function transformDestructuringEqualSign(
-        declarator: ts.VariableDeclaration,
+        declarator: TS.VariableDeclaration,
         returns: string[]
     ) {
         const [matchedIndex, matchedLen] = findOutOfComment(
@@ -609,16 +654,6 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
             `) => [${returns.join(", ")}], `
         )
     }
-}
-
-function shouldNodeWrapAsGetter(node: ts.Node) {
-    switch (getStriptTypeOperationsNode(node).kind) {
-        case ts.SyntaxKind.ArrowFunction:
-        case ts.SyntaxKind.FunctionExpression: {
-            return false
-        }
-    }
-    return true
 }
 
 function generateSetterCode(target: string) {
@@ -638,7 +673,7 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
             return true
         }
         case ts.SyntaxKind.VariableDeclarationList: {
-            const declarationList = firstDeclaration as ts.VariableDeclarationList
+            const declarationList = firstDeclaration as TS.VariableDeclarationList
             switch (getVariableDeclareKeyword(declarationList)) {
                 case "var": {
                     return true
@@ -654,16 +689,16 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
     }
 }
 
-function getIntrinsicInfo(declarator: ts.VariableDeclaration) {
+function getIntrinsicInfo(declarator: TS.VariableDeclaration) {
     const id = analyzeResult.script.declaratorToIntrinsic.get(declarator)!
     if (id) {
         return {
             id,
-            call: getStriptTypeOperationsParent(id) as ts.CallExpression
+            call: getStriptTypeOperationsParent(id) as TS.CallExpression
         }
     }
 }
 
-function findEndCommaIndexOfVariableDeclarator(declarator: ts.VariableDeclaration) {
+function findEndCommaIndexOfVariableDeclarator(declarator: TS.VariableDeclaration) {
     return findOutOfComment(inputDescriptor.script.code.slice(declarator.getEnd()), ",")
 }

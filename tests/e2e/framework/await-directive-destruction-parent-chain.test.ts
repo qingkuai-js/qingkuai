@@ -63,8 +63,6 @@ const scenario: E2EScenarioInput = {
     components: {
         ThenPanel: `
             <lang-js>
-                import { onAfterMount, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.log("then-mount-" + props.value)
                 })

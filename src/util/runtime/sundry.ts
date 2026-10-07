@@ -13,8 +13,8 @@ import { isFunction } from "../shared/assert"
 import { any, notEqual } from "../shared/sundry"
 import { constReact } from "../../runtime/internal"
 import { FRAG_ORPHAN_CONTENT } from "../shared/flags"
-import { NIL, RESOLVED } from "../../runtime/constants"
 import { refProperties } from "../../runtime/reactivity/state"
+import { EXP_GETTER, NIL, RESOLVED } from "../../runtime/constants"
 
 export const toRaw: ToRawFunc = v => {
     const wrapper = any(v)?.[WRAPPER]
@@ -23,6 +23,13 @@ export const toRaw: ToRawFunc = v => {
 
 export const nextTick: NextTickFunc = callback => {
     return isFunction(callback) ? RESOLVED.then(callback) : RESOLVED
+}
+
+export function makeExpGetter(fn: any) {
+    return {
+        f: fn,
+        [EXP_GETTER]: true
+    }
 }
 
 export function reverse(v: any) {

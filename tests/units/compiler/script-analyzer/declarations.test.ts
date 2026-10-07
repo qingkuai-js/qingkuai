@@ -293,8 +293,8 @@ test("Redeclarations for derived reactive value", () => {
         {
             name: "$g",
             hoist: true,
-            implicit: false,
-            status: "derived"
+            implicit: true,
+            status: "pending"
         },
         {
             name: "h",
@@ -343,21 +343,6 @@ test("Redeclarations for derived reactive value", () => {
         {
             type: "error",
             range: [183, 184],
-            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
-        },
-        {
-            type: "warning",
-            range: [203, 214],
-            value: unnecessaryDerived
-        },
-        {
-            type: "warning",
-            range: [219, 225],
-            value: unnecessaryDerived
-        },
-        {
-            type: "error",
-            range: [219, 221],
             value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
         },
         {
@@ -445,7 +430,7 @@ test("Literals will be updated later", () => {
     ])
 })
 
-test("Shorthand derived declaration is invalid for destructuring declarations", () => {
+test("Identifiers prefixed with $ in destructuring declarations are treated as ordinary bindings", () => {
     localAnalyze(`
         const {$a, $b} = obj
     `)
@@ -540,12 +525,247 @@ test("Explicitly marking a const as reactive errors when allowConstReactive is f
         {
             type: "error",
             range: [6, 22],
-            value: `Marking a \`const\` declaration with the "reactive" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
+            value: `Marking a \`const\` declaration with the "reactive" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
         },
         {
             type: "error",
             range: [29, 44],
-            value: `Marking a \`const\` declaration with the "shallow" intrinsic is disallowed when the "allowConstReactive" compile option is disabled.`
+            value: `Marking a \`const\` declaration with the "shallow" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
         }
     ])
+})
+
+test("requireReactivityMark: unmarked top-level variable declarations raise 1074", () => {
+    localAnalyzeWithOptions(
+        `
+            let progress = "pending"
+            const done = true
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [4, 24],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        },
+        {
+            type: "error",
+            range: [31, 42],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        }
+    ])
+})
+
+test("requireReactivityMark: raw mark on a const literal is the canonical form", () => {
+    localAnalyzeWithOptions(
+        `
+            const n = raw(0)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "n",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        }
+    ])
+    localMatchCompileMessages([])
+})
+
+test("requireReactivityMark: reactive/shallow mark on a const literal keeps the downgrade warning", () => {
+    localAnalyzeWithOptions(
+        `
+            const a = reactive(1)
+            const b = shallow("")
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "a",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "b",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "warning",
+            range: [6, 21],
+            value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+        },
+        {
+            type: "warning",
+            range: [28, 43],
+            value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+        }
+    ])
+})
+
+test("requireReactivityMark: explicit marks keep their statuses", () => {
+    localAnalyzeWithOptions(
+        `
+            let state = reactive({ count: 0 })
+            const count = alias(state.count)
+            const double = derived(() => count * 2)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "state",
+            hoist: false,
+            implicit: false,
+            status: "reactive"
+        },
+        {
+            name: "count",
+            hoist: false,
+            implicit: false,
+            status: "alias"
+        },
+        {
+            name: "double",
+            hoist: false,
+            implicit: false,
+            status: "derived"
+        }
+    ])
+    localMatchCompileMessages([])
+})
+
+test("requireReactivityMark: derivedExp with a function literal degrades to raw", () => {
+    localAnalyzeWithOptions(
+        `
+            const f = derivedExp(() => 1)
+            const g = derived(() => 1)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "f",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "g",
+            hoist: false,
+            implicit: false,
+            status: "derived"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "warning",
+            range: [6, 29],
+            value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+        }
+    ])
+})
+
+test("requireReactivityMark: destructuring declarations", () => {
+    localAnalyzeWithOptions(
+        `
+            let obj = reactive({ a: 1, code: 2 })
+            const { a } = obj
+            const { code } = reactive(obj)
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "obj",
+            hoist: false,
+            implicit: false,
+            status: "reactive"
+        },
+        {
+            name: "a",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        },
+        {
+            name: "code",
+            hoist: false,
+            implicit: false,
+            status: "reactive"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [44, 55],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        }
+    ])
+})
+
+test("requireReactivityMark: a call to a non-built-in method raises 1074", () => {
+    localAnalyzeWithOptions(
+        `
+            const value = loadValue()
+        `,
+        {
+            requireReactivityMark: true
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "value",
+            hoist: false,
+            implicit: false,
+            status: "raw"
+        }
+    ])
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [6, 25],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+        }
+    ])
+})
+
+test("shallow mode: non-built-in call initializer stays literal until mutated", () => {
+    localAnalyzeWithOptions(
+        `
+            let value = loadValue()
+        `,
+        {
+            reactivityMode: "shallow"
+        }
+    )
+    checkTopLevelIdentifiers([
+        {
+            name: "value",
+            hoist: false,
+            implicit: true,
+            status: "literal"
+        }
+    ])
+    localMatchCompileMessages([])
 })

@@ -49,8 +49,6 @@ const scenario: E2EScenarioInput = {
         `,
         SlotPanel: `
             <lang-js>
-                import { onAfterMount, onBeforeDestroy, onAfterDestroy } from "qingkuai"
-
                 onAfterMount(() => {
                     props.log("slot-mount-" + props.id)
                 })

@@ -40,3 +40,15 @@ export function getNonHoistableScope(node: TsNodeWithContext): TsNodeWithContext
     })
     return ret
 }
+
+// 名字是否被节点自身或任一祖先作用域边界声明（即是否被遮蔽），节点需先经过 walkTsNodeWithContext 附加上下文
+// Whether the name is declared by the node itself (when it is a scope boundary) or by any ancestor
+// scope boundary. The node must have been walked by walkTsNodeWithContext.
+export function isShadowedIdentifier(node: TsNodeWithContext, name: string) {
+    for (let current: TsNodeWithContext | undefined = node; current; current = current.parent) {
+        if (current.scopeIdentifiers?.has(name)) {
+            return true
+        }
+    }
+    return false
+}

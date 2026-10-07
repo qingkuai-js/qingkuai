@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type { TsNodeWithContext } from "#type-declarations/ts-ast"
 
 import ts from "typescript"
@@ -6,9 +8,9 @@ import { expect, test } from "vitest"
 import { parseTsScript } from "../../../../src/util/testing/ts-ast"
 import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk"
 
-function collectIdentifiers(source: string): Map<string, TsNodeWithContext<ts.Identifier>[]> {
+function collectIdentifiers(source: string): Map<string, TsNodeWithContext<TS.Identifier>[]> {
     const sourceFile = parseTsScript(source)
-    const map = new Map<string, TsNodeWithContext<ts.Identifier>[]>()
+    const map = new Map<string, TsNodeWithContext<TS.Identifier>[]>()
 
     walkTsNodeWithContext(sourceFile, node => {
         if (!ts.isIdentifier(node)) {

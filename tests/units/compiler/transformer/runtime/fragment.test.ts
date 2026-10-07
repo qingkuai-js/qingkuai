@@ -256,7 +256,7 @@ describe("debug mode", () => {
         ])
         matchTemplateNodesRuntimeId([
             [nodeList[1], "_text1"],
-            [nodeList[3].children[0], "_text2"]
+            [nodeList[3].children[0], "_text3"]
         ])
     })
 
@@ -289,8 +289,8 @@ describe("debug mode", () => {
             whitespace: "collapse"
         })
 
-        expect(code).toContain("const _text3 = _.getSiblingAsText(_text2, 2)")
-        expect(code).toContain("const _div1 = _.getSibling(_text3, 2)")
+        expect(code).toContain("const _text4 = _.getSiblingAsText(_text3, 2)")
+        expect(code).toContain("const _div1 = _.getSibling(_text4, 2)")
     })
 
     test("Directives on spread tag", () => {
@@ -424,7 +424,7 @@ describe("debug mode", () => {
             matchTemplateNodesRuntimeId([
                 [nodeList[1].children[1], "_div1"],
                 [nodeList[1].children[3], "_div2"],
-                [nodeList[1].children[3].children[0], "_text2"]
+                [nodeList[1].children[3].children[0], i ? "_text3" : "_text2"]
             ])
 
             nodeList = matchGeneratedFragment(
@@ -575,7 +575,7 @@ describe("debug mode", () => {
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_div1"],
             [nodeList[1].children[3].children[1], "_p1"],
-            [nodeList[1].children[3].children[1].children[0], "_text2"]
+            [nodeList[1].children[3].children[1].children[0], "_text3"]
         ])
     })
 
@@ -1250,7 +1250,7 @@ describe("non-debug mode", () => {
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_div1"],
             [nodeList[1].children[3].children[1], "_p1"],
-            [nodeList[1].children[3].children[1].children[0], "_text2"]
+            [nodeList[1].children[3].children[1].children[0], "_text3"]
         ])
     })
 

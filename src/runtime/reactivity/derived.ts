@@ -53,6 +53,7 @@ export function destructuringDerived(
                     effect.l |= EFFECT_DERIVED_READING
                     runAndUpdateEffect(effect)
                     effect.l &= ~EFFECT_DERIVED_DIRTY
+                    effect.l &= ~EFFECT_DERIVED_READING
                 } else {
                     if (activeEffect) {
                         appendLinksToActiveEffect(effect)

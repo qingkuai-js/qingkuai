@@ -1,4 +1,5 @@
-import type ts from "typescript"
+import type TS from "typescript"
+
 import type { Pair } from "#type-declarations/tools"
 import type { TestingMode } from "../compiler/enums"
 import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
@@ -159,7 +160,7 @@ export interface ComponentTagPart {
 export interface ParsedPattern {
     sourceRange: Range
     directive: ParsedDirective
-    node: ts.ArrayBindingElement
+    node: TS.ArrayBindingElement
     declaredIdentifiers: Set<string>
 }
 export interface ParsedDirective {
@@ -188,11 +189,12 @@ export interface ReusedStringReference {
 }
 export interface ParsedExpression {
     source: string
-    node: ts.Expression
+    node: TS.Expression
     reactive: boolean
     startSourceIndex: number
     contextReferences: ContextReference[]
     topLevelReferences: TopLevelReferences
+    rawCallExpressions: TS.CallExpression[]
     reusedStringReferences: ReusedStringReference[]
 }
 export interface GeneratedSelectorInfo {
@@ -209,7 +211,7 @@ export interface GeneratedSelectorInfo {
     targetAttribute?: TemplateAttribute
 }
 export interface TopLevelIdentifierNodeInfo {
-    id: ts.Identifier
+    id: TS.Identifier
     declarator: TopLevelDeclaratorNode
     declaration: TopLevelDeclarationNode
     destructuringIdentifierNames?: string[]
@@ -218,9 +220,13 @@ export interface TopLevelIdentifierInfo {
     hoist: boolean
     implicit: boolean
     accessor: boolean
+    propagated: boolean
     aliasTarget: string
     transformTo: string
     status: IdentifierStatus
+    untrackedAccess: boolean
+    sourceReads: Set<string>
+    untrackedSourceReads: Set<string>
     usedExpressions: Set<ParsedExpression>
     nodeInfos: TopLevelIdentifierNodeInfo[]
 }
@@ -231,6 +237,8 @@ export interface TemplateNodeContext {
     shouldBeSelected: boolean
     selectableChildCount: number
     fragment: TemplateFragment | null
+    anchorBracket: TemplateFragment | null
+    listAncestors: TemplateNode[]
     eventListeners: TemplateAttribute[]
     sortedDirectives: TemplateAttribute[]
     staticAttributes: TemplateAttribute[]
@@ -264,28 +272,33 @@ export interface TemplateAnalyzeRet {
 }
 export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
-        ts.VariableDeclaration,
+        TS.VariableDeclaration,
         {
             property: string
             expression: string
         }[]
     >
-    exportStatements: ts.Node[]
-    watchers: ts.CallExpression[]
+    exportStatements: TS.Node[]
+    usedIntrinsics: Set<string>
     fullIdentifiers: Set<string>
-    eliminatedNodes: Set<ts.Node>
-    usedIntrinsicVars: Set<string>
-    importIdentifiers: Set<string>
+    eliminatedNodes: Set<TS.Node>
+    rawReadCalls: TS.CallExpression[]
     exportedBindings: ExportBinding[]
-    usedEffectWatchMethods: Set<string>
+    watchExpCalls: TS.CallExpression[]
+    setContextExpCalls: TS.CallExpression[]
     topLevelReferences: TopLevelReferences
     qkDefaultImportIdentifiers: Set<string>
     preMutatedTopLevelIdentifiers: Set<string>
-    defaultsCall: ts.CallExpression | undefined
+    defaultsCall: TS.CallExpression | undefined
     reusedStringReferences: ReusedStringReference[]
     topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<ts.VariableDeclaration, ts.Identifier>
-    importDeclarations: (ts.ImportDeclaration | ts.ImportEqualsDeclaration)[]
+    declaratorToIntrinsic: Map<TS.VariableDeclaration, TS.Identifier>
+    importDeclarations: (TS.ImportDeclaration | TS.ImportEqualsDeclaration)[]
+}
+
+export interface RawArgumentInfo {
+    range: Range
+    kind: "unwrap" | "plain"
 }
 
 export type Range = Pair<number>
@@ -296,6 +309,7 @@ export type TopLevelReferences = Record<
         range: Range
         declared: boolean
         shorthand: boolean
+        untracked?: boolean
     }[]
 >
 export type IdentifierStatusInfo = Record<
@@ -338,14 +352,14 @@ export type CompileOptions = Partial<{
     allowConstReactive: boolean
     interpretiveComments: boolean
     preserveHtmlComments: boolean
-    shorthandDerivedDeclaration: boolean
+    requireReactivityMark: boolean
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
 }>
 
 export type CompileIntermediateOptions = Pick<
     CompileOptions,
-    "shorthandDerivedDeclaration" | "allowConstReactive"
+    "allowConstReactive" | "requireReactivityMark"
 >
 
 export type IdentifierStatus =
@@ -381,10 +395,9 @@ export type SelectionCacheItem = {
 export type SelectionCache = Record<string, SelectionCacheItem[]>
 
 export type GenerateIdentifierStaticKeys =
+    | "meta"
     | "anchor"
-    | "context"
     | "internal"
-    | "instance"
     | "getterArg"
     | "setterArg"
     | "component"

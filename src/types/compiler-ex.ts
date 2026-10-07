@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import type {
     Range,
     TemplateNode,
@@ -7,7 +9,6 @@ import type {
     TemplateAttribute,
     StandaloneParseTemplateOptions
 } from "#type-declarations/compiler"
-import type { ArrayBindingElement } from "typescript"
 
 export interface Camel2KebabFunc {
     /**
@@ -371,7 +372,7 @@ export interface ParseDirectiveValueFunc {
         base: string
         keywordIndex: number
         baseStartSourceIndex: number
-        patterns: ArrayBindingElement[]
+        patterns: TS.ArrayBindingElement[]
         messages?: CompileMessage[]
     }
 }

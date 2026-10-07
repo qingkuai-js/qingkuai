@@ -1,3 +1,5 @@
+import type TS from "typescript"
+
 import ts from "typescript"
 
 import { expect, test } from "vitest"
@@ -24,7 +26,7 @@ test("Function: stripTypeExpressions strips nested type operations", () => {
 
     const stripped = getStriptTypeOperationsNode(asExpr!)
     expect(ts.isIdentifier(stripped)).toBeTruthy()
-    expect((stripped as ts.Identifier).text).toBe("b")
+    expect((stripped as TS.Identifier).text).toBe("b")
 })
 
 test("Function: stripTypeExpressions strips non-null expression", () => {
@@ -34,7 +36,7 @@ test("Function: stripTypeExpressions strips non-null expression", () => {
 
     const stripped = getStriptTypeOperationsNode(nonNull!)
     expect(ts.isIdentifier(stripped)).toBeTruthy()
-    expect((stripped as ts.Identifier).text).toBe("b")
+    expect((stripped as TS.Identifier).text).toBe("b")
 })
 
 test("Function: getStriptTypeOperationsParent returns null for orphan node", () => {
@@ -44,7 +46,7 @@ test("Function: getStriptTypeOperationsParent returns null for orphan node", () 
 
 test("Function: getLastNodeOfParenthesis returns original node for non-parenthesized input", () => {
     const sourceFile = parseTsScript("const a = b")
-    const identifier = findFirstChildUntil(sourceFile, (node): node is ts.Identifier => {
+    const identifier = findFirstChildUntil(sourceFile, (node): node is TS.Identifier => {
         return ts.isIdentifier(node) && node.text === "b"
     })
 
@@ -59,5 +61,5 @@ test("Function: getLastNodeOfParenthesis unwraps nested comma parenthesis", () =
 
     const lastNode = getLastNodeOfParenthesis(outer!)
     expect(ts.isIdentifier(lastNode)).toBe(true)
-    expect((lastNode as ts.Identifier).text).toBe("z")
+    expect((lastNode as TS.Identifier).text).toBe("z")
 })

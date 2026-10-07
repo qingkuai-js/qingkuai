@@ -1,9 +1,10 @@
 // 注意：小根堆在当前版本中未被用到，在早期的版本中，嵌入脚本转换器依赖小根堆来生成代码，
 // 当前版本使用 CodeEditor 替代了早期的转换逻辑，如若之后持续用不到此结构请考虑移除此文件。
 //
-// Note: The min-heap is not used in the current version. In earlier versions, the embeddedscript transformer relied
-// on the min-heap to generate code, and the current version uses `CodeEditor` to replace the earlier transformation logic.
-// If this structure continues to be unused, consider removing this file.
+// Note: The min-heap is not used in the current version. In earlier versions,
+// the embeddedscript transformer relied on the min-heap to generate code, and
+// the current version uses `CodeEditor` to replace the earlier transformation
+// logic. If this structure continues to be unused, consider removing this file.
 export class MinHeap<T> {
     tree: T[] = []
     keys: (keyof T)[]

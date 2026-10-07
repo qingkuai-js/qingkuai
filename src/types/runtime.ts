@@ -1,7 +1,6 @@
 import type {
     Getter,
     Setter,
-    Prettify,
     AnyObject,
     ObjectKeys,
     GeneralFunc,
@@ -9,13 +8,13 @@ import type {
 } from "#type-declarations/tools"
 import type { CANCELABLE } from "../runtime/directives/constants"
 import type { WRAPPER, REF_PROPERTY_ID } from "../runtime/reactivity/constants"
+import type { COMPONENT, EMPTY_SIGN, QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { ComponentContexts, ComponentExports, ComponentOfInstance } from "./runtime-ex"
 
 interface CancelablePromiseExtra {
     cancel: GeneralFunc
     [CANCELABLE]: boolean
 }
-
-declare const RENDER: unique symbol
 
 export interface PropertyInfo {
     v: any // value
@@ -43,25 +42,26 @@ export interface TraverseInfo {
 
 export interface ComponentInstanceBase {
     host: Element
-    updating: boolean
-    hooks: GeneralFunc[][]
     parent: ComponentInstanceBase | null
 
     /** @internal */
-    _internal: ComponentInstanceInternal
+    _internal: ComponentMeta
 }
 
-export type ComponentInstanceInternal = Partial<{
+export type ComponentMeta = Partial<{
     d: Destruction
+    l: number // flag
     D: DefaultValues // defaults
     s: AnyObject // raw slots
     h: Setter // handle setter
     p: AnyObject // raw props
     P: AnyObject // bound props
     r: AnyObject // raw refs
+    c: AnyObject // contexts
     R: AnyObject // bound refs
     e: string[] // delegated events
     a: string[] // ancestor scope chain
+    f: GeneralFunc[][] | null // lifecycle hooks
 }>
 
 export interface Effect {
@@ -127,10 +127,6 @@ export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper
 }
 
-export type QingkuaiComponent<F extends ArbitraryFunc> = {
-    [RENDER]: F
-}
-
 export type ReactiveMethods = Record<
     number,
     Record<ObjectKeys, ArbitraryFunc> & { [WRAPPER]?: any }
@@ -145,16 +141,52 @@ export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 
 export type EffectCallback = () => void | GeneralFunc
-export type WatcherCallback<T> = (pre: T, cur: T) => void | GeneralFunc
+export type WatchCallback<T> = (pre: T, cur: T) => void | GeneralFunc
 export type EffectHandle = Record<"stop" | "pause" | "resume", GeneralFunc>
 
 export type ComponentFunc = (
     anchor: Text,
-    context?: ComponentInstanceInternal
+    meta?: ComponentMeta
 ) => ComponentInstance<QingkuaiComponent<any>>
-export type ComponentInstance<T extends QingkuaiComponent<any>> = Prettify<
-    ComponentInstanceBase & Readonly<ReturnType<T[typeof RENDER]>>
+
+export type ComponentInstance<T extends QingkuaiComponent<any>> = ComponentInstanceBase &
+    Readonly<ComponentExports<T>> & { [COMPONENT]?: T }
+
+export type ComponentMember<T extends QingkuaiComponent<any>, K> =
+    T extends QingkuaiComponent<infer F>
+        ? F extends (ctx: infer C) => any
+            ? K extends keyof C
+                ? C[K]
+                : any
+            : any
+        : any
+
+export type DeclaredContextKeys<I extends ComponentInstance<any>> = Exclude<
+    keyof InstanceContexts<I>,
+    typeof EMPTY_SIGN
+>
+export type InstanceContexts<I extends ComponentInstance<any>> = ComponentContexts<
+    ComponentOfInstance<I>
 >
 
-export type DefaultValues = Partial<Record<"props" | "refs", AnyObject>>
 export type ClassAttrValue = ClassAttrValue[] | Record<string, any> | string
+export type DefaultValues = Partial<Record<"props" | "refs" | "contexts", AnyObject>>
+
+export type BoundLifecycleFunc = (callback: GeneralFunc) => void
+export type BoundEffectFunc = (callback: EffectCallback) => EffectHandle
+export type BoundWatchFunc = <T>(getter: Getter<T>, callback: WatchCallback<T>) => EffectHandle
+
+export type BoundSetContextFunc<T extends QingkuaiComponent<any>> = [
+    Exclude<keyof ComponentContexts<T>, typeof EMPTY_SIGN>
+] extends [never]
+    ? (key: never, value: never) => void
+    : <K extends keyof ComponentContexts<T>>(key: K, value: ComponentContexts<T>[K]) => void
+
+export type BoundSetContextGetterFunc<T extends QingkuaiComponent<any>> = [
+    Exclude<keyof ComponentContexts<T>, typeof EMPTY_SIGN>
+] extends [never]
+    ? (key: never, getter: never) => void
+    : <K extends keyof ComponentContexts<T>>(
+          key: K,
+          getter: Getter<ComponentContexts<T>[K]>
+      ) => void

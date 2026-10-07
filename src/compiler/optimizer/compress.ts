@@ -1,3 +1,4 @@
+import type TS from "typescript"
 import type { CodeEditor } from "../transformer/editor"
 import type { RuntimeCodeWriter } from "../transformer/writer"
 import type { TemplateFragment } from "#type-declarations/compiler"
@@ -127,7 +128,7 @@ export function increaseReusedStringUsedTimes(value: string, isPropertyName = fa
     analyzeResult.reusedStrings[value].times++
 }
 
-export function collectReusedStringReference(node: ts.Node, references: ReusedStringReference[]) {
+export function collectReusedStringReference(node: TS.Node, references: ReusedStringReference[]) {
     const detail = getTransformableStringLiteralValue(node)
     if (isUndefined(detail)) {
         return
@@ -140,7 +141,7 @@ export function collectReusedStringReference(node: ts.Node, references: ReusedSt
     increaseReusedStringUsedTimes(detail.value, detail.propertyName)
 }
 
-function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail | undefined {
+function getTransformableStringLiteralValue(node: TS.Node): StringLiteralDetail | undefined {
     if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
         return
     }
@@ -168,7 +169,7 @@ function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail 
         }
 
         case ts.SyntaxKind.EnumMember: {
-            if ((node.parent as ts.EnumMember).initializer !== node) {
+            if ((node.parent as TS.EnumMember).initializer !== node) {
                 return
             }
             return defaultResult
@@ -183,7 +184,7 @@ function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail 
         }
 
         case ts.SyntaxKind.PropertyAssignment: {
-            if ((node.parent as ts.PropertyAssignment).name !== node) {
+            if ((node.parent as TS.PropertyAssignment).name !== node) {
                 return defaultResult
             }
             // fallthrough
@@ -193,7 +194,7 @@ function getTransformableStringLiteralValue(node: ts.Node): StringLiteralDetail 
         case ts.SyntaxKind.SetAccessor:
         case ts.SyntaxKind.MethodDeclaration:
         case ts.SyntaxKind.PropertyDeclaration: {
-            if ((node.parent as ts.NamedDeclaration).name !== node) {
+            if ((node.parent as TS.NamedDeclaration).name !== node) {
                 return
             }
             return {

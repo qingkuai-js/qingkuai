@@ -15,6 +15,10 @@ export const objectKeys: typeof Object.keys = (o: any) => {
     return OBJECT.keys(o)
 }
 
+export const objectCreate: typeof Object.create = (o: any) => {
+    return OBJECT.create(o)
+}
+
 export function call(fn: ArbitraryFunc, caller: any, ...args: any) {
     return fn.call(caller, ...args)
 }

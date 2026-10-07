@@ -21,16 +21,20 @@ export const UnnecessaryReactiveMark = withLocation(9001, (status: IdentifierSta
     }reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
 })
 
-export const DeclareDerivedMixedSyntaticForms = withLocation(9003, () => {
-    return "Mixing two syntactic forms to declare derived reactive value is not recommended."
-})
-
 export const IdentifierMaybeOverwritten = withLocation(9002, (name: string, scope: string) => {
     return `Top-level scope identifier "${name}" will be overwritten in ${scope}.`
 })
 
-export const UnnecessaryScopeDirective = withLocation(9015, () => {
+export const RedundantNestedRawCall = withLocation(9014, () => {
+    return `Nesting "raw" calls is redundant because the argument is already read without tracking.`
+})
+
+export const UnnecessaryScopeDirective = withLocation(9003, () => {
     return `The "#scope" directive has no effect because the current component has no scoped styles.`
+})
+
+export const StatefulUnkeyedForList = withLocation(9015, () => {
+    return `The "#for" list items contain internal state that may leak between items without a "#key".`
 })
 
 export const RedundantRawMark = withLocation(9005, () => {
@@ -66,13 +70,6 @@ export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
 export const UnnecessaryMutableDerivedDeclaration = withLocation(9004, () => {
     return `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
 })
-
-export const RedundantArgsForIntrinsic = withLocation(
-    9014,
-    (intrinsic: string, expected: number, got: number) => {
-        return `The "${intrinsic}" intrinsic expects exactly ${expected} argument${expected > 1 ? "s" : ""}, but got ${got}. The redundant arguments will be ignored.`
-    }
-)
 
 export function isCompileWarning(v: any): v is CompileWarning {
     return v instanceof QingkuaiCompileWarning

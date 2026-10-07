@@ -57,6 +57,10 @@ export function batchUpdating<R>(fn: ArbitraryFunc<R>) {
     return (stopBatchUpdating(), scheduleUpdate(), result)
 }
 
+export function noTrackingToRaw<R>(fn: ArbitraryFunc<R>) {
+    return noTracking(() => toRaw(fn()))
+}
+
 export function batchAndNoTracking<R>(fn: ArbitraryFunc<R>) {
     return batchUpdating(() => noTracking(fn))
 }

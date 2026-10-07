@@ -1,27 +1,15 @@
 import nodeFs from "node:fs"
-import nodeChildProcess from "node:child_process"
+
+import {
+    run,
+    readSync,
+    runVisible,
+    readPackageVersion,
+    changelogSectionHeadingRE
+} from "../src/util/scripts/sundry"
 
 const MAIN_BRANCH = "main"
 const VERSION_RE = /^\d+\.\d+\.\d+$/
-
-main()
-
-// 执行命令并返回去首尾空白的 stdout（用于读取输出）
-// Run a command and return the trimmed stdout (for reading output).
-function run(command: string): string {
-    return nodeChildProcess
-        .execSync(command, {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"]
-        })
-        .trim()
-}
-
-// 执行命令并将输出透传给终端（用于 git 交互类命令）
-// Run a command and pass its output through to the terminal (for git commands).
-function runVisible(command: string) {
-    nodeChildProcess.execSync(command, { stdio: "inherit" })
-}
 
 function getCurrentBranch(): string {
     return run("git branch --show-current")
@@ -56,26 +44,11 @@ function ensureMainInSyncWithRemote() {
     }
 }
 
-function readPackageVersion(): string {
-    const packageJson = JSON.parse(nodeFs.readFileSync("package.json", "utf8"))
-    const version = packageJson.version?.trim()
-    if (!version) {
-        throw new Error('The "version" field is missing in package.json')
-    }
-    return version
-}
-
-// 将字符串中的正则特殊字符转义
-// Escape regex special characters in a string.
-function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
 // 检查 CHANGELOG.md 中是否存在与版本号对应的变更记录
 // Ensure CHANGELOG.md contains a changelog section for the target version.
 function ensureChangelogEntryExists(version: string) {
-    const changelog = nodeFs.readFileSync("CHANGELOG.md", "utf8")
-    const headingRE = new RegExp(`^## \\[${escapeRegExp(version)}\\]`, "m")
+    const changelog = readSync("CHANGELOG.md")
+    const headingRE = changelogSectionHeadingRE(version, "m")
     if (!headingRE.test(changelog)) {
         throw new Error(`CHANGELOG.md does not contain a section for version ${version}`)
     }
@@ -101,7 +74,7 @@ function resolveVersionArg(): string | undefined {
 
 function writePackageVersion(version: string) {
     const packageJsonPath = "package.json"
-    const packageJson = JSON.parse(nodeFs.readFileSync(packageJsonPath, "utf8"))
+    const packageJson = JSON.parse(readSync(packageJsonPath))
     packageJson.version = version
     nodeFs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 }
@@ -150,3 +123,5 @@ function main() {
         }
     }
 }
+
+main()

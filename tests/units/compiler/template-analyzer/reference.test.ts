@@ -102,3 +102,31 @@ test("Invalid value for reference attribute", () => {
         }
     ])
 })
+
+test("raw-wrapped reference values tolerate parentheses and type operations", () => {
+    analyzeTemplateAndMatchMessages(
+        formatSourceCode(`
+            <lang-ts>
+                let plain = ""
+            </lang-ts>
+            <input &value={raw(plain)} />
+            <input &value={(raw(plain))} />
+            <input &value={raw!(plain)} />
+            <input &value={(raw as any)(plain)} />
+        `)
+    )
+})
+
+test("non-raw reference values wrapped in parentheses or type operations stay valid", () => {
+    analyzeTemplateAndMatchMessages(
+        formatSourceCode(`
+            <lang-ts>
+                let state = { value: "" }
+                let plain = ""
+            </lang-ts>
+            <input &value={(plain)} />
+            <input &value={plain!} />
+            <input &value={(state as { value: string }).value} />
+        `)
+    )
+})
