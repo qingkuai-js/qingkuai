@@ -9,15 +9,15 @@ import {
     findOutOfComment,
     findOutOfLiteralComment
 } from "../../../src/util/compiler/string"
+import {
+    markPositionFlag,
+    getPositionOfEachChar,
+    isPositionFlagSetAtIndex
+} from "../../../src/util/compiler/position"
 import { expect, test } from "vitest"
 import { PositionFlag } from "../../../src/compiler/enums"
 import { compileIntermediate } from "../../../src/compiler/compile"
 import { inputDescriptor, resetCompilerState } from "../../../src/compiler/state"
-import {
-    getPositionOfEachChar,
-    markPositionFlag,
-    isPositionFlagSetAtIndex
-} from "../../../src/util/compiler/position"
 
 test("Function: getPositionOfEachChar", () => {
     expect(getPositionOfEachChar("abc")).toMatchObject([

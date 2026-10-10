@@ -136,8 +136,6 @@ export class CompileIntermediateResult {
     }
 
     isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
-        // 索引可能越出 positions 表，越界一律视为该标记未设置
-        // （与 util/compiler/position.ts 中的同名函数保持一致）
         const position = this.positions[index]
         return !!position && !!(position.flag & flag)
     }
