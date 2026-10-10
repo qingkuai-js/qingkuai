@@ -9,8 +9,15 @@ import {
     findOutOfComment,
     findOutOfLiteralComment
 } from "../../../src/util/compiler/string"
+import {
+    markPositionFlag,
+    getPositionOfEachChar,
+    isPositionFlagSetAtIndex
+} from "../../../src/util/compiler/position"
 import { expect, test } from "vitest"
-import { getPositionOfEachChar } from "../../../src/util/compiler/position"
+import { PositionFlag } from "../../../src/compiler/enums"
+import { compileIntermediate } from "../../../src/compiler/compile"
+import { inputDescriptor, resetCompilerState } from "../../../src/compiler/state"
 
 test("Function: getPositionOfEachChar", () => {
     expect(getPositionOfEachChar("abc")).toMatchObject([
@@ -78,6 +85,33 @@ test("Function: getPositionOfEachChar", () => {
     ])
 
     expect(getPositionOfEachChar("")).toMatchObject([{ line: 1, column: 0, index: 0 }])
+})
+
+test("Function: isPositionFlagSetAtIndex", () => {
+    resetCompilerState({})
+    inputDescriptor.positions = getPositionOfEachChar("abc")
+
+    markPositionFlag(PositionFlag.Sourcemap, 1)
+    expect(isPositionFlagSetAtIndex(PositionFlag.Sourcemap, 0)).toBe(false)
+    expect(isPositionFlagSetAtIndex(PositionFlag.Sourcemap, 1)).toBe(true)
+    expect(isPositionFlagSetAtIndex(PositionFlag.Sourcemap, 3)).toBe(false)
+
+    // 越界索引不抛异常，一律视为该标记未设置
+    // Out-of-range indexes must not throw; the flag is treated as unset
+    expect(isPositionFlagSetAtIndex(PositionFlag.Sourcemap, 4)).toBe(false)
+    expect(isPositionFlagSetAtIndex(PositionFlag.Sourcemap, 1024)).toBe(false)
+    expect(isPositionFlagSetAtIndex(PositionFlag.Sourcemap, -1)).toBe(false)
+})
+
+test("Method: CompileIntermediateResult.isPositionFlagSetAtIndex", () => {
+    const result = compileIntermediate(`<div></div>`)
+    const outOfRange = result.positions.length
+
+    // 越界索引不抛异常，一律视为该标记未设置
+    // Out-of-range indexes must not throw; the flag is treated as unset
+    expect(result.isPositionFlagSetAtIndex(PositionFlag.Sourcemap, outOfRange)).toBe(false)
+    expect(result.isPositionFlagSetAtIndex(PositionFlag.Sourcemap, outOfRange + 1024)).toBe(false)
+    expect(result.isPositionFlagSetAtIndex(PositionFlag.Sourcemap, -1)).toBe(false)
 })
 
 test("Function: camel2Kebab", () => {

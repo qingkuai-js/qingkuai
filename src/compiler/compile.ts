@@ -136,7 +136,8 @@ export class CompileIntermediateResult {
     }
 
     isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
-        return !!(this.positions[index].flag & flag)
+        const position = this.positions[index]
+        return !!position && !!(position.flag & flag)
     }
 }
 

@@ -66,7 +66,8 @@ export function getScriptLocByIndex(start: number, end: number = start) {
 }
 
 export function isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
-    return !!(inputDescriptor.positions[index].flag & flag)
+    const position = inputDescriptor.positions[index]
+    return !!position && !!(position.flag & flag)
 }
 
 export function isPositionFlagSetAtPos(flag: PositionFlag, pos: ASTPosition) {
