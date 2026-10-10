@@ -1,5 +1,6 @@
 {
   "name": "qingkuai",
+  "packageManager": "pnpm@9.15.9",
   "license": "MIT",
   "author": "lgq",
   "type": "module",
