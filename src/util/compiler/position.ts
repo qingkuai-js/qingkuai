@@ -66,7 +66,10 @@ export function getScriptLocByIndex(start: number, end: number = start) {
 }
 
 export function isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {
-    return !!(inputDescriptor.positions[index].flag & flag)
+    // 索引可能越出 positions 表（调用方传入的索引可能来自语言服务侧或转换过程中推导出的偏移），
+    // 越界一律视为该标记未设置，避免 undefined.flag 抛异常打断整条编译
+    const position = inputDescriptor.positions[index]
+    return !!position && !!(position.flag & flag)
 }
 
 export function isPositionFlagSetAtPos(flag: PositionFlag, pos: ASTPosition) {
