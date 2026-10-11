@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.102](https://github.com/qingkuai-js/qingkuai/compare/v1.0.101...v1.0.102) (2026-10-11)
+
+### Fixes
+
+- restrict keyed selectors to equality-paired reactive deps and emit initial mount writes for managed attributes ([0142b6a](https://github.com/qingkuai-js/qingkuai/commit/0142b6a))
+- treat out-of-range indexes as "flag not set" in `isPositionFlagSetAtIndex` ([7b9c42a](https://github.com/qingkuai-js/qingkuai/commit/7b9c42a))
+- improve symlink handling for brand declarations on Windows ([ff30ffa](https://github.com/qingkuai-js/qingkuai/commit/ff30ffa))
+
 ## [1.0.101](https://github.com/qingkuai-js/qingkuai/compare/v1.0.91...v1.0.101) (2026-10-07)
 
 ### Features
