@@ -1,5 +1,5 @@
 import type { GeneralFunc } from "#type-declarations/tools"
-import type { ComponentInstanceBase } from "#type-declarations/runtime"
+import type { ComponentInstanceBase, Destruction, Effect } from "#type-declarations/runtime"
 import type { COMPONENT, QingkuaiComponent } from "@qingkuai/virtual/brand"
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
@@ -8,6 +8,7 @@ import { objectAssign } from "../shared/aliases"
 import { afterAll, beforeAll, vi } from "vitest"
 import { currentDestruction } from "../../runtime/state"
 import { getLastElem, replaceEachItems } from "../shared/arrays"
+import { isArray } from "../shared/assert"
 import { PARSER_TEMPLATE_OPTIONS } from "../../compiler/constants"
 import { createDestruction, destroy } from "../../runtime/destroy"
 import { parseTemplateStandalone } from "../../compiler/parser/template"
@@ -28,10 +29,24 @@ export function initDestruction() {
 }
 
 export function getCurrentEffect() {
-    if (!currentDestruction?.e) {
-        return null
+    const effects = currentDestruction?.e
+    if (!effects) {
+        return undefined
     }
-    return getLastElem(currentDestruction.e)
+    return isArray(effects) ? getLastElem(effects) : effects
+}
+
+// `Destruction.e` stores a single effect directly and only uses an array for
+// two or more effects, so tests must not assume an array.
+export function destructionHasEffect(destruction: Destruction | null, effect: Effect) {
+    const effects = destruction?.e
+    return effects === effect || (isArray(effects) && effects.includes(effect))
+}
+
+export function clearDestructionEffects(destruction: Destruction | null) {
+    if (destruction) {
+        destruction.e = NIL
+    }
 }
 
 export function createTestInstance() {

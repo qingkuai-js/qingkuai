@@ -41,7 +41,8 @@ function getOutput(format, dir) {
         format,
         entryFileNames: `[name]${ext}`,
         chunkFileNames(info) {
-            for (const id of info.moduleIds) {
+            for (const rawId of info.moduleIds) {
+                const id = rawId.replaceAll("\\", "/")
                 if (id.includes("/src/runtime/constants")) {
                     return `chunks/shared${ext}`
                 }

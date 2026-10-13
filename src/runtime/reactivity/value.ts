@@ -5,7 +5,7 @@ import type { Link, DestructuringFunc, ReactivityWrapper } from "#type-declarati
 import {
     OWN_KEYS,
     WRAPPER,
-    PROTO_MAP,
+    protoMap,
     TIMING_SYNC,
     WRAPPER_SET,
     WRAPPER_MAP,
@@ -186,9 +186,9 @@ function reactWithProxy(target: any, flag = 0): any {
             // 访问 Array、Set、Map 的原型方法时，返回方法包装器
             // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
             if (prototypeKey && isFunction(propValue)) {
-                const origin = any(PROTO_MAP[prototypeKey])[property]
+                const origin = any(protoMap()[prototypeKey])[property]
                 if (origin === target[property]) {
-                    return reactiveMethods[prototypeKey][property] || origin
+                    return reactiveMethods()[prototypeKey][property] || origin
                 }
             }
             return isShallow ? propValue : constReact(propValue)

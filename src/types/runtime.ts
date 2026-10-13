@@ -34,9 +34,8 @@ export interface TraverseContext {
     x: any // current key/index
 }
 
-export interface TraverseInfo {
+export interface TraverseInfo extends TraverseContext {
     d: Destruction
-    c: TraverseContext
     s: Setter | undefined
 }
 
@@ -80,13 +79,17 @@ export interface Effect {
 export interface Destruction {
     d: boolean // disposed
     f: number // fragment flag
-    e: Effect[] | null // effects
+    /** a single effect is stored directly, multiple effects in an array */
+    e: Effect | Effect[] | null
+    /** context effects: re-run when the render context changes (see list directive) */
+    u: EffectCallback | EffectCallback[] | null
     p: Destruction | null // parent
     n: ChildNode | null // end node
     s: ChildNode | null // start node
     a: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
     m: ComponentInstance<any> | null // component
+    i: number // index within the parent's children array, -1 when detached
 }
 
 export interface BaseWrapper {

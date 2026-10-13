@@ -172,7 +172,7 @@ function update() {
 
     // 为了防止更新调度器被无限递归调用，必须将这种递归调用深度限制在一个合理范围内（当前为300）
     // This recursion depth must be capped (currently at 200) to prevent infinite recursive updates.
-    if (increRecursionScheduleCount() > __qk_max_schedule_depth) {
+    if (increRecursionScheduleCount() > __qk__max_schedule_depth) {
         resetSchedulingEffects(1)
         resetSchedulerState()
         MaximumUpdateDepthExceeded()

@@ -9,23 +9,46 @@ import { nextTick, reactiveNotEqual } from "../util/runtime/sundry"
 import { ATTRIBUTE_PREFIX, XLINK_NAMESPACE_URI } from "./constants"
 import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert"
 
+// 属性缓存键会被频繁用作 DOM 元素上的扩展属性名，缓存字符串拼接结果
+// 可以避免每次访问都为属性名重新分配字符串
+// The cache keys are used as expando property names on DOM elements on hot
+// paths; memoizing the concatenation avoids re-allocating the name every time.
+const attributeCacheKeys = new Map<string, string>()
+
+function attributeCacheKey(name: string) {
+    let key = attributeCacheKeys.get(name)
+    if (key === undefined) {
+        key = ATTRIBUTE_PREFIX + name
+        attributeCacheKeys.set(name, key)
+    }
+    return key
+}
+
+function getAttribute(elem: Element, name: string) {
+    return elem.getAttribute(name) ?? ""
+}
+
 export function setClassName(elem: Element, value: ClassAttrValue) {
-    const className = getClassNameString(value)
-    if (className != any(elem)[ATTRIBUTE_PREFIX + "class"]) {
-        if (!className) {
-            elem.removeAttribute("class")
-        } else {
-            elem.className = className
-        }
-        any(elem)[ATTRIBUTE_PREFIX + "class"] = className
+    const className = isString(value) ? value : getClassNameString(value)
+    // 与元素上实际的类名比较：元素首次挂载且类名未变化时完全不需要触碰 DOM
+    // Compare against the class actually present on the element: on first mount
+    // (and whenever the class did not change) this avoids any DOM mutation.
+    if (getAttribute(elem, "class") === className) {
+        return
+    }
+    if (className) {
+        elem.className = className
+    } else {
+        elem.removeAttribute("class")
     }
 }
 
 export function setAttribute(elem: Element, name: string, value: any) {
-    if (!reactiveNotEqual(any(elem)[ATTRIBUTE_PREFIX + name], value)) {
+    const cacheKey = attributeCacheKey(name)
+    if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
         return
     }
-    any(elem)[ATTRIBUTE_PREFIX + name] = value
+    any(elem)[cacheKey] = value
 
     if (isNull(value) || isUndefined(value)) {
         elem.removeAttribute(name)
@@ -54,7 +77,7 @@ export function setAttribute(elem: Element, name: string, value: any) {
 export function setXlinkAttribute(elem: Element, name: string, value: any) {
     const localName = name
     const qualifiedName = "xlink:" + localName
-    const key = ATTRIBUTE_PREFIX + qualifiedName
+    const key = attributeCacheKey(qualifiedName)
     if (!reactiveNotEqual(any(elem)[key], value)) {
         return
     }
@@ -92,7 +115,7 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
                 for (const option of options) {
                     option.selected = !notEqual(target, getElementValue(option))
                 }
-                any(elem)[ATTRIBUTE_PREFIX + "value"] = target
+                any(elem)[attributeCacheKey("value")] = target
             }
         } else {
             const containerIsArray = isArray(target)
