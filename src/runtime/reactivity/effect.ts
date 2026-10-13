@@ -11,8 +11,9 @@ import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 import type { EffectFunc, WatchFunc } from "#type-declarations/runtime-ex"
 
 import {
-    TIMINGS,
     TIMING_UNSET,
+    TIMING_PRE,
+    TIMING_POST,
     TIMING_SYNC,
     EFFECT_WATCH,
     EFFECT_RENDER,
@@ -36,15 +37,43 @@ import {
     setCurrentInstance,
     setCurrentDestruction
 } from "../state"
-import { NIL, UNDEF } from "../constants"
+import { NIL, NOOP, UNDEF } from "../constants"
+import { DEV } from "../dev"
 import { objectAssign } from "../internal"
 import { getSubscription } from "./schedule"
 import { any } from "../../util/shared/sundry"
 import { getLastElem, swapDelete } from "../../util/shared/arrays"
 import { CreateOnDisposedComponent, EffectOrWatchHasNoDependecies } from "../messages/warn"
+import { isArray } from "../../util/shared/assert"
 
-export const [watch, preWatch, postWatch, syncWatch] = watchEffectFuncGen()
-export const [effect, preEffect, postEffect, syncEffect] = reactiveEffectFuncGen()
+// 时序变体各自独立声明，而不是由一个工厂统一产出：只有真正被引用的 API
+// （以及下方共享的构造逻辑）才会进入产物，其余会被打包器整体摇掉。
+// Each timing variant is declared on its own instead of being produced by a single
+// factory: only the referenced APIs (and the shared construction logic below)
+// reach the bundle, the rest is tree-shaken away.
+export const watch: WatchFunc = (instance, getter, callback) =>
+    watchAt(TIMING_UNSET, instance, getter, callback)
+
+export const preWatch: WatchFunc = (instance, getter, callback) =>
+    watchAt(TIMING_PRE, instance, getter, callback)
+
+export const postWatch: WatchFunc = (instance, getter, callback) =>
+    watchAt(TIMING_POST, instance, getter, callback)
+
+export const syncWatch: WatchFunc = (instance, getter, callback) =>
+    watchAt(TIMING_SYNC, instance, getter, callback)
+
+export const effect: EffectFunc = (instance, callback) =>
+    reactiveEffectAt(TIMING_UNSET, instance, callback)
+
+export const preEffect: EffectFunc = (instance, callback) =>
+    reactiveEffectAt(TIMING_PRE, instance, callback)
+
+export const postEffect: EffectFunc = (instance, callback) =>
+    reactiveEffectAt(TIMING_POST, instance, callback)
+
+export const syncEffect: EffectFunc = (instance, callback) =>
+    reactiveEffectAt(TIMING_SYNC, instance, callback)
 
 export function markActiveEffectNoCheck() {
     if (activeEffect) {
@@ -52,8 +81,98 @@ export function markActiveEffectNoCheck() {
     }
 }
 
+// 渲染副作用先以"投机"方式执行一次：若它没有读取任何响应式值（例如列表行的
+// 绑定只读取循环上下文），它就永远不会被响应式调度器触发，只会在上下文变化时
+// 由列表重新执行。这种情况不需要副作用对象，直接把回调记录到 Destruction 上，
+// 让"每个列表行零额头分配"成为常态，同时消除这些对象带来的 GC 压力。
+// A render effect is first executed speculatively: if it read no reactive value
+// (a list row binding that only reads the loop context, for instance) it can never
+// be triggered by the reactive scheduler and is only re-run by the list when the
+// context changes. Such a binding needs no effect object at all, so the callback is
+// recorded on the `Destruction` instead, making "zero overhead per row" the norm
+// and removing the GC pressure of those objects.
+//
+// 投机执行会嵌套：列表块挂载每一行时，行内的绑定会再次调用 renderEffect，所以临时
+// 对象不能全局共用一个——内层调用会解绑并覆盖外层刚收集到的依赖链接，使外层（列表）
+// 副作用失去依赖、不再随数据变化重新渲染。这里按嵌套深度复用一组对象，单层渲染
+// （绝大多数情况）依旧零分配。
+// The speculative run nests: mounting a row runs the row's bindings, which call
+// `renderEffect` again. The temporary effect must therefore not be shared globally — an
+// inner call would unlink and overwrite the links the outer run has just collected,
+// leaving the outer (list) effect without dependencies and never re-rendering it again.
+// The temporary effects are pooled by nesting depth instead; the common single-level
+// case still allocates nothing.
+const speculativeEffects: Effect[] = []
+let speculativeDepth = 0
+
+function getSpeculativeEffect(depth: number): Effect {
+    return (speculativeEffects[depth] ??= {
+        f: NOOP,
+        k: [],
+        x: -1,
+        c: NIL,
+        l: EFFECT_RENDER,
+        t: TIMING_UNSET,
+        d: NIL,
+        i: 0
+    })
+}
+
 export function renderEffect(fn: EffectCallback) {
-    createEffect(EFFECT_RENDER, TIMING_UNSET, fn, currentDestruction)
+    const destruction = currentDestruction
+    if (destruction?.d) {
+        if (DEV) {
+            CreateOnDisposedComponent("effect")
+        }
+        return
+    }
+
+    const depth = speculativeDepth++
+    const scratch = getSpeculativeEffect(depth)
+    scratch.f = fn
+    scratch.l = EFFECT_RENDER
+    scratch.c = NIL
+    scratch.d = destruction
+
+    let res: any
+    try {
+        res = runEffectCollector(scratch)
+    } finally {
+        speculativeDepth = depth
+    }
+
+    // 没有依赖也没有清理函数：登记为上下文副作用即可
+    // No dependencies and no cleanup function: registering it as a context effect
+    // is enough.
+    if (!scratch.k.length && !res) {
+        if (destruction) {
+            appendContextEffect(destruction, fn)
+        }
+        return
+    }
+
+    // 存在依赖（或清理函数）：把它变成真正的副作用，并直接沿用刚收集到的依赖链接
+    // Dependencies (or a cleanup) exist: turn it into a real effect and reuse the
+    // links that were collected during the speculative run.
+    const effect: Effect = {
+        f: fn,
+        k: scratch.k,
+        x: -1,
+        c: res || NIL,
+        l: scratch.l,
+        t: TIMING_UNSET,
+        d: destruction,
+        i: getIncrementEffectId()
+    }
+    scratch.k = []
+    scratch.d = NIL
+    const links = effect.k
+    for (let i = 0; i < links.length; i++) {
+        links[i].e = effect
+    }
+    if (destruction) {
+        attachEffectToDestruction(effect, destruction)
+    }
 }
 
 export function derivedEffect(fn: ArbitraryFunc) {
@@ -106,10 +225,8 @@ export function appendLinksToActiveEffect(from: Effect) {
 }
 
 export function disposeEffect(effect: Effect, byDestruction = false) {
-    const destructionEffects = effect.d?.e
-    if (!byDestruction && effect.x >= 0 && destructionEffects?.length) {
-        getLastElem(destructionEffects)!.x = effect.x
-        swapDelete(destructionEffects, effect.x)
+    if (!byDestruction) {
+        detachEffectFromDestruction(effect)
     }
     effect.c?.()
     effect.c = NIL
@@ -120,6 +237,77 @@ export function disposeEffect(effect: Effect, byDestruction = false) {
     effect.d = NIL
     effect.v = UNDEF
     effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED
+}
+
+// 从所属 Destruction 中摘除副作用。仅有一个副作用时它被直接存放在 `d.e` 上，
+// 有多个时才使用数组，因此绝大多数渲染只有零额外分配
+// Detach the effect from its `Destruction`. A single effect is stored directly
+// on `d.e` and only multiple effects need an array, so the common case of a
+// render with one binding does not allocate at all.
+function detachEffectFromDestruction(effect: Effect) {
+    const destruction = effect.d
+    if (!destruction) {
+        return
+    }
+    const effects = destruction.e
+    if (!effects) {
+        return
+    }
+    if (isArray(effects)) {
+        if (effect.x >= 0 && effect.x < effects.length) {
+            getLastElem(effects)!.x = effect.x
+            swapDelete(effects, effect.x)
+        }
+        if (!effects.length) {
+            destruction.e = NIL
+        }
+    } else if (effects === effect) {
+        destruction.e = NIL
+    }
+    effect.x = -1
+}
+
+function attachEffectToDestruction(effect: Effect, destruction: Destruction) {
+    const effects = destruction.e
+    if (!effects) {
+        destruction.e = effect
+        effect.x = 0
+    } else if (isArray(effects)) {
+        effect.x = effects.length
+        effects.push(effect)
+    } else {
+        destruction.e = [effects, effect]
+        effects.x = 0
+        effect.x = 1
+    }
+}
+
+// 上下文副作用只需要在所属渲染的上下文变化时重新执行（见 list 指令的 updateBlock）
+// A context effect only has to be re-run when the context of its render changes
+// (see `updateBlock` in the list directive).
+export function appendContextEffect(destruction: Destruction, fn: EffectCallback) {
+    const updaters = destruction.u
+    if (!updaters) {
+        destruction.u = fn
+    } else if (isArray(updaters)) {
+        updaters.push(fn)
+    } else {
+        destruction.u = [updaters, fn]
+    }
+}
+
+export function runContextEffects(destruction: Destruction) {
+    const updaters = destruction.u
+    if (!updaters) {
+        return
+    }
+    if (isArray(updaters)) {
+        for (let i = 0; i < updaters.length; i++) {
+            updaters[i]()
+        }
+    } else {
+        updaters()
+    }
 }
 
 function createEffect(
@@ -140,7 +328,9 @@ function createEffect(
         i: getIncrementEffectId()
     }
     if (destruction?.d) {
-        CreateOnDisposedComponent("effect")
+        if (DEV) {
+            CreateOnDisposedComponent("effect")
+        }
         return objectAssign<Effect, Partial<Effect>>(effect, {
             d: NIL,
             l: flag | EFFECT_DISPOSED | EFFECT_DISABLED
@@ -163,42 +353,29 @@ function createEffect(
     // 将副作用记录到 Destruction
     // Record the effect onto `Destruction`
     if (checkAndDestroyInvalidEffect(effect) && destruction) {
-        const effects = (destruction.e ??= [])
-        effect.x = effects.length
-        effects.push(effect)
+        attachEffectToDestruction(effect, destruction)
     }
 
     return effect
 }
 
-function watchEffectFuncGen() {
-    return TIMINGS.map<WatchFunc>(timing => {
-        return <T>(
-            instance: ComponentInstanceBase | null,
-            getter: Getter<T>,
-            callback: WatchCallback<T>
-        ) => {
-            return makeEffectHandle(
-                createEffect(
-                    EFFECT_WATCH,
-                    timing,
-                    getter,
-                    instance && instance._internal.d!,
-                    callback
-                )
-            )
-        }
-    })
+function watchAt<T>(
+    timing: number,
+    instance: ComponentInstanceBase | null,
+    getter: Getter<T>,
+    callback: WatchCallback<T>
+) {
+    return makeEffectHandle(
+        createEffect(EFFECT_WATCH, timing, getter, instance && instance._internal.d!, callback)
+    )
 }
 
-function reactiveEffectFuncGen() {
-    return TIMINGS.map<EffectFunc>(timing => {
-        return (instance: ComponentInstanceBase | null, callback: EffectCallback) => {
-            return makeEffectHandle(
-                createEffect(0, timing, callback, instance && instance._internal.d!)
-            )
-        }
-    })
+function reactiveEffectAt(
+    timing: number,
+    instance: ComponentInstanceBase | null,
+    callback: EffectCallback
+) {
+    return makeEffectHandle(createEffect(0, timing, callback, instance && instance._internal.d!))
 }
 
 function unlink(effect: Effect) {
@@ -275,13 +452,15 @@ function checkAndDestroyInvalidEffect(effect: Effect) {
     }
 
     if (!isValid) {
-        const isWatch = effect.l & EFFECT_WATCH
-        const isDerived = effect.l & EFFECT_DERIVED
         disposeEffect(effect)
-        EffectOrWatchHasNoDependecies(
-            isWatch || isDerived ? effect.g! : effect.f,
-            isWatch ? "watcher" : effect.l & EFFECT_DERIVED ? "derived reactive value" : ""
-        )
+        if (DEV) {
+            const isWatch = effect.l & EFFECT_WATCH
+            const isDerived = effect.l & EFFECT_DERIVED
+            EffectOrWatchHasNoDependecies(
+                isWatch || isDerived ? effect.g! : effect.f,
+                isWatch ? "watcher" : isDerived ? "derived reactive value" : ""
+            )
+        }
     }
     return isValid
 }

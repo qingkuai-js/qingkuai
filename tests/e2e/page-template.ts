@@ -47,7 +47,7 @@ export function renderScenarioPage(scenario: E2EScenario) {
                 </main>
 
                 <script>
-                    globalThis.__qk_max_schedule_depth = 300
+                    globalThis.__qk__max_schedule_depth = 300
                 </script>
 
                 <script type="module">

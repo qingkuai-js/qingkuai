@@ -4,7 +4,7 @@ import type {
     TraverseInfo,
     TraverseContext
 } from "#type-declarations/runtime"
-import type { ArbitraryFunc, Getter, Setter } from "#type-declarations/tools"
+import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
 
 import {
     TRAVERSE_SET,
@@ -13,7 +13,7 @@ import {
     TRAVERSE_OBJECT,
     TRAVERSE_ARRAYLIKE
 } from "./constants"
-import { destroy } from "../destroy"
+import { destroy, createDestruction } from "../destroy"
 import { invokeRender } from "./render"
 import { optc } from "../../util/shared/sundry"
 import { NIL, REFLECT, UNDEF } from "../constants"
@@ -23,9 +23,16 @@ import { EFFECT_SCHEDULING } from "../reactivity/constants"
 import { reactiveNotEqual } from "../../util/runtime/sundry"
 import { FRAG_WHOLE_CONTENT } from "../../util/shared/flags"
 import { DuplicateKey, NonTraverse } from "../messages/error"
-import { currentDestruction, currentInstance } from "../state"
+import {
+    currentDestruction,
+    currentInstance,
+    setCurrentInstance,
+    setCurrentDestruction
+} from "../state"
 import { appendChild, getParentElement, insertBefore } from "../dom"
-import { renderEffect, runAndUpdateEffect } from "../reactivity/effect"
+import { MountCollector, createMountCollector, flushMountCollector } from "../dom"
+import { renderEffect, runAndUpdateEffect, runContextEffects } from "../reactivity/effect"
+import { DEV } from "../dev"
 import { isArray, isNumber, isString, isUndefined } from "../../util/shared/assert"
 
 export function keyedListBlock(
@@ -43,20 +50,24 @@ export function keyedListBlock(
     const parentDestruction = currentDestruction
 
     const mountKeyedInfo = (
-        reference: ChildNode,
+        reference: ChildNode | MountCollector,
         key: any,
         index: number,
         runtimeRender: ArbitraryFunc
     ) => {
-        const info: TraverseInfo = {
-            s: UNDEF,
-            d: NIL as any,
-            c: getContext(traversable, index)
-        }
-        const render = () => {
-            info.s = runtimeRender(reference, info.c)
-        }
-        info.d = invokeRender(render, componentInstance, parentDestruction)
+        // The context lives on the info object itself so that every row costs a
+        // single allocation instead of one for the info plus one for its context.
+        const info = { s: UNDEF, d: NIL, m: NIL, x: NIL } as unknown as TraverseInfo
+        fillContext(traversable, index, info)
+        // 内联 invokeRender：避免为每一行额外分配一个闭包
+        // Inlined `invokeRender` to avoid allocating one closure per row.
+        const originalInstance = currentInstance
+        const destruction = createDestruction(parentDestruction, componentInstance)
+        setCurrentInstance(componentInstance)
+        info.s = runtimeRender(reference, info)
+        setCurrentInstance(originalInstance)
+        setCurrentDestruction(parentDestruction)
+        info.d = destruction
         infos.set(key, info)
     }
 
@@ -81,8 +92,7 @@ export function keyedListBlock(
         const firstInfo = infos.get(oldKeys[0])
         const wholeContent = !!(firstInfo && isWholeContentDestruction(firstInfo.d))
         for (let i = 0; i < oldLength; i++) {
-            const key = oldKeys[i]
-            const info = infos.get(key)
+            const info = infos.get(oldKeys[i])
             if (!info) {
                 continue
             }
@@ -91,9 +101,11 @@ export function keyedListBlock(
                 nodesDetached = true
             }
             destroy(info.d, !nodesDetached)
-            infos.delete(key)
             removedCount++
         }
+        // 调用方会立刻用新的 Map 替换 infos，因此无需逐个删除键
+        // The caller replaces `infos` with a fresh Map right away, so the keys
+        // do not need to be removed one by one.
         return removedCount
     }
 
@@ -110,54 +122,14 @@ export function keyedListBlock(
             return
         }
 
-        if (oldLength === 0) {
-            const keyContext: TraverseContext = {
-                m: NIL,
-                x: NIL
-            }
-            const newKeys: any[] = Array(newLength)
-            const keyVisited = new Map<any, number>()
-            for (let i = 0; i < newLength; i++) {
-                fillContext(traversable, i, keyContext)
-                const key = getKey(keyContext.m, keyContext.x)
-                if (keyVisited.has(key)) {
-                    DuplicateKey(key)
-                }
-                keyVisited.set(key, i)
-                newKeys[i] = key
-            }
-
-            for (let i = newLength - 1; i >= 0; i--) {
-                const reference =
-                    i < newLength - 1
-                        ? (getFirstNodeOfDestruction(infos.get(newKeys[i + 1])!.d) ?? anchor)
-                        : anchor
-                mountKeyedInfo(reference, newKeys[i], i, render)
-            }
-            oldKeys = newKeys
-
-            if (holesCount > 256 && holesCount > oldKeys.length) {
-                infos = new Map(infos)
-                holesCount = 0
-            }
-            return
-        }
-
         const keyContext: TraverseContext = {
             m: NIL,
             x: NIL
         }
         const newKeys: any[] = Array(newLength)
-        const keyToNewIndex = new Map<any, number>()
         for (let i = 0; i < newLength; i++) {
             fillContext(traversable, i, keyContext)
-
-            const key = getKey(keyContext.m, keyContext.x)
-            if (keyToNewIndex.has(key)) {
-                DuplicateKey(key)
-            }
-            keyToNewIndex.set(key, i)
-            newKeys[i] = key
+            newKeys[i] = getKey(keyContext.m, keyContext.x)
         }
 
         let start = 0
@@ -165,30 +137,45 @@ export function keyedListBlock(
         let newEnd = newLength - 1
         for (; start <= oldEnd && start <= newEnd; start++) {
             const oldKey = oldKeys[start]
-            const newKey = newKeys[start]
-            if (oldKey !== newKey) {
+            if (oldKey !== newKeys[start]) {
                 break
             }
             updateBlock(infos.get(oldKey)!, traversable, start)
         }
         for (; oldEnd >= start && newEnd >= start; oldEnd--, newEnd--) {
             const oldKey = oldKeys[oldEnd]
-            const newKey = newKeys[newEnd]
-            if (oldKey !== newKey) {
+            if (oldKey !== newKeys[newEnd]) {
                 break
             }
             updateBlock(infos.get(oldKey)!, traversable, newEnd)
         }
 
-        if (start > oldEnd) {
-            for (let i = newEnd; i >= start; i--) {
-                const reference =
-                    i < newLength - 1
-                        ? (getFirstNodeOfDestruction(infos.get(newKeys[i + 1])!.d) ?? anchor)
-                        : anchor
-                mountKeyedInfo(reference, newKeys[i], i, render)
+        // 只有在尾部循环没有复用任何旧行（`newEnd` 仍是最后一行的索引）时，新增的行才
+        // 全部位于列表末尾：此时无需为已有行建立 key 到索引的映射，而且这些行可以一次性
+        // 组装并插入（见 MountCollector）。否则新增行位于中间，必须交给下面的通用分支
+        // 逐行插入到正确的参考节点之前。
+        // Only when the tail loop reused no old row (so `newEnd` is still the index of the
+        // last row) are all new rows appended at the tail: no key to index map is needed
+        // for the existing rows, and the whole run can be assembled and inserted in one
+        // operation (see `MountCollector`). Otherwise the new rows sit in the middle and
+        // the general branch below has to insert each of them before its own reference node.
+        if (start > oldEnd && newEnd === newLength - 1) {
+            const infoCountBefore = infos.size
+            const addedCount = newLength - start
+            const collector = createMountCollector(anchor)
+
+            for (let i = start; i < newLength; i++) {
+                mountKeyedInfo(collector, newKeys[i], i, render)
             }
+            flushMountCollector(collector)
             oldKeys = newKeys
+
+            // 重复键会让映射的条目数少于新增行数，此时才去定位重复项（仅在出错时）
+            // Duplicate keys make the map hold fewer entries than rows were added;
+            // the offending key is only located when the error is actually raised.
+            if (infos.size !== infoCountBefore + addedCount) {
+                DuplicateKey(DEV ? findDuplicateKey(newKeys, start) : UNDEF)
+            }
 
             if (holesCount > 256 && holesCount > oldKeys.length) {
                 infos = new Map(infos)
@@ -212,6 +199,18 @@ export function keyedListBlock(
             return
         }
 
+        // 只有在确实需要按键查找时（存在删除、中间插入或移动）才建立索引映射
+        // Build the key to index map only when it is really needed, i.e. when rows
+        // are removed, inserted in the middle or moved.
+        const keyToNewIndex = new Map<any, number>()
+        for (let i = 0; i < newLength; i++) {
+            const key = newKeys[i]
+            if (keyToNewIndex.has(key)) {
+                DuplicateKey(key)
+            }
+            keyToNewIndex.set(key, i)
+        }
+
         let patched = 0
         let moved = false
         let maxNewIndexSoFar = 0
@@ -220,6 +219,52 @@ export function keyedListBlock(
         const newStart = start
         const toBePatched = newEnd - newStart + 1
         const newIndexToOldIndexMap = new Int32Array(toBePatched)
+
+        // 整个列表被完全替换（没有任何旧行被复用）时，可以像清空列表那样一次性
+        // 移除全部旧内容，避免为上万个行逐个调用 Node.remove()
+        // When the whole list is replaced (not a single old row is reused) the old
+        // content can be detached in one operation, like clearing the list does,
+        // instead of calling `Node.remove()` for every single row.
+        if (
+            oldStart === 0 &&
+            oldEnd === oldLength - 1 &&
+            newEnd === newLength - 1 &&
+            !oldKeys.some(key => {
+                const newIndex = keyToNewIndex.get(key)
+                return !isUndefined(newIndex) && newIndex >= newStart && newIndex <= newEnd
+            })
+        ) {
+            let nodesDetached = false
+            const firstInfo = infos.get(oldKeys[0])
+            const wholeContent = !!(firstInfo && isWholeContentDestruction(firstInfo.d))
+            for (let i = 0; i < oldLength; i++) {
+                const info = infos.get(oldKeys[i])
+                if (!info) {
+                    continue
+                }
+                if (wholeContent && !nodesDetached) {
+                    detachWholeContent(info.d, anchor)
+                    nodesDetached = true
+                }
+                destroy(info.d, !nodesDetached)
+            }
+            // 所有旧行都已移除，直接重建映射比逐个删除键更快
+            infos = new Map()
+
+            const collector = createMountCollector(anchor)
+            for (let i = newStart; i <= newEnd; i++) {
+                mountKeyedInfo(collector, newKeys[i], i, render)
+            }
+            flushMountCollector(collector)
+            oldKeys = newKeys
+
+            if (holesCount > 256 && holesCount > oldKeys.length) {
+                infos = new Map(infos)
+                holesCount = 0
+            }
+            return
+        }
+
         for (let i = oldStart; i <= oldEnd; i++) {
             const oldKey = oldKeys[i]
             if (patched >= toBePatched) {
@@ -300,18 +345,10 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     const parentDestruction = currentDestruction
 
     const mountListInfo = (index: number) => {
-        let setter: Setter | undefined = UNDEF
-        const context = getContext(traversable, index)
-        const destruction = invokeRender(
-            () => (setter = render(context)),
-            componentInstance,
-            parentDestruction
-        )
-        return {
-            s: setter,
-            c: context,
-            d: destruction
-        }
+        const info = { s: UNDEF, d: NIL, m: NIL, x: NIL } as unknown as TraverseInfo
+        fillContext(traversable, index, info)
+        info.d = invokeRender(() => (info.s = render(info)), componentInstance, parentDestruction)
+        return info
     }
 
     renderEffect(() => {
@@ -470,29 +507,48 @@ function isWholeContentDestruction(destruction: Destruction) {
     return !!(destruction.f & FRAG_WHOLE_CONTENT)
 }
 
-function getContext(traversable: Traversable, index: number): TraverseContext {
-    const context: TraverseContext = {
-        m: NIL,
-        x: NIL
+// 仅在已经确定存在重复 key 时调用，用于定位重复项并作为错误信息的一部分
+// Only called once a duplicate key is known to exist, to locate it for the error.
+function findDuplicateKey(keys: any[], appendedFrom: number) {
+    const retained = new Set<any>()
+    for (let i = 0; i < appendedFrom; i++) {
+        retained.add(keys[i])
     }
-    return (fillContext(traversable, index, context), context)
+    const appended = new Set<any>()
+    for (let i = appendedFrom; i < keys.length; i++) {
+        const key = keys[i]
+        if (appended.has(key) || retained.has(key)) {
+            return key
+        }
+        appended.add(key)
+    }
+    return UNDEF
 }
 
 function updateBlock(oldInfo: TraverseInfo, traversable: Traversable, index: number) {
-    const context = oldInfo.c
-    const oldM = context.m
-    const oldX = context.x
-    fillContext(traversable, index, context)
+    const oldM = oldInfo.m
+    const oldX = oldInfo.x
+    fillContext(traversable, index, oldInfo)
 
-    if (reactiveNotEqual(oldM, context.m) || reactiveNotEqual(oldX, context.x)) {
-        oldInfo.s?.(context)
+    if (reactiveNotEqual(oldM, oldInfo.m) || reactiveNotEqual(oldX, oldInfo.x)) {
+        oldInfo.s?.(oldInfo)
 
-        for (let i = 0; i < (oldInfo.d.e?.length ?? 0); i++) {
-            const effect = oldInfo.d.e?.[i]
-            if (effect && !(effect.l & EFFECT_SCHEDULING)) {
-                runAndUpdateEffect(effect)
+        // 行内副作用只需在上下文变化时重新执行，单个副作用被直接存放（见 effect.ts）
+        // effect is stored directly (see effect.ts).
+        const effects = oldInfo.d.e
+        if (isArray(effects)) {
+            for (let i = 0; i < effects.length; i++) {
+                const effect = effects[i]
+                if (effect && !(effect.l & EFFECT_SCHEDULING)) {
+                    runAndUpdateEffect(effect)
+                }
             }
+        } else if (effects && !(effects.l & EFFECT_SCHEDULING)) {
+            runAndUpdateEffect(effects)
         }
+        // 只依赖循环上下文的绑定不会被响应式调度，由这里重新执行
+        // reactive system and are re-run here.
+        runContextEffects(oldInfo.d)
     }
 }
 

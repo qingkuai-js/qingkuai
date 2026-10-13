@@ -19,7 +19,8 @@ import { batchAndNoTracking, batchUpdateWithRaw, batchUpdating } from "./optimiz
 import { ensureGetRefProperty, reverse, reactiveNotEqual } from "../../util/runtime/sundry"
 import { isArrayLike, isObject, isSpreadable, isUndefined } from "../../util/shared/assert"
 
-const commonMethodsForSetAndMap: ReactiveMethods[number] = {
+function createReactiveMethods(): ReactiveMethods {
+    const commonMethodsForSetAndMap: ReactiveMethods[number] = {
     has(value) {
         return _has(this[WRAPPER], value, true)
     },
@@ -49,7 +50,7 @@ const iteratorMethods: ReactiveMethods[number] = {
     }
 }
 
-export const reactiveMethods: ReactiveMethods = {
+    const reactiveMethods: ReactiveMethods = {
     [WRAPPER_ARRAY]: {
         ...iteratorMethods,
         forEach: commonMethodsForSetAndMap.forEach,
@@ -170,6 +171,9 @@ export const reactiveMethods: ReactiveMethods = {
         // 待办：实现 getOrInsert、getOrInsertComputed 等映射方法
         // TODO: Implement map operations such as `getOrInsert` and `getOrInsertComputed`.
     }
+    }
+
+    return reactiveMethods
 }
 
 function _concat(wrapper: ReactivityWrapper, ...items: any) {
@@ -380,4 +384,14 @@ function _addOrDelete(wrapper: ReactivityWrapper, value: any, method: "add" | "d
         })
     }
     return wrapper.p
+}
+
+
+// 方法表按需构建：模块作用域只保留声明，使未使用深响应式的应用可以在打包时整体剔除
+// The method table is built lazily so that the module scope stays side-effect free and
+// applications that never use deep reactivity can tree-shake this whole layer away.
+let reactiveMethodsCache: ReactiveMethods | undefined
+
+export function reactiveMethods(): ReactiveMethods {
+    return (reactiveMethodsCache ??= createReactiveMethods())
 }

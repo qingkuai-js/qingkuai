@@ -43,10 +43,18 @@ export const LINK_HAS_CHANGED = 1 << 2
 export const LINK_VALUE_CHANGED = 1 << 3
 
 // sundry
-export const PROTO_MAP: AnyObject = {
-    [WRAPPER_SET]: Set.prototype,
-    [WRAPPER_MAP]: Map.prototype,
-    [WRAPPER_ARRAY]: Array.prototype
+// 原型映射同样按需构建：写成模块级对象字面量时，其中的原型读取会被打包器当作
+// 可能抛出的副作用保留下来，未使用深响应式的应用因此无法彻底摇掉这段代码。
+// The prototype map is built on demand as well: as a module-level object literal the
+// prototype reads inside it are kept by the bundler as potentially throwing side
+// effects, which stops applications that never use deep reactivity from shaking it out.
+let protoMapCache: AnyObject | undefined
+export function protoMap(): AnyObject {
+    return (protoMapCache ??= {
+        [WRAPPER_SET]: Set.prototype,
+        [WRAPPER_MAP]: Map.prototype,
+        [WRAPPER_ARRAY]: Array.prototype
+    })
 }
 export const TYPE_FLAG_MAP: AnyObject = {
     Set: WRAPPER_SET,

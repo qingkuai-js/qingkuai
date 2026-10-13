@@ -7,6 +7,8 @@ import { isNumber, isString, isUndefined } from "../util/shared/assert"
 import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, ATTRIBUTE_PREFIX } from "./constants"
 import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags"
 
+const VALUE_CACHE_KEY = ATTRIBUTE_PREFIX + "value"
+
 export function newTextNode() {
     return DOCUMENT!.createTextNode("")
 }
@@ -45,7 +47,41 @@ export function getChildAsText(target: Element, index = 0) {
     return (child.replaceWith(textNode), textNode)
 }
 
-export function insertBefore(reference: ChildNode, node: Node) {
+// 挂载收集器把一个连续渲染区间的内容先在文档外组装，再一次性插入文档。
+// 典型用途是列表挂载：逐行插入会让浏览器为每一行做一次样式失效标记，一次性
+// 插入同样数量的节点则只有一个插入点。收集器在插入后仍然可以继续充当该区间
+// 的挂载位置，因此后续再次插入的内容仍然落在原来的位置（而不是消失）。
+// A mount collector assembles a contiguous run of rendered content off-document
+// and inserts it with a single DOM operation. Inserting rows one by one makes the
+// browser invalidate styles per row; inserting the same nodes at once has a single
+// insertion point. After the flush the collector keeps acting as the mount position
+// of that run, so content inserted later still lands in place instead of vanishing.
+export class MountCollector {
+    flushed = false
+    constructor(
+        public reference: ChildNode,
+        public fragment: DocumentFragment
+    ) {}
+}
+
+export function createMountCollector(reference: ChildNode) {
+    return new MountCollector(reference, DOCUMENT!.createDocumentFragment())
+}
+
+export function flushMountCollector(collector: MountCollector) {
+    collector.reference.before(collector.fragment)
+    collector.flushed = true
+}
+
+export function insertBefore(reference: ChildNode | MountCollector, node: Node) {
+    if (reference instanceof MountCollector) {
+        if (reference.flushed) {
+            reference.reference.before(node)
+        } else {
+            reference.fragment.appendChild(node)
+        }
+        return
+    }
     reference.before(node)
 }
 
@@ -56,11 +92,11 @@ export function getSiblingAsText(node: ChildNode, distance = 1) {
 }
 
 export function getElementValue(elem: Element) {
-    return any(elem)[ATTRIBUTE_PREFIX + "value"] ?? any(elem).value
+    return any(elem)[VALUE_CACHE_KEY] ?? any(elem).value
 }
 
 export function getChild(node: Element, index = 0) {
-    if (((node as any)[FRAGMENT_FLAG] ?? 0) & FRAG_LEADING_ANCHOR) {
+    if ((node as any)[FRAGMENT_FLAG] & FRAG_LEADING_ANCHOR) {
         index++
     }
 
@@ -76,6 +112,7 @@ export function getChild(node: Element, index = 0) {
 // of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
     let content: DocumentFragment | undefined
+    let singleNode: ChildNode | undefined
     return (flag = 0) => {
         if (isUndefined(content)) {
             const template = DOCUMENT!.createElement("template")
@@ -83,12 +120,25 @@ export function createFragmentGetter(html: string, arr?: string[]) {
             content = template.content
         }
 
-        let ret = content.cloneNode(true) as any
         const isOrphan = flag & FRAG_ORPHAN_CONTENT
-        if (flag & FRAG_LEADING_ANCHOR) {
-            ret.prepend(newTextNode())
-        } else if (isOrphan) {
-            ret = ret.firstChild!
+        // 孤立内容只包含一个节点时可以克隆该节点本身，省掉为每一行克隆整个
+        // 文档片段再取出首个子节点带来的额外开销
+        // Orphan content consists of a single node, so cloning that node directly
+        // avoids cloning a whole DocumentFragment and extracting its first child
+        // for every single row.
+        let ret: any
+        if (isOrphan && !(flag & FRAG_LEADING_ANCHOR)) {
+            if (isUndefined(singleNode)) {
+                singleNode = content.firstChild as ChildNode
+            }
+            ret = singleNode.cloneNode(true)
+        } else {
+            ret = content.cloneNode(true) as any
+            if (flag & FRAG_LEADING_ANCHOR) {
+                ret.prepend(newTextNode())
+            } else if (isOrphan) {
+                ret = ret.firstChild!
+            }
         }
         if (flag & FRAGMENT_ROOT) {
             attachScopesToRoot(ret)

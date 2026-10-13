@@ -110,18 +110,34 @@ export function listen(elem: Element, type: string, handler: ArbitraryFunc, flag
     })
 }
 
-export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?: number) {
-    if (flag) {
-        any(elem)[EVENT_FLAG + type] = flag
+// 事件类型到扩展属性名的映射会被每个带事件的元素使用，缓存后可以避免重复拼接字符串
+// The event-type to expando-name mapping is needed for every element that has an
+// event listener; memoizing it avoids re-building the name strings each time.
+const delegateKeyMap = new Map<string, [string, string]>()
+
+function delegateKeysFor(type: string) {
+    let keys = delegateKeyMap.get(type)
+    if (keys === undefined) {
+        keys = [DELEGATE_PREFIX + type, EVENT_FLAG + type]
+        delegateKeyMap.set(type, keys)
     }
-    any(elem)[DELEGATE_PREFIX + type] = handler
+    return keys
+}
+
+export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?: number) {
+    const keys = delegateKeysFor(type)
+    if (flag) {
+        any(elem)[keys[1]] = flag
+    }
+    any(elem)[keys[0]] = handler
 }
 
 function dispatch(event: Event, passive: boolean) {
-    const flagKey = EVENT_FLAG + event.type
+    const keys = delegateKeysFor(event.type)
+    const flagKey = keys[1]
+    const handlerKey = keys[0]
     const bubblings: [EventTarget, number][] = []
     const path = event.composedPath().slice(0, -4)
-    const handlerKey = DELEGATE_PREFIX + event.type
 
     const excuteEventHandler = (elem: EventTarget, phase: number) => {
         const handler = any(elem)[handlerKey]

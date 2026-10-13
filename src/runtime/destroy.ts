@@ -5,7 +5,8 @@ import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
 import { walkNodes } from "../util/runtime/sundry"
 import { disposeEffect } from "./reactivity/effect"
-import { spliceByElem } from "../util/shared/arrays"
+import { swapDelete } from "../util/shared/arrays"
+import { isArray } from "../util/shared/assert"
 import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
 import { currentDestruction, setCurrentDestruction } from "./state"
 import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags"
@@ -24,16 +25,25 @@ export function createDestruction(
     const destruction: Destruction = {
         f: 0,
         e: NIL,
+        u: NIL,
         c: NIL,
         a: NIL,
         s: NIL,
         n: NIL,
         d: false,
         m: instance,
-        p: parentDestruction
+        p: parentDestruction,
+        i: -1
     }
     if (parentDestruction) {
-        ;(parentDestruction.c ??= []).push(destruction)
+        const children = (parentDestruction.c ??= [])
+        // 记录自身在父级 children 数组中的位置，使销毁时能以 O(1) 复杂度摘除，
+        // 否则逐个清除大量子渲染时会退化为 O(n^2)
+        // Remember the position inside the parent's children array so that
+        // destruction can detach in O(1); otherwise clearing many children
+        // degenerates to O(n^2).
+        destruction.i = children.length
+        children.push(destruction)
     }
     return setCurrentDestruction(destruction)!
 }
@@ -58,12 +68,23 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         }
     }
     if (effects) {
-        for (let i = 0; i < effects.length; i++) {
-            disposeEffect(effects[i], true)
+        if (isArray(effects)) {
+            for (let i = 0; i < effects.length; i++) {
+                disposeEffect(effects[i], true)
+            }
+        } else {
+            disposeEffect(effects, true)
         }
     }
     if (detachFromParent && destruction.p?.c) {
-        spliceByElem(destruction.p.c, destruction, false)
+        const siblings = destruction.p.c
+        if (destruction.i >= 0 && destruction.i < siblings.length) {
+            swapDelete(siblings, destruction.i)
+            if (destruction.i < siblings.length) {
+                siblings[destruction.i].i = destruction.i
+            }
+        }
+        destruction.i = -1
     }
     if (detachNodes && destruction.s && destruction.n) {
         if (destruction.f & FRAG_ORPHAN_CONTENT) {
@@ -76,6 +97,6 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         runHooks(instance, AFTER_DESTROY)
     }
     destruction.d = true
-    destruction.c = destruction.a = destruction.e = NIL
+    destruction.c = destruction.a = destruction.e = destruction.u = NIL
     destruction.s = destruction.n = destruction.m = destruction.p = NIL
 }
