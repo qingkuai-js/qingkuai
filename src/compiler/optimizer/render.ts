@@ -1,4 +1,4 @@
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
 import { TemplateNodeContext } from "#type-declarations/compiler"

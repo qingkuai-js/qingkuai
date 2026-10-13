@@ -8,7 +8,7 @@ import type {
 import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
 
-import ts from "typescript"
+import ts from "../../ts-api"
 
 import {
     isFunctionLiteral,

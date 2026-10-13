@@ -3,7 +3,7 @@ import type TS from "typescript"
 import type { Range } from "#type-declarations/compiler"
 import type { FindNodesPredicate } from "#type-declarations/ts-ast"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { walkTsNode } from "./walk"
 import { PositionFlag } from "../enums"

@@ -41,7 +41,10 @@ function getOutput(format, dir) {
         format,
         entryFileNames: `[name]${ext}`,
         chunkFileNames(info) {
-            for (const id of info.moduleIds) {
+            // moduleIds 在 Windows 上是反斜杠路径，统一转成正斜杠再匹配
+            // moduleIds use backslashes on Windows, normalize them before matching
+            for (const rawId of info.moduleIds) {
+                const id = rawId.replaceAll("\\", "/")
                 if (id.includes("/src/runtime/constants")) {
                     return `chunks/shared${ext}`
                 }
@@ -62,7 +65,7 @@ function replacePacakgeVersionPlugin() {
         renderChunk(code, chunk) {
             if (
                 !chunk.moduleIds.some(id => {
-                    return id.includes(VERSION_SOURCE_ID)
+                    return id.replaceAll("\\", "/").includes(VERSION_SOURCE_ID)
                 })
             ) {
                 return null

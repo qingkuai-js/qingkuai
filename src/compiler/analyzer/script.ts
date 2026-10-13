@@ -8,7 +8,7 @@ import type {
 import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler"
 import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import {
     indentSpacesRE,

@@ -4,7 +4,7 @@ import type { RuntimeCodeWriter } from "../transformer/writer"
 import type { TemplateFragment } from "#type-declarations/compiler"
 import type { StringLiteralDetail, ReusedStringReference } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { getNodeRange } from "../ts-ast/sundry"
 import { stringify } from "../../util/shared/aliases"

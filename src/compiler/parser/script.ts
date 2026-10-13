@@ -1,7 +1,7 @@
 import type TS from "typescript"
 import type { ParseDiatnosticDealtKind } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { walkTsNode } from "../ts-ast/walk"
 import { any } from "../../util/shared/sundry"

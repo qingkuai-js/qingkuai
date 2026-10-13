@@ -1,4 +1,4 @@
-import ts from "typescript"
+import ts from "./ts-api"
 import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants"
 
 import {
@@ -36,6 +36,7 @@ export type {
 } from "#type-declarations/compiler"
 
 export type { CompileIntermediateResult } from "./compile"
+export type { TypeScriptApi } from "./ts-api"
 
 export const util = {
     ts,
@@ -64,5 +65,6 @@ export { isCompileWarning } from "./message/warn"
 export { PositionFlag, TestingMode } from "./enums"
 export { parseDirectiveValue } from "./parser/directive"
 export { compile, compileIntermediate } from "./compile"
+export { getTypeScript, setTypeScript, setTypeScriptPath } from "./ts-api"
 export { parseEventFlagStandalone as parseEventFlag } from "./parser/event"
 export { parseTemplateStandalone as parseTemplate } from "./parser/template"

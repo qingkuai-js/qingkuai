@@ -7,7 +7,7 @@ import type {
     TemplateAttribute
 } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import {
     InvalidSlotName,

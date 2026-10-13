@@ -1,6 +1,6 @@
 import type { TsNodeWithContext } from "#type-declarations/ts-ast"
 
-import ts from "typescript"
+import ts from "../ts-api"
 import { walkAncestors } from "./walk"
 
 // 节点是否处于可提升的顶级作用域（含非函数块级作用域）

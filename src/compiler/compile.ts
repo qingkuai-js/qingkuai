@@ -16,7 +16,7 @@ import type {
 } from "#type-declarations/compiler"
 import type { PositionFlag } from "./enums"
 
-import ts from "typescript"
+import ts from "./ts-api"
 
 import {
     messages,

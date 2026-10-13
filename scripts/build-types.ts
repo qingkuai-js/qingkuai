@@ -75,7 +75,12 @@ function main() {
             continue
         }
 
-        const relativeBrandPath = nodePath.relative(nodePath.dirname(filePath), BRAND_TARGET_PATH)
+        // nodePath.relative 在 Windows 上会给出反斜杠，写进模块说明符会破坏解析，统一转成正斜杠
+        // nodePath.relative yields backslashes on Windows, which breaks module specifier resolution
+        // once written into the declarations, so normalize them
+        const relativeBrandPath = nodePath
+            .relative(nodePath.dirname(filePath), BRAND_TARGET_PATH)
+            .replaceAll("\\", "/")
         fsExtra.writeFileSync(
             filePath,
             readSync(filePath).replaceAll(
@@ -89,7 +94,29 @@ function main() {
         // Copy the JSDoc from the call signatures of the interfaces and inject it
         // above the const declarations referencing them in the generated d.ts files
         injectCallSignatureDocs(filePath)
+
+        fixInjectedTypeScriptImport(filePath)
     }
+}
+
+// api-extractor 会把注入式 ts 代理的类型渲染成非法的 `import { typescript } from "typescript"`，
+// 这里改写成默认导入，与其它 `typeof ts` 的写法保持一致
+// api-extractor renders the type of the injection proxy as the invalid
+// `import { typescript } from "typescript"`; rewrite it to a default import so that the
+// declaration uses `typeof ts`, like the other references to the typescript module do.
+function fixInjectedTypeScriptImport(targetDtsPath: string) {
+    const INVALID_IMPORT = "import { typescript } from 'typescript';"
+    const content = readSync(targetDtsPath)
+    if (!content.includes(INVALID_IMPORT)) {
+        return
+    }
+    const fixed = content
+        .replace(INVALID_IMPORT, "import ts from 'typescript';")
+        .replaceAll("ts: typescript;", "ts: typeof ts;")
+    if (fixed.includes(INVALID_IMPORT) || fixed.includes("ts: typescript;")) {
+        throw new Error(`Failed to rewrite the injected typescript import in ${targetDtsPath}`)
+    }
+    fsExtra.writeFileSync(targetDtsPath, fixed)
 }
 
 function injectCallSignatureDocs(targetDtsPath: string) {

@@ -1,3 +1,4 @@
+import type TS from "typescript"
 import type {
     Range,
     ParsedExpression,
@@ -7,7 +8,7 @@ import type {
 } from "#type-declarations/compiler"
 import type { RuntimeCodeWriter } from "../transformer/writer"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { walkTsNode } from "../ts-ast/walk"
 import { getMaybeReusedString } from "./compress"
@@ -358,7 +359,7 @@ function areRangesPairedInEquality(
             return
         }
 
-        const isSameRange = (compared: ts.Expression, range: Range) => {
+        const isSameRange = (compared: TS.Expression, range: Range) => {
             return compared.getStart() === range[0] && compared.getEnd() === range[1]
         }
         for (let i = 0; i < topLevelRanges.length; i++) {

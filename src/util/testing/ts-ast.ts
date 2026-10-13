@@ -1,6 +1,6 @@
 import type TS from "typescript"
 
-import ts from "typescript"
+import ts from "../../compiler/ts-api"
 
 import { expect } from "vitest"
 import { parseTemplateTesting } from "./sundry"
