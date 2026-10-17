@@ -1,6 +1,8 @@
+import type TS from "typescript"
+
 import type { Range, RawArgumentInfo } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { analyzeResult } from "../state"
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
@@ -20,7 +22,7 @@ import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
 // identifiers and non-identifier arguments), or is invalid (zero/multiple/spread
 // arguments) and is skipped by the caller.
 export function getRawArgumentInfo(
-    call: ts.CallExpression,
+    call: TS.CallExpression,
     topLevelRefs: Uint8Array
 ): RawArgumentInfo | undefined {
     if (call.arguments.length !== 1 || ts.isSpreadElement(call.arguments[0])) {

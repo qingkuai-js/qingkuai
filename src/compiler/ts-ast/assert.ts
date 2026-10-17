@@ -7,7 +7,7 @@ import type {
     MemberAccessExpression
 } from "#type-declarations/ts-ast"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { any } from "../../util/shared/sundry"
 import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./sundry"

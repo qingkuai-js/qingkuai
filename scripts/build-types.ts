@@ -3,10 +3,10 @@ import nodeUrl from "node:url"
 import nodePath from "node:path"
 
 import ts from "typescript"
-import { readSync } from "../src/util/scripts/sundry"
 import { whitespaceRE } from "../src/compiler/regular"
 import { formatSourceCode } from "../src/util/shared/sundry"
 import { CodeEditor } from "../src/compiler/transformer/editor"
+import { normalizePath, readSync } from "../src/util/scripts/sundry"
 import { Extractor, ExtractorConfig } from "@microsoft/api-extractor"
 
 function main() {
@@ -75,7 +75,9 @@ function main() {
             continue
         }
 
-        const relativeBrandPath = nodePath.relative(nodePath.dirname(filePath), BRAND_TARGET_PATH)
+        const relativeBrandPath = normalizePath(
+            nodePath.relative(nodePath.dirname(filePath), BRAND_TARGET_PATH)
+        )
         fsExtra.writeFileSync(
             filePath,
             readSync(filePath).replaceAll(

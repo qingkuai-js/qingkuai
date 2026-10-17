@@ -7,7 +7,7 @@ import type {
     TsNodeWithContext
 } from "#type-declarations/ts-ast"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import {
     isScopeBoundary,

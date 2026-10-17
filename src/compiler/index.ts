@@ -1,4 +1,3 @@
-import ts from "typescript"
 import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants"
 
 import {
@@ -23,6 +22,7 @@ export type {
     ASTLocation,
     ASTPosition,
     TemplateNode,
+    TypeScriptApi,
     CompileOptions,
     CompileResult,
     StyleDescriptor,
@@ -38,7 +38,6 @@ export type {
 export type { CompileIntermediateResult } from "./compile"
 
 export const util = {
-    ts,
     isVoidTag,
     camel2Kebab,
     kebab2Camel,
@@ -64,5 +63,6 @@ export { isCompileWarning } from "./message/warn"
 export { PositionFlag, TestingMode } from "./enums"
 export { parseDirectiveValue } from "./parser/directive"
 export { compile, compileIntermediate } from "./compile"
+export { getTypeScript, setTypeScript, setTypeScriptPath } from "./ts-api"
 export { parseEventFlagStandalone as parseEventFlag } from "./parser/event"
 export { parseTemplateStandalone as parseTemplate } from "./parser/template"

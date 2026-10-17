@@ -1,4 +1,4 @@
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { CodeEditor } from "./editor"
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../state"

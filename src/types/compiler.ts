@@ -413,10 +413,10 @@ export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & 
     >
     prefix: Record<string, number>
 }
-
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean
 }
+export type TypeScriptApi = typeof TS
 export type ParseDiatnosticDealtKind = "record" | "ignore" | "thrown"
 export type InlayHintKind = "variable" | "function" | "class" | "enum"
 export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"

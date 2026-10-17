@@ -1,7 +1,7 @@
 import type { RuntimeCodeWriter } from "../writer"
 import type { Range, TemplateNode, ParsedExpression } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../../ts-api"
 
 import { decodeHTML } from "entities"
 import { CodeEditor } from "../editor"

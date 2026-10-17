@@ -41,7 +41,8 @@ function getOutput(format, dir) {
         format,
         entryFileNames: `[name]${ext}`,
         chunkFileNames(info) {
-            for (const id of info.moduleIds) {
+            for (const rawId of info.moduleIds) {
+                const id = rawId.replaceAll("\\", "/")
                 if (id.includes("/src/runtime/constants")) {
                     return `chunks/shared${ext}`
                 }
@@ -55,14 +56,14 @@ function getOutput(format, dir) {
 
 function replacePacakgeVersionPlugin() {
     const VERSION_SOURCE_ID = "/src/runtime/meta.ts"
-    const VERSION_PLACEHOLDER = "__QK_PACKAGE_VERSION__"
+    const VERSION_PLACEHOLDER = "__QK__PACKAGE_VERSION__"
     const PACKAGE_INFO = JSON.parse(nodeFs.readFileSync("./package.json", "utf8"))
     return {
         name: "replace-package-version",
         renderChunk(code, chunk) {
             if (
                 !chunk.moduleIds.some(id => {
-                    return id.includes(VERSION_SOURCE_ID)
+                    return id.replaceAll("\\", "/").includes(VERSION_SOURCE_ID)
                 })
             ) {
                 return null

@@ -1,6 +1,6 @@
 import type TS from "typescript"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { analyzeResult } from "../state"
 import { InvalidExportStatement } from "../message/error"

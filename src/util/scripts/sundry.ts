@@ -1,6 +1,10 @@
 import nodeFs from "node:fs"
 import nodeChildProcess from "node:child_process"
 
+export function normalizePath(path: string): string {
+    return path.replaceAll("\\", "/")
+}
+
 // 读取 utf-8 编码的文本文件
 // Read a text file with utf-8 encoding.
 export function readSync(filePath: string): string {

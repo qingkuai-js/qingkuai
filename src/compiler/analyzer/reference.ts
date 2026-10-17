@@ -2,7 +2,7 @@ import type TS from "typescript"
 
 import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
 
-import ts from "typescript"
+import ts from "../ts-api"
 
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
