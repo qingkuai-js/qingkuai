@@ -3,7 +3,8 @@ import type TS from "typescript"
 import type {
     TemplateNode,
     TemplateAttribute,
-    TemplateNodeContext
+    TemplateNodeContext,
+    DirectiveRenderInserts
 } from "#type-declarations/compiler"
 import type { RuntimeCodeWriter } from "../writer"
 import type { GeneralFunc } from "#type-declarations/tools"
@@ -354,14 +355,7 @@ function generateDirectiveBlock(
         }
     }
 
-    function generateDirectiveRender(
-        insert?: Partial<{
-            arg: GeneralFunc
-            context: GeneralFunc
-            returns: GeneralFunc
-            enclosure: GeneralFunc
-        }>
-    ): GeneralFunc {
+    function generateDirectiveRender(insert?: DirectiveRenderInserts): GeneralFunc {
         if (insert?.arg) {
             insert.arg()
         } else {

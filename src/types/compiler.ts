@@ -1,6 +1,6 @@
 import type TS from "typescript"
 
-import type { Pair } from "#type-declarations/tools"
+import type { GeneralFunc, Pair } from "#type-declarations/tools"
 import type { TestingMode } from "../compiler/enums"
 import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
 
@@ -355,6 +355,13 @@ export type CompileOptions = Partial<{
     requireReactivityMark: boolean
     reactivityMode: "reactive" | "shallow"
     whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
+}>
+
+export type DirectiveRenderInserts = Partial<{
+    arg: GeneralFunc
+    context: GeneralFunc
+    returns: GeneralFunc
+    enclosure: GeneralFunc
 }>
 
 export type CompileIntermediateOptions = Pick<

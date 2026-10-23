@@ -4,7 +4,8 @@ import type {
     CompileOptions,
     IdentifierStatus
 } from "#type-declarations/compiler"
-import type { Destruction } from "#type-declarations/runtime"
+import type { COMPONENT, QingkuaiComponent } from "@qingkuai/virtual/brand"
+import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime"
 
 export type E2EScenarioInput = Omit<E2EScenario, "name">
 
@@ -74,6 +75,10 @@ export interface ProcessEnvHost {
     process?: {
         env?: Record<string, string | undefined>
     }
+}
+
+export type TestComponentInstance = ComponentInstanceBase & {
+    [COMPONENT]: QingkuaiComponent<any>
 }
 
 export interface E2EFixtures {
