@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.103](https://github.com/qingkuai-js/qingkuai/compare/v1.0.102...v1.0.103) (2026-10-24)
+
+### Features
+
+- allow hosts to inject the typescript API and drop `ts` from util ([5a477f7](https://github.com/qingkuai-js/qingkuai/commit/5a477f7))
+
+### Refactors
+
+- extract complex inline type literals into named type declarations ([bbc03f8](https://github.com/qingkuai-js/qingkuai/commit/bbc03f8))
+
+### Tests
+
+- add unit tests for the typescript api injection module ([13f9276](https://github.com/qingkuai-js/qingkuai/commit/13f9276))
+
 ## [1.0.102](https://github.com/qingkuai-js/qingkuai/compare/v1.0.101...v1.0.102) (2026-10-11)
 
 ### Fixes
