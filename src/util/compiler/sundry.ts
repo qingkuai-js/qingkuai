@@ -1,6 +1,6 @@
 import { analyzeResult, generateIdentifier } from "../../compiler/state"
 
-export const createHashId = (function () {
+export const createHashId = /*#__PURE__*/ (function () {
     const existing = new Set<string>()
     const max = parseInt(`0x${"f".repeat(8)}`)
     return () => {

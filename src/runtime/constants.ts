@@ -28,8 +28,8 @@ export const XLINK_NAMESPACE_URI = "http://www.w3.org/1999/xlink"
 
 export const OBJECT = Object
 export const REFLECT = Reflect
-export const RESOLVED = Promise.resolve()
-export const OBJECT_PROTO = OBJECT.prototype
+export const OBJECT_PROTO = Object.prototype
+export const RESOLVED = /*#__PURE__*/ Promise.resolve()
 export const DOCUMENT = typeof document === "undefined" ? UNDEF : document
 
 export const AFTER_MOUNT = 1

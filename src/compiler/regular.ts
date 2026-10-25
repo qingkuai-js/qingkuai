@@ -7,7 +7,7 @@ export const templateConditionalCommentRE = /(?:^\[if |<\!\[endif\]$)/
 export const embeddedStyleLangRE = /^(?:css|s[ca]ss|less|stylus|postcss)$/
 export const preWhiteSpaceRuleRE = /(?:^\s*|;)white-space:\s*pre(?:-(?:wrap|line))?(?:;|\s*$)/
 export const templateTagStructureRE = /<(?:\/?(?:(?!qk:spread)[a-zA-z][a-zA-Z\d\-_.]*|qk:spread)|!--)/
-export const embeddedLangTagRE = new RegExp(`^lang-([jt]s|${embeddedStyleLangRE.source.slice(4, -2)})$`)
+export const embeddedLangTagRE = /*#__PURE__*/ new RegExp(`^lang-([jt]s|${embeddedStyleLangRE.source.slice(4, -2)})$`)
 
 export const whitespaceRE = /\s/
 export const whitespacesRE = /\s*/
@@ -42,7 +42,7 @@ export const intrinsicMethodsRE =
     /^(?:raw|reactive|shallow|derived(?:Exp)?|alias|defaults|setContext(?:Exp|Getter)?|(?:watch|(?:pre|post|sync|)Watch)(?:Exp)?|on(?:AfterMount|(?:Before|After)(?:Update|Destroy)))$/
 
 export const keyboardEventNamesRE = /^key(?:up|down|press)$/ // TODO: convert to a set of event names.
-export const startWithTagStructureRE = new RegExp("^" + templateTagStructureRE.source)
+export const startWithTagStructureRE = /*#__PURE__*/ new RegExp("^" + templateTagStructureRE.source)
 
 export const formattingPreWhitespaceRE = /^\n?[\s]*\n/
 export const formattingUselessWhitespaceRE = /^[ \t]*/

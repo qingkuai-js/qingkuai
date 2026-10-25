@@ -23,7 +23,7 @@ export function setTypeScript(api: TypeScriptApi) {
     entryPath = undefined
 }
 
-export default new Proxy({} as TypeScriptApi, {
+export default /*#__PURE__*/ new Proxy({} as TypeScriptApi, {
     get(_, property: keyof TypeScriptApi) {
         return getTypeScript()[property]
     }
