@@ -1,7 +1,7 @@
 # Qingkuai
 
 <a href="https://qingkuai.dev">
-   <img src="./assets/banner.svg" alt="qingkuai banner" /> 
+   <img src="./assets/banner-light.svg" alt="qingkuai banner" /> 
 </a>
 
 [![CI](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml)
@@ -22,6 +22,55 @@ Learn more at [Qingkuai Docs](https://qingkuai.dev), or try it out in the [Playg
 - **Debugging Experience**: Enhanced [debugging](https://qingkuai.dev/misc/debugging.html) with source-matched and directive context identifiers.
 - **Language Services & AI**: Full [language services](https://marketplace.visualstudio.com/items?itemName=qingkuai-tools.qingkuai-language-features) and [mcp server](https://www.npmjs.com/package/qingkuai-mcp-server) for better AI-assisted development.
 
+## Quick Start
+
+```bash
+npm create qingkuai qingkuai-app
+cd qingkuai-app
+npm install && npm run dev
+```
+
+## CLI
+
+The official CLI (`@qingkuai/cli`) ships the whole toolchain — vite, TypeScript, Prettier (with `prettier-plugin-qingkuai`) and the Qingkuai language service are bundled at pinned versions and pre-wired into every command, so it works with zero configuration.
+
+```bash
+npm install -g @qingkuai/cli
+qingkuai --help
+```
+
+| Command                      | Description                                                               |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `qingkuai init [name]`       | Scaffold a new Qingkuai application (`--ts` for the TypeScript template)  |
+| `qingkuai dev`               | Start the vite dev server with HMR                                        |
+| `qingkuai build`             | Build a Qingkuai application or library into distributable files          |
+| `qingkuai preview`           | Serve the build output directory via vite's preview server                |
+| `qingkuai check [files...]`  | Perform syntax or type checking (`--types`) on `.qk` and TypeScript files |
+| `qingkuai build-types [dir]` | Type-check and emit declaration files (`.d.ts`)                           |
+| `qingkuai format [files...]` | Format Qingkuai component files or other Prettier-supported files         |
+
+Run `qingkuai <command> --help` for the full list of flags and examples, or see the [CLI reference](https://qingkuai.dev/misc/cli.html).
+
+## MCP Server
+
+[qingkuai-mcp-server](https://www.npmjs.com/package/qingkuai-mcp-server) equips AI agents with Qingkuai-aware tools: syntax documentation search, syntax checking, compilation, and code formatting for `.qk` files.
+
+For example, add it to `.vscode/mcp.json` to use it with VS Code Copilot agent mode:
+
+```json
+{
+    "servers": {
+        "qingkuai": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["qingkuai-mcp-server@latest"]
+        }
+    }
+}
+```
+
+It works with any MCP-compatible host (Claude Desktop, Cursor, etc.). See the [package README](https://www.npmjs.com/package/qingkuai-mcp-server) for the full tool list and per-host configurations.
+
 ## Js Framework Benchmark
 
 [![js-framework-benchmark-report](./assets/js-framework-benchmark.png)](https://krausest.github.io/js-framework-benchmark/2026/chrome148.html)
@@ -29,13 +78,6 @@ Learn more at [Qingkuai Docs](https://qingkuai.dev), or try it out in the [Playg
 ## Bundle Size Report
 
 [![bundle-size-report](./assets/bundle-size-report.png)](https://mlgq.github.io/frontend-framework-bundle-size/?lang=en)
-
-## Quick Start
-
-```bash
-npm create qingkuai my-app && cd ./my-app
-npm install && npm run dev
-```
 
 ## Contributing
 
