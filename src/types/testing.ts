@@ -1,11 +1,7 @@
-import type {
-    Range,
-    TemplateNode,
-    CompileOptions,
-    IdentifierStatus
-} from "#type-declarations/compiler"
+import type { IdentifierStatus } from "../compiler/enums"
 import type { COMPONENT, QingkuaiComponent } from "@qingkuai/virtual/brand"
 import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime"
+import type { Range, TemplateNode, CompileOptions } from "#type-declarations/compiler"
 
 export type E2EScenarioInput = Omit<E2EScenario, "name">
 

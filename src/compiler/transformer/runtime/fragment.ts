@@ -23,6 +23,7 @@ import {
     getTemplateNodeContext,
     getGeneratedStaticTextContent
 } from "../../../util/compiler/template"
+import { AttributeValueEnclosure } from "../../enums"
 import { getLastElem } from "../../../util/shared/arrays"
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
@@ -265,7 +266,8 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                     })
 
                     if (attribute.equalSign) {
-                        const quote = attribute.valueEnclosure === "double" ? '"' : "'"
+                        const quote =
+                            attribute.valueEnclosure === AttributeValueEnclosure.Double ? '"' : "'"
                         const couldOmitQuote = omitQuoteAttrValueRE.test(rawValue)
                         fragment.content.push({
                             isText: false,

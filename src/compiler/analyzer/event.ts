@@ -2,6 +2,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 
 import { analyzeResult } from "../state"
 import { parseEventFlag } from "../parser/event"
+import { AnalyzeExpressionType } from "../enums"
 import { DELEGATABLE_EVENTS } from "../constants"
 import { RedundantEventFlags } from "../message/warn"
 import { EVENT_PASSIVE } from "../../util/shared/flags"
@@ -39,7 +40,13 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
             nameLoc.start.index,
             nameLoc.start.index + parseResult.eventName.length
         )
-        analyzeTemplateAsExpression(node, parseResult.eventName, event, eventNameLoc, "attribute")
+        analyzeTemplateAsExpression(
+            node,
+            parseResult.eventName,
+            event,
+            eventNameLoc,
+            AnalyzeExpressionType.Attribute
+        )
     }
 
     if (shouldAnalyzeAttributeValue(event)) {

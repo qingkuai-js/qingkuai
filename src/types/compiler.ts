@@ -1,7 +1,16 @@
 import type TS from "typescript"
 
+import type {
+    TestingMode,
+    InlayHintKind,
+    ReactivityMode,
+    WhitespaceMode,
+    RawArgumentKind,
+    IdentifierStatus,
+    CompileMessageType,
+    AttributeValueEnclosure
+} from "../compiler/enums"
 import type { GeneralFunc, Pair } from "#type-declarations/tools"
-import type { TestingMode } from "../compiler/enums"
 import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
 
 export interface CompileWarning {
@@ -109,7 +118,7 @@ export interface TemplateNode {
 }
 
 export interface CompileMessage {
-    type: "error" | "warning"
+    type: CompileMessageType
     value: CompileError | CompileWarning
 }
 
@@ -298,10 +307,11 @@ export interface ScriptAnalyzeRet {
 
 export interface RawArgumentInfo {
     range: Range
-    kind: "unwrap" | "plain"
+    kind: RawArgumentKind
 }
 
 export type Range = Pair<number>
+export type TypeScriptApi = typeof TS
 
 export type TopLevelReferences = Record<
     string,
@@ -348,13 +358,13 @@ export type CompileOptions = Partial<{
     debug: boolean
     sourcemap: boolean
     testing: TestingMode
+    whitespace: WhitespaceMode
     replaceQkImports: boolean
     allowConstReactive: boolean
     interpretiveComments: boolean
     preserveHtmlComments: boolean
     requireReactivityMark: boolean
-    reactivityMode: "reactive" | "shallow"
-    whitespace: "preserve" | "trim" | "collapse" | "trim-collapse"
+    reactivityMode: ReactivityMode
 }>
 
 export type DirectiveRenderInserts = Partial<{
@@ -368,15 +378,6 @@ export type CompileIntermediateOptions = Pick<
     CompileOptions,
     "allowConstReactive" | "requireReactivityMark"
 >
-
-export type IdentifierStatus =
-    | "reactive"
-    | "raw"
-    | "shallow"
-    | "derived"
-    | "pending"
-    | "alias"
-    | "literal"
 
 export type SelectorOperation =
     | {
@@ -423,8 +424,3 @@ export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & 
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
     checkMode: boolean
 }
-export type TypeScriptApi = typeof TS
-export type ParseDiatnosticDealtKind = "record" | "ignore" | "thrown"
-export type InlayHintKind = "variable" | "function" | "class" | "enum"
-export type AttributeValueEnclosure = "single" | "double" | "curly" | "none"
-export type ReactiveIntrinsics = "reactive" | "raw" | "shallow" | "derived" | "alias"

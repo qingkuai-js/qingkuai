@@ -4,8 +4,7 @@ import type {
     InputOptions,
     TextContentPart,
     ScriptDescriptor,
-    TemplateAttribute,
-    AttributeValueEnclosure
+    TemplateAttribute
 } from "#type-declarations/compiler"
 import type { RegExpExecRet } from "#type-declarations/tools"
 import type { ParseTemplateFunc } from "#type-declarations/compiler-ex"
@@ -58,12 +57,12 @@ import {
     InvalidValueEnclosureForStaticAttribute,
     InvalidValueEnclosureForInterpolatedAttribute
 } from "../message/error"
-import { PositionFlag } from "../enums"
 import { filterTemplateNodes } from "./filter"
 import { getLastElem } from "../../util/shared/arrays"
 import { objectAssign } from "../../util/shared/aliases"
 import { isNull, isUndefined } from "../../util/shared/assert"
 import { inputDescriptor, resetCompilerState } from "../state"
+import { PositionFlag, AttributeValueEnclosure, ReactivityMode } from "../enums"
 import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
 import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string"
 import { isEmbeddedStyleTag, isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert"
@@ -383,7 +382,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             let valueStartIndex = -1
             let fullValueEndIndex = -1
             let fullValueStartIndex = -1
-            let valueEnclosure: AttributeValueEnclosure = "none"
+            let valueEnclosure: AttributeValueEnclosure = AttributeValueEnclosure.None
 
             const nameStartIndex = reduceSpaces().index
             const attrNameMatched = templateAttributeNameRE.exec(dps)
@@ -461,11 +460,12 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 } else {
                     fullValueStartIndex = reduceSpaces().index
                     valueStartIndex = fullValueStartIndex + 1
-                    valueEnclosure = ATTRIBUTE_VALUE_ENCLOSURE_MAP[dps[0]] ?? "none"
+                    valueEnclosure =
+                        ATTRIBUTE_VALUE_ENCLOSURE_MAP[dps[0]] ?? AttributeValueEnclosure.None
 
                     // 找到属性值结束字符的位置
                     // Find the position of the attribute value's closing character
-                    if (valueEnclosure === "curly") {
+                    if (valueEnclosure === AttributeValueEnclosure.Curly) {
                         endCharIndex = findEndBracket(dps)
                     } else {
                         endCharIndex = dps.indexOf(dps[0], 1)
@@ -485,7 +485,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                             UnclosedInterpolationBlock(unclosedAttributeValueLoc)
                         }
                     } else if (
-                        valueEnclosure === "curly" &&
+                        valueEnclosure === AttributeValueEnclosure.Curly &&
                         !isNonEmptyExpression(dps.slice(1, endCharIndex))
                     ) {
                         if (options.checkEmptyInterpolation) {
@@ -504,7 +504,7 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                         fullValueEndIndex = reduceSource(endCharIndex + 1).index
                     }
                 }
-                if (isInterpolatedAttr && valueEnclosure === "curly") {
+                if (isInterpolatedAttr && valueEnclosure === AttributeValueEnclosure.Curly) {
                     markPositionFlag(PositionFlag.InScript, valueStartIndex, valueEndIndex)
                 }
             }
@@ -558,10 +558,14 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
 
                 // 嵌入脚本语言标签上的 shallow 属性需要修改 CompilerOptions.reactivityMode 为 shallow
                 // The `shallow` attribute on an embedded script language tag requires setting `CompilerOptions.reactivityMode` to `shallow`.
-                case "shallow":
-                case "reactive": {
+                case ReactivityMode.Shallow:
+                case ReactivityMode.Reactive: {
                     if (templateNode.tag === "lang-js" || templateNode.tag === "lang-ts") {
-                        inputDescriptor.options.reactivityMode = attrName
+                        if (attrName === ReactivityMode.Shallow) {
+                            inputDescriptor.options.reactivityMode = ReactivityMode.Shallow
+                        } else {
+                            inputDescriptor.options.reactivityMode = ReactivityMode.Reactive
+                        }
                     }
                     break
                 }

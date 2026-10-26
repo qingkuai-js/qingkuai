@@ -2,6 +2,7 @@ import type { CompileOptions } from "#type-declarations/compiler"
 
 import { test, expect } from "vitest"
 import { compile } from "../../../../../src/compiler/compile"
+import { ReactivityMode } from "../../../../../src/compiler/enums"
 import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 
 function compileRuntime(source: string, debug = false, options: CompileOptions = {}) {
@@ -266,7 +267,9 @@ test("Runtime script: initializer-less declaration markers are dropped in shallo
         <div>{value}</div>
     `,
         false,
-        { reactivityMode: "shallow" }
+        {
+            reactivityMode: ReactivityMode.Shallow
+        }
     )
     expect(code).toContain("let value = _.shallowReact()")
     expect(code).not.toContain("!:")

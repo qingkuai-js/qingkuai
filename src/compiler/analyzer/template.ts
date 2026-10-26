@@ -22,6 +22,7 @@ import {
 } from "../message/error"
 import { SPREAD_TAG } from "../constants"
 import { analyzeAttributes } from "./attribute"
+import { AnalyzeExpressionType } from "../enums"
 import { analyzeStaticTextContent } from "./text"
 import { newCleanObj } from "../../util/shared/sundry"
 import { objectAssign } from "../../util/shared/aliases"
@@ -85,7 +86,13 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                     )
                 )
             }
-            analyzeTemplateAsExpression(node, node.componentTag, node, startTagLog, "component")
+            analyzeTemplateAsExpression(
+                node,
+                node.componentTag,
+                node,
+                startTagLog,
+                AnalyzeExpressionType.Component
+            )
         }
 
         switch ((analyzeAttributes(node), node.tag)) {

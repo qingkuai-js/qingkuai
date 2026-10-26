@@ -31,12 +31,12 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts
 } from "../../../util/compiler/template"
-import { TestingMode } from "../../enums"
 import { DELEGATABLE_EVENTS } from "../../constants"
 import { writeFragmentSelections } from "./fragment"
 import { writeParsedExpression } from "./interpolation"
 import { kebab2Camel } from "../../../util/compiler/string"
 import { getMaybeReusedString } from "../../optimizer/compress"
+import { TestingMode, ReferenceBindingType } from "../../enums"
 import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags"
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render"
@@ -587,17 +587,17 @@ function generateRenderEffect(
 
             // refernec attributes
             for (const attribute of nodeContext.referenceAttributes) {
-                const generateBindCall = (method: string, type: "getter" | "setter" | "both") => {
+                const generateBindCall = (method: string, type: ReferenceBindingType) => {
                     writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
 
-                    if (type !== "setter") {
+                    if (type !== ReferenceBindingType.Setter) {
                         writer.write(`${getterArgId} => (`)
                         writer.writeParsedExpression(attribute).write(")")
                     }
-                    if (type === "both") {
+                    if (type === ReferenceBindingType.Both) {
                         writer.write(", ")
                     }
-                    if (type !== "getter") {
+                    if (type !== ReferenceBindingType.Getter) {
                         writer.write(`${setterArgId} => (`).writeParsedExpression(attribute, true)
                         writer.write(` = ${setterArgId}`).write(")")
                     }
@@ -606,29 +606,32 @@ function generateRenderEffect(
 
                 switch (attribute.name.raw) {
                     case "&number": {
-                        generateBindCall("bindInputNumber", "both")
+                        generateBindCall("bindInputNumber", ReferenceBindingType.Both)
                         break
                     }
                     case "&checked": {
-                        generateBindCall("bindInputChecked", "both")
+                        generateBindCall("bindInputChecked", ReferenceBindingType.Both)
                         break
                     }
                     case "&group": {
-                        generateBindCall("bindInputGroup", "getter")
+                        generateBindCall("bindInputGroup", ReferenceBindingType.Getter)
                         break
                     }
                     case "&handle": {
-                        generateBindCall("bindHandleReceiver", "setter")
+                        generateBindCall("bindHandleReceiver", ReferenceBindingType.Setter)
                         break
                     }
                     case "&value": {
                         if (node.tag !== "select") {
-                            generateBindCall("bindInputValue", "both")
+                            generateBindCall("bindInputValue", ReferenceBindingType.Both)
                         } else {
                             const multiple =
                                 nodeContext.attributesMap["multiple"] ||
                                 nodeContext.attributesMap["!multiple"]
-                            generateBindCall("bindSelectValue", multiple ? "getter" : "both")
+                            generateBindCall(
+                                "bindSelectValue",
+                                multiple ? ReferenceBindingType.Getter : ReferenceBindingType.Both
+                            )
                         }
                         break
                     }

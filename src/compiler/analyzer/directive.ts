@@ -38,7 +38,6 @@ import {
     UnnecessaryScopeDirective,
     ScopeDirectiveHasActualAncestor
 } from "../message/warn"
-import { TestingMode } from "../enums"
 import { markNeedSourcemap } from "../ts-ast/sundry"
 import { parseContextPattern } from "../parser/script"
 import { analyzeInterpolation } from "./interpolation"
@@ -48,6 +47,7 @@ import { analyzeResult, inputDescriptor } from "../state"
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
 import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk"
 import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
+import { TestingMode, AttributeValueEnclosure, HtmlDirectivePlacementKind } from "../enums"
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
 
@@ -93,7 +93,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (!node.parent || !node.parent.componentTag) {
                 InvalidSlotDirectivePlacement(nameLoc)
             }
-            if (directive.valueEnclosure !== "none") {
+            if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!
                 const parsedDirective: ParsedDirective = {
@@ -143,7 +143,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         }
 
         case "#for": {
-            if (directive.valueEnclosure !== "none") {
+            if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!
                 const parsedDirective: ParsedDirective = {
@@ -210,7 +210,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 }
             }
 
-            if (directive.valueEnclosure !== "none") {
+            if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 const patterns: TS.ArrayBindingElement[] = []
                 const parseResult = parseContextPattern(rawValue, valueStartSourceIndex)
 
@@ -296,7 +296,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
         case "#html": {
             if (node.componentTag || "slot" === node.tag) {
-                InvalidHtmlDirectivePlacement(nameLoc, node.componentTag ? "component" : "slot")
+                InvalidHtmlDirectivePlacement(
+                    nameLoc,
+                    node.componentTag
+                        ? HtmlDirectivePlacementKind.Component
+                        : HtmlDirectivePlacementKind.Slot
+                )
             } else if (!(node.children.length === 1 && !node.children[0].tag)) {
                 HtmlDirectiveRequiresSingleTextChild(node.loc)
             } else if (
@@ -310,7 +315,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
         case "#else":
         case "#elif": {
-            if (rawName === "#else" && directive.valueEnclosure !== "none") {
+            if (rawName === "#else" && directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 RedundantDirectiveValue(directive.loc, rawName)
             }
 

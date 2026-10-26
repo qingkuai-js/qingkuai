@@ -3,7 +3,6 @@ import type TS from "typescript"
 import type {
     TemplateNode,
     CompileMessage,
-    InlayHintKind,
     CompileResult,
     CompileOptions,
     StyleDescriptor,
@@ -14,7 +13,6 @@ import type {
     CompileIntermediateOptions,
     TopLevelIdentifierNodeInfo
 } from "#type-declarations/compiler"
-import type { PositionFlag } from "./enums"
 
 import ts from "./ts-api"
 
@@ -34,6 +32,7 @@ import { getScriptSourceIndex } from "../util/compiler/position"
 import { generateRuntimeCode } from "./transformer/runtime/codegen"
 import { newCleanObj, traverseObject } from "../util/shared/sundry"
 import { generateIntermediateCode } from "./transformer/check/codegen"
+import { PositionFlag, IdentifierStatus, InlayHintKind } from "./enums"
 
 export function compile(source: string, options: CompileOptions = {}) {
     resetCompilerState(options)
@@ -141,12 +140,12 @@ export class CompileIntermediateResult {
     }
 }
 
-function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo) {
+function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo): IdentifierStatus {
     switch (info.status) {
-        case "literal":
-        case "pending":
-        case "raw": {
-            return "raw"
+        case IdentifierStatus.Raw:
+        case IdentifierStatus.Literal:
+        case IdentifierStatus.Pending: {
+            return IdentifierStatus.Raw
         }
         default: {
             return info.status
@@ -157,16 +156,16 @@ function getIdentifierStatusForInlayHint(info: TopLevelIdentifierInfo) {
 function getInlayHintKind(nodeInfo: TopLevelIdentifierNodeInfo): InlayHintKind {
     switch (nodeInfo.declaration.kind) {
         case ts.SyntaxKind.FunctionDeclaration: {
-            return "function"
+            return InlayHintKind.Function
         }
         case ts.SyntaxKind.ClassDeclaration: {
-            return "class"
+            return InlayHintKind.Class
         }
         case ts.SyntaxKind.EnumDeclaration: {
-            return "enum"
+            return InlayHintKind.Enum
         }
         default: {
-            return "variable"
+            return InlayHintKind.Variable
         }
     }
 }
@@ -198,16 +197,16 @@ function isInvalidAliasDeclaration(info: TopLevelIdentifierInfo) {
 
 function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
     switch (info.status) {
-        case "literal": {
+        case IdentifierStatus.Literal: {
             return "raw (never mutated)"
         }
-        case "alias": {
+        case IdentifierStatus.Alias: {
             if (isInvalidAliasDeclaration(info)) {
                 return "alias (invalid)"
             }
             return `alias -> ${info.aliasTarget}`
         }
-        case "raw": {
+        case IdentifierStatus.Raw: {
             const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
             const intrinsicName = analyzeResult.script.declaratorToIntrinsic
                 .get(declarator)
@@ -217,7 +216,7 @@ function getTopLevelIdentifierInfo(info: TopLevelIdentifierInfo) {
             }
             return intrinsicName ? "raw (downgraded)" : "raw (implicit raw)"
         }
-        case "pending": {
+        case IdentifierStatus.Pending: {
             return `raw (${info.untrackedAccess ? "untracked" : "not accessed"} in template)`
         }
         default: {

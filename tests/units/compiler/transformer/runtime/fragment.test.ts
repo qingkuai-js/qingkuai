@@ -8,6 +8,7 @@ import {
 } from "./_match"
 import { describe, expect, test } from "vitest"
 import { compile } from "../../../../../src/compiler/compile"
+import { WhitespaceMode } from "../../../../../src/compiler/enums"
 import { formatSourceCode } from "../../../../../src/util/shared/sundry"
 
 function getRandomDirective() {
@@ -39,7 +40,9 @@ describe("debug mode", () => {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
-                    { whitespace: "trim" }
+                    {
+                        whitespace: WhitespaceMode.Trim
+                    }
                 )
             }
             matchGeneratedFragment("    ", "")
@@ -62,7 +65,7 @@ describe("debug mode", () => {
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: "preserve"
+                        whitespace: WhitespaceMode.Preserve
                     }
                 )
             }
@@ -82,7 +85,7 @@ describe("debug mode", () => {
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: "collapse"
+                        whitespace: WhitespaceMode.Collapse
                     }
                 )
             }
@@ -246,7 +249,7 @@ describe("debug mode", () => {
                 const _getFragment2 = _.createFragmentGetter(\` \`)
             `,
             {
-                whitespace: "collapse"
+                whitespace: WhitespaceMode.Collapse
             }
         )
 
@@ -286,7 +289,7 @@ describe("debug mode", () => {
 
         const { code } = compile(input, {
             debug: false,
-            whitespace: "collapse"
+            whitespace: WhitespaceMode.Collapse
         })
 
         expect(code).toContain("const _text4 = _.getSiblingAsText(_text3, 2)")
@@ -398,7 +401,7 @@ describe("debug mode", () => {
                     const _getFragment3 = _.createFragmentGetter(\`<p></p>\`)
                 `,
                 {
-                    whitespace: "preserve"
+                    whitespace: WhitespaceMode.Preserve
                 }
             )
             matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
@@ -659,10 +662,14 @@ describe("non-debug mode", () => {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
-                    { whitespace: "trim" }
+                    {
+                        whitespace: WhitespaceMode.Trim
+                    }
                 )
             }
-            matchGeneratedFragment("    ", "", { whitespace: "trim" })
+            matchGeneratedFragment("    ", "", {
+                whitespace: WhitespaceMode.Trim
+            })
         })
 
         test("preserve", () => {
@@ -675,7 +682,9 @@ describe("non-debug mode", () => {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
-                    { whitespace: "preserve" }
+                    {
+                        whitespace: WhitespaceMode.Preserve
+                    }
                 )
             }
 
@@ -691,7 +700,9 @@ describe("non-debug mode", () => {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
-                    { whitespace: "preserve" }
+                    {
+                        whitespace: WhitespaceMode.Preserve
+                    }
                 )
             }
         })
@@ -709,7 +720,9 @@ describe("non-debug mode", () => {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
-                    { whitespace: "collapse" }
+                    {
+                        whitespace: WhitespaceMode.Collapse
+                    }
                 )
             }
         })
@@ -726,10 +739,14 @@ describe("non-debug mode", () => {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createFragmentGetter(\`${to}\`)`,
-                    { whitespace: "trim-collapse" }
+                    {
+                        whitespace: WhitespaceMode.TrimCollapse
+                    }
                 )
             }
-            matchGeneratedFragment("    ", "", { whitespace: "trim-collapse" })
+            matchGeneratedFragment("    ", "", {
+                whitespace: WhitespaceMode.TrimCollapse
+            })
         })
     })
 
@@ -1070,7 +1087,7 @@ describe("non-debug mode", () => {
                     const _getFragment3 = _.createFragmentGetter(\`<p></p>\`)
             `,
             {
-                whitespace: "preserve"
+                whitespace: WhitespaceMode.Preserve
             }
         )
         matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])

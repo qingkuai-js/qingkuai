@@ -1,7 +1,6 @@
-import type {
-    AttributeValueEnclosure,
-    StandaloneParseTemplateOptions
-} from "#type-declarations/compiler"
+import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
+
+import { AttributeValueEnclosure } from "./enums"
 
 import {
     KEY_UP,
@@ -140,9 +139,9 @@ export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
 }
 
 export const ATTRIBUTE_VALUE_ENCLOSURE_MAP: Record<string, AttributeValueEnclosure> = {
-    "{": "curly",
-    "'": "single",
-    '"': "double"
+    "{": AttributeValueEnclosure.Curly,
+    "'": AttributeValueEnclosure.Single,
+    '"': AttributeValueEnclosure.Double
 }
 
 export const BLOCK_TAGS: ReadonlySet<string> = new Set([

@@ -9,6 +9,7 @@ import { analyzeScript } from "../../../../src/compiler/analyzer/script"
 import { parseTemplate } from "../../../../src/compiler/parser/template"
 import { matchCompileMessages } from "../../../../src/util/testing/match"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
+import { IdentifierStatus, ReactivityMode } from "../../../../src/compiler/enums"
 import { analyzeResult, resetCompilerState } from "../../../../src/compiler/state"
 
 function localAnalyzeWithOptions(source: string, options: CompileOptions) {
@@ -67,32 +68,32 @@ test("Variable declarations with key: let, const", () => {
             name: "a",
             hoist: false,
             implicit: true,
-            status: "literal"
+            status: IdentifierStatus.Literal
         },
         {
             name: "b",
             hoist: false,
             implicit: false,
-            status: "reactive"
+            status: IdentifierStatus.Reactive
         },
         {
             name: "c",
             hoist: false,
             implicit: false,
-            status: "shallow"
+            status: IdentifierStatus.Shallow
         },
         {
             name: "d",
             hoist: false,
             implicit: false,
-            status: "derived"
+            status: IdentifierStatus.Derived
         },
         ...["e", "g", "i"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: true,
-                status: "pending"
+                status: IdentifierStatus.Pending
             } satisfies ExpectedTopLevelIdentifier
         }),
         ...["j", "k", "m", "p", "r"].map(name => {
@@ -100,7 +101,7 @@ test("Variable declarations with key: let, const", () => {
                 name,
                 hoist: false,
                 implicit: false,
-                status: "shallow"
+                status: IdentifierStatus.Shallow
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
@@ -136,14 +137,14 @@ test("Variable declaration with key: var", () => {
             name: "a",
             hoist: true,
             implicit: true,
-            status: "literal"
+            status: IdentifierStatus.Literal
         },
         ...["b", "c", "f", "i", "l"].map(name => {
             return {
                 name,
                 hoist: true,
                 implicit: false,
-                status: "reactive"
+                status: IdentifierStatus.Reactive
             } satisfies ExpectedTopLevelIdentifier
         }),
         ...["m", "n", "o"].map(name => {
@@ -151,7 +152,7 @@ test("Variable declaration with key: var", () => {
                 name,
                 hoist: true,
                 implicit: true,
-                status: "literal"
+                status: IdentifierStatus.Literal
             } satisfies ExpectedTopLevelIdentifier
         }),
         ...["q", "r", "t"].map(name => {
@@ -159,7 +160,7 @@ test("Variable declaration with key: var", () => {
                 name,
                 hoist: true,
                 implicit: false,
-                status: "shallow"
+                status: IdentifierStatus.Shallow
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
@@ -177,7 +178,7 @@ test("Typescript enum declarations", () => {
                 name,
                 hoist: false,
                 implicit: true,
-                status: "pending"
+                status: IdentifierStatus.Pending
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
@@ -196,7 +197,7 @@ test("Function declarations", () => {
             name: "a",
             hoist: true,
             implicit: true,
-            status: "literal"
+            status: IdentifierStatus.Literal
         }
     ])
 })
@@ -214,7 +215,7 @@ test("Class declarations", () => {
             name: "A",
             hoist: false,
             implicit: true,
-            status: "literal"
+            status: IdentifierStatus.Literal
         }
     ])
 })
@@ -258,55 +259,55 @@ test("Redeclarations for derived reactive value", () => {
             name: "a",
             hoist: true,
             implicit: false,
-            status: "reactive"
+            status: IdentifierStatus.Reactive
         },
         {
             name: "b",
             hoist: true,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "c",
             hoist: true,
             implicit: false,
-            status: "derived"
+            status: IdentifierStatus.Derived
         },
         {
             name: "d",
             hoist: true,
             implicit: false,
-            status: "shallow"
+            status: IdentifierStatus.Shallow
         },
         {
             name: "e",
             hoist: true,
             implicit: false,
-            status: "derived"
+            status: IdentifierStatus.Derived
         },
         {
             name: "f",
             hoist: true,
             implicit: false,
-            status: "derived"
+            status: IdentifierStatus.Derived
         },
         {
             name: "$g",
             hoist: true,
             implicit: true,
-            status: "pending"
+            status: IdentifierStatus.Pending
         },
         {
             name: "h",
             hoist: true,
             implicit: true,
-            status: "literal"
+            status: IdentifierStatus.Literal
         },
         {
             name: "i",
             hoist: true,
             implicit: true,
-            status: "pending"
+            status: IdentifierStatus.Pending
         }
     ])
     localMatchCompileMessages([
@@ -397,7 +398,7 @@ test("Literals", () => {
                 name,
                 hoist: false,
                 implicit: true,
-                status: "literal"
+                status: IdentifierStatus.Literal
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
@@ -424,7 +425,7 @@ test("Literals will be updated later", () => {
                 name,
                 hoist: false,
                 implicit: true,
-                status: "pending"
+                status: IdentifierStatus.Pending
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
@@ -440,7 +441,7 @@ test("Identifiers prefixed with $ in destructuring declarations are treated as o
                 name,
                 hoist: false,
                 implicit: true,
-                status: "pending"
+                status: IdentifierStatus.Pending
             } satisfies ExpectedTopLevelIdentifier
         })
     ])
@@ -458,13 +459,13 @@ test("Status of pre-mutation of literals should be pending", () => {
             name: "fn",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "a",
             hoist: false,
             implicit: true,
-            status: "pending"
+            status: IdentifierStatus.Pending
         }
     ])
 })
@@ -486,25 +487,25 @@ test("Const declarations are not inferred as reactive when allowConstReactive is
             name: "a",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "b",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "c",
             hoist: false,
             implicit: true,
-            status: "pending"
+            status: IdentifierStatus.Pending
         },
         {
             name: "d",
             hoist: true,
             implicit: true,
-            status: "pending"
+            status: IdentifierStatus.Pending
         }
     ])
 })
@@ -573,7 +574,7 @@ test("requireReactivityMark: raw mark on a const literal is the canonical form",
             name: "n",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         }
     ])
     localMatchCompileMessages([])
@@ -594,13 +595,13 @@ test("requireReactivityMark: reactive/shallow mark on a const literal keeps the 
             name: "a",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "b",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         }
     ])
     localMatchCompileMessages([
@@ -633,19 +634,19 @@ test("requireReactivityMark: explicit marks keep their statuses", () => {
             name: "state",
             hoist: false,
             implicit: false,
-            status: "reactive"
+            status: IdentifierStatus.Reactive
         },
         {
             name: "count",
             hoist: false,
             implicit: false,
-            status: "alias"
+            status: IdentifierStatus.Alias
         },
         {
             name: "double",
             hoist: false,
             implicit: false,
-            status: "derived"
+            status: IdentifierStatus.Derived
         }
     ])
     localMatchCompileMessages([])
@@ -666,13 +667,13 @@ test("requireReactivityMark: derivedExp with a function literal degrades to raw"
             name: "f",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "g",
             hoist: false,
             implicit: false,
-            status: "derived"
+            status: IdentifierStatus.Derived
         }
     ])
     localMatchCompileMessages([
@@ -700,19 +701,19 @@ test("requireReactivityMark: destructuring declarations", () => {
             name: "obj",
             hoist: false,
             implicit: false,
-            status: "reactive"
+            status: IdentifierStatus.Reactive
         },
         {
             name: "a",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         },
         {
             name: "code",
             hoist: false,
             implicit: false,
-            status: "reactive"
+            status: IdentifierStatus.Reactive
         }
     ])
     localMatchCompileMessages([
@@ -738,7 +739,7 @@ test("requireReactivityMark: a call to a non-built-in method raises 1074", () =>
             name: "value",
             hoist: false,
             implicit: false,
-            status: "raw"
+            status: IdentifierStatus.Raw
         }
     ])
     localMatchCompileMessages([
@@ -756,7 +757,7 @@ test("shallow mode: non-built-in call initializer stays literal until mutated", 
             let value = loadValue()
         `,
         {
-            reactivityMode: "shallow"
+            reactivityMode: ReactivityMode.Shallow
         }
     )
     checkTopLevelIdentifiers([
@@ -764,7 +765,7 @@ test("shallow mode: non-built-in call initializer stays literal until mutated", 
             name: "value",
             hoist: false,
             implicit: true,
-            status: "literal"
+            status: IdentifierStatus.Literal
         }
     ])
     localMatchCompileMessages([])

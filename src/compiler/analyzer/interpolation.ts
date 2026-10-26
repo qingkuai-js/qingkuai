@@ -38,7 +38,6 @@ import {
     getStriptTypeOperationsNode,
     getStriptTypeOperationsParent
 } from "../ts-ast/sundry"
-import { PositionFlag } from "../enums"
 import { parseExpression } from "../parser/script"
 import { newCleanObj } from "../../util/shared/sundry"
 import { kebab2Camel } from "../../util/compiler/string"
@@ -50,6 +49,7 @@ import { analyzeResult, inputDescriptor, messages } from "../state"
 import { collectReusedStringReference } from "../optimizer/compress"
 import { isRawCallExpression, isIdentifierAssignmentTarget } from "../ts-ast/assert"
 import { endSemicolonRE, intrinsicMethodsRE, intrinsicVariableRE } from "../regular"
+import { PositionFlag, IdentifierStatus, ReactivityMode, AnalyzeExpressionType } from "../enums"
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `parsedExpressions`.
@@ -169,7 +169,7 @@ export function analyzeInterpolation(
                 }
                 if (topLevelIdentifier) {
                     if (untracked) {
-                        if (topLevelIdentifier.status === "derived") {
+                        if (topLevelIdentifier.status === IdentifierStatus.Derived) {
                             markUntrackedDerivedSources(topLevelIdentifier)
                         }
                         topLevelIdentifier.untrackedAccess = true
@@ -177,18 +177,21 @@ export function analyzeInterpolation(
                         const status = topLevelIdentifier.status
                         if (
                             // prettier-ignore
-                            status === "pending" ||
+                            status === IdentifierStatus.Pending ||
                             (
-                                status === "literal" &&
+                                status === IdentifierStatus.Literal &&
                                 (isReferenceAttr || isIdentifierAssignmentTarget(node))
                             )
                         ) {
                             for (const exp of topLevelIdentifier.usedExpressions) {
                                 exp.reactive = true
                             }
-                            topLevelIdentifier.status = inputDescriptor.options.reactivityMode
+                            topLevelIdentifier.status =
+                                inputDescriptor.options.reactivityMode === ReactivityMode.Shallow
+                                    ? IdentifierStatus.Shallow
+                                    : IdentifierStatus.Reactive
                         }
-                        if (status === "derived") {
+                        if (status === IdentifierStatus.Derived) {
                             propagateDerivedSourceAccess(topLevelIdentifier, parsedExpression)
                         }
                         topLevelIdentifier.usedExpressions.add(parsedExpression)
@@ -233,9 +236,9 @@ export function analyzeInterpolation(
             // 2. Accessing a top-level scope identifier whose status is one of the reactive types
             else if (
                 topLevelIdentifier &&
-                topLevelIdentifier.status !== "raw" &&
-                topLevelIdentifier.status !== "literal" &&
-                topLevelIdentifier.status !== "pending"
+                topLevelIdentifier.status !== IdentifierStatus.Raw &&
+                topLevelIdentifier.status !== IdentifierStatus.Literal &&
+                topLevelIdentifier.status !== IdentifierStatus.Pending
             ) {
                 parsedExpression.reactive ||= true
             }
@@ -258,15 +261,15 @@ export function analyzeTemplateAsExpression(
     name: string,
     parsingKey: any,
     loc: ASTLocation,
-    type: "component" | "attribute"
+    type: AnalyzeExpressionType
 ) {
     const baseName = getAttributeBaseName(name)
-    const source = type === "attribute" ? kebab2Camel(baseName) : baseName
+    const source = type === AnalyzeExpressionType.Attribute ? kebab2Camel(baseName) : baseName
     const expression = analyzeInterpolation(
         node,
         parsingKey,
         source,
-        loc.start.index + +(type === "attribute")
+        loc.start.index + +(type === AnalyzeExpressionType.Attribute)
     )
 
     // 检查模式下无需再报 “无效表达式” 的错误，转而报下方的 “无效组件名称” 或 “无效属性名称” 错误
@@ -276,7 +279,7 @@ export function analyzeTemplateAsExpression(
         messages.pop()
     }
 
-    if (type === "attribute") {
+    if (type === AnalyzeExpressionType.Attribute) {
         if (!expression || !ts.isIdentifier(expression)) {
             return InvalidShorthandAttributeName(loc, name)
         }
@@ -312,10 +315,13 @@ function propagateDerivedSourceAccess(
         if (!sourceInfo) {
             continue
         }
-        if (sourceInfo.status === "pending") {
+        if (sourceInfo.status === IdentifierStatus.Pending) {
             sourceInfo.usedExpressions.add(parsedExpression)
-            sourceInfo.status = inputDescriptor.options.reactivityMode
-        } else if (sourceInfo.status === "derived") {
+            sourceInfo.status =
+                inputDescriptor.options.reactivityMode === ReactivityMode.Shallow
+                    ? IdentifierStatus.Shallow
+                    : IdentifierStatus.Reactive
+        } else if (sourceInfo.status === IdentifierStatus.Derived) {
             propagateDerivedSourceAccess(sourceInfo, parsedExpression)
         }
     }
@@ -324,7 +330,7 @@ function propagateDerivedSourceAccess(
         if (!sourceInfo) {
             continue
         }
-        if (sourceInfo.status === "derived") {
+        if (sourceInfo.status === IdentifierStatus.Derived) {
             markUntrackedDerivedSources(sourceInfo)
         }
         sourceInfo.untrackedAccess = true
@@ -343,7 +349,7 @@ function markUntrackedDerivedSources(derivedInfo: TopLevelIdentifierInfo) {
         if (!sourceInfo) {
             continue
         }
-        if (sourceInfo.status === "derived") {
+        if (sourceInfo.status === IdentifierStatus.Derived) {
             markUntrackedDerivedSources(sourceInfo)
         }
         sourceInfo.untrackedAccess = true

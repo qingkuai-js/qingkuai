@@ -1,7 +1,8 @@
 import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ASTLocation, CompileWarning, IdentifierStatus } from "#type-declarations/compiler"
+import type { ASTLocation, CompileWarning } from "#type-declarations/compiler"
 
 import { messages } from "../state"
+import { IdentifierStatus, CompileMessageType } from "../enums"
 
 export const UnnecessarySpreadTag = withLocation(9012, (without: string) => {
     return `The <qk:spread> tag without ${without} is unnecessary.`
@@ -17,7 +18,7 @@ export const RedundantEventFlags = withLocation(9009, () => {
 
 export const UnnecessaryReactiveMark = withLocation(9001, (status: IdentifierStatus) => {
     return `This value will never change, so marking it ${
-        status === "reactive" ? "" : status + " "
+        status === IdentifierStatus.Reactive ? "" : status + " "
     }reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
 })
 
@@ -90,7 +91,7 @@ class QingkuaiCompileWarning implements CompileWarning {
     ) {
         messages.push({
             value: this,
-            type: "warning"
+            type: CompileMessageType.Warning
         })
     }
 }

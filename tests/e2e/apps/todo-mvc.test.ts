@@ -1,9 +1,9 @@
 import type { E2EScenarioInput } from "#type-declarations/testing"
 
 import { defineE2ETestFile } from "../scenario-module"
+import { WhitespaceMode } from "../../../src/compiler/enums"
 
 const scenario: E2EScenarioInput = {
-    compileOptions: { whitespace: "collapse" },
     input: `
         <lang-js>
             import { nextTick } from "qingkuai"
@@ -187,7 +187,10 @@ const scenario: E2EScenarioInput = {
                 </ul>
             </footer>
         </div>
-    `
+    `,
+    compileOptions: {
+        whitespace: WhitespaceMode.Collapse
+    }
 }
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {

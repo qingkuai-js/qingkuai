@@ -28,7 +28,6 @@ export type {
     StyleDescriptor,
     TextContentPart,
     ScriptDescriptor,
-    IdentifierStatus,
     TemplateAttribute,
     ASTPositionWithFlag,
     TemplateNodeContext,
@@ -58,9 +57,18 @@ export const constants = {
     PRESERVED_IDPREFIX
 }
 
+export {
+    TestingMode,
+    PositionFlag,
+    InlayHintKind,
+    ReactivityMode,
+    WhitespaceMode,
+    IdentifierStatus,
+    CompileMessageType,
+    AttributeValueEnclosure
+} from "./enums"
 export { isCompileError } from "./message/error"
 export { isCompileWarning } from "./message/warn"
-export { PositionFlag, TestingMode } from "./enums"
 export { parseDirectiveValue } from "./parser/directive"
 export { compile, compileIntermediate } from "./compile"
 export { getTypeScript, setTypeScript, setTypeScriptPath } from "./ts-api"

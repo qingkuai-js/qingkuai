@@ -5,10 +5,12 @@ import type {
     TopLevelDeclaratorNode,
     TopLevelDeclarationNode
 } from "#type-declarations/ts-ast"
+import type { Range } from "#type-declarations/compiler"
 import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler"
-import type { Range, IdentifierStatus, ReactiveIntrinsics } from "#type-declarations/compiler"
 
 import ts from "../ts-api"
+
+import { IdentifierStatus, ReactivityMode } from "../enums"
 
 import {
     indentSpacesRE,
@@ -142,7 +144,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                         enumDeclaration.name,
                         false,
                         true,
-                        "pending",
+                        IdentifierStatus.Pending,
                         enumDeclaration,
                         enumDeclaration
                     )
@@ -156,7 +158,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                             classDeclaration.name,
                             false,
                             true,
-                            "literal",
+                            IdentifierStatus.Literal,
                             classDeclaration,
                             classDeclaration
                         )
@@ -171,7 +173,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                             functionDeclaration.name,
                             true,
                             true,
-                            "literal",
+                            IdentifierStatus.Literal,
                             functionDeclaration,
                             functionDeclaration
                         )
@@ -239,7 +241,7 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
         rawArgumentBitMap.fill(1, ...getNodeRange(call.arguments[0]))
     }
     traverseObject(analyzeResult.script.topLevelIdentifiers, (_, info) => {
-        if (info.status !== "derived") {
+        if (info.status !== IdentifierStatus.Derived) {
             return
         }
         for (const { declarator } of info.nodeInfos) {
@@ -303,8 +305,8 @@ function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
     // reactive status in subsequent analysis.
     if (isIdentifierAssignmentTarget(node)) {
         if (topLevelIdentifier) {
-            if (topLevelIdentifier.status === "literal") {
-                topLevelIdentifier.status = "pending"
+            if (topLevelIdentifier.status === IdentifierStatus.Literal) {
+                topLevelIdentifier.status = IdentifierStatus.Pending
             }
         } else if (!preMutatedTopLevelIdentifiers.has(node.text)) {
             preMutatedTopLevelIdentifiers.add(node.text)
@@ -345,7 +347,10 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
 
             // `let/var` 声明对衍生响应式值无意义，它不可被修改
             // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
-            if (status === "derived" && (declareKeyword === "var" || declareKeyword === "let")) {
+            if (
+                status === IdentifierStatus.Derived &&
+                (declareKeyword === "var" || declareKeyword === "let")
+            ) {
                 UnnecessaryMutableDerivedDeclaration(getScriptLocByNode(declaration))
             }
 
@@ -370,7 +375,8 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
             }
 
             const hoist = declareKeyword === "var"
-            const implicit = status === "pending" || status === "literal"
+            const implicit =
+                status === IdentifierStatus.Pending || status === IdentifierStatus.Literal
             updateTopLevelIdentifiers(
                 identifier,
                 hoist,
@@ -385,7 +391,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
             // When the status is `alias`, record the access path of the identifier alias.
             if (
                 initNode &&
-                status === "alias" &&
+                status === IdentifierStatus.Alias &&
                 ts.isCallExpression(initNode) &&
                 initNode.arguments.length &&
                 isLeftValue(initNode.arguments[0])
@@ -449,7 +455,7 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
 
         // 别名绑定搭配解构语法时不允许指定默认值或剩余元素语法
         // Alias bindings are not allowed to specify default values or use rest elements when combined with destructuring syntax.
-        if (status === "alias") {
+        if (status === IdentifierStatus.Alias) {
             const errorLoc = getScriptLocByNode(declaration)
             if (!inputDescriptor.options.debug) {
                 if (node.declarations.length === 1) {
@@ -476,18 +482,18 @@ function inferStatusByVariableDeclaration(
 ): IdentifierStatus {
     const declareKeyword = getVariableDeclareKeyword(declarationList)
     if (declareKeyword === "using") {
-        return "raw"
+        return IdentifierStatus.Raw
     }
 
     const isConst = declareKeyword === "const"
     const declarationLoc = getScriptLocByNode(declaration)
     const isDestructuring = !ts.isIdentifier(declaration.name)
     const allowConstReactive = inputDescriptor.options.allowConstReactive
-    const shallowMode = inputDescriptor.options.reactivityMode === "shallow"
+    const shallowMode = inputDescriptor.options.reactivityMode === ReactivityMode.Shallow
     const initNode = declaration.initializer && getStriptTypeOperationsNode(declaration.initializer)
 
     if (!initNode) {
-        return isConst ? "raw" : "literal"
+        return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal
     }
 
     const isLiteralInit = isLiteral(initNode)
@@ -495,36 +501,36 @@ function inferStatusByVariableDeclaration(
 
     if (!ts.isCallExpression(initNode)) {
         if (requireMark) {
-            return (ExplicitReactivityMarkRequired(declarationLoc), "raw")
+            return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw)
         }
 
         // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
         // Constant declarations with literal initial values have no reactive semantics and are downgraded to using the raw value.
         if (!isDestructuring && (isLiteralInit || isFunctionLiteral(initNode))) {
-            return isConst ? "raw" : "literal"
+            return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal
         }
 
         // 当 allowConstReactive 选项被禁用时，常量声明不会参与响应式推断
         // Constant declarations are not inferred as reactive when the allowConstReactive option is disabled.
         if (isConst) {
-            return allowConstReactive ? "pending" : "raw"
+            return allowConstReactive ? IdentifierStatus.Pending : IdentifierStatus.Raw
         }
 
         // 可变声明（let/var）：shallow 模式下非字面量需"被赋值"才升级为 shallow。
         // Mutable declarations: in shallow mode, non-literal initializers are only
         // upgraded to shallow when actually mutated.
-        return shallowMode ? "literal" : "pending"
+        return shallowMode ? IdentifierStatus.Literal : IdentifierStatus.Pending
     }
 
     const callee = getStriptTypeOperationsNode(initNode.expression)!
     if (!ts.isIdentifier(callee) || !intrinsicReactiveMethodsRE.test(callee.text)) {
         if (!requireMark) {
             if (isConst) {
-                return "pending"
+                return IdentifierStatus.Pending
             }
-            return shallowMode ? "literal" : "pending"
+            return shallowMode ? IdentifierStatus.Literal : IdentifierStatus.Pending
         }
-        return (ExplicitReactivityMarkRequired(declarationLoc), "raw")
+        return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw)
     }
 
     const calleeName = callee.text
@@ -534,7 +540,7 @@ function inferStatusByVariableDeclaration(
 
     switch (calleeName) {
         case "alias": {
-            return "alias"
+            return IdentifierStatus.Alias
         }
 
         // 初始值为字面量值的衍生响应式声明无意义，退化为使用原始值
@@ -542,42 +548,57 @@ function inferStatusByVariableDeclaration(
         // are meaningless and are downgraded to using the raw value.
         case "derived": {
             if (isLiteralArg) {
-                return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
+                return (
+                    UnnecessaryReactiveMark(declarationLoc, IdentifierStatus.Derived),
+                    IdentifierStatus.Raw
+                )
             }
-            return "derived"
+            return IdentifierStatus.Derived
         }
         case "derivedExp": {
             if (isLiteralArg || isLiteralArgFull) {
-                return (UnnecessaryReactiveMark(declarationLoc, "derived"), "raw")
+                return (
+                    UnnecessaryReactiveMark(declarationLoc, IdentifierStatus.Derived),
+                    IdentifierStatus.Raw
+                )
             }
-            return "derived"
+            return IdentifierStatus.Derived
         }
 
         default: {
-            const status = calleeName as ReactiveIntrinsics
+            const status = calleeName as IdentifierStatus
 
             // const 声明的字面量/函数字面量初始值会被退化规则忽略其标记
             // Markers on a const declaration with a literal/function-literal
             // initial value are ignored by the degeneration rule.
             if (isConst && !isDestructuring && (isLiteralArg || isLiteralArgFull)) {
-                if (status === "raw") {
+                if (status === IdentifierStatus.Raw) {
                     // requireReactivityMark 模式下 raw 是规范形态，不再提示冗余
                     // Under requireReactivityMark `raw` is canonical,
                     // so the redundancy warning is suppressed.
-                    return requireMark ? "raw" : (RedundantRawMark(declarationLoc), "raw")
+                    return requireMark
+                        ? IdentifierStatus.Raw
+                        : (RedundantRawMark(declarationLoc), IdentifierStatus.Raw)
                 }
 
                 // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
                 // Marking a literal value in a constant declaration with `reactive`
                 // or `shallow` is meaningless and is downgraded to using the raw value.
-                return (UnnecessaryReactiveMark(declarationLoc, status), "raw")
+                return (UnnecessaryReactiveMark(declarationLoc, status), IdentifierStatus.Raw)
             }
 
             // 当 allowConstReactive 选项被禁用时，禁止通过 reactive/shallow 显式标记常量声明
             // Explicitly marking a const declaration with `reactive` or `shallow`
             // is disallowed when the allowConstReactive option is disabled.
-            if (isConst && !allowConstReactive && (status === "reactive" || status === "shallow")) {
-                return (ConstReactiveDisallowedByOption(declarationLoc, status), "raw")
+            if (
+                isConst &&
+                !allowConstReactive &&
+                (status === IdentifierStatus.Reactive || status === IdentifierStatus.Shallow)
+            ) {
+                return (
+                    ConstReactiveDisallowedByOption(declarationLoc, status),
+                    IdentifierStatus.Raw
+                )
             }
             return status
         }
@@ -603,27 +624,27 @@ function updateTopLevelIdentifiers(
     }
     const existing = analyzeResult.script.topLevelIdentifiers[id.text]
     const mutatedBeforeDeclaration = analyzeResult.script.preMutatedTopLevelIdentifiers.has(id.text)
-    if (status === "literal" && mutatedBeforeDeclaration) {
-        status = "pending"
+    if (status === IdentifierStatus.Literal && mutatedBeforeDeclaration) {
+        status = IdentifierStatus.Pending
     }
     if (existing) {
-        if (status !== "pending" && status !== "literal") {
+        if (status !== IdentifierStatus.Pending && status !== IdentifierStatus.Literal) {
             existing.status = status
             existing.implicit = false
         }
-        if (existing.status === "literal") {
-            existing.status = "pending"
+        if (existing.status === IdentifierStatus.Literal) {
+            existing.status = IdentifierStatus.Pending
         }
         existing.nodeInfos.push(nodeInfo)
     } else {
         let accessor: boolean
         if (!(accessor = !ts.isVariableDeclarationList(declaration))) {
             switch (status) {
-                case "derived": {
+                case IdentifierStatus.Derived: {
                     accessor = true
                     break
                 }
-                case "alias": {
+                case IdentifierStatus.Alias: {
                     accessor = !inputDescriptor.options.debug
                     break
                 }

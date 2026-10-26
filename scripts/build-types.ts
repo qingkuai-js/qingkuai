@@ -27,7 +27,14 @@ function main() {
                         publicTrimmedFilePath: `dist/types/${item}.d.ts`
                     },
                     compiler: {
-                        tsconfigFilePath: "tsconfig.json"
+                        overrideTsconfig: {
+                            extends: "./tsconfig.json",
+                            compilerOptions: {
+                                paths: {
+                                    "#type-declarations/*": ["./dist/temp-types/src/types/*"]
+                                }
+                            }
+                        }
                     },
                     projectFolder: nodePath.resolve(PROJECT_DIR),
                     mainEntryPointFilePath: `dist/temp-types/src/${item}.d.ts`

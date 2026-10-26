@@ -1,5 +1,4 @@
 import type TS from "typescript"
-import type { ParseDiatnosticDealtKind } from "#type-declarations/compiler"
 
 import ts from "../ts-api"
 
@@ -7,21 +6,26 @@ import { walkTsNode } from "../ts-ast/walk"
 import { any } from "../../util/shared/sundry"
 import { hasParseError } from "../ts-ast/assert"
 import { isString } from "../../util/shared/assert"
+import { ParseDiatnosticDealtKind } from "../enums"
 import { expressionParseErrorNoReportRE } from "../regular"
 import { inputDescriptor, tsParsingDiagnostics } from "../state"
 
 export function parseScript(source: string) {
     return createSourceFile(source, inputDescriptor.script.loc.start.index, () => {
-        return inputDescriptor.options.checkMode ? "record" : "thrown"
+        return inputDescriptor.options.checkMode
+            ? ParseDiatnosticDealtKind.Record
+            : ParseDiatnosticDealtKind.Thrown
     })
 }
 
 export function parseExpression(source: string, startSourceIndex: number) {
     const sourceFile = createSourceFile(`_=(${source})`, startSourceIndex - 3, msg => {
         if (expressionParseErrorNoReportRE.test(msg)) {
-            return "ignore"
+            return ParseDiatnosticDealtKind.Ignore
         }
-        return inputDescriptor.options.checkMode ? "record" : "thrown"
+        return inputDescriptor.options.checkMode
+            ? ParseDiatnosticDealtKind.Record
+            : ParseDiatnosticDealtKind.Thrown
     })
     if (hasParseError(sourceFile)) {
         return null
@@ -45,7 +49,7 @@ export function parseExpression(source: string, startSourceIndex: number) {
 
 export function parseContextPattern(source: string, startSourceIndex: number) {
     const sourceFile = createSourceFile(`const [${source}]=_`, startSourceIndex - 7, () => {
-        return "ignore"
+        return ParseDiatnosticDealtKind.Ignore
     })
     if (hasParseError(sourceFile)) {
         return null
@@ -103,14 +107,14 @@ function createSourceFile(
             message = diagnostics[0].messageText.messageText
         }
         switch (shouldThrow(message)) {
-            case "thrown": {
+            case ParseDiatnosticDealtKind.Thrown: {
                 throw new SyntaxError(message, {
                     cause: {
                         pos: startSourceIndex + diagnostics[0].start!
                     }
                 })
             }
-            case "record": {
+            case ParseDiatnosticDealtKind.Record: {
                 for (const item of diagnostics) {
                     tsParsingDiagnostics.push({
                         ...item,

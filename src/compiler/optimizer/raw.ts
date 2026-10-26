@@ -5,6 +5,7 @@ import type { Range, RawArgumentInfo } from "#type-declarations/compiler"
 import ts from "../ts-api"
 
 import { analyzeResult } from "../state"
+import { RawArgumentKind, IdentifierStatus } from "../enums"
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
 
 // raw 实参的静态分类（topLevelRefs：顶部作用域标识符引用的位置位图）：
@@ -36,15 +37,19 @@ export function getRawArgumentInfo(
 
     const range: Range = [arg.getStart(), arg.getEnd()]
     if (!topLevelRefs[range[0]]) {
-        return { kind: "unwrap", range }
+        return { kind: RawArgumentKind.Unwrap, range }
     }
 
     const status = analyzeResult.script.topLevelIdentifiers[arg.text]?.status
-    if (status === "raw" || status === "literal" || status === "pending") {
-        return { kind: "plain", range }
+    if (
+        status === IdentifierStatus.Raw ||
+        status === IdentifierStatus.Literal ||
+        status === IdentifierStatus.Pending
+    ) {
+        return { kind: RawArgumentKind.Plain, range }
     }
-    if (status === "derived" || status === "alias") {
+    if (status === IdentifierStatus.Derived || status === IdentifierStatus.Alias) {
         return undefined
     }
-    return { kind: "unwrap", range }
+    return { kind: RawArgumentKind.Unwrap, range }
 }

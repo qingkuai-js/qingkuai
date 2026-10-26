@@ -1,7 +1,42 @@
-export enum TestingMode {
-    None = 0,
-    Unit = 1,
-    E2e = 2
+export enum CompileMessageType {
+    Error = "error",
+    Warning = "warning"
+}
+
+export enum ReactivityMode {
+    Reactive = "reactive",
+    Shallow = "shallow"
+}
+
+export enum WhitespaceMode {
+    Preserve = "preserve",
+    Trim = "trim",
+    Collapse = "collapse",
+    TrimCollapse = "trim-collapse"
+}
+
+export enum IdentifierStatus {
+    Reactive = "reactive",
+    Raw = "raw",
+    Shallow = "shallow",
+    Derived = "derived",
+    Pending = "pending",
+    Alias = "alias",
+    Literal = "literal"
+}
+
+export enum InlayHintKind {
+    Variable = "variable",
+    Function = "function",
+    Class = "class",
+    Enum = "enum"
+}
+
+export enum AttributeValueEnclosure {
+    Single = "single",
+    Double = "double",
+    Curly = "curly",
+    None = "none"
 }
 
 export enum PositionFlag {
@@ -13,4 +48,42 @@ export enum PositionFlag {
     SourcemapEnd = (1 << 5) | PositionFlag.Sourcemap,
     SourcemapStart = (1 << 6) | PositionFlag.Sourcemap,
     isInterpolatedAttributeStart = (1 << 7) | PositionFlag.IsAttributeStart
+}
+
+export enum TestingMode {
+    None,
+    Unit,
+    E2e
+}
+
+export enum RawArgumentKind {
+    Unwrap,
+    Plain
+}
+
+export enum ParseDiatnosticDealtKind {
+    Record,
+    Ignore,
+    Thrown
+}
+
+export enum AnalyzeExpressionType {
+    Component,
+    Attribute
+}
+
+export enum HtmlDirectivePlacementKind {
+    Slot,
+    Component
+}
+
+export enum ReferenceBindingType {
+    Getter,
+    Setter,
+    Both
+}
+
+export enum SelectorExpressionType {
+    Prev,
+    Next
 }

@@ -6,6 +6,7 @@ import {
 } from "../../../../src/util/compiler/position"
 import { describe, expect, test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { AttributeValueEnclosure } from "../../../../src/compiler/enums"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 
@@ -40,8 +41,8 @@ test("Simple parsing", () => {
                     loc: getLocByIndex(10, 14)
                 },
                 equalSign: true,
-                valueEnclosure: "double",
-                loc: getLocByIndex(3, 15)
+                loc: getLocByIndex(3, 15),
+                valueEnclosure: AttributeValueEnclosure.Double
             },
             {
                 name: {
@@ -53,8 +54,8 @@ test("Simple parsing", () => {
                     loc: getLocByIndex(22, 42)
                 },
                 equalSign: true,
-                valueEnclosure: "double",
-                loc: getLocByIndex(16, 43)
+                loc: getLocByIndex(16, 43),
+                valueEnclosure: AttributeValueEnclosure.Double
             }
         ],
         loc: getLocByIndex(0, 63),
@@ -77,8 +78,8 @@ test("Within self-closing tag", () => {
                     loc: getLocByIndex(13, 19)
                 },
                 equalSign: true,
-                valueEnclosure: "double",
-                loc: getLocByIndex(7, 20)
+                loc: getLocByIndex(7, 20),
+                valueEnclosure: AttributeValueEnclosure.Double
             },
             {
                 name: {
@@ -90,8 +91,8 @@ test("Within self-closing tag", () => {
                     loc: getLocByIndex(28, 36)
                 },
                 equalSign: true,
-                valueEnclosure: "double",
-                loc: getLocByIndex(21, 37)
+                loc: getLocByIndex(21, 37),
+                valueEnclosure: AttributeValueEnclosure.Double
             }
         ],
         isSelfClosing: true,
@@ -138,8 +139,8 @@ test("With directives", () => {
                             loc: getLocByIndex(19, 28)
                         },
                         equalSign: true,
-                        valueEnclosure: "curly",
-                        loc: getLocByIndex(13, 29)
+                        loc: getLocByIndex(13, 29),
+                        valueEnclosure: AttributeValueEnclosure.Curly
                     }
                 ],
                 children: [
@@ -207,7 +208,7 @@ test("With dynamic attributes", () => {
                     loc: getLocByIndex(12, 21)
                 },
                 equalSign: true,
-                valueEnclosure: "double",
+                valueEnclosure: AttributeValueEnclosure.Double,
                 loc: getLocByIndex(5, 22)
             },
             {
@@ -220,8 +221,8 @@ test("With dynamic attributes", () => {
                     loc: getLocByIndex(28, 37)
                 },
                 equalSign: true,
-                valueEnclosure: "curly",
-                loc: getLocByIndex(23, 38)
+                loc: getLocByIndex(23, 38),
+                valueEnclosure: AttributeValueEnclosure.Curly
             }
         ],
         loc: getLocByIndex(0, 45),
@@ -253,8 +254,8 @@ test("With reference attributes", () => {
                         loc: getLocByIndex(15, 26)
                     },
                     equalSign: true,
-                    valueEnclosure: "curly",
-                    loc: getLocByIndex(10, 27)
+                    loc: getLocByIndex(10, 27),
+                    valueEnclosure: AttributeValueEnclosure.Curly
                 },
                 {
                     name: {
@@ -266,8 +267,8 @@ test("With reference attributes", () => {
                         loc: getLocByIndex(41, 45)
                     },
                     equalSign: true,
-                    valueEnclosure: "curly",
-                    loc: getLocByIndex(32, 46)
+                    loc: getLocByIndex(32, 46),
+                    valueEnclosure: AttributeValueEnclosure.Curly
                 }
             ],
             loc: getLocByIndex(0, 55),
@@ -319,8 +320,8 @@ test("With event listeners", () => {
                     raw: `\n        () => {\n            console.log("clicked")\n        }\n    `
                 },
                 equalSign: true,
-                valueEnclosure: "curly",
-                loc: getLocByIndex(12, 87)
+                loc: getLocByIndex(12, 87),
+                valueEnclosure: AttributeValueEnclosure.Curly
             },
             {
                 name: {
@@ -332,8 +333,8 @@ test("With event listeners", () => {
                     loc: getLocByIndex(99, 120)
                 },
                 equalSign: true,
-                valueEnclosure: "double",
-                loc: getLocByIndex(92, 121)
+                loc: getLocByIndex(92, 121),
+                valueEnclosure: AttributeValueEnclosure.Double
             }
         ],
         loc: getLocByIndex(0, 146),
@@ -384,8 +385,8 @@ test("Within nested structure", () => {
                             loc: getLocByIndex(54, 63)
                         },
                         equalSign: true,
-                        valueEnclosure: "curly",
-                        loc: getLocByIndex(49, 64)
+                        loc: getLocByIndex(49, 64),
+                        valueEnclosure: AttributeValueEnclosure.Curly
                     },
                     {
                         name: {
@@ -397,8 +398,8 @@ test("Within nested structure", () => {
                             loc: getLocByIndex(78, 87)
                         },
                         equalSign: true,
-                        valueEnclosure: "curly",
-                        loc: getLocByIndex(73, 88)
+                        loc: getLocByIndex(73, 88),
+                        valueEnclosure: AttributeValueEnclosure.Curly
                     },
                     {
                         name: {
@@ -410,8 +411,8 @@ test("Within nested structure", () => {
                             loc: getLocByIndex(106, 115)
                         },
                         equalSign: true,
-                        valueEnclosure: "curly",
-                        loc: getLocByIndex(97, 116)
+                        loc: getLocByIndex(97, 116),
+                        valueEnclosure: AttributeValueEnclosure.Curly
                     },
                     {
                         name: {
@@ -423,8 +424,8 @@ test("Within nested structure", () => {
                             loc: getLocByIndex(133, 144)
                         },
                         equalSign: true,
-                        valueEnclosure: "curly",
-                        loc: getLocByIndex(125, 145)
+                        loc: getLocByIndex(125, 145),
+                        valueEnclosure: AttributeValueEnclosure.Curly
                     }
                 ],
                 parent: nodeList[0],
@@ -460,8 +461,8 @@ test("Within nested structure", () => {
                     loc: getLocByIndex(13, 27)
                 },
                 equalSign: true,
-                valueEnclosure: "curly",
-                loc: getLocByIndex(5, 28)
+                loc: getLocByIndex(5, 28),
+                valueEnclosure: AttributeValueEnclosure.Curly
             }
         ],
         loc: getLocByIndex(0, 159),
@@ -536,8 +537,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: newASTLocation()
                             },
                             equalSign: false,
-                            valueEnclosure: "none",
-                            loc: getLocByIndex(5, 10)
+                            loc: getLocByIndex(5, 10),
+                            valueEnclosure: AttributeValueEnclosure.None
                         }
                     ],
                     loc: getLocByIndex(0, 19),
@@ -570,8 +571,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: newASTLocation()
                             },
                             equalSign: false,
-                            valueEnclosure: "none",
-                            loc: getLocByIndex(5, 8)
+                            loc: getLocByIndex(5, 8),
+                            valueEnclosure: AttributeValueEnclosure.None
                         }
                     ],
                     loc: getLocByIndex(0, 24),
@@ -606,8 +607,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(8, 17)
                             },
                             equalSign: true,
-                            valueEnclosure: "none",
-                            loc: getLocByIndex(5, 17)
+                            loc: getLocByIndex(5, 17),
+                            valueEnclosure: AttributeValueEnclosure.None
                         }
                     ],
                     loc: getLocWithDefaultEnd(0)
@@ -643,8 +644,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(13, 18)
                             },
                             equalSign: true,
-                            valueEnclosure: "double",
-                            loc: getLocByIndex(7, 19)
+                            loc: getLocByIndex(7, 19),
+                            valueEnclosure: AttributeValueEnclosure.Double
                         },
                         {
                             name: {
@@ -656,8 +657,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(29, 38)
                             },
                             equalSign: true,
-                            valueEnclosure: "none",
-                            loc: getLocByIndex(20, 38)
+                            loc: getLocByIndex(20, 38),
+                            valueEnclosure: AttributeValueEnclosure.None
                         }
                     ],
                     isSelfClosing: true,
@@ -731,8 +732,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         loc: getLocByIndex(37, 48)
                                     },
                                     equalSign: true,
-                                    valueEnclosure: "none",
-                                    loc: getLocByIndex(31, 48)
+                                    loc: getLocByIndex(31, 48),
+                                    valueEnclosure: AttributeValueEnclosure.None
                                 }
                             ],
                             parent: nodeList[0],
@@ -768,8 +769,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(12, 21)
                             },
                             equalSign: true,
-                            valueEnclosure: "single",
-                            loc: getLocByIndex(5, 22)
+                            loc: getLocByIndex(5, 22),
+                            valueEnclosure: AttributeValueEnclosure.Single
                         }
                     ],
                     loc: getLocByIndex(0, 77),
@@ -801,8 +802,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(9, 11)
                             },
                             equalSign: true,
-                            valueEnclosure: "none",
-                            loc: getLocByIndex(3, 11)
+                            loc: getLocByIndex(3, 11),
+                            valueEnclosure: AttributeValueEnclosure.None
                         }
                     ],
                     loc: getLocByIndex(0, 16),
@@ -837,8 +838,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocWithDefaultEnd(13)
                             },
                             equalSign: true,
-                            valueEnclosure: "double",
-                            loc: getLocWithDefaultEnd(7)
+                            loc: getLocWithDefaultEnd(7),
+                            valueEnclosure: AttributeValueEnclosure.Double
                         }
                     ],
                     isSelfClosing: true,
@@ -875,8 +876,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocWithDefaultEnd(13)
                             },
                             equalSign: true,
-                            valueEnclosure: "curly",
-                            loc: getLocWithDefaultEnd(5)
+                            loc: getLocWithDefaultEnd(5),
+                            valueEnclosure: AttributeValueEnclosure.Curly
                         }
                     ],
                     loc: getLocWithDefaultEnd(0)
@@ -914,8 +915,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(10)
                             },
                             equalSign: true,
-                            valueEnclosure: "curly",
-                            loc: getLocByIndex(3, 11)
+                            loc: getLocByIndex(3, 11),
+                            valueEnclosure: AttributeValueEnclosure.Curly
                         }
                     ],
                     loc: getLocByIndex(0, 16),
@@ -955,8 +956,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(12, 21)
                             },
                             equalSign: true,
-                            valueEnclosure: "double",
-                            loc: getLocByIndex(5, 22)
+                            loc: getLocByIndex(5, 22),
+                            valueEnclosure: AttributeValueEnclosure.Double
                         }
                     ],
                     children: [
@@ -986,8 +987,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         loc: getLocByIndex(45, 52)
                                     },
                                     equalSign: true,
-                                    valueEnclosure: "curly",
-                                    loc: getLocByIndex(35, 53)
+                                    loc: getLocByIndex(35, 53),
+                                    valueEnclosure: AttributeValueEnclosure.Curly
                                 }
                             ],
                             isSelfClosing: true,
@@ -1043,8 +1044,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(14, 22)
                             },
                             equalSign: true,
-                            valueEnclosure: "curly",
-                            loc: getLocByIndex(11, 23)
+                            loc: getLocByIndex(11, 23),
+                            valueEnclosure: AttributeValueEnclosure.Curly
                         }
                     ],
                     isSelfClosing: true,
@@ -1085,8 +1086,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 loc: getLocByIndex(10, 19)
                             },
                             equalSign: true,
-                            valueEnclosure: "single",
-                            loc: getLocByIndex(3, 20)
+                            loc: getLocByIndex(3, 20),
+                            valueEnclosure: AttributeValueEnclosure.Single
                         }
                     ],
                     children: [
@@ -1116,8 +1117,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         loc: getLocByIndex(41, 54)
                                     },
                                     equalSign: true,
-                                    valueEnclosure: "curly",
-                                    loc: getLocByIndex(38, 55)
+                                    loc: getLocByIndex(38, 55),
+                                    valueEnclosure: AttributeValueEnclosure.Curly
                                 }
                             ],
                             children: [
@@ -1194,7 +1195,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             },
                             equalSign: true,
                             loc: getLocByIndex(5, 11),
-                            valueEnclosure: "curly"
+                            valueEnclosure: AttributeValueEnclosure.Curly
                         }
                     ],
                     next: nodeList[1],
@@ -1228,7 +1229,7 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             },
                             equalSign: true,
                             loc: getLocByIndex(25, 45),
-                            valueEnclosure: "curly"
+                            valueEnclosure: AttributeValueEnclosure.Curly
                         }
                     ],
                     prev: nodeList[1],

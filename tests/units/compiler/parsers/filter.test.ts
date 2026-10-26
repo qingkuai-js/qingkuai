@@ -1,5 +1,6 @@
 import { describe, it, test } from "vitest"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { AttributeValueEnclosure } from "../../../../src/compiler/enums"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
 import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
@@ -40,7 +41,7 @@ test("Whether comment nodes were removed from parse result", () => {
                         loc: getLocByIndex(25, 34)
                     },
                     equalSign: true,
-                    valueEnclosure: "double",
+                    valueEnclosure: AttributeValueEnclosure.Double,
                     loc: getLocByIndex(18, 35)
                 }
             ],

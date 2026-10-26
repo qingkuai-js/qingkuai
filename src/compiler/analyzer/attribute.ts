@@ -8,15 +8,16 @@ import {
 } from "../message/error"
 import { analyzeEvent } from "./event"
 import { analyzeDirective } from "./directive"
+import { AnalyzeExpressionType } from "../enums"
 import { newCleanObj } from "../../util/shared/sundry"
 import { analyzeReferenceAttribute } from "./reference"
-import { embeddedStyleLangRE, interpolatedAttrStartCharRE } from "../regular"
 import { RedundantBooleanAttributeValue } from "../message/warn"
 import { getAttributeBaseName } from "../../util/compiler/sundry"
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
 import { getTemplateNodeContext } from "../../util/compiler/template"
 import { increaseReusedStringUsedTimes } from "../optimizer/compress"
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+import { embeddedStyleLangRE, interpolatedAttrStartCharRE } from "../regular"
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
 
 export function analyzeAttributes(node: TemplateNode) {
@@ -142,7 +143,13 @@ export function analyzeAttributes(node: TemplateNode) {
             }
             case "!": {
                 if (!attribute.equalSign) {
-                    analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribute")
+                    analyzeTemplateAsExpression(
+                        node,
+                        rawName,
+                        attribute,
+                        nameLoc,
+                        AnalyzeExpressionType.Attribute
+                    )
                 }
                 if (shouldAnalyzeAttributeValue(attribute)) {
                     analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)

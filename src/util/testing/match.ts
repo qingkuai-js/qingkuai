@@ -2,6 +2,7 @@ import type { ExpectedCompileMessage } from "#type-declarations/testing"
 
 import { expect } from "vitest"
 import { messages } from "../../compiler/state"
+import { CompileMessageType } from "../../compiler/enums"
 import { isCompileError, isCompileWarning } from "../../compiler"
 
 // 匹配全局：未捕获的异常/未处理的 rejection
@@ -29,7 +30,7 @@ export function matchCompileMessages(expectedMessages: ExpectedCompileMessage[])
 
     for (let i = 0; i < messages.length; i++) {
         const [item, expected] = [messages[i], expectedMessages[i]]
-        if (item.type === "error") {
+        if (item.type === CompileMessageType.Error) {
             expect(isCompileError(item.value)).toBe(true)
         } else {
             expect(isCompileWarning(item.value)).toBe(true)

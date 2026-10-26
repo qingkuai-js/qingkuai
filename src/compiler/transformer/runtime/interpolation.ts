@@ -5,6 +5,7 @@ import ts from "../../ts-api"
 
 import { decodeHTML } from "entities"
 import { CodeEditor } from "../editor"
+import { RawArgumentKind } from "../../enums"
 import { getRawArgumentInfo } from "../../optimizer/raw"
 import { traverseObject } from "../../../util/shared/sundry"
 import { analyzeResult, generateIdentifier } from "../../state"
@@ -159,21 +160,21 @@ function transformRawCalls(
             continue
         }
 
-        // 位图命中为顶部作用域标识符，按其状态分类；未命中统一按 "unwrap" 处理
+        // 位图命中为顶部作用域标识符，按其状态分类；未命中统一按 unwrap 处理
         // A bitmap hit is a top-level scope identifier classified by its status;
-        // a miss is treated uniformly as "unwrap".
+        // a miss is treated uniformly as unwrap.
         const argumentInfo = getRawArgumentInfo(call, topLevelRefs)
 
         // 读取原始标识符，交由 toRaw 解包
         // Reads the raw identifier and unwraps it with toRaw.
-        if (argumentInfo?.kind === "unwrap") {
+        if (argumentInfo?.kind === RawArgumentKind.Unwrap) {
             overridden.fill(1, argumentInfo.range[0], argumentInfo.range[1])
             editor.replace(...calleeRange, `${generateIdentifier.internal}.toRaw`, true)
         }
 
         // 不带响应性能力的标识符：直接读取即可
         // Identifiers carrying no reactive capability: a plain read is enough.
-        else if (argumentInfo?.kind === "plain") {
+        else if (argumentInfo?.kind === RawArgumentKind.Plain) {
             editor.remove(calleeRange[0], argRange[0])
             editor.remove(argRange[1], callRange[1])
         }

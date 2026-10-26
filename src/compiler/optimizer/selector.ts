@@ -13,6 +13,7 @@ import ts from "../ts-api"
 
 import { walkTsNode } from "../ts-ast/walk"
 import { getMaybeReusedString } from "./compress"
+import { SelectorExpressionType } from "../enums"
 import { CodeEditor } from "../transformer/editor"
 import { analyzeResult, generateIdentifier } from "../state"
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
@@ -94,10 +95,10 @@ export function writeSelectorDeclaration(
     writer.writeLine(`const prevNode = ${nodeGetterId}(prevValue)`)
     writer.writeLine(`const node = ${nodeGetterId}(key)`)
     writer.write("if (prevNode) {").indent()
-    writeDomOperationCall(writer, "prevNode", info, "prev")
+    writeDomOperationCall(writer, "prevNode", info, SelectorExpressionType.Prev)
     writer.dedent().write("}").wrapLine()
     writer.write("if (node) {").indent()
-    writeDomOperationCall(writer, "node", info, "next")
+    writeDomOperationCall(writer, "node", info, SelectorExpressionType.Next)
     writer.dedent().write("}").wrapLine()
     writer.write("prevValue = key")
     writer.dedent().write("}")
@@ -257,7 +258,7 @@ function writeDomOperationCall(
     writer: RuntimeCodeWriter,
     nodeId: string,
     info: GeneratedSelectorInfo,
-    expressionType: "prev" | "next"
+    expressionType: SelectorExpressionType
 ) {
     const sourceIndex = info.targetAttribute
         ? info.targetAttribute.equalSign
@@ -314,13 +315,14 @@ function writeDomOperationCall(
 function writeSelectorExpression(
     writer: RuntimeCodeWriter,
     info: GeneratedSelectorInfo,
-    expressionType: "prev" | "next"
+    expressionType: SelectorExpressionType
 ) {
     const parsedExpression = getParsedExpression(info.expressionKey)!
     const parsedKeyExpression = getParsedExpression(info.keyDirective)!
     const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
 
-    const topLevelReplacement = expressionType === "prev" ? "prevValue" : info.topLevelTransformedTo
+    const topLevelReplacement =
+        expressionType === SelectorExpressionType.Prev ? "prevValue" : info.topLevelTransformedTo
     for (const reference of parsedExpression.topLevelReferences[info.topLevelIdentifierName] ??
         []) {
         if (reference.shorthand) {

@@ -5,6 +5,7 @@ import {
 } from "../../../../src/util/compiler/position"
 import { describe, test, expect } from "vitest"
 import { messages } from "../../../../src/compiler/state"
+import { AttributeValueEnclosure } from "../../../../src/compiler/enums"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { parseTemplateStandalone } from "../../../../src/compiler/parser/template"
 import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
@@ -641,8 +642,8 @@ describe("Whether incorrect format for tag will cause parsing error", () => {
                                 loc: getLocByIndex(12, 15)
                             },
                             equalSign: true,
-                            valueEnclosure: "double",
-                            loc: getLocByIndex(5, 16)
+                            loc: getLocByIndex(5, 16),
+                            valueEnclosure: AttributeValueEnclosure.Double
                         }
                     ],
                     isSelfClosing: true,

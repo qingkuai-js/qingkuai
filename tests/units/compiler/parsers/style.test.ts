@@ -1,6 +1,7 @@
 import { describe, test } from "vitest"
 import { matchTemplateNodeList } from "./_match"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { AttributeValueEnclosure } from "../../../../src/compiler/enums"
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
 import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
 
@@ -69,8 +70,8 @@ describe("Top level", () => {
                             raw: "box-sizing:border-box;white-space:pre-line;"
                         },
                         equalSign: true,
-                        valueEnclosure: "double",
-                        loc: getLocByIndex(9, 60)
+                        loc: getLocByIndex(9, 60),
+                        valueEnclosure: AttributeValueEnclosure.Double
                     }
                 ],
                 preWhiteSpace: true,
@@ -397,8 +398,8 @@ describe("Nesting structure", () => {
                                 loc: getLocByIndex(20, 36)
                             },
                             equalSign: true,
-                            valueEnclosure: "double",
-                            loc: getLocByIndex(13, 37)
+                            loc: getLocByIndex(13, 37),
+                            valueEnclosure: AttributeValueEnclosure.Double
                         }
                     ],
                     children: [

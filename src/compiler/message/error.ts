@@ -3,6 +3,16 @@ import type { ASTLocation, CompileError } from "#type-declarations/compiler"
 
 import { inputDescriptor, messages } from "../state"
 import { PRESERVED_IDPREFIX, SPREAD_TAG } from "../constants"
+import { CompileMessageType, HtmlDirectivePlacementKind, IdentifierStatus } from "../enums"
+
+export const InvalidHtmlDirectivePlacement = withLocation(
+    1058,
+    (kind: HtmlDirectivePlacementKind) => {
+        return `The "#html" directive cannot be used on ${
+            kind === HtmlDirectivePlacementKind.Slot ? "<slot> tags" : "components"
+        }.`
+    }
+)
 
 export const TagIsNotClosing = withLocation(1009, (tag: string, isEndTag = false) => {
     return `The ${
@@ -274,10 +284,6 @@ export const InvalidReferenceAttributeValue = withLocation(1048, () => {
     return `The value of a reference attribute must be either an identifier or a member expression.`
 })
 
-export const InvalidHtmlDirectivePlacement = withLocation(1058, (kind: "slot" | "component") => {
-    return `The "#html" directive cannot be used on ${kind === "slot" ? "<slot> tags" : "components"}.`
-})
-
 export const ComponentTypeArgumentNeedsTS = withLocation(1064, () => {
     return `Component type arguments are only allowed when the embedded script block uses TypeScript.`
 })
@@ -325,8 +331,8 @@ export const TooManyBindingPatterns = withLocation(
     }
 )
 
-export const IdentifierCannotBeRedeclared = withLocation(1022, (status: string) => {
-    return `The identifier cannot be redeclared when it is marked as ${status === "alias" ? "an alias" : "a derived reactive value"}.`
+export const IdentifierCannotBeRedeclared = withLocation(1022, (status: IdentifierStatus) => {
+    return `The identifier cannot be redeclared when it is marked as ${status === IdentifierStatus.Alias ? "an alias" : "a derived reactive value"}.`
 })
 
 export const DuplicateSlotAssignment = withLocation(1051, (component: string, name: string) => {
@@ -384,7 +390,7 @@ function withLocation<T extends ArbitraryFunc>(code: number, fn: T) {
         }
         messages.push({
             value: err,
-            type: "error"
+            type: CompileMessageType.Error
         })
     }
     return error

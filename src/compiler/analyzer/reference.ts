@@ -6,6 +6,7 @@ import ts from "../ts-api"
 
 import { analyzeResult } from "../state"
 import { SPREAD_TAG } from "../constants"
+import { AnalyzeExpressionType } from "../enums"
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
 import { isLeftValue, isRawCallExpression } from "../ts-ast/assert"
 import { getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
@@ -24,7 +25,13 @@ export function analyzeReferenceAttribute(node: TemplateNode, attribute: Templat
         if (checkResult) {
             analyzeResult.template.validReferenceAttributes.add(attribute)
         }
-        return analyzeTemplateAsExpression(node, rawName, attribute, nameLoc, "attribute")
+        return analyzeTemplateAsExpression(
+            node,
+            rawName,
+            attribute,
+            nameLoc,
+            AnalyzeExpressionType.Attribute
+        )
     }
 
     if (!shouldAnalyzeAttributeValue(attribute)) {

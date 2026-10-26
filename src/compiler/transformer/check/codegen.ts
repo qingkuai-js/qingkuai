@@ -20,6 +20,7 @@ import { CodeEditor } from "../editor"
 import { eliminate } from "../eliminate"
 import { LSC, SPREAD_TAG } from "../../constants"
 import { IntermediateCodeWriter } from "../writer"
+import { AttributeValueEnclosure } from "../../enums"
 import { stringify } from "../../../util/shared/aliases"
 import { isInlineEventHandler } from "../../ts-ast/assert"
 import { traverseObject } from "../../../util/shared/sundry"
@@ -357,7 +358,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const expression = getParsedExpression(attribute)
                 const nameRange = getRangeByLoc(attribute.name.loc)
                 const valueRange = getRangeByLoc(attribute.value.loc)
-                const isValueValid = attribute.valueEnclosure === "curly"
+                const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly
 
                 if (!attribute.equalSign) {
                     if ((isSlot || isComponent) && !expression) {
@@ -416,7 +417,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const baseName = eventInfo.eventName.slice(1)
                 const expression = getParsedExpression(event)
                 const valueRange = getRangeByLoc(event.value.loc)
-                const isValueValid = event.valueEnclosure === "curly"
+                const isValueValid = event.valueEnclosure === AttributeValueEnclosure.Curly
                 const property = toPropertyKey(kebab2Camel(baseName))
                 const nameRange: Range = [
                     event.name.loc.start.index,
@@ -493,7 +494,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const rawValue = attribute.value.raw
                 const nameRange = getRangeByLoc(attribute.name.loc)
                 const valueRange = getRangeByLoc(attribute.value.loc)
-                const isValueValid = attribute.valueEnclosure === "curly"
+                const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly
                 const property = toPropertyKey(kebab2Camel(rawName.slice(1)))
                 const isAttributeValid =
                     analyzeResult.template.validReferenceAttributes.has(attribute)

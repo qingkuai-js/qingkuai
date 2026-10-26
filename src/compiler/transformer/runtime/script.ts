@@ -13,6 +13,7 @@ import {
     getStriptTypeOperationsParent
 } from "../../ts-ast/sundry"
 import { RuntimeCodeWriter } from "../writer"
+import { IdentifierStatus } from "../../enums"
 import { arrayFrom } from "../../../util/shared/arrays"
 import { isShadowedIdentifier } from "../../ts-ast/context"
 import { jsDestructuringEqualTokenRE } from "../../regular"
@@ -58,7 +59,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         traverseObject(topLevelIdentifiers, (_, value) => {
             const declaration = value.nodeInfos[0].declaration
             if (
-                (value.status === "alias" || value.status === "derived") &&
+                (value.status === IdentifierStatus.Alias ||
+                    value.status === IdentifierStatus.Derived) &&
                 ts.isVariableDeclarationList(declaration) &&
                 getVariableDeclareKeyword(declaration) === "const"
             ) {
@@ -88,24 +90,24 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
     traverseObject(topLevelIdentifiers, (name, info) => {
         switch (info.status) {
-            case "pending": {
+            case IdentifierStatus.Pending: {
                 return
             }
-            case "raw":
-            case "literal": {
+            case IdentifierStatus.Raw:
+            case IdentifierStatus.Literal: {
                 return transformRawDecalration(info)
             }
-            case "shallow":
-            case "reactive": {
+            case IdentifierStatus.Shallow:
+            case IdentifierStatus.Reactive: {
                 transformReactiveDeclaration(name, info)
                 info.transformTo = identifierMap[name] ?? name
                 return (info.transformTo += info.accessor ? ".$" : "")
             }
-            case "derived": {
+            case IdentifierStatus.Derived: {
                 transformDerivedDeclaration(name, info)
                 return (info.transformTo = `${identifierMap[name] ?? name}.$`)
             }
-            case "alias": {
+            case IdentifierStatus.Alias: {
                 transformAliasDeclaration(name, info)
 
                 if (!debugMode) {
@@ -159,7 +161,11 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
             // 原始值标识符：去掉 raw 包裹直接读取
             // Raw-value identifier: removing the raw wrapper is enough.
-            if (status === "raw" || status === "literal" || status === "pending") {
+            if (
+                status === IdentifierStatus.Raw ||
+                status === IdentifierStatus.Literal ||
+                status === IdentifierStatus.Pending
+            ) {
                 editor.remove(callee.getStart(), arg.getStart())
                 editor.remove(arg.getEnd(), call.getEnd())
                 continue
@@ -167,7 +173,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
             // reactive/shallow/未知标识符：读取原始标识符
             // reactive/shallow/unknown identifiers: read the raw identifier.
-            if (status !== "derived" && status !== "alias") {
+            if (status !== IdentifierStatus.Derived && status !== IdentifierStatus.Alias) {
                 rawArgumentBitmap.fill(1, identifier.getStart(), identifier.getEnd())
                 editor.replace(...getNodeRange(callee), `${internalId}.toRaw`, true)
                 continue
@@ -191,7 +197,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 if (!transofrmedTo) {
                     continue
                 }
-                if (status !== "alias" && !hoist && !reference.declared) {
+                if (status !== IdentifierStatus.Alias && !hoist && !reference.declared) {
                     continue
                 }
                 if (!reference.shorthand) {
@@ -343,7 +349,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         const reactiveIdentifier = shouldGenerateReactiveIdentifier(info)
             ? getReactiveIdentifier(name)
             : name
-        const isShallow = info.status === "shallow"
+        const isShallow = info.status === IdentifierStatus.Shallow
         const firstDeclaration = info.nodeInfos[0].declaration
         const defaultReactFunc = isShallow ? "shallowReact" : "react"
         const defaultReactCallee = `${internalId}.${defaultReactFunc}`
@@ -424,7 +430,10 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                         const shouldUpdateItems = new Set<string>()
                         for (const item of nodeInfo.destructuringIdentifierNames) {
                             const { status } = analyzeResult.script.topLevelIdentifiers[item]
-                            if (status === "reactive" || status === "shallow") {
+                            if (
+                                status === IdentifierStatus.Reactive ||
+                                status === IdentifierStatus.Shallow
+                            ) {
                                 shouldUpdateItems.add(item)
                             }
                         }
@@ -519,7 +528,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         const needSetters = debugMode && !isConst
         const destructuringFuncReturnItems = destructuringIdentifierNames.map((item, index) => {
             const { status } = analyzeResult.script.topLevelIdentifiers[item]
-            const isReactive = status === "shallow" || status === "reactive"
+            const isReactive =
+                status === IdentifierStatus.Shallow || status === IdentifierStatus.Reactive
             if (needSetters && (isReactive || index !== destructuringIdentifierNames.length - 1)) {
                 setterIds.push(isReactive ? generateHoistSetter(item) : "")
             }
@@ -535,7 +545,8 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         } else {
             const destructuringIds = destructuringIdentifierNames.map(item => {
                 const { status } = analyzeResult.script.topLevelIdentifiers[item]
-                const isReactive = status === "shallow" || status === "reactive"
+                const isReactive =
+                    status === IdentifierStatus.Shallow || status === IdentifierStatus.Reactive
                 return isReactive ? `[${getReactiveIdentifier(item)}, ${item}]` : item
             })
             editor.insertMulti(declarator.name.getStart(), [
