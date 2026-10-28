@@ -24,6 +24,8 @@ export const EXP_GETTER = "__qk__exp_getter"
 export const DELEGATE_PREFIX = "__qk__delegate"
 export const NODE_CONTEXT = "__qk__node_context"
 export const FRAGMENT_FLAG = "__qk__fragment_flag"
+export const VALUE_CACHE_KEY = ATTRIBUTE_PREFIX + "value"
+export const CLASS_CACHE_KEY = ATTRIBUTE_PREFIX + "class"
 export const XLINK_NAMESPACE_URI = "http://www.w3.org/1999/xlink"
 
 export const OBJECT = Object
@@ -32,11 +34,15 @@ export const OBJECT_PROTO = Object.prototype
 export const RESOLVED = /*#__PURE__*/ Promise.resolve()
 export const DOCUMENT = typeof document === "undefined" ? UNDEF : document
 
-export const AFTER_MOUNT = 1
-export const BEFORE_UPDATE = 2
-export const AFTER_UPDATE = 3
-export const BEFORE_DESTROY = 4
-export const AFTER_DESTROY = 5
+export const DEV_MODE = typeof __qk__dev == "boolean" ? __qk__dev : true
+export const MAX_SCHEDULE_DEPTH =
+    typeof __qk__max_schedule_depth == "number" ? __qk__max_schedule_depth : 300
+
+export const AFTER_MOUNT = 0
+export const BEFORE_UPDATE = 1
+export const AFTER_UPDATE = 2
+export const BEFORE_DESTROY = 3
+export const AFTER_DESTROY = 4
 
 export const COMPONENT_MOUNTED = 1
 export const COMPONENT_UPDATING = 2

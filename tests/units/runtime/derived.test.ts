@@ -1,12 +1,14 @@
-import type { Effect } from "#type-declarations/runtime"
-
+import {
+    initDestruction,
+    getCurrentEffect,
+    clearDestructionEffects
+} from "../../../src/util/testing/sundry"
+import { arrayFrom } from "../../../src/util/shared/arrays"
 import { currentDestruction } from "../../../src/runtime/state"
 import { constReact, react } from "../../../src/runtime/internal"
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { arrayFrom, emptyArr } from "../../../src/util/shared/arrays"
 import { createWarningMatcher } from "../../../src/util/testing/sundry"
 import { EFFECT_DERIVED, WRAPPER } from "../../../src/runtime/reactivity/constants"
-import { getCurrentEffect, initDestruction } from "../../../src/util/testing/sundry"
 import { derived, destructuringDerived } from "../../../src/runtime/reactivity/derived"
 
 const invokeMarker = vi.fn()
@@ -14,9 +16,7 @@ const warningMatcher = createWarningMatcher()
 
 initDestruction()
 beforeEach(() => {
-    if (currentDestruction?.e) {
-        emptyArr(currentDestruction.e)
-    }
+    clearDestructionEffects(currentDestruction)
     invokeMarker.mockClear()
     warningMatcher.mockClear()
 })

@@ -27,7 +27,8 @@ import {
     sleep,
     getErrorMessage,
     getCurrentEffect,
-    createTestInstance
+    createTestInstance,
+    destructionHasEffect
 } from "../../../src/util/testing/sundry"
 import {
     currentDestruction,
@@ -111,10 +112,16 @@ test("destroy should disconnect destruction from parent/effects", () => {
     const cleaner = vi.fn()
     pushDestructionCleaner(cleaner)
 
-    const nestedEffect = renderEffect(NOOP)
+    const tracked = react(0)
+    const nestedEffect = renderEffect(() => tracked.$)
+    // 不依赖响应式值的渲染副作用不会产生副作用对象，只登记为上下文副作用
+    // A render effect that reads nothing reactive creates no effect object, it is
+    // only registered as a context effect.
+    renderEffect(NOOP)
+    expect(nested.u).toBe(NOOP)
 
     createDestruction(nested, NIL)
-    const nestedChildEffect = renderEffect(NOOP)
+    const nestedChildEffect = renderEffect(() => tracked.$)
 
     backToParentDestruction()
     backToParentDestruction()
@@ -130,6 +137,7 @@ test("destroy should disconnect destruction from parent/effects", () => {
     expect(parent.c?.includes(nested)).toBeFalsy()
     expect(nested.f).toBe(0)
     expect(nested.e).toBeNull()
+    expect(nested.u).toBeNull()
     expect(nested.c).toBeNull()
     expect(nested.a).toBeNull()
     expect(nested.m).toBeNull()
@@ -180,7 +188,7 @@ test("Functions of render effect", async () => {
     expect(invokeMarker).toHaveBeenCalledTimes(2)
     expect(effect.l & EFFECT_DISABLED).toBeTruthy()
     expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
-    expect(currentDestruction!.e!.includes(effect)).toBeFalsy()
+    expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
 
     --value.$
     await nextTick()
@@ -216,7 +224,7 @@ test("Functions of reactive effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(1)
         expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(currentDestruction!.e!.includes(effect)).toBeTruthy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy()
 
         value.$--
         if (i !== 3) {
@@ -240,7 +248,7 @@ test("Functions of reactive effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(3)
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
         expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
-        expect(currentDestruction!.e!.includes(effect)).toBeFalsy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
 
         value.$ += 10
         if (i !== 3) {
@@ -253,7 +261,7 @@ test("Functions of reactive effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(3)
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(currentDestruction!.e!.includes(effect)).toBeFalsy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
 
         value.$ /= 10
         if (i !== 3) {
@@ -311,7 +319,7 @@ test("Functions of watch effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(1)
         expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(currentDestruction!.e!.includes(effect)).toBeTruthy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy()
 
         map.set(1, 0)
         if (i !== 3) {
@@ -325,7 +333,7 @@ test("Functions of watch effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(1)
         expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
         expect(effect.l & EFFECT_DISABLED).toBeFalsy()
-        expect(currentDestruction!.e!.includes(effect)).toBeTruthy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy()
 
         map.set(1, map.get(1) - 1)
         if (i !== 3) {
@@ -339,7 +347,7 @@ test("Functions of watch effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(3)
         expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(currentDestruction!.e!.includes(effect)).toBeFalsy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
 
         map.set(1, -99)
         if (i !== 3) {
@@ -353,7 +361,7 @@ test("Functions of watch effect", async () => {
         expect(invokeMarker).toHaveBeenCalledTimes(3)
         expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(currentDestruction!.e!.includes(effect)).toBeFalsy()
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
     }
 })
 

@@ -1,10 +1,11 @@
-import { setAttribute } from "./internal"
+import type { MountCollector } from "#type-declarations/runtime"
+
 import { any } from "../util/shared/sundry"
 import { arrayFrom } from "../util/shared/arrays"
 import { isElement } from "../util/runtime/assert"
 import { currentDestruction, currentInstance } from "./state"
-import { isNumber, isString, isUndefined } from "../util/shared/assert"
-import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, ATTRIBUTE_PREFIX } from "./constants"
+import { isArray, isNumber, isString, isUndefined } from "../util/shared/assert"
+import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, VALUE_CACHE_KEY } from "./constants"
 import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags"
 
 export function newTextNode() {
@@ -45,7 +46,40 @@ export function getChildAsText(target: Element, index = 0) {
     return (child.replaceWith(textNode), textNode)
 }
 
-export function insertBefore(reference: ChildNode, node: Node) {
+// 挂载收集器把一个连续渲染区间的内容先在文档外组装，再一次性插入文档。
+// 典型用途是列表挂载：逐行插入会让浏览器为每一行做一次样式失效标记，一次性
+// 插入同样数量的节点则只有一个插入点。收集器表示为 [锚点, 文档外片段] 元组，
+// 片段为 null 表示这批内容已插入，此后的内容直接落在锚点之前，收集器仍然充当
+// 该区间的挂载位置。
+//
+// A mount collector assembles a contiguous run of rendered content off-document
+// and inserts it with a single DOM operation. Inserting rows one by one makes the
+// browser invalidate styles per row; inserting the same nodes at once has a single
+// insertion point. The collector is a [reference, fragment] tuple: a null fragment
+// means the batch has been inserted, so later content goes right before the reference
+// and the collector keeps acting as the mount position of that run.
+export function createMountCollector(reference: ChildNode): MountCollector {
+    return [reference, DOCUMENT!.createDocumentFragment()]
+}
+
+export function flushMountCollector(collector: MountCollector) {
+    const fragment = collector[1]
+    if (fragment) {
+        collector[0].before(fragment)
+        collector[1] = null
+    }
+}
+
+export function insertBefore(reference: ChildNode | MountCollector, node: Node) {
+    if (isArray(reference)) {
+        const fragment = reference[1]
+        if (fragment) {
+            fragment.appendChild(node)
+        } else {
+            reference[0].before(node)
+        }
+        return
+    }
     reference.before(node)
 }
 
@@ -56,11 +90,11 @@ export function getSiblingAsText(node: ChildNode, distance = 1) {
 }
 
 export function getElementValue(elem: Element) {
-    return any(elem)[ATTRIBUTE_PREFIX + "value"] ?? any(elem).value
+    return any(elem)[VALUE_CACHE_KEY] ?? any(elem).value
 }
 
 export function getChild(node: Element, index = 0) {
-    if (((node as any)[FRAGMENT_FLAG] ?? 0) & FRAG_LEADING_ANCHOR) {
+    if ((node as any)[FRAGMENT_FLAG] & FRAG_LEADING_ANCHOR) {
         index++
     }
 
@@ -75,6 +109,7 @@ export function getChild(node: Element, index = 0) {
 // Create an HTML fragment getter that returns a cloned instance
 // of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
+    let singleNode: ChildNode | undefined
     let content: DocumentFragment | undefined
     return (flag = 0) => {
         if (isUndefined(content)) {
@@ -83,12 +118,21 @@ export function createFragmentGetter(html: string, arr?: string[]) {
             content = template.content
         }
 
-        let ret = content.cloneNode(true) as any
+        let ret: any
         const isOrphan = flag & FRAG_ORPHAN_CONTENT
-        if (flag & FRAG_LEADING_ANCHOR) {
-            ret.prepend(newTextNode())
-        } else if (isOrphan) {
-            ret = ret.firstChild!
+        if (isOrphan && !(flag & FRAG_LEADING_ANCHOR)) {
+            if (isUndefined(singleNode)) {
+                singleNode = content.firstChild as ChildNode
+            }
+            ret = singleNode.cloneNode(true)
+        } else {
+            ret = content.cloneNode(true)
+
+            if (flag & FRAG_LEADING_ANCHOR) {
+                ret.prepend(newTextNode())
+            } else if (isOrphan) {
+                ret = ret.firstChild!
+            }
         }
         if (flag & FRAGMENT_ROOT) {
             attachScopesToRoot(ret)
@@ -143,7 +187,13 @@ function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
 }
 
 // 将祖先 scope 链中的所有 scope 属性设置到根元素上
-// Apply all scope attributes from the ancestor scope chain to root elements
+// 这里直接调用 DOM API：scope 属性只在挂载时设置一次且值恒为空串，通用属性
+// 设置器的比较缓存对此没有意义，而绕开它可以让整个属性缓存模块在打包时被摇掉
+//
+// Apply all scope attributes from the ancestor scope chain to root elements.
+// The DOM API is used directly: a scope attribute is written once at mount and its
+// value is always the empty string, so the generic setter's compare cache is of no
+// use here, and skipping it lets bundlers shake the whole attribute cache away.
 function attachScopesToRoot(node: Element | DocumentFragment): void {
     const scopes = currentInstance?._internal.a
     if (!scopes?.length) {
@@ -151,7 +201,7 @@ function attachScopesToRoot(node: Element | DocumentFragment): void {
     }
     for (const element of isElement(node) ? [node] : arrayFrom(node.children)) {
         for (const scope of scopes) {
-            setAttribute(element, scope, "")
+            element.setAttribute(scope, "")
         }
     }
 }

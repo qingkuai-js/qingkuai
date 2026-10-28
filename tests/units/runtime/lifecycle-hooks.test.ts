@@ -39,7 +39,7 @@ describe("Lifecycle hook registration guards", () => {
         onAfterMount(instance, callback)
 
         expect(warningMatcher).not.toHaveBeenCalled()
-        expect(instance._internal.f?.[1]).toEqual([callback])
+        expect(instance._internal.f?.[0]).toEqual([callback])
     })
 
     test("onAfterMount registration after mount warns 8004 and is ignored", () => {
@@ -51,7 +51,7 @@ describe("Lifecycle hook registration guards", () => {
         expect(
             warningMatcher.mock.calls.some(args => args.join(" ").includes("onAfterMount"))
         ).toBe(true)
-        expect(instance._internal.f?.[1]).toBeUndefined()
+        expect(instance._internal.f?.[0]).toBeUndefined()
         expect(warningMatcher.mock.calls.some(args => args.join(" ").includes("8004"))).toBe(true)
     })
 
@@ -62,8 +62,8 @@ describe("Lifecycle hook registration guards", () => {
         onAfterDestroy(instance, vi.fn())
 
         expect(warningMatcher).not.toHaveBeenCalled()
+        expect(instance._internal.f?.[3]).toHaveLength(1)
         expect(instance._internal.f?.[4]).toHaveLength(1)
-        expect(instance._internal.f?.[5]).toHaveLength(1)
     })
 
     test("destroy hook registrations after destroy warn 8004 and are ignored", () => {
@@ -73,8 +73,8 @@ describe("Lifecycle hook registration guards", () => {
         onBeforeDestroy(instance, vi.fn())
         onAfterDestroy(instance, vi.fn())
 
+        expect(instance._internal.f?.[3]).toBeUndefined()
         expect(instance._internal.f?.[4]).toBeUndefined()
-        expect(instance._internal.f?.[5]).toBeUndefined()
         expect(
             warningMatcher.mock.calls.filter(args => args.join(" ").includes("8004"))
         ).toHaveLength(2)
@@ -90,7 +90,7 @@ describe("Lifecycle hook registration guards", () => {
         onBeforeUpdate(instance, vi.fn())
 
         expect(warningMatcher).not.toHaveBeenCalled()
-        expect(instance._internal.f?.[2]).toHaveLength(1)
+        expect(instance._internal.f?.[1]).toHaveLength(1)
     })
 
     test("mount() drains onAfterMount callbacks and then marks the instance mounted", () => {
@@ -115,6 +115,6 @@ describe("Lifecycle hook registration guards", () => {
         setCurrentInstance(null)
 
         expect(warningMatcher).not.toHaveBeenCalled()
-        expect(instance._internal.f?.[1]).toHaveLength(2)
+        expect(instance._internal.f?.[0]).toHaveLength(2)
     })
 })

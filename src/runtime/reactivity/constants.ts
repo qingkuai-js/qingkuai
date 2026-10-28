@@ -1,5 +1,7 @@
 import type { AnyObject } from "#type-declarations/tools"
 
+let protoMapCache: AnyObject | undefined
+
 // aliases
 export const TIMING_PRE = 1
 export const TIMING_UNSET = 2
@@ -43,14 +45,16 @@ export const LINK_HAS_CHANGED = 1 << 2
 export const LINK_VALUE_CHANGED = 1 << 3
 
 // sundry
-export const PROTO_MAP: AnyObject = {
-    [WRAPPER_SET]: Set.prototype,
-    [WRAPPER_MAP]: Map.prototype,
-    [WRAPPER_ARRAY]: Array.prototype
-}
 export const TYPE_FLAG_MAP: AnyObject = {
     Set: WRAPPER_SET,
     Map: WRAPPER_MAP,
     Array: WRAPPER_ARRAY
+}
+export function protoMap(): AnyObject {
+    return (protoMapCache ??= {
+        [WRAPPER_SET]: Set.prototype,
+        [WRAPPER_MAP]: Map.prototype,
+        [WRAPPER_ARRAY]: Array.prototype
+    })
 }
 export const TIMINGS = [TIMING_UNSET, TIMING_PRE, TIMING_POST, TIMING_SYNC]

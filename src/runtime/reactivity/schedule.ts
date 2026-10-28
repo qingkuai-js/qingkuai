@@ -5,6 +5,13 @@ import type {
 } from "#type-declarations/runtime"
 
 import {
+    RESOLVED,
+    AFTER_UPDATE,
+    BEFORE_UPDATE,
+    COMPONENT_UPDATING,
+    MAX_SCHEDULE_DEPTH
+} from "../constants"
+import {
     WRAPPER_MAP,
     OWN_KEYS,
     WRAPPER_SET,
@@ -36,7 +43,6 @@ import { runAndUpdateEffect } from "./effect"
 import { nextTick } from "../../util/runtime/sundry"
 import { MaximumUpdateDepthExceeded } from "../messages/error"
 import { isIteratorKey, isProxyWrapper } from "../../util/runtime/assert"
-import { RESOLVED, AFTER_UPDATE, BEFORE_UPDATE, COMPONENT_UPDATING } from "../constants"
 
 export function getSubscription(
     wrapper: ReactivityWrapper,
@@ -169,10 +175,10 @@ function update() {
     // 如果挂起列表不为空，则本轮调度执行的副作用中修改了其他响应式值，这会导致调度器的递归调用
     // If the waiting list is not empty, it means that the effects executed in the current update
     // cycle have modified other reactive values, causing the scheduler to be invoked recursively.
-
-    // 为了防止更新调度器被无限递归调用，必须将这种递归调用深度限制在一个合理范围内（当前为300）
-    // This recursion depth must be capped (currently at 200) to prevent infinite recursive updates.
-    if (increRecursionScheduleCount() > __qk_max_schedule_depth) {
+    //
+    // 为了防止更新调度器被无限递归调用，必须将这种递归调用深度限制在一个合理范围内（默认 300）
+    // This recursion depth must be capped (300 by default) to prevent infinite recursive updates.
+    if (increRecursionScheduleCount() > MAX_SCHEDULE_DEPTH) {
         resetSchedulingEffects(1)
         resetSchedulerState()
         MaximumUpdateDepthExceeded()

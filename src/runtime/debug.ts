@@ -9,7 +9,7 @@ export function alias(getter: Getter) {
     return destructuringAlias(getter)[0]
 }
 
-export const destructuringAlias = stripErrorStack((...getters: Getter[]) => {
+export const destructuringAlias = (...getters: Getter[]) => {
     return getters.map(getter => {
         const accessor = newCleanObj()
         defineProperties(accessor, {
@@ -30,7 +30,7 @@ export const destructuringAlias = stripErrorStack((...getters: Getter[]) => {
         })
         return accessor
     })
-})
+}
 
 function stripErrorStack<T extends ArbitraryFunc>(fn: T): T {
     const ret: any = (...args: any) => {

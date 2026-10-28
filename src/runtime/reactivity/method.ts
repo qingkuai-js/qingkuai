@@ -19,157 +19,170 @@ import { batchAndNoTracking, batchUpdateWithRaw, batchUpdating } from "./optimiz
 import { ensureGetRefProperty, reverse, reactiveNotEqual } from "../../util/runtime/sundry"
 import { isArrayLike, isObject, isSpreadable, isUndefined } from "../../util/shared/assert"
 
-const commonMethodsForSetAndMap: ReactiveMethods[number] = {
-    has(value) {
-        return _has(this[WRAPPER], value, true)
-    },
-    clear() {
-        return _batchUpdateWithRaw(this[WRAPPER], "clear")
-    },
-    delete(value) {
-        return _addOrDelete(this[WRAPPER], value, "delete")
-    },
-    forEach(callback, thisArg) {
-        _traverse(this[WRAPPER], "forEach", callback, thisArg)
-    }
+// 方法表按需构建：模块作用域只保留声明，使未使用深响应式的应用可以在打包时整体剔除
+// The method table is built lazily so that the module scope stays side-effect free and
+// applications that never use deep reactivity can tree-shake this whole layer away.
+let reactiveMethodsCache: ReactiveMethods | undefined
+
+export function reactiveMethods(): ReactiveMethods {
+    return (reactiveMethodsCache ??= createReactiveMethods())
 }
 
-const iteratorMethods: ReactiveMethods[number] = {
-    keys() {
-        return _iterator(this[WRAPPER], "keys")
-    },
-    values() {
-        return _iterator(this[WRAPPER], "values")
-    },
-    entries() {
-        return _iterator(this[WRAPPER], "entries")
-    },
-    [Symbol.iterator]() {
-        return _iterator(this[WRAPPER], Symbol.iterator)
+function createReactiveMethods(): ReactiveMethods {
+    const commonMethodsForSetAndMap: ReactiveMethods[number] = {
+        has(value) {
+            return _has(this[WRAPPER], value, true)
+        },
+        clear() {
+            return _batchUpdateWithRaw(this[WRAPPER], "clear")
+        },
+        delete(value) {
+            return _addOrDelete(this[WRAPPER], value, "delete")
+        },
+        forEach(callback, thisArg) {
+            _traverse(this[WRAPPER], "forEach", callback, thisArg)
+        }
     }
-}
 
-export const reactiveMethods: ReactiveMethods = {
-    [WRAPPER_ARRAY]: {
-        ...iteratorMethods,
-        forEach: commonMethodsForSetAndMap.forEach,
+    const iteratorMethods: ReactiveMethods[number] = {
+        keys() {
+            return _iterator(this[WRAPPER], "keys")
+        },
+        values() {
+            return _iterator(this[WRAPPER], "values")
+        },
+        entries() {
+            return _iterator(this[WRAPPER], "entries")
+        },
+        [Symbol.iterator]() {
+            return _iterator(this[WRAPPER], Symbol.iterator)
+        }
+    }
 
-        flat(depth = 1) {
-            return _flat(this[WRAPPER], depth)
-        },
-        concat(...items) {
-            return _concat(this[WRAPPER], ...items)
-        },
+    const reactiveMethods: ReactiveMethods = {
+        [WRAPPER_ARRAY]: {
+            ...iteratorMethods,
+            forEach: commonMethodsForSetAndMap.forEach,
 
-        sort(compareFn) {
-            return _sort(this[WRAPPER], "sort", compareFn)
-        },
-        toSorted(compareFn) {
-            return _sort(this[WRAPPER], "toSorted", compareFn)
-        },
+            flat(depth = 1) {
+                return _flat(this[WRAPPER], depth)
+            },
+            concat(...items) {
+                return _concat(this[WRAPPER], ...items)
+            },
 
-        pop() {
-            return _batchAndNoTracking(this[WRAPPER], "pop")
-        },
-        push(...values) {
-            return _batchAndNoTracking(this[WRAPPER], "push", values)
-        },
+            sort(compareFn) {
+                return _sort(this[WRAPPER], "sort", compareFn)
+            },
+            toSorted(compareFn) {
+                return _sort(this[WRAPPER], "toSorted", compareFn)
+            },
 
-        indexOf(searchElement) {
-            return _indexOf(this[WRAPPER], "indexOf", searchElement)
-        },
-        lastIndexOf(searchElement) {
-            return _indexOf(this[WRAPPER], "lastIndexOf", searchElement)
-        },
+            pop() {
+                return _batchAndNoTracking(this[WRAPPER], "pop")
+            },
+            push(...values) {
+                return _batchAndNoTracking(this[WRAPPER], "push", values)
+            },
 
-        find(predicate, thisArg) {
-            return _find(this[WRAPPER], "find", predicate, thisArg)
-        },
-        findLast(predicate, thisArg) {
-            return _find(this[WRAPPER], "findLast", predicate, thisArg)
-        },
+            indexOf(searchElement) {
+                return _indexOf(this[WRAPPER], "indexOf", searchElement)
+            },
+            lastIndexOf(searchElement) {
+                return _indexOf(this[WRAPPER], "lastIndexOf", searchElement)
+            },
 
-        reduce(callback, initialValue) {
-            return _reduce(this[WRAPPER], "reduce", callback, initialValue)
-        },
-        reduceRight(callback, initialValue) {
-            return _reduce(this[WRAPPER], "reduceRight", callback, initialValue)
-        },
+            find(predicate, thisArg) {
+                return _find(this[WRAPPER], "find", predicate, thisArg)
+            },
+            findLast(predicate, thisArg) {
+                return _find(this[WRAPPER], "findLast", predicate, thisArg)
+            },
 
-        toString() {
-            return _linkIteratorKeys(this[WRAPPER], "toString")
-        },
-        toReversed() {
-            return _linkIteratorKeys(this[WRAPPER], "toReversed")
-        },
-        join(separator) {
-            return _linkIteratorKeys(this[WRAPPER], "join", separator)
-        },
-        toSpliced(start, deleteCount) {
-            return _linkIteratorKeys(this[WRAPPER], "toSpliced", start, deleteCount)
-        },
+            reduce(callback, initialValue) {
+                return _reduce(this[WRAPPER], "reduce", callback, initialValue)
+            },
+            reduceRight(callback, initialValue) {
+                return _reduce(this[WRAPPER], "reduceRight", callback, initialValue)
+            },
 
-        map(callback, thisArg) {
-            return _traverse(this[WRAPPER], "map", callback, thisArg)
-        },
-        flatMap(callback, thisArg) {
-            return _traverse(this[WRAPPER], "flatMap", callback, thisArg)
-        },
-        every(predicate, thisArg) {
-            return _traverse(this[WRAPPER], "every", predicate, thisArg)
-        },
-        filter(predicate, thisArg) {
-            return _traverse(this[WRAPPER], "filter", predicate, thisArg)
-        },
-        findIndex(predicate, thisArg) {
-            return _traverse(this[WRAPPER], "findIndex", predicate, thisArg)
-        },
-        findLastIndex(predicate, thisArg) {
-            return _traverse(this[WRAPPER], "findLastIndex", predicate, thisArg)
-        },
+            toString() {
+                return _linkIteratorKeys(this[WRAPPER], "toString")
+            },
+            toReversed() {
+                return _linkIteratorKeys(this[WRAPPER], "toReversed")
+            },
+            join(separator) {
+                return _linkIteratorKeys(this[WRAPPER], "join", separator)
+            },
+            toSpliced(start, deleteCount) {
+                return _linkIteratorKeys(this[WRAPPER], "toSpliced", start, deleteCount)
+            },
 
-        shift() {
-            return _batchUpdateWithRaw(this[WRAPPER], "shift")
-        },
-        reverse() {
-            return _batchUpdateWithRaw(this[WRAPPER], "reverse")
-        },
-        fill(value) {
-            return _batchUpdateWithRaw(this[WRAPPER], "fill", value)
-        },
-        unshift(...values) {
-            return _batchUpdateWithRaw(this[WRAPPER], "unshift", ...values)
-        },
-        splice(start, deleteCount, ...items) {
-            if (!deleteCount && !items.length) {
-                return []
+            map(callback, thisArg) {
+                return _traverse(this[WRAPPER], "map", callback, thisArg)
+            },
+            flatMap(callback, thisArg) {
+                return _traverse(this[WRAPPER], "flatMap", callback, thisArg)
+            },
+            every(predicate, thisArg) {
+                return _traverse(this[WRAPPER], "every", predicate, thisArg)
+            },
+            filter(predicate, thisArg) {
+                return _traverse(this[WRAPPER], "filter", predicate, thisArg)
+            },
+            findIndex(predicate, thisArg) {
+                return _traverse(this[WRAPPER], "findIndex", predicate, thisArg)
+            },
+            findLastIndex(predicate, thisArg) {
+                return _traverse(this[WRAPPER], "findLastIndex", predicate, thisArg)
+            },
+
+            shift() {
+                return _batchUpdateWithRaw(this[WRAPPER], "shift")
+            },
+            reverse() {
+                return _batchUpdateWithRaw(this[WRAPPER], "reverse")
+            },
+            fill(value) {
+                return _batchUpdateWithRaw(this[WRAPPER], "fill", value)
+            },
+            unshift(...values) {
+                return _batchUpdateWithRaw(this[WRAPPER], "unshift", ...values)
+            },
+            splice(start, deleteCount, ...items) {
+                if (!deleteCount && !items.length) {
+                    return []
+                }
+                return _batchUpdateWithRaw(this[WRAPPER], "splice", start, deleteCount, ...items)
             }
-            return _batchUpdateWithRaw(this[WRAPPER], "splice", start, deleteCount, ...items)
-        }
-    },
-    [WRAPPER_SET]: {
-        ...iteratorMethods,
-        ...commonMethodsForSetAndMap,
-
-        add(value) {
-            return _addOrDelete(this[WRAPPER], value, "add")
-        }
-        // 待办：实现 union、difference 等集合方法
-        // TODO: Implement set operations such as `union` and `difference`.
-    },
-    [WRAPPER_MAP]: {
-        ...iteratorMethods,
-        ...commonMethodsForSetAndMap,
-
-        get(key) {
-            return _get(this[WRAPPER], key, true)
         },
-        set(key, value) {
-            return _set(this[WRAPPER], key, value)
+        [WRAPPER_SET]: {
+            ...iteratorMethods,
+            ...commonMethodsForSetAndMap,
+
+            add(value) {
+                return _addOrDelete(this[WRAPPER], value, "add")
+            }
+            // 待办：实现 union、difference 等集合方法
+            // TODO: Implement set operations such as `union` and `difference`.
+        },
+        [WRAPPER_MAP]: {
+            ...iteratorMethods,
+            ...commonMethodsForSetAndMap,
+
+            get(key) {
+                return _get(this[WRAPPER], key, true)
+            },
+            set(key, value) {
+                return _set(this[WRAPPER], key, value)
+            }
+            // 待办：实现 getOrInsert、getOrInsertComputed 等映射方法
+            // TODO: Implement map operations such as `getOrInsert` and `getOrInsertComputed`.
         }
-        // 待办：实现 getOrInsert、getOrInsertComputed 等映射方法
-        // TODO: Implement map operations such as `getOrInsert` and `getOrInsertComputed`.
     }
+
+    return reactiveMethods
 }
 
 function _concat(wrapper: ReactivityWrapper, ...items: any) {

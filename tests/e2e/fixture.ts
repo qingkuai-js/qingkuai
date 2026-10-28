@@ -120,6 +120,25 @@ async function stopServerProcess(serverProcess: nodeChildProcess.ChildProcess) {
         return
     }
 
+    // Windows 上 `ChildProcess.kill` 只会结束被 spawn 的 pnpm 进程，它启动的 tsx 服务进程
+    // 会残留下来继续占用内存（每个测试文件都会启动一个），最终把机器拖垮，所以这里结束整棵进程树
+    //
+    // On Windows `ChildProcess.kill` only terminates the spawned `pnpm` process. The `tsx`
+    // server it started survives and keeps holding memory (one is started per test file),
+    // which eventually exhausts the machine, so the whole process tree is terminated here.
+    if (nodeProcess.platform === "win32" && serverProcess.pid) {
+        try {
+            nodeChildProcess.execFileSync(
+                "taskkill",
+                ["/pid", String(serverProcess.pid), "/T", "/F"],
+                { stdio: "ignore" }
+            )
+        } catch {
+            // The process may have exited on its own in the meantime.
+        }
+        return
+    }
+
     const waitForExit = new Promise<void>(resolve => {
         serverProcess.once("exit", () => resolve())
     })

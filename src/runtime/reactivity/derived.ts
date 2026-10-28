@@ -2,10 +2,10 @@ import type { Getter, Setter } from "#type-declarations/tools"
 import type { DestructuringFunc } from "#type-declarations/runtime"
 
 import { activeEffect } from "./state"
-import { TOARRAY, UNDEF } from "../constants"
 import { arrayFrom } from "../../util/shared/arrays"
 import { InvalidAssignment } from "../messages/warn"
 import { isUndefined } from "../../util/shared/assert"
+import { TOARRAY, UNDEF, DEV_MODE } from "../constants"
 import { EFFECT_DERIVED_DIRTY, EFFECT_DERIVED_READING } from "./constants"
 import { appendLinksToActiveEffect, derivedEffect, runAndUpdateEffect } from "./effect"
 
@@ -46,7 +46,9 @@ export function destructuringDerived(
     for (let i = 0; i < valuesLen; i++) {
         const wrapper = {
             set $(_) {
-                InvalidAssignment("derived reactive value")
+                if (DEV_MODE) {
+                    InvalidAssignment("derived reactive value")
+                }
             },
             get $() {
                 if (effect.l & EFFECT_DERIVED_DIRTY) {

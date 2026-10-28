@@ -3,9 +3,10 @@ import type { ComponentInstanceBase, Destruction } from "#type-declarations/runt
 
 import { runHooks } from "./component"
 import { runAll } from "../util/shared/sundry"
+import { isArray } from "../util/shared/assert"
 import { walkNodes } from "../util/runtime/sundry"
+import { swapDelete } from "../util/shared/arrays"
 import { disposeEffect } from "./reactivity/effect"
-import { spliceByElem } from "../util/shared/arrays"
 import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
 import { currentDestruction, setCurrentDestruction } from "./state"
 import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags"
@@ -23,7 +24,9 @@ export function createDestruction(
 ) {
     const destruction: Destruction = {
         f: 0,
+        i: -1,
         e: NIL,
+        u: NIL,
         c: NIL,
         a: NIL,
         s: NIL,
@@ -33,7 +36,9 @@ export function createDestruction(
         p: parentDestruction
     }
     if (parentDestruction) {
-        ;(parentDestruction.c ??= []).push(destruction)
+        const children = (parentDestruction.c ??= [])
+        destruction.i = children.length
+        children.push(destruction)
     }
     return setCurrentDestruction(destruction)!
 }
@@ -58,12 +63,23 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         }
     }
     if (effects) {
-        for (let i = 0; i < effects.length; i++) {
-            disposeEffect(effects[i], true)
+        if (isArray(effects)) {
+            for (let i = 0; i < effects.length; i++) {
+                disposeEffect(effects[i], true)
+            }
+        } else {
+            disposeEffect(effects, true)
         }
     }
     if (detachFromParent && destruction.p?.c) {
-        spliceByElem(destruction.p.c, destruction, false)
+        const siblings = destruction.p.c
+        if (destruction.i >= 0 && destruction.i < siblings.length) {
+            swapDelete(siblings, destruction.i)
+            if (destruction.i < siblings.length) {
+                siblings[destruction.i].i = destruction.i
+            }
+        }
+        destruction.i = -1
     }
     if (detachNodes && destruction.s && destruction.n) {
         if (destruction.f & FRAG_ORPHAN_CONTENT) {
@@ -76,6 +92,6 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         runHooks(instance, AFTER_DESTROY)
     }
     destruction.d = true
-    destruction.c = destruction.a = destruction.e = NIL
+    destruction.c = destruction.a = destruction.e = destruction.u = NIL
     destruction.s = destruction.n = destruction.m = destruction.p = NIL
 }

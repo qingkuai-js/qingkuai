@@ -1,7 +1,9 @@
 import type { GeneralFunc } from "#type-declarations/tools"
+import type { Destruction, Effect } from "#type-declarations/runtime"
 import type { TestComponentInstance } from "#type-declarations/testing"
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
 
+import { isArray } from "../shared/assert"
 import { NIL } from "../../runtime/constants"
 import { objectAssign } from "../shared/aliases"
 import { afterAll, beforeAll, vi } from "vitest"
@@ -27,10 +29,22 @@ export function initDestruction() {
 }
 
 export function getCurrentEffect() {
-    if (!currentDestruction?.e) {
-        return null
+    const effects = currentDestruction?.e
+    if (!effects) {
+        return undefined
     }
-    return getLastElem(currentDestruction.e)
+    return isArray(effects) ? getLastElem(effects) : effects
+}
+
+export function destructionHasEffect(destruction: Destruction | null, effect: Effect) {
+    const effects = destruction?.e
+    return effects === effect || (isArray(effects) && effects.includes(effect))
+}
+
+export function clearDestructionEffects(destruction: Destruction | null) {
+    if (destruction) {
+        destruction.e = NIL
+    }
 }
 
 export function createTestInstance() {

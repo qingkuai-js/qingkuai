@@ -8,6 +8,7 @@ import type { ExpectedEffect } from "#type-declarations/testing"
 
 import { expect } from "vitest"
 import { isReactive } from "../../../src/util/runtime/assert"
+import { destructionHasEffect } from "../../../src/util/testing/sundry"
 import { EFFECT_DISABLED, TIMING_SYNC, WRAPPER } from "../../../src/runtime/reactivity/constants"
 
 // 检查副作用与其他数据结构间的依赖关系
@@ -23,7 +24,7 @@ export function checkEffectDependaceManager(effect: Effect, expected: ExpectedEf
     }
 
     if (effect.d?.e) {
-        expect(effect.d.e.includes(effect)).toBeTruthy()
+        expect(destructionHasEffect(effect.d, effect)).toBeTruthy()
     }
     if (expected.destroyed) {
         expect(effect.l & EFFECT_DISABLED).toBeTruthy()

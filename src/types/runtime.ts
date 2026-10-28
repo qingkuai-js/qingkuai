@@ -34,9 +34,8 @@ export interface TraverseContext {
     x: any // current key/index
 }
 
-export interface TraverseInfo {
+export interface TraverseInfo extends TraverseContext {
     d: Destruction
-    c: TraverseContext
     s: Setter | undefined
 }
 
@@ -80,13 +79,15 @@ export interface Effect {
 export interface Destruction {
     d: boolean // disposed
     f: number // fragment flag
-    e: Effect[] | null // effects
+    e: Effect | Effect[] | null // effects
     p: Destruction | null // parent
     n: ChildNode | null // end node
     s: ChildNode | null // start node
     a: GeneralFunc[] | null // cleaners
     c: Destruction[] | null // children
     m: ComponentInstance<any> | null // component
+    u: EffectCallback | EffectCallback[] | null // updaters
+    i: number // index (within the parent's children array, -1 when detached)
 }
 
 export interface BaseWrapper {
@@ -190,3 +191,6 @@ export type BoundSetContextGetterFunc<T extends QingkuaiComponent<any>> = [
           key: K,
           getter: Getter<ComponentContexts<T>[K]>
       ) => void
+
+/** [mount reference (anchor) in the document, off-document batch; fragment is null once flushed] */
+export type MountCollector = [reference: ChildNode, fragment: DocumentFragment | null]

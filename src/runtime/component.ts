@@ -13,12 +13,15 @@ import type {
     LifecycleHookRegister,
     GetCurrentInstanceFunc
 } from "#type-declarations/runtime-ex"
-import type { AnyObject, ArbitraryFunc, Getter } from "#type-declarations/tools"
+import type { AnyObject, ArbitraryFunc, GeneralFunc, Getter } from "#type-declarations/tools"
 
 import {
     NIL,
+    DEV_MODE,
     EXP_GETTER,
     AFTER_MOUNT,
+    BEFORE_UPDATE,
+    AFTER_UPDATE,
     BEFORE_DESTROY,
     AFTER_DESTROY,
     COMPONENT_MOUNTED
@@ -49,14 +52,25 @@ import { InvalidElementNode, CannotRenderComponent } from "./messages/error"
 import { CreateOnDisposedComponent, LifecycleHookRegisteredAfterPhase } from "./messages/warn"
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom"
 
-// prettier-ignore
-export const [
-    onAfterMount,
-    onBeforeUpdate,
-    onAfterUpdate,
-    onBeforeDestroy,
-    onAfterDestroy
-] = hooksRegisterGen()
+export const onAfterMount: LifecycleHookRegister = (instance, callback) => {
+    return registerLifecycleHook(instance, AFTER_MOUNT, callback, "onAfterMount")
+}
+
+export const onBeforeUpdate: LifecycleHookRegister = (instance, callback) => {
+    return registerLifecycleHook(instance, BEFORE_UPDATE, callback, "onBeforeUpdate")
+}
+
+export const onAfterUpdate: LifecycleHookRegister = (instance, callback) => {
+    return registerLifecycleHook(instance, AFTER_UPDATE, callback, "onAfterUpdate")
+}
+
+export const onBeforeDestroy: LifecycleHookRegister = (instance, callback) => {
+    return registerLifecycleHook(instance, BEFORE_DESTROY, callback, "onBeforeDestroy")
+}
+
+export const onAfterDestroy: LifecycleHookRegister = (instance, callback) => {
+    return registerLifecycleHook(instance, AFTER_DESTROY, callback, "onAfterDestroy")
+}
 
 export function getScopes(scope?: string) {
     const scopes = currentInstance?._internal.a
@@ -299,7 +313,10 @@ export function renderComponent(target: any, anchor: Text, meta: ComponentMeta) 
         // 父组件实例已销毁
         // The parent component instance is destroyed
         if (parentInstanceDestruction.d) {
-            return CreateOnDisposedComponent("component")
+            if (DEV_MODE) {
+                CreateOnDisposedComponent("component")
+            }
+            return
         }
 
         // 当前渲染 destruction 销毁时静默跳过
@@ -322,24 +339,21 @@ export function renderComponent(target: any, anchor: Text, meta: ComponentMeta) 
     })
 }
 
-function hooksRegisterGen(): LifecycleHookRegister[] {
-    const hookRegisters: LifecycleHookRegister[] = []
-    for (let i = 1; i < 6; i++) {
-        hookRegisters.push((instance, callback) => {
-            const meta = instance._internal
-            if (
-                (i == AFTER_MOUNT && (meta.l ?? 0) & COMPONENT_MOUNTED) ||
-                ((i == BEFORE_DESTROY || i == AFTER_DESTROY) && meta.d?.d)
-            ) {
-                const HOOK_NAMES = {
-                    [AFTER_MOUNT]: "onAfterMount",
-                    [BEFORE_DESTROY]: "onBeforeDestroy",
-                    [AFTER_DESTROY]: "onAfterDestroy"
-                }
-                return LifecycleHookRegisteredAfterPhase(HOOK_NAMES[i])
-            }
-            ;((meta.f ??= [])[i] ??= []).push(callback)
-        })
+function registerLifecycleHook(
+    instance: ComponentInstanceBase,
+    index: number,
+    callback: GeneralFunc,
+    name: string
+) {
+    const meta = instance._internal
+    if (
+        (index == AFTER_MOUNT && (meta.l ?? 0) & COMPONENT_MOUNTED) ||
+        ((index == BEFORE_DESTROY || index == AFTER_DESTROY) && meta.d?.d)
+    ) {
+        if (DEV_MODE) {
+            LifecycleHookRegisteredAfterPhase(name)
+        }
+        return
     }
-    return hookRegisters
+    ;((meta.f ??= [])[index] ??= []).push(callback)
 }
