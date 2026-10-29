@@ -18,6 +18,17 @@ import {
     findOutOfLiteralComment
 } from "../util/compiler/string"
 
+import type {
+    Camel2KebabFunc,
+    Kebab2CamelFunc,
+    ToPropertyKeyFunc,
+    FindEndBracketFunc,
+    FormatSourceCodeFunc,
+    FindOutOfCommentFunc,
+    FindOutOfLiteralFunc,
+    FindOutOfLiteralCommentFunc
+} from "#type-declarations/compiler-ex"
+
 export type {
     ASTLocation,
     ASTPosition,
@@ -36,7 +47,20 @@ export type {
 
 export type { CompileIntermediateResult } from "./compile"
 
-export const util = {
+export const util: {
+    isVoidTag: typeof isVoidTag
+    camel2Kebab: Camel2KebabFunc
+    kebab2Camel: Kebab2CamelFunc
+    toPropertyKey: ToPropertyKeyFunc
+    findEndBracket: FindEndBracketFunc
+    findOutOfComment: FindOutOfCommentFunc
+    findOutOfLiteral: FindOutOfLiteralFunc
+    formatSourceCode: FormatSourceCodeFunc
+    isEmbeddedStyleTag: typeof isEmbeddedStyleTag
+    isEmbeddedLanguageTag: typeof isEmbeddedLanguageTag
+    findOutOfLiteralComment: FindOutOfLiteralCommentFunc
+    isRequiredValueDirective: typeof isRequiredValueDirective
+} = {
     isVoidTag,
     camel2Kebab,
     kebab2Camel,

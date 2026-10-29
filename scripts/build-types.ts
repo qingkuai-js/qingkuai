@@ -102,9 +102,17 @@ function main() {
 }
 
 function injectCallSignatureDocs(targetDtsPath: string) {
+    const interfaceCandidates = new Map<
+        string,
+        {
+            end: number
+            start: number
+            getDeclaration: (name: string) => string
+        }
+    >()
     const content = readSync(targetDtsPath)
     const editor = new CodeEditor(content, 0)
-    const interfaceToGetDeclaration = new Map<string, (name: string) => string>()
+    const consumedInterfaces = new Set<{ start: number; end: number }>()
     const sourceFile = ts.createSourceFile(targetDtsPath, content, ts.ScriptTarget.Latest, true)
     for (const statement of sourceFile.statements) {
         if (!ts.isInterfaceDeclaration(statement)) {
@@ -123,10 +131,13 @@ function injectCallSignatureDocs(targetDtsPath: string) {
             const indent = " ".repeat(4)
             const signature = formatSourceCode(indent + member.getText())
             const docContent = formatSourceCode(indent + doc[0].getText())
-            interfaceToGetDeclaration.set(statement.name.text, (name: string) => {
-                return `${docContent}\nexport declare function ${name}${signature}`
+            interfaceCandidates.set(statement.name.text, {
+                start: statement.getFullStart(),
+                end: statement.getEnd(),
+                getDeclaration: (name: string) => {
+                    return `${docContent}\nexport declare function ${name}${signature}`
+                }
             })
-            editor.remove(statement.getFullStart(), statement.getEnd())
             break
         }
     }
@@ -144,11 +155,17 @@ function injectCallSignatureDocs(targetDtsPath: string) {
                 continue
             }
 
-            const getDeclaration = interfaceToGetDeclaration.get(
-                declaration.type.typeName.getText(sourceFile)
-            )
-            if (!getDeclaration) {
+            const candidate = interfaceCandidates.get(declaration.type.typeName.getText(sourceFile))
+            if (!candidate) {
                 continue
+            }
+
+            // 接口只在确实有变量声明承接时才移除，多个同名声明只移除一次
+            // The interface is removed only when a variable declaration actually
+            // takes over, and only once even for several matching declarations.
+            if (!consumedInterfaces.has(candidate)) {
+                editor.remove(candidate.start, candidate.end)
+                consumedInterfaces.add(candidate)
             }
 
             // 计算前导空白中的换行数，以确保生成内容与前一声明之间保留适当的空行
@@ -170,7 +187,7 @@ function injectCallSignatureDocs(targetDtsPath: string) {
             editor.replace(
                 statement.getStart(),
                 statement.getEnd(),
-                leading + comment + getDeclaration(name)
+                leading + comment + candidate.getDeclaration(name)
             )
         }
     }
