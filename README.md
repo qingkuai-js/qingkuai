@@ -1,7 +1,7 @@
 # Qingkuai
 
 <a href="https://qingkuai.dev">
-   <img src="./assets/banner-light.svg" alt="qingkuai banner" /> 
+   <img src="https://raw.githubusercontent.com/qingkuai-js/qingkuai/1e1ae0e5517418b4f193c230541538444061604b/assets/banner-light.svg" alt="qingkuai banner" /> 
 </a>
 
 [![CI](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml/badge.svg)](https://github.com/qingkuai-js/qingkuai/actions/workflows/ci.yml)
@@ -73,11 +73,11 @@ It works with any MCP-compatible host (Claude Desktop, Cursor, etc.). See the [p
 
 ## Js Framework Benchmark
 
-[![js-framework-benchmark-report](./assets/js-framework-benchmark.png)](https://krausest.github.io/js-framework-benchmark/2026/chrome148.html)
+[![js-framework-benchmark-report](https://raw.githubusercontent.com/qingkuai-js/qingkuai/1e1ae0e5517418b4f193c230541538444061604b/assets/js-framework-benchmark.png)](https://krausest.github.io/js-framework-benchmark/2026/chrome148.html)
 
 ## Bundle Size Report
 
-[![bundle-size-report](./assets/bundle-size-report.png)](https://mlgq.github.io/frontend-framework-bundle-size/?lang=en)
+[![bundle-size-report](https://raw.githubusercontent.com/qingkuai-js/qingkuai/1e1ae0e5517418b4f193c230541538444061604b/assets/bundle-size-report.png)](https://mlgq.github.io/frontend-framework-bundle-size/?lang=en)
 
 ## Contributing
 
