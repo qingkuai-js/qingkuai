@@ -127,6 +127,16 @@ jobs:
       - name: Pack npm tarball
         run: npm pack
 
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: qingkuai-tarball
+          path: qingkuai-*.tgz
+          if-no-files-found: error
+
+      - name: Verify packed package
+        run: pnpm exec tsx scripts/verify-package.ts
+
       - name: Publish package to npm (Trusted Publishing)
         run: npm publish --access public --provenance
 

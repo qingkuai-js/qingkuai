@@ -41,6 +41,18 @@ export default defineConfig([
             "no-useless-escape": "off"
         },
         files: ["**/regular.ts"]
+    },
+    {
+        files: ["scripts/verify-fixtures/**"],
+        languageOptions: {
+            globals: {
+                console: "readonly",
+                require: "readonly"
+            }
+        },
+        rules: {
+            "@typescript-eslint/no-require-imports": "off"
+        }
     }
 ])
 

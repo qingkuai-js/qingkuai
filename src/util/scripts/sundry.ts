@@ -11,6 +11,18 @@ export function readSync(filePath: string): string {
     return nodeFs.readFileSync(filePath, "utf-8")
 }
 
+// 读取并解析 JSON 文件
+// Read and parse a JSON file.
+export function readJson<T = any>(filePath: string): T {
+    return JSON.parse(readSync(filePath))
+}
+
+// 以 2 空格缩进写入 JSON 文件，末尾补换行
+// Write a JSON file indented with 2 spaces, with a trailing newline.
+export function writeJson(filePath: string, value: unknown) {
+    nodeFs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`)
+}
+
 // 执行命令并返回去首尾空白的 stdout（用于读取输出）
 // Run a command and return the trimmed stdout (for reading output).
 export function run(command: string): string {

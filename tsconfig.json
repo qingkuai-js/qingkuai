@@ -13,5 +13,5 @@
       "#type-declarations/*": ["./src/types/*"]
     }
   },
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "scripts/verify-fixtures"]
 }

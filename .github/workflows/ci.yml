@@ -55,8 +55,17 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Build bundle
-        run: pnpm run bundle
+      - name: Build package
+        run: pnpm run build
+
+      - name: Strip install-time scripts
+        run: pnpm exec tsx scripts/strip-install-scripts.ts
+
+      - name: Pack npm tarball
+        run: npm pack
+
+      - name: Verify packed package
+        run: pnpm exec tsx scripts/verify-package.ts
 
       - name: Run E2E tests (Chromium)
         run: pnpm exec playwright test --project=chromium-debug --project=chromium-non-debug
