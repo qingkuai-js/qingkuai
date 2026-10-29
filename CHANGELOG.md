@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.104](https://github.com/qingkuai-js/qingkuai/compare/v1.0.103...v1.0.104) (2026-10-29)
+
+### Features
+
+- add CLI and MCP server usage sections to the README ([1e1ae0e](https://github.com/qingkuai-js/qingkuai/commit/1e1ae0e))
+- pin README image URLs to an immutable commit so renaming an asset cannot break published versions ([9981cd5](https://github.com/qingkuai-js/qingkuai/commit/9981cd5))
+
+### Refactors
+
+- replace string literal unions with enums ([157964b](https://github.com/qingkuai-js/qingkuai/commit/157964b))
+
+### Improvements
+
+- trim runtime overhead in keyed lists, DOM bindings and attribute updates ([c21f5e4](https://github.com/qingkuai-js/qingkuai/commit/c21f5e4))
+- verify the packed npm tarball in CI and before publishing ([d09370c](https://github.com/qingkuai-js/qingkuai/commit/d09370c))
+
+### Fixes
+
+- annotate top-level constructions as pure so bundlers can tree-shake them ([0464162](https://github.com/qingkuai-js/qingkuai/commit/0464162))
+- drop dangling type references from bundled declarations ([643db58](https://github.com/qingkuai-js/qingkuai/commit/643db58))
+
 ## [1.0.103](https://github.com/qingkuai-js/qingkuai/compare/v1.0.102...v1.0.103) (2026-10-24)
 
 ### Features
