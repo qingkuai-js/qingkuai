@@ -78,10 +78,15 @@ function assert(condition: unknown, message: string): asserts condition {
     }
 }
 
-// 以 argv 数组执行命令，避免路径含空格或 shell 元字符时被重新解析
-// Run a command with an argv array so paths with spaces or shell metacharacters
-// are never re-parsed.
+// 以 argv 数组执行命令，避免路径含空格或 shell 元字符时被重新解析；
+// Windows 上 Node 不允许直接执行 .cmd/.bat（npm.cmd 就是这种情况），
+// 只能经 shell，此时由这里自行加引号，保持“路径不会被重新解析”这条约束
+//
+// Run a command with an argv array so paths with spaces or shell metacharacters are
+// never re-parsed. On Windows Node refuses to execute .cmd/.bat directly, which is what
+// npm.cmd is, so those go through the shell and the arguments are quoted here instead.
 function run(command: string, args: string[], cwd?: string) {
+    const useShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(command)
     const options = {
         env: {
             NO_COLOR: "1",
@@ -89,21 +94,31 @@ function run(command: string, args: string[], cwd?: string) {
             npm_config_color: "false"
         },
         cwd,
+        shell: useShell,
         encoding: "utf-8" as const,
         stdio: ["ignore", "pipe", "pipe"] as ["ignore", "pipe", "pipe"]
     }
     try {
-        const stdout = nodeChildProcess.execFileSync(command, args, options)
+        const stdout = nodeChildProcess.execFileSync(
+            command,
+            useShell ? args.map(quoteShellArg) : args,
+            options
+        )
         return {
             ok: true,
             output: stdout.trim()
         }
     } catch (payload: any) {
+        const output = [payload.stdout, payload.stderr].filter(Boolean).join("\n").trim()
         return {
             ok: false,
-            output: [payload.stdout, payload.stderr].filter(Boolean).join("\n").trim()
+            output: output || payload.message || String(payload)
         }
     }
+}
+
+function quoteShellArg(arg: string): string {
+    return /[\s"]/.test(arg) ? `"${arg.replaceAll('"', '""')}"` : arg
 }
 
 function check(name: string, verify: () => void) {
