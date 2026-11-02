@@ -43,6 +43,7 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             id: "",
             flag: 0,
             content: [],
+            inSvg: false,
             getterId: "",
             selections: [],
             nodeContext: null,
@@ -55,7 +56,8 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
 
     function extendFragments(nodeContext: TemplateNodeContext | null) {
         const fragment = newTemplateFragment({
-            nodeContext
+            nodeContext,
+            inSvg: !!nodeContext?.inSvgContext
         })
         if ((fragments.push(fragment), nodeContext)) {
             return (nodeContext.fragment = fragment)
@@ -340,11 +342,12 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
 
     for (const fragment of fragments) {
         const joinedContent = fragment.content.map(item => item.value).join("")
-        const existingFragment = existingFragmentContentMap[joinedContent]
+        const contentKey = (fragment.inSvg ? "svg:" : "html:") + joinedContent
+        const existingFragment = existingFragmentContentMap[contentKey]
         if (existingFragment) {
             fragment.getWith = existingFragment
         } else {
-            existingFragmentContentMap[joinedContent] = fragment
+            existingFragmentContentMap[contentKey] = fragment
         }
     }
     return fragments
@@ -368,7 +371,7 @@ export function writeFragmentGetterDeclarations(
             const joinedContent = fragment.content.map(item => item.value).join("")
             fragment.getterId = fragmentGetterId
             writer.write(`const ${fragmentGetterId} = `)
-            writer.write(`${internalId}.createFragmentGetter(`)
+            writer.write(`${internalId}.create${fragment.inSvg ? "Svg" : ""}FragmentGetter(`)
 
             let stringifiedContent = `\`${joinedContent.replaceAll("`", "\\`")}\``
             if (inputDescriptor.options.debug) {

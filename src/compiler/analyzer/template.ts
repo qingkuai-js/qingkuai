@@ -48,18 +48,24 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
     }
 
     walkTemplateNodes(nodes, node => {
+        let inSvgContext = false
         let nodeContext: TemplateNodeContext
         let parentListAncestors: TemplateNode[] = []
         let parentContextIdentifiers: Record<string, ParsedDirective> | undefined
         if (node.parent) {
-            parentListAncestors = getTemplateNodeContext(node.parent).listAncestors
-            parentContextIdentifiers = getTemplateNodeContext(node.parent).contextIdentifiers
+            const parentContext = getTemplateNodeContext(node.parent)
+            parentListAncestors = parentContext.listAncestors
+            parentContextIdentifiers = parentContext.contextIdentifiers
+            inSvgContext =
+                "svg" === node.parent.tag ||
+                (parentContext.inSvgContext && !isSvgContextBoundary(node.parent, parentContext))
         }
         analyzeResult.template.nodeContexts.set(
             node,
             (nodeContext = {
                 node,
                 id: "",
+                inSvgContext,
                 anchorId: "",
                 fragment: null,
                 anchorBracket: null,
@@ -243,4 +249,12 @@ function recordSlotName(node: TemplateNode, attribute?: TemplateAttribute) {
     const existringAttr = getTemplateNodeContext(existing).attributesMap.name
     DuplicateSlotName(attribute?.loc ?? getStartTagOpenLoc(node), name)
     DuplicateSlotName(existringAttr?.loc ?? getStartTagOpenLoc(existing), name)
+}
+
+function isSvgContextBoundary(node: TemplateNode, nodeContext: TemplateNodeContext) {
+    return !!(
+        node.componentTag ||
+        "slot" === node.tag ||
+        (SPREAD_TAG === node.tag && nodeContext.sortedDirectives.length)
+    )
 }

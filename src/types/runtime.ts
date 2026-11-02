@@ -137,6 +137,7 @@ export type RefProperty = [typeof REF_PROPERTY_ID, ObjectKeys]
 export type DestructuringFunc = (target: any) => any[]
 export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra
 export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
+export type FragmentParser = (html: string) => DocumentFragment
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra

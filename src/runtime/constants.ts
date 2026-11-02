@@ -26,6 +26,7 @@ export const NODE_CONTEXT = "__qk__node_context"
 export const FRAGMENT_FLAG = "__qk__fragment_flag"
 export const VALUE_CACHE_KEY = ATTRIBUTE_PREFIX + "value"
 export const CLASS_CACHE_KEY = ATTRIBUTE_PREFIX + "class"
+export const SVG_NAMESPACE_URI = "http://www.w3.org/2000/svg"
 export const XLINK_NAMESPACE_URI = "http://www.w3.org/1999/xlink"
 
 export const OBJECT = Object

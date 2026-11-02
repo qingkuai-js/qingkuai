@@ -1,11 +1,17 @@
-import type { MountCollector } from "#type-declarations/runtime"
+import type { FragmentParser, MountCollector } from "#type-declarations/runtime"
 
+import {
+    DOCUMENT,
+    NODE_CONTEXT,
+    FRAGMENT_FLAG,
+    VALUE_CACHE_KEY,
+    SVG_NAMESPACE_URI
+} from "./constants"
 import { any } from "../util/shared/sundry"
 import { arrayFrom } from "../util/shared/arrays"
 import { isElement } from "../util/runtime/assert"
 import { currentDestruction, currentInstance } from "./state"
 import { isArray, isNumber, isString, isUndefined } from "../util/shared/assert"
-import { DOCUMENT, NODE_CONTEXT, FRAGMENT_FLAG, VALUE_CACHE_KEY } from "./constants"
 import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags"
 
 export function newTextNode() {
@@ -105,17 +111,23 @@ export function getChild(node: Element, index = 0) {
     return child
 }
 
-// 创建一个 HTML 片段获取器，重复获取时返回原片段的克隆副本以降低开销
-// Create an HTML fragment getter that returns a cloned instance
-// of the original fragment on each retrieval to minimize reuse overhead
 export function createFragmentGetter(html: string, arr?: string[]) {
+    return createGetter(html, arr, parseHtmlFragment)
+}
+
+export function createSvgFragmentGetter(html: string, arr?: string[]) {
+    return createGetter(html, arr, parseSvgFragment)
+}
+
+// 创建一个 HTML 片段获取器，重复获取时返回原片段的克隆副本以降低开销
+// Create an HTML fragment getter that returns a cloned instance of
+// the original fragment on each retrieval to minimize reuse overhead
+function createGetter(html: string, arr: string[] | undefined, parse: FragmentParser) {
     let singleNode: ChildNode | undefined
     let content: DocumentFragment | undefined
     return (flag = 0) => {
         if (isUndefined(content)) {
-            const template = DOCUMENT!.createElement("template")
-            template.innerHTML = arr ? restoreHtmlForFragment(html, arr) : html
-            content = template.content
+            content = parse(arr ? restoreHtmlForFragment(html, arr) : html)
         }
 
         let ret: any
@@ -152,6 +164,34 @@ export function createFragmentGetter(html: string, arr?: string[]) {
         }
         return ret
     }
+}
+
+function parseHtmlFragment(html: string) {
+    const template = DOCUMENT!.createElement("template")
+    template.innerHTML = html
+    return template.content
+}
+
+// 在遇到 <svg> 标签时切换到 SVG 命名空间
+// Switch to the SVG namespace when encountering an <svg> tag
+function parseSvgFragment(html: string) {
+    const template = DOCUMENT!.createElement("template")
+    template.innerHTML = "<svg>" + html + "</svg>"
+
+    const wrapper = template.content.firstChild as Element | null
+    const wrapped =
+        wrapper !== null &&
+        wrapper.namespaceURI === SVG_NAMESPACE_URI &&
+        template.content.childNodes.length == 1
+    if (wrapped) {
+        const fragment = DOCUMENT!.createDocumentFragment()
+        while (wrapper.firstChild) {
+            fragment.appendChild(wrapper.firstChild)
+        }
+        return fragment
+    }
+    template.innerHTML = html
+    return template.content
 }
 
 // 将压缩后的 HTML 字符串恢复原貌

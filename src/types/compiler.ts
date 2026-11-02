@@ -70,6 +70,7 @@ export interface TemplateFragment {
     }[]
     id: string
     flag: number
+    inSvg: boolean
     getterId: string
     usedCompressString: boolean
     directChildrenCount: number
@@ -243,6 +244,7 @@ export interface TemplateNodeContext {
     id: string
     anchorId: string
     node: TemplateNode
+    inSvgContext: boolean
     shouldBeSelected: boolean
     selectableChildCount: number
     fragment: TemplateFragment | null
