@@ -574,3 +574,62 @@ test("root-level component without scope and with styles emits scopes", () => {
     expect(code).toContain("_.renderComponent(Foo, _text1, {")
     expect(code).toContain("_.getScopes()")
 })
+
+test("fragments nested in svg use the svg namespace getter", () => {
+    const code = compileRuntime(`<svg viewBox="0 0 10 10"><path #if={bool}></path></svg>`)
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
+})
+
+test("svg namespace context is inherited through element and spread ancestors", () => {
+    const code = compileRuntime(`
+        <svg viewBox="0 0 10 10">
+            <g>
+                <path #if={bool}></path>
+            </g>
+            <qk:spread>
+                <circle #if={bool}></circle>
+            </qk:spread>
+        </svg>
+    `)
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
+    expect(code).toMatch(/createSvgFragmentGetter\(`<circle><\/circle>`\)/)
+})
+
+test("svg namespace context is not inherited across a component", () => {
+    const code = compileRuntime(`
+        <svg viewBox="0 0 10 10">
+            <Comp>
+                <path #if={bool}></path>
+            </Comp>
+        </svg>
+    `)
+    expect(code).toMatch(/createFragmentGetter\(`<path><\/path>`\)/)
+    expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/)
+})
+
+test("svg namespace context is not inherited across a slot", () => {
+    const code = compileRuntime(`
+        <svg viewBox="0 0 10 10">
+            <slot>
+                <path #if={bool}></path>
+            </slot>
+        </svg>
+    `)
+    expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/)
+})
+
+test("identical fragments in svg and html contexts are not merged", () => {
+    const code = compileRuntime(
+        `
+        <svg viewBox="0 0 10 10">
+            <path #if={bool}></path>
+        </svg>
+        <div>
+            <path #if={bool}></path>
+        </div>
+    `,
+        true
+    )
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
+    expect(code).toMatch(/createFragmentGetter\(`<path><\/path>`\)/)
+})

@@ -58,7 +58,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             parentContextIdentifiers = parentContext.contextIdentifiers
             inSvgContext =
                 "svg" === node.parent.tag ||
-                (parentContext.inSvgContext && !isSvgContextBoundary(node.parent, parentContext))
+                (parentContext.inSvgContext && !isSvgContextBoundary(node.parent))
         }
         analyzeResult.template.nodeContexts.set(
             node,
@@ -150,6 +150,10 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             checkStatefulUnkeyedForList(nodeContext.listAncestors)
         }
     })
+}
+
+function isSvgContextBoundary(node: TemplateNode) {
+    return !!(node.componentTag || "slot" === node.tag)
 }
 
 function markTemplateNodeShouldBeSelected(node: TemplateNode) {
@@ -249,12 +253,4 @@ function recordSlotName(node: TemplateNode, attribute?: TemplateAttribute) {
     const existringAttr = getTemplateNodeContext(existing).attributesMap.name
     DuplicateSlotName(attribute?.loc ?? getStartTagOpenLoc(node), name)
     DuplicateSlotName(existringAttr?.loc ?? getStartTagOpenLoc(existing), name)
-}
-
-function isSvgContextBoundary(node: TemplateNode, nodeContext: TemplateNodeContext) {
-    return !!(
-        node.componentTag ||
-        "slot" === node.tag ||
-        (SPREAD_TAG === node.tag && nodeContext.sortedDirectives.length)
-    )
 }
