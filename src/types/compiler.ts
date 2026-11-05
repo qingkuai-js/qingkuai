@@ -222,6 +222,10 @@ export interface GeneratedSelectorInfo {
     targetTextPart?: TextContentPart
     targetAttribute?: TemplateAttribute
 }
+export type SelectorExpressionValidation = Pick<
+    GeneratedSelectorInfo,
+    "topLevelIdentifierName" | "topLevelTransformedTo"
+>
 export interface TopLevelIdentifierNodeInfo {
     id: TS.Identifier
     declarator: TopLevelDeclaratorNode

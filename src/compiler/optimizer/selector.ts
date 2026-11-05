@@ -7,7 +7,8 @@ import type {
     ParsedDirective,
     SelectorOperation,
     TemplateNodeContext,
-    GeneratedSelectorInfo
+    GeneratedSelectorInfo,
+    SelectorExpressionValidation
 } from "#type-declarations/compiler"
 import type { RuntimeCodeWriter } from "../transformer/writer"
 
@@ -182,12 +183,7 @@ function validateSelectorExpression(
     expression: ParsedExpression,
     parsedForDirective: ParsedDirective,
     parsedKeyExpression: ParsedExpression
-):
-    | {
-          topLevelIdentifierName: string
-          topLevelTransformedTo: string
-      }
-    | undefined {
+): SelectorExpressionValidation | undefined {
     const topLevelIdentifierNames = Object.keys(expression.topLevelReferences)
     if (topLevelIdentifierNames.length !== 1) {
         return
@@ -352,8 +348,8 @@ function writeSelectorExpression(
 
     const topLevelReplacement =
         expressionType === SelectorExpressionType.Prev ? "prevValue" : info.topLevelTransformedTo
-    for (const reference of parsedExpression.topLevelReferences[info.topLevelIdentifierName] ??
-        []) {
+    const references = parsedExpression.topLevelReferences[info.topLevelIdentifierName] ?? []
+    for (const reference of references) {
         if (reference.shorthand) {
             editor.insert(reference.range[1], `: ${topLevelReplacement}`)
         } else {
