@@ -147,7 +147,7 @@ function getSelectorOperation(
     const isSvgElement = isSvgElementContext(nodeContext)
     if (baseName === "class") {
         const staticClassAttr = nodeContext.attributesMap.class
-        if (isSvgElement) {
+        if (isSvgElement || nodeContext.inSlotContent) {
             return {
                 staticClassAttr,
                 method: SelectorOperationMethod.SetClassAttribute

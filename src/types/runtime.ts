@@ -139,6 +139,7 @@ export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra
 export type ReactivityWrapper = ProxyWrapper | AccessorWrapper
 export type FragmentParser = (html: string) => DocumentFragment
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra
+export type FragmentGetter = (flag?: number, anchor?: Node) => any
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra
 

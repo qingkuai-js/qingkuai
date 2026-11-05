@@ -49,6 +49,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
 
     walkTemplateNodes(nodes, node => {
         let inSvgContext = false
+        let inSlotContent = false
         let nodeContext: TemplateNodeContext
         let parentListAncestors: TemplateNode[] = []
         let parentContextIdentifiers: Record<string, ParsedDirective> | undefined
@@ -59,6 +60,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             inSvgContext =
                 "svg" === node.parent.tag ||
                 (parentContext.inSvgContext && !isSvgContextBoundary(node.parent))
+            inSlotContent = !!node.parent.componentTag || parentContext.inSlotContent
         }
         analyzeResult.template.nodeContexts.set(
             node,
@@ -66,6 +68,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 node,
                 id: "",
                 inSvgContext,
+                inSlotContent,
                 anchorId: "",
                 fragment: null,
                 anchorBracket: null,

@@ -49,7 +49,8 @@ import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compi
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
     nodes: TemplateNode[],
-    isRoot = true
+    isRoot = true,
+    slotAnchorId?: string
 ) {
     if (isRoot) {
         analyzeResult.template.keyedSelectorInfos.clear()
@@ -57,7 +58,7 @@ export function generateTemplateRender(
 
     const componentFragment = analyzeResult.template.componentFragment
     if (isRoot && componentFragment?.content.length) {
-        writeFragmentSelections(writer, componentFragment)
+        writeFragmentSelections(writer, componentFragment, slotAnchorId)
         generateRenderEffect(writer, nodes, null)
     }
 
@@ -93,7 +94,7 @@ export function generateTemplateRender(
             wrapInsertPostfix(generateSlotCall(writer, nodeContext))
         }
         if (hasFragmentContent) {
-            writeFragmentSelections(writer, nodeContext.fragment!)
+            writeFragmentSelections(writer, nodeContext.fragment!, slotAnchorId)
 
             if ("slot" !== node.tag) {
                 generateRenderEffect(writer, [node], node)
@@ -117,7 +118,9 @@ export function generateTemplateRender(
             generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext)
         }
 
-        if ((generateTemplateRender(writer, node.children, false), hasFragmentContent)) {
+        if (
+            (generateTemplateRender(writer, node.children, false, slotAnchorId), hasFragmentContent)
+        ) {
             writer.write(`\n${generateIdentifier.internal}.insertBefore(`)
             writer.write(`${nodeContext.anchorId}, ${nodeContext.fragment!.id})`)
         }
@@ -457,7 +460,10 @@ function generateRenderEffect(
                 generateRenderEffectCall()
             }
             if (baseName === "class") {
-                const setClassMethod = isSvgElement ? "setClassAttribute" : "setHtmlClassName"
+                const setClassMethod =
+                    isSvgElement || nodeContext.inSlotContent
+                        ? "setClassAttribute"
+                        : "setHtmlClassName"
                 const staticClassAttr = nodeContext.attributesMap["class"]
                 writer.wrapLine().write(`${internalId}.`)
                 writer.write(setClassMethod, interpolationSourceIndex)
@@ -892,7 +898,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
                 writeContextPatterns(writer, patterns)
             }
             writer.write(") => {").indent(false)
-            generateTemplateRender(writer, [child], false)
+            generateTemplateRender(writer, [child], false, anchorId)
             writer.dedent().write("}")
         }
         writer.dedent().write("}")

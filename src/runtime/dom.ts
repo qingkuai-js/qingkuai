@@ -1,4 +1,4 @@
-import type { FragmentParser, MountCollector } from "#type-declarations/runtime"
+import type { FragmentGetter, FragmentParser, MountCollector } from "#type-declarations/runtime"
 
 import {
     DOCUMENT,
@@ -111,12 +111,34 @@ export function getChild(node: Element, index = 0) {
     return child
 }
 
-export function createFragmentGetter(html: string, arr?: string[]) {
+export function createHtmlFragmentGetter(html: string, arr?: string[]) {
     return createGetter(html, arr, parseHtmlFragment)
 }
 
 export function createSvgFragmentGetter(html: string, arr?: string[]) {
     return createGetter(html, arr, parseSvgFragment)
+}
+
+// 插槽内容的落点由组件决定，只能由调用方在实例化时把锚点传进来；两种解析结果各缓存一份
+// Where slot content lands is decided by the component, so the caller passes
+// the anchor when instantiating; both parse results are cached separately.
+export function createSlotFragmentGetter(html: string, arr?: string[]) {
+    let htmlGetter: FragmentGetter | undefined
+    let svgGetter: FragmentGetter | undefined
+    return (flag = 0, anchor?: Node) => {
+        const parent = anchor?.parentNode as Element | null
+
+        // foreignObject 元素本身属于 SVG 命名空间，但它的子节点属于 HTML 命名空间
+        // A foreignObject element lives in the SVG namespace while its children
+        // belong to the HTML namespace.
+        const isSvg =
+            parent?.namespaceURI === SVG_NAMESPACE_URI &&
+            "foreignobject" !== parent.localName.toLowerCase()
+        if (isSvg) {
+            return (svgGetter ??= createSvgFragmentGetter(html, arr))(flag)
+        }
+        return (htmlGetter ??= createHtmlFragmentGetter(html, arr))(flag)
+    }
 }
 
 // 创建一个 HTML 片段获取器，重复获取时返回原片段的克隆副本以降低开销

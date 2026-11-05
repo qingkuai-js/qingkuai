@@ -58,7 +58,7 @@ test("Root fragment uses standalone scope attribute", () => {
         </lang-css>
         <div></div>
     `)
-    expect(code).toMatch(/createFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/)
+    expect(code).toMatch(/createHtmlFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/)
     expect(code).toContain("return _.mount(_anchor, _fragment1)")
 })
 
@@ -603,7 +603,7 @@ test("svg namespace context is not inherited across a component", () => {
             </Comp>
         </svg>
     `)
-    expect(code).toMatch(/createFragmentGetter\(`<path><\/path>`\)/)
+    expect(code).toMatch(/createSlotFragmentGetter\(`<path><\/path>`\)/)
     expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/)
 })
 
@@ -643,7 +643,7 @@ test("svg namespace context stops at foreignObject regardless of tag casing", ()
             </svg>
         `)
         expect(code).toMatch(/_\.setHtmlClassName\(/)
-        expect(code).toMatch(/createFragmentGetter\(`<path><\/path>`\)/)
+        expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/)
     }
 })
 
@@ -660,5 +660,46 @@ test("identical fragments in svg and html contexts are not merged", () => {
         true
     )
     expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
-    expect(code).toMatch(/createFragmentGetter\(`<path><\/path>`\)/)
+    expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/)
+})
+
+test("slot content uses the runtime namespace aware getter", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Icon from "./Icon"
+            let label = "on"
+            let visible = true
+        </lang-js>
+        <Icon><path !class={label} d="M0 0h5v5H0z"></path></Icon>
+    `)
+    expect(code).toMatch(/createSlotFragmentGetter\(`<path/)
+    expect(code).toMatch(/_\.setClassAttribute\(/)
+})
+
+test("slot content nested in its own svg keeps the static svg getter", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Icon from "./Icon"
+            let visible = true
+        </lang-js>
+        <Icon><svg viewBox="0 0 10 10"><path #if={visible}></path></svg></Icon>
+    `)
+    expect(code).toMatch(/createSlotFragmentGetter\(`<svg/)
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
+})
+
+test("plain templates keep the plain fragment getter and class setter", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let label = "on"
+            let visible = true
+        </lang-js>
+        <div>
+            <span !class={label}></span>
+            <path #if={visible}></path>
+        </div>
+    `)
+    expect(code).not.toMatch(/createSlotFragmentGetter/)
+    expect(code).not.toMatch(/createSvgFragmentGetter/)
+    expect(code).toMatch(/_\.setHtmlClassName\(/)
 })

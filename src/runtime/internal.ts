@@ -17,8 +17,9 @@ export {
     insertBefore,
     getChildAsText,
     getSiblingAsText,
-    createFragmentGetter,
-    createSvgFragmentGetter
+    createHtmlFragmentGetter,
+    createSvgFragmentGetter,
+    createSlotFragmentGetter
 } from "./dom"
 
 export {

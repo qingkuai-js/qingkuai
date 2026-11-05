@@ -44,6 +44,7 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             flag: 0,
             content: [],
             inSvg: false,
+            inSlot: false,
             getterId: "",
             selections: [],
             nodeContext: null,
@@ -57,7 +58,8 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
     function extendFragments(nodeContext: TemplateNodeContext | null) {
         const fragment = newTemplateFragment({
             nodeContext,
-            inSvg: !!nodeContext?.inSvgContext
+            inSvg: !!nodeContext?.inSvgContext,
+            inSlot: !!nodeContext?.inSlotContent
         })
         if ((fragments.push(fragment), nodeContext)) {
             return (nodeContext.fragment = fragment)
@@ -371,7 +373,7 @@ export function writeFragmentGetterDeclarations(
             const joinedContent = fragment.content.map(item => item.value).join("")
             fragment.getterId = fragmentGetterId
             writer.write(`const ${fragmentGetterId} = `)
-            writer.write(`${internalId}.create${fragment.inSvg ? "Svg" : ""}FragmentGetter(`)
+            writer.write(`${internalId}.${getFragmentGetterName(fragment)}(`)
 
             let stringifiedContent = `\`${joinedContent.replaceAll("`", "\\`")}\``
             if (inputDescriptor.options.debug) {
@@ -392,7 +394,11 @@ export function writeFragmentGetterDeclarations(
     return writer
 }
 
-export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: TemplateFragment) {
+export function writeFragmentSelections(
+    writer: RuntimeCodeWriter,
+    fragment: TemplateFragment,
+    slotAnchorId?: string
+) {
     const flagInterpretives: string[] = []
     const selectionCache: SelectionCache = newCleanObj()
     if (!fragment.nodeContext || !fragment.nodeContext.node.hasActualAncestor) {
@@ -425,7 +431,15 @@ export function writeFragmentSelections(writer: RuntimeCodeWriter, fragment: Tem
             ? `/* ${flagInterpretives.join(" | ")} */ `
             : ""
     writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`)
-    writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""})`)
+    writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""}`)
+
+    // 插槽内容的落点由组件决定，实例化时把锚点传进去让它自己判断命名空间
+    // The placement of slot content is decided by the component, so the anchor is
+    // passed in for the getter to resolve the namespace itself.
+    if (fragment.inSlot && slotAnchorId) {
+        writer.write(`, ${slotAnchorId}`)
+    }
+    writer.write(")")
 
     for (const selection of fragment.selections) {
         if (fragment.flag & FRAG_ORPHAN_CONTENT && selection === fragment.selections[0]) {
@@ -558,4 +572,14 @@ function isFragmentOrphan(fragment: TemplateFragment) {
         }
     }
     return true
+}
+
+// 插槽内容的落点由组件决定，只能由运行时按渲染位置选择解析入口
+// The placement of slot content is decided by the component,
+// so only the runtime knows which parse entry to use for it.
+function getFragmentGetterName(fragment: TemplateFragment) {
+    if (fragment.inSvg) {
+        return "createSvgFragmentGetter"
+    }
+    return fragment.inSlot ? "createSlotFragmentGetter" : "createHtmlFragmentGetter"
 }
