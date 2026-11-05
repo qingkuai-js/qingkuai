@@ -119,22 +119,17 @@ export function createSvgFragmentGetter(html: string, arr?: string[]) {
     return createGetter(html, arr, parseSvgFragment);
 }
 
-// 插槽内容的落点由组件决定，只能由调用方在实例化时把锚点传进来；两种解析结果各缓存一份
-// Where slot content lands is decided by the component, so the caller passes
-// the anchor when instantiating; both parse results are cached separately.
-export function createSlotFragmentGetter(html: string, arr?: string[]) {
+// 组件和插槽内容的落点由使用方决定，实例化时才知道该用哪个命名空间：默认跟随所在实例，
+// 插槽内容的落点还能被插槽所在的组件覆盖，两种解析结果各缓存一份
+//
+// Where components and slot content land is decided by the consumer and only known when
+// they are instantiated: the instance namespace is the default and the namespace passed by
+// the slot owner can override it. Both parse results are cached separately.
+export function createInheritedFragmentGetter(html: string, arr?: string[]) {
     let htmlGetter: FragmentGetter | undefined;
     let svgGetter: FragmentGetter | undefined;
-    return (flag = 0, anchor?: Node) => {
-        const parent = anchor?.parentNode as Element | null;
-
-        // foreignObject 元素本身属于 SVG 命名空间，但它的子节点属于 HTML 命名空间
-        // A foreignObject element lives in the SVG namespace while its children
-        // belong to the HTML namespace.
-        const isSvg =
-            parent?.namespaceURI === SVG_NAMESPACE_URI &&
-            "foreignobject" !== parent.localName.toLowerCase();
-        if (isSvg) {
+    return (flag = 0, ns = currentInstance?._internal.n) => {
+        if (ns) {
             return (svgGetter ??= createSvgFragmentGetter(html, arr))(flag);
         }
         return (htmlGetter ??= createHtmlFragmentGetter(html, arr))(flag);

@@ -58,6 +58,7 @@ export type ComponentMeta = Partial<{
     r: AnyObject; // raw refs
     c: AnyObject; // contexts
     R: AnyObject; // bound refs
+    n: boolean; // svg namespace
     e: string[]; // delegated events
     a: string[]; // ancestor scope chain
     f: GeneralFunc[][] | null; // lifecycle hooks
@@ -139,7 +140,7 @@ export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra;
 export type ReactivityWrapper = ProxyWrapper | AccessorWrapper;
 export type FragmentParser = (html: string) => DocumentFragment;
 export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra;
-export type FragmentGetter = (flag?: number, anchor?: Node) => any;
+export type FragmentGetter = (flag?: number, ns?: boolean) => any;
 export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra;
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra;
 

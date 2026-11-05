@@ -37,11 +37,11 @@ import { writeFragmentSelections } from "./fragment";
 import { writeParsedExpression } from "./interpolation";
 import { kebab2Camel } from "../../../util/compiler/string";
 import { getMaybeReusedString } from "../../optimizer/compress";
-import { TestingMode, ReferenceBindingType } from "../../enums";
 import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags";
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
+import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
@@ -50,7 +50,7 @@ export function generateTemplateRender(
     writer: RuntimeCodeWriter,
     nodes: TemplateNode[],
     isRoot = true,
-    slotAnchorId?: string,
+    slotNsId?: string,
 ) {
     if (isRoot) {
         analyzeResult.template.keyedSelectorInfos.clear();
@@ -58,7 +58,7 @@ export function generateTemplateRender(
 
     const componentFragment = analyzeResult.template.componentFragment;
     if (isRoot && componentFragment?.content.length) {
-        writeFragmentSelections(writer, componentFragment, slotAnchorId);
+        writeFragmentSelections(writer, componentFragment, slotNsId);
         generateRenderEffect(writer, nodes, null);
     }
 
@@ -86,7 +86,7 @@ export function generateTemplateRender(
             wrapInsertPostfix(generateDirectiveBlock(writer, 0, nodeContext));
         }
         if (node.componentTag) {
-            generateComponentCall(writer, nodeContext);
+            generateComponentCall(writer, nodeContext, slotNsId);
             insertPostfix?.();
             continue;
         }
@@ -94,7 +94,7 @@ export function generateTemplateRender(
             wrapInsertPostfix(generateSlotCall(writer, nodeContext));
         }
         if (hasFragmentContent) {
-            writeFragmentSelections(writer, nodeContext.fragment!, slotAnchorId);
+            writeFragmentSelections(writer, nodeContext.fragment!, slotNsId);
 
             if ("slot" !== node.tag) {
                 generateRenderEffect(writer, [node], node);
@@ -118,9 +118,7 @@ export function generateTemplateRender(
             generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext);
         }
 
-        if (
-            (generateTemplateRender(writer, node.children, false, slotAnchorId), hasFragmentContent)
-        ) {
+        if ((generateTemplateRender(writer, node.children, false, slotNsId), hasFragmentContent)) {
             writer.write(`\n${generateIdentifier.internal}.insertBefore(`);
             writer.write(`${nodeContext.anchorId}, ${nodeContext.fragment!.id})`);
         }
@@ -675,8 +673,32 @@ function generateRenderEffect(
     }
 }
 
+// 命名空间静态可知时写成字面量，随实例继承的直接省略、交给运行时解析；只有插槽内容里的
+// 调用必须带上插槽调用方算出的命名空间
+//
+// A statically known namespace is written as a literal and an inherited one is
+// omitted for the runtime to resolve; only calls inside slot content have to carry
+// the namespace that the slot owner resolved.
+function getNamespaceArgument(nodeContext: TemplateNodeContext, slotNsId?: string) {
+    switch (nodeContext.namespaceMode) {
+        case NamespaceMode.Svg: {
+            return "true";
+        }
+        case NamespaceMode.Html: {
+            return "false";
+        }
+        default: {
+            if (nodeContext.inSlotContent) {
+                return slotNsId;
+            }
+            return undefined;
+        }
+    }
+}
+
 function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false;
+    const nsArgument = getNamespaceArgument(nodeContext);
 
     const internalId = generateIdentifier.internal;
     const hasDefaultContent = !!nodeContext.fragment?.content.length;
@@ -714,28 +736,39 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
             writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true");
         }
         writer.dedent().write("}");
-    } else {
+    } else if (hasDefaultContent || nsArgument) {
         writer.write(`, ${internalId}.UNDEF`);
     }
 
     if (hasDefaultContent) {
         writer.writeLine(", () => {").indent(false);
+    } else if (nsArgument) {
+        writer.write(`, ${internalId}.UNDEF`);
     }
 
     return () => {
         if (hasDefaultContent) {
             writer.dedent().write("}");
         }
+        if (nsArgument) {
+            writer.write(`, ${nsArgument}`);
+        }
         writer.write(")");
     };
 }
 
-function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
+function generateComponentCall(
+    writer: RuntimeCodeWriter,
+    nodeContext: TemplateNodeContext,
+    slotNsId?: string,
+) {
     let needInsertComma = false;
+    const nsArgument = getNamespaceArgument(nodeContext, slotNsId);
 
     const node = nodeContext.node;
     const parsedExpr = getParsedExpression(node);
     const maybeDynamic = parsedExpr?.reactive;
+    const nsId = ensureIdWithNumSuffix("_ns");
     const internalId = generateIdentifier.internal;
     const componentId = generateIdentifier.component;
     const getterArgId = generateIdentifier.getterArg;
@@ -762,6 +795,7 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         hasProps ||
         hasRefs ||
         hasScope ||
+        !!nsArgument ||
         !node.hasActualAncestor ||
         !!referenceHandleAttribute;
 
@@ -891,14 +925,14 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
             const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns;
             const slotName = expression ? (expression.node as TS.StringLiteral).text : "default";
             insertTrailingComma();
-            writeMetaKey(slotName, writer, true).write(`: (${anchorId}`);
+            writeMetaKey(slotName, writer, true).write(`: (${anchorId}, ${nsId}`);
 
             if (patterns?.length) {
                 writer.write(", ");
                 writeContextPatterns(writer, patterns);
             }
             writer.write(") => {").indent(false);
-            generateTemplateRender(writer, [child], false, anchorId);
+            generateTemplateRender(writer, [child], false, nsId);
             writer.dedent().write("}");
         }
         writer.dedent().write("}");
@@ -909,6 +943,10 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         insertTrailingComma().write(`a: ${internalId}.getScopes(${scopeName})`);
     } else if (!node.hasActualAncestor) {
         insertTrailingComma().write(`a: ${internalId}.getScopes()`);
+    }
+
+    if (nsArgument) {
+        insertTrailingComma().write(`n: ${nsArgument}`);
     }
 
     if (hasMeta) {

@@ -22,12 +22,12 @@ import {
 } from "../message/error";
 import { SPREAD_TAG } from "../constants";
 import { analyzeAttributes } from "./attribute";
-import { AnalyzeExpressionType } from "../enums";
 import { analyzeStaticTextContent } from "./text";
 import { newCleanObj } from "../../util/shared/sundry";
 import { objectAssign } from "../../util/shared/aliases";
 import { analyzeResult, inputDescriptor } from "../state";
 import { shouldBeSelectedAttrStartCharRE } from "../regular";
+import { AnalyzeExpressionType, NamespaceMode } from "../enums";
 import { isHtmlDirectiveChild } from "../../util/compiler/assert";
 import { StatefulUnkeyedForList, UnnecessarySpreadTag } from "../message/warn";
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation";
@@ -48,26 +48,24 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
     };
 
     walkTemplateNodes(nodes, node => {
-        let inSvgContext = false;
         let inSlotContent = false;
         let nodeContext: TemplateNodeContext;
+        let namespaceMode = NamespaceMode.Inherited;
         let parentListAncestors: TemplateNode[] = [];
         let parentContextIdentifiers: Record<string, ParsedDirective> | undefined;
         if (node.parent) {
             const parentContext = getTemplateNodeContext(node.parent);
             parentListAncestors = parentContext.listAncestors;
             parentContextIdentifiers = parentContext.contextIdentifiers;
-            inSvgContext =
-                "svg" === node.parent.tag ||
-                (parentContext.inSvgContext && !isSvgContextBoundary(node.parent));
             inSlotContent = !!node.parent.componentTag || parentContext.inSlotContent;
+            namespaceMode = getChildNamespaceMode(node.parent, parentContext.namespaceMode);
         }
         analyzeResult.template.nodeContexts.set(
             node,
             (nodeContext = {
                 node,
                 id: "",
-                inSvgContext,
+                namespaceMode,
                 inSlotContent,
                 anchorId: "",
                 fragment: null,
@@ -155,18 +153,27 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
     });
 }
 
-// 组件的子节点是插槽内容，落点由组件决定；foreignObject 内部的子节点属于 HTML 命名空间。
-// The child nodes of a component are slot content, and the landing point is determined
-// by the component; the child nodes inside foreignObject belong to the HTML namespace.
-function isSvgContextBoundary(node: TemplateNode) {
-    if (node.componentTag) {
-        return true;
+// 子节点位置用哪个命名空间：svg 的子树是 SVG，foreignObject 的子节点是 HTML，
+// 组件的子节点是插槽内容、落点由组件决定，其余与父节点一致
+//
+// Which namespace a child position uses: the subtree of svg is SVG, the children
+// of foreignObject are HTML, the children of a component are slot content whose
+// landing point is decided by the component, and everything else follows its parent.
+function getChildNamespaceMode(parent: TemplateNode, parentMode: NamespaceMode) {
+    if (parent.componentTag) {
+        return NamespaceMode.Inherited;
+    }
+    if ("svg" === parent.tag) {
+        return NamespaceMode.Svg;
     }
 
     // foreignObject 标签名比较忽略大小写，HTML 解析器本身对 SVG 标签名做大小写纠正
     // The foreignObject tag name is compared case-insensitively,
     // and the HTML parser itself corrects the case of SVG tag names.
-    return "foreignobject" === node.tag.toLowerCase();
+    if ("foreignobject" === parent.tag.toLowerCase()) {
+        return NamespaceMode.Html;
+    }
+    return parentMode;
 }
 
 function markTemplateNodeShouldBeSelected(node: TemplateNode) {

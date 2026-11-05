@@ -8,6 +8,7 @@ export function renderSlot(
     anchor: ChildNode,
     props?: Record<string, any>,
     fallback?: GeneralFunc,
+    ns?: boolean,
 ) {
     const componentInstance = currentInstance!;
     const parentDestruction = currentDestruction;
@@ -17,6 +18,6 @@ export function renderSlot(
             invokeRender(fallback, componentInstance, parentDestruction);
         }
     } else {
-        invokeRender(() => slot(anchor, props), componentInstance, parentDestruction);
+        invokeRender(() => slot(anchor, ns, props), componentInstance, parentDestruction);
     }
 }

@@ -58,7 +58,7 @@ test("Root fragment uses standalone scope attribute", () => {
         </lang-css>
         <div></div>
     `);
-    expect(code).toMatch(/createHtmlFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/);
     expect(code).toContain("return _.mount(_anchor, _fragment1)");
 });
 
@@ -603,7 +603,8 @@ test("svg namespace context is not inherited across a component", () => {
             </Comp>
         </svg>
     `);
-    expect(code).toMatch(/createSlotFragmentGetter\(`<path><\/path>`\)/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`<path><\/path>`\)/);
+    expect(code).toContain("const _fragment2 = _getFragment2(16, _ns1)");
     expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/);
 });
 
@@ -660,7 +661,7 @@ test("identical fragments in svg and html contexts are not merged", () => {
         true,
     );
     expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
-    expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`<path><\/path>`\)/);
 });
 
 test("slot content uses the runtime namespace aware getter", () => {
@@ -672,7 +673,7 @@ test("slot content uses the runtime namespace aware getter", () => {
         </lang-js>
         <Icon><path !class={label} d="M0 0h5v5H0z"></path></Icon>
     `);
-    expect(code).toMatch(/createSlotFragmentGetter\(`<path/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`<path/);
     expect(code).toMatch(/_\.setClassAttribute\(/);
 });
 
@@ -684,7 +685,7 @@ test("slot content nested in its own svg keeps the static svg getter", () => {
         </lang-js>
         <Icon><svg viewBox="0 0 10 10"><path #if={visible}></path></svg></Icon>
     `);
-    expect(code).toMatch(/createSlotFragmentGetter\(`<svg/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`<svg/);
     expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
 });
 
@@ -699,7 +700,84 @@ test("plain templates keep the plain fragment getter and class setter", () => {
             <path #if={visible}></path>
         </div>
     `);
-    expect(code).not.toMatch(/createSlotFragmentGetter/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`<path><\/path>`\)/);
     expect(code).not.toMatch(/createSvgFragmentGetter/);
     expect(code).toMatch(/_\.setHtmlClassName\(/);
+});
+
+test("a component in svg carries the svg namespace in its meta", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Child from "./Child"
+        </lang-js>
+        <svg viewBox="0 0 10 10"><Child></Child></svg>
+    `);
+    expect(code).toContain("n: true");
+    expect(code).toContain("_.renderComponent(Child, _text1, {");
+});
+
+test("a component inside foreignObject returns to the html namespace", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Child from "./Child"
+        </lang-js>
+        <svg viewBox="0 0 10 10"><foreignObject><Child></Child></foreignObject></svg>
+    `);
+    expect(code).toMatch(/n: false/);
+});
+
+test("a component without a static namespace emits no namespace key", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Child from "./Child"
+        </lang-js>
+        <div><Child></Child></div>
+    `);
+    expect(code).not.toMatch(/n: (?:true|false|_ns)/);
+});
+
+test("a component inside slot content takes the namespace resolved by the slot", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Icon from "./Icon"
+            import Child from "./Child"
+        </lang-js>
+        <Icon><Child></Child></Icon>
+    `);
+    expect(code).toContain("n: _ns1");
+    expect(code).toContain("(_anchor1, _ns1) => {");
+});
+
+test("a slot inside svg asks for the svg namespace", () => {
+    const code = compileRuntime(`<svg viewBox="0 0 10 10"><slot></slot></svg>`);
+    expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, _.UNDEF, true)');
+});
+
+test("a slot inside foreignObject asks for the html namespace", () => {
+    const code = compileRuntime(`
+        <svg viewBox="0 0 10 10"><foreignObject><slot></slot></foreignObject></svg>
+    `);
+    expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, _.UNDEF, false)');
+});
+
+test("slot content fragments take the namespace of the slot", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Icon from "./Icon"
+        </lang-js>
+        <Icon><circle r="4"></circle></Icon>
+    `);
+    expect(code).toContain("const _fragment2 = _getFragment2(21, _ns1)");
+    expect(code).toMatch(/createInheritedFragmentGetter\(`<circle r=4><\/circle>`\)/);
+});
+
+test("a slot without props and fallback emits no placeholder argument", () => {
+    const code = compileRuntime(`<slot></slot>`);
+    expect(code).toContain('_.renderSlot("default", _text1)');
+    expect(code).not.toContain('_.renderSlot("default", _text1, _.UNDEF)');
+});
+
+test("a slot keeps the props placeholder when a fallback follows", () => {
+    const code = compileRuntime(`<slot><span>fallback</span></slot>`);
+    expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, () => {');
 });

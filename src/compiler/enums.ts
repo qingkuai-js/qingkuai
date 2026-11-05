@@ -8,6 +8,12 @@ export enum ReactivityMode {
     Shallow = "shallow",
 }
 
+export enum NamespaceMode {
+    Inherited = "inherited",
+    Svg = "svg",
+    Html = "html",
+}
+
 export enum WhitespaceMode {
     Preserve = "preserve",
     Trim = "trim",

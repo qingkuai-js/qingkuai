@@ -50,8 +50,8 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     expect(prod.code).toContain("_.htmlBlock(");
     expect(prod.code).toContain("_.targetBlock(");
     expect(prod.code).toContain("_.listBlock(");
-    expect(prod.code).toContain("header: (_anchor1, ctx) => {");
-    expect(prod.code).toContain("body: (_anchor2) => {");
+    expect(prod.code).toContain("header: (_anchor1, _ns1, ctx) => {");
+    expect(prod.code).toContain("body: (_anchor2, _ns1) => {");
     expect(prod.code).toContain("let showPanel = _.react(true)");
     expect(prod.code).toContain('let pending = _.react(Promise.resolve({ value: "done" }))');
     expect(prod.code).toContain("let mount = _.react(document.body)");

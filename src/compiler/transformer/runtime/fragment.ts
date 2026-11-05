@@ -23,8 +23,8 @@ import {
     getTemplateNodeContext,
     getGeneratedStaticTextContent,
 } from "../../../util/compiler/template";
-import { AttributeValueEnclosure } from "../../enums";
 import { getLastElem } from "../../../util/shared/arrays";
+import { AttributeValueEnclosure, NamespaceMode } from "../../enums";
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
@@ -43,7 +43,6 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             id: "",
             flag: 0,
             content: [],
-            inSvg: false,
             inSlot: false,
             getterId: "",
             selections: [],
@@ -51,6 +50,7 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             getWith: undefined,
             directChildrenCount: 0,
             usedCompressString: false,
+            namespaceMode: NamespaceMode.Inherited,
         };
         return Object.assign(empty, defaults);
     };
@@ -58,8 +58,8 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
     function extendFragments(nodeContext: TemplateNodeContext | null) {
         const fragment = newTemplateFragment({
             nodeContext,
-            inSvg: !!nodeContext?.inSvgContext,
             inSlot: !!nodeContext?.inSlotContent,
+            namespaceMode: nodeContext?.namespaceMode ?? NamespaceMode.Inherited,
         });
         if ((fragments.push(fragment), nodeContext)) {
             return (nodeContext.fragment = fragment);
@@ -344,7 +344,7 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
 
     for (const fragment of fragments) {
         const joinedContent = fragment.content.map(item => item.value).join("");
-        const contentKey = (fragment.inSvg ? "svg:" : "html:") + joinedContent;
+        const contentKey = fragment.namespaceMode + ":" + joinedContent;
         const existingFragment = existingFragmentContentMap[contentKey];
         if (existingFragment) {
             fragment.getWith = existingFragment;
@@ -397,7 +397,7 @@ export function writeFragmentGetterDeclarations(
 export function writeFragmentSelections(
     writer: RuntimeCodeWriter,
     fragment: TemplateFragment,
-    slotAnchorId?: string,
+    slotNsId?: string,
 ) {
     const flagInterpretives: string[] = [];
     const selectionCache: SelectionCache = newCleanObj();
@@ -433,11 +433,11 @@ export function writeFragmentSelections(
     writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`);
     writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""}`);
 
-    // 插槽内容的落点由组件决定，实例化时把锚点传进去让它自己判断命名空间
-    // The placement of slot content is decided by the component, so the anchor is
-    // passed in for the getter to resolve the namespace itself.
-    if (fragment.inSlot && slotAnchorId) {
-        writer.write(`, ${slotAnchorId}`);
+    // 插槽内容的落点由插槽所在的位置决定，实例化时把调用方算出的命名空间传进来
+    // The placement of slot content is decided by the slot, so the namespace resolved by
+    // the caller is passed in when the fragment is instantiated.
+    if (fragment.inSlot && slotNsId && usesInheritedFragmentGetter(fragment)) {
+        writer.write(`, ${slotNsId}`);
     }
     writer.write(")");
 
@@ -574,12 +574,33 @@ function isFragmentOrphan(fragment: TemplateFragment) {
     return true;
 }
 
-// 插槽内容的落点由组件决定，只能由运行时按渲染位置选择解析入口
-// The placement of slot content is decided by the component,
-// so only the runtime knows which parse entry to use for it.
+// 只有含标签的继承式片段才需要运行时判断命名空间，纯文本片段与命名空间无关
+// Only inherited fragments that contain tags need the runtime namespace decision;
+// text-only fragments are namespace independent.
+function usesInheritedFragmentGetter(fragment: TemplateFragment) {
+    return (
+        fragment.namespaceMode === NamespaceMode.Inherited &&
+        fragment.content.some(item => {
+            return !item.isText;
+        })
+    );
+}
+
+// 命名空间静态可知的片段直接选定解析入口，组件与插槽内容的落点由使用方在实例化时决定
+// Fragments with a statically known namespace pick their parse entry directly;
+// where components and slot content land is decided by the consumer when instantiating.
 function getFragmentGetterName(fragment: TemplateFragment) {
-    if (fragment.inSvg) {
-        return "createSvgFragmentGetter";
+    switch (fragment.namespaceMode) {
+        case NamespaceMode.Svg: {
+            return "createSvgFragmentGetter";
+        }
+        case NamespaceMode.Html: {
+            return "createHtmlFragmentGetter";
+        }
+        default: {
+            return usesInheritedFragmentGetter(fragment)
+                ? "createInheritedFragmentGetter"
+                : "createHtmlFragmentGetter";
+        }
     }
-    return fragment.inSlot ? "createSlotFragmentGetter" : "createHtmlFragmentGetter";
 }

@@ -8,6 +8,7 @@ import type {
 import { getLocByIndex } from "./position";
 import { isBlankTextNode } from "./assert";
 import { isEmptyString } from "../shared/assert";
+import { NamespaceMode } from "../../compiler/enums";
 import { analyzeResult } from "../../compiler/state";
 import { SPREAD_TAG } from "../../compiler/constants";
 import { interpolatedAttrStartCharRE } from "../../compiler/regular";
@@ -36,10 +37,6 @@ export function getParsedExpression(key: any) {
 
 export function getTemplateNodeContext(node: TemplateNode) {
     return analyzeResult.template.nodeContexts.get(node)!;
-}
-
-export function isSvgElementContext(nodeContext: TemplateNodeContext) {
-    return nodeContext.inSvgContext || "svg" === nodeContext.node.tag;
 }
 
 export function getParsedEventInfo(key: TemplateAttribute) {
@@ -109,6 +106,10 @@ export function doesNodeHasValidTextContentPart(node: TemplateNode) {
     return node.content.some(
         part => part.isInterpolated || !isEmptyString(getGeneratedStaticTextContent(part)),
     );
+}
+
+export function isSvgElementContext(nodeContext: TemplateNodeContext) {
+    return nodeContext.namespaceMode === NamespaceMode.Svg || "svg" === nodeContext.node.tag;
 }
 
 export function getStartTagNameLoc(node: TemplateNode) {

@@ -122,6 +122,12 @@ export const setContextGetter: SetContextGetterFunc = (instance, key, getter) =>
 };
 
 export function init(anchor: Node, meta: ComponentMeta) {
+    // 组件的命名空间由调用方决定：未指定时跟随父实例，false 表示显式回到 HTML 命名空间
+    // The namespace of a component is decided by its caller: unspecified follows
+    // the parent instance, and false explicitly falls back to the HTML namespace.
+    if (currentInstance?._internal.n) {
+        meta.n ??= true;
+    }
     const instance: ComponentInstanceBase = {
         _internal: meta,
         parent: currentInstance,

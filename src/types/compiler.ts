@@ -5,6 +5,7 @@ import type {
     InlayHintKind,
     ReactivityMode,
     WhitespaceMode,
+    NamespaceMode,
     RawArgumentKind,
     IdentifierStatus,
     CompileMessageType,
@@ -71,11 +72,11 @@ export interface TemplateFragment {
     }[];
     id: string;
     flag: number;
-    inSvg: boolean;
     inSlot: boolean;
     getterId: string;
     usedCompressString: boolean;
     directChildrenCount: number;
+    namespaceMode: NamespaceMode;
     getWith: TemplateFragment | undefined;
     nodeContext: TemplateNodeContext | null;
 }
@@ -250,9 +251,9 @@ export interface TemplateNodeContext {
     id: string;
     anchorId: string;
     node: TemplateNode;
-    inSvgContext: boolean;
     inSlotContent: boolean;
     shouldBeSelected: boolean;
+    namespaceMode: NamespaceMode;
     selectableChildCount: number;
     fragment: TemplateFragment | null;
     anchorBracket: TemplateFragment | null;
