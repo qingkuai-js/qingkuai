@@ -2,9 +2,11 @@ import type { AnyObject } from "#type-declarations/tools";
 import type { ClassAttrValue } from "#type-declarations/runtime";
 
 import {
+    SVG_FLAG,
     CLASS_CACHE_KEY,
     VALUE_CACHE_KEY,
     ATTRIBUTE_PREFIX,
+    SVG_NAMESPACE_URI,
     XLINK_NAMESPACE_URI,
 } from "./constants";
 import { getElementValue } from "./dom";
@@ -21,6 +23,10 @@ import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/share
 // paths; memoizing the concatenation avoids re-allocating the name every time.
 const attributeCacheKeys = /*#__PURE__*/ new Map<string, string>();
 
+// 组件的元素命名空间只有运行时才知道，SVG 元素的 className 是只读的，因此 SVG 元素按属性写入
+//
+// The element namespace of a component is only known at runtime, and the className of an
+// SVG element is read-only, so SVG elements are written as an attribute.
 export function setHtmlClassName(elem: Element, value: ClassAttrValue) {
     const className = getClassName(value);
     if (className === any(elem)[CLASS_CACHE_KEY]) {
@@ -28,10 +34,12 @@ export function setHtmlClassName(elem: Element, value: ClassAttrValue) {
     }
     any(elem)[CLASS_CACHE_KEY] = className;
 
-    if (className) {
-        elem.className = className;
-    } else {
+    if (!className) {
         elem.removeAttribute("class");
+    } else if (isSvgElement(elem)) {
+        elem.setAttribute("class", className);
+    } else {
+        elem.className = className;
     }
 }
 
@@ -45,17 +53,18 @@ export function setClassAttribute(elem: Element, value: ClassAttrValue) {
     setAttribute(elem, "class", getClassName(value));
 }
 
-// HTML 元素的同名属性是可写的，直接赋值比 setAttribute 快；SVG 的只读属性在这里会
-// 抛错，因此 SVG 元素统一使用 setAttribute
+// HTML 元素的同名属性是可写的，直接赋值比 setAttribute 快；SVG 的只读属性赋值会抛错，
+// 所以判定为 SVG 的元素不再尝试属性赋值
 //
 // The same-named property of an HTML element is writable and assigning it is faster than
-// setAttribute; SVG properties are read-only and throw, so SVG elements use setAttribute.
+// setAttribute; assigning an SVG property throws, so elements known to be SVG skip the
+// property attempt entirely.
 export function setHtmlAttribute(elem: Element, name: string, value: any) {
     const cacheKey = getAttributeCacheKey(name);
     if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
         return;
     }
-    if (!isNull(value) && !isUndefined(value) && name in elem) {
+    if (!isNull(value) && !isUndefined(value) && !isSvgElement(elem) && name in elem) {
         try {
             any(elem)[name] = value;
             any(elem)[cacheKey] = value;
@@ -187,4 +196,8 @@ function getClassNameString(value: any): string {
 
 function getClassName(value: ClassAttrValue) {
     return isString(value) ? value : getClassNameString(value);
+}
+
+function isSvgElement(elem: Element) {
+    return (any(elem)[SVG_FLAG] ??= elem.namespaceURI === SVG_NAMESPACE_URI);
 }

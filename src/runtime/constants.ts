@@ -18,6 +18,7 @@ export const NOOP = () => {};
 export const UNDEF = undefined;
 export const TOARRAY = (v: any) => [v];
 
+export const SVG_FLAG = "__qk__svg";
 export const ATTRIBUTE_PREFIX = "__qk__attr";
 export const EVENT_FLAG = "__qk__event_flag";
 export const EXP_GETTER = "__qk__exp_getter";
