@@ -143,24 +143,22 @@ test("Runtime regression: keyed list selection emits selector helper and event c
     )
     expect(prod.code).not.toContain("_selector1(_ctx")
 
-    expect(dev.code).not.toMatch(/const _selector\d+ = \(\(\) => \{/)
-    expect(dev.code).not.toContain("_selector1(_selected.$)")
+    expect(dev.code).toMatch(/const _selector\d+ = \(\(\) => \{/)
+    expect(dev.code).toContain("_selector1(_selected.$)")
     expect(dev.code).toContain("_selected.$ ===")
     expect(dev.code).toContain('"danger" : ""')
 })
 
-test("Runtime regression: debug mode skips selector optimization", () => {
-    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "debug-skip-selector")
-    expect(prod.code).toMatch(/const _selector\d+ = \(\(\) => \{/)
-    expect(prod.code).toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/)
-    expect(prod.code).toContain("_.renderEffect(() => {")
+test("Runtime regression: debug mode generates the same selector optimization", () => {
+    const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "debug-selector")
+    for (const code of [prod.code, dev.code]) {
+        expect(code).toMatch(/const _selector\d+ = \(\(\) => \{/)
+        expect(code).toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/)
+        expect(code).toContain("_.renderEffect(() => {")
+        expect(code).toContain('"danger" : ""')
+    }
     expect(prod.code).toContain("selected.$")
-
-    expect(dev.code).not.toMatch(/const _selector\d+ = \(\(\) => \{/)
-    expect(dev.code).not.toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/)
-    expect(dev.code).not.toContain("_selector1(_selected.$)")
     expect(dev.code).toContain("_selected.$ ===")
-    expect(dev.code).toContain('"danger" : ""')
 })
 
 test("Intermediate regression: component slot blocks generate valid object property closures", () => {

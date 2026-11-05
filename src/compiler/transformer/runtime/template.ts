@@ -282,10 +282,7 @@ function generateDirectiveBlock(
             const patterns = parsedDirective.patterns
             const keyDirective = nodeContext.attributesMap["#key"]
             const fn = keyDirective ? "keyedListBlock" : "listBlock"
-            const selectorInfos =
-                keyDirective && !inputDescriptor.options.debug
-                    ? getForBlockSelectorInfos(nodeContext)
-                    : []
+            const selectorInfos = keyDirective ? getForBlockSelectorInfos(nodeContext) : []
             const nodeGetterId = selectorInfos.length ? ensureIdWithNumSuffix("_getNodeByKey") : ""
 
             if (keyDirective) {
