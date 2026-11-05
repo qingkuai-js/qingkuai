@@ -41,7 +41,6 @@ function findTemplateNodeByForDirective(nodes: any[]): any | null {
 
 test("Runtime: complex file broad syntax coverage and generated-code sanity", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "complex-runtime");
-    const prodClickLiteralId = prod.code.match(/const\s+(_s\d+)\s*=\s*"click"/)?.[1];
 
     expect(prod.code).toContain('import * as _ from "qingkuai/internal"');
     expect(dev.code).toContain('import * as _ from "qingkuai/internal"');
@@ -56,8 +55,8 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     expect(prod.code).toContain('let pending = _.react(Promise.resolve({ value: "done" }))');
     expect(prod.code).toContain("let mount = _.react(document.body)");
     expect(prod.code).toContain("let list = _.react([");
-    expect(prodClickLiteralId).toBeTruthy();
-    expect(prod.code).toContain(`_.initEvents([${prodClickLiteralId}])`);
+    expect(prod.code).toContain('const _s3 = "click"');
+    expect(prod.code).toContain("_.initEvents([_s3])");
 
     expect(dev.code).toContain("_.conditionBlock([");
     expect(dev.code).toContain("_.promiseBlock(");
@@ -68,7 +67,7 @@ test("Runtime: complex file broad syntax coverage and generated-code sanity", ()
     expect(dev.code).toContain(
         'let [_pending, pending] = _.react(Promise.resolve({ value: "done" }), _S2)',
     );
-    expect(dev.code).toMatch(/let \[_mount, mount\] = _\.react\(document\.body, _S\d+\)/);
+    expect(dev.code).toContain("let [_mount, mount] = _.react(document.body, _S4)");
     expect(dev.code).toContain("let [_list, list] = _.react([");
     expect(dev.code).toContain('_.initEvents(["click"])');
 
@@ -117,19 +116,19 @@ test("Runtime regression: qk spread promise branches select dynamic nodes from l
 
     const { prod, dev } = compileRuntimeAndAssertNoErrors(source, "spread-promise-selectors");
 
-    expect(prod.code).toMatch(/const _span\d+ = _\.getChild\(_fragment\d+(?:, \d+)?\)/);
-    expect(prod.code).toMatch(/const _strong\d+ = _\.getSibling\(_span\d+(?:, \d+)?\)/);
-    expect(prod.code).not.toMatch(/const _span\d+ = _\.getChild\(_div\d+/);
+    expect(prod.code).toContain("const _span1 = _.getChild(_fragment3, 1)");
+    expect(prod.code).toContain("const _strong1 = _.getSibling(_span1)");
+    expect(prod.code).not.toContain("const _span1 = _.getChild(_div1");
 
-    expect(dev.code).toMatch(/const _span\d+ = _\.getChild\(_fragment\d+(?:, \d+)?\)/);
-    expect(dev.code).toMatch(/const _strong\d+ = _\.getSibling\(_span\d+(?:, \d+)?\)/);
-    expect(dev.code).not.toMatch(/const _span\d+ = _\.getChild\(_div\d+/);
+    expect(dev.code).toContain("const _span1 = _.getChild(_fragment3, 1)");
+    expect(dev.code).toContain("const _strong1 = _.getSibling(_span1)");
+    expect(dev.code).not.toContain("const _span1 = _.getChild(_div1");
 });
 
 test("Runtime regression: keyed list selection emits selector helper and event call", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "keyed-selector");
-    expect(prod.code).toMatch(/const _selector\d+ = \(\(\) => \{/);
-    expect(prod.code).toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/);
+    expect(prod.code).toContain("const _selector1 = (() => {");
+    expect(prod.code).toContain("const _getNodeByKey1 = _.keyedListBlock(");
     expect(prod.code).toContain("const prevNode = _getNodeByKey");
     expect(prod.code).toContain("const node = _getNodeByKey");
     expect(prod.code).toContain("if (key !== prevValue) {");
@@ -143,7 +142,7 @@ test("Runtime regression: keyed list selection emits selector helper and event c
     );
     expect(prod.code).not.toContain("_selector1(_ctx");
 
-    expect(dev.code).toMatch(/const _selector\d+ = \(\(\) => \{/);
+    expect(dev.code).toContain("const _selector1 = (() => {");
     expect(dev.code).toContain("_selector1(_selected.$)");
     expect(dev.code).toContain("_selected.$ ===");
     expect(dev.code).toContain('"danger" : ""');
@@ -152,8 +151,8 @@ test("Runtime regression: keyed list selection emits selector helper and event c
 test("Runtime regression: debug mode generates the same selector optimization", () => {
     const { prod, dev } = compileRuntimeAndAssertNoErrors(input, "debug-selector");
     for (const code of [prod.code, dev.code]) {
-        expect(code).toMatch(/const _selector\d+ = \(\(\) => \{/);
-        expect(code).toMatch(/const _getNodeByKey\d+ = _\.keyedListBlock\(/);
+        expect(code).toContain("const _selector1 = (() => {");
+        expect(code).toContain("const _getNodeByKey1 = _.keyedListBlock(");
         expect(code).toContain("_.renderEffect(() => {");
         expect(code).toContain('"danger" : ""');
     }
@@ -255,9 +254,9 @@ test("Runtime regression: first interpolation block tracked in renderEffect", ()
     expect(dev.code).toContain("_.renderEffect(() => {");
     expect(dev.code).toMatch(/\+\+_count\.\$/);
 
-    expect(prod.code).toMatch(/_.setText\(_text\d+, count\.\$\)/);
-    expect(dev.code).toMatch(/_.setText\(_text\d+, _count\.\$\)/);
+    expect(prod.code).toContain("_.setText(_text15, count.$)");
+    expect(dev.code).toContain("_.setText(_text15, _count.$)");
     expect(prod.code).toMatch(
-        /_.renderEffect\(\(\) => \{[\s\S]*?_.setText\(_text\d+, count\.\$\)[\s\S]*?\}\)/,
+        /_.renderEffect\(\(\) => \{[\s\S]*?_.setText\(_text15, count\.\$\)[\s\S]*?\}\)/,
     );
 });
