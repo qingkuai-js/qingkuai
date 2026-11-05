@@ -2,6 +2,7 @@ import type { AnyObject } from "#type-declarations/tools";
 import type { ClassAttrValue } from "#type-declarations/runtime";
 
 import {
+    UNDEF,
     SVG_FLAG,
     CLASS_CACHE_KEY,
     VALUE_CACHE_KEY,
@@ -160,7 +161,7 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
 
 function getAttributeCacheKey(name: string) {
     let key = attributeCacheKeys.get(name);
-    if (key === undefined) {
+    if (key === UNDEF) {
         key = ATTRIBUTE_PREFIX + name;
         attributeCacheKeys.set(name, key);
     }

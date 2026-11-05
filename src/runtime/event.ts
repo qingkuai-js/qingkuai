@@ -1,6 +1,14 @@
 import type { ArbitraryFunc } from "#type-declarations/tools";
 
 import {
+    UNDEF,
+    DOCUMENT,
+    EVENT_FLAG,
+    KEY_FLAG_MAP,
+    KEY_NAME_FLAG,
+    DELEGATE_PREFIX,
+} from "./constants";
+import {
     KEY_ALT,
     KEY_META,
     KEY_CTRL,
@@ -18,7 +26,6 @@ import { isUndefined } from "../util/shared/assert";
 import { any, createProxy } from "../util/shared/sundry";
 import { call, objectCreate } from "../util/shared/aliases";
 import { currentInstance, eventRegisterInfo } from "./state";
-import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP, KEY_NAME_FLAG } from "./constants";
 
 // 事件类型到扩展属性名的映射会被每个带事件的元素使用，缓存后可以避免重复拼接字符串
 // The event-type to expando-name mapping is needed for every element that has an
@@ -125,7 +132,7 @@ export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?:
 
 function delegateKeysFor(type: string) {
     let keys = delegateKeyMap.get(type);
-    if (keys === undefined) {
+    if (keys === UNDEF) {
         keys = [DELEGATE_PREFIX + type, EVENT_FLAG + type];
         delegateKeyMap.set(type, keys);
     }
