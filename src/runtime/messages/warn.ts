@@ -26,6 +26,14 @@ export function LifecycleHookRegisteredAfterPhase(name: string) {
     )
 }
 
+export function TargetNamespaceMismatch(target: Element) {
+    warnWithCode(
+        8005,
+        `The "#target" directive moved nodes into an element of a different namespace. Moving does not convert nodes, so SVG nodes placed into HTML (and the reverse) will not render. Target: %O`,
+        target
+    )
+}
+
 export function CreateOnDisposedComponent(purpose: string) {
     warnWithCode(
         8003,
