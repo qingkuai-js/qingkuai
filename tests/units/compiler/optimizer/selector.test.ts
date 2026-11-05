@@ -430,3 +430,37 @@ test("getForBlockSelectorInfos picks the svg setters inside an svg subtree", () 
     expect(writer.code).not.toContain("setHtmlClassName")
     expect(writer.code).not.toContain("setHtmlAttribute")
 })
+
+test("getForBlockSelectorInfos picks the class attribute setter for slot content", () => {
+    compile(
+        formatSourceCode(`
+            <lang-js>
+                import Icon from "./Icon"
+                let items = [{ id: "a" }]
+                let selected = reactive("a")
+            </lang-js>
+            <Icon>
+                <rect #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"}></rect>
+            </Icon>
+        `)
+    )
+
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!
+    const infos = getForBlockSelectorInfos(forNodeContext)
+
+    expect(
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetClassAttribute
+        })
+    ).toBe(true)
+    expect(
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetHtmlClassName
+        })
+    ).toBe(false)
+
+    const writer = new RuntimeCodeWriter(false)
+    writeSelectorDeclaration(writer, infos[0], "getNode")
+    expect(writer.code).toContain("setClassAttribute")
+    expect(writer.code).not.toContain("setHtmlClassName")
+})
