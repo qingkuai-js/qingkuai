@@ -1,55 +1,55 @@
-import type { Getter } from "#type-declarations/tools"
-import type { Destruction } from "#type-declarations/runtime"
-import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
+import type { Getter } from "#type-declarations/tools";
+import type { Destruction } from "#type-declarations/runtime";
+import type { HtmlBlockOptions } from "#type-declarations/runtime-ex";
 
-import { destroy } from "../destroy"
-import { invokeRender } from "./render"
-import { SVG_NAMESPACE_URI } from "../constants"
-import { renderEffect } from "../reactivity/effect"
-import { currentDestruction, currentInstance } from "../state"
-import { createHtmlFragmentGetter, createSvgFragmentGetter, insertBefore } from "../internal"
+import { destroy } from "../destroy";
+import { invokeRender } from "./render";
+import { SVG_NAMESPACE_URI } from "../constants";
+import { renderEffect } from "../reactivity/effect";
+import { currentDestruction, currentInstance } from "../state";
+import { createHtmlFragmentGetter, createSvgFragmentGetter, insertBefore } from "../internal";
 
 export function htmlBlock(anchor: Text, getValue: Getter, getOptions?: Getter) {
-    let html: string | undefined
-    let destruction: Destruction | undefined
-    let options: HtmlBlockOptions | undefined
+    let html: string | undefined;
+    let destruction: Destruction | undefined;
+    let options: HtmlBlockOptions | undefined;
 
-    const componentInstance = currentInstance!
-    const parentDestruction = currentDestruction
+    const componentInstance = currentInstance!;
+    const parentDestruction = currentDestruction;
 
     const render = () => {
-        const parent = anchor.parentNode as Element | null
+        const parent = anchor.parentNode as Element | null;
         const createGetterMethod =
             parent?.namespaceURI === SVG_NAMESPACE_URI
                 ? createSvgFragmentGetter
-                : createHtmlFragmentGetter
-        insertBefore(anchor, createGetterMethod(html!)())
-    }
+                : createHtmlFragmentGetter;
+        insertBefore(anchor, createGetterMethod(html!)());
+    };
 
     renderEffect(() => {
-        const newHtml = "" + getValue()
-        const newOptions: HtmlBlockOptions = getOptions?.()
+        const newHtml = "" + getValue();
+        const newOptions: HtmlBlockOptions = getOptions?.();
         if (newHtml == html && newOptions === options) {
-            return
+            return;
         }
 
-        const escapeTags = newOptions?.escapeTags || []
+        const escapeTags = newOptions?.escapeTags || [];
         if (newOptions?.escapeStyle) {
-            escapeTags.push("style")
+            escapeTags.push("style");
         }
         if (newOptions?.escapeScript) {
-            escapeTags.push("script")
+            escapeTags.push("script");
         }
         if (((html = newHtml), escapeTags.length)) {
             html = html.replaceAll(
                 new RegExp(`</?(?:${escapeTags!.join("|")})`, "g"),
-                matchStr => "&lt;" + matchStr.slice(1)
-            )
+                matchStr => "&lt;" + matchStr.slice(1),
+            );
         }
         if (destruction) {
-            destroy(destruction)
+            destroy(destruction);
         }
-        destruction = invokeRender(render, componentInstance, parentDestruction)
-        options = newOptions
-    })
+        destruction = invokeRender(render, componentInstance, parentDestruction);
+        options = newOptions;
+    });
 }

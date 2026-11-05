@@ -1,71 +1,71 @@
-import type { FormatSourceCodeFunc } from "#type-declarations/compiler-ex"
-import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools"
+import type { FormatSourceCodeFunc } from "#type-declarations/compiler-ex";
+import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools";
 
-import { objectAssign, setPrototypeOf } from "./aliases"
-import { NIL, OBJECT_PROTO } from "../../runtime/constants"
-import { objectCreate, objectKeys } from "../shared/aliases"
-import { formattingPreWhitespaceRE, formattingUselessWhitespaceRE } from "../../compiler/regular"
+import { objectAssign, setPrototypeOf } from "./aliases";
+import { NIL, OBJECT_PROTO } from "../../runtime/constants";
+import { objectCreate, objectKeys } from "../shared/aliases";
+import { formattingPreWhitespaceRE, formattingUselessWhitespaceRE } from "../../compiler/regular";
 
 export const formatSourceCode: FormatSourceCodeFunc = (code: string) => {
-    code = code.trimEnd()
-    code = code.replace(formattingPreWhitespaceRE, "")
+    code = code.trimEnd();
+    code = code.replace(formattingPreWhitespaceRE, "");
 
-    const uselessIndentStr = formattingUselessWhitespaceRE.exec(code)![0]
-    return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "")
-}
+    const uselessIndentStr = formattingUselessWhitespaceRE.exec(code)![0];
+    return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "");
+};
 
 export function any(v: any) {
-    return v
+    return v;
 }
 
 export function newCleanObj() {
-    return objectCreate(NIL)
+    return objectCreate(NIL);
 }
 
 export function notEqual(a: any, b: any) {
-    return a !== a ? b === b : a !== b
+    return a !== a ? b === b : a !== b;
 }
 
 export function upperFirst(s: string) {
-    return s.charAt(0).toUpperCase() + s.slice(1)
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function optc(v: any) {
-    return OBJECT_PROTO.toString.call(v).slice(8, -1)
+    return OBJECT_PROTO.toString.call(v).slice(8, -1);
 }
 
 export function escapeRegExpSource(s: string) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function hasOwn(o: AnyObject, key: ObjectKeys) {
-    return OBJECT_PROTO.hasOwnProperty.call(o, key)
+    return OBJECT_PROTO.hasOwnProperty.call(o, key);
 }
 
 export function cloneObject<T extends AnyObject>(o: T): T {
-    return objectAssign({}, o)
+    return objectAssign({}, o);
 }
 
 export function runAll<T extends ArbitraryFunc>(fns: T[]) {
     for (const fn of fns) {
-        fn()
+        fn();
     }
 }
 
 export function stripPrototype<T extends AnyObject>(o: T): T {
-    return (setPrototypeOf(o, NIL), o)
+    return (setPrototypeOf(o, NIL), o);
 }
 
 export function traverseObject<T extends AnyObject>(
     o: T,
-    callback: (key: keyof T, value: T[keyof T], index: number) => void
+    callback: (key: keyof T, value: T[keyof T], index: number) => void,
 ) {
-    const keys = objectKeys(o)
+    const keys = objectKeys(o);
     for (let i = 0; i < keys.length; i++) {
-        callback(keys[i], o[keys[i]], i)
+        callback(keys[i], o[keys[i]], i);
     }
 }
 
 export function createProxy<T extends AnyObject>(target: T, handler: ProxyHandler<T>) {
-    return new Proxy(target, handler)
+    return new Proxy(target, handler);
 }

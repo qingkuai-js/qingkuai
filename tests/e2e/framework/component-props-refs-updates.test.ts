@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -69,41 +69,41 @@ const scenario: E2EScenarioInput = {
                 <button class="panel-bump" @click={bumpModel}>Bump model</button>
                 <button class="panel-bump-local" @click={bumpLocalSeed}>Bump local</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports props refs updates and default values", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const panels = page.locator(".form-panel")
+        const panels = page.locator(".form-panel");
 
-        await expect(panels.nth(0).locator(".panel-title")).toHaveText("Initial title")
-        await expect(panels.nth(0).locator(".panel-count")).toHaveText("Count: 1")
-        await expect(panels.nth(0).locator(".panel-featured")).toHaveText("Featured: no")
-        await expect(panels.nth(0).locator(".panel-model")).toHaveText("Model: 5")
-        await expect(panels.nth(0).locator(".panel-local-seed")).toHaveText("Local seed: 10")
+        await expect(panels.nth(0).locator(".panel-title")).toHaveText("Initial title");
+        await expect(panels.nth(0).locator(".panel-count")).toHaveText("Count: 1");
+        await expect(panels.nth(0).locator(".panel-featured")).toHaveText("Featured: no");
+        await expect(panels.nth(0).locator(".panel-model")).toHaveText("Model: 5");
+        await expect(panels.nth(0).locator(".panel-local-seed")).toHaveText("Local seed: 10");
 
-        await expect(panels.nth(1).locator(".panel-title")).toHaveText("Second card")
-        await expect(panels.nth(1).locator(".panel-count")).toHaveText("Count: 0")
-        await expect(panels.nth(1).locator(".panel-featured")).toHaveText("Featured: no")
-        await expect(panels.nth(1).locator(".panel-model")).toHaveText("Model: 10")
-        await expect(panels.nth(1).locator(".panel-local-seed")).toHaveText("Local seed: 10")
+        await expect(panels.nth(1).locator(".panel-title")).toHaveText("Second card");
+        await expect(panels.nth(1).locator(".panel-count")).toHaveText("Count: 0");
+        await expect(panels.nth(1).locator(".panel-featured")).toHaveText("Featured: no");
+        await expect(panels.nth(1).locator(".panel-model")).toHaveText("Model: 10");
+        await expect(panels.nth(1).locator(".panel-local-seed")).toHaveText("Local seed: 10");
 
-        await page.locator("#update-props").click()
-        await expect(panels.nth(0).locator(".panel-title")).toHaveText("Updated title")
-        await expect(panels.nth(0).locator(".panel-count")).toHaveText("Count: 3")
+        await page.locator("#update-props").click();
+        await expect(panels.nth(0).locator(".panel-title")).toHaveText("Updated title");
+        await expect(panels.nth(0).locator(".panel-count")).toHaveText("Count: 3");
 
-        await panels.nth(0).locator(".panel-bump").click()
-        await expect(page.locator("#parent-model")).toHaveText("Parent model: 6")
-        await expect(panels.nth(0).locator(".panel-model")).toHaveText("Model: 6")
+        await panels.nth(0).locator(".panel-bump").click();
+        await expect(page.locator("#parent-model")).toHaveText("Parent model: 6");
+        await expect(panels.nth(0).locator(".panel-model")).toHaveText("Model: 6");
 
-        await page.locator("#increase-parent-model").click()
-        await expect(page.locator("#parent-model")).toHaveText("Parent model: 7")
-        await expect(panels.nth(0).locator(".panel-model")).toHaveText("Model: 7")
+        await page.locator("#increase-parent-model").click();
+        await expect(page.locator("#parent-model")).toHaveText("Parent model: 7");
+        await expect(panels.nth(0).locator(".panel-model")).toHaveText("Model: 7");
 
-        await panels.nth(0).locator(".panel-bump-local").click()
-        await expect(panels.nth(0).locator(".panel-local-seed")).toHaveText("Local seed: 11")
-    })
-})
+        await panels.nth(0).locator(".panel-bump-local").click();
+        await expect(panels.nth(0).locator(".panel-local-seed")).toHaveText("Local seed: 11");
+    });
+});

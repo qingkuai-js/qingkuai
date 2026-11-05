@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -55,30 +55,30 @@ const scenario: E2EScenarioInput = {
 
             <p id="resolve-count">Resolve count: {resolveCount}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("prevents duplicate callback invocations on repeated resolve", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#memory-pending")).toHaveText("Memory test pending...")
-        await expect(page.locator("#memory-resolved")).toHaveCount(0)
+        await expect(page.locator("#memory-pending")).toHaveText("Memory test pending...");
+        await expect(page.locator("#memory-resolved")).toHaveCount(0);
 
-        await page.locator("#trigger-resolve").click()
-        await expect(page.locator("#memory-resolved")).toHaveText("Resolved: resolved value")
-        await expect(page.locator("#memory-pending")).toHaveCount(0)
-        await expect(page.locator("#resolve-count")).toHaveText("Resolve count: 1")
+        await page.locator("#trigger-resolve").click();
+        await expect(page.locator("#memory-resolved")).toHaveText("Resolved: resolved value");
+        await expect(page.locator("#memory-pending")).toHaveCount(0);
+        await expect(page.locator("#resolve-count")).toHaveText("Resolve count: 1");
 
-        await page.locator("#reset-memory").click()
-        await expect(page.locator("#memory-pending")).toHaveText("Memory test pending...")
-        await expect(page.locator("#memory-resolved")).toHaveCount(0)
+        await page.locator("#reset-memory").click();
+        await expect(page.locator("#memory-pending")).toHaveText("Memory test pending...");
+        await expect(page.locator("#memory-resolved")).toHaveCount(0);
 
-        await page.locator("#trigger-multiple").click()
-        await expect(page.locator("#memory-resolved")).toHaveText("Resolved: resolved value")
-        await expect(page.locator("#resolve-count")).toHaveText("Resolve count: 3")
-    })
-})
+        await page.locator("#trigger-multiple").click();
+        await expect(page.locator("#memory-resolved")).toHaveText("Resolved: resolved value");
+        await expect(page.locator("#resolve-count")).toHaveText("Resolve count: 3");
+    });
+});

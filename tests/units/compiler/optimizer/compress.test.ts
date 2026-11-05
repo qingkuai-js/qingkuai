@@ -1,6 +1,6 @@
-import { test, expect } from "vitest"
-import { compile } from "../../../../src/compiler/compile"
-import { analyzeResult } from "../../../../src/compiler/state"
+import { test, expect } from "vitest";
+import { compile } from "../../../../src/compiler/compile";
+import { analyzeResult } from "../../../../src/compiler/state";
 
 test("stage test: skips non-computed TS property signature keys", () => {
     compile(`
@@ -8,9 +8,9 @@ test("stage test: skips non-computed TS property signature keys", () => {
             type T = { "skip_ts_property_signature_key": number }
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.skip_ts_property_signature_key).toBeUndefined()
-})
+    `);
+    expect(analyzeResult.reusedStrings.skip_ts_property_signature_key).toBeUndefined();
+});
 
 test("stage test: keeps tagged template tag literal references", () => {
     compile(`
@@ -18,9 +18,9 @@ test("stage test: keeps tagged template tag literal references", () => {
             ("keep_tagged_template_tag_literal")\`x\`
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.keep_tagged_template_tag_literal?.times).toBe(1)
-})
+    `);
+    expect(analyzeResult.reusedStrings.keep_tagged_template_tag_literal?.times).toBe(1);
+});
 
 test("stage test: keeps enum member initializer literals", () => {
     compile(`
@@ -30,9 +30,9 @@ test("stage test: keeps enum member initializer literals", () => {
             }
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.keep_enum_initializer_literal?.times).toBe(1)
-})
+    `);
+    expect(analyzeResult.reusedStrings.keep_enum_initializer_literal?.times).toBe(1);
+});
 
 test("stage test: skips string literals in TS literal type context", () => {
     compile(`
@@ -40,9 +40,9 @@ test("stage test: skips string literals in TS literal type context", () => {
             type Name = "skip_ts_literal_type_context"
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.skip_ts_literal_type_context).toBeUndefined()
-})
+    `);
+    expect(analyzeResult.reusedStrings.skip_ts_literal_type_context).toBeUndefined();
+});
 
 test("stage test: keeps string literals in value-level type assertion chains", () => {
     compile(`
@@ -50,9 +50,9 @@ test("stage test: keeps string literals in value-level type assertion chains", (
             const a = (("keep_value_assertion_chain" as unknown) as string)
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.keep_value_assertion_chain?.times).toBe(1)
-})
+    `);
+    expect(analyzeResult.reusedStrings.keep_value_assertion_chain?.times).toBe(1);
+});
 
 test("stage test: skips __proto__ object property key literal", () => {
     compile(`
@@ -60,9 +60,9 @@ test("stage test: skips __proto__ object property key literal", () => {
             const a = { "__proto__": 1 }
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.__proto__?.times).toBe(1)
-})
+    `);
+    expect(analyzeResult.reusedStrings.__proto__?.times).toBe(1);
+});
 
 test("stage test: keeps non-computed object property string keys as transformable references", () => {
     compile(`
@@ -70,9 +70,9 @@ test("stage test: keeps non-computed object property string keys as transformabl
             const a = { "keep_object_property_key_literal": 1 }
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.keep_object_property_key_literal?.times).toBe(1)
-})
+    `);
+    expect(analyzeResult.reusedStrings.keep_object_property_key_literal?.times).toBe(1);
+});
 
 test("stage test: keeps tagged template quasi literal content", () => {
     compile(`
@@ -81,9 +81,9 @@ test("stage test: keeps tagged template quasi literal content", () => {
             t\`skip_tagged_template_quasi\`
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.skip_tagged_template_quasi?.times).toBeUndefined()
-})
+    `);
+    expect(analyzeResult.reusedStrings.skip_tagged_template_quasi?.times).toBeUndefined();
+});
 
 test("stage test: skips enum member string id literals", () => {
     compile(`
@@ -93,6 +93,6 @@ test("stage test: skips enum member string id literals", () => {
             }
         </lang-ts>
         <div></div>
-    `)
-    expect(analyzeResult.reusedStrings.skip_enum_member_id_literal).toBeUndefined()
-})
+    `);
+    expect(analyzeResult.reusedStrings.skip_enum_member_id_literal).toBeUndefined();
+});

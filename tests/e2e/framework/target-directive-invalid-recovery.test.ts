@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -33,66 +33,66 @@ const scenario: E2EScenarioInput = {
             </div>
             <div id="target-dest-a"></div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("throws runtime error when target value is not an Element-like target", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
-        const errorLogs: string[] = []
+        const pageErrors: string[] = [];
+        const errorLogs: string[] = [];
 
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
         page.on("console", message => {
             if (message.type() === "error") {
-                errorLogs.push(message.text())
+                errorLogs.push(message.text());
             }
-        })
+        });
 
-        await visitScenario(scenario)
-        await page.locator("#set-invalid-target").click()
+        await visitScenario(scenario);
+        await page.locator("#set-invalid-target").click();
 
         await expect
             .poll(() => [pageErrors.join("\n"), errorLogs.join("\n")].join("\n"))
-            .toContain("Invalid Element node")
-    })
+            .toContain("Invalid Element node");
+    });
 
     test("keeps target content in previous state after invalid target interruption", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
-        const errorLogs: string[] = []
+        const pageErrors: string[] = [];
+        const errorLogs: string[] = [];
 
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
         page.on("console", message => {
             if (message.type() === "error") {
-                errorLogs.push(message.text())
+                errorLogs.push(message.text());
             }
-        })
+        });
 
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#set-invalid-target").click()
+        await page.locator("#set-invalid-target").click();
         await expect
             .poll(() => [pageErrors.join("\n"), errorLogs.join("\n")].join("\n"))
-            .toContain("Invalid Element node")
+            .toContain("Invalid Element node");
 
-        await page.locator("#set-target-a").click()
-        await expect(page.locator("#target-dest-a #target-content")).toHaveCount(0)
+        await page.locator("#set-target-a").click();
+        await expect(page.locator("#target-dest-a #target-content")).toHaveCount(0);
         await expect(page.locator("#target-source-container #target-content")).toHaveText(
-            "Target payload"
-        )
+            "Target payload",
+        );
 
-        await page.locator("#reset-inline").click()
+        await page.locator("#reset-inline").click();
         await expect(page.locator("#target-source-container #target-content")).toHaveText(
-            "Target payload"
-        )
-    })
-})
+            "Target payload",
+        );
+    });
+});

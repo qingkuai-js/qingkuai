@@ -1,11 +1,11 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 export type ScopeBoundary =
     | TS.SourceFile
     | TS.ModuleBlock
     | TS.Block
     | TS.CaseClause
-    | TS.ConciseBody
+    | TS.ConciseBody;
 
 export type NamedNode =
     | TS.ParameterDeclaration
@@ -22,37 +22,37 @@ export type NamedNode =
     | TS.FunctionDeclaration
     | TS.PropertyAssignment
     | TS.ImportEqualsDeclaration
-    | TS.PropertyAccessExpression
+    | TS.PropertyAccessExpression;
 
 export type TopLevelDeclarationNode =
     | TS.VariableDeclarationList
     | TS.FunctionDeclaration
     | TS.ClassDeclaration
-    | TS.EnumDeclaration
+    | TS.EnumDeclaration;
 
 export type MemberAccessExpression =
     | TS.PropertyAccessExpression
     | TS.ElementAccessExpression
-    | TS.NonNullExpression
+    | TS.NonNullExpression;
 
 export type TypeOperation =
     | TS.AsExpression
     | TS.NonNullExpression
     | TS.SatisfiesExpression
-    | TS.TypeAssertion
+    | TS.TypeAssertion;
 
 export type TopLevelDeclaratorNode =
     | TS.VariableDeclaration
-    | Exclude<TopLevelDeclarationNode, TS.VariableDeclarationList>
+    | Exclude<TopLevelDeclarationNode, TS.VariableDeclarationList>;
 
 export type TsNodeWithContext<T extends TS.Node = TS.Node> = T & {
-    inTopLevel: boolean
-    isScopeBoundary: boolean
-    isBindingReference: boolean
-    parent: TsNodeWithContext | null
-    isNonHoistableScopeBoundary: boolean
-    scopeIdentifiers: Set<string> | undefined
-}
+    inTopLevel: boolean;
+    isScopeBoundary: boolean;
+    isBindingReference: boolean;
+    parent: TsNodeWithContext | null;
+    isNonHoistableScopeBoundary: boolean;
+    scopeIdentifiers: Set<string> | undefined;
+};
 
-export type FindNodesPredicate<T extends TS.Node> = (node: TS.Node) => node is T
-export type ForStatementLike = TS.ForStatement | TS.ForInStatement | TS.ForOfStatement
+export type FindNodesPredicate<T extends TS.Node> = (node: TS.Node) => node is T;
+export type ForStatementLike = TS.ForStatement | TS.ForInStatement | TS.ForOfStatement;

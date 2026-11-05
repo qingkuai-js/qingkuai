@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -20,23 +20,23 @@ const scenario: E2EScenarioInput = {
     `,
     components: {
         Panel: `<article id="panel-one">Panel One</article>`,
-        Panel2: `<article id="panel-two">Panel Two</article>`
+        Panel2: `<article id="panel-two">Panel Two</article>`,
     },
     compileOptions: {
-        replaceQkImports: true
-    }
-}
+        replaceQkImports: true,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("dynamically imported .qk components render and switch", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#panel-one")).toHaveText("Panel One")
+        await visitScenario(scenario);
+        await expect(page.locator("#panel-one")).toHaveText("Panel One");
 
-        await page.locator("#btn-switch").click()
-        await expect(page.locator("#panel-two")).toHaveText("Panel Two")
-        await expect(page.locator("#panel-one")).toHaveCount(0)
-    })
-})
+        await page.locator("#btn-switch").click();
+        await expect(page.locator("#panel-two")).toHaveText("Panel Two");
+        await expect(page.locator("#panel-one")).toHaveCount(0);
+    });
+});

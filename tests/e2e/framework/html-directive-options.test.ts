@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -40,41 +40,41 @@ const scenario: E2EScenarioInput = {
             </div>
             <div id="html-host" #html={htmlOptions}>{rawHtml}</div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports escapeScript option", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#html-set-script").click()
-        await expect(page.locator("#html-host script")).toHaveCount(1)
-        await expect(page.locator("#html-host #html-p")).toHaveText("Script tail")
+        await page.locator("#html-set-script").click();
+        await expect(page.locator("#html-host script")).toHaveCount(1);
+        await expect(page.locator("#html-host #html-p")).toHaveText("Script tail");
 
-        await page.locator("#html-escape-script").click()
-        await expect(page.locator("#html-host script")).toHaveCount(0)
-        await expect(page.locator("#html-host")).toContainText("window.__qk_html_test__ = 1")
-        await expect(page.locator("#html-host #html-p")).toHaveText("Script tail")
-    })
+        await page.locator("#html-escape-script").click();
+        await expect(page.locator("#html-host script")).toHaveCount(0);
+        await expect(page.locator("#html-host")).toContainText("window.__qk_html_test__ = 1");
+        await expect(page.locator("#html-host #html-p")).toHaveText("Script tail");
+    });
 
     test("compares source-driven updates and options-driven updates", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#html-escape-none").click()
-        await page.locator("#html-set-initial").click()
-        await expect(page.locator("#html-host #html-strong")).toHaveText("Hello Html")
+        await page.locator("#html-escape-none").click();
+        await page.locator("#html-set-initial").click();
+        await expect(page.locator("#html-host #html-strong")).toHaveText("Hello Html");
 
-        await page.locator("#html-set-updated").click()
-        await expect(page.locator("#html-host #html-em")).toHaveText("Updated Html")
+        await page.locator("#html-set-updated").click();
+        await expect(page.locator("#html-host #html-em")).toHaveText("Updated Html");
 
-        await page.locator("#html-escape-none").click()
-        await page.locator("#html-set-script").click()
-        await expect(page.locator("#html-host script")).toHaveCount(1)
+        await page.locator("#html-escape-none").click();
+        await page.locator("#html-set-script").click();
+        await expect(page.locator("#html-host script")).toHaveCount(1);
 
-        await page.locator("#html-escape-script").click()
-        await expect(page.locator("#html-host script")).toHaveCount(0)
-    })
-})
+        await page.locator("#html-escape-script").click();
+        await expect(page.locator("#html-host script")).toHaveCount(0);
+    });
+});

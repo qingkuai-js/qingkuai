@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -58,33 +58,33 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article class="row">{props.label}</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLog = (page: E2EPageEvaluator) => {
-        return page.evaluate(() => ((globalThis as any).__log as string[]).slice())
-    }
+        return page.evaluate(() => ((globalThis as any).__log as string[]).slice());
+    };
 
     test("for item inside if should be destroyed when if becomes false", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator(".row")).toHaveCount(0)
+        await expect(page.locator(".row")).toHaveCount(0);
 
-        await page.locator("#btn-add").click()
-        await expect(page.locator(".row")).toHaveText("Alpha")
-        await expect.poll(() => readLog(page)).toEqual(["mount-1"])
+        await page.locator("#btn-add").click();
+        await expect(page.locator(".row")).toHaveText("Alpha");
+        await expect.poll(() => readLog(page)).toEqual(["mount-1"]);
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#if-hidden")).toHaveText("Hidden")
-        await expect(page.locator(".row")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#if-hidden")).toHaveText("Hidden");
+        await expect(page.locator(".row")).toHaveCount(0);
 
         await expect
             .poll(() => readLog(page))
-            .toEqual(["mount-1", "before-destroy-1", "after-destroy-1"])
-    })
-})
+            .toEqual(["mount-1", "before-destroy-1", "after-destroy-1"]);
+    });
+});

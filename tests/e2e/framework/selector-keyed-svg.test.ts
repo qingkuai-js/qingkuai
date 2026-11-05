@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test"
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { Page } from "@playwright/test";
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -51,8 +51,8 @@ const scenario: E2EScenarioInput = {
 
             <p id="state-selected">{selected}</p>
         </section>
-    `
-}
+    `,
+};
 
 const readShapes = (page: Page) => {
     return page.locator("#svg-shapes rect.cell").evaluateAll(nodes => {
@@ -60,57 +60,57 @@ const readShapes = (page: Page) => {
             id: node.getAttribute("data-id"),
             cls: (node.getAttribute("class") || "").trim(),
             rx: node.getAttribute("rx"),
-            namespace: node.namespaceURI
-        }))
-    })
-}
+            namespace: node.namespaceURI,
+        }));
+    });
+};
 
 const readUses = (page: Page) => {
     return page.locator("#svg-shapes use").evaluateAll(nodes => {
-        return nodes.map(node => node.getAttribute("xlink:href"))
-    })
-}
+        return nodes.map(node => node.getAttribute("xlink:href"));
+    });
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("initial selection marks the matching svg row", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         expect(await readShapes(page)).toEqual([
             { id: "1", cls: "cell on", rx: "3", namespace: "http://www.w3.org/2000/svg" },
             { id: "2", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
-            { id: "3", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" }
-        ])
-        expect(await readUses(page)).toEqual(["#shape-a", "#shape-b", "#shape-b"])
-    })
+            { id: "3", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
+        ]);
+        expect(await readUses(page)).toEqual(["#shape-a", "#shape-b", "#shape-b"]);
+    });
 
     test("moving the selection moves class and attributes between svg rows", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#pick-2").click()
-        await expect(page.locator("#state-selected")).toHaveText("2")
+        await page.locator("#pick-2").click();
+        await expect(page.locator("#state-selected")).toHaveText("2");
 
         expect(await readShapes(page)).toEqual([
             { id: "1", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
             { id: "2", cls: "cell on", rx: "3", namespace: "http://www.w3.org/2000/svg" },
-            { id: "3", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" }
-        ])
-        expect(await readUses(page)).toEqual(["#shape-b", "#shape-a", "#shape-b"])
-    })
+            { id: "3", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
+        ]);
+        expect(await readUses(page)).toEqual(["#shape-b", "#shape-a", "#shape-b"]);
+    });
 
     test("clearing the selection resets class and attributes", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#pick-2").click()
-        await page.locator("#clear").click()
+        await page.locator("#pick-2").click();
+        await page.locator("#clear").click();
 
         expect(await readShapes(page)).toEqual([
             { id: "1", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
             { id: "2", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
-            { id: "3", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" }
-        ])
-        expect(await readUses(page)).toEqual(["#shape-b", "#shape-b", "#shape-b"])
-    })
-})
+            { id: "3", cls: "cell", rx: "0", namespace: "http://www.w3.org/2000/svg" },
+        ]);
+        expect(await readUses(page)).toEqual(["#shape-b", "#shape-b", "#shape-b"]);
+    });
+});

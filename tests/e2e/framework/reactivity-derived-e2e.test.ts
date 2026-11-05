@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -31,21 +31,21 @@ const scenario: E2EScenarioInput = {
             <button id="btn-inc" @click={incBase}>Inc base</button>
             <button id="btn-count" @click={setCountTwo}>Set count</button>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("derived values update when dependencies change", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#double")).toHaveText("Double: 2")
-        await expect(page.locator("#computed")).toHaveText("Computed: 11")
-        await expect(page.locator("#filtered")).toHaveText("Filtered: 0")
+        await visitScenario(scenario);
+        await expect(page.locator("#double")).toHaveText("Double: 2");
+        await expect(page.locator("#computed")).toHaveText("Computed: 11");
+        await expect(page.locator("#filtered")).toHaveText("Filtered: 0");
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#double")).toHaveText("Double: 4")
-        await expect(page.locator("#computed")).toHaveText("Computed: 12")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#double")).toHaveText("Double: 4");
+        await expect(page.locator("#computed")).toHaveText("Computed: 12");
 
-        await page.locator("#btn-count").click()
-        await expect(page.locator("#filtered")).toHaveText("Filtered: 1")
-    })
-})
+        await page.locator("#btn-count").click();
+        await expect(page.locator("#filtered")).toHaveText("Filtered: 1");
+    });
+});

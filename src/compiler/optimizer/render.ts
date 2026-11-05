@@ -1,45 +1,45 @@
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
-import { TemplateNodeContext } from "#type-declarations/compiler"
-import { getParsedExpression } from "../../util/compiler/template"
-import { isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert"
+import { getStriptTypeOperationsNode } from "../ts-ast/sundry";
+import { TemplateNodeContext } from "#type-declarations/compiler";
+import { getParsedExpression } from "../../util/compiler/template";
+import { isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert";
 
 // 优化：当文本内容仅包含一个插值表达式，且该表达式与同一节点上的 #key 指令的表达式相等时，不为该文本内容生成 render effect
 // Optimization: When the text content contains only one interpolated expression, and that expression is equal
 // to the expression of the #key directive on the same node, do not generate a render effect for that text content
 export function equalsWithKeyDirectiveValue(
     nodeContext: TemplateNodeContext,
-    parsedExpressionKey: any
+    parsedExpressionKey: any,
 ) {
-    const parsedExpression = getParsedExpression(parsedExpressionKey)
+    const parsedExpression = getParsedExpression(parsedExpressionKey);
     if (!parsedExpression?.node) {
-        return false
+        return false;
     }
 
-    let contextIdentifier: string | undefined
-    const expNode = getStriptTypeOperationsNode(parsedExpression.node)
+    let contextIdentifier: string | undefined;
+    const expNode = getStriptTypeOperationsNode(parsedExpression.node);
     if (ts.isIdentifier(expNode)) {
-        contextIdentifier = expNode.text
+        contextIdentifier = expNode.text;
     } else if (isMemberAccessExpression(expNode)) {
-        let expression = getStriptTypeOperationsNode(expNode.expression)
+        let expression = getStriptTypeOperationsNode(expNode.expression);
         while (isMemberAccessExpression(expression)) {
-            expression = getStriptTypeOperationsNode(expression.expression)
+            expression = getStriptTypeOperationsNode(expression.expression);
         }
         if (ts.isIdentifier(expression)) {
-            contextIdentifier = expression.text
+            contextIdentifier = expression.text;
         }
     }
 
-    const parsedDirective = nodeContext.contextIdentifiers[contextIdentifier!]
+    const parsedDirective = nodeContext.contextIdentifiers[contextIdentifier!];
     if (parsedDirective?.src.directive.name.raw !== "#for") {
-        return false
+        return false;
     }
 
-    const keyDirective = parsedDirective.src.nodeContext.attributesMap["#key"]
-    const parsedExpOfKeyDirective = keyDirective && getParsedExpression(keyDirective)
+    const keyDirective = parsedDirective.src.nodeContext.attributesMap["#key"];
+    const parsedExpOfKeyDirective = keyDirective && getParsedExpression(keyDirective);
     if (!parsedExpOfKeyDirective?.node) {
-        return false
+        return false;
     }
-    return isExpressionEqual(parsedExpression.node, parsedExpOfKeyDirective.node)
+    return isExpressionEqual(parsedExpression.node, parsedExpOfKeyDirective.node);
 }

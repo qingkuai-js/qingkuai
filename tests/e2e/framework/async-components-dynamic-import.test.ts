@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -51,34 +51,34 @@ const scenario: E2EScenarioInput = {
         `,
         AsyncTwo: `
             <article id="async-two">Async Two</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports dynamic import loading and then render", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page).toHaveTitle("async-components-dynamic-import")
-        await expect(page.locator("#async-loading")).toHaveText("Loading async component...")
-        await expect(page.locator("#async-one")).toHaveCount(0)
-        await expect(page.locator("#async-two")).toHaveCount(0)
-        await expect(page.locator("#async-error")).toHaveCount(0)
+        await expect(page).toHaveTitle("async-components-dynamic-import");
+        await expect(page.locator("#async-loading")).toHaveText("Loading async component...");
+        await expect(page.locator("#async-one")).toHaveCount(0);
+        await expect(page.locator("#async-two")).toHaveCount(0);
+        await expect(page.locator("#async-error")).toHaveCount(0);
 
-        await page.locator("#async-load-one").click()
-        await expect(page.locator("#async-one")).toHaveText("Async One")
-        await expect(page.locator("#async-loading")).toHaveCount(0)
-        await expect(page.locator("#async-error")).toHaveCount(0)
-    })
+        await page.locator("#async-load-one").click();
+        await expect(page.locator("#async-one")).toHaveText("Async One");
+        await expect(page.locator("#async-loading")).toHaveCount(0);
+        await expect(page.locator("#async-error")).toHaveCount(0);
+    });
 
     test("supports dynamic import switching and catch", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#async-load-two").click()
-        await expect(page.locator("#async-two")).toHaveText("Async Two")
-        await expect(page.locator("#async-one")).toHaveCount(0)
+        await page.locator("#async-load-two").click();
+        await expect(page.locator("#async-two")).toHaveText("Async Two");
+        await expect(page.locator("#async-one")).toHaveCount(0);
 
-        await page.locator("#async-fail").click()
-        await expect(page.locator("#async-error")).toHaveText("Failed: load failed")
-    })
-})
+        await page.locator("#async-fail").click();
+        await expect(page.locator("#async-error")).toHaveText("Failed: load failed");
+    });
+});

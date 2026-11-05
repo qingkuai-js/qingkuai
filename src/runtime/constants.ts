@@ -1,4 +1,4 @@
-import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
+import type { HtmlBlockOptions } from "#type-declarations/runtime-ex";
 
 import {
     KEY_UP,
@@ -9,44 +9,44 @@ import {
     KEY_ENTER,
     KEY_ESCAPE,
     KEY_SPACE,
-    KEY_DELETE
-} from "../util/shared/flags"
+    KEY_DELETE,
+} from "../util/shared/flags";
 
 // aliases
-export const NIL = null
-export const NOOP = () => {}
-export const UNDEF = undefined
-export const TOARRAY = (v: any) => [v]
+export const NIL = null;
+export const NOOP = () => {};
+export const UNDEF = undefined;
+export const TOARRAY = (v: any) => [v];
 
-export const ATTRIBUTE_PREFIX = "__qk__attr"
-export const EVENT_FLAG = "__qk__event_flag"
-export const EXP_GETTER = "__qk__exp_getter"
-export const DELEGATE_PREFIX = "__qk__delegate"
-export const NODE_CONTEXT = "__qk__node_context"
-export const FRAGMENT_FLAG = "__qk__fragment_flag"
-export const VALUE_CACHE_KEY = ATTRIBUTE_PREFIX + "value"
-export const CLASS_CACHE_KEY = ATTRIBUTE_PREFIX + "class"
-export const SVG_NAMESPACE_URI = "http://www.w3.org/2000/svg"
-export const XLINK_NAMESPACE_URI = "http://www.w3.org/1999/xlink"
+export const ATTRIBUTE_PREFIX = "__qk__attr";
+export const EVENT_FLAG = "__qk__event_flag";
+export const EXP_GETTER = "__qk__exp_getter";
+export const DELEGATE_PREFIX = "__qk__delegate";
+export const NODE_CONTEXT = "__qk__node_context";
+export const FRAGMENT_FLAG = "__qk__fragment_flag";
+export const VALUE_CACHE_KEY = ATTRIBUTE_PREFIX + "value";
+export const CLASS_CACHE_KEY = ATTRIBUTE_PREFIX + "class";
+export const SVG_NAMESPACE_URI = "http://www.w3.org/2000/svg";
+export const XLINK_NAMESPACE_URI = "http://www.w3.org/1999/xlink";
 
-export const OBJECT = Object
-export const REFLECT = Reflect
-export const OBJECT_PROTO = Object.prototype
-export const RESOLVED = /*#__PURE__*/ Promise.resolve()
-export const DOCUMENT = typeof document === "undefined" ? UNDEF : document
+export const OBJECT = Object;
+export const REFLECT = Reflect;
+export const OBJECT_PROTO = Object.prototype;
+export const RESOLVED = /*#__PURE__*/ Promise.resolve();
+export const DOCUMENT = typeof document === "undefined" ? UNDEF : document;
 
-export const DEV_MODE = typeof __qk__dev == "boolean" ? __qk__dev : true
+export const DEV_MODE = typeof __qk__dev == "boolean" ? __qk__dev : true;
 export const MAX_SCHEDULE_DEPTH =
-    typeof __qk__max_schedule_depth == "number" ? __qk__max_schedule_depth : 300
+    typeof __qk__max_schedule_depth == "number" ? __qk__max_schedule_depth : 300;
 
-export const AFTER_MOUNT = 0
-export const BEFORE_UPDATE = 1
-export const AFTER_UPDATE = 2
-export const BEFORE_DESTROY = 3
-export const AFTER_DESTROY = 4
+export const AFTER_MOUNT = 0;
+export const BEFORE_UPDATE = 1;
+export const AFTER_UPDATE = 2;
+export const BEFORE_DESTROY = 3;
+export const AFTER_DESTROY = 4;
 
-export const COMPONENT_MOUNTED = 1
-export const COMPONENT_UPDATING = 2
+export const COMPONENT_MOUNTED = 1;
+export const COMPONENT_UPDATING = 2;
 
 // sundry
 export const KEY_NAME_FLAG =
@@ -58,7 +58,7 @@ export const KEY_NAME_FLAG =
     KEY_UP |
     KEY_DOWN |
     KEY_LEFT |
-    KEY_RIGHT
+    KEY_RIGHT;
 
 export const KEY_FLAG_MAP = {
     " ": KEY_SPACE,
@@ -69,13 +69,13 @@ export const KEY_FLAG_MAP = {
     ArrowUp: KEY_UP,
     ArrowDown: KEY_DOWN,
     ArrowLeft: KEY_LEFT,
-    ArrowRight: KEY_RIGHT
-}
+    ArrowRight: KEY_RIGHT,
+};
 
 export const DESTRUCT_HTML: HtmlBlockOptions = {
     escapeStyle: true,
     escapeScript: true,
-    escapeTags: ["link", "iframe", "form"]
-}
+    escapeTags: ["link", "iframe", "form"],
+};
 
-export const REFERENCE_VALUE = Symbol("reference value")
+export const REFERENCE_VALUE = Symbol("reference value");

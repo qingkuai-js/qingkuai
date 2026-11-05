@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -44,31 +44,31 @@ const scenario: E2EScenarioInput = {
                 <p class="name">Stats</p>
                 <p class="count">Count: {props.count}</p>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("updates member-expression component tag when host object property changes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#profile-view")).toBeVisible()
-        await expect(page.locator("#stats-view")).toHaveCount(0)
+        await expect(page.locator("#profile-view")).toBeVisible();
+        await expect(page.locator("#stats-view")).toHaveCount(0);
 
-        await page.locator("#switch-member").click()
-        await expect(page.locator("#stats-view")).toBeVisible()
-        await expect(page.locator("#profile-view")).toHaveCount(0)
+        await page.locator("#switch-member").click();
+        await expect(page.locator("#stats-view")).toBeVisible();
+        await expect(page.locator("#profile-view")).toHaveCount(0);
 
-        await page.locator("#increase-parent").click()
-        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1")
-        await expect(page.locator("#stats-view .count")).toHaveText("Count: 1")
+        await page.locator("#increase-parent").click();
+        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1");
+        await expect(page.locator("#stats-view .count")).toHaveText("Count: 1");
 
-        await page.locator("#switch-member").click()
-        await expect(page.locator("#profile-view")).toBeVisible()
-        await expect(page.locator("#stats-view")).toHaveCount(0)
-        await expect(page.locator("#profile-view .count")).toHaveText("Count: 1")
-    })
-})
+        await page.locator("#switch-member").click();
+        await expect(page.locator("#profile-view")).toBeVisible();
+        await expect(page.locator("#stats-view")).toHaveCount(0);
+        await expect(page.locator("#profile-view .count")).toHaveText("Count: 1");
+    });
+});

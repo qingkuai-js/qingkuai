@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -37,58 +37,58 @@ const scenario: E2EScenarioInput = {
             <button id="btn-extra" @click={addExtra}>Add extra</button>
             <button id="btn-flip" @click={flipFlags}>Flip flags</button>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("dynamic class supports string values", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#str")).toHaveClass("primary")
+        await visitScenario(scenario);
+        await expect(page.locator("#str")).toHaveClass("primary");
 
-        await page.locator("#btn-dark").click()
-        await expect(page.locator("#str")).toHaveClass("dark")
-    })
+        await page.locator("#btn-dark").click();
+        await expect(page.locator("#str")).toHaveClass("dark");
+    });
 
     test("dynamic class supports array values", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#arr")).toHaveClass("shadow rounded")
+        await visitScenario(scenario);
+        await expect(page.locator("#arr")).toHaveClass("shadow rounded");
 
-        await page.locator("#btn-extra").click()
-        await expect(page.locator("#arr")).toHaveClass("shadow rounded outline")
-    })
+        await page.locator("#btn-extra").click();
+        await expect(page.locator("#arr")).toHaveClass("shadow rounded outline");
+    });
 
     test("dynamic class supports object values (truthy keys win)", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#obj")).toHaveClass("active")
+        await visitScenario(scenario);
+        await expect(page.locator("#obj")).toHaveClass("active");
 
-        await page.locator("#btn-flip").click()
-        await expect(page.locator("#obj")).toHaveClass("disabled")
-    })
+        await page.locator("#btn-flip").click();
+        await expect(page.locator("#obj")).toHaveClass("disabled");
+    });
 
     test("static class merges with dynamic string class", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#combo-str")).toHaveClass("base primary")
+        await visitScenario(scenario);
+        await expect(page.locator("#combo-str")).toHaveClass("base primary");
 
-        await page.locator("#btn-dark").click()
-        await expect(page.locator("#combo-str")).toHaveClass("base dark")
-    })
+        await page.locator("#btn-dark").click();
+        await expect(page.locator("#combo-str")).toHaveClass("base dark");
+    });
 
     test("static class merges with dynamic array class", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#combo-arr")).toHaveClass("base shadow rounded")
+        await visitScenario(scenario);
+        await expect(page.locator("#combo-arr")).toHaveClass("base shadow rounded");
 
-        await page.locator("#btn-extra").click()
-        await expect(page.locator("#combo-arr")).toHaveClass("base shadow rounded outline")
-    })
+        await page.locator("#btn-extra").click();
+        await expect(page.locator("#combo-arr")).toHaveClass("base shadow rounded outline");
+    });
 
     test("static class merges with dynamic object class", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#combo-obj")).toHaveClass("base active")
+        await visitScenario(scenario);
+        await expect(page.locator("#combo-obj")).toHaveClass("base active");
 
-        await page.locator("#btn-flip").click()
-        await expect(page.locator("#combo-obj")).toHaveClass("base disabled")
-    })
-})
+        await page.locator("#btn-flip").click();
+        await expect(page.locator("#combo-obj")).toHaveClass("base disabled");
+    });
+});

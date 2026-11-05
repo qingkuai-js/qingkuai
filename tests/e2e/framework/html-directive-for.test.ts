@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -41,33 +41,33 @@ const scenario: E2EScenarioInput = {
                 <li #for={item of forItems} #key={item.id} #html>{item.html}</li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports html directive combined with for", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#html-for-host .html-for-inner")).toHaveText(["For A", "For B"])
+        await expect(page.locator("#html-for-host .html-for-inner")).toHaveText(["For A", "For B"]);
 
-        await page.locator("#html-for-append").click()
+        await page.locator("#html-for-append").click();
         await expect(page.locator("#html-for-host .html-for-inner")).toHaveText([
             "For A",
             "For B",
-            "For C"
-        ])
+            "For C",
+        ]);
 
-        await page.locator("#html-for-update-second").click()
+        await page.locator("#html-for-update-second").click();
         await expect(page.locator("#html-for-host .html-for-inner")).toHaveText([
             "For A",
             "For B Updated",
-            "For C"
-        ])
+            "For C",
+        ]);
 
-        await page.locator("#html-for-remove").click()
+        await page.locator("#html-for-remove").click();
         await expect(page.locator("#html-for-host .html-for-inner")).toHaveText([
             "For A",
-            "For B Updated"
-        ])
-    })
-})
+            "For B Updated",
+        ]);
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -44,47 +44,47 @@ const scenario: E2EScenarioInput = {
                 </p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("cleans active branch when no condition matches and restores on next hit", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const branches = page.locator("#branch-host .if-branch")
+        const branches = page.locator("#branch-host .if-branch");
 
-        await expect(branches).toHaveCount(0)
+        await expect(branches).toHaveCount(0);
 
-        await page.locator("#cycle-branch").click()
-        await expect(page.locator("#branch-a")).toHaveText("Branch A")
-        await expect(branches).toHaveCount(1)
+        await page.locator("#cycle-branch").click();
+        await expect(page.locator("#branch-a")).toHaveText("Branch A");
+        await expect(branches).toHaveCount(1);
 
-        await page.locator("#cycle-branch").click()
-        await expect(page.locator("#branch-b")).toHaveText("Branch B")
-        await expect(branches).toHaveCount(1)
+        await page.locator("#cycle-branch").click();
+        await expect(page.locator("#branch-b")).toHaveText("Branch B");
+        await expect(branches).toHaveCount(1);
 
-        await page.locator("#cycle-branch").click()
-        await expect(branches).toHaveCount(0)
+        await page.locator("#cycle-branch").click();
+        await expect(branches).toHaveCount(0);
 
-        await page.locator("#cycle-branch").click()
-        await expect(page.locator("#branch-a")).toHaveText("Branch A")
-        await expect(branches).toHaveCount(1)
-    })
+        await page.locator("#cycle-branch").click();
+        await expect(page.locator("#branch-a")).toHaveText("Branch A");
+        await expect(branches).toHaveCount(1);
+    });
 
     test("keeps only one active branch after rapid state switches", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#rapid-switch").click()
+        await page.locator("#rapid-switch").click();
 
-        const branches = page.locator("#branch-host .if-branch")
-        await expect(branches).toHaveCount(1)
-        await expect(page.locator("#branch-a")).toHaveText("Branch A")
-        await expect(page.locator("#branch-b")).toHaveCount(0)
-    })
-})
+        const branches = page.locator("#branch-host .if-branch");
+        await expect(branches).toHaveCount(1);
+        await expect(page.locator("#branch-a")).toHaveText("Branch A");
+        await expect(page.locator("#branch-b")).toHaveCount(0);
+    });
+});

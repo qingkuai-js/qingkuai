@@ -1,5 +1,5 @@
-import { test, expect } from "vitest"
-import { compile } from "../../../../../src/compiler/compile"
+import { test, expect } from "vitest";
+import { compile } from "../../../../../src/compiler/compile";
 
 test("Runtime: named exports become component handle properties", () => {
     const { code, messages } = compile(
@@ -15,17 +15,17 @@ test("Runtime: named exports become component handle properties", () => {
             <div>{count}</div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(messages.filter(item => item.type === "error")).toEqual([])
-    expect(code).not.toContain("export let count")
-    expect(code).not.toContain("export { inc as increase }")
-    expect(code).toContain("_.defineExports(")
-    expect(code).toContain("count:  __ => (count.$),")
-    expect(code).toContain("increase:  __ => (inc),")
-})
+    expect(messages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).not.toContain("export let count");
+    expect(code).not.toContain("export { inc as increase }");
+    expect(code).toContain("_.defineExports(");
+    expect(code).toContain("count:  __ => (count.$),");
+    expect(code).toContain("increase:  __ => (inc),");
+});
 
 test("Runtime: declaration and aliased exports are transformed", () => {
     const { code, messages } = compile(
@@ -43,22 +43,22 @@ test("Runtime: declaration and aliased exports are transformed", () => {
             <div>{plain}</div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(messages.filter(item => item.type === "error")).toEqual([])
-    expect(code).not.toContain("export const plain")
-    expect(code).not.toContain("export function inc")
-    expect(code).not.toContain("export class Tool")
-    expect(code).not.toContain("export { inner as renamed, Tool as ExportedTool }")
-    expect(code).toContain("_.defineExports(")
-    expect(code).toContain("plain:  __ => (plain),")
-    expect(code).toContain("inc:  __ => (inc),")
-    expect(code).toContain("Tool:  __ => (Tool),")
-    expect(code).toContain("renamed:  __ => (inner),")
-    expect(code).toContain("ExportedTool:  __ => (Tool),")
-})
+    expect(messages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).not.toContain("export const plain");
+    expect(code).not.toContain("export function inc");
+    expect(code).not.toContain("export class Tool");
+    expect(code).not.toContain("export { inner as renamed, Tool as ExportedTool }");
+    expect(code).toContain("_.defineExports(");
+    expect(code).toContain("plain:  __ => (plain),");
+    expect(code).toContain("inc:  __ => (inc),");
+    expect(code).toContain("Tool:  __ => (Tool),");
+    expect(code).toContain("renamed:  __ => (inner),");
+    expect(code).toContain("ExportedTool:  __ => (Tool),");
+});
 
 test("Runtime: string literal export names in handle properties", () => {
     const { code, messages: compileMessages } = compile(
@@ -71,14 +71,14 @@ test("Runtime: string literal export names in handle properties", () => {
             <div></div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.defineExports(")
-    expect(code).toContain('["x-y"]:  __ => (pkg),')
-})
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).toContain("_.defineExports(");
+    expect(code).toContain('["x-y"]:  __ => (pkg),');
+});
 
 test("Runtime: enum exports are transformed", () => {
     const { code, messages: compileMessages } = compile(
@@ -90,14 +90,14 @@ test("Runtime: enum exports are transformed", () => {
             <div></div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.defineExports(")
-    expect(code).toContain("Status:  __ => (Status),")
-})
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).toContain("_.defineExports(");
+    expect(code).toContain("Status:  __ => (Status),");
+});
 
 test("Runtime: colliding export names result in last one in handle", () => {
     const { code, messages: compileMessages } = compile(
@@ -111,14 +111,14 @@ test("Runtime: colliding export names result in last one in handle", () => {
             <div></div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("_.defineExports(")
-    expect(code).toContain("same:  __ => (b),")
-})
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).toContain("_.defineExports(");
+    expect(code).toContain("same:  __ => (b),");
+});
 
 test("Runtime: exports are defined on the instance before mount", () => {
     const { code, messages: compileMessages } = compile(
@@ -134,16 +134,16 @@ test("Runtime: exports are defined on the instance before mount", () => {
             <div>{count}</div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("const instance = _.init(")
-    expect(code).toContain("_.defineExports(instance,")
-    expect(code.indexOf("_.defineExports(")).toBeGreaterThan(-1)
-    expect(code.indexOf("return _.mount(")).toBeGreaterThan(code.indexOf("_.defineExports("))
-})
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).toContain("const instance = _.init(");
+    expect(code).toContain("_.defineExports(instance,");
+    expect(code.indexOf("_.defineExports(")).toBeGreaterThan(-1);
+    expect(code.indexOf("return _.mount(")).toBeGreaterThan(code.indexOf("_.defineExports("));
+});
 
 test("Runtime: no exports keeps init uncaptured", () => {
     const { code, messages: compileMessages } = compile(
@@ -155,12 +155,12 @@ test("Runtime: no exports keeps init uncaptured", () => {
             <div>{count}</div>
         `,
         {
-            debug: false
-        }
-    )
+            debug: false,
+        },
+    );
 
-    expect(compileMessages.filter(item => item.type === "error")).toEqual([])
-    expect(code).toContain("const instance = _.init(_anchor, _meta)")
-    expect(code).not.toContain("_.defineExports(")
-    expect(code).toContain("return _.mount(")
-})
+    expect(compileMessages.filter(item => item.type === "error")).toEqual([]);
+    expect(code).toContain("const instance = _.init(_anchor, _meta)");
+    expect(code).not.toContain("_.defineExports(");
+    expect(code).toContain("return _.mount(");
+});

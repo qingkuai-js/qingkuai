@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -37,68 +37,68 @@ const scenario: E2EScenarioInput = {
             <p id="state-fill">Fill: {iconFill}</p>
             <p id="state-size">Size: {iconSize}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("renders svg namespace and initializes xlink attributes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-a")
-        await expect(page.locator("#state-fill")).toHaveText("Fill: red")
-        await expect(page.locator("#state-size")).toHaveText("Size: 24")
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-a");
+        await expect(page.locator("#state-fill")).toHaveText("Fill: red");
+        await expect(page.locator("#state-size")).toHaveText("Size: 24");
 
         const svgNamespace = await page
             .locator("#svg-root")
-            .evaluate(node => (node as SVGElement).namespaceURI)
-        expect(svgNamespace).toBe("http://www.w3.org/2000/svg")
+            .evaluate(node => (node as SVGElement).namespaceURI);
+        expect(svgNamespace).toBe("http://www.w3.org/2000/svg");
 
         const dynamicXlinkHref = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(dynamicXlinkHref).toBe("#shape-a")
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(dynamicXlinkHref).toBe("#shape-a");
 
         const staticXlinkHref = await page
             .locator("#icon-use-static")
-            .evaluate(node => node.getAttribute("xlink:href"))
-        expect(staticXlinkHref).toBe("#shape-a")
-    })
+            .evaluate(node => node.getAttribute("xlink:href"));
+        expect(staticXlinkHref).toBe("#shape-a");
+    });
 
     test("updates dynamic xlink href and svg attributes after interaction", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#switch-icon").click()
+        await page.locator("#switch-icon").click();
 
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b")
-        await expect(page.locator("#state-fill")).toHaveText("Fill: blue")
-        await expect(page.locator("#state-size")).toHaveText("Size: 36")
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b");
+        await expect(page.locator("#state-fill")).toHaveText("Fill: blue");
+        await expect(page.locator("#state-size")).toHaveText("Size: 36");
 
         const dynamicXlinkHref = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(dynamicXlinkHref).toBe("#shape-b")
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(dynamicXlinkHref).toBe("#shape-b");
 
         const staticXlinkHrefAfterSwitch = await page
             .locator("#icon-use-static")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(staticXlinkHrefAfterSwitch).toBe("#shape-a")
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(staticXlinkHrefAfterSwitch).toBe("#shape-a");
 
-        await expect(page.locator("#icon-use")).toHaveAttribute("fill", "blue")
-        await expect(page.locator("#svg-root")).toHaveAttribute("width", "36")
+        await expect(page.locator("#icon-use")).toHaveAttribute("fill", "blue");
+        await expect(page.locator("#svg-root")).toHaveAttribute("width", "36");
 
-        await page.locator("#switch-icon").click()
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-a")
-        await expect(page.locator("#icon-use")).toHaveAttribute("fill", "red")
+        await page.locator("#switch-icon").click();
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-a");
+        await expect(page.locator("#icon-use")).toHaveAttribute("fill", "red");
 
         const staticXlinkHrefAfterReset = await page
             .locator("#icon-use-static")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(staticXlinkHrefAfterReset).toBe("#shape-a")
-    })
-})
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(staticXlinkHrefAfterReset).toBe("#shape-a");
+    });
+});

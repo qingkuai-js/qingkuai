@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -29,27 +29,27 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("keeps local input state bound to keyed item identity after reorder", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const labels = page.locator("#state-list .state-label")
-        const inputs = page.locator("#state-list .state-input")
+        const labels = page.locator("#state-list .state-label");
+        const inputs = page.locator("#state-list .state-input");
 
-        await expect(labels).toHaveText(["Alpha", "Beta"])
-        await inputs.nth(0).fill("typed-alpha")
-        await inputs.nth(1).fill("typed-beta")
+        await expect(labels).toHaveText(["Alpha", "Beta"]);
+        await inputs.nth(0).fill("typed-alpha");
+        await inputs.nth(1).fill("typed-beta");
 
-        await page.locator("#swap-items").click()
+        await page.locator("#swap-items").click();
 
-        await expect(labels).toHaveText(["Beta", "Alpha"])
-        await expect(inputs.nth(0)).toHaveValue("typed-beta")
-        await expect(inputs.nth(1)).toHaveValue("typed-alpha")
-    })
-})
+        await expect(labels).toHaveText(["Beta", "Alpha"]);
+        await expect(inputs.nth(0)).toHaveValue("typed-beta");
+        await expect(inputs.nth(1)).toHaveValue("typed-alpha");
+    });
+});

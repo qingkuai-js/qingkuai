@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -39,62 +39,62 @@ const scenario: E2EScenarioInput = {
                     <slot></slot>
                 </foreignObject>
             </svg>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("content passed to a slot inside svg is created in the svg namespace", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const namespace = await page.locator("#icon-dot").evaluate(node => node.namespaceURI)
-        expect(namespace).toBe("http://www.w3.org/2000/svg")
+        const namespace = await page.locator("#icon-dot").evaluate(node => node.namespaceURI);
+        expect(namespace).toBe("http://www.w3.org/2000/svg");
 
         const box = await page.locator("#icon-dot").evaluate(node => {
-            const rect = (node as SVGGraphicsElement).getBBox()
-            return [rect.width, rect.height]
-        })
-        expect(box).toEqual([20, 20])
-    })
+            const rect = (node as SVGGraphicsElement).getBBox();
+            return [rect.width, rect.height];
+        });
+        expect(box).toEqual([20, 20]);
+    });
 
     test("attributes of slot content keep updating after mount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#icon-dot")).toHaveAttribute("class", "state-on")
-        await expect(page.locator("#icon-dot")).toHaveAttribute("r", "10")
+        await expect(page.locator("#icon-dot")).toHaveAttribute("class", "state-on");
+        await expect(page.locator("#icon-dot")).toHaveAttribute("r", "10");
 
-        await page.locator("#btn-change").click()
-        await expect(page.locator("#state-class")).toHaveText("state-off")
+        await page.locator("#btn-change").click();
+        await expect(page.locator("#state-class")).toHaveText("state-off");
 
-        await expect(page.locator("#icon-dot")).toHaveAttribute("class", "state-off")
-        await expect(page.locator("#icon-dot")).toHaveAttribute("r", "24")
+        await expect(page.locator("#icon-dot")).toHaveAttribute("class", "state-off");
+        await expect(page.locator("#icon-dot")).toHaveAttribute("r", "24");
 
         const box = await page.locator("#icon-dot").evaluate(node => {
-            const rect = (node as SVGGraphicsElement).getBBox()
-            return rect.width
-        })
-        expect(box).toBe(48)
-    })
+            const rect = (node as SVGGraphicsElement).getBBox();
+            return rect.width;
+        });
+        expect(box).toBe(48);
+    });
 
     test("content passed to a slot inside foreignObject stays in the html namespace", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         const details = await page.locator("#slot-html").evaluate(node => {
             return {
                 namespace: node.namespaceURI,
-                parentTag: node.parentElement?.tagName
-            }
-        })
-        expect(details.namespace).toBe("http://www.w3.org/1999/xhtml")
-        expect(details.parentTag).toBe("foreignObject")
-    })
-})
+                parentTag: node.parentElement?.tagName,
+            };
+        });
+        expect(details.namespace).toBe("http://www.w3.org/1999/xhtml");
+        expect(details.parentTag).toBe("foreignObject");
+    });
+});

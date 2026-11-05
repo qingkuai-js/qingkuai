@@ -1,128 +1,128 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { walkTsNode } from "../ts-ast/walk"
-import { any } from "../../util/shared/sundry"
-import { hasParseError } from "../ts-ast/assert"
-import { isString } from "../../util/shared/assert"
-import { ParseDiatnosticDealtKind } from "../enums"
-import { expressionParseErrorNoReportRE } from "../regular"
-import { inputDescriptor, tsParsingDiagnostics } from "../state"
+import { walkTsNode } from "../ts-ast/walk";
+import { any } from "../../util/shared/sundry";
+import { hasParseError } from "../ts-ast/assert";
+import { isString } from "../../util/shared/assert";
+import { ParseDiatnosticDealtKind } from "../enums";
+import { expressionParseErrorNoReportRE } from "../regular";
+import { inputDescriptor, tsParsingDiagnostics } from "../state";
 
 export function parseScript(source: string) {
     return createSourceFile(source, inputDescriptor.script.loc.start.index, () => {
         return inputDescriptor.options.checkMode
             ? ParseDiatnosticDealtKind.Record
-            : ParseDiatnosticDealtKind.Thrown
-    })
+            : ParseDiatnosticDealtKind.Thrown;
+    });
 }
 
 export function parseExpression(source: string, startSourceIndex: number) {
     const sourceFile = createSourceFile(`_=(${source})`, startSourceIndex - 3, msg => {
         if (expressionParseErrorNoReportRE.test(msg)) {
-            return ParseDiatnosticDealtKind.Ignore
+            return ParseDiatnosticDealtKind.Ignore;
         }
         return inputDescriptor.options.checkMode
             ? ParseDiatnosticDealtKind.Record
-            : ParseDiatnosticDealtKind.Thrown
-    })
+            : ParseDiatnosticDealtKind.Thrown;
+    });
     if (hasParseError(sourceFile)) {
-        return null
+        return null;
     }
 
-    const statement = sourceFile.statements[0]
+    const statement = sourceFile.statements[0];
     if (!ts.isExpressionStatement(statement)) {
-        return null
+        return null;
     }
 
-    const expression = statement.expression
+    const expression = statement.expression;
     if (
         !ts.isBinaryExpression(expression) ||
         !ts.isParenthesizedExpression(expression.right) ||
         expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
     ) {
-        return null
+        return null;
     }
-    return offsetStartAndEndGetter(expression.right.expression, -3)
+    return offsetStartAndEndGetter(expression.right.expression, -3);
 }
 
 export function parseContextPattern(source: string, startSourceIndex: number) {
     const sourceFile = createSourceFile(`const [${source}]=_`, startSourceIndex - 7, () => {
-        return ParseDiatnosticDealtKind.Ignore
-    })
+        return ParseDiatnosticDealtKind.Ignore;
+    });
     if (hasParseError(sourceFile)) {
-        return null
+        return null;
     }
 
-    const statement = sourceFile.statements[0]
+    const statement = sourceFile.statements[0];
     if (!ts.isVariableStatement(statement)) {
-        return null
+        return null;
     }
 
-    const firstDeclaration = statement.declarationList.declarations[0]
+    const firstDeclaration = statement.declarationList.declarations[0];
     if (
         !ts.isArrayBindingPattern(firstDeclaration.name) ||
         firstDeclaration.name.elements.some(item => {
-            return ts.isBindingElement(item) && item.initializer
+            return ts.isBindingElement(item) && item.initializer;
         })
     ) {
-        return null
+        return null;
     }
-    return offsetStartAndEndGetter(firstDeclaration.name, -7)
+    return offsetStartAndEndGetter(firstDeclaration.name, -7);
 }
 
 function offsetStartAndEndGetter<T extends TS.Node>(root: T, offset: number): T {
     walkTsNode(root, node => {
-        const end = node.getEnd()
-        const text = node.getText()
-        const start = node.getStart()
-        const fullStart = node.getFullStart()
-        node.getText = () => text
-        node.getEnd = () => end + offset
-        node.getStart = () => start + offset
-        node.getFullStart = () => fullStart + offset
-    })
-    return root
+        const end = node.getEnd();
+        const text = node.getText();
+        const start = node.getStart();
+        const fullStart = node.getFullStart();
+        node.getText = () => text;
+        node.getEnd = () => end + offset;
+        node.getStart = () => start + offset;
+        node.getFullStart = () => fullStart + offset;
+    });
+    return root;
 }
 
 function createSourceFile(
     source: string,
     startSourceIndex: number,
-    shouldThrow: (msg: string) => ParseDiatnosticDealtKind
+    shouldThrow: (msg: string) => ParseDiatnosticDealtKind,
 ) {
     const sourceFile = ts.createSourceFile(
         "",
         source,
         ts.ScriptTarget.ESNext,
         true,
-        inputDescriptor.script.isTS ? ts.ScriptKind.TS : ts.ScriptKind.JS
-    )
+        inputDescriptor.script.isTS ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+    );
     if (hasParseError(sourceFile)) {
-        let message = "Syntax error"
-        const diagnostics: TS.Diagnostic[] = any(sourceFile).parseDiagnostics
+        let message = "Syntax error";
+        const diagnostics: TS.Diagnostic[] = any(sourceFile).parseDiagnostics;
         if (isString(diagnostics[0].messageText)) {
-            message = diagnostics[0].messageText
+            message = diagnostics[0].messageText;
         } else {
-            message = diagnostics[0].messageText.messageText
+            message = diagnostics[0].messageText.messageText;
         }
         switch (shouldThrow(message)) {
             case ParseDiatnosticDealtKind.Thrown: {
                 throw new SyntaxError(message, {
                     cause: {
-                        pos: startSourceIndex + diagnostics[0].start!
-                    }
-                })
+                        pos: startSourceIndex + diagnostics[0].start!,
+                    },
+                });
             }
             case ParseDiatnosticDealtKind.Record: {
                 for (const item of diagnostics) {
                     tsParsingDiagnostics.push({
                         ...item,
-                        start: startSourceIndex + item.start!
-                    })
+                        start: startSourceIndex + item.start!,
+                    });
                 }
             }
         }
     }
-    return sourceFile
+    return sourceFile;
 }

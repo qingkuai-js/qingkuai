@@ -1,4 +1,4 @@
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 export default formatSourceCode(`
 	<lang-js>
@@ -69,4 +69,4 @@ export default formatSourceCode(`
 
 	<div>{count}</div>
 	<p !id={++count}></p>
-`)
+`);

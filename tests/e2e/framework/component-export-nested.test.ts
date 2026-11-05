@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -98,57 +98,57 @@ const scenario: E2EScenarioInput = {
                 <p id="child-count">Child count: {count}</p>
                 <button id="child-btn" @click={increment}>Inc in child</button>
             </div>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("export binding works with nested component hierarchies", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#parent-state")).toHaveText("Parent: 0")
-        await expect(page.locator("#child-state")).toHaveText("Child: 0")
+        await expect(page.locator("#parent-state")).toHaveText("Parent: 0");
+        await expect(page.locator("#child-state")).toHaveText("Child: 0");
 
-        await page.locator("#btn-parent-inc").click()
-        await expect(page.locator("#parent-state")).toHaveText("Parent: 1")
-        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1")
+        await page.locator("#btn-parent-inc").click();
+        await expect(page.locator("#parent-state")).toHaveText("Parent: 1");
+        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1");
 
-        await page.locator("#btn-child-inc").click()
-        await expect(page.locator("#child-state")).toHaveText("Child: 1")
-        await expect(page.locator("#child-count")).toHaveText("Child count: 1")
+        await page.locator("#btn-child-inc").click();
+        await expect(page.locator("#child-state")).toHaveText("Child: 1");
+        await expect(page.locator("#child-count")).toHaveText("Child count: 1");
 
-        await page.locator("#btn-parent-inc").click()
-        await page.locator("#btn-parent-inc").click()
-        await expect(page.locator("#parent-state")).toHaveText("Parent: 3")
+        await page.locator("#btn-parent-inc").click();
+        await page.locator("#btn-parent-inc").click();
+        await expect(page.locator("#parent-state")).toHaveText("Parent: 3");
 
-        await page.locator("#btn-child-inc").click()
-        await expect(page.locator("#child-state")).toHaveText("Child: 2")
+        await page.locator("#btn-child-inc").click();
+        await expect(page.locator("#child-state")).toHaveText("Child: 2");
 
-        await page.locator("#parent-btn").click()
-        await expect(page.locator("#parent-count")).toHaveText("Parent count: 4")
+        await page.locator("#parent-btn").click();
+        await expect(page.locator("#parent-count")).toHaveText("Parent count: 4");
 
-        await page.locator("#child-btn").click()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 3")
-    })
+        await page.locator("#child-btn").click();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 3");
+    });
 
     test("nested component export bindings are independent", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#child-btn").click()
-        await page.locator("#child-btn").click()
-        await page.locator("#child-btn").click()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 3")
+        await page.locator("#child-btn").click();
+        await page.locator("#child-btn").click();
+        await page.locator("#child-btn").click();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 3");
 
-        await expect(page.locator("#parent-count")).toHaveText("Parent count: 0")
-        await expect(page.locator("#parent-state")).toHaveText("Parent: 0")
-        await expect(page.locator("#child-state")).toHaveText("Child: 3")
+        await expect(page.locator("#parent-count")).toHaveText("Parent count: 0");
+        await expect(page.locator("#parent-state")).toHaveText("Parent: 0");
+        await expect(page.locator("#child-state")).toHaveText("Child: 3");
 
-        await page.locator("#btn-parent-inc").click()
+        await page.locator("#btn-parent-inc").click();
 
-        await expect(page.locator("#child-count")).toHaveText("Child count: 3")
-        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1")
-    })
-})
+        await expect(page.locator("#child-count")).toHaveText("Child count: 3");
+        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1");
+    });
+});

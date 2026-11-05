@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -48,41 +48,41 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("throws runtime error when keyed for receives duplicate key values", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
+        const pageErrors: string[] = [];
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
 
-        await visitScenario(scenario)
-        await page.locator("#create-duplicate-key").click()
+        await visitScenario(scenario);
+        await page.locator("#create-duplicate-key").click();
 
         await expect
             .poll(() => pageErrors.join("\n"))
-            .toContain('Duplicate value for "#key" directive')
-    })
+            .toContain('Duplicate value for "#key" directive');
+    });
 
     test("treats keys of different types as distinct instead of colliding after string conversion", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
+        const pageErrors: string[] = [];
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
 
-        await visitScenario(scenario)
-        await page.locator("#create-stringified-duplicate-key").click()
-        await expect(page.locator(".duplicate-key-item")).toHaveCount(2)
-        await expect(page.locator(".duplicate-key-item").nth(0)).toHaveText("Number one")
-        await expect(page.locator(".duplicate-key-item").nth(1)).toHaveText("String one")
-        expect(pageErrors.join("\n")).not.toContain('Duplicate value for "#key" directive')
-    })
-})
+        await visitScenario(scenario);
+        await page.locator("#create-stringified-duplicate-key").click();
+        await expect(page.locator(".duplicate-key-item")).toHaveCount(2);
+        await expect(page.locator(".duplicate-key-item").nth(0)).toHaveText("Number one");
+        await expect(page.locator(".duplicate-key-item").nth(1)).toHaveText("String one");
+        expect(pageErrors.join("\n")).not.toContain('Duplicate value for "#key" directive');
+    });
+});

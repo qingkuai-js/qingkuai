@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -50,50 +50,50 @@ const scenario: E2EScenarioInput = {
                     <li class="row-fallback">{row.text}</li>
                 </slot>
             </ul>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("renders keyed slot outlets in data order on mount", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const items = page.locator("#slot-filled .row-item")
-        await expect(items).toHaveCount(3)
-        await expect(items.nth(0)).toHaveText("alpha")
-        await expect(items.nth(1)).toHaveText("beta")
-        await expect(items.nth(2)).toHaveText("gamma")
-    })
+        const items = page.locator("#slot-filled .row-item");
+        await expect(items).toHaveCount(3);
+        await expect(items.nth(0)).toHaveText("alpha");
+        await expect(items.nth(1)).toHaveText("beta");
+        await expect(items.nth(2)).toHaveText("gamma");
+    });
 
     test("keeps keyed slot outlets aligned after reordering", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#slot-move-first-to-end").click()
+        await page.locator("#slot-move-first-to-end").click();
 
-        const items = page.locator("#slot-filled .row-item")
-        await expect(items).toHaveCount(3)
-        await expect(items.nth(0)).toHaveText("beta")
-        await expect(items.nth(1)).toHaveText("gamma")
-        await expect(items.nth(2)).toHaveText("alpha")
-    })
+        const items = page.locator("#slot-filled .row-item");
+        await expect(items).toHaveCount(3);
+        await expect(items.nth(0)).toHaveText("beta");
+        await expect(items.nth(1)).toHaveText("gamma");
+        await expect(items.nth(2)).toHaveText("alpha");
+    });
 
     test("renders interpolated default content once per keyed item", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const fallbackItems = page.locator("#slot-fallback .row-fallback")
-        await expect(fallbackItems).toHaveCount(3)
-        await expect(fallbackItems.nth(0)).toHaveText("alpha")
-        await expect(fallbackItems.nth(1)).toHaveText("beta")
-        await expect(fallbackItems.nth(2)).toHaveText("gamma")
+        const fallbackItems = page.locator("#slot-fallback .row-fallback");
+        await expect(fallbackItems).toHaveCount(3);
+        await expect(fallbackItems.nth(0)).toHaveText("alpha");
+        await expect(fallbackItems.nth(1)).toHaveText("beta");
+        await expect(fallbackItems.nth(2)).toHaveText("gamma");
 
-        await page.locator("#slot-move-first-to-end").click()
+        await page.locator("#slot-move-first-to-end").click();
 
-        await expect(fallbackItems).toHaveCount(3)
-        await expect(fallbackItems.nth(0)).toHaveText("beta")
-        await expect(fallbackItems.nth(1)).toHaveText("gamma")
-        await expect(fallbackItems.nth(2)).toHaveText("alpha")
-    })
-})
+        await expect(fallbackItems).toHaveCount(3);
+        await expect(fallbackItems.nth(0)).toHaveText("beta");
+        await expect(fallbackItems.nth(1)).toHaveText("gamma");
+        await expect(fallbackItems.nth(2)).toHaveText("alpha");
+    });
+});

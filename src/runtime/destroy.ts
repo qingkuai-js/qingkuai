@@ -1,26 +1,26 @@
-import type { ArbitraryFunc } from "#type-declarations/tools"
-import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime"
+import type { ArbitraryFunc } from "#type-declarations/tools";
+import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime";
 
-import { runHooks } from "./component"
-import { runAll } from "../util/shared/sundry"
-import { isArray } from "../util/shared/assert"
-import { walkNodes } from "../util/runtime/sundry"
-import { swapDelete } from "../util/shared/arrays"
-import { disposeEffect } from "./reactivity/effect"
-import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants"
-import { currentDestruction, setCurrentDestruction } from "./state"
-import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags"
+import { runHooks } from "./component";
+import { runAll } from "../util/shared/sundry";
+import { isArray } from "../util/shared/assert";
+import { walkNodes } from "../util/runtime/sundry";
+import { swapDelete } from "../util/shared/arrays";
+import { disposeEffect } from "./reactivity/effect";
+import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants";
+import { currentDestruction, setCurrentDestruction } from "./state";
+import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags";
 
 export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     if (!currentDestruction) {
-        return
+        return;
     }
-    ;(currentDestruction.a ??= []).push(cleaner)
+    (currentDestruction.a ??= []).push(cleaner);
 }
 
 export function createDestruction(
     parentDestruction: Destruction | null,
-    instance: ComponentInstanceBase | null = NIL
+    instance: ComponentInstanceBase | null = NIL,
 ) {
     const destruction: Destruction = {
         f: 0,
@@ -33,65 +33,65 @@ export function createDestruction(
         n: NIL,
         d: false,
         m: instance,
-        p: parentDestruction
-    }
+        p: parentDestruction,
+    };
     if (parentDestruction) {
-        const children = (parentDestruction.c ??= [])
-        destruction.i = children.length
-        children.push(destruction)
+        const children = (parentDestruction.c ??= []);
+        destruction.i = children.length;
+        children.push(destruction);
     }
-    return setCurrentDestruction(destruction)!
+    return setCurrentDestruction(destruction)!;
 }
 
 export function destroy(destruction: Destruction, detachNodes = true, detachFromParent = true) {
-    const effects = destruction.e
-    const cleaners = destruction.a
-    const children = destruction.c
-    const instance = destruction.m
-    const isComponentOwned = instance?._internal.d === destruction
+    const effects = destruction.e;
+    const cleaners = destruction.a;
+    const children = destruction.c;
+    const instance = destruction.m;
+    const isComponentOwned = instance?._internal.d === destruction;
     if (isComponentOwned) {
-        runHooks(instance, BEFORE_DESTROY)
+        runHooks(instance, BEFORE_DESTROY);
     }
     if (cleaners) {
-        runAll(cleaners)
+        runAll(cleaners);
     }
     if (children) {
-        const childDetach = detachNodes && !destruction.s
+        const childDetach = detachNodes && !destruction.s;
         for (let i = 0; i < children.length; i++) {
-            const hasTargetDirective = !!(children[i].f & FRAG_WITH_TARGET)
-            destroy(children[i], childDetach || hasTargetDirective, false)
+            const hasTargetDirective = !!(children[i].f & FRAG_WITH_TARGET);
+            destroy(children[i], childDetach || hasTargetDirective, false);
         }
     }
     if (effects) {
         if (isArray(effects)) {
             for (let i = 0; i < effects.length; i++) {
-                disposeEffect(effects[i], true)
+                disposeEffect(effects[i], true);
             }
         } else {
-            disposeEffect(effects, true)
+            disposeEffect(effects, true);
         }
     }
     if (detachFromParent && destruction.p?.c) {
-        const siblings = destruction.p.c
+        const siblings = destruction.p.c;
         if (destruction.i >= 0 && destruction.i < siblings.length) {
-            swapDelete(siblings, destruction.i)
+            swapDelete(siblings, destruction.i);
             if (destruction.i < siblings.length) {
-                siblings[destruction.i].i = destruction.i
+                siblings[destruction.i].i = destruction.i;
             }
         }
-        destruction.i = -1
+        destruction.i = -1;
     }
     if (detachNodes && destruction.s && destruction.n) {
         if (destruction.f & FRAG_ORPHAN_CONTENT) {
-            destruction.s.remove()
+            destruction.s.remove();
         } else {
-            walkNodes(destruction, node => node.remove())
+            walkNodes(destruction, node => node.remove());
         }
     }
     if (isComponentOwned) {
-        runHooks(instance, AFTER_DESTROY)
+        runHooks(instance, AFTER_DESTROY);
     }
-    destruction.d = true
-    destruction.c = destruction.a = destruction.e = destruction.u = NIL
-    destruction.s = destruction.n = destruction.m = destruction.p = NIL
+    destruction.d = true;
+    destruction.c = destruction.a = destruction.e = destruction.u = NIL;
+    destruction.s = destruction.n = destruction.m = destruction.p = NIL;
 }

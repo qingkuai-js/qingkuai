@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -68,21 +68,21 @@ const scenario: E2EScenarioInput = {
                 </div>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports then and catch destructuring with multi-child rendering", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#structured-resolve").click()
-        await expect(page.locator("#structured-then-id")).toHaveText("12")
+        await page.locator("#structured-resolve").click();
+        await expect(page.locator("#structured-then-id")).toHaveText("12");
 
-        await page.locator("#structured-reset").click()
-        await page.locator("#structured-reject").click()
-        await expect(page.locator("#structured-catch-msg")).toHaveText("structured failed")
-    })
-})
+        await page.locator("#structured-reset").click();
+        await page.locator("#structured-reject").click();
+        await expect(page.locator("#structured-catch-msg")).toHaveText("structured failed");
+    });
+});

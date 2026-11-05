@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -49,51 +49,51 @@ const scenario: E2EScenarioInput = {
                     <slot name="footer"></slot>
                 </footer>
             </section>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports slot context destructuring", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator(".slot-panel").nth(0).locator(".header-content")).toHaveText(
-            "Header from child"
-        )
+            "Header from child",
+        );
         await expect(page.locator(".slot-panel").nth(1).locator(".header-only-content")).toHaveText(
-            "Header from child"
-        )
-    })
+            "Header from child",
+        );
+    });
 
     test("supports qk spread slot rendering", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const firstPanel = page.locator(".slot-panel").nth(0)
-        await expect(firstPanel.locator(".default-content")).toHaveText("Filled default content")
-        await expect(firstPanel.locator(".footer-content")).toHaveText("Filled footer content")
-    })
+        const firstPanel = page.locator(".slot-panel").nth(0);
+        await expect(firstPanel.locator(".default-content")).toHaveText("Filled default content");
+        await expect(firstPanel.locator(".footer-content")).toHaveText("Filled footer content");
+    });
 
     test("renders default slot fallback when default content is missing", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const secondPanel = page.locator(".slot-panel").nth(1)
-        await expect(secondPanel.locator(".default-fallback")).toHaveText("Default fallback")
-    })
+        const secondPanel = page.locator(".slot-panel").nth(1);
+        await expect(secondPanel.locator(".default-fallback")).toHaveText("Default fallback");
+    });
 
     test("renders slot presence branches based on passed named slots", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const firstPanel = page.locator(".slot-panel").nth(0)
-        const secondPanel = page.locator(".slot-panel").nth(1)
+        const firstPanel = page.locator(".slot-panel").nth(0);
+        const secondPanel = page.locator(".slot-panel").nth(1);
 
-        await expect(firstPanel.locator(".slot-footer-host")).toHaveCount(1)
-        await expect(firstPanel.locator(".footer-content")).toHaveText("Filled footer content")
-        await expect(secondPanel.locator(".slot-footer-host")).toHaveCount(0)
-    })
-})
+        await expect(firstPanel.locator(".slot-footer-host")).toHaveCount(1);
+        await expect(firstPanel.locator(".footer-content")).toHaveText("Filled footer content");
+        await expect(secondPanel.locator(".slot-footer-host")).toHaveCount(0);
+    });
+});

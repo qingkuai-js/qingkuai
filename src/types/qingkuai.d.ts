@@ -5,59 +5,59 @@
 // This type package supports Qingkuai language-service capabilities. All declared methods
 // are for type inference and validation only and have no runtime implementation.
 
-import type { HtmlBlockOptions } from "#type-declarations/runtime-ex"
-import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiComponent } from "@qingkuai/virtual/brand"
-import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatchCallback } from "#type-declarations/runtime"
+import type { HtmlBlockOptions } from "#type-declarations/runtime-ex";
+import type { EmptyObject as _EmptyObject, QingkuaiComponent as _QingkuaiComponent } from "@qingkuai/virtual/brand";
+import type { ComponentInstance as _ComponentInstance, EffectCallback, EffectHandle, WatchCallback } from "#type-declarations/runtime";
 
 export namespace __qk__lsu {
-    export type Prettify<T> = _Prettify<T>
-    export type EmptyObject = _EmptyObject
-    export type QingkuaiComponent<T extends ArbitraryFunc> = _QingkuaiComponent<T>
-    export type ComponentInstance<T extends QingkuaiComponent<any>> = _ComponentInstance<T>
+    export type Prettify<T> = _Prettify<T>;
+    export type EmptyObject = _EmptyObject;
+    export type QingkuaiComponent<T extends ArbitraryFunc> = _QingkuaiComponent<T>;
+    export type ComponentInstance<T extends QingkuaiComponent<any>> = _ComponentInstance<T>;
 
-    export const anyValue: any
+    export const anyValue: any;
     export const getListPair: {
-        <T>(value: Set<T>): [T, T]
-        <K, V>(value: Map<K, V>): [V, K]
-        <T>(value: Array<T>): [T, number]
-        (value: number): [number, number]
-        (value: string): [string, number]
-        <K extends string | number | symbol, V>(value: Record<K, V>): [V, K]
-    }
-    export const getReturnType: <T extends ArbitraryFunc>(fn: T) => ReturnType<T>
-    export const getTypeDelayMarking: (slotName: string, attrName: string, value: any) => void
+        <T>(value: Set<T>): [T, T];
+        <K, V>(value: Map<K, V>): [V, K];
+        <T>(value: Array<T>): [T, number];
+        (value: number): [number, number];
+        (value: string): [string, number];
+        <K extends string | number | symbol, V>(value: Record<K, V>): [V, K];
+    };
+    export const getReturnType: <T extends ArbitraryFunc>(fn: T) => ReturnType<T>;
+    export const getTypeDelayMarking: (slotName: string, attrName: string, value: any) => void;
 
-    export const validateString: <T extends string>(value: T) => void
-    export const validateNumber: <T extends number>(value: T) => void
-    export const validateBoolean: <T extends boolean>(value: T) => void
-    export const validateHtmlBlockOptions: <T extends HtmlBlockOptions>(value: T) => void
-    export const validateReferenceGroup: <T extends Set<any> | Array<any>>(value: T) => void
-    export const validateTargetDirectiveValue: <T extends Element | string>(value: T) => void
-    export const validateEventHandler: <T extends string>(value: T, handler: (e: ExtractEventKind<T>) => void) => void
+    export const validateString: <T extends string>(value: T) => void;
+    export const validateNumber: <T extends number>(value: T) => void;
+    export const validateBoolean: <T extends boolean>(value: T) => void;
+    export const validateHtmlBlockOptions: <T extends HtmlBlockOptions>(value: T) => void;
+    export const validateReferenceGroup: <T extends Set<any> | Array<any>>(value: T) => void;
+    export const validateTargetDirectiveValue: <T extends Element | string>(value: T) => void;
+    export const validateEventHandler: <T extends string>(value: T, handler: (e: ExtractEventKind<T>) => void) => void;
 
     export const validateHandleReceiver: {
-        <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E): void
-        <C extends QingkuaiComponent<any>, R extends ComponentInstance<C> | null | undefined>(component: C, receiver: R): void
-    }
+        <T extends string, E extends ExtractElementKind<T> | null>(value: T, expected: E): void;
+        <C extends QingkuaiComponent<any>, R extends ComponentInstance<C> | null | undefined>(component: C, receiver: R): void;
+    };
 
-    export const extractFirstArg: <T extends unknown[]>(...args: T) => T[0]
-    export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any
+    export const extractFirstArg: <T extends unknown[]>(...args: T) => T[0];
+    export const confirmComponent: <T>(component: T) => T extends QingkuaiComponent<infer F> ? F : any;
 
     // The predicates below flatten the generic parameter (e.g. `P & Required<...>`) into a
     // single mapped type. TS2677 cannot statically prove the flattened type assignable back
     // to the generic parameter at declaration time, but the language service always
     // instantiates these assertions at use sites, where assignability holds.
     // @ts-expect-error: TS2677
-    export const assertRefs: <R, D>(refs: R, defaults: D) => asserts refs is RefsAssertFn<R, D>
+    export const assertRefs: <R, D>(refs: R, defaults: D) => asserts refs is RefsAssertFn<R, D>;
     // @ts-expect-error: TS2677
-    export const assertProps: <P, D>(props: P, defaults: D) => asserts props is PropsAssertFn<P, D>
+    export const assertProps: <P, D>(props: P, defaults: D) => asserts props is PropsAssertFn<P, D>;
     // @ts-expect-error: TS2677
-    export const assertContexts: <C, D>(contexts: C, defaults: D) => asserts contexts is ContextsAssertFn<C, D>
+    export const assertContexts: <C, D>(contexts: C, defaults: D) => asserts contexts is ContextsAssertFn<C, D>;
 
-    export const assertSetContext: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>
-    export const assertSetContextExp: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>
-    export const assertSetContextGetter: <C>(fn: any, contexts: C) => asserts fn is SetContextGetterAssertFn<C>
-    export const assertDefaults: <P, R, C>(fn: any, props: P, refs: R, contexts: C) => asserts fn is DefaultsAssertFn<P, R, C>
+    export const assertSetContext: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>;
+    export const assertSetContextExp: <C>(fn: any, contexts: C) => asserts fn is SetContextAssertFn<C>;
+    export const assertSetContextGetter: <C>(fn: any, contexts: C) => asserts fn is SetContextGetterAssertFn<C>;
+    export const assertDefaults: <P, R, C>(fn: any, props: P, refs: R, contexts: C) => asserts fn is DefaultsAssertFn<P, R, C>;
 }
 
 /**
@@ -130,7 +130,7 @@ export namespace __qk__lsu {
  *   declaration marking, required in non-reactive reads.
  * @returns The same value passed in, unchanged.
  */
-export declare function raw<T>(value?: T): T
+export declare function raw<T>(value?: T): T;
 
 /**
  * Creates an alias binding for a property access expression.
@@ -181,7 +181,7 @@ export declare function raw<T>(value?: T): T
  * @param value A property access expression, or an object to destructure.
  * @returns The original value passed in, unchanged.
  */
-export declare function alias<T>(value: T): T
+export declare function alias<T>(value: T): T;
 
 /**
  * Marks a variable declaration as **shallow reactive**.
@@ -245,7 +245,7 @@ export declare function alias<T>(value: T): T
  * @param value The value to mark as shallow reactive. Optional.
  * @returns The same value passed in, unchanged.
  */
-export declare function shallow<T>(value?: T): T
+export declare function shallow<T>(value?: T): T;
 
 /**
  * Marks a variable declaration as **deep reactive**, recursively converting
@@ -305,7 +305,7 @@ export declare function shallow<T>(value?: T): T
  * @param value The value to make deeply reactive. Optional.
  * @returns The same value passed in, unchanged.
  */
-export declare function reactive<T>(value?: T): T
+export declare function reactive<T>(value?: T): T;
 
 /**
  * Creates a **derived reactive value** from a getter function.
@@ -350,7 +350,7 @@ export declare function reactive<T>(value?: T): T
  * @param getter A function that computes the derived value.
  * @returns The derived reactive value.
  */
-export declare function derived<T>(getter: Getter<T>): T
+export declare function derived<T>(getter: Getter<T>): T;
 
 /**
  * Creates a **derived reactive value** from a reactive expression.
@@ -398,7 +398,7 @@ export declare function derived<T>(getter: Getter<T>): T
  * @param expression The reactive expression to derive from.
  * @returns The derived reactive value.
  */
-export declare function derivedExp<T>(expression: T): T
+export declare function derivedExp<T>(expression: T): T;
 
 interface WatchExpFunc {
     /**
@@ -448,13 +448,13 @@ interface WatchExpFunc {
      * @param callback Handles value changes with `(oldVal, newVal)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(expression: T, callback: WatchCallback<T>): EffectHandle
+    <T>(expression: T, callback: WatchCallback<T>): EffectHandle;
 }
 
-export declare const watchExp: WatchExpFunc
-export declare const preWatchExp: WatchExpFunc
-export declare const postWatchExp: WatchExpFunc
-export declare const syncWatchExp: WatchExpFunc
+export declare const watchExp: WatchExpFunc;
+export declare const preWatchExp: WatchExpFunc;
+export declare const postWatchExp: WatchExpFunc;
+export declare const syncWatchExp: WatchExpFunc;
 
 interface WatchFunc {
     /**
@@ -503,13 +503,13 @@ interface WatchFunc {
      * @param callback Handles value changes with `(pre, cur)`.
      * @returns A control object with stop, pause, and resume methods.
      */
-    <T>(getter: Getter<T>, callback: WatchCallback<T>): EffectHandle
+    <T>(getter: Getter<T>, callback: WatchCallback<T>): EffectHandle;
 }
 
-export declare const watch: WatchFunc
-export declare const preWatch: WatchFunc
-export declare const postWatch: WatchFunc
-export declare const syncWatch: WatchFunc
+export declare const watch: WatchFunc;
+export declare const preWatch: WatchFunc;
+export declare const postWatch: WatchFunc;
+export declare const syncWatch: WatchFunc;
 
 interface EffectFunc {
     /**
@@ -554,13 +554,13 @@ interface EffectFunc {
      * @param callback Contains the side-effect logic to run.
      * @returns A control object with stop, pause, and resume methods.
      */
-    (callback: EffectCallback): EffectHandle
+    (callback: EffectCallback): EffectHandle;
 }
 
-export declare const effect: EffectFunc
-export declare const preEffect: EffectFunc
-export declare const postEffect: EffectFunc
-export declare const syncEffect: EffectFunc
+export declare const effect: EffectFunc;
+export declare const preEffect: EffectFunc;
+export declare const postEffect: EffectFunc;
+export declare const syncEffect: EffectFunc;
 
 /**
  * Defines fallback values for optional component bindings.
@@ -605,7 +605,7 @@ export declare const syncEffect: EffectFunc
 //
 // 占位签名：实际由顶部 AssertDefaults 断言确定
 // Placeholder signature: actually determined by the AssertDefaults assertion at the top.
-export declare const defaults: unknown
+export declare const defaults: unknown;
 
 /**
  * Writes a context value into the current component's contexts layer.
@@ -644,7 +644,7 @@ export declare const defaults: unknown
 //
 // 占位签名：实际由顶部 AssertDefaults 断言确定
 // Placeholder signature: actually determined by the AssertDefaults assertion at the top.
-export declare const setContext: unknown
+export declare const setContext: unknown;
 
 /**
  * Writes a reactive getter into the current component's contexts layer.
@@ -679,7 +679,7 @@ export declare const setContext: unknown
 //
 // 占位签名：实际由顶部 AssertDefaults 断言确定
 // Placeholder signature: actually determined by the AssertDefaults assertion at the top.
-export declare const setContextGetter: unknown
+export declare const setContextGetter: unknown;
 
 /**
  * Writes a reactive value into the current component's contexts layer.
@@ -716,7 +716,7 @@ export declare const setContextGetter: unknown
 //
 // 占位签名：实际由顶部 AssertDefaults 断言确定
 // Placeholder signature: actually determined by the AssertDefaults assertion at the top.
-export declare const setContextExp: unknown
+export declare const setContextExp: unknown;
 
 export interface BoundLifecycleHookRegister {
     /**
@@ -740,32 +740,32 @@ export interface BoundLifecycleHookRegister {
      *
      * @param callback Contains logic to run at the target lifecycle phase.
      */
-    (callback: GeneralFunc): void
+    (callback: GeneralFunc): void;
 }
 
-export declare const onAfterMount: BoundLifecycleHookRegister
-export declare const onBeforeUpdate: BoundLifecycleHookRegister
-export declare const onAfterUpdate: BoundLifecycleHookRegister
-export declare const onBeforeDestroy: BoundLifecycleHookRegister
-export declare const onAfterDestroy: BoundLifecycleHookRegister
+export declare const onAfterMount: BoundLifecycleHookRegister;
+export declare const onBeforeUpdate: BoundLifecycleHookRegister;
+export declare const onAfterUpdate: BoundLifecycleHookRegister;
+export declare const onBeforeDestroy: BoundLifecycleHookRegister;
+export declare const onAfterDestroy: BoundLifecycleHookRegister;
 
-type Getter<T> = () => T
-type GeneralFunc = () => void
-type ArbitraryFunc = (...args: any) => any
-type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>
-type _Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
-type ExtractEventKind<K> = K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : Event
-type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T]
-type CleanOptionalPick<T> = _Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>
-type CleanStrictPick<T> = [keyof CleanOptionalPick<T>] extends [never] ? __qk__lsu.EmptyObject : CleanOptionalPick<T>
-type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P>; refs?: CleanStrictPick<R>; contexts?: CleanStrictPick<C> }
-type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element
+type Getter<T> = () => T;
+type GeneralFunc = () => void;
+type ArbitraryFunc = (...args: any) => any;
+type WithRequired<T, D> = Required<Pick<T, Extract<keyof D, keyof T>>>;
+type _Prettify<T> = T extends infer U ? { [K in keyof U]: U[K] } : never;
+type ExtractEventKind<K> = K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : Event;
+type OptionalKeysOf<T> = { [K in keyof T]-?: object extends Pick<T, K> ? K : never }[keyof T];
+type CleanOptionalPick<T> = _Prettify<Pick<T, Exclude<OptionalKeysOf<T>, keyof __qk__lsu.EmptyObject>>>;
+type CleanStrictPick<T> = [keyof CleanOptionalPick<T>] extends [never] ? __qk__lsu.EmptyObject : CleanOptionalPick<T>;
+type DefaultsValue<P, R, C> = { props?: CleanStrictPick<P>; refs?: CleanStrictPick<R>; contexts?: CleanStrictPick<C> };
+type ExtractElementKind<K> = K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : K extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[K] : Element;
 
-type DefaultsAssertFn<P, R, C> = (value: _Prettify<DefaultsValue<P, R, C>>) => void
-type RefsAssertFn<R, D> = _Prettify<R & WithRequired<R, D extends { refs: infer DR } ? DR : never>>
-type PropsAssertFn<P, D> = _Prettify<P & WithRequired<P, D extends { props: infer DP } ? DP : never>>
-type ContextsAssertFn<C, D> = _Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>
-type SetContextAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, value: C[K]) => void
-type SetContextGetterAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, getter: Getter<C[K]>) => void
+type DefaultsAssertFn<P, R, C> = (value: _Prettify<DefaultsValue<P, R, C>>) => void;
+type RefsAssertFn<R, D> = _Prettify<R & WithRequired<R, D extends { refs: infer DR } ? DR : never>>;
+type PropsAssertFn<P, D> = _Prettify<P & WithRequired<P, D extends { props: infer DP } ? DP : never>>;
+type ContextsAssertFn<C, D> = _Prettify<C & WithRequired<C, D extends { contexts: infer DC } ? DC : never>>;
+type SetContextAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, value: C[K]) => void;
+type SetContextGetterAssertFn<C> = [Exclude<keyof C, keyof __qk__lsu.EmptyObject>] extends [never] ? (key: never, value: never) => void : <K extends keyof C>(key: K, getter: Getter<C[K]>) => void;
 
-export {}
+export {};

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -50,14 +50,14 @@ const scenario: E2EScenarioInput = {
                 <span class="inline-order-marker">After</span>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports same-tag await and then", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#inline-resolve-trigger").click()
-        await expect(page.locator("#inline-then")).toHaveText("Inline resolved: inline done")
-    })
-})
+        await page.locator("#inline-resolve-trigger").click();
+        await expect(page.locator("#inline-then")).toHaveText("Inline resolved: inline done");
+    });
+});

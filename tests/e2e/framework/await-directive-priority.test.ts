@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -70,18 +70,18 @@ const scenario: E2EScenarioInput = {
                 </p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("await has higher priority than if on the same tag", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#priority-resolve").click()
-        await expect(page.locator("#priority-then")).toHaveText("Priority then: priority resolved")
+        await page.locator("#priority-resolve").click();
+        await expect(page.locator("#priority-then")).toHaveText("Priority then: priority resolved");
 
-        await page.locator("#priority-reset").click()
-        await page.locator("#priority-toggle-if").click()
-        await expect(page.locator("#priority-await")).toHaveText("Priority pending")
-    })
-})
+        await page.locator("#priority-reset").click();
+        await page.locator("#priority-toggle-if").click();
+        await expect(page.locator("#priority-await")).toHaveText("Priority pending");
+    });
+});

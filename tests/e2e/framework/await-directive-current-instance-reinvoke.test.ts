@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -65,63 +65,65 @@ const scenario: E2EScenarioInput = {
                 <p id="catch-branch" #catch={reason}>Catch: {reason}</p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readMarks = (page: E2EPageEvaluator) => {
-        return page.evaluate(() => ((globalThis as any).__awaitInstanceMarks as string[]).slice())
-    }
+        return page.evaluate(() => ((globalThis as any).__awaitInstanceMarks as string[]).slice());
+    };
 
     test("await branch transitions do not break later parent update hooks", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-resolve").click()
-        await expect(page.locator("#then-branch")).toHaveText("Then: ok-1")
+        await page.locator("#btn-resolve").click();
+        await expect(page.locator("#then-branch")).toHaveText("Then: ok-1");
 
-        const marksBeforeFirstBump = await readMarks(page)
-        await page.locator("#btn-bump").click()
-        await expect(page.locator("#tick-text")).toHaveText("Tick: 1")
+        const marksBeforeFirstBump = await readMarks(page);
+        await page.locator("#btn-bump").click();
+        await expect(page.locator("#tick-text")).toHaveText("Tick: 1");
 
-        const marksAfterFirstBump = await readMarks(page)
-        expect(marksAfterFirstBump.slice(-2)).toEqual(["before", "after"])
-        expect(marksAfterFirstBump.length).toBeGreaterThanOrEqual(marksBeforeFirstBump.length + 2)
+        const marksAfterFirstBump = await readMarks(page);
+        expect(marksAfterFirstBump.slice(-2)).toEqual(["before", "after"]);
+        expect(marksAfterFirstBump.length).toBeGreaterThanOrEqual(marksBeforeFirstBump.length + 2);
 
-        await page.locator("#btn-reject").click()
-        await expect(page.locator("#catch-branch")).toHaveText("Catch: err-2")
+        await page.locator("#btn-reject").click();
+        await expect(page.locator("#catch-branch")).toHaveText("Catch: err-2");
 
-        const marksBeforeSecondBump = await readMarks(page)
-        await page.locator("#btn-bump").click()
-        await expect(page.locator("#tick-text")).toHaveText("Tick: 2")
+        const marksBeforeSecondBump = await readMarks(page);
+        await page.locator("#btn-bump").click();
+        await expect(page.locator("#tick-text")).toHaveText("Tick: 2");
 
-        const marksAfterSecondBump = await readMarks(page)
-        expect(marksAfterSecondBump.slice(-2)).toEqual(["before", "after"])
-        expect(marksAfterSecondBump.length).toBeGreaterThanOrEqual(marksBeforeSecondBump.length + 2)
-    })
+        const marksAfterSecondBump = await readMarks(page);
+        expect(marksAfterSecondBump.slice(-2)).toEqual(["before", "after"]);
+        expect(marksAfterSecondBump.length).toBeGreaterThanOrEqual(
+            marksBeforeSecondBump.length + 2,
+        );
+    });
 
     test("repeated pending and settled transitions keep current instance tracking stable", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         for (let i = 0; i < 3; i++) {
-            await page.locator("#btn-pending").click()
-            await expect(page.locator("#await-branch")).toHaveText("Pending...")
+            await page.locator("#btn-pending").click();
+            await expect(page.locator("#await-branch")).toHaveText("Pending...");
 
-            await page.locator("#btn-resolve").click()
-            await expect(page.locator("#then-branch")).toHaveText("Then: ok-" + (i + 1))
+            await page.locator("#btn-resolve").click();
+            await expect(page.locator("#then-branch")).toHaveText("Then: ok-" + (i + 1));
 
-            const marksBeforeBump = await readMarks(page)
-            await page.locator("#btn-bump").click()
-            await expect(page.locator("#tick-text")).toHaveText("Tick: " + (i + 1))
+            const marksBeforeBump = await readMarks(page);
+            await page.locator("#btn-bump").click();
+            await expect(page.locator("#tick-text")).toHaveText("Tick: " + (i + 1));
 
-            const marksAfterBump = await readMarks(page)
-            expect(marksAfterBump.slice(-2)).toEqual(["before", "after"])
-            expect(marksAfterBump.length).toBeGreaterThanOrEqual(marksBeforeBump.length + 2)
+            const marksAfterBump = await readMarks(page);
+            expect(marksAfterBump.slice(-2)).toEqual(["before", "after"]);
+            expect(marksAfterBump.length).toBeGreaterThanOrEqual(marksBeforeBump.length + 2);
         }
-    })
-})
+    });
+});

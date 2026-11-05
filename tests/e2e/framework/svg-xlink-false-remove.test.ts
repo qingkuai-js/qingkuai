@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -32,32 +32,32 @@ const scenario: E2EScenarioInput = {
             <button id="reset-href" @click={resetHref}>Reset</button>
             <p id="state-label">State: {stateLabel}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("clears xlink href when value becomes false", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         const hrefInitial = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefInitial).toBe("#shape-a")
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefInitial).toBe("#shape-a");
 
-        await page.locator("#set-false").click()
-        await expect(page.locator("#state-label")).toHaveText("State: false")
+        await page.locator("#set-false").click();
+        await expect(page.locator("#state-label")).toHaveText("State: false");
 
         const hrefAfterFalse = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefAfterFalse).toBeNull()
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefAfterFalse).toBeNull();
 
-        await page.locator("#reset-href").click()
-        await expect(page.locator("#state-label")).toHaveText("State: reset")
+        await page.locator("#reset-href").click();
+        await expect(page.locator("#state-label")).toHaveText("State: reset");
 
         const hrefAfterReset = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefAfterReset).toBe("#shape-a")
-    })
-})
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefAfterReset).toBe("#shape-a");
+    });
+});

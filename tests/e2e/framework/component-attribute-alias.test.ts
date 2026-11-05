@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -43,31 +43,31 @@ const scenario: E2EScenarioInput = {
                 <p id="alias-model">{model}</p>
                 <button id="alias-child-increase" @click={increaseFromChild}>Increase from child</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports alias(props) reactive destructuring", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#alias-title")).toHaveText("Alpha")
-        await page.locator("#update-title").click()
-        await expect(page.locator("#alias-title")).toHaveText("Beta")
-    })
+        await expect(page.locator("#alias-title")).toHaveText("Alpha");
+        await page.locator("#update-title").click();
+        await expect(page.locator("#alias-title")).toHaveText("Beta");
+    });
 
     test("supports alias(refs) reactive destructuring", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#parent-model")).toHaveText("Parent model: 2")
-        await expect(page.locator("#alias-model")).toHaveText("2")
+        await expect(page.locator("#parent-model")).toHaveText("Parent model: 2");
+        await expect(page.locator("#alias-model")).toHaveText("2");
 
-        await page.locator("#alias-child-increase").click()
-        await expect(page.locator("#parent-model")).toHaveText("Parent model: 3")
-        await expect(page.locator("#alias-model")).toHaveText("3")
+        await page.locator("#alias-child-increase").click();
+        await expect(page.locator("#parent-model")).toHaveText("Parent model: 3");
+        await expect(page.locator("#alias-model")).toHaveText("3");
 
-        await page.locator("#increase-parent-model").click()
-        await expect(page.locator("#parent-model")).toHaveText("Parent model: 4")
-        await expect(page.locator("#alias-model")).toHaveText("4")
-    })
-})
+        await page.locator("#increase-parent-model").click();
+        await expect(page.locator("#parent-model")).toHaveText("Parent model: 4");
+        await expect(page.locator("#alias-model")).toHaveText("4");
+    });
+});

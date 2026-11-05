@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -107,114 +107,114 @@ const scenario: E2EScenarioInput = {
                 <p id="probe-count">Count: {count}</p>
                 <p id="probe-version">Version: {props.version}</p>
             </div>
-        `
-    }
-}
+        `,
+    },
+};
 
 const readProbeInstance = (page: E2EPageEvaluator) =>
-    page.evaluate(() => (globalThis as any).__probeInstance)
+    page.evaluate(() => (globalThis as any).__probeInstance);
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("app root instance is exposed during its own onAfterMount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root")
-    })
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root");
+    });
 
     test("child instance with host is exposed during its onAfterMount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root")
+        await visitScenario(scenario);
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root");
 
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#probe-panel")).toBeVisible()
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports")
-    })
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#probe-panel")).toBeVisible();
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports");
+    });
 
     test("update hooks reuse the same instance and see exported data", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports")
+        await visitScenario(scenario);
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports");
 
-        await page.locator("#update-btn").click()
+        await page.locator("#update-btn").click();
         await expect(page.locator("#hook-log")).toHaveText(
-            "parent:app:root,mount:ok:exports,before:same,label,after:same"
-        )
-    })
+            "parent:app:root,mount:ok:exports,before:same,label,after:same",
+        );
+    });
 
     test("instance captured in onAfterMount is the live component instance", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports")
+        await visitScenario(scenario);
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports");
 
-        const inst = await readProbeInstance(page)
-        expect(inst).not.toBeNull()
-        expect(inst.label).toBe("probe")
-        expect(inst.count).toBe(0)
+        const inst = await readProbeInstance(page);
+        expect(inst).not.toBeNull();
+        expect(inst.label).toBe("probe");
+        expect(inst.count).toBe(0);
         const incrementType = await page.evaluate(
-            () => typeof (globalThis as any).__probeInstance.increment
-        )
-        expect(incrementType).toBe("function")
+            () => typeof (globalThis as any).__probeInstance.increment,
+        );
+        expect(incrementType).toBe("function");
 
-        await page.evaluate(() => (globalThis as any).__probeInstance.increment())
-        await expect(page.locator("#probe-count")).toHaveText("Count: 1")
+        await page.evaluate(() => (globalThis as any).__probeInstance.increment());
+        await expect(page.locator("#probe-count")).toHaveText("Count: 1");
         await expect(page.locator("#hook-log")).toHaveText(
-            "parent:app:root,mount:ok:exports,before:same,label,after:same"
-        )
-        expect((await readProbeInstance(page)).count).toBe(1)
-    })
+            "parent:app:root,mount:ok:exports,before:same,label,after:same",
+        );
+        expect((await readProbeInstance(page)).count).toBe(1);
+    });
 
     test("remount creates a fresh instance for the new hooks run", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports")
+        await visitScenario(scenario);
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports");
 
-        const firstInstance = await readProbeInstance(page)
-        expect(firstInstance).not.toBeNull()
+        const firstInstance = await readProbeInstance(page);
+        expect(firstInstance).not.toBeNull();
 
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#probe-panel")).toHaveCount(0)
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#probe-panel")).toHaveCount(0);
 
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#probe-panel")).toBeVisible()
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#probe-panel")).toBeVisible();
         await expect(page.locator("#hook-log")).toHaveText(
-            "parent:app:root,mount:ok:exports,before-destroy:same,after-destroy:same,mount:ok:exports"
-        )
+            "parent:app:root,mount:ok:exports,before-destroy:same,after-destroy:same,mount:ok:exports",
+        );
 
-        const secondInstance = await readProbeInstance(page)
-        expect(secondInstance).not.toBe(firstInstance)
-        expect(secondInstance.count).toBe(0)
-    })
+        const secondInstance = await readProbeInstance(page);
+        expect(secondInstance).not.toBe(firstInstance);
+        expect(secondInstance.count).toBe(0);
+    });
 
     test("destroy hooks see the same instance and outside hooks returns null", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports")
+        await visitScenario(scenario);
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#hook-log")).toHaveText("parent:app:root,mount:ok:exports");
 
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#probe-panel")).toHaveCount(0)
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#probe-panel")).toHaveCount(0);
         await expect(page.locator("#hook-log")).toHaveText(
-            "parent:app:root,mount:ok:exports,before-destroy:same,after-destroy:same"
-        )
+            "parent:app:root,mount:ok:exports,before-destroy:same,after-destroy:same",
+        );
 
-        await page.locator("#outside-btn").click()
-        await expect(page.locator("#outside-probe")).toHaveText("Outside: null")
-    })
-})
+        await page.locator("#outside-btn").click();
+        await expect(page.locator("#outside-probe")).toHaveText("Outside: null");
+    });
+});

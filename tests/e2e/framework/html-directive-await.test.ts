@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -40,35 +40,35 @@ const scenario: E2EScenarioInput = {
                 <div id="html-await-catch" #catch={err} #html>{err}</div>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports html directive combined with await branches", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#html-await-host #html-await-pending-inner")).toHaveText(
-            "Pending html"
-        )
-        await expect(page.locator("#html-await-host #html-await-then-inner")).toHaveCount(0)
-        await expect(page.locator("#html-await-host #html-await-catch-inner")).toHaveCount(0)
+            "Pending html",
+        );
+        await expect(page.locator("#html-await-host #html-await-then-inner")).toHaveCount(0);
+        await expect(page.locator("#html-await-host #html-await-catch-inner")).toHaveCount(0);
 
-        await page.locator("#html-await-resolve").click()
+        await page.locator("#html-await-resolve").click();
         await expect(page.locator("#html-await-host #html-await-then-inner")).toHaveText(
-            "Then html"
-        )
+            "Then html",
+        );
 
-        await page.locator("#html-await-reset").click()
+        await page.locator("#html-await-reset").click();
         await expect(page.locator("#html-await-host #html-await-pending-inner")).toHaveText(
-            "Pending html"
-        )
+            "Pending html",
+        );
 
-        await page.locator("#html-await-reject").click()
+        await page.locator("#html-await-reject").click();
         await expect(page.locator("#html-await-host #html-await-catch-inner")).toHaveText(
-            "Catch html"
-        )
-    })
-})
+            "Catch html",
+        );
+    });
+});

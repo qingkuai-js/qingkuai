@@ -1,23 +1,23 @@
-import { test, expect } from "vitest"
-import { compile } from "../../../../../src/compiler/compile"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { test, expect } from "vitest";
+import { compile } from "../../../../../src/compiler/compile";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 function compileRuntime(source: string, debug = false) {
-    const result = compile(formatSourceCode(source), { debug })
-    expect(result.messages.filter(item => item.type === "error")).toEqual([])
-    return result.code
+    const result = compile(formatSourceCode(source), { debug });
+    expect(result.messages.filter(item => item.type === "error")).toEqual([]);
+    return result.code;
 }
 
 function compileRuntimeWithOptions(source: string, options: Parameters<typeof compile>[1]) {
-    const result = compile(formatSourceCode(source), options)
-    expect(result.messages.filter(item => item.type === "error")).toEqual([])
-    return result.code
+    const result = compile(formatSourceCode(source), options);
+    expect(result.messages.filter(item => item.type === "error")).toEqual([]);
+    return result.code;
 }
 
 test("Component without context uses plain anchor call", () => {
-    const code = compileRuntime(`<Comp></Comp>`)
-    expect(code).toContain("_.renderComponent(Comp, _text1")
-})
+    const code = compileRuntime(`<Comp></Comp>`);
+    expect(code).toContain("_.renderComponent(Comp, _text1");
+});
 
 test("Component default-imported from .qk is called directly without renderComponent", () => {
     const code = compileRuntime(`
@@ -25,10 +25,10 @@ test("Component default-imported from .qk is called directly without renderCompo
             import Comp from "./Foo.qk"
         </lang-js>
         <Comp />
-    `)
-    expect(code).toContain("Comp(_text1")
-    expect(code).not.toContain("_.renderComponent(Comp")
-})
+    `);
+    expect(code).toContain("Comp(_text1");
+    expect(code).not.toContain("_.renderComponent(Comp");
+});
 
 test("Component default-imported from non-qk still uses renderComponent", () => {
     const code = compileRuntime(`
@@ -36,9 +36,9 @@ test("Component default-imported from non-qk still uses renderComponent", () => 
             import Comp from "./Foo"
         </lang-js>
         <Comp></Comp>
-    `)
-    expect(code).toContain("_.renderComponent(Comp, _text1")
-})
+    `);
+    expect(code).toContain("_.renderComponent(Comp, _text1");
+});
 
 test("Component #scope passes parent scope attribute in context", () => {
     const code = compileRuntime(`
@@ -46,10 +46,10 @@ test("Component #scope passes parent scope attribute in context", () => {
             div {}
         </lang-css>
         <Comp #scope></Comp>
-    `)
-    expect(code).toContain("_.renderComponent(Comp, _text1, {")
-    expect(code).toContain("_.getScopes(")
-})
+    `);
+    expect(code).toContain("_.renderComponent(Comp, _text1, {");
+    expect(code).toContain("_.getScopes(");
+});
 
 test("Root fragment uses standalone scope attribute", () => {
     const code = compileRuntime(`
@@ -57,10 +57,10 @@ test("Root fragment uses standalone scope attribute", () => {
             div {}
         </lang-css>
         <div></div>
-    `)
-    expect(code).toMatch(/createHtmlFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/)
-    expect(code).toContain("return _.mount(_anchor, _fragment1)")
-})
+    `);
+    expect(code).toMatch(/createHtmlFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/);
+    expect(code).toContain("return _.mount(_anchor, _fragment1)");
+});
 
 test("Slot without attrs uses UNDEF props and fallback closure", () => {
     const code = compileRuntime(`
@@ -69,10 +69,10 @@ test("Slot without attrs uses UNDEF props and fallback closure", () => {
                 <span>fallback</span>
             </slot>
         </Comp>
-    `)
-    expect(code).toContain('_.renderSlot("default",')
-    expect(code).toContain("_.UNDEF, () => {")
-})
+    `);
+    expect(code).toContain('_.renderSlot("default",');
+    expect(code).toContain("_.UNDEF, () => {");
+});
 
 test("Slot with dynamic and static attrs builds slot props object", () => {
     const code = compileRuntime(`
@@ -80,11 +80,11 @@ test("Slot with dynamic and static attrs builds slot props object", () => {
             let label = "A"
         </lang-js>
         <slot name="main" !title={label} fixed></slot>
-    `)
-    expect(code).toContain('_.renderSlot("main",')
-    expect(code).toContain("title: label")
-    expect(code).toContain("fixed: true")
-})
+    `);
+    expect(code).toContain('_.renderSlot("main",');
+    expect(code).toContain("title: label");
+    expect(code).toContain("fixed: true");
+});
 
 test("Component refs skip &handle in r block and pass setter via context.h", () => {
     const code = compileRuntime(`
@@ -93,14 +93,14 @@ test("Component refs skip &handle in r block and pass setter via context.h", () 
             let handle = null
         </lang-js>
         <Comp &value={model} &handle={handle}></Comp>
-    `)
-    expect(code).toContain("r: {")
-    expect(code).toContain("value: [")
-    expect(code).toContain("h: ")
-    expect(code).not.toContain("handle: [")
-    expect(code).not.toContain("bindHandleReceiver")
-    expect(code).toContain("_.renderComponent(Comp, _text1, {")
-})
+    `);
+    expect(code).toContain("r: {");
+    expect(code).toContain("value: [");
+    expect(code).toContain("h: ");
+    expect(code).not.toContain("handle: [");
+    expect(code).not.toContain("bindHandleReceiver");
+    expect(code).toContain("_.renderComponent(Comp, _text1, {");
+});
 
 test("Await then catch without inline then keeps NIL placeholder", () => {
     const code = compileRuntime(`
@@ -109,10 +109,10 @@ test("Await then catch without inline then keeps NIL placeholder", () => {
         </lang-js>
         <div #await={p}>pending</div>
         <div #catch={e}>error: {e}</div>
-    `)
-    expect(code).toContain("_.promiseBlock(")
-    expect(code).toContain("_.NIL,")
-})
+    `);
+    expect(code).toContain("_.promiseBlock(");
+    expect(code).toContain("_.NIL,");
+});
 
 test("Then branch without fragment content writes UNDEF", () => {
     const code = compileRuntime(`
@@ -121,9 +121,9 @@ test("Then branch without fragment content writes UNDEF", () => {
         </lang-js>
         <qk:spread #await={p}></qk:spread>
         <qk:spread #then={v}></qk:spread>
-    `)
-    expect(code).toContain("_.UNDEF,")
-})
+    `);
+    expect(code).toContain("_.UNDEF,");
+});
 
 test("List block without key uses listBlock call", () => {
     const code = compileRuntime(`
@@ -131,10 +131,10 @@ test("List block without key uses listBlock call", () => {
             let items = [1, 2, 3]
         </lang-js>
         <div #for={item of items}>{item}</div>
-    `)
-    expect(code).toContain("_.listBlock(")
-    expect(code).not.toContain("_.keyedListBlock(")
-})
+    `);
+    expect(code).toContain("_.listBlock(");
+    expect(code).not.toContain("_.keyedListBlock(");
+});
 
 test("Expression event uses inline delegate block", () => {
     const code = compileRuntime(`
@@ -142,15 +142,15 @@ test("Expression event uses inline delegate block", () => {
             const fn = 0
         </lang-js>
         <button @keyup={fn + 1}></button>
-    `)
-    expect(code).toContain('_.delegate(_button1, "keyup", $arg => {')
-    expect(code).toContain("fn + 1")
-})
+    `);
+    expect(code).toContain('_.delegate(_button1, "keyup", $arg => {');
+    expect(code).toContain("fn + 1");
+});
 
 test("Function literal event is passed directly", () => {
-    const code = compileRuntime(`<button @click={() => 1}></button>`)
-    expect(code).toContain('_.delegate(_button1, "click", () => 1)')
-})
+    const code = compileRuntime(`<button @click={() => 1}></button>`);
+    expect(code).toContain('_.delegate(_button1, "click", () => 1)');
+});
 
 test("Inline statement handler becomes $arg block", () => {
     const code = compileRuntime(`
@@ -158,23 +158,23 @@ test("Inline statement handler becomes $arg block", () => {
             let count = 0
         </lang-js>
         <button @click={count++}></button>
-    `)
-    expect(code).toContain("$arg => {")
-    expect(code).toContain("count.$++")
-})
+    `);
+    expect(code).toContain("$arg => {");
+    expect(code).toContain("count.$++");
+});
 
 test("Invalid slot prop key uses computed context key", () => {
     const code = compileRuntime(`
         <slot long-prop="a"></slot>
-    `)
-    expect(code).toContain('["long-prop"]: "a"')
-})
+    `);
+    expect(code).toContain('["long-prop"]: "a"');
+});
 
 test("Export-free template returns plain mount call", () => {
-    const code = compileRuntime("")
-    expect(code).toContain("return _.mount()")
-    expect(code).not.toContain("defineExports")
-})
+    const code = compileRuntime("");
+    expect(code).toContain("return _.mount()");
+    expect(code).not.toContain("defineExports");
+});
 
 test("Debug mode keeps generation parseable for same branches", () => {
     const code = compileRuntime(
@@ -187,13 +187,13 @@ test("Debug mode keeps generation parseable for same branches", () => {
         <div #await={p}>pending</div>
         <div #then={v}>{v}</div>
     `,
-        true
-    )
-    expect(code).toContain("_.promiseBlock(")
-    expect(code).toContain("_.renderComponent(Comp, _text1, {")
-    expect(code).toContain("p: {")
-    expect(code).not.toContain("r:")
-})
+        true,
+    );
+    expect(code).toContain("_.promiseBlock(");
+    expect(code).toContain("_.renderComponent(Comp, _text1, {");
+    expect(code).toContain("p: {");
+    expect(code).not.toContain("r:");
+});
 
 test("Component inline event in props becomes $arg wrapper", () => {
     const code = compileRuntime(`
@@ -201,22 +201,22 @@ test("Component inline event in props becomes $arg wrapper", () => {
             let count = 0
         </lang-js>
         <Comp @click={count++}></Comp>
-    `)
-    expect(code).toContain("p: {")
-    expect(code).toContain("click: __ => ($arg => {")
-    expect(code).toContain("count.$++")
-})
+    `);
+    expect(code).toContain("p: {");
+    expect(code).toContain("click: __ => ($arg => {");
+    expect(code).toContain("count.$++");
+});
 
 test("Component slot patterns generate arg list", () => {
     const code = compileRuntime(`
         <Comp>
             <div #slot={ctx from "main"}></div>
         </Comp>
-    `)
-    expect(code).toContain("s: {")
-    expect(code).toContain("main: (")
-    expect(code).toContain(", ctx")
-})
+    `);
+    expect(code).toContain("s: {");
+    expect(code).toContain("main: (");
+    expect(code).toContain(", ctx");
+});
 
 test("Await with then omits NIL placeholder", () => {
     const code = compileRuntime(`
@@ -226,10 +226,10 @@ test("Await with then omits NIL placeholder", () => {
         <div #await={p}>pending</div>
         <div #then={v}>ok: {v}</div>
         <div #catch={e}>err: {e}</div>
-    `)
-    expect(code).toContain("_.promiseBlock(")
-    expect(code).not.toContain("_.NIL,")
-})
+    `);
+    expect(code).toContain("_.promiseBlock(");
+    expect(code).not.toContain("_.NIL,");
+});
 
 test("Keyed list with text equal to key still generates setText for node text", () => {
     const code = compileRuntime(`
@@ -237,10 +237,10 @@ test("Keyed list with text equal to key still generates setText for node text", 
             let list = [{ id: 1 }, { id: 2 }]
         </lang-js>
         <div #for={item of list} #key={item.id}>{item.id}</div>
-    `)
-    expect(code).toContain("_.keyedListBlock(")
-    expect(code).toContain("_.setText(")
-})
+    `);
+    expect(code).toContain("_.keyedListBlock(");
+    expect(code).toContain("_.setText(");
+});
 
 test("Nested member access key matches key-directive optimization", () => {
     const code = compileRuntime(`
@@ -248,11 +248,11 @@ test("Nested member access key matches key-directive optimization", () => {
             let list = [{ nested: { id: 1 } }]
         </lang-js>
         <div #for={item of list} #key={item.nested.id}>{item.nested.id}</div>
-    `)
-    expect(code).toContain("_.keyedListBlock(")
-    expect(code).toContain("_.setText(")
-    expect(code).not.toContain("_.renderEffect(")
-})
+    `);
+    expect(code).toContain("_.keyedListBlock(");
+    expect(code).toContain("_.setText(");
+    expect(code).not.toContain("_.renderEffect(");
+});
 
 test("Keyed list with extra text keeps setText update", () => {
     const code = compileRuntime(`
@@ -260,10 +260,10 @@ test("Keyed list with extra text keeps setText update", () => {
             let list = [{ id: 1 }, { id: 2 }]
         </lang-js>
         <div #for={item of list} #key={item.id}>id: {item.id}</div>
-    `)
-    expect(code).toContain("_.keyedListBlock(")
-    expect(code).toContain("_.setText(")
-})
+    `);
+    expect(code).toContain("_.keyedListBlock(");
+    expect(code).toContain("_.setText(");
+});
 
 test("Non-delegatable event uses listen call", () => {
     const code = compileRuntime(`
@@ -271,10 +271,10 @@ test("Non-delegatable event uses listen call", () => {
             let y = 0
         </lang-js>
         <div @wheel={y++}></div>
-    `)
-    expect(code).toContain('_.listen(_div1, "wheel", $arg => {')
-    expect(code).toContain("y.$++")
-})
+    `);
+    expect(code).toContain('_.listen(_div1, "wheel", $arg => {');
+    expect(code).toContain("y.$++");
+});
 
 test("If-elif-else chain keeps condition block tuple", () => {
     const code = compileRuntime(`
@@ -285,11 +285,11 @@ test("If-elif-else chain keeps condition block tuple", () => {
         <div #if={a}>A</div>
         <div #elif={b}>B</div>
         <div #else>C</div>
-    `)
-    expect(code).toContain("_.conditionBlock([")
-    expect(code).toContain("__ => (a)")
-    expect(code).toContain("__ => (b)")
-})
+    `);
+    expect(code).toContain("_.conditionBlock([");
+    expect(code).toContain("__ => (a)");
+    expect(code).toContain("__ => (b)");
+});
 
 test("Await then catch chain keeps promiseBlock branches", () => {
     const code = compileRuntime(`
@@ -299,12 +299,12 @@ test("Await then catch chain keeps promiseBlock branches", () => {
         <div #await={p}>P</div>
         <div #then={v}>T {v}</div>
         <div #catch={e}>C {e}</div>
-    `)
-    expect(code).toContain("_.promiseBlock(")
-    expect(code).toContain("__ => (p.$)")
-    expect(code).toContain("(v) => {")
-    expect(code).toContain("(e) => {")
-})
+    `);
+    expect(code).toContain("_.promiseBlock(");
+    expect(code).toContain("__ => (p.$)");
+    expect(code).toContain("(v) => {");
+    expect(code).toContain("(e) => {");
+});
 
 test("Component refs with multiple keys emit entries", () => {
     const code = compileRuntime(`
@@ -313,21 +313,21 @@ test("Component refs with multiple keys emit entries", () => {
             let b = false
         </lang-js>
         <Comp &value={a} &checked={b}></Comp>
-    `)
-    expect(code).toContain("r: {")
-    expect(code).toContain("value: [")
-    expect(code).toContain("checked: [")
-})
+    `);
+    expect(code).toContain("r: {");
+    expect(code).toContain("value: [");
+    expect(code).toContain("checked: [");
+});
 
 test("Component default slot without #slot directive is emitted", () => {
     const code = compileRuntime(`
         <Comp>
             <div>child</div>
         </Comp>
-    `)
-    expect(code).toContain("s: {")
-    expect(code).toContain('["default"]: (')
-})
+    `);
+    expect(code).toContain("s: {");
+    expect(code).toContain('["default"]: (');
+});
 
 test("Html directive with sibling directive is generated after node selection", () => {
     const code = compileRuntime(`
@@ -336,10 +336,10 @@ test("Html directive with sibling directive is generated after node selection", 
             let html = "<b>x</b>"
         </lang-js>
         <div #if={ok} #html>{html}</div>
-    `)
-    expect(code).toContain("_.conditionBlock([")
-    expect(code).toContain("_.htmlBlock(")
-})
+    `);
+    expect(code).toContain("_.conditionBlock([");
+    expect(code).toContain("_.htmlBlock(");
+});
 
 test("Keyed for without explicit pattern uses anchor argument branch", () => {
     const code = compileRuntime(`
@@ -348,10 +348,10 @@ test("Keyed for without explicit pattern uses anchor argument branch", () => {
             let key = 0
         </lang-js>
         <div #for={list} #key={key}>{list.length}</div>
-    `)
-    expect(code).toContain("_.keyedListBlock(")
-    expect(code).toContain("(_anchor")
-})
+    `);
+    expect(code).toContain("_.keyedListBlock(");
+    expect(code).toContain("(_anchor");
+});
 
 test("Class and select dynamic attributes use dedicated setters", () => {
     const code = compileRuntime(`
@@ -361,11 +361,11 @@ test("Class and select dynamic attributes use dedicated setters", () => {
         </lang-js>
         <div class="base" !class={cls}></div>
         <select !value={selected}></select>
-    `)
-    expect(code).toContain("_.setHtmlClassName(")
-    expect(code).toContain('["base", ')
-    expect(code).toContain("_.setSelectValue(")
-})
+    `);
+    expect(code).toContain("_.setHtmlClassName(");
+    expect(code).toContain('["base", ');
+    expect(code).toContain("_.setSelectValue(");
+});
 
 test("Complex event expression and modifiers cover wrapper and flags", () => {
     const code = compileRuntime(`
@@ -375,10 +375,10 @@ test("Complex event expression and modifiers cover wrapper and flags", () => {
             let cond = true
         </lang-js>
         <button @click|stop|capture={cond ? a : b}></button>
-    `)
-    expect(code).toContain('_.delegate(_button1, "click", $arg => {')
-    expect(code).toContain(", 18)")
-})
+    `);
+    expect(code).toContain('_.delegate(_button1, "click", $arg => {');
+    expect(code).toContain(", 18)");
+});
 
 test("Native refs generate all bind call variants", () => {
     const code = compileRuntime(`
@@ -398,14 +398,14 @@ test("Native refs generate all bind call variants", () => {
         <input &value={v} />
         <select &value={sv}></select>
         <select multiple &value={sm}></select>
-    `)
-    expect(code).toContain("_.bindInputNumber(")
-    expect(code).toContain("_.bindInputChecked(")
-    expect(code).toContain("_.bindInputGroup(")
-    expect(code).toContain("_.bindHandleReceiver(")
-    expect(code).toContain("_.bindInputValue(")
-    expect(code).toContain("_.bindSelectValue(")
-})
+    `);
+    expect(code).toContain("_.bindInputNumber(");
+    expect(code).toContain("_.bindInputChecked(");
+    expect(code).toContain("_.bindInputGroup(");
+    expect(code).toContain("_.bindHandleReceiver(");
+    expect(code).toContain("_.bindInputValue(");
+    expect(code).toContain("_.bindSelectValue(");
+});
 
 test("Dotted component name and boolean prop are emitted", () => {
     const code = compileRuntime(`
@@ -413,11 +413,11 @@ test("Dotted component name and boolean prop are emitted", () => {
             let UI = { Button: Comp }
         </lang-js>
         <UI.Button disabled></UI.Button>
-    `)
-    expect(code).toContain("UI.$.Button")
-    expect(code).toContain("disabled: true")
-    expect(code).toContain("dynamicComponent")
-})
+    `);
+    expect(code).toContain("UI.$.Button");
+    expect(code).toContain("disabled: true");
+    expect(code).toContain("dynamicComponent");
+});
 
 test("Reactive identifier component tag uses accessor call", () => {
     const code = compileRuntime(`
@@ -425,10 +425,10 @@ test("Reactive identifier component tag uses accessor call", () => {
             let Comp = reactive(Foo)
         </lang-js>
         <Comp></Comp>
-    `)
-    expect(code).toContain("Comp.$")
-    expect(code).toContain("dynamicComponent")
-})
+    `);
+    expect(code).toContain("Comp.$");
+    expect(code).toContain("dynamicComponent");
+});
 
 test("Reactive base in member component tag keeps accessor on base", () => {
     const code = compileRuntime(`
@@ -436,10 +436,10 @@ test("Reactive base in member component tag keeps accessor on base", () => {
             let UI = reactive({ Comp })
         </lang-js>
         <UI.Comp></UI.Comp>
-    `)
-    expect(code).toContain("UI.$.Comp")
-    expect(code).toContain("dynamicComponent")
-})
+    `);
+    expect(code).toContain("UI.$.Comp");
+    expect(code).toContain("dynamicComponent");
+});
 
 test("Component events and dynamic props use getter wrappers", () => {
     const code = compileRuntime(`
@@ -448,11 +448,11 @@ test("Component events and dynamic props use getter wrappers", () => {
             let handler = () => 1
         </lang-js>
         <Comp @click={handler} !title={title}></Comp>
-    `)
-    expect(code).toContain("click: __ => (")
-    expect(code).toContain("handler")
-    expect(code).toContain("title: __ => (title")
-})
+    `);
+    expect(code).toContain("click: __ => (");
+    expect(code).toContain("handler");
+    expect(code).toContain("title: __ => (title");
+});
 
 test("Await with same-node then writes UNDEF no-render placeholder", () => {
     const code = compileRuntime(`
@@ -460,10 +460,10 @@ test("Await with same-node then writes UNDEF no-render placeholder", () => {
             let p = Promise.resolve(1)
         </lang-js>
         <div #await={p} #then={v}></div>
-    `)
-    expect(code).toContain("_.promiseBlock(")
-    expect(code).toContain("_.UNDEF,")
-})
+    `);
+    expect(code).toContain("_.promiseBlock(");
+    expect(code).toContain("_.UNDEF,");
+});
 
 test("For without explicit pattern and without key uses default getter arg", () => {
     const code = compileRuntime(`
@@ -471,10 +471,10 @@ test("For without explicit pattern and without key uses default getter arg", () 
             let list = [1, 2, 3]
         </lang-js>
         <div #for={list}>x</div>
-    `)
-    expect(code).toContain("_.listBlock(")
-    expect(code).toContain("__ => {")
-})
+    `);
+    expect(code).toContain("_.listBlock(");
+    expect(code).toContain("__ => {");
+});
 
 test("Interpretive comments annotate wrapper and general event flags", () => {
     const code = compileRuntimeWithOptions(
@@ -484,12 +484,12 @@ test("Interpretive comments annotate wrapper and general event flags", () => {
             </lang-js>
             <input @keydown|enter|stop={handler} />
         `,
-        { debug: false, interpretiveComments: true }
-    )
-    expect(code).toContain("_.createEventWrapper(")
-    expect(code).toContain("/* enter */")
-    expect(code).toContain("/* stop */")
-})
+        { debug: false, interpretiveComments: true },
+    );
+    expect(code).toContain("_.createEventWrapper(");
+    expect(code).toContain("/* enter */");
+    expect(code).toContain("/* stop */");
+});
 
 test("debug mode with explicit options overrides auto-defaults", () => {
     const code = compileRuntimeWithOptions(
@@ -499,21 +499,21 @@ test("debug mode with explicit options overrides auto-defaults", () => {
             </lang-js>
             <div>{x}</div>
         `,
-        { debug: true, sourcemap: false, interpretiveComments: false, preserveHtmlComments: false }
-    )
-    expect(code).toContain("export default function")
-})
+        { debug: true, sourcemap: false, interpretiveComments: false, preserveHtmlComments: false },
+    );
+    expect(code).toContain("export default function");
+});
 
 test("nested component: child component renders as default slot", () => {
     const code = compileRuntime(`
         <Foo>
             <Bar />
         </Foo>
-    `)
-    expect(code).toContain("_.renderComponent(Foo, _text1, {")
-    expect(code).toContain('["default"]: (_anchor')
-    expect(code).toContain("_.renderComponent(Bar, _anchor")
-})
+    `);
+    expect(code).toContain("_.renderComponent(Foo, _text1, {");
+    expect(code).toContain('["default"]: (_anchor');
+    expect(code).toContain("_.renderComponent(Bar, _anchor");
+});
 
 test("nested component: multiple child components with different slot names", () => {
     const code = compileRuntime(`
@@ -521,11 +521,11 @@ test("nested component: multiple child components with different slot names", ()
             <Bar #slot={"header"} />
             <Baz #slot={"footer"} />
         </Foo>
-    `)
-    expect(code).toContain("_.renderComponent(Foo, _text1, {")
-    expect(code).toContain("_.renderComponent(Bar, _anchor")
-    expect(code).toContain("_.renderComponent(Baz, _anchor")
-})
+    `);
+    expect(code).toContain("_.renderComponent(Foo, _text1, {");
+    expect(code).toContain("_.renderComponent(Bar, _anchor");
+    expect(code).toContain("_.renderComponent(Baz, _anchor");
+});
 
 test("nested component: child component with named and default slots", () => {
     const code = compileRuntime(`
@@ -533,12 +533,12 @@ test("nested component: child component with named and default slots", () => {
             <Bar #slot={"header"} />
             <Baz />
         </Foo>
-    `)
-    expect(code).toContain("header: (_anchor")
-    expect(code).toContain("_.renderComponent(Bar, _anchor")
-    expect(code).toContain('["default"]: (_anchor')
-    expect(code).toContain("_.renderComponent(Baz, _anchor")
-})
+    `);
+    expect(code).toContain("header: (_anchor");
+    expect(code).toContain("_.renderComponent(Bar, _anchor");
+    expect(code).toContain('["default"]: (_anchor');
+    expect(code).toContain("_.renderComponent(Baz, _anchor");
+});
 
 test("nested component: deeply nested three levels", () => {
     const code = compileRuntime(`
@@ -547,22 +547,22 @@ test("nested component: deeply nested three levels", () => {
                 <C />
             </B>
         </A>
-    `)
-    expect(code).toContain("_.renderComponent(A, _text1, {")
-    expect(code).toContain("_.renderComponent(B, _anchor1, {")
-    expect(code).toContain("_.renderComponent(C, _anchor")
-})
+    `);
+    expect(code).toContain("_.renderComponent(A, _text1, {");
+    expect(code).toContain("_.renderComponent(B, _anchor1, {");
+    expect(code).toContain("_.renderComponent(C, _anchor");
+});
 
 test("nested component: component without context still uses plain call", () => {
-    const code = compileRuntime(`<Foo></Foo>`)
-    expect(code).toContain("_.renderComponent(Foo, _text1")
-})
+    const code = compileRuntime(`<Foo></Foo>`);
+    expect(code).toContain("_.renderComponent(Foo, _text1");
+});
 
 test("root-level component without scope inherits ancestor scope", () => {
-    const code = compileRuntime(`<Foo></Foo>`)
-    expect(code).toContain("_.renderComponent(Foo, _text1, {")
-    expect(code).toContain("_.getScopes()")
-})
+    const code = compileRuntime(`<Foo></Foo>`);
+    expect(code).toContain("_.renderComponent(Foo, _text1, {");
+    expect(code).toContain("_.getScopes()");
+});
 
 test("root-level component without scope and with styles emits scopes", () => {
     const code = compileRuntime(`
@@ -570,15 +570,15 @@ test("root-level component without scope and with styles emits scopes", () => {
             div {}
         </lang-css>
         <Foo></Foo>
-    `)
-    expect(code).toContain("_.renderComponent(Foo, _text1, {")
-    expect(code).toContain("_.getScopes()")
-})
+    `);
+    expect(code).toContain("_.renderComponent(Foo, _text1, {");
+    expect(code).toContain("_.getScopes()");
+});
 
 test("fragments nested in svg use the svg namespace getter", () => {
-    const code = compileRuntime(`<svg viewBox="0 0 10 10"><path #if={bool}></path></svg>`)
-    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
-})
+    const code = compileRuntime(`<svg viewBox="0 0 10 10"><path #if={bool}></path></svg>`);
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
+});
 
 test("svg namespace context is inherited through element and spread ancestors", () => {
     const code = compileRuntime(`
@@ -590,10 +590,10 @@ test("svg namespace context is inherited through element and spread ancestors", 
                 <circle #if={bool}></circle>
             </qk:spread>
         </svg>
-    `)
-    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
-    expect(code).toMatch(/createSvgFragmentGetter\(`<circle><\/circle>`\)/)
-})
+    `);
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
+    expect(code).toMatch(/createSvgFragmentGetter\(`<circle><\/circle>`\)/);
+});
 
 test("svg namespace context is not inherited across a component", () => {
     const code = compileRuntime(`
@@ -602,10 +602,10 @@ test("svg namespace context is not inherited across a component", () => {
                 <path #if={bool}></path>
             </Comp>
         </svg>
-    `)
-    expect(code).toMatch(/createSlotFragmentGetter\(`<path><\/path>`\)/)
-    expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/)
-})
+    `);
+    expect(code).toMatch(/createSlotFragmentGetter\(`<path><\/path>`\)/);
+    expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/);
+});
 
 test("svg namespace context is inherited by slot fallback content", () => {
     const code = compileRuntime(`
@@ -614,9 +614,9 @@ test("svg namespace context is inherited by slot fallback content", () => {
                 <path #if={bool}></path>
             </slot>
         </svg>
-    `)
-    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
-})
+    `);
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
+});
 
 test("svg namespace context reaches the attributes of slot fallback content", () => {
     const code = compileRuntime(`
@@ -625,12 +625,12 @@ test("svg namespace context reaches the attributes of slot fallback content", ()
                 <path !class={label} !opacity={count}></path>
             </slot>
         </svg>
-    `)
-    expect(code).toMatch(/_\.setClassAttribute\(/)
-    expect(code).toMatch(/_\.setAttribute\(/)
-    expect(code).not.toMatch(/_\.setHtmlClassName\(/)
-    expect(code).not.toMatch(/_\.setHtmlAttribute\(/)
-})
+    `);
+    expect(code).toMatch(/_\.setClassAttribute\(/);
+    expect(code).toMatch(/_\.setAttribute\(/);
+    expect(code).not.toMatch(/_\.setHtmlClassName\(/);
+    expect(code).not.toMatch(/_\.setHtmlAttribute\(/);
+});
 
 test("svg namespace context stops at foreignObject regardless of tag casing", () => {
     for (const tag of ["foreignObject", "foreignobject"]) {
@@ -641,11 +641,11 @@ test("svg namespace context stops at foreignObject regardless of tag casing", ()
                     <path #if={bool}></path>
                 </${tag}>
             </svg>
-        `)
-        expect(code).toMatch(/_\.setHtmlClassName\(/)
-        expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/)
+        `);
+        expect(code).toMatch(/_\.setHtmlClassName\(/);
+        expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/);
     }
-})
+});
 
 test("identical fragments in svg and html contexts are not merged", () => {
     const code = compileRuntime(
@@ -657,11 +657,11 @@ test("identical fragments in svg and html contexts are not merged", () => {
             <path #if={bool}></path>
         </div>
     `,
-        true
-    )
-    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
-    expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/)
-})
+        true,
+    );
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
+    expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/);
+});
 
 test("slot content uses the runtime namespace aware getter", () => {
     const code = compileRuntime(`
@@ -671,10 +671,10 @@ test("slot content uses the runtime namespace aware getter", () => {
             let visible = true
         </lang-js>
         <Icon><path !class={label} d="M0 0h5v5H0z"></path></Icon>
-    `)
-    expect(code).toMatch(/createSlotFragmentGetter\(`<path/)
-    expect(code).toMatch(/_\.setClassAttribute\(/)
-})
+    `);
+    expect(code).toMatch(/createSlotFragmentGetter\(`<path/);
+    expect(code).toMatch(/_\.setClassAttribute\(/);
+});
 
 test("slot content nested in its own svg keeps the static svg getter", () => {
     const code = compileRuntime(`
@@ -683,10 +683,10 @@ test("slot content nested in its own svg keeps the static svg getter", () => {
             let visible = true
         </lang-js>
         <Icon><svg viewBox="0 0 10 10"><path #if={visible}></path></svg></Icon>
-    `)
-    expect(code).toMatch(/createSlotFragmentGetter\(`<svg/)
-    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
-})
+    `);
+    expect(code).toMatch(/createSlotFragmentGetter\(`<svg/);
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/);
+});
 
 test("plain templates keep the plain fragment getter and class setter", () => {
     const code = compileRuntime(`
@@ -698,8 +698,8 @@ test("plain templates keep the plain fragment getter and class setter", () => {
             <span !class={label}></span>
             <path #if={visible}></path>
         </div>
-    `)
-    expect(code).not.toMatch(/createSlotFragmentGetter/)
-    expect(code).not.toMatch(/createSvgFragmentGetter/)
-    expect(code).toMatch(/_\.setHtmlClassName\(/)
-})
+    `);
+    expect(code).not.toMatch(/createSlotFragmentGetter/);
+    expect(code).not.toMatch(/createSvgFragmentGetter/);
+    expect(code).toMatch(/_\.setHtmlClassName\(/);
+});

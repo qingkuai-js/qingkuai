@@ -1,4 +1,4 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     Range,
@@ -8,71 +8,71 @@ import type {
     SelectorOperation,
     TemplateNodeContext,
     GeneratedSelectorInfo,
-    SelectorExpressionValidation
-} from "#type-declarations/compiler"
-import type { RuntimeCodeWriter } from "../transformer/writer"
+    SelectorExpressionValidation,
+} from "#type-declarations/compiler";
+import type { RuntimeCodeWriter } from "../transformer/writer";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
 import {
     getParsedDirective,
     getParsedExpression,
-    isSvgElementContext
-} from "../../util/compiler/template"
-import { walkTsNode } from "../ts-ast/walk"
-import { getMaybeReusedString } from "./compress"
-import { CodeEditor } from "../transformer/editor"
-import { analyzeResult, generateIdentifier } from "../state"
-import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
-import { SelectorExpressionType, SelectorOperationMethod } from "../enums"
-import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../util/compiler/sundry"
-import { isBindingReference, isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert"
+    isSvgElementContext,
+} from "../../util/compiler/template";
+import { walkTsNode } from "../ts-ast/walk";
+import { getMaybeReusedString } from "./compress";
+import { CodeEditor } from "../transformer/editor";
+import { analyzeResult, generateIdentifier } from "../state";
+import { getStriptTypeOperationsNode } from "../ts-ast/sundry";
+import { SelectorExpressionType, SelectorOperationMethod } from "../enums";
+import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../util/compiler/sundry";
+import { isBindingReference, isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert";
 
 export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
-    const keyDirective = forNodeContext.attributesMap["#key"]
-    const forDirective = forNodeContext.attributesMap["#for"]
+    const keyDirective = forNodeContext.attributesMap["#key"];
+    const forDirective = forNodeContext.attributesMap["#for"];
     if (!keyDirective || !forDirective) {
-        return []
+        return [];
     }
 
-    const parsedForDirective = getParsedDirective(forDirective)
-    const parsedKeyExpression = getParsedExpression(keyDirective)
+    const parsedForDirective = getParsedDirective(forDirective);
+    const parsedKeyExpression = getParsedExpression(keyDirective);
     if (!parsedForDirective || !parsedKeyExpression) {
-        return []
+        return [];
     }
     if (!parsedForDirective.context?.argId) {
-        return []
+        return [];
     }
 
-    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
+    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node);
     if (!ts.isIdentifier(keyNode) && !isMemberAccessExpression(keyNode)) {
-        return []
+        return [];
     }
 
-    const node = forNodeContext.node
+    const node = forNodeContext.node;
     if (node.componentTag || node.tag === "slot") {
-        return []
+        return [];
     }
 
-    const ret: GeneratedSelectorInfo[] = []
+    const ret: GeneratedSelectorInfo[] = [];
     for (const attribute of forNodeContext.dynamicAttributes) {
-        const expression = getParsedExpression(attribute)
+        const expression = getParsedExpression(attribute);
         if (!expression) {
-            continue
+            continue;
         }
 
-        const operation = getSelectorOperation(forNodeContext, attribute)
+        const operation = getSelectorOperation(forNodeContext, attribute);
         if (!operation) {
-            continue
+            continue;
         }
 
         const selectorValidation = validateSelectorExpression(
             expression,
             parsedForDirective,
-            parsedKeyExpression
-        )
+            parsedKeyExpression,
+        );
         if (!selectorValidation) {
-            continue
+            continue;
         }
 
         ret.push({
@@ -84,115 +84,115 @@ export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
             targetNodeContext: forNodeContext,
             id: ensureIdWithNumSuffix("_selector"),
             topLevelIdentifierName: selectorValidation.topLevelIdentifierName,
-            topLevelTransformedTo: selectorValidation.topLevelTransformedTo
-        })
+            topLevelTransformedTo: selectorValidation.topLevelTransformedTo,
+        });
     }
-    return ret
+    return ret;
 }
 
 export function writeSelectorDeclaration(
     writer: RuntimeCodeWriter,
     info: GeneratedSelectorInfo,
-    nodeGetterId: string
+    nodeGetterId: string,
 ) {
-    writer.wrapLine().write(`const ${info.id} = (() => {`).indent()
-    writer.write(`let prevValue = ${info.topLevelTransformedTo}`)
-    writer.wrapLine().write("return key => {").indent()
-    writer.write("if (key !== prevValue) {").indent()
-    writer.writeLine(`const prevNode = ${nodeGetterId}(prevValue)`)
-    writer.writeLine(`const node = ${nodeGetterId}(key)`)
-    writer.write("if (prevNode) {").indent()
-    writeDomOperationCall(writer, "prevNode", info, SelectorExpressionType.Prev)
-    writer.dedent().write("}").wrapLine()
-    writer.write("if (node) {").indent()
-    writeDomOperationCall(writer, "node", info, SelectorExpressionType.Next)
-    writer.dedent().write("}").wrapLine()
-    writer.write("prevValue = key")
-    writer.dedent().write("}")
-    writer.dedent().writeLine("}")
-    writer.dedent().write("}")
-    writer.write(")()")
+    writer.wrapLine().write(`const ${info.id} = (() => {`).indent();
+    writer.write(`let prevValue = ${info.topLevelTransformedTo}`);
+    writer.wrapLine().write("return key => {").indent();
+    writer.write("if (key !== prevValue) {").indent();
+    writer.writeLine(`const prevNode = ${nodeGetterId}(prevValue)`);
+    writer.writeLine(`const node = ${nodeGetterId}(key)`);
+    writer.write("if (prevNode) {").indent();
+    writeDomOperationCall(writer, "prevNode", info, SelectorExpressionType.Prev);
+    writer.dedent().write("}").wrapLine();
+    writer.write("if (node) {").indent();
+    writeDomOperationCall(writer, "node", info, SelectorExpressionType.Next);
+    writer.dedent().write("}").wrapLine();
+    writer.write("prevValue = key");
+    writer.dedent().write("}");
+    writer.dedent().writeLine("}");
+    writer.dedent().write("}");
+    writer.write(")()");
 }
 
 export function hasSelectorForAttribute(
     selectorInfos: GeneratedSelectorInfo[],
     nodeContext: TemplateNodeContext,
-    attribute: TemplateAttribute
+    attribute: TemplateAttribute,
 ) {
     return selectorInfos.some(item => {
-        return item.targetNodeContext === nodeContext && item.targetAttribute === attribute
-    })
+        return item.targetNodeContext === nodeContext && item.targetAttribute === attribute;
+    });
 }
 
 export function hasSelectorForTextNode(
     selectorInfos: GeneratedSelectorInfo[],
-    nodeContext: TemplateNodeContext
+    nodeContext: TemplateNodeContext,
 ) {
     return selectorInfos.some(item => {
         return (
             item.targetNodeContext === nodeContext &&
             item.operation.method === SelectorOperationMethod.SetText
-        )
-    })
+        );
+    });
 }
 
 function getSelectorOperation(
     nodeContext: TemplateNodeContext,
-    attribute: TemplateAttribute
+    attribute: TemplateAttribute,
 ): SelectorOperation | undefined {
-    const baseName = getAttributeBaseName(attribute.name.raw)
+    const baseName = getAttributeBaseName(attribute.name.raw);
     if (baseName === "value" && nodeContext.node.tag === "select") {
-        return
+        return;
     }
 
-    const isSvgElement = isSvgElementContext(nodeContext)
+    const isSvgElement = isSvgElementContext(nodeContext);
     if (baseName === "class") {
-        const staticClassAttr = nodeContext.attributesMap.class
+        const staticClassAttr = nodeContext.attributesMap.class;
         if (isSvgElement || nodeContext.inSlotContent) {
             return {
                 staticClassAttr,
-                method: SelectorOperationMethod.SetClassAttribute
-            }
+                method: SelectorOperationMethod.SetClassAttribute,
+            };
         } else {
             return {
                 staticClassAttr,
-                method: SelectorOperationMethod.SetHtmlClassName
-            }
+                method: SelectorOperationMethod.SetHtmlClassName,
+            };
         }
     }
     if (baseName.startsWith("xlink:")) {
         return {
             method: SelectorOperationMethod.SetXlinkAttribute,
-            attrName: baseName.slice(6)
-        }
+            attrName: baseName.slice(6),
+        };
     }
     if (isSvgElement) {
         return {
             attrName: baseName,
-            method: SelectorOperationMethod.SetAttribute
-        }
+            method: SelectorOperationMethod.SetAttribute,
+        };
     } else {
         return {
             attrName: baseName,
-            method: SelectorOperationMethod.SetHtmlAttribute
-        }
+            method: SelectorOperationMethod.SetHtmlAttribute,
+        };
     }
 }
 
 function validateSelectorExpression(
     expression: ParsedExpression,
     parsedForDirective: ParsedDirective,
-    parsedKeyExpression: ParsedExpression
+    parsedKeyExpression: ParsedExpression,
 ): SelectorExpressionValidation | undefined {
-    const topLevelIdentifierNames = Object.keys(expression.topLevelReferences)
+    const topLevelIdentifierNames = Object.keys(expression.topLevelReferences);
     if (topLevelIdentifierNames.length !== 1) {
-        return
+        return;
     }
 
-    const topLevelIdentifierName = topLevelIdentifierNames[0]
-    const topLevelInfo = analyzeResult.script.topLevelIdentifiers[topLevelIdentifierName]
+    const topLevelIdentifierName = topLevelIdentifierNames[0];
+    const topLevelInfo = analyzeResult.script.topLevelIdentifiers[topLevelIdentifierName];
     if (!topLevelInfo?.transformTo) {
-        return
+        return;
     }
 
     // 依赖必须是响应式单元读取：const 声明的 reactive 代理引用恒定不变，
@@ -202,34 +202,34 @@ function validateSelectorExpression(
     // declared by const is always constant, and the selector with it as the key
     // will neither be retriggered nor will its value ever hit any list item key.
     if (!topLevelInfo.transformTo.endsWith(".$")) {
-        return
+        return;
     }
 
     if (!expression.contextReferences.length) {
-        return
+        return;
     }
 
     for (const reference of expression.contextReferences) {
         if (reference.pattern.directive !== parsedForDirective) {
-            return
+            return;
         }
     }
 
-    const keyRanges: Range[] = []
-    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
+    const keyRanges: Range[] = [];
+    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node);
     walkTsNode(expression.node, node => {
         if (isExpressionEqual(node, keyNode)) {
-            keyRanges.push([node.getStart(), node.getEnd()])
+            keyRanges.push([node.getStart(), node.getEnd()]);
         }
-    })
+    });
     if (!keyRanges.length) {
-        return
+        return;
     }
 
-    const normalizedKeyRanges = normalizeRanges(keyRanges)
+    const normalizedKeyRanges = normalizeRanges(keyRanges);
     for (const reference of expression.contextReferences) {
         if (!isRangeCovered(reference.range, normalizedKeyRanges)) {
-            return
+            return;
         }
     }
 
@@ -241,98 +241,98 @@ function validateSelectorExpression(
     // the dependency value changes, the rendering results of other list items
     // will not change except for the two corresponding to the new and old keys.
     const topLevelRanges: Range[] = expression.topLevelReferences[topLevelIdentifierName].map(
-        item => item.range
-    )
+        item => item.range,
+    );
     if (!areRangesPairedInEquality(expression.node, topLevelRanges, normalizedKeyRanges)) {
-        return
+        return;
     }
 
-    let valid = true
+    let valid = true;
     walkTsNode(expression.node, node => {
         if (!valid || !ts.isIdentifier(node) || !isBindingReference(node)) {
-            return
+            return;
         }
 
-        const range: Range = [node.getStart(), node.getEnd()]
+        const range: Range = [node.getStart(), node.getEnd()];
         const isTopLevelIdentifier =
             node.text === topLevelIdentifierName &&
             expression.topLevelReferences[topLevelIdentifierName].some(item => {
-                return item.range[0] === range[0] && item.range[1] === range[1]
-            })
+                return item.range[0] === range[0] && item.range[1] === range[1];
+            });
         if (isTopLevelIdentifier) {
-            return
+            return;
         }
 
         if (isRangeCovered(range, normalizedKeyRanges)) {
-            return
+            return;
         }
-        valid = false
-    })
+        valid = false;
+    });
 
     if (!valid) {
-        return
+        return;
     }
     return {
         topLevelIdentifierName,
-        topLevelTransformedTo: topLevelInfo.transformTo
-    }
+        topLevelTransformedTo: topLevelInfo.transformTo,
+    };
 }
 
 function writeDomOperationCall(
     writer: RuntimeCodeWriter,
     nodeId: string,
     info: GeneratedSelectorInfo,
-    expressionType: SelectorExpressionType
+    expressionType: SelectorExpressionType,
 ) {
     const sourceIndex = info.targetAttribute
         ? info.targetAttribute.equalSign
             ? info.targetAttribute.value.loc.start.index
             : info.targetAttribute.loc.start.index
-        : info.targetTextPart?.loc.start.index
-    const internalId = generateIdentifier.internal
+        : info.targetTextPart?.loc.start.index;
+    const internalId = generateIdentifier.internal;
 
     switch (info.operation.method) {
         case SelectorOperationMethod.SetHtmlClassName:
         case SelectorOperationMethod.SetClassAttribute: {
-            writer.write(`${internalId}.`)
-            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
+            writer.write(`${internalId}.`);
+            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `);
 
             if (info.operation.staticClassAttr) {
-                writer.write("[")
+                writer.write("[");
                 writer.writeTemplateStr(
                     getMaybeReusedString(info.operation.staticClassAttr.value.raw),
-                    info.operation.staticClassAttr.value.loc
-                )
-                writer.write(", ")
-                writeSelectorExpression(writer, info, expressionType).write("]")
+                    info.operation.staticClassAttr.value.loc,
+                );
+                writer.write(", ");
+                writeSelectorExpression(writer, info, expressionType).write("]");
             } else {
-                writeSelectorExpression(writer, info, expressionType)
+                writeSelectorExpression(writer, info, expressionType);
             }
-            writer.write(")")
-            break
+            writer.write(")");
+            break;
         }
 
         case SelectorOperationMethod.SetAttribute:
         case SelectorOperationMethod.SetHtmlAttribute: {
-            writer.write(`${internalId}.`)
-            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
-            writer.write(`${getMaybeReusedString(info.operation.attrName!)}, `)
-            writeSelectorExpression(writer, info, expressionType).write(")")
-            break
+            writer.write(`${internalId}.`);
+            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `);
+            writer.write(`${getMaybeReusedString(info.operation.attrName!)}, `);
+            writeSelectorExpression(writer, info, expressionType).write(")");
+            break;
         }
 
         case SelectorOperationMethod.SetXlinkAttribute: {
-            writer.write(`${internalId}.`)
-            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
-            writer.write(`${getMaybeReusedString(info.operation.attrName!)}, `)
-            writeSelectorExpression(writer, info, expressionType).write(")")
-            break
+            writer.write(`${internalId}.`);
+            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `);
+            writer.write(`${getMaybeReusedString(info.operation.attrName!)}, `);
+            writeSelectorExpression(writer, info, expressionType).write(")");
+            break;
         }
 
         case SelectorOperationMethod.SetText: {
-            writer.write(`${internalId}.`).write("setText", sourceIndex).write(`(${nodeId}, `)
-            writeSelectorExpression(writer, info, expressionType).write(")")
-            break
+            writer.write(`${internalId}.`).write("setText", sourceIndex).write(`(${nodeId}, `);
+            writeSelectorExpression(writer, info, expressionType).write(")");
+            break;
         }
     }
 }
@@ -340,43 +340,43 @@ function writeDomOperationCall(
 function writeSelectorExpression(
     writer: RuntimeCodeWriter,
     info: GeneratedSelectorInfo,
-    expressionType: SelectorExpressionType
+    expressionType: SelectorExpressionType,
 ) {
-    const parsedExpression = getParsedExpression(info.expressionKey)!
-    const parsedKeyExpression = getParsedExpression(info.keyDirective)!
-    const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex)
+    const parsedExpression = getParsedExpression(info.expressionKey)!;
+    const parsedKeyExpression = getParsedExpression(info.keyDirective)!;
+    const editor = new CodeEditor(parsedExpression.source, parsedExpression.startSourceIndex);
 
     const topLevelReplacement =
-        expressionType === SelectorExpressionType.Prev ? "prevValue" : info.topLevelTransformedTo
-    const references = parsedExpression.topLevelReferences[info.topLevelIdentifierName] ?? []
+        expressionType === SelectorExpressionType.Prev ? "prevValue" : info.topLevelTransformedTo;
+    const references = parsedExpression.topLevelReferences[info.topLevelIdentifierName] ?? [];
     for (const reference of references) {
         if (reference.shorthand) {
-            editor.insert(reference.range[1], `: ${topLevelReplacement}`)
+            editor.insert(reference.range[1], `: ${topLevelReplacement}`);
         } else {
-            editor.replace(reference.range[0], reference.range[1], topLevelReplacement, true)
+            editor.replace(reference.range[0], reference.range[1], topLevelReplacement, true);
         }
     }
 
-    const keyRanges: Range[] = []
-    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node)
+    const keyRanges: Range[] = [];
+    const keyNode = getStriptTypeOperationsNode(parsedKeyExpression.node);
     walkTsNode(parsedExpression.node, node => {
         if (isExpressionEqual(node, keyNode)) {
-            keyRanges.push([node.getStart(), node.getEnd()])
+            keyRanges.push([node.getStart(), node.getEnd()]);
         }
-    })
+    });
     for (const [start, end] of normalizeRanges(keyRanges).toSorted((a, b) => b[0] - a[0])) {
-        editor.replace(start, end, "key", true)
+        editor.replace(start, end, "key", true);
     }
-    return writer.writeEditedScript(editor)
+    return writer.writeEditedScript(editor);
 }
 
 function areRangesPairedInEquality(
     expression: ParsedExpression["node"],
     topLevelRanges: Range[],
-    keyRanges: Range[]
+    keyRanges: Range[],
 ) {
-    const coveredTopLevels = new Array(topLevelRanges.length).fill(false)
-    const coveredKeys = new Array(keyRanges.length).fill(false)
+    const coveredTopLevels = new Array(topLevelRanges.length).fill(false);
+    const coveredKeys = new Array(keyRanges.length).fill(false);
 
     walkTsNode(expression, node => {
         if (
@@ -384,19 +384,19 @@ function areRangesPairedInEquality(
             (node.operatorToken.kind !== ts.SyntaxKind.EqualsEqualsEqualsToken &&
                 node.operatorToken.kind !== ts.SyntaxKind.ExclamationEqualsEqualsToken)
         ) {
-            return
+            return;
         }
 
         const isSameRange = (compared: TS.Expression, range: Range) => {
-            return compared.getStart() === range[0] && compared.getEnd() === range[1]
-        }
+            return compared.getStart() === range[0] && compared.getEnd() === range[1];
+        };
         for (let i = 0; i < topLevelRanges.length; i++) {
             if (coveredTopLevels[i]) {
-                continue
+                continue;
             }
             for (let j = 0; j < keyRanges.length; j++) {
                 if (coveredKeys[j]) {
-                    continue
+                    continue;
                 }
 
                 // prettier-ignore
@@ -415,32 +415,32 @@ function areRangesPairedInEquality(
                 }
             }
         }
-    })
+    });
 
-    return coveredTopLevels.every(Boolean) && coveredKeys.every(Boolean)
+    return coveredTopLevels.every(Boolean) && coveredKeys.every(Boolean);
 }
 
 function isRangeCovered(range: Range, ranges: Range[]) {
     return ranges.some(item => {
-        return item[0] <= range[0] && item[1] >= range[1]
-    })
+        return item[0] <= range[0] && item[1] >= range[1];
+    });
 }
 
 function normalizeRanges(ranges: Range[]) {
     const sorted = ranges
         .map(item => [item[0], item[1]] as Range)
-        .toSorted((a, b) => a[0] - b[0] || b[1] - a[1])
-    const ret: Range[] = []
+        .toSorted((a, b) => a[0] - b[0] || b[1] - a[1]);
+    const ret: Range[] = [];
     for (const current of sorted) {
-        const prev = ret[ret.length - 1]
+        const prev = ret[ret.length - 1];
         if (!prev) {
-            ret.push(current)
-            continue
+            ret.push(current);
+            continue;
         }
         if (current[0] >= prev[0] && current[1] <= prev[1]) {
-            continue
+            continue;
         }
-        ret.push(current)
+        ret.push(current);
     }
-    return ret
+    return ret;
 }

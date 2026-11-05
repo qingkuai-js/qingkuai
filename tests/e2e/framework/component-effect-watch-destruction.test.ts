@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -89,7 +89,7 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="external-panel">External registration panel</article>
-        `
+        `,
     },
     modules: {
         "effect-registry": `
@@ -116,79 +116,79 @@ const scenario: E2EScenarioInput = {
             export function registerWatch(watch, getter, onUpdate) {
                 watch(getter, onUpdate)
             }
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("all effect/watch timing variants are disposed when the component unmounts", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#sync-panel")).toHaveText("Sync effect watch panel")
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#sync-panel")).toHaveText("Sync effect watch panel");
 
         // Establish a baseline where every variant fired once after a change.
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1");
         await expect(page.locator("#sync-leak")).toHaveText(
-            "effect:2,preEffect:2,postEffect:2,syncEffect:2,watch:1,preWatch:1,postWatch:1,syncWatch:1"
-        )
+            "effect:2,preEffect:2,postEffect:2,syncEffect:2,watch:1,preWatch:1,postWatch:1,syncWatch:1",
+        );
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#sync-panel")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#sync-panel")).toHaveCount(0);
 
-        const beforeUnmount = await page.locator("#sync-leak").innerText()
+        const beforeUnmount = await page.locator("#sync-leak").innerText();
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 2")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 2");
 
         // Disposed effect/watch must not re-fire.
-        await expect(page.locator("#sync-leak")).toHaveText(beforeUnmount)
-    })
+        await expect(page.locator("#sync-leak")).toHaveText(beforeUnmount);
+    });
 
     test("external module registrations drive an imported store while mounted", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#external-panel")).toBeVisible()
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#external-panel")).toBeVisible();
 
-        await expect(page.locator("#store-double")).toHaveText("Store double: 0")
-        await expect(page.locator("#store-watch")).toHaveText("Store watch: ")
+        await expect(page.locator("#store-double")).toHaveText("Store double: 0");
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: ");
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
-        await expect(page.locator("#store-double")).toHaveText("Store double: 2")
-        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1")
-    })
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1");
+        await expect(page.locator("#store-double")).toHaveText("Store double: 2");
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1");
+    });
 
     test("external module registrations are disposed when the component unmounts", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#external-panel")).toBeVisible()
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#external-panel")).toBeVisible();
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
-        await expect(page.locator("#store-double")).toHaveText("Store double: 2")
-        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1");
+        await expect(page.locator("#store-double")).toHaveText("Store double: 2");
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1");
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#external-panel")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#external-panel")).toHaveCount(0);
 
         // Destroying the component disposes the registered effect/watch; the
         // derived store values must stay frozen when the store changes again.
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 2")
-        await expect(page.locator("#store-double")).toHaveText("Store double: 2")
-        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1")
-    })
-})
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 2");
+        await expect(page.locator("#store-double")).toHaveText("Store double: 2");
+        await expect(page.locator("#store-watch")).toHaveText("Store watch: 0->1");
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -51,24 +51,24 @@ const scenario: E2EScenarioInput = {
             <article class="event-emitter-card">
                 <button class="emit-btn" @click={emitSaved}>Emit saved</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports component event callback passing and invocation", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const emitButtons = page.locator(".event-emitter-card .emit-btn")
-        await emitButtons.nth(0).click()
-        await expect(page.locator("#event-total")).toHaveText("Total: 2")
-        await expect(page.locator("#event-log")).toHaveText("Log: primary")
+        const emitButtons = page.locator(".event-emitter-card .emit-btn");
+        await emitButtons.nth(0).click();
+        await expect(page.locator("#event-total")).toHaveText("Total: 2");
+        await expect(page.locator("#event-log")).toHaveText("Log: primary");
 
-        await emitButtons.nth(1).click()
-        await expect(page.locator("#event-total")).toHaveText("Total: 3")
-        await expect(page.locator("#event-log")).toHaveText("Log: primary,default")
-    })
-})
+        await emitButtons.nth(1).click();
+        await expect(page.locator("#event-total")).toHaveText("Total: 3");
+        await expect(page.locator("#event-log")).toHaveText("Log: primary,default");
+    });
+});

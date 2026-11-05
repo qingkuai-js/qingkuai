@@ -1,10 +1,10 @@
-import { expect, test } from "vitest"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { compileIntermediate } from "../../../../src/compiler/compile"
-import { matchCompileMessages } from "../../../../src/util/testing/match"
+import { expect, test } from "vitest";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { compileIntermediate } from "../../../../src/compiler/compile";
+import { matchCompileMessages } from "../../../../src/util/testing/match";
 
 function compile(source: string) {
-    return compileIntermediate(formatSourceCode(source))
+    return compileIntermediate(formatSourceCode(source));
 }
 
 test("Access inference: template access of derived propagates to mutated sources", () => {
@@ -18,17 +18,17 @@ test("Access inference: template access of derived propagates to mutated sources
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            status: "reactive"
+            status: "reactive",
         },
         double: {
-            status: "derived"
-        }
-    })
-    matchCompileMessages([])
-})
+            status: "derived",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: no promotion when the derived value is not accessed in template", () => {
     const source = `
@@ -41,14 +41,14 @@ test("Access inference: no promotion when the derived value is not accessed in t
         </lang-js>
 
         <p>static text</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (not accessed in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: a derived value read via raw marks its sources as untracked", () => {
     const source = `
@@ -61,17 +61,17 @@ test("Access inference: a derived value read via raw marks its sources as untrac
         </lang-js>
 
         <p>{ raw(double) }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         double: {
-            status: "derived"
+            status: "derived",
         },
         count: {
-            description: "raw (untracked in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (untracked in template)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: unmutated source is not promoted by propagation", () => {
     const source = `
@@ -81,14 +81,14 @@ test("Access inference: unmutated source is not promoted by propagation", () => 
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (never mutated)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (never mutated)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: propagation follows chained derived values", () => {
     const source = `
@@ -102,14 +102,14 @@ test("Access inference: propagation follows chained derived values", () => {
         </lang-js>
 
         <p>{ quad }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            status: "reactive"
-        }
-    })
-    matchCompileMessages([])
-})
+            status: "reactive",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: reads inside raw calls of the derived argument do not propagate", () => {
     const source = `
@@ -122,14 +122,14 @@ test("Access inference: reads inside raw calls of the derived argument do not pr
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (untracked in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (untracked in template)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: reads inside arguments of derived values reachable via chains count as untracked template reads", () => {
     const source = `
@@ -143,20 +143,20 @@ test("Access inference: reads inside arguments of derived values reachable via c
         </lang-js>
 
         <p>{ outer }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (untracked in template)"
+            description: "raw (untracked in template)",
         },
         inner: {
-            status: "derived"
+            status: "derived",
         },
         outer: {
-            status: "derived"
-        }
-    })
-    matchCompileMessages([])
-})
+            status: "derived",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: getter parameters shadowing sources are not propagated", () => {
     const source = `
@@ -169,14 +169,14 @@ test("Access inference: getter parameters shadowing sources are not propagated",
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (not accessed in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: sources read inside functions called by the getter are not propagated", () => {
     const source = `
@@ -192,14 +192,14 @@ test("Access inference: sources read inside functions called by the getter are n
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (not accessed in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: reads inside nested functions of the derivedExp argument propagate", () => {
     const source = `
@@ -212,14 +212,14 @@ test("Access inference: reads inside nested functions of the derivedExp argument
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            status: "reactive"
-        }
-    })
-    matchCompileMessages([])
-})
+            status: "reactive",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: derived getter reads propagate, including inside nested callbacks", () => {
     const source = `
@@ -236,17 +236,17 @@ test("Access inference: derived getter reads propagate, including inside nested 
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         total: {
-            status: "reactive"
+            status: "reactive",
         },
         count: {
-            status: "reactive"
-        }
-    })
-    matchCompileMessages([])
-})
+            status: "reactive",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: a function argument of derivedExp is never invoked and does not propagate", () => {
     const source = `
@@ -259,16 +259,16 @@ test("Access inference: a function argument of derivedExp is never invoked and d
         </lang-js>
 
         <p>{ double }</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         double: {
-            description: "raw (downgraded)"
+            description: "raw (downgraded)",
         },
         count: {
-            description: "raw (not accessed in template)"
-        }
-    })
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+});
 
 test("Access inference: mutated script-only state stays raw without diagnostics", () => {
     const source = `
@@ -280,14 +280,14 @@ test("Access inference: mutated script-only state stays raw without diagnostics"
         </lang-js>
 
         <p>static text</p>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         timer: {
-            description: "raw (not accessed in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+    matchCompileMessages([]);
+});
 
 test("Access inference: reads inside plain function bodies are not template accesses", () => {
     const source = `
@@ -302,11 +302,11 @@ test("Access inference: reads inside plain function bodies are not template acce
         </lang-js>
 
         <button @click={ setCount }>{ getDouble() }</button>
-    `
+    `;
     expect(compile(source).identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (not accessed in template)"
-        }
-    })
-    matchCompileMessages([])
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+    matchCompileMessages([]);
+});

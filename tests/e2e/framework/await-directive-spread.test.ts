@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -66,23 +66,23 @@ const scenario: E2EScenarioInput = {
                 </qk:spread>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports qk spread await then catch with multi-child and text-node content", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#spread-await-copy")).toHaveText("Spread pending")
+        await expect(page.locator("#spread-await-copy")).toHaveText("Spread pending");
 
-        await page.locator("#spread-resolve").click()
-        await expect(page.locator("#spread-then-label")).toHaveText("Spread resolved")
+        await page.locator("#spread-resolve").click();
+        await expect(page.locator("#spread-then-label")).toHaveText("Spread resolved");
 
-        await page.locator("#spread-reset").click()
-        await page.locator("#spread-reject").click()
-        await expect(page.locator("#spread-catch-msg")).toHaveText("spread failed")
-    })
-})
+        await page.locator("#spread-reset").click();
+        await page.locator("#spread-reject").click();
+        await expect(page.locator("#spread-catch-msg")).toHaveText("spread failed");
+    });
+});

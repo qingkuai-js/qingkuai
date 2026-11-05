@@ -5,10 +5,10 @@ import type {
     WatchCallback,
     ComponentInstance,
     InstanceContexts,
-    DeclaredContextKeys
-} from "#type-declarations/runtime"
-import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools"
-import type { COMPONENT, EmptyObject, QingkuaiComponent } from "@qingkuai/virtual/brand"
+    DeclaredContextKeys,
+} from "#type-declarations/runtime";
+import type { AnyObject, GeneralFunc, Getter } from "#type-declarations/tools";
+import type { COMPONENT, EmptyObject, QingkuaiComponent } from "@qingkuai/virtual/brand";
 
 /**
  * Recovers the component type that produced a component instance.
@@ -32,10 +32,10 @@ import type { COMPONENT, EmptyObject, QingkuaiComponent } from "@qingkuai/virtua
  * @template I A component instance type.
  */
 export type ComponentOfInstance<I> = I extends {
-    [COMPONENT]?: infer T
+    [COMPONENT]?: infer T;
 }
     ? T
-    : QingkuaiComponent<any>
+    : QingkuaiComponent<any>;
 
 /**
  * The shape accepted by {@link DeclareComponent}, five optional members, one
@@ -44,12 +44,12 @@ export type ComponentOfInstance<I> = I extends {
  * layer.
  */
 export type ComponentShape = {
-    props?: AnyObject
-    refs?: AnyObject
-    slots?: AnyObject
-    contexts?: AnyObject
-    exports?: AnyObject
-}
+    props?: AnyObject;
+    refs?: AnyObject;
+    slots?: AnyObject;
+    contexts?: AnyObject;
+    exports?: AnyObject;
+};
 
 /**
  * Manually declares a component shape, producing the component type that
@@ -74,12 +74,12 @@ export type ComponentShape = {
  */
 export type DeclareComponent<S extends ComponentShape> = QingkuaiComponent<
     (ctx: {
-        props: S["props"] extends AnyObject ? S["props"] : EmptyObject
-        refs: S["refs"] extends AnyObject ? S["refs"] : EmptyObject
-        slots: S["slots"] extends AnyObject ? S["slots"] : EmptyObject
-        contexts: S["contexts"] extends AnyObject ? S["contexts"] : EmptyObject
+        props: S["props"] extends AnyObject ? S["props"] : EmptyObject;
+        refs: S["refs"] extends AnyObject ? S["refs"] : EmptyObject;
+        slots: S["slots"] extends AnyObject ? S["slots"] : EmptyObject;
+        contexts: S["contexts"] extends AnyObject ? S["contexts"] : EmptyObject;
     }) => S["exports"] extends AnyObject ? S["exports"] : void
->
+>;
 
 /**
  * Extracts the **props contract** of a Qingkuai component.
@@ -100,7 +100,7 @@ export type DeclareComponent<S extends ComponentShape> = QingkuaiComponent<
  *
  * @template T A Qingkuai component type.
  */
-export type ComponentProps<T extends QingkuaiComponent<any>> = ComponentMember<T, "props">
+export type ComponentProps<T extends QingkuaiComponent<any>> = ComponentMember<T, "props">;
 
 /**
  * Extracts the **refs contract** of a Qingkuai component.
@@ -120,7 +120,7 @@ export type ComponentProps<T extends QingkuaiComponent<any>> = ComponentMember<T
  *
  * @template T A Qingkuai component type.
  */
-export type ComponentRefs<T extends QingkuaiComponent<any>> = ComponentMember<T, "refs">
+export type ComponentRefs<T extends QingkuaiComponent<any>> = ComponentMember<T, "refs">;
 
 /**
  * Extracts the **slots contract** of a Qingkuai component.
@@ -140,7 +140,7 @@ export type ComponentRefs<T extends QingkuaiComponent<any>> = ComponentMember<T,
  *
  * @template T A Qingkuai component type.
  */
-export type ComponentSlots<T extends QingkuaiComponent<any>> = ComponentMember<T, "slots">
+export type ComponentSlots<T extends QingkuaiComponent<any>> = ComponentMember<T, "slots">;
 
 /**
  * Extracts the **contexts contract** of a Qingkuai component.
@@ -161,7 +161,7 @@ export type ComponentSlots<T extends QingkuaiComponent<any>> = ComponentMember<T
  *
  * @template T A Qingkuai component type.
  */
-export type ComponentContexts<T extends QingkuaiComponent<any>> = ComponentMember<T, "contexts">
+export type ComponentContexts<T extends QingkuaiComponent<any>> = ComponentMember<T, "contexts">;
 
 /**
  * Extracts the **exported data** of a Qingkuai component.
@@ -179,7 +179,7 @@ export type ComponentContexts<T extends QingkuaiComponent<any>> = ComponentMembe
  * @template T A Qingkuai component type.
  */
 export type ComponentExports<T extends QingkuaiComponent<any>> =
-    T extends QingkuaiComponent<infer F> ? ReturnType<F> : any
+    T extends QingkuaiComponent<infer F> ? ReturnType<F> : any;
 
 /**
  * Configures escaping behavior for HTML block rendering.
@@ -207,10 +207,10 @@ export type ComponentExports<T extends QingkuaiComponent<any>> =
  * ```
  */
 export type HtmlBlockOptions = Partial<{
-    escapeTags: string[]
-    escapeStyle: boolean
-    escapeScript: boolean
-}>
+    escapeTags: string[];
+    escapeStyle: boolean;
+    escapeScript: boolean;
+}>;
 
 export interface WatchFunc {
     /**
@@ -281,8 +281,8 @@ export interface WatchFunc {
     <T>(
         instance: ComponentInstance<any> | null,
         getter: Getter<T>,
-        callback: WatchCallback<T>
-    ): EffectHandle
+        callback: WatchCallback<T>,
+    ): EffectHandle;
 }
 
 export interface EffectFunc {
@@ -350,7 +350,7 @@ export interface EffectFunc {
      * @param callback Contains side-effect logic and optional cleanup return.
      * @returns A control handle with stop, pause, and resume methods.
      */
-    (instance: ComponentInstance<any> | null, callback: EffectCallback): EffectHandle
+    (instance: ComponentInstance<any> | null, callback: EffectCallback): EffectHandle;
 }
 
 export interface LifecycleHookRegister {
@@ -377,7 +377,7 @@ export interface LifecycleHookRegister {
      * @param instance The target component instance.
      * @param callback Contains logic to run at the target lifecycle phase.
      */
-    (instance: ComponentInstance<any>, callback: GeneralFunc): void
+    (instance: ComponentInstance<any>, callback: GeneralFunc): void;
 }
 
 export interface MountAppFunc {
@@ -403,7 +403,7 @@ export interface MountAppFunc {
      * @param component The component to mount as the app root.
      * @param target Mount container element or selector string.
      */
-    (component: QingkuaiComponent<any>, target: Element | string): void
+    (component: QingkuaiComponent<any>, target: Element | string): void;
 }
 
 export interface ToRawFunc {
@@ -437,7 +437,7 @@ export interface ToRawFunc {
      * @param value A value that may be a Qingkuai reactive proxy.
      * @returns The raw target for a proxy, or the original value.
      */
-    <T>(value: T): T
+    <T>(value: T): T;
 }
 
 export interface NextTickFunc {
@@ -473,7 +473,7 @@ export interface NextTickFunc {
      * @returns A promise that resolves after the callback runs (or
      * immediately if no callback was provided).
      */
-    (callback?: GeneralFunc): Promise<void>
+    (callback?: GeneralFunc): Promise<void>;
 }
 
 export interface ToReactiveFunc {
@@ -510,7 +510,7 @@ export interface ToReactiveFunc {
      * @returns The reactive proxy if one exists, otherwise the original
      * value.
      */
-    <T extends AnyObject>(value: T): T
+    <T extends AnyObject>(value: T): T;
 }
 
 export interface createStoreFunc {
@@ -549,7 +549,7 @@ export interface createStoreFunc {
      * @param value Initial state object with properties to share.
      * @returns A reactive proxy wrapping the initial state object.
      */
-    <T extends AnyObject>(value: T): T
+    <T extends AnyObject>(value: T): T;
 }
 
 export interface GetCurrentInstanceFunc {
@@ -588,7 +588,7 @@ export interface GetCurrentInstanceFunc {
      * @returns The current component instance, or `null` when no component
      * is active.
      */
-    <T extends QingkuaiComponent<any> = QingkuaiComponent<any>>(): ComponentInstance<T> | null
+    <T extends QingkuaiComponent<any> = QingkuaiComponent<any>>(): ComponentInstance<T> | null;
 }
 
 export interface SetContextFunc {
@@ -625,8 +625,8 @@ export interface SetContextFunc {
     <I extends ComponentInstance<any>, K extends DeclaredContextKeys<I>>(
         instance: I,
         key: K,
-        value: K extends never ? never : InstanceContexts<I>[K]
-    ): void
+        value: K extends never ? never : InstanceContexts<I>[K],
+    ): void;
 }
 
 export interface SetContextGetterFunc {
@@ -672,8 +672,8 @@ export interface SetContextGetterFunc {
     <I extends ComponentInstance<any>, K extends DeclaredContextKeys<I>>(
         instance: I,
         key: K,
-        getter: K extends never ? never : Getter<InstanceContexts<I>[K]>
-    ): void
+        getter: K extends never ? never : Getter<InstanceContexts<I>[K]>,
+    ): void;
 }
 
 export interface GetContextsFunc {
@@ -690,5 +690,5 @@ export interface GetContextsFunc {
      *
      * @param instance The target component instance.
      */
-    <I extends ComponentInstance<any>>(instance: I): InstanceContexts<I> | null
+    <I extends ComponentInstance<any>>(instance: I): InstanceContexts<I> | null;
 }

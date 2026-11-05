@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -92,38 +92,38 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        AsyncOne: `<article id="async-one">Async One</article>`
-    }
-}
+        AsyncOne: `<article id="async-one">Async One</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports for items with independent async component states", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#async-for-list .async-item-label")).toHaveText(["one", "two"])
+        await expect(page.locator("#async-for-list .async-item-label")).toHaveText(["one", "two"]);
         await expect(page.locator("#async-for-list .async-item-loading")).toHaveText([
             "Loading one",
-            "Loading two"
-        ])
+            "Loading two",
+        ]);
 
-        await page.locator("#resolve-one").click()
-        await expect(page.locator("#async-for-list #async-one")).toHaveText("Async One")
+        await page.locator("#resolve-one").click();
+        await expect(page.locator("#async-for-list #async-one")).toHaveText("Async One");
         await expect(page.locator("#async-for-list .async-item-loading")).toHaveText([
-            "Loading two"
-        ])
+            "Loading two",
+        ]);
 
-        await page.locator("#reject-two").click()
+        await page.locator("#reject-two").click();
         await expect(page.locator("#async-for-list .async-item-error")).toHaveText([
-            "two: two failed"
-        ])
+            "two: two failed",
+        ]);
 
-        await page.locator("#reset-two").click()
+        await page.locator("#reset-two").click();
         await expect(page.locator("#async-for-list .async-item-loading")).toHaveText([
-            "Loading two"
-        ])
-        await expect(page.locator("#async-for-list .async-item-error")).toHaveCount(0)
-    })
-})
+            "Loading two",
+        ]);
+        await expect(page.locator("#async-for-list .async-item-error")).toHaveCount(0);
+    });
+});

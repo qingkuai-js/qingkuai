@@ -1,115 +1,115 @@
-import type TS from "typescript"
-import type { CodeEditor } from "../transformer/editor"
-import type { RuntimeCodeWriter } from "../transformer/writer"
-import type { TemplateFragment } from "#type-declarations/compiler"
-import type { StringLiteralDetail, ReusedStringReference } from "#type-declarations/compiler"
+import type TS from "typescript";
+import type { CodeEditor } from "../transformer/editor";
+import type { RuntimeCodeWriter } from "../transformer/writer";
+import type { TemplateFragment } from "#type-declarations/compiler";
+import type { StringLiteralDetail, ReusedStringReference } from "#type-declarations/compiler";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { getNodeRange } from "../ts-ast/sundry"
-import { stringify } from "../../util/shared/aliases"
-import { isUndefined } from "../../util/shared/assert"
-import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
-import { isValidIdentifierName } from "../../util/compiler/assert"
-import { newCleanObj, traverseObject } from "../../util/shared/sundry"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../state"
+import { getNodeRange } from "../ts-ast/sundry";
+import { stringify } from "../../util/shared/aliases";
+import { isUndefined } from "../../util/shared/assert";
+import { ensureIdWithNumSuffix } from "../../util/compiler/sundry";
+import { isValidIdentifierName } from "../../util/compiler/assert";
+import { newCleanObj, traverseObject } from "../../util/shared/sundry";
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../state";
 
 export function writeStringLiteralsDeclarations(
     writer: RuntimeCodeWriter,
-    fragments: TemplateFragment[]
+    fragments: TemplateFragment[],
 ) {
     if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
-        return writer
+        return writer;
     }
 
-    let extractedReusedString = false
-    const compressStringIndexMap = new Map<string, number>()
-    const fragmentContentPartUsedTimes: Record<string, number> = newCleanObj()
+    let extractedReusedString = false;
+    const compressStringIndexMap = new Map<string, number>();
+    const fragmentContentPartUsedTimes: Record<string, number> = newCleanObj();
     for (const fragment of fragments) {
         if (fragment.getWith) {
-            continue
+            continue;
         }
         for (let i = 0; i < fragment.content.length; i++) {
-            const str = fragment.content[i].value
-            fragmentContentPartUsedTimes[str] = (fragmentContentPartUsedTimes[str] ?? 0) + 1
+            const str = fragment.content[i].value;
+            fragmentContentPartUsedTimes[str] = (fragmentContentPartUsedTimes[str] ?? 0) + 1;
         }
     }
     traverseObject(fragmentContentPartUsedTimes, (str, times) => {
         if (times > 1 && str.length > Math.floor(compressStringIndexMap.size / 10) + 2) {
-            compressStringIndexMap.set(str, compressStringIndexMap.size)
+            compressStringIndexMap.set(str, compressStringIndexMap.size);
         }
-    })
+    });
 
     for (const fragment of fragments) {
         if (fragment.getWith) {
-            continue
+            continue;
         }
 
         for (let i = 0; i < fragment.content.length; i++) {
-            const compressStringIndex = compressStringIndexMap.get(fragment.content[i].value)
+            const compressStringIndex = compressStringIndexMap.get(fragment.content[i].value);
             if (!isUndefined(compressStringIndex)) {
-                fragment.usedCompressString = true
-                break
+                fragment.usedCompressString = true;
+                break;
             }
         }
 
         if (fragment.usedCompressString) {
             for (let i = 0; i < fragment.content.length; i++) {
-                const str = fragment.content[i].value
-                const compressStringIndex = compressStringIndexMap.get(str)
-                fragment.content[i].value = str.replaceAll("|", "||")
+                const str = fragment.content[i].value;
+                const compressStringIndex = compressStringIndexMap.get(str);
+                fragment.content[i].value = str.replaceAll("|", "||");
 
                 if (!isUndefined(compressStringIndex)) {
-                    increaseReusedStringUsedTimes(str)
-                    fragment.content[i].value = "|" + compressStringIndex
+                    increaseReusedStringUsedTimes(str);
+                    fragment.content[i].value = "|" + compressStringIndex;
                 }
             }
         }
     }
     traverseObject(analyzeResult.reusedStrings, (str, info) => {
         if (info.times > 1) {
-            extractedReusedString = true
-            info.id = ensureIdWithNumSuffix("_s")
-            writer.writeLine(`const ${info.id} = ${JSON.stringify(str)}`)
+            extractedReusedString = true;
+            info.id = ensureIdWithNumSuffix("_s");
+            writer.writeLine(`const ${info.id} = ${JSON.stringify(str)}`);
         }
-    })
+    });
     if (!compressStringIndexMap.size) {
         if (extractedReusedString) {
-            writer.wrapLine()
+            writer.wrapLine();
         }
-        return writer
+        return writer;
     }
 
-    const shouldWrapLine = compressStringIndexMap.size > 8
-    writer.write(`const ${generateIdentifier.compressStrings} = [`)
+    const shouldWrapLine = compressStringIndexMap.size > 8;
+    writer.write(`const ${generateIdentifier.compressStrings} = [`);
 
     if (shouldWrapLine) {
-        writer.indent()
+        writer.indent();
     }
     compressStringIndexMap.forEach((index, str) => {
-        writer.write(getMaybeReusedString(str))
+        writer.write(getMaybeReusedString(str));
         if (index !== compressStringIndexMap.size - 1) {
-            writer.write(", ")
+            writer.write(", ");
         }
         if (shouldWrapLine) {
-            writer.write("\n")
+            writer.write("\n");
         }
-    })
+    });
     if (shouldWrapLine) {
-        writer.dedent()
+        writer.dedent();
     }
-    return writer.writeLine("]").wrapLine()
+    return writer.writeLine("]").wrapLine();
 }
 
 export function getMaybeReusedString(value: string) {
-    const literalId = analyzeResult.reusedStrings[value]?.id
+    const literalId = analyzeResult.reusedStrings[value]?.id;
     if (!literalId) {
-        return stringify(value)
+        return stringify(value);
     }
     if (!inputDescriptor.options.interpretiveComments || !value.trim()) {
-        return literalId
+        return literalId;
     }
-    return `/* ${value} */ ${literalId}`
+    return `/* ${value} */ ${literalId}`;
 }
 
 export function increaseReusedStringUsedTimes(value: string, isPropertyName = false) {
@@ -118,45 +118,45 @@ export function increaseReusedStringUsedTimes(value: string, isPropertyName = fa
         inputDescriptor.options.checkMode ||
         (isPropertyName && isValidIdentifierName(value, true) && value.length < 3)
     ) {
-        return
+        return;
     }
 
     analyzeResult.reusedStrings[value] ??= {
         id: "",
-        times: 0
-    }
-    analyzeResult.reusedStrings[value].times++
+        times: 0,
+    };
+    analyzeResult.reusedStrings[value].times++;
 }
 
 export function collectReusedStringReference(node: TS.Node, references: ReusedStringReference[]) {
-    const detail = getTransformableStringLiteralValue(node)
+    const detail = getTransformableStringLiteralValue(node);
     if (isUndefined(detail)) {
-        return
+        return;
     }
     references.push({
         value: detail.value,
         computed: detail.computed,
-        range: getNodeRange(node)
-    })
-    increaseReusedStringUsedTimes(detail.value, detail.propertyName)
+        range: getNodeRange(node),
+    });
+    increaseReusedStringUsedTimes(detail.value, detail.propertyName);
 }
 
 function getTransformableStringLiteralValue(node: TS.Node): StringLiteralDetail | undefined {
     if (inputDescriptor.options.debug || inputDescriptor.options.checkMode) {
-        return
+        return;
     }
     if (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node)) {
-        return
+        return;
     }
     if (ts.isTaggedTemplateExpression(node.parent)) {
-        return
+        return;
     }
 
     const defaultResult: StringLiteralDetail = {
         value: node.text,
         computed: false,
-        propertyName: false
-    }
+        propertyName: false,
+    };
 
     switch (node.parent.kind) {
         case ts.SyntaxKind.LiteralType:
@@ -165,27 +165,27 @@ function getTransformableStringLiteralValue(node: TS.Node): StringLiteralDetail 
         case ts.SyntaxKind.ExportDeclaration:
         case ts.SyntaxKind.ModuleDeclaration:
         case ts.SyntaxKind.PropertySignature: {
-            return
+            return;
         }
 
         case ts.SyntaxKind.EnumMember: {
             if ((node.parent as TS.EnumMember).initializer !== node) {
-                return
+                return;
             }
-            return defaultResult
+            return defaultResult;
         }
 
         case ts.SyntaxKind.ComputedPropertyName: {
-            const grandParent = node.parent.parent
+            const grandParent = node.parent.parent;
             if (ts.isPropertySignature(grandParent) || ts.isMethodSignature(grandParent)) {
-                return
+                return;
             }
-            return defaultResult
+            return defaultResult;
         }
 
         case ts.SyntaxKind.PropertyAssignment: {
             if ((node.parent as TS.PropertyAssignment).name !== node) {
-                return defaultResult
+                return defaultResult;
             }
             // fallthrough
         }
@@ -195,31 +195,31 @@ function getTransformableStringLiteralValue(node: TS.Node): StringLiteralDetail 
         case ts.SyntaxKind.MethodDeclaration:
         case ts.SyntaxKind.PropertyDeclaration: {
             if ((node.parent as TS.NamedDeclaration).name !== node) {
-                return
+                return;
             }
             return {
                 value: node.text,
                 computed: true,
-                propertyName: true
-            }
+                propertyName: true,
+            };
         }
     }
-    return defaultResult
+    return defaultResult;
 }
 
 export function replaceReusedStringReferences(
     editor: CodeEditor,
-    references: ReusedStringReference[]
+    references: ReusedStringReference[],
 ) {
     for (const reference of references) {
-        const literalId = analyzeResult.reusedStrings[reference.value]?.id
+        const literalId = analyzeResult.reusedStrings[reference.value]?.id;
         if (literalId) {
-            const compressed = getMaybeReusedString(reference.value)
+            const compressed = getMaybeReusedString(reference.value);
             editor.replace(
                 ...reference.range,
                 reference.computed ? `[${compressed}]` : compressed,
-                true
-            )
+                true,
+            );
         }
     }
 }

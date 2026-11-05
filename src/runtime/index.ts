@@ -7,8 +7,8 @@ export type {
     ComponentInstance,
     BoundLifecycleFunc,
     BoundSetContextFunc,
-    BoundSetContextGetterFunc
-} from "#type-declarations/runtime"
+    BoundSetContextGetterFunc,
+} from "#type-declarations/runtime";
 
 export type {
     ComponentProps,
@@ -18,16 +18,16 @@ export type {
     ComponentContexts,
     ComponentShape,
     DeclareComponent,
-    HtmlBlockOptions
-} from "#type-declarations/runtime-ex"
+    HtmlBlockOptions,
+} from "#type-declarations/runtime-ex";
 
 export {
     onAfterMount,
     onBeforeUpdate,
     onAfterUpdate,
     onBeforeDestroy,
-    onAfterDestroy
-} from "./component"
+    onAfterDestroy,
+} from "./component";
 
 export {
     watch,
@@ -37,8 +37,8 @@ export {
     syncEffect,
     preWatch,
     postWatch,
-    syncWatch
-} from "./reactivity/effect"
+    syncWatch,
+} from "./reactivity/effect";
 
 export {
     noTracking,
@@ -50,18 +50,18 @@ export {
     batchUpdating,
     stopBatchUpdating,
     startBatchUpdating,
-    batchAndNoTracking
-} from "./reactivity/optimization"
+    batchAndNoTracking,
+} from "./reactivity/optimization";
 
 export {
     mountApp,
     setContext,
     getContexts,
     setContextGetter,
-    getCurrentInstance
-} from "./component"
-export { version } from "./meta"
-export { DESTRUCT_HTML } from "./constants"
-export { toRaw } from "../util/runtime/sundry"
-export { nextTick } from "../util/runtime/sundry"
-export { createStore, createShallowStore, toReactive, toShallow } from "./reactivity/value"
+    getCurrentInstance,
+} from "./component";
+export { version } from "./meta";
+export { DESTRUCT_HTML } from "./constants";
+export { toRaw } from "../util/runtime/sundry";
+export { nextTick } from "../util/runtime/sundry";
+export { createStore, createShallowStore, toReactive, toShallow } from "./reactivity/value";

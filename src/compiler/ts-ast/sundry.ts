@@ -1,63 +1,63 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import type { Range } from "#type-declarations/compiler"
-import type { FindNodesPredicate } from "#type-declarations/ts-ast"
+import type { Range } from "#type-declarations/compiler";
+import type { FindNodesPredicate } from "#type-declarations/ts-ast";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { walkTsNode } from "./walk"
-import { PositionFlag } from "../enums"
-import { markPositionFlag } from "../../util/compiler/position"
-import { isLastNodeOfParenthesis, isTypeOperation } from "./assert"
+import { walkTsNode } from "./walk";
+import { PositionFlag } from "../enums";
+import { markPositionFlag } from "../../util/compiler/position";
+import { isLastNodeOfParenthesis, isTypeOperation } from "./assert";
 
 export function getNodeRange(node: TS.Node): Range {
-    return [node.getStart(), node.getEnd()]
+    return [node.getStart(), node.getEnd()];
 }
 
 export function findFirstChildUntil<T extends TS.Node>(
     sourceFile: TS.SourceFile,
-    predicate: FindNodesPredicate<T>
+    predicate: FindNodesPredicate<T>,
 ): T | null {
-    let result: T | null = null
+    let result: T | null = null;
     walkTsNode(sourceFile, node => {
         if (predicate(node)) {
-            return !!(result = node)
+            return !!(result = node);
         }
-    })
-    return result
+    });
+    return result;
 }
 
 export function findFirstAncestorUntil<T extends TS.Node>(
     node: TS.Node,
-    predicate: FindNodesPredicate<T>
+    predicate: FindNodesPredicate<T>,
 ): T | null {
     for (let current = node.parent; current; current = current.parent) {
         if (predicate(current)) {
-            return current
+            return current;
         }
     }
-    return null
+    return null;
 }
 
 export function getVariableDeclareKeyword(node: TS.VariableDeclarationList) {
     if (node.flags & ts.NodeFlags.Let) {
-        return "let"
+        return "let";
     }
     if (node.flags & ts.NodeFlags.Const) {
         if (node.flags & ts.NodeFlags.Using) {
-            return "await using"
+            return "await using";
         }
-        return "const"
+        return "const";
     }
     if (node.flags & ts.NodeFlags.Using) {
-        return "using"
+        return "using";
     }
-    return "var"
+    return "var";
 }
 
 export function markNeedSourcemap(node: TS.Node, startSourceIndex: number) {
-    markPositionFlag(PositionFlag.SourcemapEnd, startSourceIndex + node.getEnd())
-    markPositionFlag(PositionFlag.SourcemapStart, startSourceIndex + node.getStart())
+    markPositionFlag(PositionFlag.SourcemapEnd, startSourceIndex + node.getEnd());
+    markPositionFlag(PositionFlag.SourcemapStart, startSourceIndex + node.getStart());
 }
 
 /**
@@ -76,46 +76,46 @@ export function markNeedSourcemap(node: TS.Node, startSourceIndex: number) {
  */
 export function getStriptTypeOperationsParent<T extends TS.Node>(
     node: T,
-    omitParenthesis = true
+    omitParenthesis = true,
 ): T["parent"] | null {
     if (!node.parent) {
-        return null
+        return null;
     }
     if (omitParenthesis && isLastNodeOfParenthesis(node)) {
-        return getStriptTypeOperationsParent(node.parent, omitParenthesis)
+        return getStriptTypeOperationsParent(node.parent, omitParenthesis);
     }
     if (isTypeOperation(node.parent)) {
-        return getStriptTypeOperationsParent(node.parent, omitParenthesis)
+        return getStriptTypeOperationsParent(node.parent, omitParenthesis);
     }
-    return node.parent
+    return node.parent;
 }
 
 // 获取括号表达式内最末尾的节点（即最后一个被括号包裹的节点）
 // Get the last node inside a parenthesized expression (i.e., the last node wrapped by parentheses).
 export function getLastNodeOfParenthesis(node: TS.Node): TS.Node {
     if (!ts.isParenthesizedExpression(node)) {
-        return node
+        return node;
     }
     if (ts.isParenthesizedExpression(node.expression)) {
-        return getLastNodeOfParenthesis(node.expression)
+        return getLastNodeOfParenthesis(node.expression);
     }
     if (
         ts.isBinaryExpression(node.expression) &&
         node.expression.operatorToken.kind === ts.SyntaxKind.CommaToken
     ) {
-        return getLastNodeOfParenthesis(node.expression.right)
+        return getLastNodeOfParenthesis(node.expression.right);
     }
-    return node.expression
+    return node.expression;
 }
 
 // 获取剥离类型操作后的节点
 // Get the node after stripping type operations.
 export function getStriptTypeOperationsNode(node: TS.Node, omitParenthesis = true): TS.Node {
     if (omitParenthesis && ts.isParenthesizedExpression(node)) {
-        return getStriptTypeOperationsNode(getLastNodeOfParenthesis(node), omitParenthesis)
+        return getStriptTypeOperationsNode(getLastNodeOfParenthesis(node), omitParenthesis);
     }
     if (isTypeOperation(node)) {
-        return getStriptTypeOperationsNode(node.expression, omitParenthesis)
+        return getStriptTypeOperationsNode(node.expression, omitParenthesis);
     }
-    return node
+    return node;
 }

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -59,25 +59,25 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports await directive within for loop items", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#item-list .item-label")).toHaveText(["alpha", "beta"])
+        await expect(page.locator("#item-list .item-label")).toHaveText(["alpha", "beta"]);
         await expect(page.locator("#item-list .item-pending")).toHaveText([
             "Waiting alpha...",
-            "Waiting beta..."
-        ])
+            "Waiting beta...",
+        ]);
 
-        await page.locator("#resolve-1").click()
-        await expect(page.locator("#item-list .item-resolved")).toContainText("resolved 1")
-        await expect(page.locator("#item-list .item-pending")).toHaveCount(1)
+        await page.locator("#resolve-1").click();
+        await expect(page.locator("#item-list .item-resolved")).toContainText("resolved 1");
+        await expect(page.locator("#item-list .item-pending")).toHaveCount(1);
 
-        await page.locator("#reject-2").click()
-        await expect(page.locator("#item-list .item-error")).toContainText("error 2")
-        await expect(page.locator("#item-list .item-pending")).toHaveCount(0)
-    })
-})
+        await page.locator("#reject-2").click();
+        await expect(page.locator("#item-list .item-error")).toContainText("error 2");
+        await expect(page.locator("#item-list .item-pending")).toHaveCount(0);
+    });
+});

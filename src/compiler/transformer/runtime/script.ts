@@ -1,151 +1,151 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import type { CodeEditor } from "../editor"
-import type { TsNodeWithContext } from "#type-declarations/ts-ast"
-import type { TopLevelIdentifierInfo } from "#type-declarations/compiler"
+import type { CodeEditor } from "../editor";
+import type { TsNodeWithContext } from "#type-declarations/ts-ast";
+import type { TopLevelIdentifierInfo } from "#type-declarations/compiler";
 
-import ts from "../../ts-api"
+import ts from "../../ts-api";
 
 import {
     getNodeRange,
     getVariableDeclareKeyword,
     getStriptTypeOperationsNode,
-    getStriptTypeOperationsParent
-} from "../../ts-ast/sundry"
-import { RuntimeCodeWriter } from "../writer"
-import { IdentifierStatus } from "../../enums"
-import { arrayFrom } from "../../../util/shared/arrays"
-import { isShadowedIdentifier } from "../../ts-ast/context"
-import { jsDestructuringEqualTokenRE } from "../../regular"
-import { BOUND_INSTANCE_INTRINSIC_MAP } from "../../constants"
-import { findOutOfComment } from "../../../util/compiler/string"
-import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
-import { replaceReusedStringReferences } from "../../optimizer/compress"
-import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
+    getStriptTypeOperationsParent,
+} from "../../ts-ast/sundry";
+import { RuntimeCodeWriter } from "../writer";
+import { IdentifierStatus } from "../../enums";
+import { arrayFrom } from "../../../util/shared/arrays";
+import { isShadowedIdentifier } from "../../ts-ast/context";
+import { jsDestructuringEqualTokenRE } from "../../regular";
+import { BOUND_INSTANCE_INTRINSIC_MAP } from "../../constants";
+import { findOutOfComment } from "../../../util/compiler/string";
+import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
+import { replaceReusedStringReferences } from "../../optimizer/compress";
+import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
 
 export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: CodeEditor) {
-    const shadowEnclosures = new Set<string>()
-    const internalId = generateIdentifier.internal
-    const debugMode = inputDescriptor.options.debug
-    const scriptSource = inputDescriptor.script.code
-    const undefId = `${generateIdentifier.internal}.UNDEF`
-    const identifierMap: Record<string, string> = newCleanObj()
-    const rawArgumentBitmap = new Uint8Array(editor.sourceLength)
-    const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script
+    const shadowEnclosures = new Set<string>();
+    const internalId = generateIdentifier.internal;
+    const debugMode = inputDescriptor.options.debug;
+    const scriptSource = inputDescriptor.script.code;
+    const undefId = `${generateIdentifier.internal}.UNDEF`;
+    const identifierMap: Record<string, string> = newCleanObj();
+    const rawArgumentBitmap = new Uint8Array(editor.sourceLength);
+    const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script;
 
     // 注入绑定当前组件实例的遮蔽闭包。
     // Inject instance-bound shadowing closures for the used built-in methods
     for (const methodName of analyzeResult.script.usedIntrinsics) {
-        const boundName = BOUND_INSTANCE_INTRINSIC_MAP[methodName]
+        const boundName = BOUND_INSTANCE_INTRINSIC_MAP[methodName];
         if (!boundName || shadowEnclosures.has(boundName)) {
-            continue
+            continue;
         }
-        shadowEnclosures.add(boundName)
-        hoistWriter.write(`const ${boundName} = (...args) => `)
-        hoistWriter.writeLine(`${internalId}.${boundName}(instance, ...args)`)
+        shadowEnclosures.add(boundName);
+        hoistWriter.write(`const ${boundName} = (...args) => `);
+        hoistWriter.writeLine(`${internalId}.${boundName}(instance, ...args)`);
     }
 
     // 用于记录已被处理的 VariableDeclarator，解构或 var 声明的多个标识符指向同一个 VariableDeclarator
     // Used to record VariableDeclarators that have already been processed.
     // Multiple identifiers in a destructuring or `var` declaration may point to the same VariableDeclarator.
-    const processedItems = new Set<TS.VariableDeclaration | TS.EnumDeclaration>()
+    const processedItems = new Set<TS.VariableDeclaration | TS.EnumDeclaration>();
 
     // 调试模式下衍生响应式值标识符在编译后不能是常量，因为目标被修改后需要通过 setter 同步修原始始标识符
     // In debug mode, derived reactive value identifiers must not be constants after compilation,
     // because when the target is modified, the original identifier needs to be synchronized via a setter.
-    const convertToLetKeywordDecs = new Map<TS.VariableDeclaration, TS.VariableDeclarationList>()
+    const convertToLetKeywordDecs = new Map<TS.VariableDeclaration, TS.VariableDeclarationList>();
     if (debugMode) {
         traverseObject(topLevelIdentifiers, (_, value) => {
-            const declaration = value.nodeInfos[0].declaration
+            const declaration = value.nodeInfos[0].declaration;
             if (
                 (value.status === IdentifierStatus.Alias ||
                     value.status === IdentifierStatus.Derived) &&
                 ts.isVariableDeclarationList(declaration) &&
                 getVariableDeclareKeyword(declaration) === "const"
             ) {
-                const declarator = value.nodeInfos[0].declarator as TS.VariableDeclaration
-                convertToLetKeywordDecs.set(declarator, declaration)
+                const declarator = value.nodeInfos[0].declarator as TS.VariableDeclaration;
+                convertToLetKeywordDecs.set(declarator, declaration);
             }
-        })
+        });
     }
     for (const [declarator, declaration] of convertToLetKeywordDecs) {
-        const { declarations } = declaration
-        const declaratorIndex = declarations.indexOf(declarator)
+        const { declarations } = declaration;
+        const declaratorIndex = declarations.indexOf(declarator);
         if (declaratorIndex !== 0) {
-            editor.insert(declarator.getStart(), "let ")
-            replaceCommaWithSemi(declarations[declaratorIndex - 1])
+            editor.insert(declarator.getStart(), "let ");
+            replaceCommaWithSemi(declarations[declaratorIndex - 1]);
         } else {
-            editor.replace(declaration.getStart(), declaration.getStart() + 5, "let", true)
+            editor.replace(declaration.getStart(), declaration.getStart() + 5, "let", true);
         }
         for (let i = declaratorIndex + 1; i < declarations.length; i++) {
             if (!convertToLetKeywordDecs.has(declarations[i])) {
-                replaceCommaWithSemi(declarations[i - 1])
-                editor.insert(declarations[i].getStart(), "const ")
-                break
+                replaceCommaWithSemi(declarations[i - 1]);
+                editor.insert(declarations[i].getStart(), "const ");
+                break;
             }
-            convertToLetKeywordDecs.delete(declarations[i])
+            convertToLetKeywordDecs.delete(declarations[i]);
         }
     }
 
     traverseObject(topLevelIdentifiers, (name, info) => {
         switch (info.status) {
             case IdentifierStatus.Pending: {
-                return
+                return;
             }
             case IdentifierStatus.Raw:
             case IdentifierStatus.Literal: {
-                return transformRawDecalration(info)
+                return transformRawDecalration(info);
             }
             case IdentifierStatus.Shallow:
             case IdentifierStatus.Reactive: {
-                transformReactiveDeclaration(name, info)
-                info.transformTo = identifierMap[name] ?? name
-                return (info.transformTo += info.accessor ? ".$" : "")
+                transformReactiveDeclaration(name, info);
+                info.transformTo = identifierMap[name] ?? name;
+                return (info.transformTo += info.accessor ? ".$" : "");
             }
             case IdentifierStatus.Derived: {
-                transformDerivedDeclaration(name, info)
-                return (info.transformTo = `${identifierMap[name] ?? name}.$`)
+                transformDerivedDeclaration(name, info);
+                return (info.transformTo = `${identifierMap[name] ?? name}.$`);
             }
             case IdentifierStatus.Alias: {
-                transformAliasDeclaration(name, info)
+                transformAliasDeclaration(name, info);
 
                 if (!debugMode) {
-                    info.transformTo = info.aliasTarget
+                    info.transformTo = info.aliasTarget;
                 } else {
-                    info.transformTo = `${name}[${internalId}.REFERENCE_VALUE]`
+                    info.transformTo = `${name}[${internalId}.REFERENCE_VALUE]`;
                 }
-                return
+                return;
             }
         }
-    })
+    });
 
     // Exp 后缀的监视器函数的第一个参数是表达式，编译时无条件包装为 getter 函数
     // The first argument of the watcher function with the `Exp` suffix is
     // an expression, which is always wrapped as a getter function at compile time.
     for (const call of analyzeResult.script.watchExpCalls) {
-        const firstArg = call.arguments[0]
-        editor.insert(firstArg.getEnd(), ")")
-        editor.insert(firstArg.getStart(), `() => (`)
+        const firstArg = call.arguments[0];
+        editor.insert(firstArg.getEnd(), ")");
+        editor.insert(firstArg.getStart(), `() => (`);
 
-        const callee = getStriptTypeOperationsNode(call.expression)
-        editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true)
+        const callee = getStriptTypeOperationsNode(call.expression);
+        editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true);
     }
 
     // setContextExp("key", exp) -> setContextGetter("key", () => (exp))
     for (const call of analyzeResult.script.setContextExpCalls) {
-        const valueArg = call.arguments[1]
-        editor.insert(valueArg.getEnd(), ")")
-        editor.insert(valueArg.getStart(), `() => (`)
-        editor.replace(...getNodeRange(call.expression), "setContextGetter", true)
+        const valueArg = call.arguments[1];
+        editor.insert(valueArg.getEnd(), ")");
+        editor.insert(valueArg.getStart(), `() => (`);
+        editor.replace(...getNodeRange(call.expression), "setContextGetter", true);
     }
 
     // 非响应式读取转换
     // Non-reactive reads are transformed
     for (const call of analyzeResult.script.rawReadCalls) {
-        const arg = call.arguments[0]
-        const identifier = getStriptTypeOperationsNode(arg)
-        const callee = getStriptTypeOperationsNode(call.expression)!
+        const arg = call.arguments[0];
+        const identifier = getStriptTypeOperationsNode(arg);
+        const callee = getStriptTypeOperationsNode(call.expression)!;
 
         // 被遮蔽的引用解析到局部绑定，按未知标识符处理
         //
@@ -154,10 +154,10 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
         if (identifier && ts.isIdentifier(identifier)) {
             const status = isShadowedIdentifier(
                 identifier as TsNodeWithContext<TS.Identifier>,
-                identifier.text
+                identifier.text,
             )
                 ? undefined
-                : topLevelIdentifiers[identifier.text]?.status
+                : topLevelIdentifiers[identifier.text]?.status;
 
             // 原始值标识符：去掉 raw 包裹直接读取
             // Raw-value identifier: removing the raw wrapper is enough.
@@ -166,26 +166,26 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 status === IdentifierStatus.Literal ||
                 status === IdentifierStatus.Pending
             ) {
-                editor.remove(callee.getStart(), arg.getStart())
-                editor.remove(arg.getEnd(), call.getEnd())
-                continue
+                editor.remove(callee.getStart(), arg.getStart());
+                editor.remove(arg.getEnd(), call.getEnd());
+                continue;
             }
 
             // reactive/shallow/未知标识符：读取原始标识符
             // reactive/shallow/unknown identifiers: read the raw identifier.
             if (status !== IdentifierStatus.Derived && status !== IdentifierStatus.Alias) {
-                rawArgumentBitmap.fill(1, identifier.getStart(), identifier.getEnd())
-                editor.replace(...getNodeRange(callee), `${internalId}.toRaw`, true)
-                continue
+                rawArgumentBitmap.fill(1, identifier.getStart(), identifier.getEnd());
+                editor.replace(...getNodeRange(callee), `${internalId}.toRaw`, true);
+                continue;
             }
         }
 
         // derived/alias 标识符与其余表达式：可能在 effect 内求值，暂停追踪并解包
         // derived/alias identifiers and other expressions: they may run inside
         // effects, so pause tracking and unwrap.
-        editor.insert(arg.getEnd(), `)`)
-        editor.insert(arg.getStart(), `() => (`)
-        editor.replace(...getNodeRange(callee), `${internalId}.noTrackingToRaw`, true)
+        editor.insert(arg.getEnd(), `)`);
+        editor.insert(arg.getStart(), `() => (`);
+        editor.replace(...getNodeRange(callee), `${internalId}.noTrackingToRaw`, true);
     }
 
     // 转换响应式标识符引用
@@ -193,24 +193,24 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     traverseObject(topLevelIdentifiers, (name, info) => {
         if (topLevelReferences[name]) {
             for (const reference of topLevelReferences[name]) {
-                const { hoist, transformTo: transofrmedTo, status } = info
+                const { hoist, transformTo: transofrmedTo, status } = info;
                 if (!transofrmedTo) {
-                    continue
+                    continue;
                 }
                 if (status !== IdentifierStatus.Alias && !hoist && !reference.declared) {
-                    continue
+                    continue;
                 }
                 if (!reference.shorthand) {
                     if (!rawArgumentBitmap[reference.range[0]]) {
-                        editor.replace(...reference.range, `${transofrmedTo}`, true)
+                        editor.replace(...reference.range, `${transofrmedTo}`, true);
                     }
                 } else {
-                    editor.insert(reference.range[1], `: ${transofrmedTo}`, reference.range)
+                    editor.insert(reference.range[1], `: ${transofrmedTo}`, reference.range);
                 }
             }
         }
-    })
-    replaceReusedStringReferences(editor, analyzeResult.script.reusedStringReferences)
+    });
+    replaceReusedStringReferences(editor, analyzeResult.script.reusedStringReferences);
 
     function transformRawDecalration(info: TopLevelIdentifierInfo) {
         for (const { declarator } of info.nodeInfos) {
@@ -220,153 +220,153 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 !processedItems.has(declarator)
             ) {
                 replaceIntrinsicCall(declarator, "", hasArg => {
-                    return hasArg ? undefined : undefId
-                })
+                    return hasArg ? undefined : undefId;
+                });
             }
         }
     }
 
     function transformDerivedDeclaration(name: string, info: TopLevelIdentifierInfo) {
-        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
-        const intrinsicInfo = getIntrinsicInfo(declarator)!
-        const byExpression = intrinsicInfo.id.text === "derivedExp"
+        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames;
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration;
+        const intrinsicInfo = getIntrinsicInfo(declarator)!;
+        const byExpression = intrinsicInfo.id.text === "derivedExp";
         if (!destructuringIdentifierNames) {
-            const firstArg = intrinsicInfo.call.arguments[0]
+            const firstArg = intrinsicInfo.call.arguments[0];
             if (byExpression) {
-                editor.insert(firstArg.getEnd(), ")")
-                editor.insert(firstArg.getStart(), "() => (")
+                editor.insert(firstArg.getEnd(), ")");
+                editor.insert(firstArg.getStart(), "() => (");
             }
             if (debugMode) {
-                editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`)
+                editor.insert(firstArg.getEnd(), `, ${generateHoistSetter(name)}`);
             }
-            replaceIntrinsicCall(declarator, "derived")
-            return transformNonDestructuringDeclaratorId(declarator)
+            replaceIntrinsicCall(declarator, "derived");
+            return transformNonDestructuringDeclaratorId(declarator);
         }
 
         if (processedItems.has(declarator)) {
-            return
+            return;
         }
 
-        const firstArg = intrinsicInfo.call.arguments[0]
+        const firstArg = intrinsicInfo.call.arguments[0];
         if (byExpression) {
-            editor.insert(firstArg.getEnd(), ")")
-            editor.insert(firstArg.getStart(), "() => (")
+            editor.insert(firstArg.getEnd(), ")");
+            editor.insert(firstArg.getStart(), "() => (");
         }
         if (debugMode) {
             const destructuringIds = destructuringIdentifierNames.map(item => {
-                return `[${getReactiveIdentifier(item)}, ${item}]`
-            })
+                return `[${getReactiveIdentifier(item)}, ${item}]`;
+            });
             editor.insertMulti(declarator.name.getStart(), [
                 {
                     value: `[${destructuringIds.join(", ")}]`,
-                    sourceRange: getNodeRange(declarator.name)
+                    sourceRange: getNodeRange(declarator.name),
                 },
                 {
-                    value: `= ${internalId}.`
-                }
-            ])
+                    value: `= ${internalId}.`,
+                },
+            ]);
         } else {
             editor.insert(
                 declarator.name.getStart(),
-                `[${destructuringIdentifierNames.join(", ")}] = ${internalId}.`
-            )
+                `[${destructuringIdentifierNames.join(", ")}] = ${internalId}.`,
+            );
         }
         editor.insertMulti(declarator.name.getStart(), [
             {
                 value: "destructuringDerived",
-                sourceRange: intrinsicInfo && getNodeRange(intrinsicInfo.id)
+                sourceRange: intrinsicInfo && getNodeRange(intrinsicInfo.id),
             },
             {
-                value: "(("
-            }
-        ])
+                value: "((",
+            },
+        ]);
         replaceIntrinsicCall(declarator, "", () => {
-            const segments: string[] = []
+            const segments: string[] = [];
             if ((segments.push(`, ${destructuringIdentifierNames.length}`), debugMode)) {
                 segments.push(
-                    `, [${destructuringIdentifierNames.map(generateHoistSetter).join(", ")}]`
-                )
+                    `, [${destructuringIdentifierNames.map(generateHoistSetter).join(", ")}]`,
+                );
             }
-            return segments.join("") + ")"
-        })
-        transformDestructuringEqualSign(declarator, destructuringIdentifierNames)
+            return segments.join("") + ")";
+        });
+        transformDestructuringEqualSign(declarator, destructuringIdentifierNames);
     }
 
     function transformAliasDeclaration(_: string, info: TopLevelIdentifierInfo) {
-        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
-        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const { declarations } = info.nodeInfos[0].declaration as TS.VariableDeclarationList
-        const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!
-        const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration;
+        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames;
+        const { declarations } = info.nodeInfos[0].declaration as TS.VariableDeclarationList;
+        const { call: intrinsicCall, id: intrinsicId } = getIntrinsicInfo(declarator)!;
+        const aliasInfos = analyzeResult.script.declaratorToAliasInfos.get(declarator)!;
 
         // 移除 VariableDeclarator 多余的尾部逗号
         // Remove any trailing comma from the VariableDeclarator.
         if (!debugMode) {
             if (declarations.length !== 1) {
-                let declaratorToRemoveEndComma: TS.VariableDeclaration
-                const declaratorIndex = declarations.indexOf(declarator)
+                let declaratorToRemoveEndComma: TS.VariableDeclaration;
+                const declaratorIndex = declarations.indexOf(declarator);
                 if (declaratorIndex !== declarations.length - 1) {
-                    declaratorToRemoveEndComma = declarator
+                    declaratorToRemoveEndComma = declarator;
                 } else {
-                    declaratorToRemoveEndComma = declarations[declaratorIndex - 1]
+                    declaratorToRemoveEndComma = declarations[declaratorIndex - 1];
                 }
                 editor.removeCharacter(
                     declaratorToRemoveEndComma.getEnd() +
-                        findEndCommaIndexOfVariableDeclarator(declaratorToRemoveEndComma)
-                )
+                        findEndCommaIndexOfVariableDeclarator(declaratorToRemoveEndComma),
+                );
             }
-            return
+            return;
         }
 
         if (!destructuringIdentifierNames) {
             editor.replace(
                 ...getNodeRange(intrinsicCall.arguments[0]),
-                generateHoistGetter(`[${aliasInfos[0].expression}, ${aliasInfos[0].property}]`)
-            )
-            editor.insert(intrinsicId.getStart(), `${internalId}.`)
-            return
+                generateHoistGetter(`[${aliasInfos[0].expression}, ${aliasInfos[0].property}]`),
+            );
+            editor.insert(intrinsicId.getStart(), `${internalId}.`);
+            return;
         }
 
         if (processedItems.has(declarator)) {
-            return
+            return;
         }
 
-        const getterIds: string[] = []
-        const declaratorIdRange = getNodeRange(declarator.name)
-        const joinedDestructuringIds = destructuringIdentifierNames.join(", ")
+        const getterIds: string[] = [];
+        const declaratorIdRange = getNodeRange(declarator.name);
+        const joinedDestructuringIds = destructuringIdentifierNames.join(", ");
         for (const aliasInfo of aliasInfos) {
-            getterIds.push(generateHoistGetter(`[${aliasInfo.expression}, ${aliasInfo.property}]`))
+            getterIds.push(generateHoistGetter(`[${aliasInfo.expression}, ${aliasInfo.property}]`));
         }
-        editor.insert(intrinsicCall.arguments[0].getEnd(), `${getterIds.join(", ")}`)
-        editor.remove(...declaratorIdRange)
-        editor.remove(...getNodeRange(intrinsicCall.arguments[0]))
-        replaceIntrinsicCall(declarator, "destructuringAlias")
-        editor.insert(declarator.name.getStart(), `[${joinedDestructuringIds}]`, declaratorIdRange)
+        editor.insert(intrinsicCall.arguments[0].getEnd(), `${getterIds.join(", ")}`);
+        editor.remove(...declaratorIdRange);
+        editor.remove(...getNodeRange(intrinsicCall.arguments[0]));
+        replaceIntrinsicCall(declarator, "destructuringAlias");
+        editor.insert(declarator.name.getStart(), `[${joinedDestructuringIds}]`, declaratorIdRange);
     }
 
     function transformReactiveDeclaration(name: string, info: TopLevelIdentifierInfo) {
         const reactiveIdentifier = shouldGenerateReactiveIdentifier(info)
             ? getReactiveIdentifier(name)
-            : name
-        const isShallow = info.status === IdentifierStatus.Shallow
-        const firstDeclaration = info.nodeInfos[0].declaration
-        const defaultReactFunc = isShallow ? "shallowReact" : "react"
-        const defaultReactCallee = `${internalId}.${defaultReactFunc}`
+            : name;
+        const isShallow = info.status === IdentifierStatus.Shallow;
+        const firstDeclaration = info.nodeInfos[0].declaration;
+        const defaultReactFunc = isShallow ? "shallowReact" : "react";
+        const defaultReactCallee = `${internalId}.${defaultReactFunc}`;
 
         // ClassDeclaration
         if (ts.isClassDeclaration(firstDeclaration)) {
             if (debugMode) {
                 editor.insert(
                     firstDeclaration.getStart(),
-                    `let [${reactiveIdentifier}, ${name}] = ${defaultReactCallee}(`
-                )
-                editor.insert(firstDeclaration.getEnd(), `, ${generateHoistSetter(name)})`)
+                    `let [${reactiveIdentifier}, ${name}] = ${defaultReactCallee}(`,
+                );
+                editor.insert(firstDeclaration.getEnd(), `, ${generateHoistSetter(name)})`);
             } else {
-                editor.insert(firstDeclaration.getEnd(), ")")
-                editor.insert(firstDeclaration.getStart(), `let ${name} = ${defaultReactCallee}(`)
+                editor.insert(firstDeclaration.getEnd(), ")");
+                editor.insert(firstDeclaration.getStart(), `let ${name} = ${defaultReactCallee}(`);
             }
-            return
+            return;
         }
 
         // TSEnumDeclaration
@@ -375,119 +375,119 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 editor.insert(
                     firstDeclaration.getStart(),
                     `const [${reactiveIdentifier}] = ${defaultReactCallee}({}, ${generateSetterCode(
-                        name
-                    )})\n${inputDescriptor.indent}`
-                )
+                        name,
+                    )})\n${inputDescriptor.indent}`,
+                );
             } else {
                 editor.insert(
                     firstDeclaration.getStart(),
-                    `const ${reactiveIdentifier} = ${defaultReactCallee}({})\n${inputDescriptor.indent}`
-                )
+                    `const ${reactiveIdentifier} = ${defaultReactCallee}({})\n${inputDescriptor.indent}`,
+                );
             }
             for (const { declaration } of info.nodeInfos) {
-                const writer = new RuntimeCodeWriter().indent()
+                const writer = new RuntimeCodeWriter().indent();
                 editor.insert(
                     declaration.getEnd(),
                     writer.write(
                         isShallow
                             ? `${reactiveIdentifier}.$ = ${name};`
-                            : `${internalId}.objectAssign(${reactiveIdentifier}.$ ??= {}, ${name});`
-                    ).code
-                )
+                            : `${internalId}.objectAssign(${reactiveIdentifier}.$ ??= {}, ${name});`,
+                    ).code,
+                );
             }
-            return
+            return;
         }
 
         // VariableDeclaration(kind: var) || FunctionDeclaration
         if (info.hoist) {
-            const isFunctionDeclaration = ts.isFunctionDeclaration(firstDeclaration)
+            const isFunctionDeclaration = ts.isFunctionDeclaration(firstDeclaration);
             if (!isFunctionDeclaration) {
                 for (const nodeInfo of info.nodeInfos) {
-                    const declarator = nodeInfo.declarator as TS.VariableDeclaration
-                    const declaration = nodeInfo.declaration as TS.VariableDeclarationList
+                    const declarator = nodeInfo.declarator as TS.VariableDeclaration;
+                    const declaration = nodeInfo.declaration as TS.VariableDeclarationList;
                     if (processedItems.has(declarator)) {
-                        continue
+                        continue;
                     }
-                    processedItems.add(declarator)
+                    processedItems.add(declarator);
 
                     if (declaratorToIntrinsic.has(declarator)) {
                         replaceIntrinsicCall(declarator, "", hasArg =>
-                            hasArg ? undefined : undefId
-                        )
+                            hasArg ? undefined : undefId,
+                        );
                     }
 
-                    const declaratorIndex = declaration.declarations.indexOf(declarator)
+                    const declaratorIndex = declaration.declarations.indexOf(declarator);
                     if (declaratorIndex === declaration.declarations.length - 1) {
-                        editor.insert(declarator.getEnd(), ";")
+                        editor.insert(declarator.getEnd(), ";");
                     } else {
-                        replaceCommaWithSemi(declarator)
+                        replaceCommaWithSemi(declarator);
                         editor.insert(
                             declaration.declarations[declaratorIndex + 1].getStart(),
-                            "var "
-                        )
+                            "var ",
+                        );
                     }
                     if (nodeInfo.destructuringIdentifierNames) {
-                        const shouldUpdateItems = new Set<string>()
+                        const shouldUpdateItems = new Set<string>();
                         for (const item of nodeInfo.destructuringIdentifierNames) {
-                            const { status } = analyzeResult.script.topLevelIdentifiers[item]
+                            const { status } = analyzeResult.script.topLevelIdentifiers[item];
                             if (
                                 status === IdentifierStatus.Reactive ||
                                 status === IdentifierStatus.Shallow
                             ) {
-                                shouldUpdateItems.add(item)
+                                shouldUpdateItems.add(item);
                             }
                         }
 
-                        const shouldUpdateItemsArr = arrayFrom(shouldUpdateItems)
+                        const shouldUpdateItemsArr = arrayFrom(shouldUpdateItems);
                         const shouldUpdateTargetsArr = shouldUpdateItemsArr.map(
-                            item => `${getReactiveIdentifier(item)}.$`
-                        )
+                            item => `${getReactiveIdentifier(item)}.$`,
+                        );
                         editor.insert(
                             declarator.getEnd(),
-                            ` [${shouldUpdateTargetsArr.join(", ")}] = [${shouldUpdateItemsArr.join(", ")}];`
-                        )
+                            ` [${shouldUpdateTargetsArr.join(", ")}] = [${shouldUpdateItemsArr.join(", ")}];`,
+                        );
                     } else {
-                        editor.insert(declarator.getEnd(), ` ${reactiveIdentifier}.$ = ${name};`)
+                        editor.insert(declarator.getEnd(), ` ${reactiveIdentifier}.$ = ${name};`);
                     }
                 }
             }
 
-            const reactiveTarget = isFunctionDeclaration ? name : undefId
+            const reactiveTarget = isFunctionDeclaration ? name : undefId;
             if (debugMode) {
-                hoistWriter.write(`const [${reactiveIdentifier}] = ${defaultReactCallee}(`)
-                hoistWriter.write(`${reactiveTarget}, ${generateSetterCode(name)})\n`)
+                hoistWriter.write(`const [${reactiveIdentifier}] = ${defaultReactCallee}(`);
+                hoistWriter.write(`${reactiveTarget}, ${generateSetterCode(name)})\n`);
             } else {
                 hoistWriter.write(
-                    `const ${reactiveIdentifier} = ${defaultReactCallee}(${reactiveTarget})\n`
-                )
+                    `const ${reactiveIdentifier} = ${defaultReactCallee}(${reactiveTarget})\n`,
+                );
             }
-            return
+            return;
         }
 
         // VariableDeclaration(non-var)
-        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration
-        const declaration = info.nodeInfos[0].declaration as TS.VariableDeclarationList
-        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames
-        const isConst = getVariableDeclareKeyword(declaration) !== "let"
+        const declarator = info.nodeInfos[0].declarator as TS.VariableDeclaration;
+        const declaration = info.nodeInfos[0].declaration as TS.VariableDeclarationList;
+        const destructuringIdentifierNames = info.nodeInfos[0].destructuringIdentifierNames;
+        const isConst = getVariableDeclareKeyword(declaration) !== "let";
         if (!declarator.initializer) {
-            const { exclamationToken, type } = declarator
+            const { exclamationToken, type } = declarator;
             if (exclamationToken || type) {
                 editor.remove(
                     exclamationToken ? exclamationToken.getStart() : declarator.name.getEnd(),
-                    (type ?? exclamationToken)!.getEnd()
-                )
+                    (type ?? exclamationToken)!.getEnd(),
+                );
             }
             if (!debugMode) {
-                editor.insert(declarator.name.getEnd(), ` = ${defaultReactCallee}()`)
+                editor.insert(declarator.name.getEnd(), ` = ${defaultReactCallee}()`);
             } else {
                 // assertion: non-const
                 editor.insert(
                     declarator.name.getEnd(),
-                    `] = ${defaultReactCallee}(${undefId}, ${generateHoistSetter(name)})`
-                )
-                editor.insert(declarator.name.getStart(), `[${reactiveIdentifier}, `)
+                    `] = ${defaultReactCallee}(${undefId}, ${generateHoistSetter(name)})`,
+                );
+                editor.insert(declarator.name.getStart(), `[${reactiveIdentifier}, `);
             }
-            return
+            return;
         }
 
         if (!destructuringIdentifierNames) {
@@ -495,205 +495,211 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
                 ? isShallow
                     ? "shallowConstReact"
                     : "constReact"
-                : defaultReactFunc
+                : defaultReactFunc;
             if (debugMode && !isConst) {
-                transformNonDestructuringDeclaratorId(declarator)
+                transformNonDestructuringDeclaratorId(declarator);
             }
             if (!info.implicit) {
                 replaceIntrinsicCall(declarator, reactFunc, hasArg => {
                     if (!debugMode) {
-                        return
+                        return;
                     }
                     if (!hasArg) {
-                        return `${undefId}, ${generateHoistSetter(name)}`
+                        return `${undefId}, ${generateHoistSetter(name)}`;
                     }
-                    return isConst ? "" : `, ${generateHoistSetter(name)}`
-                })
+                    return isConst ? "" : `, ${generateHoistSetter(name)}`;
+                });
             } else {
                 if (debugMode && !isConst) {
-                    editor.insert(declarator.initializer.getEnd(), `, ${generateHoistSetter(name)}`)
+                    editor.insert(
+                        declarator.initializer.getEnd(),
+                        `, ${generateHoistSetter(name)}`,
+                    );
                 }
-                editor.insert(declarator.initializer.getEnd(), ")")
-                editor.insert(declarator.initializer.getStart(), `${internalId}.${reactFunc}(`)
+                editor.insert(declarator.initializer.getEnd(), ")");
+                editor.insert(declarator.initializer.getStart(), `${internalId}.${reactFunc}(`);
             }
-            return
+            return;
         }
 
         if (processedItems.has(declarator)) {
-            return
+            return;
         }
-        processedItems.add(declarator)
+        processedItems.add(declarator);
 
-        const setterIds: string[] = []
-        const needSetters = debugMode && !isConst
+        const setterIds: string[] = [];
+        const needSetters = debugMode && !isConst;
         const destructuringFuncReturnItems = destructuringIdentifierNames.map((item, index) => {
-            const { status } = analyzeResult.script.topLevelIdentifiers[item]
+            const { status } = analyzeResult.script.topLevelIdentifiers[item];
             const isReactive =
-                status === IdentifierStatus.Shallow || status === IdentifierStatus.Reactive
+                status === IdentifierStatus.Shallow || status === IdentifierStatus.Reactive;
             if (needSetters && (isReactive || index !== destructuringIdentifierNames.length - 1)) {
-                setterIds.push(isReactive ? generateHoistSetter(item) : "")
+                setterIds.push(isReactive ? generateHoistSetter(item) : "");
             }
-            return `[${item}, ${+isReactive}]`
-        })
+            return `[${item}, ${+isReactive}]`;
+        });
 
         // Declaration id and react call
         if (!needSetters) {
             editor.insert(
                 declarator.name.getStart(),
-                `[${destructuringIdentifierNames.join(", ")}] = ${internalId}.`
-            )
+                `[${destructuringIdentifierNames.join(", ")}] = ${internalId}.`,
+            );
         } else {
             const destructuringIds = destructuringIdentifierNames.map(item => {
-                const { status } = analyzeResult.script.topLevelIdentifiers[item]
+                const { status } = analyzeResult.script.topLevelIdentifiers[item];
                 const isReactive =
-                    status === IdentifierStatus.Shallow || status === IdentifierStatus.Reactive
-                return isReactive ? `[${getReactiveIdentifier(item)}, ${item}]` : item
-            })
+                    status === IdentifierStatus.Shallow || status === IdentifierStatus.Reactive;
+                return isReactive ? `[${getReactiveIdentifier(item)}, ${item}]` : item;
+            });
             editor.insertMulti(declarator.name.getStart(), [
                 {
                     value: `[${destructuringIds.join(", ")}]`,
-                    sourceRange: getNodeRange(declarator.name)
+                    sourceRange: getNodeRange(declarator.name),
                 },
                 {
-                    value: ` = ${internalId}.`
-                }
-            ])
+                    value: ` = ${internalId}.`,
+                },
+            ]);
         }
 
-        const intrinsicInfo = getIntrinsicInfo(declarator)
+        const intrinsicInfo = getIntrinsicInfo(declarator);
         editor.insert(
             declarator.name.getStart(),
             `destructuring${isShallow ? "Shallow" : ""}${isConst ? "Const" : ""}React`,
-            intrinsicInfo && getNodeRange(intrinsicInfo.id)
-        )
-        editor.insert(declarator.name.getStart(), "((")
-        transformDestructuringEqualSign(declarator, destructuringFuncReturnItems)
+            intrinsicInfo && getNodeRange(intrinsicInfo.id),
+        );
+        editor.insert(declarator.name.getStart(), "((");
+        transformDestructuringEqualSign(declarator, destructuringFuncReturnItems);
 
         // Reactive target and debugging setters
         if (!info.implicit) {
             replaceIntrinsicCall(declarator, "", hasArg => {
                 if (hasArg) {
-                    return `${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`
+                    return `${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`;
                 }
-                return `${undefId}${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`
-            })
+                return `${undefId}${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`;
+            });
         } else {
             editor.insert(
                 declarator.getEnd(),
-                `${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`
-            )
+                `${needSetters ? `, [${setterIds.join(", ")}])` : ")"}`,
+            );
         }
-        return
+        return;
     }
 
     function replaceIntrinsicCall(
         declarator: TS.VariableDeclaration,
         newName: string,
-        insertArg?: (hasArg: boolean) => string | undefined
+        insertArg?: (hasArg: boolean) => string | undefined,
     ) {
-        const { call, id } = getIntrinsicInfo(declarator)!
-        const initNodeStart = declarator.initializer!.getStart()
-        const insertArgRet = insertArg?.(!!call.arguments.length)
+        const { call, id } = getIntrinsicInfo(declarator)!;
+        const initNodeStart = declarator.initializer!.getStart();
+        const insertArgRet = insertArg?.(!!call.arguments.length);
 
         if ((processedItems.add(declarator), insertArgRet)) {
             if (call.arguments.length) {
-                editor.insert(call.arguments[0].getEnd(), insertArgRet)
+                editor.insert(call.arguments[0].getEnd(), insertArgRet);
             } else {
-                editor.insert(call.getEnd() - 1, insertArgRet)
+                editor.insert(call.getEnd() - 1, insertArgRet);
             }
         }
         if (newName !== "") {
-            editor.insert(id.getStart(), `${internalId}.`)
-            editor.replace(id.getStart(), id.getEnd(), newName, true)
+            editor.insert(id.getStart(), `${internalId}.`);
+            editor.replace(id.getStart(), id.getEnd(), newName, true);
         } else {
             if (!call.arguments.length) {
-                editor.remove(initNodeStart, call.getEnd() - 1)
+                editor.remove(initNodeStart, call.getEnd() - 1);
             } else {
-                editor.remove(call.arguments[0].getEnd(), call.getEnd() - 1)
-                editor.remove(initNodeStart, call.arguments[0].getStart())
+                editor.remove(call.arguments[0].getEnd(), call.getEnd() - 1);
+                editor.remove(initNodeStart, call.arguments[0].getStart());
             }
-            editor.remove(call.getEnd() - 1, call.getEnd())
+            editor.remove(call.getEnd() - 1, call.getEnd());
         }
     }
 
     function replaceCommaWithSemi(declarator: TS.VariableDeclaration) {
-        const declaratorEnd = declarator.getEnd()
-        const commaIndex = findEndCommaIndexOfVariableDeclarator(declarator)
+        const declaratorEnd = declarator.getEnd();
+        const commaIndex = findEndCommaIndexOfVariableDeclarator(declarator);
         if (commaIndex !== -1) {
-            editor.replace(declaratorEnd + commaIndex, declaratorEnd + commaIndex + 1, ";")
+            editor.replace(declaratorEnd + commaIndex, declaratorEnd + commaIndex + 1, ";");
         }
     }
     function getReactiveIdentifier(name: string) {
-        return (identifierMap[name] ??= ensureIdWithNumSuffix("_" + name, true))
+        return (identifierMap[name] ??= ensureIdWithNumSuffix("_" + name, true));
     }
 
     function generateHoistGetter(returns: string) {
-        const getterId = ensureIdWithNumSuffix("_G")
-        const getterArgId = generateIdentifier.getterArg
-        return (hoistWriter.write(`const ${getterId} = ${getterArgId} => (${returns})\n`), getterId)
+        const getterId = ensureIdWithNumSuffix("_G");
+        const getterArgId = generateIdentifier.getterArg;
+        return (
+            hoistWriter.write(`const ${getterId} = ${getterArgId} => (${returns})\n`),
+            getterId
+        );
     }
 
     function generateHoistSetter(target: string) {
-        const setterId = ensureIdWithNumSuffix("_S")
-        return (hoistWriter.write(`const ${setterId} = ${generateSetterCode(target)}\n`), setterId)
+        const setterId = ensureIdWithNumSuffix("_S");
+        return (hoistWriter.write(`const ${setterId} = ${generateSetterCode(target)}\n`), setterId);
     }
 
     function transformNonDestructuringDeclaratorId(declarator: TS.VariableDeclaration) {
         if (debugMode) {
-            const idNode = declarator.name as TS.Identifier
+            const idNode = declarator.name as TS.Identifier;
             editor.replace(
                 idNode.getStart(),
                 idNode.getEnd(),
                 `[${getReactiveIdentifier(idNode.text)}, ${idNode.text}]`,
-                true
-            )
+                true,
+            );
         }
     }
 
     function transformDestructuringEqualSign(
         declarator: TS.VariableDeclaration,
-        returns: string[]
+        returns: string[],
     ) {
         const [matchedIndex, matchedLen] = findOutOfComment(
             scriptSource.slice(declarator.name.getEnd()),
-            jsDestructuringEqualTokenRE
-        )
-        const equalSignIndex = declarator.name.getEnd() + matchedIndex
+            jsDestructuringEqualTokenRE,
+        );
+        const equalSignIndex = declarator.name.getEnd() + matchedIndex;
         editor.replace(
             equalSignIndex,
             equalSignIndex + matchedLen,
-            `) => [${returns.join(", ")}], `
-        )
+            `) => [${returns.join(", ")}], `,
+        );
     }
 }
 
 function generateSetterCode(target: string) {
-    const setterArgId = generateIdentifier.setterArg
-    return `${setterArgId} => (${target} = ${setterArgId})`
+    const setterArgId = generateIdentifier.setterArg;
+    return `${setterArgId} => (${target} = ${setterArgId})`;
 }
 
 function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
-    const debugMode = inputDescriptor.options.debug
-    const firstDeclaration = info.nodeInfos[0].declaration
+    const debugMode = inputDescriptor.options.debug;
+    const firstDeclaration = info.nodeInfos[0].declaration;
     switch (firstDeclaration.kind) {
         case ts.SyntaxKind.ClassDeclaration: {
-            return debugMode
+            return debugMode;
         }
         case ts.SyntaxKind.EnumDeclaration:
         case ts.SyntaxKind.FunctionDeclaration: {
-            return true
+            return true;
         }
         case ts.SyntaxKind.VariableDeclarationList: {
-            const declarationList = firstDeclaration as TS.VariableDeclarationList
+            const declarationList = firstDeclaration as TS.VariableDeclarationList;
             switch (getVariableDeclareKeyword(declarationList)) {
                 case "var": {
-                    return true
+                    return true;
                 }
                 case "let": {
-                    return debugMode
+                    return debugMode;
                 }
                 default: {
-                    return false
+                    return false;
                 }
             }
         }
@@ -701,15 +707,15 @@ function shouldGenerateReactiveIdentifier(info: TopLevelIdentifierInfo) {
 }
 
 function getIntrinsicInfo(declarator: TS.VariableDeclaration) {
-    const id = analyzeResult.script.declaratorToIntrinsic.get(declarator)!
+    const id = analyzeResult.script.declaratorToIntrinsic.get(declarator)!;
     if (id) {
         return {
             id,
-            call: getStriptTypeOperationsParent(id) as TS.CallExpression
-        }
+            call: getStriptTypeOperationsParent(id) as TS.CallExpression,
+        };
     }
 }
 
 function findEndCommaIndexOfVariableDeclarator(declarator: TS.VariableDeclaration) {
-    return findOutOfComment(inputDescriptor.script.code.slice(declarator.getEnd()), ",")
+    return findOutOfComment(inputDescriptor.script.code.slice(declarator.getEnd()), ",");
 }

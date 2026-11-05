@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -52,60 +52,60 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="manual-panel">Manual cleanup panel</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLeak = (page: E2EPageEvaluator) => {
         return page.evaluate(() => {
             return {
                 effectRuns: (globalThis as any).__manualCleanupLeak.effectRuns,
-                watchRuns: (globalThis as any).__manualCleanupLeak.watchRuns
-            }
-        })
-    }
+                watchRuns: (globalThis as any).__manualCleanupLeak.watchRuns,
+            };
+        });
+    };
 
     test("effect and watch registered asynchronously still react to shared store changes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#manual-panel")).toHaveText("Manual cleanup panel")
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#manual-panel")).toHaveText("Manual cleanup panel");
 
         // Wait until the async registration completed (effect ran once).
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, watchRuns: 0 })
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, watchRuns: 0 });
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1");
 
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, watchRuns: 1 })
-    })
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, watchRuns: 1 });
+    });
 
     test("async-registered effect and watch are auto-bound and disposed on destroy", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#manual-panel")).toHaveText("Manual cleanup panel")
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#manual-panel")).toHaveText("Manual cleanup panel");
 
         // Wait until the async registration completed and both fired once after a change.
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, watchRuns: 0 })
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, watchRuns: 1 })
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, watchRuns: 0 });
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1");
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, watchRuns: 1 });
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#manual-panel")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#manual-panel")).toHaveCount(0);
 
-        const beforeUnmount = await readLeak(page)
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 2")
+        const beforeUnmount = await readLeak(page);
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 2");
 
-        await expect.poll(() => readLeak(page)).toEqual(beforeUnmount)
-    })
-})
+        await expect.poll(() => readLeak(page)).toEqual(beforeUnmount);
+    });
+});

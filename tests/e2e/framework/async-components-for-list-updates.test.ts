@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -88,35 +88,38 @@ const scenario: E2EScenarioInput = {
     `,
     components: {
         AsyncOne: `<article id="async-one">Async One</article>`,
-        AsyncThree: `<article id="async-three">Async Three</article>`
-    }
-}
+        AsyncThree: `<article id="async-three">Async Three</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports for list updates while async component branches are active", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#resolve-one").click()
-        await expect(page.locator("#async-for-list #async-one")).toHaveText("Async One")
+        await page.locator("#resolve-one").click();
+        await expect(page.locator("#async-for-list #async-one")).toHaveText("Async One");
 
-        await page.locator("#remove-first").click()
-        await expect(page.locator("#async-for-list .async-item-label")).toHaveText(["two"])
-        await expect(page.locator("#async-for-list #async-one")).toHaveCount(0)
-        await expect(page.locator("#async-for-list .async-item-loading")).toHaveText([
-            "Loading two"
-        ])
-
-        await page.locator("#add-third").click()
-        await expect(page.locator("#async-for-list .async-item-label")).toHaveText(["two", "three"])
+        await page.locator("#remove-first").click();
+        await expect(page.locator("#async-for-list .async-item-label")).toHaveText(["two"]);
+        await expect(page.locator("#async-for-list #async-one")).toHaveCount(0);
         await expect(page.locator("#async-for-list .async-item-loading")).toHaveText([
             "Loading two",
-            "Loading three"
-        ])
+        ]);
 
-        await page.locator("#resolve-three").click()
-        await expect(page.locator("#async-for-list #async-three")).toHaveText("Async Three")
-    })
-})
+        await page.locator("#add-third").click();
+        await expect(page.locator("#async-for-list .async-item-label")).toHaveText([
+            "two",
+            "three",
+        ]);
+        await expect(page.locator("#async-for-list .async-item-loading")).toHaveText([
+            "Loading two",
+            "Loading three",
+        ]);
+
+        await page.locator("#resolve-three").click();
+        await expect(page.locator("#async-for-list #async-three")).toHaveText("Async Three");
+    });
+});

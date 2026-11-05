@@ -1,12 +1,12 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import type { Range, RawArgumentInfo } from "#type-declarations/compiler"
+import type { Range, RawArgumentInfo } from "#type-declarations/compiler";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { analyzeResult } from "../state"
-import { RawArgumentKind, IdentifierStatus } from "../enums"
-import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
+import { analyzeResult } from "../state";
+import { RawArgumentKind, IdentifierStatus } from "../enums";
+import { getStriptTypeOperationsNode } from "../ts-ast/sundry";
 
 // raw 实参的静态分类（topLevelRefs：顶部作用域标识符引用的位置位图）：
 // - "plain"：raw/literal/pending 标识符，直接读取。
@@ -24,32 +24,32 @@ import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
 // arguments) and is skipped by the caller.
 export function getRawArgumentInfo(
     call: TS.CallExpression,
-    topLevelRefs: Uint8Array
+    topLevelRefs: Uint8Array,
 ): RawArgumentInfo | undefined {
     if (call.arguments.length !== 1 || ts.isSpreadElement(call.arguments[0])) {
-        return undefined
+        return undefined;
     }
 
-    const arg = getStriptTypeOperationsNode(call.arguments[0])
+    const arg = getStriptTypeOperationsNode(call.arguments[0]);
     if (!ts.isIdentifier(arg)) {
-        return undefined
+        return undefined;
     }
 
-    const range: Range = [arg.getStart(), arg.getEnd()]
+    const range: Range = [arg.getStart(), arg.getEnd()];
     if (!topLevelRefs[range[0]]) {
-        return { kind: RawArgumentKind.Unwrap, range }
+        return { kind: RawArgumentKind.Unwrap, range };
     }
 
-    const status = analyzeResult.script.topLevelIdentifiers[arg.text]?.status
+    const status = analyzeResult.script.topLevelIdentifiers[arg.text]?.status;
     if (
         status === IdentifierStatus.Raw ||
         status === IdentifierStatus.Literal ||
         status === IdentifierStatus.Pending
     ) {
-        return { kind: RawArgumentKind.Plain, range }
+        return { kind: RawArgumentKind.Plain, range };
     }
     if (status === IdentifierStatus.Derived || status === IdentifierStatus.Alias) {
-        return undefined
+        return undefined;
     }
-    return { kind: RawArgumentKind.Unwrap, range }
+    return { kind: RawArgumentKind.Unwrap, range };
 }

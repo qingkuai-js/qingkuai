@@ -1,25 +1,25 @@
-import { analyzeResult, generateIdentifier } from "../../compiler/state"
+import { analyzeResult, generateIdentifier } from "../../compiler/state";
 
 export const createHashId = /*#__PURE__*/ (function () {
-    const existing = new Set<string>()
-    const max = parseInt(`0x${"f".repeat(8)}`)
+    const existing = new Set<string>();
+    const max = parseInt(`0x${"f".repeat(8)}`);
     return () => {
         while (true) {
-            const hash = Math.floor(Math.random() * max).toString(16)
+            const hash = Math.floor(Math.random() * max).toString(16);
             if (existing.has(hash)) {
-                continue
+                continue;
             }
-            return (existing.add(hash), hash)
+            return (existing.add(hash), hash);
         }
-    }
-})()
+    };
+})();
 
 export function getEventName(rawName: string) {
-    const sepratorIndex = rawName.indexOf("|")
+    const sepratorIndex = rawName.indexOf("|");
     if (-1 === sepratorIndex) {
-        return rawName
+        return rawName;
     }
-    return rawName.slice(0, sepratorIndex)
+    return rawName.slice(0, sepratorIndex);
 }
 
 export function getAttributeBaseName(name: string) {
@@ -28,39 +28,39 @@ export function getAttributeBaseName(name: string) {
         case "@":
         case "#":
         case "&": {
-            return name.slice(1)
+            return name.slice(1);
         }
     }
-    return name
+    return name;
 }
 
 export function ensureIdWithPrefix(name: string, prefix = "_") {
-    const { fullIdentifiers } = analyzeResult.script
-    const startIndex = (generateIdentifier.prefix[name] ??= 0)
-    name = prefix.repeat(startIndex) + name
+    const { fullIdentifiers } = analyzeResult.script;
+    const startIndex = (generateIdentifier.prefix[name] ??= 0);
+    name = prefix.repeat(startIndex) + name;
 
     while (fullIdentifiers.has(name)) {
-        name = prefix + name
-        generateIdentifier.prefix[name]++
+        name = prefix + name;
+        generateIdentifier.prefix[name]++;
     }
-    return (fullIdentifiers.add(name), name)
+    return (fullIdentifiers.add(name), name);
 }
 
 export function ensureIdWithNumSuffix(name: string, useOrigin = false) {
-    const { fullIdentifiers } = analyzeResult.script
+    const { fullIdentifiers } = analyzeResult.script;
     const generateInfo = (generateIdentifier.suffix[name] ??= {
         last: 1,
-        originUsed: false
-    })
+        originUsed: false,
+    });
     if (useOrigin && !generateInfo.originUsed && !fullIdentifiers.has(name)) {
-        generateInfo.originUsed = true
+        generateInfo.originUsed = true;
     } else {
         // eslint-disable-next-line no-constant-condition
         for (let i = generateInfo.last, initial = name; true; i++) {
             if (!fullIdentifiers.has((name = initial + i))) {
-                break
+                break;
             }
         }
     }
-    return (fullIdentifiers.add(name), name)
+    return (fullIdentifiers.add(name), name);
 }

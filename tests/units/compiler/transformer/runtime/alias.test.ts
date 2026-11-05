@@ -1,6 +1,6 @@
-import { test } from "vitest"
-import { matchTransformedScript } from "./_match"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { test } from "vitest";
+import { matchTransformedScript } from "./_match";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 function localMatchTransformedScript(expected: string, debugMode: boolean) {
     matchTransformedScript(
@@ -24,8 +24,8 @@ function localMatchTransformedScript(expected: string, debugMode: boolean) {
             </lang-ts>
         `,
         formatSourceCode(expected),
-        { debug: debugMode }
-    )
+        { debug: debugMode },
+    );
 }
 
 test("Transform result of alias in production environment", () => {
@@ -47,9 +47,9 @@ test("Transform result of alias in production environment", () => {
             
             console.log(a, props.b, props.c, d, props.d.e, f, g, h, arr[0], arr[1], arr[2][0], arr[3][0], arr[3][1], n, o, p, q, props.q, s, t, props.u)
         `,
-        false
-    )
-})
+        false,
+    );
+});
 
 test("Transform result of alias in development environment", () => [
     localMatchTransformedScript(
@@ -80,6 +80,6 @@ test("Transform result of alias in development environment", () => [
             let u = _.alias(_G10)
             console.log(a, b[_.REFERENCE_VALUE], c[_.REFERENCE_VALUE], d, e[_.REFERENCE_VALUE], f, g, h, i[_.REFERENCE_VALUE], j[_.REFERENCE_VALUE], k[_.REFERENCE_VALUE], l[_.REFERENCE_VALUE], m[_.REFERENCE_VALUE], n, o, p, q, r[_.REFERENCE_VALUE], s, t, u[_.REFERENCE_VALUE])
         `,
-        true
-    )
-])
+        true,
+    ),
+]);

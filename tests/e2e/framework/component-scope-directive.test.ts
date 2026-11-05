@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test"
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { Page } from "@playwright/test";
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -53,45 +53,45 @@ const scenario: E2EScenarioInput = {
                     no style child inner
                 </span>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const getScopeAttrs = async (page: Page, selector: string) => {
         return page.locator(selector).evaluate(node => {
-            return node.getAttributeNames().filter(name => name.startsWith("qk-"))
-        })
-    }
+            return node.getAttributeNames().filter(name => name.startsWith("qk-"));
+        });
+    };
 
     test("applies parent scope attribute only to #scope component root", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page).toHaveTitle("component-scope-directive")
-        await expect(page.locator("#scope-title")).toHaveText("Scope directive")
+        await expect(page).toHaveTitle("component-scope-directive");
+        await expect(page.locator("#scope-title")).toHaveText("Scope directive");
 
-        const scopedChildRootAttrs = await getScopeAttrs(page, "#scoped-child-root")
-        const scopedChildInnerAttrs = await getScopeAttrs(page, "#scoped-child-inner")
-        const plainChildRootAttrs = await getScopeAttrs(page, "#plain-child-root")
+        const scopedChildRootAttrs = await getScopeAttrs(page, "#scoped-child-root");
+        const scopedChildInnerAttrs = await getScopeAttrs(page, "#scoped-child-inner");
+        const plainChildRootAttrs = await getScopeAttrs(page, "#plain-child-root");
 
-        expect(scopedChildRootAttrs.length).toBe(scopedChildInnerAttrs.length + 1)
-        expect(plainChildRootAttrs).toEqual([])
-    })
+        expect(scopedChildRootAttrs.length).toBe(scopedChildInnerAttrs.length + 1);
+        expect(plainChildRootAttrs).toEqual([]);
+    });
 
     test("keeps #scope working for child components without embedded styles", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const noStyleRootAttrs = await getScopeAttrs(page, "#no-style-child-root")
-        const noStyleInnerAttrs = await getScopeAttrs(page, "#no-style-child-inner")
+        const noStyleRootAttrs = await getScopeAttrs(page, "#no-style-child-root");
+        const noStyleInnerAttrs = await getScopeAttrs(page, "#no-style-child-inner");
 
-        expect(noStyleRootAttrs.length).toBe(1)
-        expect(noStyleInnerAttrs).toEqual([])
-        expect(noStyleRootAttrs[0]).toMatch(/^qk-[a-f0-9]+$/)
-    })
-})
+        expect(noStyleRootAttrs.length).toBe(1);
+        expect(noStyleInnerAttrs).toEqual([]);
+        expect(noStyleRootAttrs[0]).toMatch(/^qk-[a-f0-9]+$/);
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -63,42 +63,42 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="slot-panel">Slot panel: {props.id}</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLog = (page: E2EPageEvaluator) => {
         return page.evaluate(() => {
-            return ((globalThis as any).__slotDestructionParentChainLog as string[]).slice()
-        })
-    }
+            return ((globalThis as any).__slotDestructionParentChainLog as string[]).slice();
+        });
+    };
 
     test("slot content component stays mounted across parent updates", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#slot-panel")).toHaveText("Slot panel: 0")
+        await expect(page.locator("#slot-panel")).toHaveText("Slot panel: 0");
 
-        await page.locator("#btn-bump").click()
-        await expect(page.locator("#slot-panel")).toHaveText("Slot panel: 1")
+        await page.locator("#btn-bump").click();
+        await expect(page.locator("#slot-panel")).toHaveText("Slot panel: 1");
 
-        await expect.poll(() => readLog(page)).toEqual(["slot-mount-0"])
-    })
+        await expect.poll(() => readLog(page)).toEqual(["slot-mount-0"]);
+    });
 
     test("parent unmount destroys slot-rendered component", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#slot-panel")).toHaveText("Slot panel: 0")
+        await expect(page.locator("#slot-panel")).toHaveText("Slot panel: 0");
 
-        await page.locator("#btn-hide-host").click()
-        await expect(page.locator("#slot-host-hidden")).toHaveText("Host hidden")
-        await expect(page.locator("#slot-panel")).toHaveCount(0)
+        await page.locator("#btn-hide-host").click();
+        await expect(page.locator("#slot-host-hidden")).toHaveText("Host hidden");
+        await expect(page.locator("#slot-panel")).toHaveCount(0);
 
         await expect
             .poll(() => readLog(page))
-            .toEqual(["slot-mount-0", "slot-before-destroy-0", "slot-after-destroy-0"])
-    })
-})
+            .toEqual(["slot-mount-0", "slot-before-destroy-0", "slot-after-destroy-0"]);
+    });
+});

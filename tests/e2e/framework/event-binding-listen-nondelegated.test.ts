@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -31,18 +31,18 @@ const scenario: E2EScenarioInput = {
             <p id="ancestor-count">{ancestorCaptureCount}</p>
             <p id="input-count">{inputOnceCount}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("non-delegated focus honors capture and once", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#focus-input").focus()
-        await page.locator("#blur-btn").click()
-        await page.locator("#focus-input").focus()
+        await page.locator("#focus-input").focus();
+        await page.locator("#blur-btn").click();
+        await page.locator("#focus-input").focus();
 
-        await expect(page.locator("#ancestor-count")).toHaveText("2")
-        await expect(page.locator("#input-count")).toHaveText("1")
-    })
-})
+        await expect(page.locator("#ancestor-count")).toHaveText("2");
+        await expect(page.locator("#input-count")).toHaveText("1");
+    });
+});

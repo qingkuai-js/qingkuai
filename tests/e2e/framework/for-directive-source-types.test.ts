@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -75,39 +75,39 @@ const scenario: E2EScenarioInput = {
                 </span>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports number string set map and object as for sources", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#for-number-host .for-number-item")).toHaveCount(3)
-        await expect(page.locator("#for-string-host .for-string-item")).toHaveText(["0:Q", "1:K"])
-        await expect(page.locator("#for-set-host .for-set-item")).toHaveText(["S1", "S2"])
+        await expect(page.locator("#for-number-host .for-number-item")).toHaveCount(3);
+        await expect(page.locator("#for-string-host .for-string-item")).toHaveText(["0:Q", "1:K"]);
+        await expect(page.locator("#for-set-host .for-set-item")).toHaveText(["S1", "S2"]);
         await expect(page.locator("#for-map-host .for-map-item")).toHaveText([
             "qk:QingKuai",
-            "js:JavaScript"
-        ])
+            "js:JavaScript",
+        ]);
         await expect(page.locator("#for-object-host .for-object-item")).toHaveText([
             "qk:QingKuai",
-            "js:JavaScript"
-        ])
+            "js:JavaScript",
+        ]);
 
-        await page.locator("#update-sources").click()
-        await expect(page.locator("#for-number-host .for-number-item")).toHaveCount(2)
-        await expect(page.locator("#for-string-host .for-string-item")).toHaveText(["0:T", "1:S"])
-        await expect(page.locator("#for-set-host .for-set-item")).toHaveText(["S2", "S3"])
+        await page.locator("#update-sources").click();
+        await expect(page.locator("#for-number-host .for-number-item")).toHaveCount(2);
+        await expect(page.locator("#for-string-host .for-string-item")).toHaveText(["0:T", "1:S"]);
+        await expect(page.locator("#for-set-host .for-set-item")).toHaveText(["S2", "S3"]);
         await expect(page.locator("#for-map-host .for-map-item")).toHaveText([
             "ts:TypeScript",
-            "qk:QingKuai"
-        ])
+            "qk:QingKuai",
+        ]);
         await expect(page.locator("#for-object-host .for-object-item")).toHaveText([
             "ts:TypeScript",
-            "qk:QingKuai"
-        ])
-    })
-})
+            "qk:QingKuai",
+        ]);
+    });
+});

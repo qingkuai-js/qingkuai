@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -37,17 +37,17 @@ const scenario: E2EScenarioInput = {
             />
             <p id="counts">{ctrlCount}-{altCount}-{metaCount}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("ctrl/alt/meta modifiers are respected", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#ctrl-input").press("Control+Enter")
-        await page.locator("#alt-input").press("Alt+Enter")
-        await page.locator("#meta-input").press("Meta+Enter")
+        await page.locator("#ctrl-input").press("Control+Enter");
+        await page.locator("#alt-input").press("Alt+Enter");
+        await page.locator("#meta-input").press("Meta+Enter");
 
-        await expect(page.locator("#counts")).toHaveText("1-1-1")
-    })
-})
+        await expect(page.locator("#counts")).toHaveText("1-1-1");
+    });
+});

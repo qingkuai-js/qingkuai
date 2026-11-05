@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -36,33 +36,33 @@ const scenario: E2EScenarioInput = {
             <article id="slot-host">
                 <slot></slot>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("slot content supports #for and #if with reactive updates", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#slot-list li")).toHaveCount(3)
-        await expect(page.locator("#slot-list li").nth(2)).toHaveText("Item 3")
+        await visitScenario(scenario);
+        await expect(page.locator("#slot-list li")).toHaveCount(3);
+        await expect(page.locator("#slot-list li").nth(2)).toHaveText("Item 3");
 
         // 新增条目 → 列表更新
         // Add new item → list update
-        await page.locator("#btn-add").click()
-        await expect(page.locator("#slot-list li")).toHaveCount(4)
-        await expect(page.locator("#slot-list li").nth(3)).toHaveText("Item 4")
+        await page.locator("#btn-add").click();
+        await expect(page.locator("#slot-list li")).toHaveCount(4);
+        await expect(page.locator("#slot-list li").nth(3)).toHaveText("Item 4");
 
         // 隐藏列表 → 移除
         // Hide list → remove
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#slot-list")).toHaveCount(0)
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#slot-list")).toHaveCount(0);
 
         // 再次显示 → 恢复
         // Show again → restore
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#slot-list li")).toHaveCount(4)
-    })
-})
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#slot-list li")).toHaveCount(4);
+    });
+});

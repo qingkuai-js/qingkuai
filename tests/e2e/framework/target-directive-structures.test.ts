@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -30,29 +30,29 @@ const scenario: E2EScenarioInput = {
             </div>
             <div id="target-dest-a"></div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports target directive on qk spread", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#target-spread-source .target-spread-item")).toHaveText([
             "Spread One",
-            "Spread Two"
-        ])
+            "Spread Two",
+        ]);
 
-        await page.locator("#target-spread-to-a").click()
+        await page.locator("#target-spread-to-a").click();
         await expect(page.locator("#target-dest-a .target-spread-item")).toHaveText([
             "Spread One",
-            "Spread Two"
-        ])
-        await expect(page.locator("#target-spread-source .target-spread-item")).toHaveCount(0)
+            "Spread Two",
+        ]);
+        await expect(page.locator("#target-spread-source .target-spread-item")).toHaveCount(0);
 
-        await page.locator("#target-spread-reset").click()
+        await page.locator("#target-spread-reset").click();
         await expect(page.locator("#target-spread-source .target-spread-item")).toHaveText([
             "Spread One",
-            "Spread Two"
-        ])
-    })
-})
+            "Spread Two",
+        ]);
+    });
+});

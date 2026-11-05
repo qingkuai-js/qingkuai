@@ -1,44 +1,47 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import ts from "typescript"
+import ts from "typescript";
 
-import { expect, test } from "vitest"
-import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk"
-import { parseTsScript } from "../../../../../src/util/testing/ts-ast"
-import { isBindingReference } from "../../../../../src/compiler/ts-ast/assert"
+import { expect, test } from "vitest";
+import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk";
+import { parseTsScript } from "../../../../../src/util/testing/ts-ast";
+import { isBindingReference } from "../../../../../src/compiler/ts-ast/assert";
 
 function collectIdentifiers(source: string): Map<string, TS.Identifier[]> {
-    const sourceFile = parseTsScript(source)
-    const map = new Map<string, TS.Identifier[]>()
+    const sourceFile = parseTsScript(source);
+    const map = new Map<string, TS.Identifier[]>();
     walkTsNode(sourceFile, node => {
         if (ts.isIdentifier(node)) {
-            const name = node.text
+            const name = node.text;
             if (!map.has(name)) {
-                map.set(name, [])
+                map.set(name, []);
             }
-            map.get(name)!.push(node)
+            map.get(name)!.push(node);
         }
-    })
-    return map
+    });
+    return map;
 }
 
 function expectBinding(source: string, truthy: string[], falsy: string[]) {
-    const ids = collectIdentifiers(source)
+    const ids = collectIdentifiers(source);
     for (const name of truthy) {
-        const nodes = ids.get(name)
-        expect(nodes, `identifier "${name}" not found`).toBeTruthy()
-        for (const node of nodes!) {
-            expect(isBindingReference(node), `"${name}" should be a binding reference`).toBeTruthy()
-        }
-    }
-    for (const name of falsy) {
-        const nodes = ids.get(name)
-        expect(nodes, `identifier "${name}" not found`).toBeTruthy()
+        const nodes = ids.get(name);
+        expect(nodes, `identifier "${name}" not found`).toBeTruthy();
         for (const node of nodes!) {
             expect(
                 isBindingReference(node),
-                `"${name}" should NOT be a binding reference`
-            ).toBeFalsy()
+                `"${name}" should be a binding reference`,
+            ).toBeTruthy();
+        }
+    }
+    for (const name of falsy) {
+        const nodes = ids.get(name);
+        expect(nodes, `identifier "${name}" not found`).toBeTruthy();
+        for (const node of nodes!) {
+            expect(
+                isBindingReference(node),
+                `"${name}" should NOT be a binding reference`,
+            ).toBeFalsy();
         }
     }
 }
@@ -86,11 +89,11 @@ test("Expression: binding references in complex expressions", () => {
             "B",
             "C",
             "D",
-            "E"
+            "E",
         ],
-        ["c", "d", "f", "g", "i", "j", "z"]
-    )
-})
+        ["c", "d", "f", "g", "i", "j", "z"],
+    );
+});
 
 test("Expression: property names in access expressions are not references", () => {
     expectBinding(
@@ -100,9 +103,9 @@ test("Expression: property names in access expressions are not references", () =
             f?.g;
         `,
         ["a", "c", "f"],
-        ["b", "d", "e", "g"]
-    )
-})
+        ["b", "d", "e", "g"],
+    );
+});
 
 test("Declaration: variable declarations and destructuring", () => {
     // Cover top-level declaration forms commonly used in script blocks.
@@ -117,9 +120,9 @@ test("Declaration: variable declarations and destructuring", () => {
             let q: r = 0
         `,
         ["c", "h", "i", "p"],
-        ["a", "b", "d", "e", "f", "g", "j", "k", "l", "m", "n", "o", "q", "r"]
-    )
-})
+        ["a", "b", "d", "e", "f", "g", "j", "k", "l", "m", "n", "o", "q", "r"],
+    );
+});
 
 test("Declaration: using and await using resource declarations", () => {
     // Resource declarations are common business syntax in modern TS scripts.
@@ -129,9 +132,9 @@ test("Declaration: using and await using resource declarations", () => {
             await using c = d.e()
         `,
         ["b", "d"],
-        ["a", "c", "e"]
-    )
-})
+        ["a", "c", "e"],
+    );
+});
 
 test("Declaration: functions and parameters", () => {
     expectBinding(
@@ -180,10 +183,10 @@ test("Declaration: functions and parameters", () => {
             "M",
             "N",
             "P",
-            "Q"
-        ]
-    )
-})
+            "Q",
+        ],
+    );
+});
 
 test("Declaration: classes", () => {
     expectBinding(
@@ -226,10 +229,10 @@ test("Declaration: classes", () => {
             "I",
             "J",
             "K",
-            "M"
-        ]
-    )
-})
+            "M",
+        ],
+    );
+});
 
 test("Declaration: accessor names are not references", () => {
     expectBinding(
@@ -240,9 +243,9 @@ test("Declaration: accessor names are not references", () => {
             }
         `,
         ["c", "g"],
-        ["a", "b", "d", "e", "f"]
-    )
-})
+        ["a", "b", "d", "e", "f"],
+    );
+});
 
 test("Module/Type: import declarations", () => {
     expectBinding(
@@ -253,9 +256,9 @@ test("Module/Type: import declarations", () => {
             import * as e from 'w'
         `,
         [],
-        ["a", "b", "c", "d", "e"]
-    )
-})
+        ["a", "b", "c", "d", "e"],
+    );
+});
 
 test("Module/Type: import type declarations", () => {
     // Type imports should never be treated as runtime binding references.
@@ -265,9 +268,9 @@ test("Module/Type: import type declarations", () => {
             import { type C as D, E } from 'y'
         `,
         [],
-        ["A", "B", "C", "D", "E"]
-    )
-})
+        ["A", "B", "C", "D", "E"],
+    );
+});
 
 test("Module/Type: type-only identifiers", () => {
     expectBinding(
@@ -278,9 +281,9 @@ test("Module/Type: type-only identifiers", () => {
             let y: E.F = g
         `,
         ["e", "g"],
-        ["A", "B", "C", "D", "x", "y", "E", "F"]
-    )
-})
+        ["A", "B", "C", "D", "x", "y", "E", "F"],
+    );
+});
 
 test("Module/Type: conditional type with infer", () => {
     // `infer` introduces type parameters that must stay type-only.
@@ -291,9 +294,9 @@ test("Module/Type: conditional type with infer", () => {
             const F: C<A<G>> = H
         `,
         ["H"],
-        ["A", "B", "C", "D", "E", "F", "G"]
-    )
-})
+        ["A", "B", "C", "D", "E", "F", "G"],
+    );
+});
 
 test("Module/Type: namespace and enum declarations", () => {
     expectBinding(
@@ -305,9 +308,9 @@ test("Module/Type: namespace and enum declarations", () => {
             import f = require('mod')
         `,
         ["d", "e"],
-        ["a", "b", "c", "f"]
-    )
-})
+        ["a", "b", "c", "f"],
+    );
+});
 
 test("Module/Type: namespace export declaration name is not a reference", () => {
     expectBinding(
@@ -315,9 +318,9 @@ test("Module/Type: namespace export declaration name is not a reference", () => 
             export as namespace A
         `,
         [],
-        ["A"]
-    )
-})
+        ["A"],
+    );
+});
 
 test("Statement: labels, destructuring and catch", () => {
     expectBinding(
@@ -351,11 +354,11 @@ test("Statement: labels, destructuring and catch", () => {
             "v",
             "w",
             "x",
-            "G"
+            "G",
         ],
-        ["i", "l", "m", "p", "t", "D", "E", "F", "H"]
-    )
-})
+        ["i", "l", "m", "p", "t", "D", "E", "F", "H"],
+    );
+});
 
 test("Assignment: object property keys are not references", () => {
     expectBinding(
@@ -366,6 +369,6 @@ test("Assignment: object property keys are not references", () => {
             }
         `,
         ["b", "f"],
-        ["h", "a", "e", "g"]
-    )
-})
+        ["h", "a", "e", "g"],
+    );
+});

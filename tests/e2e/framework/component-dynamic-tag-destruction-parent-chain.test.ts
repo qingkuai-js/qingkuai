@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -77,24 +77,24 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="panel-two">Panel two: {props.id}</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLog = (page: E2EPageEvaluator) => {
         return page.evaluate(() => {
-            return ((globalThis as any).__dynamicTagDestructionParentChainLog as string[]).slice()
-        })
-    }
+            return ((globalThis as any).__dynamicTagDestructionParentChainLog as string[]).slice();
+        });
+    };
 
     test("dynamic tag switch destroys previous component", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#panel-one")).toHaveText("Panel one: 0")
+        await expect(page.locator("#panel-one")).toHaveText("Panel one: 0");
 
-        await page.locator("#btn-switch").click()
-        await expect(page.locator("#panel-two")).toHaveText("Panel two: 1")
+        await page.locator("#btn-switch").click();
+        await expect(page.locator("#panel-two")).toHaveText("Panel two: 1");
 
         await expect
             .poll(() => readLog(page))
@@ -102,19 +102,19 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
                 "panel-one-mount-0",
                 "panel-one-before-destroy-1",
                 "panel-one-after-destroy-1",
-                "panel-two-mount-1"
-            ])
-    })
+                "panel-two-mount-1",
+            ]);
+    });
 
     test("parent unmount destroys current dynamic component", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-switch").click()
-        await expect(page.locator("#panel-two")).toHaveText("Panel two: 1")
+        await page.locator("#btn-switch").click();
+        await expect(page.locator("#panel-two")).toHaveText("Panel two: 1");
 
-        await page.locator("#btn-hide-host").click()
-        await expect(page.locator("#dynamic-host-hidden")).toHaveText("Host hidden")
-        await expect(page.locator("#panel-two")).toHaveCount(0)
+        await page.locator("#btn-hide-host").click();
+        await expect(page.locator("#dynamic-host-hidden")).toHaveText("Host hidden");
+        await expect(page.locator("#panel-two")).toHaveCount(0);
 
         await expect
             .poll(() => readLog(page))
@@ -124,7 +124,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
                 "panel-one-after-destroy-1",
                 "panel-two-mount-1",
                 "panel-two-before-destroy-1",
-                "panel-two-after-destroy-1"
-            ])
-    })
-})
+                "panel-two-after-destroy-1",
+            ]);
+    });
+});

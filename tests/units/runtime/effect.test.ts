@@ -1,5 +1,5 @@
-import type { Getter } from "#type-declarations/tools"
-import type { EffectCallback, WatchCallback } from "#type-declarations/runtime"
+import type { Getter } from "#type-declarations/tools";
+import type { EffectCallback, WatchCallback } from "#type-declarations/runtime";
 
 import {
     watch as _watch,
@@ -11,8 +11,8 @@ import {
     postEffect as _postEffect,
     syncEffect as _syncEffect,
     renderEffect as _renderEffect,
-    disposeEffect
-} from "../../../src/runtime/reactivity/effect"
+    disposeEffect,
+} from "../../../src/runtime/reactivity/effect";
 import {
     WRAPPER,
     TIMING_PRE,
@@ -21,780 +21,780 @@ import {
     ITERATOR_KEYS,
     TIMING_UNSET,
     EFFECT_DISABLED,
-    EFFECT_DISPOSED
-} from "../../../src/runtime/reactivity/constants"
+    EFFECT_DISPOSED,
+} from "../../../src/runtime/reactivity/constants";
 import {
     sleep,
     getErrorMessage,
     getCurrentEffect,
     createTestInstance,
-    destructionHasEffect
-} from "../../../src/util/testing/sundry"
+    destructionHasEffect,
+} from "../../../src/util/testing/sundry";
 import {
     currentDestruction,
     setCurrentDestruction,
-    backToParentDestruction
-} from "../../../src/runtime/state"
-import { checkEffectDependaceManager } from "./_match"
-import { NIL, NOOP } from "../../../src/runtime/constants"
-import { isReactive } from "../../../src/util/runtime/assert"
-import { beforeEach, describe, expect, test, vi } from "vitest"
-import { matchGlobalError } from "../../../src/util/testing/match"
-import { isArray, isNumber } from "../../../src/util/shared/assert"
-import { arrayFrom, emptyArr } from "../../../src/util/shared/arrays"
-import { createWarningMatcher } from "../../../src/util/testing/sundry"
-import { constReact, react } from "../../../src/runtime/reactivity/value"
-import { MaximumUpdateDepthExceeded } from "../../../src/runtime/messages/error"
-import { getRefProperty, toRaw, nextTick } from "../../../src/util/runtime/sundry"
-import { createDestruction, destroy, pushDestructionCleaner } from "../../../src/runtime/destroy"
+    backToParentDestruction,
+} from "../../../src/runtime/state";
+import { checkEffectDependaceManager } from "./_match";
+import { NIL, NOOP } from "../../../src/runtime/constants";
+import { isReactive } from "../../../src/util/runtime/assert";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { matchGlobalError } from "../../../src/util/testing/match";
+import { isArray, isNumber } from "../../../src/util/shared/assert";
+import { arrayFrom, emptyArr } from "../../../src/util/shared/arrays";
+import { createWarningMatcher } from "../../../src/util/testing/sundry";
+import { constReact, react } from "../../../src/runtime/reactivity/value";
+import { MaximumUpdateDepthExceeded } from "../../../src/runtime/messages/error";
+import { getRefProperty, toRaw, nextTick } from "../../../src/util/runtime/sundry";
+import { createDestruction, destroy, pushDestructionCleaner } from "../../../src/runtime/destroy";
 
-const arr: any[] = []
-const invokeMarker = vi.fn()
-const testInstance = createTestInstance()
-const warningMatcher = createWarningMatcher()
-const timings = [TIMING_UNSET, TIMING_PRE, TIMING_POST, TIMING_SYNC]
+const arr: any[] = [];
+const invokeMarker = vi.fn();
+const testInstance = createTestInstance();
+const warningMatcher = createWarningMatcher();
+const timings = [TIMING_UNSET, TIMING_PRE, TIMING_POST, TIMING_SYNC];
 
 const effect = (callback: EffectCallback) => {
-    const handle = _effect(testInstance, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _effect(testInstance, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const preEffect = (callback: EffectCallback) => {
-    const handle = _preEffect(testInstance, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _preEffect(testInstance, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const postEffect = (callback: EffectCallback) => {
-    const handle = _postEffect(testInstance, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _postEffect(testInstance, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const syncEffect = (callback: EffectCallback) => {
-    const handle = _syncEffect(testInstance, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _syncEffect(testInstance, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const watch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
-    const handle = _watch(testInstance, getter, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _watch(testInstance, getter, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const preWatch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
-    const handle = _preWatch(testInstance, getter, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _preWatch(testInstance, getter, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const postWatch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
-    const handle = _postWatch(testInstance, getter, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _postWatch(testInstance, getter, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const syncWatch = <T>(getter: Getter<T>, callback: WatchCallback<T>) => {
-    const handle = _syncWatch(testInstance, getter, callback)
-    return { handle, effect: getCurrentEffect()! }
-}
+    const handle = _syncWatch(testInstance, getter, callback);
+    return { handle, effect: getCurrentEffect()! };
+};
 const renderEffect = (callback: EffectCallback) => {
-    _renderEffect(callback)
-    return getCurrentEffect()!
-}
+    _renderEffect(callback);
+    return getCurrentEffect()!;
+};
 
-const watchEffectFuncs = [watch, preWatch, postWatch, syncWatch]
-const reactiveEffectFuncs = [effect, preEffect, postEffect, syncEffect]
+const watchEffectFuncs = [watch, preWatch, postWatch, syncWatch];
+const reactiveEffectFuncs = [effect, preEffect, postEffect, syncEffect];
 
 const cleanup = () => {
-    emptyArr(arr)
-    invokeMarker.mockClear()
-    warningMatcher.mockClear()
-}
+    emptyArr(arr);
+    invokeMarker.mockClear();
+    warningMatcher.mockClear();
+};
 
-beforeEach(cleanup)
+beforeEach(cleanup);
 
 function makeConsecutiveNumbersArr(length: number) {
-    return arrayFrom({ length }, (_, i) => i)
+    return arrayFrom({ length }, (_, i) => i);
 }
 
 test("destroy should disconnect destruction from parent/effects", () => {
-    const parent = currentDestruction!
-    const nested = createDestruction(parent)
-    const cleaner = vi.fn()
-    pushDestructionCleaner(cleaner)
+    const parent = currentDestruction!;
+    const nested = createDestruction(parent);
+    const cleaner = vi.fn();
+    pushDestructionCleaner(cleaner);
 
-    const tracked = react(0)
-    const nestedEffect = renderEffect(() => tracked.$)
+    const tracked = react(0);
+    const nestedEffect = renderEffect(() => tracked.$);
     // 不依赖响应式值的渲染副作用不会产生副作用对象，只登记为上下文副作用
     // A render effect that reads nothing reactive creates no effect object, it is
     // only registered as a context effect.
-    renderEffect(NOOP)
-    expect(nested.u).toBe(NOOP)
+    renderEffect(NOOP);
+    expect(nested.u).toBe(NOOP);
 
-    createDestruction(nested, NIL)
-    const nestedChildEffect = renderEffect(() => tracked.$)
+    createDestruction(nested, NIL);
+    const nestedChildEffect = renderEffect(() => tracked.$);
 
-    backToParentDestruction()
-    backToParentDestruction()
+    backToParentDestruction();
+    backToParentDestruction();
 
-    expect(currentDestruction).toBe(parent)
-    expect(parent.c?.includes(nested)).toBeTruthy()
+    expect(currentDestruction).toBe(parent);
+    expect(parent.c?.includes(nested)).toBeTruthy();
 
-    destroy(nested, false)
+    destroy(nested, false);
 
-    expect(cleaner).toHaveBeenCalledTimes(1)
-    expect(nestedEffect.d).toBeNull()
-    expect(nestedChildEffect.d).toBeNull()
-    expect(parent.c?.includes(nested)).toBeFalsy()
-    expect(nested.f).toBe(0)
-    expect(nested.e).toBeNull()
-    expect(nested.u).toBeNull()
-    expect(nested.c).toBeNull()
-    expect(nested.a).toBeNull()
-    expect(nested.m).toBeNull()
-    expect(nested.p).toBeNull()
-    expect(nested.s).toBeNull()
-    expect(nested.n).toBeNull()
-    expect(currentDestruction).toBe(parent)
-})
+    expect(cleaner).toHaveBeenCalledTimes(1);
+    expect(nestedEffect.d).toBeNull();
+    expect(nestedChildEffect.d).toBeNull();
+    expect(parent.c?.includes(nested)).toBeFalsy();
+    expect(nested.f).toBe(0);
+    expect(nested.e).toBeNull();
+    expect(nested.u).toBeNull();
+    expect(nested.c).toBeNull();
+    expect(nested.a).toBeNull();
+    expect(nested.m).toBeNull();
+    expect(nested.p).toBeNull();
+    expect(nested.s).toBeNull();
+    expect(nested.n).toBeNull();
+    expect(currentDestruction).toBe(parent);
+});
 
 test("creating an effect on a destroyed destruction warns and discards", () => {
-    const parent = currentDestruction!
-    const nested = createDestruction(parent)
-    backToParentDestruction()
-    destroy(nested, false)
+    const parent = currentDestruction!;
+    const nested = createDestruction(parent);
+    backToParentDestruction();
+    destroy(nested, false);
 
-    const callback = vi.fn()
-    setCurrentDestruction(nested)
-    const handle = _effect(testInstance, callback)
-    setCurrentDestruction(parent)
+    const callback = vi.fn();
+    setCurrentDestruction(nested);
+    const handle = _effect(testInstance, callback);
+    setCurrentDestruction(parent);
 
-    expect(callback).not.toHaveBeenCalled()
-    expect(warningMatcher.mock.calls.some(args => args.join(" ").includes("8003"))).toBe(true)
-    expect(handle).toBeDefined()
-})
+    expect(callback).not.toHaveBeenCalled();
+    expect(warningMatcher.mock.calls.some(args => args.join(" ").includes("8003"))).toBe(true);
+    expect(handle).toBeDefined();
+});
 
 test("Functions of render effect", async () => {
-    const value = react(1)
+    const value = react(1);
     const effect = renderEffect(() => {
-        arr.push(value.$)
-        return invokeMarker
-    })
-    expect(arr).toEqual([1])
+        arr.push(value.$);
+        return invokeMarker;
+    });
+    expect(arr).toEqual([1]);
 
     checkEffectDependaceManager(effect, {
         destroyed: false,
         timing: TIMING_UNSET,
         cleaner: invokeMarker,
         dependencies: [value],
-        destruction: currentDestruction
-    })
+        destruction: currentDestruction,
+    });
 
-    value.$++
-    await nextTick()
-    expect(arr).toEqual([1, 2])
-    expect(invokeMarker).toHaveBeenCalledTimes(1)
+    value.$++;
+    await nextTick();
+    expect(arr).toEqual([1, 2]);
+    expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-    disposeEffect(effect)
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
-    expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-    expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
-    expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
+    disposeEffect(effect);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
+    expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+    expect(effect.l & EFFECT_DISPOSED).toBeTruthy();
+    expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy();
 
-    --value.$
-    await nextTick()
-    expect(arr).toEqual([1, 2])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
-})
+    --value.$;
+    await nextTick();
+    expect(arr).toEqual([1, 2]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
+});
 
 test("Functions of reactive effect", async () => {
     for (let i = 0; i < reactiveEffectFuncs.length; cleanup(), i++) {
-        const value = react(1)
+        const value = react(1);
         const { handle, effect } = reactiveEffectFuncs[i](() => {
-            arr.push(value.$)
-            return invokeMarker
-        })
-        expect(arr).toEqual([1])
+            arr.push(value.$);
+            return invokeMarker;
+        });
+        expect(arr).toEqual([1]);
 
         checkEffectDependaceManager(effect, {
             destroyed: false,
             timing: timings[i],
             cleaner: invokeMarker,
             dependencies: [value],
-            destruction: currentDestruction
-        })
+            destruction: currentDestruction,
+        });
 
-        value.$++
+        value.$++;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(arr).toEqual([1, 2])
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        expect(arr).toEqual([1, 2]);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        handle.pause()
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
-        expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy()
+        handle.pause();
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
+        expect(effect.l & EFFECT_DISPOSED).toBeFalsy();
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy();
 
-        value.$--
+        value.$--;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(arr).toEqual([1, 2])
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        expect(arr).toEqual([1, 2]);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        handle.resume()
-        expect(effect.l & EFFECT_DISABLED).toBeFalsy()
-        expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
+        handle.resume();
+        expect(effect.l & EFFECT_DISABLED).toBeFalsy();
+        expect(effect.l & EFFECT_DISPOSED).toBeFalsy();
 
-        value.$ *= 10
+        value.$ *= 10;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(arr).toEqual([1, 2, 10])
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        expect(arr).toEqual([1, 2, 10]);
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-        handle.stop()
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
+        handle.stop();
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(effect.l & EFFECT_DISPOSED).toBeTruthy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy();
 
-        value.$ += 10
+        value.$ += 10;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(arr).toEqual([1, 2, 10])
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
+        expect(arr).toEqual([1, 2, 10]);
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
 
-        handle.resume()
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
+        handle.resume();
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy();
 
-        value.$ /= 10
+        value.$ /= 10;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(arr).toEqual([1, 2, 10])
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
+        expect(arr).toEqual([1, 2, 10]);
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
     }
-})
+});
 
 test("Functions of watch effect", async () => {
     for (let i = 0; i < watchEffectFuncs.length; cleanup(), i++) {
-        let pre: any = undefined
-        let cur: any = undefined
-        const map = constReact(new Map([[1, 99]]))
+        let pre: any = undefined;
+        let cur: any = undefined;
+        const map = constReact(new Map([[1, 99]]));
 
         const { handle, effect } = watchEffectFuncs[i](
             () => map.get(1),
             (p, c) => {
-                ;[pre, cur] = [p, c]
-                return invokeMarker
-            }
-        )
-        expect(arr.length).toBe(0)
-        expect(pre).toBeUndefined()
-        expect(cur).toBeUndefined()
+                [pre, cur] = [p, c];
+                return invokeMarker;
+            },
+        );
+        expect(arr.length).toBe(0);
+        expect(pre).toBeUndefined();
+        expect(cur).toBeUndefined();
 
         checkEffectDependaceManager(effect, {
             cleaner: null,
             destroyed: false,
             timing: timings[i],
             dependencies: [[map, 1]],
-            destruction: currentDestruction
-        })
+            destruction: currentDestruction,
+        });
 
-        map.set(1, map.get(1) + 1)
+        map.set(1, map.get(1) + 1);
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(pre).toBe(99)
-        expect(cur).toBe(100)
-        expect(arr.length).toBe(0)
-        expect(effect.c).toBe(invokeMarker)
-        expect(invokeMarker).toHaveBeenCalledTimes(0)
+        expect(pre).toBe(99);
+        expect(cur).toBe(100);
+        expect(arr.length).toBe(0);
+        expect(effect.c).toBe(invokeMarker);
+        expect(invokeMarker).toHaveBeenCalledTimes(0);
 
-        map.set(1, 97)
+        map.set(1, 97);
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(pre).toBe(100)
-        expect(cur).toBe(97)
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        expect(pre).toBe(100);
+        expect(cur).toBe(97);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        handle.pause()
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
-        expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy()
+        handle.pause();
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
+        expect(effect.l & EFFECT_DISPOSED).toBeFalsy();
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy();
 
-        map.set(1, 0)
+        map.set(1, 0);
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(pre).toBe(100)
-        expect(cur).toBe(97)
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        expect(pre).toBe(100);
+        expect(cur).toBe(97);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        handle.resume()
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
-        expect(effect.l & EFFECT_DISPOSED).toBeFalsy()
-        expect(effect.l & EFFECT_DISABLED).toBeFalsy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy()
+        handle.resume();
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
+        expect(effect.l & EFFECT_DISPOSED).toBeFalsy();
+        expect(effect.l & EFFECT_DISABLED).toBeFalsy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeTruthy();
 
-        map.set(1, map.get(1) - 1)
+        map.set(1, map.get(1) - 1);
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(pre).toBe(97)
-        expect(cur).toBe(-1)
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        expect(pre).toBe(97);
+        expect(cur).toBe(-1);
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-        handle.stop()
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
-        expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
+        handle.stop();
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
+        expect(effect.l & EFFECT_DISPOSED).toBeTruthy();
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy();
 
-        map.set(1, -99)
+        map.set(1, -99);
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(pre).toBe(97)
-        expect(cur).toBe(-1)
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
+        expect(pre).toBe(97);
+        expect(cur).toBe(-1);
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
 
-        handle.resume()
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
-        expect(effect.l & EFFECT_DISPOSED).toBeTruthy()
-        expect(effect.l & EFFECT_DISABLED).toBeTruthy()
-        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy()
+        handle.resume();
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
+        expect(effect.l & EFFECT_DISPOSED).toBeTruthy();
+        expect(effect.l & EFFECT_DISABLED).toBeTruthy();
+        expect(destructionHasEffect(currentDestruction, effect)).toBeFalsy();
     }
-})
+});
 
 test("Running sequence of different effects", async () => {
-    const value = react(0)
-    ;[postEffect, renderEffect, preEffect, syncEffect, renderEffect, preEffect, postEffect].forEach(
+    const value = react(0);
+    [postEffect, renderEffect, preEffect, syncEffect, renderEffect, preEffect, postEffect].forEach(
         (fn, index) => {
             fn(() => {
-                value.$ && arr.push(1 + index)
-            })
-        }
-    )
-    ;[preWatch, postWatch, syncWatch, watch, postWatch, watch, preWatch, syncWatch].forEach(
+                value.$ && arr.push(1 + index);
+            });
+        },
+    );
+    [preWatch, postWatch, syncWatch, watch, postWatch, watch, preWatch, syncWatch].forEach(
         (fn, index) => {
             fn(
                 () => value.$,
                 () => {
-                    arr.push(-1 - index)
-                }
-            )
-        }
-    )
-    value.$++
-    await nextTick()
-    expect(arr).toEqual([4, -3, -8, 3, 6, -1, -7, 2, 5, -4, -6, 1, 7, -2, -5])
-})
+                    arr.push(-1 - index);
+                },
+            );
+        },
+    );
+    value.$++;
+    await nextTick();
+    expect(arr).toEqual([4, -3, -8, 3, 6, -1, -7, 2, 5, -4, -6, 1, 7, -2, -5]);
+});
 
 test("Functions of effect that depend on Set", async () => {
-    const set = constReact(new Set([1, 2, 3]))
+    const set = constReact(new Set([1, 2, 3]));
     const effect = renderEffect(() => {
-        arr.push(set.size)
-        return invokeMarker
-    })
-    expect(arr).toEqual([3])
+        arr.push(set.size);
+        return invokeMarker;
+    });
+    expect(arr).toEqual([3]);
 
     checkEffectDependaceManager(effect, {
         destroyed: false,
         timing: TIMING_UNSET,
         cleaner: invokeMarker,
         destruction: currentDestruction,
-        dependencies: [[set, getRefProperty(set[WRAPPER].l, "size")]]
-    })
+        dependencies: [[set, getRefProperty(set[WRAPPER].l, "size")]],
+    });
 
-    set.add(1)
-    await nextTick()
-    expect(arr).toEqual([3])
-    expect(invokeMarker).toHaveBeenCalledTimes(0)
+    set.add(1);
+    await nextTick();
+    expect(arr).toEqual([3]);
+    expect(invokeMarker).toHaveBeenCalledTimes(0);
 
-    set.delete(4)
-    await nextTick()
-    expect(arr).toEqual([3])
-    expect(invokeMarker).toHaveBeenCalledTimes(0)
+    set.delete(4);
+    await nextTick();
+    expect(arr).toEqual([3]);
+    expect(invokeMarker).toHaveBeenCalledTimes(0);
 
-    set.add(4)
-    await nextTick()
-    expect(arr).toEqual([3, 4])
-    expect(invokeMarker).toHaveBeenCalledTimes(1)
+    set.add(4);
+    await nextTick();
+    expect(arr).toEqual([3, 4]);
+    expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-    set.delete(1)
-    await nextTick()
-    expect(arr).toEqual([3, 4, 3])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
+    set.delete(1);
+    await nextTick();
+    expect(arr).toEqual([3, 4, 3]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-    set.add("size")
-    await nextTick()
-    expect(arr).toEqual([3, 4, 3, 4])
-    expect(invokeMarker).toHaveBeenCalledTimes(3)
+    set.add("size");
+    await nextTick();
+    expect(arr).toEqual([3, 4, 3, 4]);
+    expect(invokeMarker).toHaveBeenCalledTimes(3);
 
-    disposeEffect(effect)
-    cleanup()
+    disposeEffect(effect);
+    cleanup();
 
     // attached property should not be influenced by internal data
     renderEffect(() => {
-        invokeMarker()
-        arr.push(set.custom)
-    })
-    expect(arr).toEqual([undefined])
-    expect(invokeMarker).toHaveBeenCalledTimes(1)
+        invokeMarker();
+        arr.push(set.custom);
+    });
+    expect(arr).toEqual([undefined]);
+    expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-    set.custom = null
-    await nextTick()
-    expect(arr).toEqual([undefined, null])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
+    set.custom = null;
+    await nextTick();
+    expect(arr).toEqual([undefined, null]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-    set.add("custom")
-    await nextTick()
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
-})
+    set.add("custom");
+    await nextTick();
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
+});
 
 test("Functions of effect that depend on Map", async () => {
-    const map = constReact(new Map())
+    const map = constReact(new Map());
     const effect1 = renderEffect(() => {
-        arr.push(map.size)
-        return invokeMarker
-    })
+        arr.push(map.size);
+        return invokeMarker;
+    });
     const effect2 = renderEffect(() => {
-        arr.push(map.get(1))
-        return invokeMarker
-    })
-    expect(arr).toEqual([0, undefined])
+        arr.push(map.get(1));
+        return invokeMarker;
+    });
+    expect(arr).toEqual([0, undefined]);
 
     checkEffectDependaceManager(effect1, {
         destroyed: false,
         timing: TIMING_UNSET,
         cleaner: invokeMarker,
         destruction: currentDestruction,
-        dependencies: [[map, getRefProperty(map[WRAPPER].l, "size")]]
-    })
+        dependencies: [[map, getRefProperty(map[WRAPPER].l, "size")]],
+    });
     checkEffectDependaceManager(effect2, {
         destroyed: false,
         timing: TIMING_UNSET,
         cleaner: invokeMarker,
         dependencies: [[map, 1]],
-        destruction: currentDestruction
-    })
+        destruction: currentDestruction,
+    });
 
-    map.delete(1)
-    await nextTick()
-    expect(arr).toEqual([0, undefined])
-    expect(invokeMarker).toHaveBeenCalledTimes(0)
+    map.delete(1);
+    await nextTick();
+    expect(arr).toEqual([0, undefined]);
+    expect(invokeMarker).toHaveBeenCalledTimes(0);
 
-    map.set(1, 99)
-    await nextTick()
-    expect(arr).toEqual([0, undefined, 1, 99])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
+    map.set(1, 99);
+    await nextTick();
+    expect(arr).toEqual([0, undefined, 1, 99]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-    map.set(1, 999)
-    await nextTick()
-    expect(invokeMarker).toHaveBeenCalledTimes(3)
-    expect(arr).toEqual([0, undefined, 1, 99, 999])
+    map.set(1, 999);
+    await nextTick();
+    expect(invokeMarker).toHaveBeenCalledTimes(3);
+    expect(arr).toEqual([0, undefined, 1, 99, 999]);
 
-    map.delete(1)
-    await nextTick()
-    expect(invokeMarker).toHaveBeenCalledTimes(5)
-    expect(arr).toEqual([0, undefined, 1, 99, 999, 0, undefined])
+    map.delete(1);
+    await nextTick();
+    expect(invokeMarker).toHaveBeenCalledTimes(5);
+    expect(arr).toEqual([0, undefined, 1, 99, 999, 0, undefined]);
 
-    map.set("size", "")
-    await nextTick()
-    expect(invokeMarker).toHaveBeenCalledTimes(6)
-    expect(arr).toEqual([0, undefined, 1, 99, 999, 0, undefined, 1])
+    map.set("size", "");
+    await nextTick();
+    expect(invokeMarker).toHaveBeenCalledTimes(6);
+    expect(arr).toEqual([0, undefined, 1, 99, 999, 0, undefined, 1]);
 
-    disposeEffect(effect1)
-    map.clear()
-    cleanup()
+    disposeEffect(effect1);
+    map.clear();
+    cleanup();
 
     // attached property should not be influenced by internal data
     renderEffect(() => {
-        invokeMarker()
-        arr.push(map.custom)
-    })
-    expect(arr).toEqual([undefined])
-    expect(invokeMarker).toHaveBeenCalledTimes(1)
+        invokeMarker();
+        arr.push(map.custom);
+    });
+    expect(arr).toEqual([undefined]);
+    expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-    map.custom = null
-    await nextTick()
-    expect(arr).toEqual([undefined, null])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
+    map.custom = null;
+    await nextTick();
+    expect(arr).toEqual([undefined, null]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-    map.set("custom", "")
-    await nextTick()
-    expect(arr).toEqual([undefined, null])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
-})
+    map.set("custom", "");
+    await nextTick();
+    expect(arr).toEqual([undefined, null]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
+});
 
 test("Modify the length property of Array", () => {
-    const nums = constReact([1, 2, 3])
+    const nums = constReact([1, 2, 3]);
     syncEffect(() => {
-        invokeMarker()
-        arr.push(nums[2])
-    })
-    expect(arr).toEqual([3])
-    expect(invokeMarker).toHaveBeenCalledTimes(1)
+        invokeMarker();
+        arr.push(nums[2]);
+    });
+    expect(arr).toEqual([3]);
+    expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-    nums.length = 4
-    expect(arr).toEqual([3])
-    expect(invokeMarker).toHaveBeenCalledTimes(1)
+    nums.length = 4;
+    expect(arr).toEqual([3]);
+    expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-    nums.length = 2
-    expect(arr).toEqual([3, undefined])
-    expect(invokeMarker).toHaveBeenCalledTimes(2)
+    nums.length = 2;
+    expect(arr).toEqual([3, undefined]);
+    expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-    nums.push(3)
-    expect(arr).toEqual([3, undefined, 3])
-    expect(invokeMarker).toHaveBeenCalledTimes(3)
+    nums.push(3);
+    expect(arr).toEqual([3, undefined, 3]);
+    expect(invokeMarker).toHaveBeenCalledTimes(3);
 
-    nums[2] = undefined
-    expect(invokeMarker).toHaveBeenCalledTimes(4)
-    expect(arr).toEqual([3, undefined, 3, undefined])
+    nums[2] = undefined;
+    expect(invokeMarker).toHaveBeenCalledTimes(4);
+    expect(arr).toEqual([3, undefined, 3, undefined]);
 
-    nums.length = 0
-    expect(invokeMarker).toHaveBeenCalledTimes(4)
-    expect(arr).toEqual([3, undefined, 3, undefined])
-})
+    nums.length = 0;
+    expect(invokeMarker).toHaveBeenCalledTimes(4);
+    expect(arr).toEqual([3, undefined, 3, undefined]);
+});
 
 test("Effect should not be re-run when the value has not been modified", async () => {
     for (const effectFunc of reactiveEffectFuncs) {
-        const count = react(1)
-        invokeMarker.mockClear()
+        const count = react(1);
+        invokeMarker.mockClear();
         effectFunc(() => {
-            count.$
-            invokeMarker()
-        })
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+            count.$;
+            invokeMarker();
+        });
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        count.$ = 1
-        await nextTick()
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        count.$ = 1;
+        await nextTick();
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        const obj = {}
-        count.$ = obj
-        await nextTick()
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        const obj = {};
+        count.$ = obj;
+        await nextTick();
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-        count.$ = constReact(obj)
-        await nextTick()
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        count.$ = constReact(obj);
+        await nextTick();
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
     }
 
     for (const watchFunc of watchEffectFuncs) {
-        const obj = constReact({})
-        invokeMarker.mockClear()
+        const obj = constReact({});
+        invokeMarker.mockClear();
         watchFunc(() => {
-            invokeMarker()
-            return obj.a
-        }, NOOP)
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+            invokeMarker();
+            return obj.a;
+        }, NOOP);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
-        const sub = constReact([])
-        obj.a = sub
-        await nextTick()
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        const sub = constReact([]);
+        obj.a = sub;
+        await nextTick();
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-        obj.a = toRaw(sub)
-        await nextTick()
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        obj.a = toRaw(sub);
+        await nextTick();
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
     }
-})
+});
 
 test("Effect chains propagate only along their expected dependency paths", async () => {
     for (let i = 0; i < reactiveEffectFuncs.length; cleanup(), i++) {
         const obj = react({
             a: 1,
-            b: 2
-        })
+            b: 2,
+        });
         reactiveEffectFuncs[i](() => {
-            arr.push(obj.$.a)
-            return invokeMarker
-        })
+            arr.push(obj.$.a);
+            return invokeMarker;
+        });
         reactiveEffectFuncs[i](() => {
-            arr.push(obj.$)
-            return invokeMarker
-        })
+            arr.push(obj.$);
+            return invokeMarker;
+        });
         reactiveEffectFuncs[i](() => {
-            arr.push(obj.$.b)
-            return invokeMarker
-        })
+            arr.push(obj.$.b);
+            return invokeMarker;
+        });
 
-        const originRaw = toRaw(obj.$)
-        expect(arr).toEqual([1, originRaw, 2])
+        const originRaw = toRaw(obj.$);
+        expect(arr).toEqual([1, originRaw, 2]);
 
-        obj.$.a++
+        obj.$.a++;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(arr).toEqual([1, originRaw, 2, 2])
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
+        expect(arr).toEqual([1, originRaw, 2, 2]);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
 
         obj.$ = {
             a: 2,
-            b: 99
-        }
+            b: 99,
+        };
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(invokeMarker).toHaveBeenCalledTimes(4)
-        expect(arr).toEqual([1, originRaw, 2, 2, 2, obj.$, 99])
+        expect(invokeMarker).toHaveBeenCalledTimes(4);
+        expect(arr).toEqual([1, originRaw, 2, 2, 2, obj.$, 99]);
 
-        --obj.$.b
+        --obj.$.b;
         if (i !== 3) {
-            await nextTick()
+            await nextTick();
         }
-        expect(invokeMarker).toHaveBeenCalledTimes(5)
-        expect(arr).toEqual([1, originRaw, 2, 2, 2, obj.$, 99, 98])
+        expect(invokeMarker).toHaveBeenCalledTimes(5);
+        expect(arr).toEqual([1, originRaw, 2, 2, 2, obj.$, 99, 98]);
     }
-})
+});
 
 test("Whether a runtime warning will be caused when effect depends on no reactive value", () => {
     for (const effectFunc of reactiveEffectFuncs) {
-        warningMatcher.mockClear()
-        effectFunc(NOOP)
-        expect(warningMatcher.args[2]).toBe(NOOP)
-        expect(warningMatcher).toHaveBeenCalledTimes(1)
-        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()
+        warningMatcher.mockClear();
+        effectFunc(NOOP);
+        expect(warningMatcher.args[2]).toBe(NOOP);
+        expect(warningMatcher).toHaveBeenCalledTimes(1);
+        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy();
     }
 
     for (const watchFunc of watchEffectFuncs) {
-        warningMatcher.mockClear()
-        watchFunc(NOOP, NOOP)
-        expect(warningMatcher.args[2]).toBe(NOOP)
-        expect(warningMatcher).toHaveBeenCalledTimes(1)
-        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy()
-        expect(warningMatcher.args[1].includes("that created with watcher")).toBeTruthy()
+        warningMatcher.mockClear();
+        watchFunc(NOOP, NOOP);
+        expect(warningMatcher.args[2]).toBe(NOOP);
+        expect(warningMatcher).toHaveBeenCalledTimes(1);
+        expect(warningMatcher.args[1].startsWith("No reactive values were")).toBeTruthy();
+        expect(warningMatcher.args[1].includes("that created with watcher")).toBeTruthy();
     }
-})
+});
 
 test("Whether a runtime error will be caused when recursive update depth exceeds the maximum value", async () => {
-    const errMsg = getErrorMessage(() => MaximumUpdateDepthExceeded())
-    const stopGlobalErrorWatcher = matchGlobalError(errMsg, true)
-    const v1 = react(0)
+    const errMsg = getErrorMessage(() => MaximumUpdateDepthExceeded());
+    const stopGlobalErrorWatcher = matchGlobalError(errMsg, true);
+    const v1 = react(0);
     for (let i = 0; i < 2; i++) {
         renderEffect(() => {
             if (v1.$ < 100) {
-                arr.push(v1.$++)
+                arr.push(v1.$++);
             }
-        })
+        });
     }
-    expect(arr).toEqual([0, 1])
+    expect(arr).toEqual([0, 1]);
 
-    await nextTick()
-    expect(arr).toEqual([0, 1, 2])
+    await nextTick();
+    expect(arr).toEqual([0, 1, 2]);
 
-    await nextTick()
-    expect(arr).toEqual([0, 1, 2, 3])
+    await nextTick();
+    expect(arr).toEqual([0, 1, 2, 3]);
 
-    await sleep(100)
-    expect(arr).toEqual(makeConsecutiveNumbersArr(100))
+    await sleep(100);
+    expect(arr).toEqual(makeConsecutiveNumbersArr(100));
 
-    const v2 = (cleanup(), react(0))
+    const v2 = (cleanup(), react(0));
     for (let i = 0; i < 2; i++) {
         renderEffect(() => {
-            arr.push(v2.$++)
-        })
+            arr.push(v2.$++);
+        });
     }
-    expect(arr).toEqual([0, 1])
+    expect(arr).toEqual([0, 1]);
 
-    await sleep(100)
-    stopGlobalErrorWatcher()
-    expect(arr).toEqual(makeConsecutiveNumbersArr(303))
-})
+    await sleep(100);
+    stopGlobalErrorWatcher();
+    expect(arr).toEqual(makeConsecutiveNumbersArr(303));
+});
 
 describe("Traversal operations of specified types are tracked as ITERATOR_KEYS dependencies", () => {
     test("Depend on Set", async () => {
-        const set = constReact(new Set([1, 2, []]))
+        const set = constReact(new Set([1, 2, []]));
         renderEffect(() => {
             set.forEach((item: any, _: any, caller: any) => {
                 if ((arr.push(item), isArray(item))) {
-                    invokeMarker()
-                    expect(isReactive(item)).toBeTruthy()
+                    invokeMarker();
+                    expect(isReactive(item)).toBeTruthy();
                 }
-                expect(caller).toBe(set)
-            })
-        })
-        expect(arr).toEqual([1, 2, []])
-        expect(set[WRAPPER].a.size).toBe(2)
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
-        expect(set[WRAPPER].a.has(ITERATOR_KEYS)).toBeTruthy()
+                expect(caller).toBe(set);
+            });
+        });
+        expect(arr).toEqual([1, 2, []]);
+        expect(set[WRAPPER].a.size).toBe(2);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
+        expect(set[WRAPPER].a.has(ITERATOR_KEYS)).toBeTruthy();
 
-        set.add(3)
-        await nextTick()
-        expect(arr).toEqual([1, 2, [], 1, 2, [], 3])
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
-        expect(set[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(1)
+        set.add(3);
+        await nextTick();
+        expect(arr).toEqual([1, 2, [], 1, 2, [], 3]);
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
+        expect(set[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(1);
 
         renderEffect(() => {
             for (const item of set) {
                 if (isArray(item)) {
-                    invokeMarker()
-                    expect(isReactive(item)).toBeTruthy()
+                    invokeMarker();
+                    expect(isReactive(item)).toBeTruthy();
                 }
             }
-        })
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
-        expect(set[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(2)
-    })
+        });
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
+        expect(set[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(2);
+    });
 
     test("Depend on Map", () => {
-        const map = constReact(new Map())
+        const map = constReact(new Map());
         syncEffect(() => {
             map.forEach((value: any, key: any, caller: any) => {
-                invokeMarker()
-                arr.push([key, value])
-                expect(caller).toBe(map)
-                expect(isNumber(key) || isReactive(key)).toBeTruthy()
-                expect(isNumber(value) || isReactive(value)).toBeTruthy()
-            })
-        })
-        expect(invokeMarker).toHaveBeenCalledTimes(0)
+                invokeMarker();
+                arr.push([key, value]);
+                expect(caller).toBe(map);
+                expect(isNumber(key) || isReactive(key)).toBeTruthy();
+                expect(isNumber(value) || isReactive(value)).toBeTruthy();
+            });
+        });
+        expect(invokeMarker).toHaveBeenCalledTimes(0);
 
-        map.set(1, 2)
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
-    })
+        map.set(1, 2);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
+    });
 
     test("Depend on Array", async () => {
-        const nums = constReact([1, 2, []])
+        const nums = constReact([1, 2, []]);
         renderEffect(() => {
             nums.forEach((item: any, _: any, caller: any) => {
                 if ((arr.push(item), isArray(item))) {
-                    invokeMarker()
-                    expect(isReactive(item)).toBeTruthy()
+                    invokeMarker();
+                    expect(isReactive(item)).toBeTruthy();
                 }
-                expect(caller).toBe(nums)
-            })
-        })
-        expect(arr).toEqual([1, 2, []])
-        expect(nums[WRAPPER].a.size).toBe(2)
-        expect(invokeMarker).toHaveBeenCalledTimes(1)
-        expect(nums[WRAPPER].a.has(ITERATOR_KEYS)).toBeTruthy()
+                expect(caller).toBe(nums);
+            });
+        });
+        expect(arr).toEqual([1, 2, []]);
+        expect(nums[WRAPPER].a.size).toBe(2);
+        expect(invokeMarker).toHaveBeenCalledTimes(1);
+        expect(nums[WRAPPER].a.has(ITERATOR_KEYS)).toBeTruthy();
 
-        ++nums[0]
-        await nextTick()
-        expect(arr).toEqual([1, 2, [], 2, 2, []])
-        expect(invokeMarker).toHaveBeenCalledTimes(2)
+        ++nums[0];
+        await nextTick();
+        expect(arr).toEqual([1, 2, [], 2, 2, []]);
+        expect(invokeMarker).toHaveBeenCalledTimes(2);
 
-        nums.push(99)
-        await nextTick()
-        expect(arr.slice(6)).toEqual([2, 2, [], 99])
-        expect(invokeMarker).toHaveBeenCalledTimes(3)
+        nums.push(99);
+        await nextTick();
+        expect(arr.slice(6)).toEqual([2, 2, [], 99]);
+        expect(invokeMarker).toHaveBeenCalledTimes(3);
 
-        nums.pop()
-        await nextTick()
-        expect(arr.slice(10)).toEqual([2, 2, []])
-        expect(invokeMarker).toHaveBeenCalledTimes(4)
-        expect(nums[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(1)
+        nums.pop();
+        await nextTick();
+        expect(arr.slice(10)).toEqual([2, 2, []]);
+        expect(invokeMarker).toHaveBeenCalledTimes(4);
+        expect(nums[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(1);
 
         renderEffect(() => {
             for (const item of nums) {
                 if (isArray(item)) {
-                    invokeMarker()
-                    expect(isReactive(item)).toBeTruthy()
+                    invokeMarker();
+                    expect(isReactive(item)).toBeTruthy();
                 }
             }
-        })
-        expect(invokeMarker).toHaveBeenCalledTimes(5)
-        expect(nums[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(2)
-    })
-})
+        });
+        expect(invokeMarker).toHaveBeenCalledTimes(5);
+        expect(nums[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(2);
+    });
+});

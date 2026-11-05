@@ -1,19 +1,19 @@
-import { test, expect } from "vitest"
-import { compile } from "../../../../../src/compiler/compile"
+import { test, expect } from "vitest";
+import { compile } from "../../../../../src/compiler/compile";
 
 function compileAndGetCode(
     source: string,
-    options: Parameters<typeof compile>[1] = { debug: false }
+    options: Parameters<typeof compile>[1] = { debug: false },
 ) {
-    const result = compile(source, options)
-    expect(result.messages.filter(item => item.type === "error")).toEqual([])
-    return result.code
+    const result = compile(source, options);
+    expect(result.messages.filter(item => item.type === "error")).toEqual([]);
+    return result.code;
 }
 
 function getReusedStringLiteralId(code: string, value: string) {
-    const matched = code.match(new RegExp(`const\\s+(_s\\d+)\\s*=\\s*${JSON.stringify(value)}`))
-    expect(matched).toBeTruthy()
-    return matched![1]
+    const matched = code.match(new RegExp(`const\\s+(_s\\d+)\\s*=\\s*${JSON.stringify(value)}`));
+    expect(matched).toBeTruthy();
+    return matched![1];
 }
 
 test("Production: replace repeated string literals in embedded script", () => {
@@ -23,21 +23,21 @@ test("Production: replace repeated string literals in embedded script", () => {
                 const label = \`same\` + "same"
             </lang-js>
             <div>{label}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(`${literalId} + ${literalId}`)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(`${literalId} + ${literalId}`);
+});
 
 test("Production: replace repeated string literals in interpolation expressions", () => {
     const code = compileAndGetCode(
         `
             <div>{"same" + \`same\`}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(`${literalId} + ${literalId}`)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(`${literalId} + ${literalId}`);
+});
 
 test("Production: replace non-computed object string keys as computed", () => {
     const code = compileAndGetCode(
@@ -46,12 +46,12 @@ test("Production: replace non-computed object string keys as computed", () => {
                 const value = { "same": "same", other: "same" }
             </lang-js>
             <div>{value["same"]}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(`{ [${literalId}]: ${literalId}, other: ${literalId} }`)
-    expect(code).toContain(`value[${literalId}]`)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(`{ [${literalId}]: ${literalId}, other: ${literalId} }`);
+    expect(code).toContain(`value[${literalId}]`);
+});
 
 test("Production: replace non-computed string keys in object/class methods", () => {
     const code = compileAndGetCode(
@@ -69,14 +69,14 @@ test("Production: replace non-computed string keys in object/class methods", () 
                 }
             </lang-js>
             <div>{obj["same"] + new Box()["same"]()}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(`[${literalId}]() {`)
-    expect(code).toContain(`class Box {`)
-    expect(code).toContain(`[${literalId}]()`)
-    expect(code).toContain(`obj[${literalId}] + new Box()[${literalId}]()`)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(`[${literalId}]() {`);
+    expect(code).toContain(`class Box {`);
+    expect(code).toContain(`[${literalId}]()`);
+    expect(code).toContain(`obj[${literalId}] + new Box()[${literalId}]()`);
+});
 
 test("Production: keep TS type literal string keys unchanged", () => {
     const code = compileAndGetCode(
@@ -88,15 +88,15 @@ test("Production: keep TS type literal string keys unchanged", () => {
                 const y = {} as { ["same"]: "same" }
             </lang-ts>
             <div>{x["same"]}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(`type A = { "same": string }`)
-    expect(code).toContain(`type B = { ["same"](): "same" }`)
-    expect(code).toContain(`{} as { ["same"]: "same" }`)
-    expect(code).toContain(`{ [${literalId}]: ${literalId} }`)
-    expect(code).toContain(`x[${literalId}]`)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(`type A = { "same": string }`);
+    expect(code).toContain(`type B = { ["same"](): "same" }`);
+    expect(code).toContain(`{} as { ["same"]: "same" }`);
+    expect(code).toContain(`{ [${literalId}]: ${literalId} }`);
+    expect(code).toContain(`x[${literalId}]`);
+});
 
 test("Production: > 8 compressed CSS class strings triggers multi-line format", () => {
     const code = compileAndGetCode(
@@ -115,13 +115,13 @@ test("Production: > 8 compressed CSS class strings triggers multi-line format", 
                 }
             </lang-js>
             <div class="apple-red">{cls}</div>
-        `
-    )
-    const compressStrings = code.match(/const _compressStrings = \[([\s\S]*?)\]/)
+        `,
+    );
+    const compressStrings = code.match(/const _compressStrings = \[([\s\S]*?)\]/);
     if (compressStrings) {
-        expect(compressStrings[1]).toContain("\n")
+        expect(compressStrings[1]).toContain("\n");
     }
-})
+});
 
 test("Production: repeated static template chunks emit multiline compress array", () => {
     const code = compileAndGetCode(
@@ -144,12 +144,12 @@ test("Production: repeated static template chunks emit multiline compress array"
             <div class="theta-long-token">x</div>
             <div class="iota-long-token">x</div>
             <div class="iota-long-token">x</div>
-        `
-    )
-    const compressStrings = code.match(/const _compressStrings = \[([\s\S]*?)\]/)
-    expect(compressStrings).toBeTruthy()
-    expect(compressStrings![1]).toContain("\n")
-})
+        `,
+    );
+    const compressStrings = code.match(/const _compressStrings = \[([\s\S]*?)\]/);
+    expect(compressStrings).toBeTruthy();
+    expect(compressStrings![1]).toContain("\n");
+});
 
 test("Production: tagged template quasi is not extracted as reusable string", () => {
     const code = compileAndGetCode(
@@ -160,12 +160,12 @@ test("Production: tagged template quasi is not extracted as reusable string", ()
                 const y = "tagval" + "tagval"
             </lang-js>
             <div>{x + y}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "tagval")
-    expect(code).toContain(literalId)
-    expect(code).toContain("`tagval`")
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "tagval");
+    expect(code).toContain(literalId);
+    expect(code).toContain("`tagval`");
+});
 
 test("Production: string enum member identifier is not extracted", () => {
     const code = compileAndGetCode(
@@ -176,12 +176,12 @@ test("Production: string enum member identifier is not extracted", () => {
                 const y = "north" + "north"
             </lang-ts>
             <div>{x + y}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "north")
-    expect(code).toContain(literalId)
-    expect(code).toContain('"north" = 0')
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "north");
+    expect(code).toContain(literalId);
+    expect(code).toContain('"north" = 0');
+});
 
 test("Production: import type source string is not extracted", () => {
     const code = compileAndGetCode(
@@ -192,23 +192,23 @@ test("Production: import type source string is not extracted", () => {
                 const b = "mymod"
             </lang-ts>
             <div>{a + b}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "mymod")
-    expect(code).toContain(literalId)
-    expect(code).toContain('import("mymod").Value')
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "mymod");
+    expect(code).toContain(literalId);
+    expect(code).toContain('import("mymod").Value');
+});
 
 test("Production: interpretive comments annotate reused literal replacement", () => {
     const code = compileAndGetCode(
         `
             <div class="same">{"same" + "same"}</div>
         `,
-        { debug: false, interpretiveComments: true }
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(`/* same */ ${literalId} + /* same */ ${literalId}`)
-})
+        { debug: false, interpretiveComments: true },
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(`/* same */ ${literalId} + /* same */ ${literalId}`);
+});
 
 test("Production: string in TS type assertion is not extracted", () => {
     const code = compileAndGetCode(
@@ -218,12 +218,12 @@ test("Production: string in TS type assertion is not extracted", () => {
                 const y = "castval" + "castval"
             </lang-ts>
             <div>{y}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "castval")
-    expect(code).toContain(literalId)
-    expect(code).toContain('"castval"')
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "castval");
+    expect(code).toContain(literalId);
+    expect(code).toContain('"castval"');
+});
 
 test("Production: string in enum initializer expression is extracted normally", () => {
     const code = compileAndGetCode(
@@ -233,11 +233,11 @@ test("Production: string in enum initializer expression is extracted normally", 
                 enum Status { A = makeKey("enumval"), B = makeKey("enumval") }
             </lang-ts>
             <div></div>
-        `
-    )
-    const literalId = code.match(/const\s+(_s\d+)\s*=\s*"enumval"/)
-    expect(literalId).toBeTruthy()
-})
+        `,
+    );
+    const literalId = code.match(/const\s+(_s\d+)\s*=\s*"enumval"/);
+    expect(literalId).toBeTruthy();
+});
 
 test("Production: tagged template with string literal tag keeps tag literal path", () => {
     const code = compileAndGetCode(
@@ -247,12 +247,12 @@ test("Production: tagged template with string literal tag keeps tag literal path
                 const y = "same" + "same"
             </lang-js>
             <div>{out + y}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(literalId)
-    expect(code).toContain(`(${literalId})\`ok\``)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(literalId);
+    expect(code).toContain(`(${literalId})\`ok\``);
+});
 
 test("Production: enum string initializers still allow reusable literal extraction", () => {
     const code = compileAndGetCode(
@@ -262,12 +262,12 @@ test("Production: enum string initializers still allow reusable literal extracti
                 const x = "same" + "same"
             </lang-ts>
             <div>{x}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain(literalId)
-    expect(code).toContain(`A = ${literalId}`)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain(literalId);
+    expect(code).toContain(`A = ${literalId}`);
+});
 
 test("Production: TS as/satisfies type contexts keep type literals untouched", () => {
     const code = compileAndGetCode(
@@ -278,10 +278,10 @@ test("Production: TS as/satisfies type contexts keep type literals untouched", (
                 const c = "same" + "same"
             </lang-ts>
             <div>{c}</div>
-        `
-    )
-    const literalId = getReusedStringLiteralId(code, "same")
-    expect(code).toContain('as "same"')
-    expect(code).toContain('satisfies "same"')
-    expect(code).toContain(literalId)
-})
+        `,
+    );
+    const literalId = getReusedStringLiteralId(code, "same");
+    expect(code).toContain('as "same"');
+    expect(code).toContain('satisfies "same"');
+    expect(code).toContain(literalId);
+});

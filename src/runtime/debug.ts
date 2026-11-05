@@ -1,44 +1,44 @@
-import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
+import type { ArbitraryFunc, Getter } from "#type-declarations/tools";
 
-import { REFERENCE_VALUE } from "./constants"
-import { isFunction } from "../util/shared/assert"
-import { newCleanObj } from "../util/shared/sundry"
-import { defineProperties } from "../util/shared/aliases"
+import { REFERENCE_VALUE } from "./constants";
+import { isFunction } from "../util/shared/assert";
+import { newCleanObj } from "../util/shared/sundry";
+import { defineProperties } from "../util/shared/aliases";
 
 export function alias(getter: Getter) {
-    return destructuringAlias(getter)[0]
+    return destructuringAlias(getter)[0];
 }
 
 export const destructuringAlias = (...getters: Getter[]) => {
     return getters.map(getter => {
-        const accessor = newCleanObj()
+        const accessor = newCleanObj();
         defineProperties(accessor, {
             [REFERENCE_VALUE]: {
                 get: stripErrorStack(() => {
-                    const [target, key] = getter()
-                    const ret = target[key]
+                    const [target, key] = getter();
+                    const ret = target[key];
                     if (isFunction(ret)) {
-                        return ret.bind(target)
+                        return ret.bind(target);
                     }
-                    return ret
+                    return ret;
                 }),
                 set: stripErrorStack(value => {
-                    const [target, key] = getter()
-                    target[key] = value
-                })
-            }
-        })
-        return accessor
-    })
-}
+                    const [target, key] = getter();
+                    target[key] = value;
+                }),
+            },
+        });
+        return accessor;
+    });
+};
 
 function stripErrorStack<T extends ArbitraryFunc>(fn: T): T {
     const ret: any = (...args: any) => {
         try {
-            return fn(...args)
+            return fn(...args);
         } catch (err: any) {
-            throw (Error?.captureStackTrace(err, ret), err)
+            throw (Error?.captureStackTrace(err, ret), err);
         }
-    }
-    return ret
+    };
+    return ret;
 }

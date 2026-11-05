@@ -1,4 +1,4 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     TestingMode,
@@ -9,396 +9,396 @@ import type {
     IdentifierStatus,
     CompileMessageType,
     AttributeValueEnclosure,
-    SelectorOperationMethod
-} from "../compiler/enums"
-import type { GeneralFunc, Pair } from "#type-declarations/tools"
-import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
+    SelectorOperationMethod,
+} from "../compiler/enums";
+import type { GeneralFunc, Pair } from "#type-declarations/tools";
+import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast";
 
 export interface CompileWarning {
-    loc: ASTLocation
-    code: number
-    message: string
+    loc: ASTLocation;
+    code: number;
+    message: string;
 }
 export interface CompileError extends Error {
-    code: number
-    loc: ASTLocation
-    description: string
+    code: number;
+    loc: ASTLocation;
+    description: string;
 }
 
 export interface ScriptDescriptor {
-    code: string
-    isTS: boolean
-    loc: ASTLocation
-    existing: boolean
-    lineCount: number
-    startTagOpenRange: Range
+    code: string;
+    isTS: boolean;
+    loc: ASTLocation;
+    existing: boolean;
+    lineCount: number;
+    startTagOpenRange: Range;
 }
 export interface StyleDescriptor {
-    code: string
-    lang: string
-    global: boolean
-    loc: ASTLocation
-    startTagOpenRange: Range
+    code: string;
+    lang: string;
+    global: boolean;
+    loc: ASTLocation;
+    startTagOpenRange: Range;
 }
 export interface InputDescriptor {
-    source: string
-    indent: string
-    options: InputOptions
-    script: ScriptDescriptor
-    styles: StyleDescriptor[]
-    positions: ASTPositionWithFlag[]
+    source: string;
+    indent: string;
+    options: InputOptions;
+    script: ScriptDescriptor;
+    styles: StyleDescriptor[];
+    positions: ASTPositionWithFlag[];
 }
 
 export interface EditInsertSnippet {
-    value: string
-    sourceRange?: Range
+    value: string;
+    sourceRange?: Range;
 }
 export interface EditReplacement {
-    removedLength?: number
-    additions?: EditInsertSnippet[]
+    removedLength?: number;
+    additions?: EditInsertSnippet[];
 }
 
 export interface TemplateFragment {
     content: {
-        value: string
-        isText: boolean
-    }[]
+        value: string;
+        isText: boolean;
+    }[];
     selections: {
-        id: string
-        index: number
-        replaceWithText: boolean
-        parent: string | undefined
-    }[]
-    id: string
-    flag: number
-    inSvg: boolean
-    inSlot: boolean
-    getterId: string
-    usedCompressString: boolean
-    directChildrenCount: number
-    getWith: TemplateFragment | undefined
-    nodeContext: TemplateNodeContext | null
+        id: string;
+        index: number;
+        replaceWithText: boolean;
+        parent: string | undefined;
+    }[];
+    id: string;
+    flag: number;
+    inSvg: boolean;
+    inSlot: boolean;
+    getterId: string;
+    usedCompressString: boolean;
+    directChildrenCount: number;
+    getWith: TemplateFragment | undefined;
+    nodeContext: TemplateNodeContext | null;
 }
 
 export interface TextContentPart {
-    value: string
-    loc: ASTLocation
-    isInterpolated: boolean
+    value: string;
+    loc: ASTLocation;
+    isInterpolated: boolean;
 }
 export interface TemplateTypeArgument {
-    raw: string
-    loc: ASTLocation
+    raw: string;
+    loc: ASTLocation;
 }
 export interface AttributeNameValue {
-    raw: string
-    loc: ASTLocation
+    raw: string;
+    loc: ASTLocation;
 }
 export interface TemplateAttribute {
-    loc: ASTLocation
-    equalSign: boolean
-    name: AttributeNameValue
-    value: AttributeNameValue
-    valueEnclosure: AttributeValueEnclosure
+    loc: ASTLocation;
+    equalSign: boolean;
+    name: AttributeNameValue;
+    value: AttributeNameValue;
+    valueEnclosure: AttributeValueEnclosure;
 }
 export interface TemplateNode {
-    tag: string
-    rawTag: string
-    loc: ASTLocation
-    componentTag: string
-    isEmbedded: boolean
-    preWhiteSpace: boolean
-    isSelfClosing: boolean
-    hasActualAncestor: boolean
-    children: TemplateNode[]
-    content: TextContentPart[]
-    startTagEndPos: ASTPosition
-    endTagStartPos: ASTPosition
-    prev: TemplateNode | null
-    next: TemplateNode | null
-    parent: TemplateNode | null
-    attributes: TemplateAttribute[]
-    typeArgument: TemplateTypeArgument | null
+    tag: string;
+    rawTag: string;
+    loc: ASTLocation;
+    componentTag: string;
+    isEmbedded: boolean;
+    preWhiteSpace: boolean;
+    isSelfClosing: boolean;
+    hasActualAncestor: boolean;
+    children: TemplateNode[];
+    content: TextContentPart[];
+    startTagEndPos: ASTPosition;
+    endTagStartPos: ASTPosition;
+    prev: TemplateNode | null;
+    next: TemplateNode | null;
+    parent: TemplateNode | null;
+    attributes: TemplateAttribute[];
+    typeArgument: TemplateTypeArgument | null;
 }
 
 export interface CompileMessage {
-    type: CompileMessageType
-    value: CompileError | CompileWarning
+    type: CompileMessageType;
+    value: CompileError | CompileWarning;
 }
 
 export interface ASTPosition {
-    line: number
-    column: number
-    index: number
+    line: number;
+    column: number;
+    index: number;
 }
 export interface ASTLocation {
-    start: ASTPosition
-    end: ASTPosition
+    start: ASTPosition;
+    end: ASTPosition;
 }
 export interface ASTPositionWithFlag extends ASTPosition {
-    flag: number
+    flag: number;
 }
 
 export interface AnalyzeResult {
     reusedStrings: Record<
         string,
         {
-            id: string
-            times: number
+            id: string;
+            times: number;
         }
-    >
-    script: ScriptAnalyzeRet
-    template: TemplateAnalyzeRet
+    >;
+    script: ScriptAnalyzeRet;
+    template: TemplateAnalyzeRet;
 }
 export interface EventFlagInfo {
     items: {
-        name: string
-        sourceRange: Range
-    }[]
-    value: number
+        name: string;
+        sourceRange: Range;
+    }[];
+    value: number;
 }
 export interface ExportBinding {
-    local: string
-    exported: string
+    local: string;
+    exported: string;
 }
 export interface ContextReference {
-    range: Range
-    shorthand: boolean
-    pattern: ParsedPattern
+    range: Range;
+    shorthand: boolean;
+    pattern: ParsedPattern;
 }
 export interface ComponentTagPart {
-    id: string
-    sourceRange: Range
+    id: string;
+    sourceRange: Range;
 }
 export interface ParsedPattern {
-    sourceRange: Range
-    directive: ParsedDirective
-    node: TS.ArrayBindingElement
-    declaredIdentifiers: Set<string>
+    sourceRange: Range;
+    directive: ParsedDirective;
+    node: TS.ArrayBindingElement;
+    declaredIdentifiers: Set<string>;
 }
 export interface ParsedDirective {
     context?: {
-        argId: string
-        returnsId: string
-    }
+        argId: string;
+        returnsId: string;
+    };
     src: {
-        directive: TemplateAttribute
-        nodeContext: TemplateNodeContext
-    }
-    base: string
-    keywordIndex: number
-    patterns: ParsedPattern[]
-    baseStartSourceIndex: number
+        directive: TemplateAttribute;
+        nodeContext: TemplateNodeContext;
+    };
+    base: string;
+    keywordIndex: number;
+    patterns: ParsedPattern[];
+    baseStartSourceIndex: number;
 }
 export interface StringLiteralDetail {
-    value: string
-    computed: boolean
-    propertyName: boolean
+    value: string;
+    computed: boolean;
+    propertyName: boolean;
 }
 export interface ReusedStringReference {
-    range: Range
-    value: string
-    computed: boolean
+    range: Range;
+    value: string;
+    computed: boolean;
 }
 export interface ParsedExpression {
-    source: string
-    node: TS.Expression
-    reactive: boolean
-    startSourceIndex: number
-    contextReferences: ContextReference[]
-    topLevelReferences: TopLevelReferences
-    rawCallExpressions: TS.CallExpression[]
-    reusedStringReferences: ReusedStringReference[]
+    source: string;
+    node: TS.Expression;
+    reactive: boolean;
+    startSourceIndex: number;
+    contextReferences: ContextReference[];
+    topLevelReferences: TopLevelReferences;
+    rawCallExpressions: TS.CallExpression[];
+    reusedStringReferences: ReusedStringReference[];
 }
 export interface GeneratedSelectorInfo {
-    id: string
-    expressionKey: any
-    operation: SelectorOperation
-    topLevelTransformedTo: string
-    topLevelIdentifierName: string
-    keyDirective: TemplateAttribute
-    forNodeContext: TemplateNodeContext
-    targetNodeContext: TemplateNodeContext
+    id: string;
+    expressionKey: any;
+    operation: SelectorOperation;
+    topLevelTransformedTo: string;
+    topLevelIdentifierName: string;
+    keyDirective: TemplateAttribute;
+    forNodeContext: TemplateNodeContext;
+    targetNodeContext: TemplateNodeContext;
 
-    targetTextPart?: TextContentPart
-    targetAttribute?: TemplateAttribute
+    targetTextPart?: TextContentPart;
+    targetAttribute?: TemplateAttribute;
 }
 export type SelectorExpressionValidation = Pick<
     GeneratedSelectorInfo,
     "topLevelIdentifierName" | "topLevelTransformedTo"
->
+>;
 export interface TopLevelIdentifierNodeInfo {
-    id: TS.Identifier
-    declarator: TopLevelDeclaratorNode
-    declaration: TopLevelDeclarationNode
-    destructuringIdentifierNames?: string[]
+    id: TS.Identifier;
+    declarator: TopLevelDeclaratorNode;
+    declaration: TopLevelDeclarationNode;
+    destructuringIdentifierNames?: string[];
 }
 export interface TopLevelIdentifierInfo {
-    hoist: boolean
-    implicit: boolean
-    accessor: boolean
-    propagated: boolean
-    aliasTarget: string
-    transformTo: string
-    status: IdentifierStatus
-    untrackedAccess: boolean
-    sourceReads: Set<string>
-    untrackedSourceReads: Set<string>
-    usedExpressions: Set<ParsedExpression>
-    nodeInfos: TopLevelIdentifierNodeInfo[]
+    hoist: boolean;
+    implicit: boolean;
+    accessor: boolean;
+    propagated: boolean;
+    aliasTarget: string;
+    transformTo: string;
+    status: IdentifierStatus;
+    untrackedAccess: boolean;
+    sourceReads: Set<string>;
+    untrackedSourceReads: Set<string>;
+    usedExpressions: Set<ParsedExpression>;
+    nodeInfos: TopLevelIdentifierNodeInfo[];
 }
 export interface TemplateNodeContext {
-    id: string
-    anchorId: string
-    node: TemplateNode
-    inSvgContext: boolean
-    inSlotContent: boolean
-    shouldBeSelected: boolean
-    selectableChildCount: number
-    fragment: TemplateFragment | null
-    anchorBracket: TemplateFragment | null
-    listAncestors: TemplateNode[]
-    eventListeners: TemplateAttribute[]
-    sortedDirectives: TemplateAttribute[]
-    staticAttributes: TemplateAttribute[]
-    dynamicAttributes: TemplateAttribute[]
-    referenceAttributes: TemplateAttribute[]
-    attributesMap: Record<string, TemplateAttribute>
-    contextIdentifiers: Record<string, ParsedDirective>
+    id: string;
+    anchorId: string;
+    node: TemplateNode;
+    inSvgContext: boolean;
+    inSlotContent: boolean;
+    shouldBeSelected: boolean;
+    selectableChildCount: number;
+    fragment: TemplateFragment | null;
+    anchorBracket: TemplateFragment | null;
+    listAncestors: TemplateNode[];
+    eventListeners: TemplateAttribute[];
+    sortedDirectives: TemplateAttribute[];
+    staticAttributes: TemplateAttribute[];
+    dynamicAttributes: TemplateAttribute[];
+    referenceAttributes: TemplateAttribute[];
+    attributesMap: Record<string, TemplateAttribute>;
+    contextIdentifiers: Record<string, ParsedDirective>;
 }
 
 export interface TemplateAnalyzeRet {
     delegateEvents: {
-        passive: Set<string>
-        nonPassive: Set<string>
-    }
+        passive: Set<string>;
+        nonPassive: Set<string>;
+    };
     parsedEvents: Map<
         TemplateAttribute,
         {
-            eventName: string
-            generalFlag: EventFlagInfo
-            wrapperFlag: EventFlagInfo
+            eventName: string;
+            generalFlag: EventFlagInfo;
+            wrapperFlag: EventFlagInfo;
         }
-    >
-    slots: Record<string, TemplateNode>
-    componentFragment: TemplateFragment | null
-    parsedExpressions: Map<any, ParsedExpression>
-    staticTextContents: Map<TextContentPart, string>
-    validReferenceAttributes: Set<TemplateAttribute>
-    nodeContexts: Map<TemplateNode, TemplateNodeContext>
-    parsedDirectives: Map<TemplateAttribute, ParsedDirective>
-    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>
+    >;
+    slots: Record<string, TemplateNode>;
+    componentFragment: TemplateFragment | null;
+    parsedExpressions: Map<any, ParsedExpression>;
+    staticTextContents: Map<TextContentPart, string>;
+    validReferenceAttributes: Set<TemplateAttribute>;
+    nodeContexts: Map<TemplateNode, TemplateNodeContext>;
+    parsedDirectives: Map<TemplateAttribute, ParsedDirective>;
+    keyedSelectorInfos: Map<TemplateNodeContext, GeneratedSelectorInfo[]>;
 }
 export interface ScriptAnalyzeRet {
     declaratorToAliasInfos: Map<
         TS.VariableDeclaration,
         {
-            property: string
-            expression: string
+            property: string;
+            expression: string;
         }[]
-    >
-    exportStatements: TS.Node[]
-    usedIntrinsics: Set<string>
-    fullIdentifiers: Set<string>
-    eliminatedNodes: Set<TS.Node>
-    rawReadCalls: TS.CallExpression[]
-    exportedBindings: ExportBinding[]
-    watchExpCalls: TS.CallExpression[]
-    setContextExpCalls: TS.CallExpression[]
-    topLevelReferences: TopLevelReferences
-    qkDefaultImportIdentifiers: Set<string>
-    preMutatedTopLevelIdentifiers: Set<string>
-    defaultsCall: TS.CallExpression | undefined
-    reusedStringReferences: ReusedStringReference[]
-    topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>
-    declaratorToIntrinsic: Map<TS.VariableDeclaration, TS.Identifier>
-    importDeclarations: (TS.ImportDeclaration | TS.ImportEqualsDeclaration)[]
+    >;
+    exportStatements: TS.Node[];
+    usedIntrinsics: Set<string>;
+    fullIdentifiers: Set<string>;
+    eliminatedNodes: Set<TS.Node>;
+    rawReadCalls: TS.CallExpression[];
+    exportedBindings: ExportBinding[];
+    watchExpCalls: TS.CallExpression[];
+    setContextExpCalls: TS.CallExpression[];
+    topLevelReferences: TopLevelReferences;
+    qkDefaultImportIdentifiers: Set<string>;
+    preMutatedTopLevelIdentifiers: Set<string>;
+    defaultsCall: TS.CallExpression | undefined;
+    reusedStringReferences: ReusedStringReference[];
+    topLevelIdentifiers: Record<string, TopLevelIdentifierInfo>;
+    declaratorToIntrinsic: Map<TS.VariableDeclaration, TS.Identifier>;
+    importDeclarations: (TS.ImportDeclaration | TS.ImportEqualsDeclaration)[];
 }
 
 export interface RawArgumentInfo {
-    range: Range
-    kind: RawArgumentKind
+    range: Range;
+    kind: RawArgumentKind;
 }
 
-export type Range = Pair<number>
-export type TypeScriptApi = typeof TS
+export type Range = Pair<number>;
+export type TypeScriptApi = typeof TS;
 
 export type TopLevelReferences = Record<
     string,
     {
-        range: Range
-        declared: boolean
-        shorthand: boolean
-        untracked?: boolean
+        range: Range;
+        declared: boolean;
+        shorthand: boolean;
+        untracked?: boolean;
     }[]
->
+>;
 export type IdentifierStatusInfo = Record<
     string,
     {
         inlays: {
-            index: number
-            kind: InlayHintKind
-        }[]
-        description: string
-        status: IdentifierStatus
+            index: number;
+            kind: InlayHintKind;
+        }[];
+        description: string;
+        status: IdentifierStatus;
     }
->
+>;
 
 export interface CompileResult {
-    code: string
-    hashId: string
-    mappings: string
-    messages: CompileMessage[]
-    positions: ASTPositionWithFlag[]
-    scriptDescriptor: ScriptDescriptor
-    styleDescriptors: StyleDescriptor[]
+    code: string;
+    hashId: string;
+    mappings: string;
+    messages: CompileMessage[];
+    positions: ASTPositionWithFlag[];
+    scriptDescriptor: ScriptDescriptor;
+    styleDescriptors: StyleDescriptor[];
 }
 
 export type StandaloneParseTemplateOptions = Partial<{
-    recover: boolean
-    preserveCommentNodes: boolean
-    preserveBlankTextNodes: boolean
-    checkTemplateStructure: boolean
-    checkEmptyInterpolation: boolean
-    checkAttributeValueEnclosure: boolean
-}>
+    recover: boolean;
+    preserveCommentNodes: boolean;
+    preserveBlankTextNodes: boolean;
+    checkTemplateStructure: boolean;
+    checkEmptyInterpolation: boolean;
+    checkAttributeValueEnclosure: boolean;
+}>;
 
 export type CompileOptions = Partial<{
-    hashId: string
-    debug: boolean
-    sourcemap: boolean
-    testing: TestingMode
-    whitespace: WhitespaceMode
-    replaceQkImports: boolean
-    allowConstReactive: boolean
-    interpretiveComments: boolean
-    preserveHtmlComments: boolean
-    requireReactivityMark: boolean
-    reactivityMode: ReactivityMode
-}>
+    hashId: string;
+    debug: boolean;
+    sourcemap: boolean;
+    testing: TestingMode;
+    whitespace: WhitespaceMode;
+    replaceQkImports: boolean;
+    allowConstReactive: boolean;
+    interpretiveComments: boolean;
+    preserveHtmlComments: boolean;
+    requireReactivityMark: boolean;
+    reactivityMode: ReactivityMode;
+}>;
 
 export type DirectiveRenderInserts = Partial<{
-    arg: GeneralFunc
-    context: GeneralFunc
-    returns: GeneralFunc
-    enclosure: GeneralFunc
-}>
+    arg: GeneralFunc;
+    context: GeneralFunc;
+    returns: GeneralFunc;
+    enclosure: GeneralFunc;
+}>;
 
 export interface SelectorOperation {
-    method: SelectorOperationMethod
-    attrName?: string
-    staticClassAttr?: TemplateAttribute
+    method: SelectorOperationMethod;
+    attrName?: string;
+    staticClassAttr?: TemplateAttribute;
 }
 
 export type CompileIntermediateOptions = Pick<
     CompileOptions,
     "allowConstReactive" | "requireReactivityMark"
->
+>;
 
 export type SelectionCacheItem = {
-    id: string
-    index: number
-}
-export type SelectionCache = Record<string, SelectionCacheItem[]>
+    id: string;
+    index: number;
+};
+export type SelectionCache = Record<string, SelectionCacheItem[]>;
 
 export type GenerateIdentifierStaticKeys =
     | "meta"
@@ -407,18 +407,18 @@ export type GenerateIdentifierStaticKeys =
     | "getterArg"
     | "setterArg"
     | "component"
-    | "compressStrings"
+    | "compressStrings";
 
 export type GenerateIdentifier = Record<GenerateIdentifierStaticKeys, string> & {
     suffix: Record<
         string,
         {
-            last: number
-            originUsed: boolean
+            last: number;
+            originUsed: boolean;
         }
-    >
-    prefix: Record<string, number>
-}
+    >;
+    prefix: Record<string, number>;
+};
 export type InputOptions = Required<CompileOptions & CompileIntermediateOptions> & {
-    checkMode: boolean
-}
+    checkMode: boolean;
+};

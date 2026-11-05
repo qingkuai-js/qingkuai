@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -28,31 +28,31 @@ const scenario: E2EScenarioInput = {
             <p id="arg-target-id">{argTargetId}</p>
             <p id="arg-input-value">{argInputValue}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("inline handlers work for click input and key modifiers", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#inline-btn").click()
-        await expect(page.locator("#click-count")).toHaveText("1")
-        await expect(page.locator("#arg-type")).toHaveText("click")
+        await page.locator("#inline-btn").click();
+        await expect(page.locator("#click-count")).toHaveText("1");
+        await expect(page.locator("#arg-type")).toHaveText("click");
 
-        await page.locator("#inline-input").fill("abc")
-        await expect(page.locator("#target-id")).toHaveText("inline-input")
+        await page.locator("#inline-input").fill("abc");
+        await expect(page.locator("#target-id")).toHaveText("inline-input");
 
-        await page.locator("#inline-arg-input").fill("xyz")
-        await expect(page.locator("#arg-target-id")).toHaveText("inline-arg-input")
-        await expect(page.locator("#arg-input-value")).toHaveText("xyz")
+        await page.locator("#inline-arg-input").fill("xyz");
+        await expect(page.locator("#arg-target-id")).toHaveText("inline-arg-input");
+        await expect(page.locator("#arg-input-value")).toHaveText("xyz");
 
-        await page.locator("#inline-key").press("Escape")
-        await expect(page.locator("#enter-count")).toHaveText("0")
+        await page.locator("#inline-key").press("Escape");
+        await expect(page.locator("#enter-count")).toHaveText("0");
 
-        await page.locator("#inline-key").press("Enter")
-        await expect(page.locator("#enter-count")).toHaveText("1")
-    })
-})
+        await page.locator("#inline-key").press("Enter");
+        await expect(page.locator("#enter-count")).toHaveText("1");
+    });
+});

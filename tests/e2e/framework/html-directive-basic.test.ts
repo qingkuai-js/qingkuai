@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -43,36 +43,38 @@ const scenario: E2EScenarioInput = {
                 <qk:spread #html>{spreadHtml}</qk:spread>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("renders html content and updates when source changes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page).toHaveTitle("html-directive-basic")
-        await expect(page.locator("#html-title")).toHaveText("Html directive")
-        await expect(page.locator("#html-host #html-strong")).toHaveText("Hello Html")
-        await expect(page.locator("#html-host #html-em")).toHaveCount(0)
+        await expect(page).toHaveTitle("html-directive-basic");
+        await expect(page.locator("#html-title")).toHaveText("Html directive");
+        await expect(page.locator("#html-host #html-strong")).toHaveText("Hello Html");
+        await expect(page.locator("#html-host #html-em")).toHaveCount(0);
 
-        await page.locator("#html-set-updated").click()
-        await expect(page.locator("#html-host #html-em")).toHaveText("Updated Html")
-        await expect(page.locator("#html-host #html-strong")).toHaveCount(0)
-    })
+        await page.locator("#html-set-updated").click();
+        await expect(page.locator("#html-host #html-em")).toHaveText("Updated Html");
+        await expect(page.locator("#html-host #html-strong")).toHaveCount(0);
+    });
 
     test("supports html directive on qk spread", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#html-spread-host #html-spread-inner")).toHaveText("Spread html")
-        await expect(page.locator("#html-spread-host #html-spread-updated")).toHaveCount(0)
+        await expect(page.locator("#html-spread-host #html-spread-inner")).toHaveText(
+            "Spread html",
+        );
+        await expect(page.locator("#html-spread-host #html-spread-updated")).toHaveCount(0);
 
-        await page.locator("#html-spread-updated").click()
+        await page.locator("#html-spread-updated").click();
         await expect(page.locator("#html-spread-host #html-spread-updated")).toHaveText(
-            "Spread updated"
-        )
-        await expect(page.locator("#html-spread-host #html-spread-inner")).toHaveCount(0)
-    })
-})
+            "Spread updated",
+        );
+        await expect(page.locator("#html-spread-host #html-spread-inner")).toHaveCount(0);
+    });
+});

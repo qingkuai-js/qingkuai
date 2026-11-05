@@ -2,18 +2,18 @@ import {
     getLocByIndex,
     getPosByIndex,
     newASTLocation,
-    getLocWithDefaultEnd
-} from "../../../../src/util/compiler/position"
-import { describe, expect, test } from "vitest"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { AttributeValueEnclosure } from "../../../../src/compiler/enums"
-import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
+    getLocWithDefaultEnd,
+} from "../../../../src/util/compiler/position";
+import { describe, expect, test } from "vitest";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { AttributeValueEnclosure } from "../../../../src/compiler/enums";
+import { parseTemplateTesting } from "../../../../src/util/testing/sundry";
+import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match";
 
 test("Simple parsing", () => {
     const nodeList = parseTemplateTesting(
-        `<a class="link" href="https://qingkuai.dev"> Documentation </a>`
-    )
+        `<a class="link" href="https://qingkuai.dev"> Documentation </a>`,
+    );
     matchTemplateNodeList(nodeList, {
         tag: "a",
         children: [
@@ -22,47 +22,47 @@ test("Simple parsing", () => {
                     {
                         isInterpolated: false,
                         value: " Documentation ",
-                        loc: getLocByIndex(44, 59)
-                    }
+                        loc: getLocByIndex(44, 59),
+                    },
                 ],
                 parent: nodeList[0],
                 hasActualAncestor: true,
-                loc: getLocByIndex(44, 59)
-            }
+                loc: getLocByIndex(44, 59),
+            },
         ],
         attributes: [
             {
                 name: {
                     raw: "class",
-                    loc: getLocByIndex(3, 8)
+                    loc: getLocByIndex(3, 8),
                 },
                 value: {
                     raw: "link",
-                    loc: getLocByIndex(10, 14)
+                    loc: getLocByIndex(10, 14),
                 },
                 equalSign: true,
                 loc: getLocByIndex(3, 15),
-                valueEnclosure: AttributeValueEnclosure.Double
+                valueEnclosure: AttributeValueEnclosure.Double,
             },
             {
                 name: {
                     raw: "href",
-                    loc: getLocByIndex(16, 20)
+                    loc: getLocByIndex(16, 20),
                 },
                 value: {
                     raw: "https://qingkuai.dev",
-                    loc: getLocByIndex(22, 42)
+                    loc: getLocByIndex(22, 42),
                 },
                 equalSign: true,
                 loc: getLocByIndex(16, 43),
-                valueEnclosure: AttributeValueEnclosure.Double
-            }
+                valueEnclosure: AttributeValueEnclosure.Double,
+            },
         ],
         loc: getLocByIndex(0, 63),
         startTagEndPos: getPosByIndex(44),
-        endTagStartPos: getPosByIndex(59)
-    })
-})
+        endTagStartPos: getPosByIndex(59),
+    });
+});
 
 test("Within self-closing tag", () => {
     matchTemplateNodeList(parseTemplateTesting(`<input type="button" value="Click Me" />`), {
@@ -71,35 +71,35 @@ test("Within self-closing tag", () => {
             {
                 name: {
                     raw: "type",
-                    loc: getLocByIndex(7, 11)
+                    loc: getLocByIndex(7, 11),
                 },
                 value: {
                     raw: "button",
-                    loc: getLocByIndex(13, 19)
+                    loc: getLocByIndex(13, 19),
                 },
                 equalSign: true,
                 loc: getLocByIndex(7, 20),
-                valueEnclosure: AttributeValueEnclosure.Double
+                valueEnclosure: AttributeValueEnclosure.Double,
             },
             {
                 name: {
                     raw: "value",
-                    loc: getLocByIndex(21, 26)
+                    loc: getLocByIndex(21, 26),
                 },
                 value: {
                     raw: "Click Me",
-                    loc: getLocByIndex(28, 36)
+                    loc: getLocByIndex(28, 36),
                 },
                 equalSign: true,
                 loc: getLocByIndex(21, 37),
-                valueEnclosure: AttributeValueEnclosure.Double
-            }
+                valueEnclosure: AttributeValueEnclosure.Double,
+            },
         ],
         isSelfClosing: true,
         loc: getLocByIndex(0, 40),
-        startTagEndPos: getPosByIndex(40)
-    })
-})
+        startTagEndPos: getPosByIndex(40),
+    });
+});
 
 test("With directives", () => {
     const nodeList = parseTemplateTesting(
@@ -107,8 +107,8 @@ test("With directives", () => {
             <ul>
                 <li #for={item of 3}> {item} </li>
             </ul>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(nodeList, {
         tag: "ul",
         children: [
@@ -117,13 +117,13 @@ test("With directives", () => {
                     {
                         value: "\n    ",
                         isInterpolated: false,
-                        loc: getLocByIndex(4, 9)
-                    }
+                        loc: getLocByIndex(4, 9),
+                    },
                 ],
                 parent: nodeList[0],
                 hasActualAncestor: true,
                 loc: getLocByIndex(4, 9),
-                next: nodeList[0].children[1]
+                next: nodeList[0].children[1],
             },
             {
                 tag: "li",
@@ -132,16 +132,16 @@ test("With directives", () => {
                     {
                         name: {
                             raw: "#for",
-                            loc: getLocByIndex(13, 17)
+                            loc: getLocByIndex(13, 17),
                         },
                         value: {
                             raw: "item of 3",
-                            loc: getLocByIndex(19, 28)
+                            loc: getLocByIndex(19, 28),
                         },
                         equalSign: true,
                         loc: getLocByIndex(13, 29),
-                        valueEnclosure: AttributeValueEnclosure.Curly
-                    }
+                        valueEnclosure: AttributeValueEnclosure.Curly,
+                    },
                 ],
                 children: [
                     {
@@ -149,50 +149,50 @@ test("With directives", () => {
                             {
                                 value: " ",
                                 isInterpolated: false,
-                                loc: getLocByIndex(30, 31)
+                                loc: getLocByIndex(30, 31),
                             },
                             {
                                 value: "item",
                                 isInterpolated: true,
-                                loc: getLocByIndex(32, 36)
+                                loc: getLocByIndex(32, 36),
                             },
                             {
                                 value: " ",
                                 isInterpolated: false,
-                                loc: getLocByIndex(37, 38)
-                            }
+                                loc: getLocByIndex(37, 38),
+                            },
                         ],
                         hasActualAncestor: true,
                         loc: getLocByIndex(30, 38),
-                        parent: nodeList[0].children[1]
-                    }
+                        parent: nodeList[0].children[1],
+                    },
                 ],
                 hasActualAncestor: true,
                 loc: getLocByIndex(9, 43),
                 next: nodeList[0].children[2],
                 prev: nodeList[0].children[0],
                 startTagEndPos: getPosByIndex(30),
-                endTagStartPos: getPosByIndex(38)
+                endTagStartPos: getPosByIndex(38),
             },
             {
                 content: [
                     {
                         value: "\n",
                         isInterpolated: false,
-                        loc: getLocByIndex(43, 44)
-                    }
+                        loc: getLocByIndex(43, 44),
+                    },
                 ],
                 parent: nodeList[0],
                 hasActualAncestor: true,
                 loc: getLocByIndex(43, 44),
-                prev: nodeList[0].children[1]
-            }
+                prev: nodeList[0].children[1],
+            },
         ],
         loc: getLocByIndex(0, 49),
         startTagEndPos: getPosByIndex(4),
-        endTagStartPos: getPosByIndex(44)
-    })
-})
+        endTagStartPos: getPosByIndex(44),
+    });
+});
 
 test("With dynamic attributes", () => {
     matchTemplateNodeList(parseTemplateTesting(`<div class="container" !id={dynamicId}></div>`), {
@@ -201,35 +201,35 @@ test("With dynamic attributes", () => {
             {
                 name: {
                     raw: "class",
-                    loc: getLocByIndex(5, 10)
+                    loc: getLocByIndex(5, 10),
                 },
                 value: {
                     raw: "container",
-                    loc: getLocByIndex(12, 21)
+                    loc: getLocByIndex(12, 21),
                 },
                 equalSign: true,
                 valueEnclosure: AttributeValueEnclosure.Double,
-                loc: getLocByIndex(5, 22)
+                loc: getLocByIndex(5, 22),
             },
             {
                 name: {
                     raw: "!id",
-                    loc: getLocByIndex(23, 26)
+                    loc: getLocByIndex(23, 26),
                 },
                 value: {
                     raw: "dynamicId",
-                    loc: getLocByIndex(28, 37)
+                    loc: getLocByIndex(28, 37),
                 },
                 equalSign: true,
                 loc: getLocByIndex(23, 38),
-                valueEnclosure: AttributeValueEnclosure.Curly
-            }
+                valueEnclosure: AttributeValueEnclosure.Curly,
+            },
         ],
         loc: getLocByIndex(0, 45),
         startTagEndPos: getPosByIndex(39),
-        endTagStartPos: getPosByIndex(39)
-    })
-})
+        endTagStartPos: getPosByIndex(39),
+    });
+});
 
 test("With reference attributes", () => {
     matchTemplateNodeList(
@@ -239,7 +239,7 @@ test("With reference attributes", () => {
                     !id={ dynamicId }
                     &handle={span}
                 ></span>
-            `)
+            `),
         ),
         {
             tag: "span",
@@ -247,36 +247,36 @@ test("With reference attributes", () => {
                 {
                     name: {
                         raw: "!id",
-                        loc: getLocByIndex(10, 13)
+                        loc: getLocByIndex(10, 13),
                     },
                     value: {
                         raw: " dynamicId ",
-                        loc: getLocByIndex(15, 26)
+                        loc: getLocByIndex(15, 26),
                     },
                     equalSign: true,
                     loc: getLocByIndex(10, 27),
-                    valueEnclosure: AttributeValueEnclosure.Curly
+                    valueEnclosure: AttributeValueEnclosure.Curly,
                 },
                 {
                     name: {
                         raw: "&handle",
-                        loc: getLocByIndex(32, 39)
+                        loc: getLocByIndex(32, 39),
                     },
                     value: {
                         raw: "span",
-                        loc: getLocByIndex(41, 45)
+                        loc: getLocByIndex(41, 45),
                     },
                     equalSign: true,
                     loc: getLocByIndex(32, 46),
-                    valueEnclosure: AttributeValueEnclosure.Curly
-                }
+                    valueEnclosure: AttributeValueEnclosure.Curly,
+                },
             ],
             loc: getLocByIndex(0, 55),
             startTagEndPos: getPosByIndex(48),
-            endTagStartPos: getPosByIndex(48)
-        }
-    )
-})
+            endTagStartPos: getPosByIndex(48),
+        },
+    );
+});
 
 test("With event listeners", () => {
     const nodeList = parseTemplateTesting(
@@ -291,8 +291,8 @@ test("With event listeners", () => {
             >
                 Click Me
             </button>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(nodeList, {
         tag: "button",
         children: [
@@ -301,47 +301,47 @@ test("With event listeners", () => {
                     {
                         isInterpolated: false,
                         value: "\n    Click Me\n",
-                        loc: getLocByIndex(123, 137)
-                    }
+                        loc: getLocByIndex(123, 137),
+                    },
                 ],
                 parent: nodeList[0],
                 hasActualAncestor: true,
-                loc: getLocByIndex(123, 137)
-            }
+                loc: getLocByIndex(123, 137),
+            },
         ],
         attributes: [
             {
                 name: {
                     raw: "@click",
-                    loc: getLocByIndex(12, 18)
+                    loc: getLocByIndex(12, 18),
                 },
                 value: {
                     loc: getLocByIndex(20, 86),
-                    raw: `\n        () => {\n            console.log("clicked")\n        }\n    `
+                    raw: `\n        () => {\n            console.log("clicked")\n        }\n    `,
                 },
                 equalSign: true,
                 loc: getLocByIndex(12, 87),
-                valueEnclosure: AttributeValueEnclosure.Curly
+                valueEnclosure: AttributeValueEnclosure.Curly,
             },
             {
                 name: {
                     raw: "style",
-                    loc: getLocByIndex(92, 97)
+                    loc: getLocByIndex(92, 97),
                 },
                 value: {
                     raw: "background-color:red;",
-                    loc: getLocByIndex(99, 120)
+                    loc: getLocByIndex(99, 120),
                 },
                 equalSign: true,
                 loc: getLocByIndex(92, 121),
-                valueEnclosure: AttributeValueEnclosure.Double
-            }
+                valueEnclosure: AttributeValueEnclosure.Double,
+            },
         ],
         loc: getLocByIndex(0, 146),
         startTagEndPos: getPosByIndex(123),
-        endTagStartPos: getPosByIndex(137)
-    })
-})
+        endTagStartPos: getPosByIndex(137),
+    });
+});
 
 test("Within nested structure", () => {
     const nodeList = parseTemplateTesting(
@@ -354,8 +354,8 @@ test("Within nested structure", () => {
                     @input={handleInput}
                 />
             </div>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(nodeList, {
         tag: "div",
         children: [
@@ -364,13 +364,13 @@ test("Within nested structure", () => {
                     {
                         value: "\n    ",
                         isInterpolated: false,
-                        loc: getLocByIndex(29, 34)
-                    }
+                        loc: getLocByIndex(29, 34),
+                    },
                 ],
                 parent: nodeList[0],
                 hasActualAncestor: true,
                 loc: getLocByIndex(29, 34),
-                next: nodeList[0].children[1]
+                next: nodeList[0].children[1],
             },
             {
                 tag: "input",
@@ -378,55 +378,55 @@ test("Within nested structure", () => {
                     {
                         name: {
                             raw: "#if",
-                            loc: getLocByIndex(49, 52)
+                            loc: getLocByIndex(49, 52),
                         },
                         value: {
                             raw: "showInput",
-                            loc: getLocByIndex(54, 63)
+                            loc: getLocByIndex(54, 63),
                         },
                         equalSign: true,
                         loc: getLocByIndex(49, 64),
-                        valueEnclosure: AttributeValueEnclosure.Curly
+                        valueEnclosure: AttributeValueEnclosure.Curly,
                     },
                     {
                         name: {
                             raw: "!id",
-                            loc: getLocByIndex(73, 76)
+                            loc: getLocByIndex(73, 76),
                         },
                         value: {
                             raw: "dynamicId",
-                            loc: getLocByIndex(78, 87)
+                            loc: getLocByIndex(78, 87),
                         },
                         equalSign: true,
                         loc: getLocByIndex(73, 88),
-                        valueEnclosure: AttributeValueEnclosure.Curly
+                        valueEnclosure: AttributeValueEnclosure.Curly,
                     },
                     {
                         name: {
                             raw: "&handle",
-                            loc: getLocByIndex(97, 104)
+                            loc: getLocByIndex(97, 104),
                         },
                         value: {
                             raw: "inputElem",
-                            loc: getLocByIndex(106, 115)
+                            loc: getLocByIndex(106, 115),
                         },
                         equalSign: true,
                         loc: getLocByIndex(97, 116),
-                        valueEnclosure: AttributeValueEnclosure.Curly
+                        valueEnclosure: AttributeValueEnclosure.Curly,
                     },
                     {
                         name: {
                             raw: "@input",
-                            loc: getLocByIndex(125, 131)
+                            loc: getLocByIndex(125, 131),
                         },
                         value: {
                             raw: "handleInput",
-                            loc: getLocByIndex(133, 144)
+                            loc: getLocByIndex(133, 144),
                         },
                         equalSign: true,
                         loc: getLocByIndex(125, 145),
-                        valueEnclosure: AttributeValueEnclosure.Curly
-                    }
+                        valueEnclosure: AttributeValueEnclosure.Curly,
+                    },
                 ],
                 parent: nodeList[0],
                 isSelfClosing: true,
@@ -434,51 +434,51 @@ test("Within nested structure", () => {
                 loc: getLocByIndex(34, 152),
                 prev: nodeList[0].children[0],
                 next: nodeList[0].children[2],
-                startTagEndPos: getPosByIndex(152)
+                startTagEndPos: getPosByIndex(152),
             },
             {
                 content: [
                     {
                         value: "\n",
                         isInterpolated: false,
-                        loc: getLocByIndex(152, 153)
-                    }
+                        loc: getLocByIndex(152, 153),
+                    },
                 ],
                 parent: nodeList[0],
                 hasActualAncestor: true,
                 loc: getLocByIndex(152, 153),
-                prev: nodeList[0].children[1]
-            }
+                prev: nodeList[0].children[1],
+            },
         ],
         attributes: [
             {
                 name: {
                     raw: "!class",
-                    loc: getLocByIndex(5, 11)
+                    loc: getLocByIndex(5, 11),
                 },
                 value: {
                     raw: " dynamicClass ",
-                    loc: getLocByIndex(13, 27)
+                    loc: getLocByIndex(13, 27),
                 },
                 equalSign: true,
                 loc: getLocByIndex(5, 28),
-                valueEnclosure: AttributeValueEnclosure.Curly
-            }
+                valueEnclosure: AttributeValueEnclosure.Curly,
+            },
         ],
         loc: getLocByIndex(0, 159),
         startTagEndPos: getPosByIndex(29),
-        endTagStartPos: getPosByIndex(153)
-    })
-})
+        endTagStartPos: getPosByIndex(153),
+    });
+});
 
 describe("Whether incorrect format for attribute will cause parsing error", () => {
     const parseRecover = (source: string) => {
-        return parseTemplateTesting(source, { recover: true })
-    }
+        return parseTemplateTesting(source, { recover: true });
+    };
 
     test("Not recoverable", () => {
-        expect(() => parseTemplateTesting(`<div`)).toThrow()
-    })
+        expect(() => parseTemplateTesting(`<div`)).toThrow();
+    });
 
     test("Unexpected token in the starting of attribute name", () => {
         matchTemplateNodeListAndMessages(
@@ -488,17 +488,17 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "a",
                     loc: getLocByIndex(0, 16),
                     startTagEndPos: getPosByIndex(12),
-                    endTagStartPos: getPosByIndex(12)
-                }
+                    endTagStartPos: getPosByIndex(12),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [3, 11],
-                    value: "Invalid format for attributes."
-                }
-            ]
-        )
+                    value: "Invalid format for attributes.",
+                },
+            ],
+        );
 
         matchTemplateNodeListAndMessages(
             () => [
@@ -507,18 +507,18 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     tag: "input",
                     isSelfClosing: true,
                     loc: getLocByIndex(0, 24),
-                    startTagEndPos: getPosByIndex(24)
-                }
+                    startTagEndPos: getPosByIndex(24),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [7, 23],
-                    value: "Invalid format for attributes."
-                }
-            ]
-        )
-    })
+                    value: "Invalid format for attributes.",
+                },
+            ],
+        );
+    });
 
     test("Unexpected token inside attribute name", () => {
         matchTemplateNodeListAndMessages(
@@ -530,30 +530,30 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "class",
-                                loc: getLocByIndex(5, 10)
+                                loc: getLocByIndex(5, 10),
                             },
                             value: {
                                 raw: "",
-                                loc: newASTLocation()
+                                loc: newASTLocation(),
                             },
                             equalSign: false,
                             loc: getLocByIndex(5, 10),
-                            valueEnclosure: AttributeValueEnclosure.None
-                        }
+                            valueEnclosure: AttributeValueEnclosure.None,
+                        },
                     ],
                     loc: getLocByIndex(0, 19),
                     startTagEndPos: getPosByIndex(13),
-                    endTagStartPos: getPosByIndex(13)
-                }
+                    endTagStartPos: getPosByIndex(13),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [10, 12],
-                    value: "Invalid format for attributes."
-                }
-            ]
-        )
+                    value: "Invalid format for attributes.",
+                },
+            ],
+        );
 
         matchTemplateNodeListAndMessages(
             () => [
@@ -564,31 +564,31 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "cla",
-                                loc: getLocByIndex(5, 8)
+                                loc: getLocByIndex(5, 8),
                             },
                             value: {
                                 raw: "",
-                                loc: newASTLocation()
+                                loc: newASTLocation(),
                             },
                             equalSign: false,
                             loc: getLocByIndex(5, 8),
-                            valueEnclosure: AttributeValueEnclosure.None
-                        }
+                            valueEnclosure: AttributeValueEnclosure.None,
+                        },
                     ],
                     loc: getLocByIndex(0, 24),
                     startTagEndPos: getPosByIndex(18),
-                    endTagStartPos: getPosByIndex(18)
-                }
+                    endTagStartPos: getPosByIndex(18),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [8, 17],
-                    value: "Invalid format for attributes."
-                }
-            ]
-        )
-    })
+                    value: "Invalid format for attributes.",
+                },
+            ],
+        );
+    });
 
     test("Attribute value is not quoted", () => {
         matchTemplateNodeListAndMessages(
@@ -600,33 +600,33 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "id",
-                                loc: getLocByIndex(5, 7)
+                                loc: getLocByIndex(5, 7),
                             },
                             value: {
                                 raw: "container",
-                                loc: getLocByIndex(8, 17)
+                                loc: getLocByIndex(8, 17),
                             },
                             equalSign: true,
                             loc: getLocByIndex(5, 17),
-                            valueEnclosure: AttributeValueEnclosure.None
-                        }
+                            valueEnclosure: AttributeValueEnclosure.None,
+                        },
                     ],
-                    loc: getLocWithDefaultEnd(0)
-                }
+                    loc: getLocWithDefaultEnd(0),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [8, 17],
-                    value: "The value for static attribute must be quoted with single or double quote."
+                    value: "The value for static attribute must be quoted with single or double quote.",
                 },
                 {
                     type: "error",
                     range: [0, 4],
-                    value: "The start tag <div> is not closed."
-                }
-            ]
-        )
+                    value: "The start tag <div> is not closed.",
+                },
+            ],
+        );
 
         matchTemplateNodeListAndMessages(
             () => [
@@ -637,44 +637,44 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "type",
-                                loc: getLocByIndex(7, 11)
+                                loc: getLocByIndex(7, 11),
                             },
                             value: {
                                 raw: "radio",
-                                loc: getLocByIndex(13, 18)
+                                loc: getLocByIndex(13, 18),
                             },
                             equalSign: true,
                             loc: getLocByIndex(7, 19),
-                            valueEnclosure: AttributeValueEnclosure.Double
+                            valueEnclosure: AttributeValueEnclosure.Double,
                         },
                         {
                             name: {
                                 raw: "&checked",
-                                loc: getLocByIndex(20, 28)
+                                loc: getLocByIndex(20, 28),
                             },
                             value: {
                                 raw: "isChecked",
-                                loc: getLocByIndex(29, 38)
+                                loc: getLocByIndex(29, 38),
                             },
                             equalSign: true,
                             loc: getLocByIndex(20, 38),
-                            valueEnclosure: AttributeValueEnclosure.None
-                        }
+                            valueEnclosure: AttributeValueEnclosure.None,
+                        },
                     ],
                     isSelfClosing: true,
                     loc: getLocByIndex(0, 41),
-                    startTagEndPos: getPosByIndex(41)
-                }
+                    startTagEndPos: getPosByIndex(41),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [29, 38],
-                    value: "The value for reference attribute must be wrapped with curly bracket."
-                }
-            ]
-        )
-    })
+                    value: "The value for reference attribute must be wrapped with curly bracket.",
+                },
+            ],
+        );
+    });
 
     test("Incorrect quotation mark around attribute vaue", () => {
         matchTemplateNodeListAndMessages(() => {
@@ -685,8 +685,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             ...
                         </p>
                     </div>
-                `)
-            )
+                `),
+            );
             return [
                 nodeList,
                 {
@@ -697,13 +697,13 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 {
                                     value: "\n    ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(23, 28)
-                                }
+                                    loc: getLocByIndex(23, 28),
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
                             loc: getLocByIndex(23, 28),
-                            next: nodeList[0].children[1]
+                            next: nodeList[0].children[1],
                         },
                         {
                             tag: "p",
@@ -713,28 +713,28 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         {
                                             isInterpolated: false,
                                             value: "\n        ...\n    ",
-                                            loc: getLocByIndex(49, 66)
-                                        }
+                                            loc: getLocByIndex(49, 66),
+                                        },
                                     ],
                                     hasActualAncestor: true,
                                     loc: getLocByIndex(49, 66),
-                                    parent: nodeList[0].children[1]
-                                }
+                                    parent: nodeList[0].children[1],
+                                },
                             ],
                             attributes: [
                                 {
                                     name: {
                                         raw: "class",
-                                        loc: getLocByIndex(31, 36)
+                                        loc: getLocByIndex(31, 36),
                                     },
                                     value: {
                                         raw: "{paragraph}",
-                                        loc: getLocByIndex(37, 48)
+                                        loc: getLocByIndex(37, 48),
                                     },
                                     equalSign: true,
                                     loc: getLocByIndex(31, 48),
-                                    valueEnclosure: AttributeValueEnclosure.None
-                                }
+                                    valueEnclosure: AttributeValueEnclosure.None,
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
@@ -742,49 +742,49 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
                             startTagEndPos: getPosByIndex(49),
-                            endTagStartPos: getPosByIndex(66)
+                            endTagStartPos: getPosByIndex(66),
                         },
                         {
                             content: [
                                 {
                                     value: "\n",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(70, 71)
-                                }
+                                    loc: getLocByIndex(70, 71),
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
                             loc: getLocByIndex(70, 71),
-                            prev: nodeList[0].children[1]
-                        }
+                            prev: nodeList[0].children[1],
+                        },
                     ],
                     attributes: [
                         {
                             name: {
                                 raw: "class",
-                                loc: getLocByIndex(5, 10)
+                                loc: getLocByIndex(5, 10),
                             },
                             value: {
                                 raw: "container",
-                                loc: getLocByIndex(12, 21)
+                                loc: getLocByIndex(12, 21),
                             },
                             equalSign: true,
                             loc: getLocByIndex(5, 22),
-                            valueEnclosure: AttributeValueEnclosure.Single
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Single,
+                        },
                     ],
                     loc: getLocByIndex(0, 77),
                     startTagEndPos: getPosByIndex(23),
-                    endTagStartPos: getPosByIndex(71)
-                }
-            ]
+                    endTagStartPos: getPosByIndex(71),
+                },
+            ];
         }, [
             {
                 type: "error",
                 range: [37, 48],
-                value: "The value for static attribute must be quoted with single or double quote."
-            }
-        ])
+                value: "The value for static attribute must be quoted with single or double quote.",
+            },
+        ]);
 
         matchTemplateNodeListAndMessages(
             () => [
@@ -795,31 +795,31 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "!href",
-                                loc: getLocByIndex(3, 8)
+                                loc: getLocByIndex(3, 8),
                             },
                             value: {
                                 raw: '""',
-                                loc: getLocByIndex(9, 11)
+                                loc: getLocByIndex(9, 11),
                             },
                             equalSign: true,
                             loc: getLocByIndex(3, 11),
-                            valueEnclosure: AttributeValueEnclosure.None
-                        }
+                            valueEnclosure: AttributeValueEnclosure.None,
+                        },
                     ],
                     loc: getLocByIndex(0, 16),
                     startTagEndPos: getPosByIndex(12),
-                    endTagStartPos: getPosByIndex(12)
-                }
+                    endTagStartPos: getPosByIndex(12),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [9, 11],
-                    value: "The value for dynamic attribute must be wrapped with curly bracket."
-                }
-            ]
-        )
-    })
+                    value: "The value for dynamic attribute must be wrapped with curly bracket.",
+                },
+            ],
+        );
+    });
 
     test("Unterminated attribute value (no corresponding end quote)", () => {
         matchTemplateNodeListAndMessages(
@@ -831,34 +831,34 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "type",
-                                loc: getLocByIndex(7, 11)
+                                loc: getLocByIndex(7, 11),
                             },
                             value: {
                                 raw: "radio />",
-                                loc: getLocWithDefaultEnd(13)
+                                loc: getLocWithDefaultEnd(13),
                             },
                             equalSign: true,
                             loc: getLocWithDefaultEnd(7),
-                            valueEnclosure: AttributeValueEnclosure.Double
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Double,
+                        },
                     ],
                     isSelfClosing: true,
-                    loc: getLocWithDefaultEnd(0)
-                }
+                    loc: getLocWithDefaultEnd(0),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [12, 21],
-                    value: "Unclosed static attribute value."
+                    value: "Unclosed static attribute value.",
                 },
                 {
                     type: "error",
                     range: [0, 6],
-                    value: "The start tag <input> is not closed."
-                }
-            ]
-        )
+                    value: "The start tag <input> is not closed.",
+                },
+            ],
+        );
 
         matchTemplateNodeListAndMessages(
             () => [
@@ -869,34 +869,34 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "!class",
-                                loc: getLocByIndex(5, 11)
+                                loc: getLocByIndex(5, 11),
                             },
                             value: {
                                 raw: " dynamicClass ></div>",
-                                loc: getLocWithDefaultEnd(13)
+                                loc: getLocWithDefaultEnd(13),
                             },
                             equalSign: true,
                             loc: getLocWithDefaultEnd(5),
-                            valueEnclosure: AttributeValueEnclosure.Curly
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Curly,
+                        },
                     ],
-                    loc: getLocWithDefaultEnd(0)
-                }
+                    loc: getLocWithDefaultEnd(0),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [12, 34],
-                    value: "Unclosed interpolation expression block."
+                    value: "Unclosed interpolation expression block.",
                 },
                 {
                     type: "error",
                     range: [0, 4],
-                    value: "The start tag <div> is not closed."
-                }
-            ]
-        )
-    })
+                    value: "The start tag <div> is not closed.",
+                },
+            ],
+        );
+    });
 
     test("Empty interpolation block for attribute value", () => {
         matchTemplateNodeListAndMessages(
@@ -908,30 +908,30 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "!href",
-                                loc: getLocByIndex(3, 8)
+                                loc: getLocByIndex(3, 8),
                             },
                             value: {
                                 raw: "",
-                                loc: getLocByIndex(10)
+                                loc: getLocByIndex(10),
                             },
                             equalSign: true,
                             loc: getLocByIndex(3, 11),
-                            valueEnclosure: AttributeValueEnclosure.Curly
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Curly,
+                        },
                     ],
                     loc: getLocByIndex(0, 16),
                     startTagEndPos: getPosByIndex(12),
-                    endTagStartPos: getPosByIndex(12)
-                }
+                    endTagStartPos: getPosByIndex(12),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [9, 11],
-                    value: "Empty interpolation expression block is not allowed."
-                }
-            ]
-        )
+                    value: "Empty interpolation expression block is not allowed.",
+                },
+            ],
+        );
 
         matchTemplateNodeListAndMessages(() => {
             const nodeList = parseRecover(
@@ -939,8 +939,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     <div class="container">
                         <input @input = { /* */ } />
                     </div>
-                `)
-            )
+                `),
+            );
             return [
                 nodeList,
                 {
@@ -949,16 +949,16 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "class",
-                                loc: getLocByIndex(5, 10)
+                                loc: getLocByIndex(5, 10),
                             },
                             value: {
                                 raw: "container",
-                                loc: getLocByIndex(12, 21)
+                                loc: getLocByIndex(12, 21),
                             },
                             equalSign: true,
                             loc: getLocByIndex(5, 22),
-                            valueEnclosure: AttributeValueEnclosure.Double
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Double,
+                        },
                     ],
                     children: [
                         {
@@ -966,13 +966,13 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 {
                                     value: "\n    ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(23, 28)
-                                }
+                                    loc: getLocByIndex(23, 28),
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
                             loc: getLocByIndex(23, 28),
-                            next: nodeList[0].children[1]
+                            next: nodeList[0].children[1],
                         },
                         {
                             tag: "input",
@@ -980,16 +980,16 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 {
                                     name: {
                                         raw: "@input",
-                                        loc: getLocByIndex(35, 41)
+                                        loc: getLocByIndex(35, 41),
                                     },
                                     value: {
                                         raw: " /* */ ",
-                                        loc: getLocByIndex(45, 52)
+                                        loc: getLocByIndex(45, 52),
                                     },
                                     equalSign: true,
                                     loc: getLocByIndex(35, 53),
-                                    valueEnclosure: AttributeValueEnclosure.Curly
-                                }
+                                    valueEnclosure: AttributeValueEnclosure.Curly,
+                                },
                             ],
                             isSelfClosing: true,
                             parent: nodeList[0],
@@ -997,35 +997,35 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             loc: getLocByIndex(28, 56),
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
-                            startTagEndPos: getPosByIndex(56)
+                            startTagEndPos: getPosByIndex(56),
                         },
                         {
                             content: [
                                 {
                                     value: "\n",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(56, 57)
-                                }
+                                    loc: getLocByIndex(56, 57),
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
                             loc: getLocByIndex(56, 57),
-                            prev: nodeList[0].children[1]
-                        }
+                            prev: nodeList[0].children[1],
+                        },
                     ],
                     loc: getLocByIndex(0, 63),
                     startTagEndPos: getPosByIndex(23),
-                    endTagStartPos: getPosByIndex(57)
-                }
-            ]
+                    endTagStartPos: getPosByIndex(57),
+                },
+            ];
         }, [
             {
                 type: "error",
                 range: [44, 53],
-                value: "Empty interpolation expression block is not allowed."
-            }
-        ])
-    })
+                value: "Empty interpolation expression block is not allowed.",
+            },
+        ]);
+    });
 
     test("No name is specified for interpolated attribute", () => {
         matchTemplateNodeListAndMessages(
@@ -1037,31 +1037,31 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "!",
-                                loc: getLocByIndex(11, 12)
+                                loc: getLocByIndex(11, 12),
                             },
                             value: {
                                 raw: "variable",
-                                loc: getLocByIndex(14, 22)
+                                loc: getLocByIndex(14, 22),
                             },
                             equalSign: true,
                             loc: getLocByIndex(11, 23),
-                            valueEnclosure: AttributeValueEnclosure.Curly
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Curly,
+                        },
                     ],
                     isSelfClosing: true,
                     componentTag: "Component",
                     loc: getLocByIndex(0, 26),
-                    startTagEndPos: getPosByIndex(26)
-                }
+                    startTagEndPos: getPosByIndex(26),
+                },
             ],
             [
                 {
                     type: "error",
                     range: [11, 12],
-                    value: "The dynamic attribute must be specified a name."
-                }
-            ]
-        )
+                    value: "The dynamic attribute must be specified a name.",
+                },
+            ],
+        );
 
         matchTemplateNodeListAndMessages(() => {
             const nodeList = parseRecover(
@@ -1069,8 +1069,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                     <p class='paragraph'>
                         Click <span @={ handleClick }>here</span> to learn more!
                     </p>
-                `)
-            )
+                `),
+            );
             return [
                 nodeList,
                 {
@@ -1079,16 +1079,16 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "class",
-                                loc: getLocByIndex(3, 8)
+                                loc: getLocByIndex(3, 8),
                             },
                             value: {
                                 raw: "paragraph",
-                                loc: getLocByIndex(10, 19)
+                                loc: getLocByIndex(10, 19),
                             },
                             equalSign: true,
                             loc: getLocByIndex(3, 20),
-                            valueEnclosure: AttributeValueEnclosure.Single
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Single,
+                        },
                     ],
                     children: [
                         {
@@ -1096,13 +1096,13 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 {
                                     value: "\n    Click ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(21, 32)
-                                }
+                                    loc: getLocByIndex(21, 32),
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
                             loc: getLocByIndex(21, 32),
-                            next: nodeList[0].children[1]
+                            next: nodeList[0].children[1],
                         },
                         {
                             tag: "span",
@@ -1110,16 +1110,16 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                 {
                                     name: {
                                         raw: "@",
-                                        loc: getLocByIndex(38, 39)
+                                        loc: getLocByIndex(38, 39),
                                     },
                                     value: {
                                         raw: " handleClick ",
-                                        loc: getLocByIndex(41, 54)
+                                        loc: getLocByIndex(41, 54),
                                     },
                                     equalSign: true,
                                     loc: getLocByIndex(38, 55),
-                                    valueEnclosure: AttributeValueEnclosure.Curly
-                                }
+                                    valueEnclosure: AttributeValueEnclosure.Curly,
+                                },
                             ],
                             children: [
                                 {
@@ -1127,13 +1127,13 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                                         {
                                             value: "here",
                                             isInterpolated: false,
-                                            loc: getLocByIndex(56, 60)
-                                        }
+                                            loc: getLocByIndex(56, 60),
+                                        },
                                     ],
                                     hasActualAncestor: true,
                                     loc: getLocByIndex(56, 60),
-                                    parent: nodeList[0].children[1]
-                                }
+                                    parent: nodeList[0].children[1],
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
@@ -1141,35 +1141,35 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                             prev: nodeList[0].children[0],
                             next: nodeList[0].children[2],
                             startTagEndPos: getPosByIndex(56),
-                            endTagStartPos: getPosByIndex(60)
+                            endTagStartPos: getPosByIndex(60),
                         },
                         {
                             content: [
                                 {
                                     isInterpolated: false,
                                     value: " to learn more!\n",
-                                    loc: getLocByIndex(67, 83)
-                                }
+                                    loc: getLocByIndex(67, 83),
+                                },
                             ],
                             parent: nodeList[0],
                             hasActualAncestor: true,
                             loc: getLocByIndex(67, 83),
-                            prev: nodeList[0].children[1]
-                        }
+                            prev: nodeList[0].children[1],
+                        },
                     ],
                     loc: getLocByIndex(0, 87),
                     startTagEndPos: getPosByIndex(21),
-                    endTagStartPos: getPosByIndex(83)
-                }
-            ]
+                    endTagStartPos: getPosByIndex(83),
+                },
+            ];
         }, [
             {
                 type: "error",
                 range: [38, 39],
-                value: "The event listener must be specified a name."
-            }
-        ])
-    })
+                value: "The event listener must be specified a name.",
+            },
+        ]);
+    });
 
     test("Empty interpolation blocks", () => {
         matchTemplateNodeListAndMessages(() => {
@@ -1177,8 +1177,8 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                 formatSourceCode(`
                     <div #if={}></div>
                     <span !class={ /* ... */ }></span>
-                `)
-            )
+                `),
+            );
             return [
                 nodeList,
                 {
@@ -1187,33 +1187,33 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "#if",
-                                loc: getLocByIndex(5, 8)
+                                loc: getLocByIndex(5, 8),
                             },
                             value: {
                                 raw: "",
-                                loc: getLocByIndex(10, 10)
+                                loc: getLocByIndex(10, 10),
                             },
                             equalSign: true,
                             loc: getLocByIndex(5, 11),
-                            valueEnclosure: AttributeValueEnclosure.Curly
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Curly,
+                        },
                     ],
                     next: nodeList[1],
                     loc: getLocByIndex(0, 18),
                     startTagEndPos: getPosByIndex(12),
-                    endTagStartPos: getPosByIndex(12)
+                    endTagStartPos: getPosByIndex(12),
                 },
                 {
                     content: [
                         {
                             value: "\n",
                             isInterpolated: false,
-                            loc: getLocByIndex(18, 19)
-                        }
+                            loc: getLocByIndex(18, 19),
+                        },
                     ],
                     prev: nodeList[0],
                     next: nodeList[2],
-                    loc: getLocByIndex(18, 19)
+                    loc: getLocByIndex(18, 19),
                 },
                 {
                     tag: "span",
@@ -1221,34 +1221,34 @@ describe("Whether incorrect format for attribute will cause parsing error", () =
                         {
                             name: {
                                 raw: "!class",
-                                loc: getLocByIndex(25, 31)
+                                loc: getLocByIndex(25, 31),
                             },
                             value: {
                                 raw: " /* ... */ ",
-                                loc: getLocByIndex(33, 44)
+                                loc: getLocByIndex(33, 44),
                             },
                             equalSign: true,
                             loc: getLocByIndex(25, 45),
-                            valueEnclosure: AttributeValueEnclosure.Curly
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Curly,
+                        },
                     ],
                     prev: nodeList[1],
                     loc: getLocByIndex(19, 53),
                     startTagEndPos: getPosByIndex(46),
-                    endTagStartPos: getPosByIndex(46)
-                }
-            ]
+                    endTagStartPos: getPosByIndex(46),
+                },
+            ];
         }, [
             {
                 type: "error",
                 range: [9, 11],
-                value: "Empty interpolation expression block is not allowed."
+                value: "Empty interpolation expression block is not allowed.",
             },
             {
                 type: "error",
                 range: [32, 45],
-                value: "Empty interpolation expression block is not allowed."
-            }
-        ])
-    })
-})
+                value: "Empty interpolation expression block is not allowed.",
+            },
+        ]);
+    });
+});

@@ -1,9 +1,9 @@
 {
   "printWidth": 100,
-  "semi": false,
+  "semi": true,
   "tabWidth": 4,
   "arrowParens": "avoid",
-  "trailingComma": "none",
+  "trailingComma": "all",
   "overrides": [
     {
       "files": [".*rc", "*.json", "*.yml", "*.yaml"],

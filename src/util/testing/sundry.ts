@@ -1,49 +1,49 @@
-import type { GeneralFunc } from "#type-declarations/tools"
-import type { Destruction, Effect } from "#type-declarations/runtime"
-import type { TestComponentInstance } from "#type-declarations/testing"
-import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
+import type { GeneralFunc } from "#type-declarations/tools";
+import type { Destruction, Effect } from "#type-declarations/runtime";
+import type { TestComponentInstance } from "#type-declarations/testing";
+import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler";
 
-import { isArray } from "../shared/assert"
-import { NIL } from "../../runtime/constants"
-import { objectAssign } from "../shared/aliases"
-import { afterAll, beforeAll, vi } from "vitest"
-import { currentDestruction } from "../../runtime/state"
-import { getLastElem, replaceEachItems } from "../shared/arrays"
-import { PARSER_TEMPLATE_OPTIONS } from "../../compiler/constants"
-import { createDestruction, destroy } from "../../runtime/destroy"
-import { parseTemplateStandalone } from "../../compiler/parser/template"
+import { isArray } from "../shared/assert";
+import { NIL } from "../../runtime/constants";
+import { objectAssign } from "../shared/aliases";
+import { afterAll, beforeAll, vi } from "vitest";
+import { currentDestruction } from "../../runtime/state";
+import { getLastElem, replaceEachItems } from "../shared/arrays";
+import { PARSER_TEMPLATE_OPTIONS } from "../../compiler/constants";
+import { createDestruction, destroy } from "../../runtime/destroy";
+import { parseTemplateStandalone } from "../../compiler/parser/template";
 
 export function sleep(ms: number) {
-    return new Promise(r => setTimeout(r, ms))
+    return new Promise(r => setTimeout(r, ms));
 }
 
 export function initDestruction() {
     afterAll(() => {
-        destroy(currentDestruction!)
-    })
+        destroy(currentDestruction!);
+    });
     beforeAll(() => {
         if (!currentDestruction) {
-            createDestruction(NIL)
+            createDestruction(NIL);
         }
-    })
+    });
 }
 
 export function getCurrentEffect() {
-    const effects = currentDestruction?.e
+    const effects = currentDestruction?.e;
     if (!effects) {
-        return undefined
+        return undefined;
     }
-    return isArray(effects) ? getLastElem(effects) : effects
+    return isArray(effects) ? getLastElem(effects) : effects;
 }
 
 export function destructionHasEffect(destruction: Destruction | null, effect: Effect) {
-    const effects = destruction?.e
-    return effects === effect || (isArray(effects) && effects.includes(effect))
+    const effects = destruction?.e;
+    return effects === effect || (isArray(effects) && effects.includes(effect));
 }
 
 export function clearDestructionEffects(destruction: Destruction | null) {
     if (destruction) {
-        destruction.e = NIL
+        destruction.e = NIL;
     }
 }
 
@@ -53,40 +53,40 @@ export function createTestInstance() {
         {
             _internal: {
                 get d() {
-                    return currentDestruction
-                }
-            }
+                    return currentDestruction;
+                },
+            },
         } as unknown as TestComponentInstance
-    )
+    );
 }
 
 // 通过传入触发指定错误的方法，捕获后返回错误信息
 // Capture and return the error message by passing a function that triggers the specified error
 export function getErrorMessage(makeErr: GeneralFunc) {
     try {
-        makeErr()
+        makeErr();
     } catch (err: any) {
-        return err.message
+        return err.message;
     }
 }
 
 // 基于 vi.spyOn 创建警告信息的捕获验证器
 // Create a warning-capturing validator based on vi.spyOn
 export function createWarningMatcher() {
-    const warningArgs: any[] = []
+    const warningArgs: any[] = [];
     return objectAssign(
         vi.spyOn(console, "warn").mockImplementation((...args) => {
-            replaceEachItems(warningArgs, args)
+            replaceEachItems(warningArgs, args);
         }),
         {
-            args: warningArgs
-        }
-    )
+            args: warningArgs,
+        },
+    );
 }
 
 export function parseTemplateTesting(source: string, options: StandaloneParseTemplateOptions = {}) {
     return parseTemplateStandalone(source, {
         ...PARSER_TEMPLATE_OPTIONS,
-        ...options
-    })
+        ...options,
+    });
 }

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -43,16 +43,16 @@ const scenario: E2EScenarioInput = {
             </div>
             <p id="chain">{chain}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("currentTarget matches executing node", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#target-btn").click()
+        await page.locator("#target-btn").click();
         await expect(page.locator("#chain")).toHaveText(
-            "capture:capture-wrap>target:target-btn>bubble:bubble-wrap"
-        )
-    })
-})
+            "capture:capture-wrap>target:target-btn>bubble:bubble-wrap",
+        );
+    });
+});

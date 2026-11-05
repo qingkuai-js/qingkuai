@@ -1,11 +1,11 @@
-import type { E2EScenario } from "#type-declarations/testing"
+import type { E2EScenario } from "#type-declarations/testing";
 
-import { formatSourceCode } from "../../src/util/shared/sundry"
+import { formatSourceCode } from "../../src/util/shared/sundry";
 
 export function renderIndexPage(scenarios: E2EScenario[]) {
     const links = scenarios.reduce((ret, item) => {
-        return `${ret}<li><a href="/scenarios/${item.name}">${item.name}</a></li>`
-    }, "")
+        return `${ret}<li><a href="/scenarios/${item.name}">${item.name}</a></li>`;
+    }, "");
     return formatSourceCode(`
         <!doctype html>
         <html lang="en">
@@ -21,7 +21,7 @@ export function renderIndexPage(scenarios: E2EScenario[]) {
                 </main>
             </body>
         </html>
-    `)
+    `);
 }
 
 export function renderScenarioPage(scenario: E2EScenario) {
@@ -59,5 +59,5 @@ export function renderScenarioPage(scenario: E2EScenario) {
                 </script>
             </body>
         </html>
-    `)
+    `);
 }

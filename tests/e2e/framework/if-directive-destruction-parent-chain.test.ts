@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -67,48 +67,48 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="if-branch-panel">Branch id: {props.id}</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLog = (page: E2EPageEvaluator) => {
         return page.evaluate(() => {
-            return ((globalThis as any).__ifDestructionParentChainLog as string[]).slice()
-        })
-    }
+            return ((globalThis as any).__ifDestructionParentChainLog as string[]).slice();
+        });
+    };
 
     test("if branch mounts and unmounts in normal path", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#branch-fallback")).toHaveText("Branch fallback")
+        await expect(page.locator("#branch-fallback")).toHaveText("Branch fallback");
 
-        await page.locator("#btn-show-branch").click()
-        await expect(page.locator("#if-branch-panel")).toHaveText("Branch id: 1")
+        await page.locator("#btn-show-branch").click();
+        await expect(page.locator("#if-branch-panel")).toHaveText("Branch id: 1");
 
-        await page.locator("#btn-hide-branch").click()
-        await expect(page.locator("#branch-fallback")).toHaveText("Branch fallback")
+        await page.locator("#btn-hide-branch").click();
+        await expect(page.locator("#branch-fallback")).toHaveText("Branch fallback");
 
         await expect
             .poll(() => readLog(page))
-            .toEqual(["if-mount-1", "if-before-destroy-1", "if-after-destroy-1"])
-    })
+            .toEqual(["if-mount-1", "if-before-destroy-1", "if-after-destroy-1"]);
+    });
 
     test("parent unmount destroys component mounted by if reinvocation", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show-branch").click()
-        await expect(page.locator("#if-branch-panel")).toHaveText("Branch id: 1")
+        await page.locator("#btn-show-branch").click();
+        await expect(page.locator("#if-branch-panel")).toHaveText("Branch id: 1");
 
-        await page.locator("#btn-hide-host").click()
-        await expect(page.locator("#if-host-hidden")).toHaveText("Host hidden")
-        await expect(page.locator("#if-branch-panel")).toHaveCount(0)
+        await page.locator("#btn-hide-host").click();
+        await expect(page.locator("#if-host-hidden")).toHaveText("Host hidden");
+        await expect(page.locator("#if-branch-panel")).toHaveCount(0);
 
         await expect
             .poll(() => readLog(page))
-            .toEqual(["if-mount-1", "if-before-destroy-1", "if-after-destroy-1"])
-    })
-})
+            .toEqual(["if-mount-1", "if-before-destroy-1", "if-after-destroy-1"]);
+    });
+});

@@ -1,16 +1,16 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     TsNodeWithContext,
     TopLevelDeclaratorNode,
-    TopLevelDeclarationNode
-} from "#type-declarations/ts-ast"
-import type { Range } from "#type-declarations/compiler"
-import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler"
+    TopLevelDeclarationNode,
+} from "#type-declarations/ts-ast";
+import type { Range } from "#type-declarations/compiler";
+import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { IdentifierStatus, ReactivityMode } from "../enums"
+import { IdentifierStatus, ReactivityMode } from "../enums";
 
 import {
     indentSpacesRE,
@@ -20,8 +20,8 @@ import {
     intrinsicWatchExpMethodsRE,
     intrinsicReactiveMethodsRE,
     intrinsicEffectWatchMethodsRE,
-    shouldBeCheckedIntrinsicMethodsRE
-} from "../regular"
+    shouldBeCheckedIntrinsicMethodsRE,
+} from "../regular";
 import {
     CannotAliasIdentifier,
     DuplicateDefaultsCall,
@@ -39,120 +39,120 @@ import {
     InvalidSpreadElementArgForIntrinsic,
     TSModuleDeclarationsAreNotSupported,
     InvalidAliasDestructuringDeclaration,
-    IntrinsicNotAllowedInUsingDeclaration
-} from "../message/error"
+    IntrinsicNotAllowedInUsingDeclaration,
+} from "../message/error";
 import {
     RedundantRawMark,
     RedundantNestedRawCall,
     UnnecessaryReactiveMark,
     IdentifierMaybeOverwritten,
-    UnnecessaryMutableDerivedDeclaration
-} from "../message/warn"
+    UnnecessaryMutableDerivedDeclaration,
+} from "../message/warn";
 import {
     getNodeRange,
     markNeedSourcemap,
     getVariableDeclareKeyword,
     getStriptTypeOperationsNode,
-    getStriptTypeOperationsParent
-} from "../ts-ast/sundry"
+    getStriptTypeOperationsParent,
+} from "../ts-ast/sundry";
 import {
     isLiteral,
     isLeftValue,
     isFunctionLiteral,
     isRawCallExpression,
-    isIdentifierAssignmentTarget
-} from "../ts-ast/assert"
-import { analyzeExports } from "./exports"
-import { PRESERVED_IDPREFIX } from "../constants"
-import { stringify } from "../../util/shared/aliases"
-import { getLastElem } from "../../util/shared/arrays"
-import { traverseObject } from "../../util/shared/sundry"
-import { analyzeResult, inputDescriptor } from "../state"
-import { parseExpression, parseScript } from "../parser/script"
-import { getScriptLocByNode } from "../../util/compiler/position"
-import { collectReusedStringReference } from "../optimizer/compress"
-import { isInHoistableTopLevel, isShadowedIdentifier } from "../ts-ast/context"
-import { walkBindingNameIdentifiers, walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk"
+    isIdentifierAssignmentTarget,
+} from "../ts-ast/assert";
+import { analyzeExports } from "./exports";
+import { PRESERVED_IDPREFIX } from "../constants";
+import { stringify } from "../../util/shared/aliases";
+import { getLastElem } from "../../util/shared/arrays";
+import { traverseObject } from "../../util/shared/sundry";
+import { analyzeResult, inputDescriptor } from "../state";
+import { parseExpression, parseScript } from "../parser/script";
+import { getScriptLocByNode } from "../../util/compiler/position";
+import { collectReusedStringReference } from "../optimizer/compress";
+import { isInHoistableTopLevel, isShadowedIdentifier } from "../ts-ast/context";
+import { walkBindingNameIdentifiers, walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk";
 
 export function analyzeScript() {
     if (!inputDescriptor.script.existing) {
-        return
+        return;
     }
 
-    const sourceCode = inputDescriptor.script.code
-    const sourceFile = parseScript(sourceCode)
-    const startSourceIndex = inputDescriptor.script.loc.start.index
+    const sourceCode = inputDescriptor.script.code;
+    const sourceFile = parseScript(sourceCode);
+    const startSourceIndex = inputDescriptor.script.loc.start.index;
     if (sourceFile) {
-        analyzeExports(sourceFile)
-        analyzeSourceFile(sourceFile)
-        markNeedSourcemap(sourceFile, startSourceIndex)
+        analyzeExports(sourceFile);
+        analyzeSourceFile(sourceFile);
+        markNeedSourcemap(sourceFile, startSourceIndex);
     }
-    inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  "
+    inputDescriptor.indent = indentSpacesRE.exec(sourceCode)?.[0] ?? "  ";
 }
 
 function analyzeSourceFile(sourceFile: TS.SourceFile): void {
     walkTsNodeWithContext(sourceFile, node => {
-        markNeedSourcemap(node, inputDescriptor.script.loc.start.index)
-        collectReusedStringReference(node, analyzeResult.script.reusedStringReferences)
+        markNeedSourcemap(node, inputDescriptor.script.loc.start.index);
+        collectReusedStringReference(node, analyzeResult.script.reusedStringReferences);
 
         if (ts.isIdentifier(node)) {
-            analyzeIdentifier(node as TsNodeWithContext<TS.Identifier>)
-            return
+            analyzeIdentifier(node as TsNodeWithContext<TS.Identifier>);
+            return;
         }
 
         if (ts.isVariableDeclarationList(node)) {
-            analyzeVariableDeclarationList(node as TsNodeWithContext<TS.VariableDeclarationList>)
-            return
+            analyzeVariableDeclarationList(node as TsNodeWithContext<TS.VariableDeclarationList>);
+            return;
         }
 
         if (ts.isCallExpression(node)) {
-            const callee = getStriptTypeOperationsNode(node.expression)
+            const callee = getStriptTypeOperationsNode(node.expression);
             if (!ts.isIdentifier(callee) || isShadowedIdentifier(node, callee.text)) {
-                return
+                return;
             }
 
             // 记录监视器便捷注册方法的调用位置
             // Record the call locations of built-in watcher registration methods
             if (intrinsicWatchExpMethodsRE.test(callee.text)) {
-                analyzeResult.script.watchExpCalls.push(node)
-                return
+                analyzeResult.script.watchExpCalls.push(node);
+                return;
             }
 
             // 记录 setContextExp 的调用位置，用于运行时改写为 setContextGetter
             // Record the call locations of `setContextExp` for the runtime rewrite to `setContextGetter`
             if (callee.text === "setContextExp") {
-                analyzeResult.script.setContextExpCalls.push(node)
-                return
+                analyzeResult.script.setContextExpCalls.push(node);
+                return;
             }
         }
 
         if (node.inTopLevel) {
             switch (node.kind) {
                 case ts.SyntaxKind.AwaitExpression: {
-                    TopLevelAwaitNotBeSupported(getScriptLocByNode(node))
-                    return
+                    TopLevelAwaitNotBeSupported(getScriptLocByNode(node));
+                    return;
                 }
 
                 case ts.SyntaxKind.ModuleDeclaration: {
-                    TSModuleDeclarationsAreNotSupported(getScriptLocByNode(node))
-                    return
+                    TSModuleDeclarationsAreNotSupported(getScriptLocByNode(node));
+                    return;
                 }
 
                 case ts.SyntaxKind.EnumDeclaration: {
-                    const enumDeclaration = node as TsNodeWithContext<TS.EnumDeclaration>
+                    const enumDeclaration = node as TsNodeWithContext<TS.EnumDeclaration>;
                     updateTopLevelIdentifiers(
                         enumDeclaration.name,
                         false,
                         true,
                         IdentifierStatus.Pending,
                         enumDeclaration,
-                        enumDeclaration
-                    )
-                    return
+                        enumDeclaration,
+                    );
+                    return;
                 }
 
                 case ts.SyntaxKind.ClassDeclaration: {
-                    const classDeclaration = node as TsNodeWithContext<TS.ClassDeclaration>
+                    const classDeclaration = node as TsNodeWithContext<TS.ClassDeclaration>;
                     if (classDeclaration.name) {
                         updateTopLevelIdentifiers(
                             classDeclaration.name,
@@ -160,14 +160,14 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                             true,
                             IdentifierStatus.Literal,
                             classDeclaration,
-                            classDeclaration
-                        )
+                            classDeclaration,
+                        );
                     }
-                    return
+                    return;
                 }
 
                 case ts.SyntaxKind.FunctionDeclaration: {
-                    const functionDeclaration = node as TsNodeWithContext<TS.FunctionDeclaration>
+                    const functionDeclaration = node as TsNodeWithContext<TS.FunctionDeclaration>;
                     if (functionDeclaration.name) {
                         updateTopLevelIdentifiers(
                             functionDeclaration.name,
@@ -175,20 +175,20 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                             true,
                             IdentifierStatus.Literal,
                             functionDeclaration,
-                            functionDeclaration
-                        )
+                            functionDeclaration,
+                        );
                     }
-                    return
+                    return;
                 }
 
                 case ts.SyntaxKind.ImportDeclaration: {
-                    const importDeclaration = node as TsNodeWithContext<TS.ImportDeclaration>
-                    const phaseModifier = importDeclaration.importClause?.phaseModifier
-                    analyzeResult.script.importDeclarations.push(importDeclaration)
+                    const importDeclaration = node as TsNodeWithContext<TS.ImportDeclaration>;
+                    const phaseModifier = importDeclaration.importClause?.phaseModifier;
+                    analyzeResult.script.importDeclarations.push(importDeclaration);
 
                     // import type ...
                     if (phaseModifier && phaseModifier === ts.SyntaxKind.TypeKeyword) {
-                        return
+                        return;
                     }
 
                     if (importDeclaration.importClause?.name) {
@@ -197,66 +197,66 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                             importDeclaration.moduleSpecifier.text.endsWith(".qk")
                         ) {
                             analyzeResult.script.qkDefaultImportIdentifiers.add(
-                                importDeclaration.importClause.name.text
-                            )
+                                importDeclaration.importClause.name.text,
+                            );
                         }
-                        checkTopLevelIdentifier(importDeclaration.importClause.name)
-                        return
+                        checkTopLevelIdentifier(importDeclaration.importClause.name);
+                        return;
                     }
 
-                    const namedBindings = importDeclaration.importClause?.namedBindings
+                    const namedBindings = importDeclaration.importClause?.namedBindings;
                     if (!namedBindings) {
-                        return
+                        return;
                     }
                     if (ts.isNamespaceImport(namedBindings)) {
-                        checkTopLevelIdentifier(namedBindings.name)
-                        return
+                        checkTopLevelIdentifier(namedBindings.name);
+                        return;
                     }
                     for (const specifier of namedBindings.elements) {
                         if (specifier.isTypeOnly) {
-                            continue
+                            continue;
                         }
-                        checkTopLevelIdentifier(specifier.name)
+                        checkTopLevelIdentifier(specifier.name);
                     }
-                    return
+                    return;
                 }
 
                 case ts.SyntaxKind.ImportEqualsDeclaration: {
                     const importEqualsDeclaration =
-                        node as TsNodeWithContext<TS.ImportEqualsDeclaration>
-                    checkTopLevelIdentifier(importEqualsDeclaration.name)
-                    analyzeResult.script.importDeclarations.push(importEqualsDeclaration)
-                    return
+                        node as TsNodeWithContext<TS.ImportEqualsDeclaration>;
+                    checkTopLevelIdentifier(importEqualsDeclaration.name);
+                    analyzeResult.script.importDeclarations.push(importEqualsDeclaration);
+                    return;
                 }
             }
         }
-    })
+    });
 
     // 收集 derived(Exp) 声明参数内读取的顶层标识符名，供模板分析阶段做访问传播
     // Collect the top-level identifier names read within the arguments of `derived(Exp)`
     // declarations for access propagation during the template analysis phase.
-    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
-    const rawArgumentBitMap = new Uint8Array(inputDescriptor.script.code.length)
+    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers;
+    const rawArgumentBitMap = new Uint8Array(inputDescriptor.script.code.length);
     for (const call of analyzeResult.script.rawReadCalls) {
-        rawArgumentBitMap.fill(1, ...getNodeRange(call.arguments[0]))
+        rawArgumentBitMap.fill(1, ...getNodeRange(call.arguments[0]));
     }
     traverseObject(analyzeResult.script.topLevelIdentifiers, (_, info) => {
         if (info.status !== IdentifierStatus.Derived) {
-            return
+            return;
         }
         for (const { declarator } of info.nodeInfos) {
             if (!ts.isVariableDeclaration(declarator) || !declarator.initializer) {
-                continue
+                continue;
             }
 
-            const initNode = getStriptTypeOperationsNode(declarator.initializer)
+            const initNode = getStriptTypeOperationsNode(declarator.initializer);
             if (!ts.isCallExpression(initNode)) {
-                continue
+                continue;
             }
 
-            const callee = getStriptTypeOperationsNode(initNode.expression)
+            const callee = getStriptTypeOperationsNode(initNode.expression);
             if (!ts.isIdentifier(callee)) {
-                continue
+                continue;
             }
             walkTsNodeWithContext(initNode.arguments[0], node => {
                 if (
@@ -266,39 +266,39 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
                     isIdentifierAssignmentTarget(node) ||
                     isShadowedIdentifier(node, node.text)
                 ) {
-                    return
+                    return;
                 }
                 if (!rawArgumentBitMap[node.getStart()]) {
-                    info.sourceReads.add(node.text)
+                    info.sourceReads.add(node.text);
                 } else {
-                    info.untrackedSourceReads.add(node.text)
+                    info.untrackedSourceReads.add(node.text);
                 }
-            })
+            });
         }
-    })
+    });
 }
 
 function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
-    analyzeResult.script.fullIdentifiers.add(node.text)
+    analyzeResult.script.fullIdentifiers.add(node.text);
 
     if (node.text.startsWith(PRESERVED_IDPREFIX)) {
-        return UsedForbiddenIdentifierFormat(getScriptLocByNode(node))
+        return UsedForbiddenIdentifierFormat(getScriptLocByNode(node));
     }
 
     if (!node.isBindingReference || isShadowedIdentifier(node, node.text)) {
-        return
+        return;
     }
 
     // 记录所有引用顶部标识符的位置信息
     // Record the source ranges of all references to top-level identifiers.
-    const nodeRange: Range = getNodeRange(node)
-    const { preMutatedTopLevelIdentifiers } = analyzeResult.script
-    const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[node.text]
-    ;(analyzeResult.script.topLevelReferences[node.text] ??= []).push({
+    const nodeRange: Range = getNodeRange(node);
+    const { preMutatedTopLevelIdentifiers } = analyzeResult.script;
+    const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[node.text];
+    (analyzeResult.script.topLevelReferences[node.text] ??= []).push({
         range: nodeRange,
         declared: !!topLevelIdentifier,
-        shorthand: ts.isShorthandPropertyAssignment(node.parent)
-    })
+        shorthand: ts.isShorthandPropertyAssignment(node.parent),
+    });
 
     // 提前记录被修改的顶级标识符，以便在后续分析中正确推断其响应性状态
     // Record mutated top-level identifiers in advance to correctly infer their
@@ -306,44 +306,44 @@ function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
     if (isIdentifierAssignmentTarget(node)) {
         if (topLevelIdentifier) {
             if (topLevelIdentifier.status === IdentifierStatus.Literal) {
-                topLevelIdentifier.status = IdentifierStatus.Pending
+                topLevelIdentifier.status = IdentifierStatus.Pending;
             }
         } else if (!preMutatedTopLevelIdentifiers.has(node.text)) {
-            preMutatedTopLevelIdentifiers.add(node.text)
+            preMutatedTopLevelIdentifiers.add(node.text);
         }
     }
 
     if (shouldBeCheckedIntrinsicMethodsRE.test(node.text)) {
-        checkUsageOfIntrinsicMethods(node)
+        checkUsageOfIntrinsicMethods(node);
     }
 
     if (intrinsicEffectWatchMethodsRE.test(node.text)) {
-        analyzeResult.script.usedIntrinsics.add(node.text)
+        analyzeResult.script.usedIntrinsics.add(node.text);
     }
 
     // 记录被使用过的内建标识符
     // Record the used built-in identifiers.
     if (intrinsicVariableRE.test(node.text) || intrinsicMethodsRE.test(node.text)) {
-        analyzeResult.script.usedIntrinsics.add(node.text)
+        analyzeResult.script.usedIntrinsics.add(node.text);
     }
 }
 
 function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDeclarationList>) {
-    const declareKeyword = getVariableDeclareKeyword(node)
+    const declareKeyword = getVariableDeclareKeyword(node);
     if (declareKeyword === "var" ? !isInHoistableTopLevel(node) : !node.inTopLevel) {
-        return
+        return;
     }
 
-    const isCheckMode = inputDescriptor.options.checkMode
-    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
-    const declaratorToAliasInfos = analyzeResult.script.declaratorToAliasInfos
+    const isCheckMode = inputDescriptor.options.checkMode;
+    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers;
+    const declaratorToAliasInfos = analyzeResult.script.declaratorToAliasInfos;
     for (const declaration of node.declarations) {
-        const status = inferStatusByVariableDeclaration(declaration, node)
+        const status = inferStatusByVariableDeclaration(declaration, node);
         const destructuringIdentifierNames: string[] | undefined = ts.isIdentifier(declaration.name)
             ? undefined
-            : []
+            : [];
         const patternInfo = walkBindingNameIdentifiers(declaration.name, (identifier, path) => {
-            const initNode = declaration.initializer
+            const initNode = declaration.initializer;
 
             // `let/var` 声明对衍生响应式值无意义，它不可被修改
             // `let/var` declarations are meaningless for derived reactive values, as they cannot be reassigned.
@@ -351,32 +351,32 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
                 status === IdentifierStatus.Derived &&
                 (declareKeyword === "var" || declareKeyword === "let")
             ) {
-                UnnecessaryMutableDerivedDeclaration(getScriptLocByNode(declaration))
+                UnnecessaryMutableDerivedDeclaration(getScriptLocByNode(declaration));
             }
 
             // 衍生响应式值/别名 标识符不能重复声明（使用 `var` 关键字时可能导致此问题）
             // Derived reactive value or alias identifiers must not be declared more than once (this may occur when using the `var` keyword).
             if (topLevelIdentifiers[identifier.text]) {
-                const existing = topLevelIdentifiers[identifier.text]
-                const existingCannotBeRedeclared = cannotRedeclareStatusRE.test(existing.status)
+                const existing = topLevelIdentifiers[identifier.text];
+                const existingCannotBeRedeclared = cannotRedeclareStatusRE.test(existing.status);
                 if (existingCannotBeRedeclared || cannotRedeclareStatusRE.test(status)) {
                     if (existingCannotBeRedeclared) {
                         IdentifierCannotBeRedeclared(
                             getScriptLocByNode(identifier),
-                            existing!.status
-                        )
+                            existing!.status,
+                        );
                     } else {
                         IdentifierCannotBeRedeclared(
                             getScriptLocByNode(getLastElem(existing.nodeInfos)!.id),
-                            status
-                        )
+                            status,
+                        );
                     }
                 }
             }
 
-            const hoist = declareKeyword === "var"
+            const hoist = declareKeyword === "var";
             const implicit =
-                status === IdentifierStatus.Pending || status === IdentifierStatus.Literal
+                status === IdentifierStatus.Pending || status === IdentifierStatus.Literal;
             updateTopLevelIdentifiers(
                 identifier,
                 hoist,
@@ -384,8 +384,8 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
                 status,
                 declaration,
                 node,
-                destructuringIdentifierNames
-            )
+                destructuringIdentifierNames,
+            );
 
             // status 为 alias 时记录标识符别名的访问路径
             // When the status is `alias`, record the access path of the identifier alias.
@@ -396,79 +396,79 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
                 initNode.arguments.length &&
                 isLeftValue(initNode.arguments[0])
             ) {
-                let aliasProperty: string | undefined
-                let aliasExpression: string | undefined
-                let aliasInfos = declaratorToAliasInfos.get(declaration)
-                const firstArg = getStriptTypeOperationsNode(initNode.arguments[0])!
+                let aliasProperty: string | undefined;
+                let aliasExpression: string | undefined;
+                let aliasInfos = declaratorToAliasInfos.get(declaration);
+                const firstArg = getStriptTypeOperationsNode(initNode.arguments[0])!;
                 if (!isCheckMode) {
                     if (!destructuringIdentifierNames) {
                         if (ts.isElementAccessExpression(firstArg)) {
-                            aliasExpression = firstArg.expression.getText()
-                            aliasProperty = firstArg.argumentExpression.getText()
+                            aliasExpression = firstArg.expression.getText();
+                            aliasProperty = firstArg.argumentExpression.getText();
                         } else if (
                             ts.isPropertyAccessExpression(firstArg) &&
                             ts.isIdentifier(firstArg.name)
                         ) {
-                            aliasProperty = stringify(firstArg.name.text)
-                            aliasExpression = firstArg.expression.getText()
+                            aliasProperty = stringify(firstArg.name.text);
+                            aliasExpression = firstArg.expression.getText();
                         }
                     } else if (path) {
-                        const pathExp = parseExpression("_" + path, 0)!
+                        const pathExp = parseExpression("_" + path, 0)!;
                         if (ts.isElementAccessExpression(pathExp)) {
-                            aliasExpression = pathExp.expression.getText()
-                            aliasProperty = pathExp.argumentExpression.getText()
+                            aliasExpression = pathExp.expression.getText();
+                            aliasProperty = pathExp.argumentExpression.getText();
                         } else if (
                             ts.isPropertyAccessExpression(pathExp) &&
                             ts.isIdentifier(pathExp.name)
                         ) {
-                            aliasExpression = pathExp.expression.getText()
-                            aliasProperty = stringify(pathExp.name.getText())
+                            aliasExpression = pathExp.expression.getText();
+                            aliasProperty = stringify(pathExp.name.getText());
                         }
 
                         // 添加 alias 内建方法参数并去除路径表达式前缀下划线
                         // Add the argument of the alias built-in method and
                         // remove the underscore prefix from the path expression.
                         if (aliasExpression) {
-                            aliasExpression = firstArg.getText() + aliasExpression.slice(1)
+                            aliasExpression = firstArg.getText() + aliasExpression.slice(1);
                         }
                     }
                     if (!aliasInfos) {
-                        declaratorToAliasInfos.set(declaration, (aliasInfos = []))
+                        declaratorToAliasInfos.set(declaration, (aliasInfos = []));
                     }
                     if (aliasExpression && aliasProperty) {
                         aliasInfos.push({
                             property: aliasProperty,
-                            expression: aliasExpression
-                        })
+                            expression: aliasExpression,
+                        });
                     }
                 }
-                topLevelIdentifiers[identifier.text].aliasTarget = firstArg.getText() + path
+                topLevelIdentifiers[identifier.text].aliasTarget = firstArg.getText() + path;
             }
 
             // 记录解构声明的标识符名称列表
             // Record the list of identifier names declared by a destructuring declaration.
             for (const nodeInfo of topLevelIdentifiers[identifier.text].nodeInfos) {
-                nodeInfo.destructuringIdentifierNames = destructuringIdentifierNames
-                destructuringIdentifierNames?.push(identifier.text)
+                nodeInfo.destructuringIdentifierNames = destructuringIdentifierNames;
+                destructuringIdentifierNames?.push(identifier.text);
             }
-        })
+        });
 
         // 别名绑定搭配解构语法时不允许指定默认值或剩余元素语法
         // Alias bindings are not allowed to specify default values or use rest elements when combined with destructuring syntax.
         if (status === IdentifierStatus.Alias) {
-            const errorLoc = getScriptLocByNode(declaration)
+            const errorLoc = getScriptLocByNode(declaration);
             if (!inputDescriptor.options.debug) {
                 if (node.declarations.length === 1) {
-                    analyzeResult.script.eliminatedNodes.add(node)
+                    analyzeResult.script.eliminatedNodes.add(node);
                 } else {
-                    analyzeResult.script.eliminatedNodes.add(declaration)
+                    analyzeResult.script.eliminatedNodes.add(declaration);
                 }
             }
             if (patternInfo.hasRestElement) {
-                InvalidAliasDestructuringDeclaration(errorLoc, "Rest elements")
+                InvalidAliasDestructuringDeclaration(errorLoc, "Rest elements");
             }
             if (patternInfo.specifiedDefaultValue) {
-                InvalidAliasDestructuringDeclaration(errorLoc, "Default values")
+                InvalidAliasDestructuringDeclaration(errorLoc, "Default values");
             }
         }
     }
@@ -478,69 +478,70 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
 // Infer the reactive status of top-level scope identifiers.
 function inferStatusByVariableDeclaration(
     declaration: TS.VariableDeclaration,
-    declarationList: TS.VariableDeclarationList
+    declarationList: TS.VariableDeclarationList,
 ): IdentifierStatus {
-    const declareKeyword = getVariableDeclareKeyword(declarationList)
+    const declareKeyword = getVariableDeclareKeyword(declarationList);
     if (declareKeyword === "using") {
-        return IdentifierStatus.Raw
+        return IdentifierStatus.Raw;
     }
 
-    const isConst = declareKeyword === "const"
-    const declarationLoc = getScriptLocByNode(declaration)
-    const isDestructuring = !ts.isIdentifier(declaration.name)
-    const allowConstReactive = inputDescriptor.options.allowConstReactive
-    const shallowMode = inputDescriptor.options.reactivityMode === ReactivityMode.Shallow
-    const initNode = declaration.initializer && getStriptTypeOperationsNode(declaration.initializer)
+    const isConst = declareKeyword === "const";
+    const declarationLoc = getScriptLocByNode(declaration);
+    const isDestructuring = !ts.isIdentifier(declaration.name);
+    const allowConstReactive = inputDescriptor.options.allowConstReactive;
+    const shallowMode = inputDescriptor.options.reactivityMode === ReactivityMode.Shallow;
+    const initNode =
+        declaration.initializer && getStriptTypeOperationsNode(declaration.initializer);
 
     if (!initNode) {
-        return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal
+        return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal;
     }
 
-    const isLiteralInit = isLiteral(initNode)
-    const requireMark = inputDescriptor.options.requireReactivityMark
+    const isLiteralInit = isLiteral(initNode);
+    const requireMark = inputDescriptor.options.requireReactivityMark;
 
     if (!ts.isCallExpression(initNode)) {
         if (requireMark) {
-            return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw)
+            return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw);
         }
 
         // 初始值为字面量值的常量声明不具有响应式意义，退化为使用原始值
         // Constant declarations with literal initial values have no reactive semantics and are downgraded to using the raw value.
         if (!isDestructuring && (isLiteralInit || isFunctionLiteral(initNode))) {
-            return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal
+            return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal;
         }
 
         // 当 allowConstReactive 选项被禁用时，常量声明不会参与响应式推断
         // Constant declarations are not inferred as reactive when the allowConstReactive option is disabled.
         if (isConst) {
-            return allowConstReactive ? IdentifierStatus.Pending : IdentifierStatus.Raw
+            return allowConstReactive ? IdentifierStatus.Pending : IdentifierStatus.Raw;
         }
 
         // 可变声明（let/var）：shallow 模式下非字面量需"被赋值"才升级为 shallow。
         // Mutable declarations: in shallow mode, non-literal initializers are only
         // upgraded to shallow when actually mutated.
-        return shallowMode ? IdentifierStatus.Literal : IdentifierStatus.Pending
+        return shallowMode ? IdentifierStatus.Literal : IdentifierStatus.Pending;
     }
 
-    const callee = getStriptTypeOperationsNode(initNode.expression)!
+    const callee = getStriptTypeOperationsNode(initNode.expression)!;
     if (!ts.isIdentifier(callee) || !intrinsicReactiveMethodsRE.test(callee.text)) {
         if (!requireMark) {
             if (isConst) {
-                return IdentifierStatus.Pending
+                return IdentifierStatus.Pending;
             }
-            return shallowMode ? IdentifierStatus.Literal : IdentifierStatus.Pending
+            return shallowMode ? IdentifierStatus.Literal : IdentifierStatus.Pending;
         }
-        return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw)
+        return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw);
     }
 
-    const calleeName = callee.text
-    const firstArg = initNode.arguments[0]
-    const isLiteralArg = !firstArg || isLiteral(firstArg)
-    const isLiteralArgFull = isLiteralArg || (firstArg && isFunctionLiteral(firstArg))
+    const calleeName = callee.text;
+    const firstArg = initNode.arguments[0];
+    const isLiteralArg = !firstArg || isLiteral(firstArg);
+    const isLiteralArgFull = isLiteralArg || (firstArg && isFunctionLiteral(firstArg));
 
     switch (calleeName) {
         case "alias": {
-            return IdentifierStatus.Alias
+            return IdentifierStatus.Alias;
         }
 
         // 初始值为字面量值的衍生响应式声明无意义，退化为使用原始值
@@ -551,22 +552,22 @@ function inferStatusByVariableDeclaration(
                 return (
                     UnnecessaryReactiveMark(declarationLoc, IdentifierStatus.Derived),
                     IdentifierStatus.Raw
-                )
+                );
             }
-            return IdentifierStatus.Derived
+            return IdentifierStatus.Derived;
         }
         case "derivedExp": {
             if (isLiteralArg || isLiteralArgFull) {
                 return (
                     UnnecessaryReactiveMark(declarationLoc, IdentifierStatus.Derived),
                     IdentifierStatus.Raw
-                )
+                );
             }
-            return IdentifierStatus.Derived
+            return IdentifierStatus.Derived;
         }
 
         default: {
-            const status = calleeName as IdentifierStatus
+            const status = calleeName as IdentifierStatus;
 
             // const 声明的字面量/函数字面量初始值会被退化规则忽略其标记
             // Markers on a const declaration with a literal/function-literal
@@ -578,13 +579,13 @@ function inferStatusByVariableDeclaration(
                     // so the redundancy warning is suppressed.
                     return requireMark
                         ? IdentifierStatus.Raw
-                        : (RedundantRawMark(declarationLoc), IdentifierStatus.Raw)
+                        : (RedundantRawMark(declarationLoc), IdentifierStatus.Raw);
                 }
 
                 // 通过 reactive 或 shallow 标记常量声明的字面量值是无意义的，退化为使用原始值
                 // Marking a literal value in a constant declaration with `reactive`
                 // or `shallow` is meaningless and is downgraded to using the raw value.
-                return (UnnecessaryReactiveMark(declarationLoc, status), IdentifierStatus.Raw)
+                return (UnnecessaryReactiveMark(declarationLoc, status), IdentifierStatus.Raw);
             }
 
             // 当 allowConstReactive 选项被禁用时，禁止通过 reactive/shallow 显式标记常量声明
@@ -598,9 +599,9 @@ function inferStatusByVariableDeclaration(
                 return (
                     ConstReactiveDisallowedByOption(declarationLoc, status),
                     IdentifierStatus.Raw
-                )
+                );
             }
-            return status
+            return status;
         }
     }
 }
@@ -614,44 +615,46 @@ function updateTopLevelIdentifiers(
     status: IdentifierStatus,
     declarator: TopLevelDeclaratorNode,
     declaration: TopLevelDeclarationNode,
-    destructuringIdentifierNames?: string[]
+    destructuringIdentifierNames?: string[],
 ) {
     const nodeInfo: TopLevelIdentifierNodeInfo = {
         id,
         declarator,
         declaration,
-        destructuringIdentifierNames
-    }
-    const existing = analyzeResult.script.topLevelIdentifiers[id.text]
-    const mutatedBeforeDeclaration = analyzeResult.script.preMutatedTopLevelIdentifiers.has(id.text)
+        destructuringIdentifierNames,
+    };
+    const existing = analyzeResult.script.topLevelIdentifiers[id.text];
+    const mutatedBeforeDeclaration = analyzeResult.script.preMutatedTopLevelIdentifiers.has(
+        id.text,
+    );
     if (status === IdentifierStatus.Literal && mutatedBeforeDeclaration) {
-        status = IdentifierStatus.Pending
+        status = IdentifierStatus.Pending;
     }
     if (existing) {
         if (status !== IdentifierStatus.Pending && status !== IdentifierStatus.Literal) {
-            existing.status = status
-            existing.implicit = false
+            existing.status = status;
+            existing.implicit = false;
         }
         if (existing.status === IdentifierStatus.Literal) {
-            existing.status = IdentifierStatus.Pending
+            existing.status = IdentifierStatus.Pending;
         }
-        existing.nodeInfos.push(nodeInfo)
+        existing.nodeInfos.push(nodeInfo);
     } else {
-        let accessor: boolean
+        let accessor: boolean;
         if (!(accessor = !ts.isVariableDeclarationList(declaration))) {
             switch (status) {
                 case IdentifierStatus.Derived: {
-                    accessor = true
-                    break
+                    accessor = true;
+                    break;
                 }
                 case IdentifierStatus.Alias: {
-                    accessor = !inputDescriptor.options.debug
-                    break
+                    accessor = !inputDescriptor.options.debug;
+                    break;
                 }
                 default: {
-                    const declareKeyword = getVariableDeclareKeyword(declaration)
-                    accessor = declareKeyword === "var" || declareKeyword === "let"
-                    break
+                    const declareKeyword = getVariableDeclareKeyword(declaration);
+                    accessor = declareKeyword === "var" || declareKeyword === "let";
+                    break;
                 }
             }
         }
@@ -667,98 +670,98 @@ function updateTopLevelIdentifiers(
             untrackedAccess: false,
             sourceReads: new Set(),
             usedExpressions: new Set(),
-            untrackedSourceReads: new Set()
-        }
+            untrackedSourceReads: new Set(),
+        };
     }
-    checkTopLevelIdentifier(id)
+    checkTopLevelIdentifier(id);
 }
 
 // 检查顶级作用域标识符格式
 // Validate top-level scope identifier formatting.
 function checkTopLevelIdentifier(id: TS.Identifier) {
-    const sourceLoc = getScriptLocByNode(id)
+    const sourceLoc = getScriptLocByNode(id);
     if (
         intrinsicMethodsRE.test(id.text) ||
         intrinsicVariableRE.test(id.text) ||
         intrinsicEffectWatchMethodsRE.test(id.text)
     ) {
-        return ShadowCompilerIntrinsicAtTopLevel(sourceLoc, id.text)
+        return ShadowCompilerIntrinsicAtTopLevel(sourceLoc, id.text);
     }
     if (id.text === "$arg") {
-        IdentifierMaybeOverwritten(sourceLoc, id.text, "inline event handler")
+        IdentifierMaybeOverwritten(sourceLoc, id.text, "inline event handler");
     }
 }
 
 // 记录脚本表达式中的 raw(expr) 非响应式读取
 // Record non-reactive reads `raw(expr)` in script expressions
 function recordNonReactiveRead(call: TS.CallExpression): void {
-    const calleeLoc = getScriptLocByNode(call.expression)
-    const args = call.arguments
+    const calleeLoc = getScriptLocByNode(call.expression);
+    const args = call.arguments;
     if (args.length === 0) {
-        return RawReadRequiresArgument(calleeLoc)
+        return RawReadRequiresArgument(calleeLoc);
     }
     if (args.length > 1 || ts.isSpreadElement(args[0])) {
-        return RawReadRequiresSingleArgument(calleeLoc)
+        return RawReadRequiresSingleArgument(calleeLoc);
     }
 
-    let nestedCallee: TS.Expression | undefined
+    let nestedCallee: TS.Expression | undefined;
     walkTsNode(args[0], node => {
         if (isRawCallExpression(node)) {
-            nestedCallee = node.expression
-            return true
+            nestedCallee = node.expression;
+            return true;
         }
-    })
+    });
     if (nestedCallee) {
-        RedundantNestedRawCall(getScriptLocByNode(nestedCallee))
+        RedundantNestedRawCall(getScriptLocByNode(nestedCallee));
     }
-    analyzeResult.script.rawReadCalls.push(call)
+    analyzeResult.script.rawReadCalls.push(call);
 }
 
 // 检查内建方法的使用是否合法
 // Validate the usage of built-in methods.
 function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): void {
-    const intrinsicName = node.text
-    const isRaw = intrinsicName === "raw"
-    const parent = getStriptTypeOperationsParent(node)!
+    const intrinsicName = node.text;
+    const isRaw = intrinsicName === "raw";
+    const parent = getStriptTypeOperationsParent(node)!;
 
     const throwInvalidUageError = () => {
-        InvalidUsageForIntrinsicMethods(getScriptLocByNode(node), intrinsicName)
-    }
+        InvalidUsageForIntrinsicMethods(getScriptLocByNode(node), intrinsicName);
+    };
 
     if (!ts.isCallExpression(parent)) {
         if (!isRaw) {
-            return throwInvalidUageError()
+            return throwInvalidUageError();
         }
-        return RawReadRequiresCallForm(getScriptLocByNode(node))
+        return RawReadRequiresCallForm(getScriptLocByNode(node));
     }
 
     switch (intrinsicName) {
         case "defaults": {
             if (!parent.inTopLevel) {
-                throwInvalidUageError()
+                throwInvalidUageError();
             }
             if (!inputDescriptor.options.checkMode) {
-                analyzeResult.script.eliminatedNodes.add(parent)
+                analyzeResult.script.eliminatedNodes.add(parent);
             }
             if (!analyzeResult.script.defaultsCall) {
-                analyzeResult.script.defaultsCall = parent
+                analyzeResult.script.defaultsCall = parent;
             } else {
-                DuplicateDefaultsCall(getScriptLocByNode(node))
+                DuplicateDefaultsCall(getScriptLocByNode(node));
             }
-            break
+            break;
         }
 
         case "setContextExp": {
             for (let i = 0; i < 2; i++) {
-                const arg = parent.arguments[i]
+                const arg = parent.arguments[i];
                 if (arg && ts.isSpreadElement(arg)) {
                     return InvalidSpreadElementArgForIntrinsic(
                         getScriptLocByNode(arg),
-                        intrinsicName
-                    )
+                        intrinsicName,
+                    );
                 }
             }
-            break
+            break;
         }
 
         case "derivedExp":
@@ -766,38 +769,41 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
         case "preWatchExp":
         case "postWatchExp":
         case "syncWatchExp": {
-            const firstArg = parent.arguments[0]
+            const firstArg = parent.arguments[0];
             if (firstArg && ts.isSpreadElement(firstArg)) {
-                InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
+                InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName);
             }
             if (intrinsicName !== "derivedExp") {
-                break
+                break;
             }
             // fallthrough
         }
 
         default: {
-            const firstArg = parent.arguments[0]
-            const intrinsicCallLoc = getScriptLocByNode(parent)
+            const firstArg = parent.arguments[0];
+            const intrinsicCallLoc = getScriptLocByNode(parent);
             if (intrinsicName === "alias") {
                 if (firstArg && ts.isSpreadElement(firstArg)) {
-                    InvalidSpreadElementArgForIntrinsic(getScriptLocByNode(firstArg), intrinsicName)
+                    InvalidSpreadElementArgForIntrinsic(
+                        getScriptLocByNode(firstArg),
+                        intrinsicName,
+                    );
                 } else if (!firstArg || !isLeftValue(firstArg)) {
-                    InvalidParameterForAliasIntrinsic(intrinsicCallLoc)
+                    InvalidParameterForAliasIntrinsic(intrinsicCallLoc);
                 }
             }
 
-            const grandParentNode = getStriptTypeOperationsParent(parent)!
+            const grandParentNode = getStriptTypeOperationsParent(parent)!;
             if (!parent.inTopLevel || !ts.isVariableDeclaration(grandParentNode)) {
                 if (isRaw) {
                     if (getStriptTypeOperationsNode(parent.expression) === node) {
-                        recordNonReactiveRead(parent)
+                        recordNonReactiveRead(parent);
                     } else {
-                        RawReadRequiresCallForm(getScriptLocByNode(node))
+                        RawReadRequiresCallForm(getScriptLocByNode(node));
                     }
-                    break
+                    break;
                 }
-                return throwInvalidUageError()
+                return throwInvalidUageError();
             }
             if (
                 firstArg &&
@@ -805,17 +811,17 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
                 ts.isIdentifier(firstArg) &&
                 ts.isIdentifier(grandParentNode.name)
             ) {
-                CannotAliasIdentifier(intrinsicCallLoc)
+                CannotAliasIdentifier(intrinsicCallLoc);
             }
 
-            const declarationList = grandParentNode.parent as TS.VariableDeclarationList
+            const declarationList = grandParentNode.parent as TS.VariableDeclarationList;
             if (getVariableDeclareKeyword(declarationList) === "using") {
                 IntrinsicNotAllowedInUsingDeclaration(
                     getScriptLocByNode(grandParentNode),
-                    intrinsicName
-                )
+                    intrinsicName,
+                );
             } else {
-                analyzeResult.script.declaratorToIntrinsic.set(grandParentNode, node)
+                analyzeResult.script.declaratorToIntrinsic.set(grandParentNode, node);
             }
         }
     }

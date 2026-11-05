@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -33,29 +33,29 @@ const scenario: E2EScenarioInput = {
             <p id="state-href">Href: {iconHref}</p>
             <p id="state-show">Show: {showSvg ? "yes" : "no"}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("keeps dynamic xlink state after svg unmount and remount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#switch-icon").click()
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b")
+        await page.locator("#switch-icon").click();
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b");
 
-        await page.locator("#toggle-show").click()
-        await expect(page.locator("#state-show")).toHaveText("Show: no")
-        await expect(page.locator("#svg-root")).toHaveCount(0)
+        await page.locator("#toggle-show").click();
+        await expect(page.locator("#state-show")).toHaveText("Show: no");
+        await expect(page.locator("#svg-root")).toHaveCount(0);
 
-        await page.locator("#toggle-show").click()
-        await expect(page.locator("#state-show")).toHaveText("Show: yes")
+        await page.locator("#toggle-show").click();
+        await expect(page.locator("#state-show")).toHaveText("Show: yes");
 
         const hrefAfterRemount = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefAfterRemount).toBe("#shape-b")
-    })
-})
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefAfterRemount).toBe("#shape-b");
+    });
+});

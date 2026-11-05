@@ -3,9 +3,9 @@ import type {
     ASTLocation,
     TemplateNode,
     ParsedExpression,
-    TemplateAttribute
-} from "#type-declarations/compiler"
-import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools"
+    TemplateAttribute,
+} from "#type-declarations/compiler";
+import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools";
 
 import {
     getStartTagNameLoc,
@@ -14,55 +14,55 @@ import {
     getStartTagOpenLoc,
     getParsedDirective,
     getPrevElementContext,
-    getTemplateNodeContext
-} from "../../../util/compiler/template"
-import { CodeEditor } from "../editor"
-import { eliminate } from "../eliminate"
-import { LSC, SPREAD_TAG } from "../../constants"
-import { IntermediateCodeWriter } from "../writer"
-import { AttributeValueEnclosure } from "../../enums"
-import { stringify } from "../../../util/shared/aliases"
-import { isInlineEventHandler } from "../../ts-ast/assert"
-import { traverseObject } from "../../../util/shared/sundry"
-import { analyzeResult, inputDescriptor } from "../../state"
-import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string"
+    getTemplateNodeContext,
+} from "../../../util/compiler/template";
+import { CodeEditor } from "../editor";
+import { eliminate } from "../eliminate";
+import { LSC, SPREAD_TAG } from "../../constants";
+import { IntermediateCodeWriter } from "../writer";
+import { AttributeValueEnclosure } from "../../enums";
+import { stringify } from "../../../util/shared/aliases";
+import { isInlineEventHandler } from "../../ts-ast/assert";
+import { traverseObject } from "../../../util/shared/sundry";
+import { analyzeResult, inputDescriptor } from "../../state";
+import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string";
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
-    let slotNamesType = ""
+    let slotNamesType = "";
     traverseObject(analyzeResult.template.slots, name => {
-        slotNamesType += stringify(name) + " | "
-    })
-    slotNamesType = slotNamesType.slice(0, -3)
+        slotNamesType += stringify(name) + " | ";
+    });
+    slotNamesType = slotNamesType.slice(0, -3);
 
     if (slotNamesType) {
-        slotNamesType = `Record<${slotNamesType}, boolean>`
+        slotNamesType = `Record<${slotNamesType}, boolean>`;
     }
 
-    const LSU = LSC.UTIL
-    const isTS = inputDescriptor.script.isTS
-    const writer = new IntermediateCodeWriter()
+    const LSU = LSC.UTIL;
+    const isTS = inputDescriptor.script.isTS;
+    const writer = new IntermediateCodeWriter();
     const embeddedScriptEditor = new CodeEditor(
         inputDescriptor.script.code,
-        inputDescriptor.script.loc.start.index
-    )
-    const defaultsCall = analyzeResult.script.defaultsCall
-    const importDeclarations = analyzeResult.script.importDeclarations
-    const scriptTagOpenRange = inputDescriptor.script.startTagOpenRange
-    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers
+        inputDescriptor.script.loc.start.index,
+    );
+    const defaultsCall = analyzeResult.script.defaultsCall;
+    const importDeclarations = analyzeResult.script.importDeclarations;
+    const scriptTagOpenRange = inputDescriptor.script.startTagOpenRange;
+    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers;
     const exportBindings = analyzeResult.script.exportedBindings.filter(item => {
         if (item.local !== item.exported) {
-            return !!topLevelIdentifiers[item.exported]
+            return !!topLevelIdentifiers[item.exported];
         }
-        return !!topLevelIdentifiers[item.local]
-    })
+        return !!topLevelIdentifiers[item.local];
+    });
     const exportSourceRange: Range | undefined = inputDescriptor.script.existing
         ? [scriptTagOpenRange[0] + 1, scriptTagOpenRange[1]]
-        : undefined
+        : undefined;
 
-    const ANY_VALUE = `${LSU}.anyValue`
-    const SLOT_TYPE = `Readonly<${slotNamesType || `${LSU}.EmptyObject`}>`
-    const COMPONENT_TYPE = `${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>`
-    const INSTANCE_TYPE = `${LSU}.ComponentInstance<${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>>`
+    const ANY_VALUE = `${LSU}.anyValue`;
+    const SLOT_TYPE = `Readonly<${slotNamesType || `${LSU}.EmptyObject`}>`;
+    const COMPONENT_TYPE = `${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>`;
+    const INSTANCE_TYPE = `${LSU}.ComponentInstance<${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>>`;
 
     const needImportItems: string[] = [
         LSU,
@@ -92,500 +92,508 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         "onBeforeUpdate",
         "onAfterUpdate",
         "onBeforeDestroy",
-        "onAfterDestroy"
-    ]
-    eliminate(embeddedScriptEditor)
-    writer.writeLine(`import { ${needImportItems.join(", ")} } from "qingkuai/language-service";\n`)
+        "onAfterDestroy",
+    ];
+    eliminate(embeddedScriptEditor);
+    writer.writeLine(
+        `import { ${needImportItems.join(", ")} } from "qingkuai/language-service";\n`,
+    );
 
     for (const decl of importDeclarations) {
-        writer.writeScriptNode(decl).writeLine(";")
+        writer.writeScriptNode(decl).writeLine(";");
     }
     if (isTS) {
-        writer.writeLine(`const slots:${SLOT_TYPE} = ${ANY_VALUE};`)
-        writer.writeLine(`const instance: ${INSTANCE_TYPE} = ${ANY_VALUE};\n`)
+        writer.writeLine(`const slots:${SLOT_TYPE} = ${ANY_VALUE};`);
+        writer.writeLine(`const instance: ${INSTANCE_TYPE} = ${ANY_VALUE};\n`);
     } else {
-        writer.writeLine(`/** @type {${SLOT_TYPE} } */ const slots = 0;\n`)
-        writer.writeLine(`/** @type {${INSTANCE_TYPE} } */ const instance = 0;\n`)
+        writer.writeLine(`/** @type {${SLOT_TYPE} } */ const slots = 0;\n`);
+        writer.writeLine(`/** @type {${INSTANCE_TYPE} } */ const instance = 0;\n`);
     }
-    writer.writeLine(`${LSU}.assertDefaults(defaults, props, refs, contexts);`)
-    writer.writeLine(`${LSU}.assertSetContext(setContext, contexts);`)
-    writer.writeLine(`${LSU}.assertSetContextGetter(setContextGetter, contexts);`)
-    writer.writeLine(`${LSU}.assertSetContextExp(setContextExp, contexts);`)
+    writer.writeLine(`${LSU}.assertDefaults(defaults, props, refs, contexts);`);
+    writer.writeLine(`${LSU}.assertSetContext(setContext, contexts);`);
+    writer.writeLine(`${LSU}.assertSetContextGetter(setContextGetter, contexts);`);
+    writer.writeLine(`${LSU}.assertSetContextExp(setContextExp, contexts);`);
 
     if (defaultsCall?.arguments.length) {
-        const arg = defaultsCall.arguments[0]
+        const arg = defaultsCall.arguments[0];
         const snippets: (string | { value: string; sourceRange: Range })[] = [
             `;\nconst ${LSC.DEFAULT_VALUES} = ${LSU}.extractFirstArg(${arg.getText()});`,
             `\n${LSU}.assertProps(props, ${LSC.DEFAULT_VALUES});`,
             `\n${LSU}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`,
-            `\n${LSU}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`
-        ]
-        embeddedScriptEditor.insertMulti(defaultsCall.getEnd(), snippets)
+            `\n${LSU}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`,
+        ];
+        embeddedScriptEditor.insertMulti(defaultsCall.getEnd(), snippets);
     }
-    writer.wrapLine().writeEditedScript(embeddedScriptEditor)
-    writer.write(";", inputDescriptor.script.loc.end.index).wrapLine(2)
+    writer.wrapLine().writeEditedScript(embeddedScriptEditor);
+    writer.write(";", inputDescriptor.script.loc.end.index).wrapLine(2);
 
     //
-    ;(function generate(nodes: TemplateNode[]) {
+    (function generate(nodes: TemplateNode[]) {
         for (const node of nodes) {
-            const endInserts: GeneralFunc[] = []
-            const isComponent = !!node.componentTag
-            const isSpread = SPREAD_TAG === node.tag
-            const nodeContext = getTemplateNodeContext(node)
-            const startTagOpenLoc = getStartTagOpenLoc(node)
-            const componentInvalidExps: [string, Range][] = []
+            const endInserts: GeneralFunc[] = [];
+            const isComponent = !!node.componentTag;
+            const isSpread = SPREAD_TAG === node.tag;
+            const nodeContext = getTemplateNodeContext(node);
+            const startTagOpenLoc = getStartTagOpenLoc(node);
+            const componentInvalidExps: [string, Range][] = [];
             const slotNameRange = getRangeByLoc(
                 nodeContext.attributesMap.name?.value.raw
                     ? nodeContext.attributesMap.name.loc
-                    : startTagOpenLoc
-            )
-            const startTagNameRange = getRangeByLoc(getStartTagNameLoc(node))
-            const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
-            const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName]
+                    : startTagOpenLoc,
+            );
+            const startTagNameRange = getRangeByLoc(getStartTagNameLoc(node));
+            const slotName = nodeContext.attributesMap.name?.value.raw ?? "default";
+            const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName];
 
             const indentAndWriteStartEnclosure = (
                 shouldWrapLine = true,
-                closeWithSemicolon = true
+                closeWithSemicolon = true,
             ) => {
                 if (shouldWrapLine) {
-                    writer.wrapLine()
+                    writer.wrapLine();
                 }
-                writer.write("{").indent(false)
-                endInserts.push(() => writer.dedent().write(closeWithSemicolon ? "};" : "}"))
-            }
+                writer.write("{").indent(false);
+                endInserts.push(() => writer.dedent().write(closeWithSemicolon ? "};" : "}"));
+            };
 
             if (node.tag && node.parent?.componentTag && !nodeContext.attributesMap["#slot"]) {
-                writer.wrapLine()
-                writer.write("default", getRangeByLoc(startTagOpenLoc))
-                writer.write(": () => ")
-                endInserts.push(() => writer.write(","))
-                indentAndWriteStartEnclosure(false, false)
+                writer.wrapLine();
+                writer.write("default", getRangeByLoc(startTagOpenLoc));
+                writer.write(": () => ");
+                endInserts.push(() => writer.write(","));
+                indentAndWriteStartEnclosure(false, false);
             }
 
             for (const directive of nodeContext.sortedDirectives) {
                 if (!directive.equalSign) {
-                    continue
+                    continue;
                 }
 
-                const rawValue = directive.value.raw
-                const valueEnd = directive.value.loc.end.index
-                const valueRange = getRangeByLoc(directive.value.loc)
-                const parsedExpression = getParsedExpression(directive)
-                const expressionLen = parsedExpression?.source.length ?? 0
-                const directiveInfo = analyzeResult.template.parsedDirectives.get(directive)
+                const rawValue = directive.value.raw;
+                const valueEnd = directive.value.loc.end.index;
+                const valueRange = getRangeByLoc(directive.value.loc);
+                const parsedExpression = getParsedExpression(directive);
+                const expressionLen = parsedExpression?.source.length ?? 0;
+                const directiveInfo = analyzeResult.template.parsedDirectives.get(directive);
 
                 switch (directive.name.raw) {
                     case "#if":
                     case "#elif": {
-                        writer.wrapLine().write(`if (`)
-                        writer.write(rawValue, valueRange).write(") {}")
-                        break
+                        writer.wrapLine().write(`if (`);
+                        writer.write(rawValue, valueRange).write(") {}");
+                        break;
                     }
 
                     case "#for": {
-                        indentAndWriteStartEnclosure()
+                        indentAndWriteStartEnclosure();
 
                         if (directiveInfo && !parsedExpression) {
                             writeInvalidExpression(
                                 writer,
                                 directiveInfo.base,
-                                directiveInfo.baseStartSourceIndex
-                            )
+                                directiveInfo.baseStartSourceIndex,
+                            );
                         }
                         if (generatePatterns(writer, directive)) {
-                            writer.write(`${LSU}.getListPair(`)
+                            writer.write(`${LSU}.getListPair(`);
 
                             if (parsedExpression) {
-                                writer.write(parsedExpression.source, valueEnd - expressionLen)
+                                writer.write(parsedExpression.source, valueEnd - expressionLen);
                             }
-                            writer.write(");")
+                            writer.write(");");
                         }
-                        break
+                        break;
                     }
 
                     case "#then": {
                         const awaitDirective =
                             nodeContext.attributesMap["#await"] ??
-                            getPrevElementContext(node)?.attributesMap["#await"]
-                        const awaitDirectiveExp = getParsedExpression(awaitDirective)
+                            getPrevElementContext(node)?.attributesMap["#await"];
+                        const awaitDirectiveExp = getParsedExpression(awaitDirective);
                         if ((writer.wrapLine(), !awaitDirectiveExp)) {
-                            writer.write(";(").indent(false)
+                            writer.write(";(").indent(false);
                         } else {
                             writer.write(
                                 awaitDirectiveExp.source,
-                                awaitDirective.value.loc.start.index
-                            )
-                            writer.write(".then((").indent(false)
+                                awaitDirective.value.loc.start.index,
+                            );
+                            writer.write(".then((").indent(false);
                         }
-                        generatePatterns(writer, directive)
-                        writer.write(") => {")
-                        endInserts.push(() => writer.dedent().write("});"))
-                        break
+                        generatePatterns(writer, directive);
+                        writer.write(") => {");
+                        endInserts.push(() => writer.dedent().write("});"));
+                        break;
                     }
 
                     case "#catch": {
-                        indentAndWriteStartEnclosure()
+                        indentAndWriteStartEnclosure();
 
                         if (generatePatterns(writer, directive)) {
-                            writer.write(ANY_VALUE).write(";")
+                            writer.write(ANY_VALUE).write(";");
                         } else {
-                            writeInvalidExpression(writer, rawValue, valueRange)
+                            writeInvalidExpression(writer, rawValue, valueRange);
                         }
-                        break
+                        break;
                     }
 
                     case "#html": {
                         if (!parsedExpression) {
-                            writeInvalidExpression(writer, rawValue, valueRange)
+                            writeInvalidExpression(writer, rawValue, valueRange);
                         } else {
-                            writer.wrapLine().write(`${LSU}.validateHtmlBlockOptions(`)
-                            writer.write(rawValue, valueRange).write(");")
+                            writer.wrapLine().write(`${LSU}.validateHtmlBlockOptions(`);
+                            writer.write(rawValue, valueRange).write(");");
                         }
-                        break
+                        break;
                     }
 
                     case "#target": {
                         if (!parsedExpression) {
-                            writeInvalidExpression(writer, rawValue, valueRange)
+                            writeInvalidExpression(writer, rawValue, valueRange);
                         } else {
-                            writer.wrapLine().write(`${LSU}.validateTargetDirectiveValue(`)
-                            writer.write(rawValue, valueRange).write(");")
+                            writer.wrapLine().write(`${LSU}.validateTargetDirectiveValue(`);
+                            writer.write(rawValue, valueRange).write(");");
                         }
-                        break
+                        break;
                     }
 
                     case "#slot": {
                         if (node.parent?.componentTag) {
-                            writer.wrapLine()
+                            writer.wrapLine();
 
                             if (parsedExpression) {
-                                writeParsedExpression(writer, parsedExpression)
+                                writeParsedExpression(writer, parsedExpression);
                             } else {
-                                writer.write("default", getRangeByLoc(startTagOpenLoc))
+                                writer.write("default", getRangeByLoc(startTagOpenLoc));
                             }
-                            writer.write(": (")
-                            generatePatterns(writer, directive)
-                            writer.write(") => ")
-                            endInserts.push(() => writer.write(","))
-                            indentAndWriteStartEnclosure(false, false)
+                            writer.write(": (");
+                            generatePatterns(writer, directive);
+                            writer.write(") => ");
+                            endInserts.push(() => writer.write(","));
+                            indentAndWriteStartEnclosure(false, false);
 
                             if (directiveInfo && !parsedExpression) {
                                 writeInvalidExpression(
                                     writer,
                                     directiveInfo.base,
-                                    directiveInfo.baseStartSourceIndex
-                                )
+                                    directiveInfo.baseStartSourceIndex,
+                                );
                             }
                         } else if (parsedExpression) {
-                            writer.wrapLine()
-                            writeParsedExpression(writer, parsedExpression).write(";")
+                            writer.wrapLine();
+                            writeParsedExpression(writer, parsedExpression).write(";");
                         }
-                        break
+                        break;
                     }
 
                     default: {
                         if (!isComponent) {
-                            writer.write(rawValue, valueRange).write(";")
+                            writer.write(rawValue, valueRange).write(";");
                         } else {
-                            componentInvalidExps.push([rawValue, valueRange])
+                            componentInvalidExps.push([rawValue, valueRange]);
                         }
-                        break
+                        break;
                     }
                 }
             }
 
             if (isComponent) {
                 endInserts.push(() => {
-                    writer.dedent().write("}").dedent().write("});")
+                    writer.dedent().write("}").dedent().write("});");
 
                     for (const [str, range] of componentInvalidExps) {
-                        writeInvalidExpression(writer, str, range)
+                        writeInvalidExpression(writer, str, range);
                     }
-                })
-                writer.wrapLine()
+                });
+                writer.wrapLine();
 
-                const referenceHandleAttr = nodeContext.attributesMap["&handle"]
-                const referenceHandleExp = getParsedExpression(referenceHandleAttr)
+                const referenceHandleAttr = nodeContext.attributesMap["&handle"];
+                const referenceHandleExp = getParsedExpression(referenceHandleAttr);
                 if (referenceHandleExp) {
-                    writer.write(`${LSU}.validateHandleReceiver(${node.componentTag}, `)
-                    writeParsedExpression(writer, referenceHandleExp).write(");").wrapLine()
+                    writer.write(`${LSU}.validateHandleReceiver(${node.componentTag}, `);
+                    writeParsedExpression(writer, referenceHandleExp).write(");").wrapLine();
                 }
                 if (node.rawTag !== node.tag || !getParsedExpression(node)) {
-                    writer.write(ANY_VALUE)
+                    writer.write(ANY_VALUE);
                 } else {
-                    writer.write(`${LSU}.confirmComponent(`)
-                    writer.write(node.componentTag, startTagNameRange).write(")")
+                    writer.write(`${LSU}.confirmComponent(`);
+                    writer.write(node.componentTag, startTagNameRange).write(")");
                 }
                 if (node.typeArgument) {
-                    const typeArgumentRange = getRangeByLoc(node.typeArgument.loc)
-                    writer.write("<").write(node.typeArgument.raw, typeArgumentRange).write(">")
+                    const typeArgumentRange = getRangeByLoc(node.typeArgument.loc);
+                    writer.write("<").write(node.typeArgument.raw, typeArgumentRange).write(">");
                 }
-                writer.write("(").write("{").indent()
-                writer.write("props: ").write("{", startTagNameRange[0]).indent(false)
+                writer.write("(").write("{").indent();
+                writer.write("props: ").write("{", startTagNameRange[0]).indent(false);
             }
 
             if (isComponent || isSlot) {
                 for (const attribute of nodeContext.staticAttributes) {
                     if (isSlot && "name" === attribute.name.raw) {
-                        continue
+                        continue;
                     }
 
-                    const rawName = attribute.name.raw
-                    const camelName = kebab2Camel(rawName)
-                    const property = toPropertyKey(camelName)
-                    const nameRange = getRangeByLoc(attribute.name.loc)
-                    const valueRange = getRangeByLoc(attribute.value.loc)
-                    const writeValue = attribute.equalSign ? stringify(attribute.value.raw) : "true"
+                    const rawName = attribute.name.raw;
+                    const camelName = kebab2Camel(rawName);
+                    const property = toPropertyKey(camelName);
+                    const nameRange = getRangeByLoc(attribute.name.loc);
+                    const valueRange = getRangeByLoc(attribute.value.loc);
+                    const writeValue = attribute.equalSign
+                        ? stringify(attribute.value.raw)
+                        : "true";
 
                     if (isComponent) {
-                        writer.wrapLine().write(property, nameRange)
-                        writer.write(": ").write(writeValue, valueRange).write(",")
+                        writer.wrapLine().write(property, nameRange);
+                        writer.write(": ").write(writeValue, valueRange).write(",");
                     } else {
-                        writer.wrapLine()
-                        startGetTypeDelayMarkingCall(writer)
-                        writer.write(stringify(slotName), slotNameRange).write(", ")
-                        writer.write(stringify(camelName), nameRange).write(`, `)
-                        writer.write(writeValue, valueRange).write(");")
+                        writer.wrapLine();
+                        startGetTypeDelayMarkingCall(writer);
+                        writer.write(stringify(slotName), slotNameRange).write(", ");
+                        writer.write(stringify(camelName), nameRange).write(`, `);
+                        writer.write(writeValue, valueRange).write(");");
                     }
                 }
             }
 
             for (const attribute of nodeContext.dynamicAttributes) {
-                const baseName = attribute.name.raw.slice(1)
-                const camelName = kebab2Camel(baseName)
-                const property = toPropertyKey(camelName)
-                const rawValue = attribute.value.raw
-                const expression = getParsedExpression(attribute)
-                const nameRange = getRangeByLoc(attribute.name.loc)
-                const valueRange = getRangeByLoc(attribute.value.loc)
-                const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly
+                const baseName = attribute.name.raw.slice(1);
+                const camelName = kebab2Camel(baseName);
+                const property = toPropertyKey(camelName);
+                const rawValue = attribute.value.raw;
+                const expression = getParsedExpression(attribute);
+                const nameRange = getRangeByLoc(attribute.name.loc);
+                const valueRange = getRangeByLoc(attribute.value.loc);
+                const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly;
 
                 if (!attribute.equalSign) {
                     if ((isSlot || isComponent) && !expression) {
-                        continue
+                        continue;
                     }
                     if (property) {
                         if (!isSlot) {
-                            writer.wrapLine().write(property, nameRange)
-                            writer.write(isComponent ? "," : ";")
+                            writer.wrapLine().write(property, nameRange);
+                            writer.write(isComponent ? "," : ";");
                         } else {
-                            writer.wrapLine()
-                            startGetTypeDelayMarkingCall(writer)
-                            writer.write(stringify(slotName), slotNameRange).write(", ")
-                            writer.write(stringify(camelName), nameRange).write(", ")
-                            writer.write(camelName, valueRange).write(");")
+                            writer.wrapLine();
+                            startGetTypeDelayMarkingCall(writer);
+                            writer.write(stringify(slotName), slotNameRange).write(", ");
+                            writer.write(stringify(camelName), nameRange).write(", ");
+                            writer.write(camelName, valueRange).write(");");
                         }
                     }
-                    continue
+                    continue;
                 }
 
                 if (!isValueValid) {
                     if (isComponent) {
-                        writer.wrapLine().write(property, nameRange).write(": ")
-                        writer.write(stringify(rawValue), valueRange).write(",")
+                        writer.wrapLine().write(property, nameRange).write(": ");
+                        writer.write(stringify(rawValue), valueRange).write(",");
                     }
-                    continue
+                    continue;
                 }
 
                 if (!expression && isComponent) {
-                    componentInvalidExps.push([rawValue, valueRange])
-                    continue
+                    componentInvalidExps.push([rawValue, valueRange]);
+                    continue;
                 }
 
                 if (isComponent) {
-                    writer.wrapLine()
-                    writer.write(property, nameRange).write(": ")
-                    writer.write(rawValue, valueRange).write(",")
-                    continue
+                    writer.wrapLine();
+                    writer.write(property, nameRange).write(": ");
+                    writer.write(rawValue, valueRange).write(",");
+                    continue;
                 }
 
                 if (isSlot) {
-                    writer.wrapLine()
-                    startGetTypeDelayMarkingCall(writer)
-                    writer.write(stringify(slotName), slotNameRange).write(", ")
-                    writer.write(stringify(camelName), nameRange).write(`, `)
-                    writer.write(rawValue, valueRange).write(");")
-                    continue
+                    writer.wrapLine();
+                    startGetTypeDelayMarkingCall(writer);
+                    writer.write(stringify(slotName), slotNameRange).write(", ");
+                    writer.write(stringify(camelName), nameRange).write(`, `);
+                    writer.write(rawValue, valueRange).write(");");
+                    continue;
                 }
 
-                writeOrphanExpression(writer, rawValue, valueRange)
+                writeOrphanExpression(writer, rawValue, valueRange);
             }
 
             for (const event of nodeContext.eventListeners) {
-                const rawValue = event.value.raw
-                const eventInfo = getParsedEventInfo(event)!
-                const baseName = eventInfo.eventName.slice(1)
-                const expression = getParsedExpression(event)
-                const valueRange = getRangeByLoc(event.value.loc)
-                const isValueValid = event.valueEnclosure === AttributeValueEnclosure.Curly
-                const property = toPropertyKey(kebab2Camel(baseName))
+                const rawValue = event.value.raw;
+                const eventInfo = getParsedEventInfo(event)!;
+                const baseName = eventInfo.eventName.slice(1);
+                const expression = getParsedExpression(event);
+                const valueRange = getRangeByLoc(event.value.loc);
+                const isValueValid = event.valueEnclosure === AttributeValueEnclosure.Curly;
+                const property = toPropertyKey(kebab2Camel(baseName));
                 const nameRange: Range = [
                     event.name.loc.start.index,
-                    event.name.loc.start.index + eventInfo.eventName.length
-                ]
-                const validatorCall = `${LSU}.validateEventHandler("${baseName}", `
+                    event.name.loc.start.index + eventInfo.eventName.length,
+                ];
+                const validatorCall = `${LSU}.validateEventHandler("${baseName}", `;
 
                 if (isSpread || isSlot) {
-                    writer.wrapLine()
+                    writer.wrapLine();
 
                     if (!event.equalSign) {
-                        writer.write(property).write(";")
+                        writer.write(property).write(";");
                     } else if (isValueValid) {
-                        writer.write(rawValue, valueRange).write(";")
+                        writer.write(rawValue, valueRange).write(";");
                     }
-                    continue
+                    continue;
                 }
 
                 if (!event.equalSign) {
                     if (isComponent && !expression) {
-                        componentInvalidExps.push([property, nameRange])
-                        continue
+                        componentInvalidExps.push([property, nameRange]);
+                        continue;
                     }
                     if (property) {
-                        writer.wrapLine()
+                        writer.wrapLine();
 
                         if (!isComponent) {
-                            writer.write(validatorCall)
+                            writer.write(validatorCall);
                         }
-                        writer.write(property, nameRange)
-                        writer.write(isComponent ? "," : ");")
+                        writer.write(property, nameRange);
+                        writer.write(isComponent ? "," : ");");
                     }
-                    continue
+                    continue;
                 }
 
                 if (!isValueValid) {
                     if (isComponent) {
-                        writer.wrapLine().write(property, nameRange)
-                        writer.write(": ").write(stringify(rawValue), valueRange).write(",")
+                        writer.wrapLine().write(property, nameRange);
+                        writer.write(": ").write(stringify(rawValue), valueRange).write(",");
                     }
-                    continue
+                    continue;
                 }
 
                 if (!expression) {
                     if (isComponent) {
-                        componentInvalidExps.push([rawValue, valueRange])
+                        componentInvalidExps.push([rawValue, valueRange]);
                     } else {
-                        writer.wrapLine().write(rawValue, valueRange).write(";")
+                        writer.wrapLine().write(rawValue, valueRange).write(";");
                     }
-                    continue
+                    continue;
                 }
 
                 if (!isComponent) {
-                    writer.wrapLine().write(validatorCall)
+                    writer.wrapLine().write(validatorCall);
                 } else {
-                    writer.wrapLine().write(property, nameRange).write(": ")
+                    writer.wrapLine().write(property, nameRange).write(": ");
                 }
 
-                const isInline = isInlineEventHandler(expression.node)
+                const isInline = isInlineEventHandler(expression.node);
                 if (isInline) {
-                    writer.write("$arg", nameRange).write(" => (")
+                    writer.write("$arg", nameRange).write(" => (");
                 }
-                writer.write(rawValue, valueRange)
-                writer.write(`${isInline ? ")" : ""}${isComponent ? "," : ");"}`)
+                writer.write(rawValue, valueRange);
+                writer.write(`${isInline ? ")" : ""}${isComponent ? "," : ");"}`);
             }
 
             if (isComponent) {
-                writer.dedent().write("}", startTagNameRange[1] - 1)
-                writer.writeLine(",").write("refs: ").write("{", startTagNameRange[0]).indent(false)
+                writer.dedent().write("}", startTagNameRange[1] - 1);
+                writer
+                    .writeLine(",")
+                    .write("refs: ")
+                    .write("{", startTagNameRange[0])
+                    .indent(false);
             }
 
             for (const attribute of nodeContext.referenceAttributes) {
-                const rawName = attribute.name.raw
-                const rawValue = attribute.value.raw
-                const nameRange = getRangeByLoc(attribute.name.loc)
-                const valueRange = getRangeByLoc(attribute.value.loc)
-                const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly
-                const property = toPropertyKey(kebab2Camel(rawName.slice(1)))
+                const rawName = attribute.name.raw;
+                const rawValue = attribute.value.raw;
+                const nameRange = getRangeByLoc(attribute.name.loc);
+                const valueRange = getRangeByLoc(attribute.value.loc);
+                const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly;
+                const property = toPropertyKey(kebab2Camel(rawName.slice(1)));
                 const isAttributeValid =
-                    analyzeResult.template.validReferenceAttributes.has(attribute)
+                    analyzeResult.template.validReferenceAttributes.has(attribute);
 
                 if (isComponent) {
                     if (!property || attribute.name.raw === "&handle") {
-                        continue
+                        continue;
                     }
 
                     if (!attribute.equalSign) {
                         if (getParsedExpression(attribute)) {
-                            writer.wrapLine().write(property, nameRange).write(",")
+                            writer.wrapLine().write(property, nameRange).write(",");
                         }
-                        continue
+                        continue;
                     }
 
                     if (!isValueValid) {
-                        writer.wrapLine().write(property, nameRange).write(": ")
-                        writer.write(stringify(rawValue), valueRange).write(",")
-                        continue
+                        writer.wrapLine().write(property, nameRange).write(": ");
+                        writer.write(stringify(rawValue), valueRange).write(",");
+                        continue;
                     }
 
                     if (!isAttributeValid) {
-                        componentInvalidExps.push([rawValue, valueRange])
-                        continue
+                        componentInvalidExps.push([rawValue, valueRange]);
+                        continue;
                     }
 
-                    writer.wrapLine().write(property, nameRange).write(": ")
-                    writer.write(rawValue, valueRange).write(",")
-                    continue
+                    writer.wrapLine().write(property, nameRange).write(": ");
+                    writer.write(rawValue, valueRange).write(",");
+                    continue;
                 }
 
                 if (!isAttributeValid) {
                     // SPREAD_TAG and slot tags will also enter
                     if (attribute.equalSign) {
-                        writer.wrapLine().write(rawValue, valueRange).write(";")
+                        writer.wrapLine().write(rawValue, valueRange).write(";");
                     } else if (property) {
-                        writer.wrapLine().write(property, nameRange).write(";")
+                        writer.wrapLine().write(property, nameRange).write(";");
                     }
-                    continue
+                    continue;
                 }
 
                 const writeValue = (vname?: string, vparm?: string, ending = "") => {
                     if ((writer.wrapLine(), vname)) {
-                        writer.write(`${LSU}.validate${vname}(`)
+                        writer.write(`${LSU}.validate${vname}(`);
 
                         if (vparm) {
-                            writer.write(vparm + ", ")
+                            writer.write(vparm + ", ");
                         }
                     }
                     if (!attribute.equalSign) {
-                        writer.write(property, nameRange)
+                        writer.write(property, nameRange);
                     } else {
-                        writer.write(rawValue, valueRange)
+                        writer.write(rawValue, valueRange);
                     }
-                    return writer.write(`${vname ? ")" : ""}${ending};`)
-                }
+                    return writer.write(`${vname ? ")" : ""}${ending};`);
+                };
 
                 if ("textarea" === node.tag && rawName === "&value") {
-                    writeValue("String")
+                    writeValue("String");
                 }
 
                 if ("input" === node.tag) {
                     switch (rawName) {
                         case "&value": {
-                            writeValue("String")
-                            break
+                            writeValue("String");
+                            break;
                         }
                         case "&number": {
-                            writeValue("Number")
-                            break
+                            writeValue("Number");
+                            break;
                         }
                         case "&checked": {
-                            writeValue("Boolean")
-                            break
+                            writeValue("Boolean");
+                            break;
                         }
                         case "&group": {
-                            writeValue("ReferenecGroup")
-                            break
+                            writeValue("ReferenecGroup");
+                            break;
                         }
                     }
                 }
 
                 if (rawName === "&handle") {
-                    writeValue("HandleReceiver", stringify(node.tag))
+                    writeValue("HandleReceiver", stringify(node.tag));
                 }
 
                 if ("select" === node.tag && rawName === "&value") {
                     if (nodeContext.attributesMap["multiple"]) {
-                        writeValue(getParsedExpression(attribute) ? "ReferenceGroup" : undefined)
-                        continue
+                        writeValue(getParsedExpression(attribute) ? "ReferenceGroup" : undefined);
+                        continue;
                     }
 
                     // 待办：验证 option 元素的 value 属性是否可以被 select 元素的 &value 属性接受
@@ -599,120 +607,120 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     // })
                 }
 
-                writeValue(undefined, undefined, ` = ${ANY_VALUE}`)
+                writeValue(undefined, undefined, ` = ${ANY_VALUE}`);
             }
 
             for (const part of node.content) {
                 if (part.isInterpolated) {
-                    writer.wrapLine().write(part.value, part.loc.start.index).write(";")
+                    writer.wrapLine().write(part.value, part.loc.start.index).write(";");
                 }
             }
 
             if (isComponent) {
-                writer.dedent().write("}", startTagNameRange[1] - 1)
-                writer.writeLine(",").write("slots: {").indent(false)
+                writer.dedent().write("}", startTagNameRange[1] - 1);
+                writer.writeLine(",").write("slots: {").indent(false);
             }
 
-            generate(node.children)
-            forEachRight(endInserts, fn => fn())
+            generate(node.children);
+            forEachRight(endInserts, fn => fn());
         }
-    })(nodes)
+    })(nodes);
 
     // 生成组件函数和导出语句
     // Generate component function and export statement
-    writer.write(`\n\nconst ${LSC.COMPONENT} = (meta) => {`)
+    writer.write(`\n\nconst ${LSC.COMPONENT} = (meta) => {`);
 
     if (exportBindings.length) {
-        writer.indent().write(`return {`).indent(false)
+        writer.indent().write(`return {`).indent(false);
 
         for (const item of exportBindings) {
-            writer.wrapLine().write(item.exported)
+            writer.wrapLine().write(item.exported);
 
             if (item.local !== item.exported) {
-                writer.write(": ").write(item.local)
+                writer.write(": ").write(item.local);
             }
-            writer.write(",")
+            writer.write(",");
         }
-        writer.dedent().write("}").dedent()
+        writer.dedent().write("}").dedent();
     }
-    writer.write("}").wrapLine(2)
+    writer.write("}").wrapLine(2);
 
     if (isTS) {
-        writer.write(`export `)
-        writer.write("default", exportSourceRange)
-        return writer.write(` 0 as any as ${COMPONENT_TYPE};`)
+        writer.write(`export `);
+        writer.write("default", exportSourceRange);
+        return writer.write(` 0 as any as ${COMPONENT_TYPE};`);
     }
-    writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `)
-    writer.write("default", exportSourceRange)
-    return writer.write(` 0;`)
+    writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `);
+    writer.write("default", exportSourceRange);
+    return writer.write(` 0;`);
 }
 
 function getRangeByLoc(loc: ASTLocation): Range {
-    return [loc.start.index, loc.end.index]
+    return [loc.start.index, loc.end.index];
 }
 
 function forEachRight(arr: any[], cb: ArbitraryFunc) {
     for (let i = arr.length - 1; i >= 0; i--) {
-        cb(arr[i], i, arr)
+        cb(arr[i], i, arr);
     }
 }
 
 function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
-    writer.gtdii.push(writer.length)
-    writer.write(`${LSC.GET_TYPE_DELAY_MARKING}(`)
+    writer.gtdii.push(writer.length);
+    writer.write(`${LSC.GET_TYPE_DELAY_MARKING}(`);
 }
 
 function writeOrphanExpression(
     writer: IntermediateCodeWriter,
     expression: string,
-    sourceIndexOrRange: number | Range
+    sourceIndexOrRange: number | Range,
 ) {
-    writer.wrapLine().write("void(")
+    writer.wrapLine().write("void(");
 
     // @ts-expect-error: match the overload
-    return writer.write(expression, sourceIndexOrRange).write(");")
+    return writer.write(expression, sourceIndexOrRange).write(");");
 }
 
 function writeInvalidExpression(
     writer: IntermediateCodeWriter,
     str: string,
-    sourceIndexOrRange: number | Range
+    sourceIndexOrRange: number | Range,
 ) {
     // @ts-expect-error: match the overload
-    return writer.wrapLine().write(str, sourceIndexOrRange).write(";")
+    return writer.wrapLine().write(str, sourceIndexOrRange).write(";");
 }
 
 function generatePatterns(writer: IntermediateCodeWriter, directive: TemplateAttribute) {
-    const directiveName = directive.name.raw
-    const isForDirective = directiveName === "#for"
-    const isCatchDirective = directiveName === "#catch"
-    const patterns = getParsedDirective(directive)?.patterns
+    const directiveName = directive.name.raw;
+    const isForDirective = directiveName === "#for";
+    const isCatchDirective = directiveName === "#catch";
+    const patterns = getParsedDirective(directive)?.patterns;
     if (!patterns?.some(pattern => pattern)) {
         if (isForDirective || isCatchDirective) {
-            writer.wrapLine()
+            writer.wrapLine();
         }
-        return false
+        return false;
     }
     if (isForDirective || isCatchDirective) {
-        writer.wrapLine().write("const " + (isForDirective ? "[" : ""))
+        writer.wrapLine().write("const " + (isForDirective ? "[" : ""));
     }
     for (let i = 0; i < patterns.length; i++) {
         if (patterns[i].node) {
             writer.write(
                 inputDescriptor.source.slice(...patterns[i].sourceRange),
-                patterns[i].sourceRange[0]
-            )
+                patterns[i].sourceRange[0],
+            );
         }
         if (i < patterns.length - 1) {
-            writer.write(", ")
+            writer.write(", ");
         }
     }
     if (isForDirective || isCatchDirective) {
-        writer.write(isCatchDirective ? " = " : "] = ")
+        writer.write(isCatchDirective ? " = " : "] = ");
     }
-    return true
+    return true;
 }
 
 function writeParsedExpression(writer: IntermediateCodeWriter, parsedExpression: ParsedExpression) {
-    return writer.write(parsedExpression.source, parsedExpression.startSourceIndex)
+    return writer.write(parsedExpression.source, parsedExpression.startSourceIndex);
 }

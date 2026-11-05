@@ -1,32 +1,32 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     InputOptions,
     AnalyzeResult,
     CompileMessage,
     InputDescriptor,
-    GenerateIdentifier
-} from "#type-declarations/compiler"
+    GenerateIdentifier,
+} from "#type-declarations/compiler";
 
-import { isUndefined } from "../util/shared/assert"
-import { newCleanObj } from "../util/shared/sundry"
-import { objectAssign } from "../util/shared/aliases"
-import { createHashId } from "../util/compiler/sundry"
-import { newASTLocation } from "../util/compiler/position"
-import { TestingMode, ReactivityMode, WhitespaceMode } from "./enums"
+import { isUndefined } from "../util/shared/assert";
+import { newCleanObj } from "../util/shared/sundry";
+import { objectAssign } from "../util/shared/aliases";
+import { createHashId } from "../util/compiler/sundry";
+import { newASTLocation } from "../util/compiler/position";
+import { TestingMode, ReactivityMode, WhitespaceMode } from "./enums";
 
-export let messages: CompileMessage[] = []
-export let analyzeResult = newAnalyzeResult()
-export let inputDescriptor = newInputDescriptor({})
-export let tsParsingDiagnostics: TS.Diagnostic[] = []
-export let generateIdentifier = newGenerateIdentifier()
+export let messages: CompileMessage[] = [];
+export let analyzeResult = newAnalyzeResult();
+export let inputDescriptor = newInputDescriptor({});
+export let tsParsingDiagnostics: TS.Diagnostic[] = [];
+export let generateIdentifier = newGenerateIdentifier();
 
 export function resetCompilerState(options: Partial<InputOptions>) {
-    messages = []
-    tsParsingDiagnostics = []
-    analyzeResult = newAnalyzeResult()
-    generateIdentifier = newGenerateIdentifier()
-    inputDescriptor = newInputDescriptor({ ...options })
+    messages = [];
+    tsParsingDiagnostics = [];
+    analyzeResult = newAnalyzeResult();
+    generateIdentifier = newGenerateIdentifier();
+    inputDescriptor = newInputDescriptor({ ...options });
 }
 
 function newGenerateIdentifier(): GenerateIdentifier {
@@ -39,8 +39,8 @@ function newGenerateIdentifier(): GenerateIdentifier {
         component: "",
         compressStrings: "",
         suffix: newCleanObj(),
-        prefix: newCleanObj()
-    }
+        prefix: newCleanObj(),
+    };
 }
 
 function newAnalyzeResult(): AnalyzeResult {
@@ -48,7 +48,7 @@ function newAnalyzeResult(): AnalyzeResult {
         template: {
             delegateEvents: {
                 passive: new Set(),
-                nonPassive: new Set()
+                nonPassive: new Set(),
             },
             slots: newCleanObj(),
             parsedEvents: new Map(),
@@ -58,7 +58,7 @@ function newAnalyzeResult(): AnalyzeResult {
             parsedExpressions: new Map(),
             staticTextContents: new Map(),
             keyedSelectorInfos: new Map(),
-            validReferenceAttributes: new Set()
+            validReferenceAttributes: new Set(),
         },
         script: {
             rawReadCalls: [],
@@ -77,10 +77,10 @@ function newAnalyzeResult(): AnalyzeResult {
             declaratorToAliasInfos: new Map(),
             topLevelIdentifiers: newCleanObj(),
             qkDefaultImportIdentifiers: new Set(),
-            preMutatedTopLevelIdentifiers: new Set()
+            preMutatedTopLevelIdentifiers: new Set(),
         },
-        reusedStrings: newCleanObj()
-    }
+        reusedStrings: newCleanObj(),
+    };
 }
 
 // 生成一个新的输入源状态描述符
@@ -97,7 +97,7 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             isTS: false,
             existing: false,
             loc: newASTLocation(),
-            startTagOpenRange: [-1, -1]
+            startTagOpenRange: [-1, -1],
         },
         options: {
             hashId: "",
@@ -111,25 +111,25 @@ function newInputDescriptor(options: Partial<InputOptions>) {
             preserveHtmlComments: false,
             requireReactivityMark: false,
             whitespace: WhitespaceMode.TrimCollapse,
-            reactivityMode: ReactivityMode.Reactive
-        }
-    }
+            reactivityMode: ReactivityMode.Reactive,
+        },
+    };
     if (!options.hashId) {
-        options.hashId = createHashId()
+        options.hashId = createHashId();
     }
     if (options.debug) {
         if (isUndefined(options.sourcemap)) {
-            options.sourcemap = true
+            options.sourcemap = true;
         }
         if (isUndefined(options.interpretiveComments)) {
-            options.interpretiveComments = true
+            options.interpretiveComments = true;
         }
         if (isUndefined(options.preserveHtmlComments)) {
-            options.preserveHtmlComments = true
+            options.preserveHtmlComments = true;
         }
     }
     if (typeof process !== "undefined" && process.env?.VITEST === "true") {
-        ret.options.testing = TestingMode.Unit
+        ret.options.testing = TestingMode.Unit;
     }
-    return (objectAssign(ret.options, options), ret)
+    return (objectAssign(ret.options, options), ret);
 }

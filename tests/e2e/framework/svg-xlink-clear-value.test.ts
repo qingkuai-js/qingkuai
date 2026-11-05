@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -32,35 +32,35 @@ const scenario: E2EScenarioInput = {
             <button id="set-undefined" @click={setUndefinedHref}>Set undefined</button>
             <p id="state-label">State: {stateLabel}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("clears xlink href when value becomes null or undefined", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         const hrefInitial = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefInitial).toBe("#shape-a")
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefInitial).toBe("#shape-a");
 
-        await page.locator("#set-null").click()
-        await expect(page.locator("#state-label")).toHaveText("State: null")
+        await page.locator("#set-null").click();
+        await expect(page.locator("#state-label")).toHaveText("State: null");
 
         const hrefAfterNull = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefAfterNull).toBeNull()
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefAfterNull).toBeNull();
 
-        await page.locator("#set-undefined").click()
-        await expect(page.locator("#state-label")).toHaveText("State: undefined")
+        await page.locator("#set-undefined").click();
+        await expect(page.locator("#state-label")).toHaveText("State: undefined");
 
         const hrefAfterUndefined = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(hrefAfterUndefined).toBeNull()
-    })
-})
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(hrefAfterUndefined).toBeNull();
+    });
+});

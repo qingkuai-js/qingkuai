@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -70,94 +70,94 @@ const scenario: E2EScenarioInput = {
                 <p id="monitor-version">Version: {props.version}</p>
                 <p id="monitor-status">Component mounted and active</p>
             </div>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("component mounts when condition becomes true", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const monitor = page.locator("#monitor-panel")
-        const log = page.locator("#lifecycle-log")
-        await expect(monitor).toHaveCount(0)
-        await expect(log).toHaveText("")
+        const monitor = page.locator("#monitor-panel");
+        const log = page.locator("#lifecycle-log");
+        await expect(monitor).toHaveCount(0);
+        await expect(log).toHaveText("");
 
-        await page.locator("#toggle-btn").click()
-        await expect(monitor).toBeVisible()
-        await expect(page.locator("#monitor-version")).toHaveText("Version: 0")
-        await expect(page.locator("#monitor-status")).toHaveText("Component mounted and active")
-        await expect(log).toHaveText("after-mount")
-    })
+        await page.locator("#toggle-btn").click();
+        await expect(monitor).toBeVisible();
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 0");
+        await expect(page.locator("#monitor-status")).toHaveText("Component mounted and active");
+        await expect(log).toHaveText("after-mount");
+    });
 
     test("component logs beforeUpdate and afterUpdate when props change", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const log = page.locator("#lifecycle-log")
+        const log = page.locator("#lifecycle-log");
 
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#monitor-version")).toHaveText("Version: 0")
-        await expect(log).toHaveText("after-mount")
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 0");
+        await expect(log).toHaveText("after-mount");
 
-        await page.locator("#update-btn").click()
-        await expect(page.locator("#monitor-version")).toHaveText("Version: 1")
-        await expect(log).toHaveText("after-mount,before-update,after-update")
-    })
+        await page.locator("#update-btn").click();
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 1");
+        await expect(log).toHaveText("after-mount,before-update,after-update");
+    });
 
     test("component unmounts when condition becomes false", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const monitor = page.locator("#monitor-panel")
-        const log = page.locator("#lifecycle-log")
+        const monitor = page.locator("#monitor-panel");
+        const log = page.locator("#lifecycle-log");
 
-        await page.locator("#toggle-btn").click()
-        await expect(monitor).toBeVisible()
-        await expect(log).toHaveText("after-mount")
+        await page.locator("#toggle-btn").click();
+        await expect(monitor).toBeVisible();
+        await expect(log).toHaveText("after-mount");
 
-        await page.locator("#toggle-btn").click()
-        await expect(monitor).toHaveCount(0)
-        await expect(log).toHaveText("after-mount,before-destroy,after-destroy")
-    })
+        await page.locator("#toggle-btn").click();
+        await expect(monitor).toHaveCount(0);
+        await expect(log).toHaveText("after-mount,before-destroy,after-destroy");
+    });
 
     test("batches multiple sync mutations into one update hook cycle", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const log = page.locator("#lifecycle-log")
+        const log = page.locator("#lifecycle-log");
 
-        await page.locator("#toggle-btn").click()
-        await expect(page.locator("#monitor-version")).toHaveText("Version: 0")
-        await expect(log).toHaveText("after-mount")
+        await page.locator("#toggle-btn").click();
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 0");
+        await expect(log).toHaveText("after-mount");
 
-        await page.locator("#update-twice-btn").click()
-        await expect(page.locator("#monitor-version")).toHaveText("Version: 2")
-        await expect(log).toHaveText("after-mount,before-update,after-update")
-    })
+        await page.locator("#update-twice-btn").click();
+        await expect(page.locator("#monitor-version")).toHaveText("Version: 2");
+        await expect(log).toHaveText("after-mount,before-update,after-update");
+    });
 
     test("supports multiple mount/unmount cycles", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const monitor = page.locator("#monitor-panel")
-        const log = page.locator("#lifecycle-log")
+        const monitor = page.locator("#monitor-panel");
+        const log = page.locator("#lifecycle-log");
 
         for (let i = 0; i < 3; i++) {
-            await page.locator("#toggle-btn").click()
-            await expect(monitor).toBeVisible()
+            await page.locator("#toggle-btn").click();
+            await expect(monitor).toBeVisible();
 
-            await page.locator("#update-btn").click()
-            await expect(page.locator("#monitor-version")).toHaveText(`Version: ${i + 1}`)
+            await page.locator("#update-btn").click();
+            await expect(page.locator("#monitor-version")).toHaveText(`Version: ${i + 1}`);
 
-            await page.locator("#toggle-btn").click()
-            await expect(monitor).toHaveCount(0)
+            await page.locator("#toggle-btn").click();
+            await expect(monitor).toHaveCount(0);
         }
 
         await expect(log).toHaveText(
-            "after-mount,before-update,after-update,before-destroy,after-destroy,after-mount,before-update,after-update,before-destroy,after-destroy,after-mount,before-update,after-update,before-destroy,after-destroy"
-        )
-    })
-})
+            "after-mount,before-update,after-update,before-destroy,after-destroy,after-mount,before-update,after-update,before-destroy,after-destroy,after-mount,before-update,after-update,before-destroy,after-destroy",
+        );
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -26,27 +26,27 @@ const scenario: E2EScenarioInput = {
             <button id="switch-icon" @click={switchIcon}>Switch icon</button>
             <p id="state-href">Href: {iconHref}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("keeps static xlink attribute stable in namespace reads", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         const staticHrefInitial = await page
             .locator("#icon-use-static")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(staticHrefInitial).toBe("#shape-a")
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(staticHrefInitial).toBe("#shape-a");
 
-        await page.locator("#switch-icon").click()
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b")
+        await page.locator("#switch-icon").click();
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b");
 
         const staticHrefAfterSwitch = await page
             .locator("#icon-use-static")
-            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"))
-        expect(staticHrefAfterSwitch).toBe("#shape-a")
-    })
-})
+            .evaluate(node => node.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        expect(staticHrefAfterSwitch).toBe("#shape-a");
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -22,23 +22,23 @@ const scenario: E2EScenarioInput = {
             <p id="state-array">Array: {selectedByArray.join(",")}</p>
             <p id="state-set">Set: {Array.from(selectedBySet).join(",")}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("syncs multiple select interactions back to const array and set targets", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#state-array")).toHaveText("Array: A")
-        await expect(page.locator("#state-set")).toHaveText("Set: B")
+        await expect(page.locator("#state-array")).toHaveText("Array: A");
+        await expect(page.locator("#state-set")).toHaveText("Set: B");
 
-        await page.locator("#multi-select-array").selectOption(["B", "C"])
-        await page.locator("#multi-select-set").selectOption(["A"])
+        await page.locator("#multi-select-array").selectOption(["B", "C"]);
+        await page.locator("#multi-select-set").selectOption(["A"]);
 
-        await expect(page.locator("#state-array")).toHaveText("Array: B,C")
-        await expect(page.locator("#state-set")).toHaveText("Set: A")
-    })
-})
+        await expect(page.locator("#state-array")).toHaveText("Array: B,C");
+        await expect(page.locator("#state-set")).toHaveText("Set: A");
+    });
+});

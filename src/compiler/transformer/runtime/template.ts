@@ -1,27 +1,27 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     TemplateNode,
     TemplateAttribute,
     TemplateNodeContext,
-    DirectiveRenderInserts
-} from "#type-declarations/compiler"
-import type { RuntimeCodeWriter } from "../writer"
-import type { GeneralFunc } from "#type-declarations/tools"
+    DirectiveRenderInserts,
+} from "#type-declarations/compiler";
+import type { RuntimeCodeWriter } from "../writer";
+import type { GeneralFunc } from "#type-declarations/tools";
 
-import ts from "../../ts-api"
+import ts from "../../ts-api";
 
 import {
     isFunctionLiteral,
     isInlineEventHandler,
-    isSimpleHandlerReference
-} from "../../ts-ast/assert"
+    isSimpleHandlerReference,
+} from "../../ts-ast/assert";
 import {
     hasSelectorForAttribute,
     hasSelectorForTextNode,
     writeSelectorDeclaration,
-    getForBlockSelectorInfos
-} from "../../optimizer/selector"
+    getForBlockSelectorInfos,
+} from "../../optimizer/selector";
 import {
     getParsedEventInfo,
     getParsedDirective,
@@ -30,76 +30,76 @@ import {
     getPrevElementContext,
     getNextElementContent,
     getTemplateNodeContext,
-    getValidTextContentParts
-} from "../../../util/compiler/template"
-import { DELEGATABLE_EVENTS } from "../../constants"
-import { writeFragmentSelections } from "./fragment"
-import { writeParsedExpression } from "./interpolation"
-import { kebab2Camel } from "../../../util/compiler/string"
-import { getMaybeReusedString } from "../../optimizer/compress"
-import { TestingMode, ReferenceBindingType } from "../../enums"
-import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags"
-import { getStriptTypeOperationsNode } from "../../ts-ast/sundry"
-import { equalsWithKeyDirectiveValue } from "../../optimizer/render"
-import { writeContextDeclaration, writeContextPatterns } from "./context"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert"
-import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
+    getValidTextContentParts,
+} from "../../../util/compiler/template";
+import { DELEGATABLE_EVENTS } from "../../constants";
+import { writeFragmentSelections } from "./fragment";
+import { writeParsedExpression } from "./interpolation";
+import { kebab2Camel } from "../../../util/compiler/string";
+import { getMaybeReusedString } from "../../optimizer/compress";
+import { TestingMode, ReferenceBindingType } from "../../enums";
+import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags";
+import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
+import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
+import { writeContextDeclaration, writeContextPatterns } from "./context";
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
+import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 
 export function generateTemplateRender(
     writer: RuntimeCodeWriter,
     nodes: TemplateNode[],
     isRoot = true,
-    slotAnchorId?: string
+    slotAnchorId?: string,
 ) {
     if (isRoot) {
-        analyzeResult.template.keyedSelectorInfos.clear()
+        analyzeResult.template.keyedSelectorInfos.clear();
     }
 
-    const componentFragment = analyzeResult.template.componentFragment
+    const componentFragment = analyzeResult.template.componentFragment;
     if (isRoot && componentFragment?.content.length) {
-        writeFragmentSelections(writer, componentFragment, slotAnchorId)
-        generateRenderEffect(writer, nodes, null)
+        writeFragmentSelections(writer, componentFragment, slotAnchorId);
+        generateRenderEffect(writer, nodes, null);
     }
 
     for (const node of nodes) {
-        let insertPostfix: GeneralFunc | undefined
-        const nodeContext = getTemplateNodeContext(node)
-        const hasFragmentContent = !!nodeContext.fragment?.content.length
+        let insertPostfix: GeneralFunc | undefined;
+        const nodeContext = getTemplateNodeContext(node);
+        const hasFragmentContent = !!nodeContext.fragment?.content.length;
 
         const wrapInsertPostfix = (method: GeneralFunc | undefined) => {
             if (method) {
-                const original = insertPostfix
+                const original = insertPostfix;
                 insertPostfix = () => {
-                    method()
-                    original?.()
-                    insertPostfix = undefined
-                }
+                    method();
+                    original?.();
+                    insertPostfix = undefined;
+                };
             }
-        }
+        };
 
         if (
             nodeContext.sortedDirectives.some(item => {
-                return item.name.raw !== "#slot"
+                return item.name.raw !== "#slot";
             })
         ) {
-            wrapInsertPostfix(generateDirectiveBlock(writer, 0, nodeContext))
+            wrapInsertPostfix(generateDirectiveBlock(writer, 0, nodeContext));
         }
         if (node.componentTag) {
-            generateComponentCall(writer, nodeContext)
-            insertPostfix?.()
-            continue
+            generateComponentCall(writer, nodeContext);
+            insertPostfix?.();
+            continue;
         }
         if ("slot" === node.tag) {
-            wrapInsertPostfix(generateSlotCall(writer, nodeContext))
+            wrapInsertPostfix(generateSlotCall(writer, nodeContext));
         }
         if (hasFragmentContent) {
-            writeFragmentSelections(writer, nodeContext.fragment!, slotAnchorId)
+            writeFragmentSelections(writer, nodeContext.fragment!, slotAnchorId);
 
             if ("slot" !== node.tag) {
-                generateRenderEffect(writer, [node], node)
+                generateRenderEffect(writer, [node], node);
             } else {
-                generateRenderEffect(writer, node.children, null)
+                generateRenderEffect(writer, node.children, null);
             }
         }
 
@@ -113,646 +113,649 @@ export function generateTemplateRender(
          */
         if (nodeContext.attributesMap["#html"] && nodeContext.sortedDirectives.length !== 1) {
             const htmlDirectiveIndex = nodeContext.sortedDirectives.findIndex(item => {
-                return item.name.raw === "#html"
-            })
-            generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext)
+                return item.name.raw === "#html";
+            });
+            generateDirectiveBlock(writer, htmlDirectiveIndex, nodeContext);
         }
 
         if (
             (generateTemplateRender(writer, node.children, false, slotAnchorId), hasFragmentContent)
         ) {
-            writer.write(`\n${generateIdentifier.internal}.insertBefore(`)
-            writer.write(`${nodeContext.anchorId}, ${nodeContext.fragment!.id})`)
+            writer.write(`\n${generateIdentifier.internal}.insertBefore(`);
+            writer.write(`${nodeContext.anchorId}, ${nodeContext.fragment!.id})`);
         }
 
-        insertPostfix?.()
+        insertPostfix?.();
     }
 
     if (isRoot) {
-        const anchorId = generateIdentifier.anchor
-        const internalId = generateIdentifier.internal
-        const getterArgId = generateIdentifier.getterArg
-        const exportedBindings = new Map<string, string>()
-        const hasComponentFragment = !!componentFragment?.content.length
+        const anchorId = generateIdentifier.anchor;
+        const internalId = generateIdentifier.internal;
+        const getterArgId = generateIdentifier.getterArg;
+        const exportedBindings = new Map<string, string>();
+        const hasComponentFragment = !!componentFragment?.content.length;
         for (const binding of analyzeResult.script.exportedBindings) {
-            exportedBindings.set(binding.exported, binding.local)
+            exportedBindings.set(binding.exported, binding.local);
         }
 
         if (!exportedBindings.size) {
             if (!hasComponentFragment) {
-                writer.write(`\nreturn ${internalId}.mount()`)
+                writer.write(`\nreturn ${internalId}.mount()`);
             } else {
-                writer.write(`\nreturn ${internalId}.mount(`)
-                writer.write(`${anchorId}, ${componentFragment.id})`)
+                writer.write(`\nreturn ${internalId}.mount(`);
+                writer.write(`${anchorId}, ${componentFragment.id})`);
             }
-            return
+            return;
         }
-        writer.write(`\n${internalId}.defineExports(instance, {`).indent(false)
+        writer.write(`\n${internalId}.defineExports(instance, {`).indent(false);
 
         for (const [exported, local] of exportedBindings) {
-            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local]
-            const transformed = topLevelIdentifier?.transformTo || local
-            writer.wrapLine()
-            writeMetaKey(exported, writer)
-            writer.write(`:  ${getterArgId} => (${transformed}),`)
+            const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[local];
+            const transformed = topLevelIdentifier?.transformTo || local;
+            writer.wrapLine();
+            writeMetaKey(exported, writer);
+            writer.write(`:  ${getterArgId} => (${transformed}),`);
         }
-        writer.dedent().write(`})`)
-        writer.write(`\nreturn ${internalId}.mount(`)
+        writer.dedent().write(`})`);
+        writer.write(`\nreturn ${internalId}.mount(`);
 
         if (hasComponentFragment) {
-            writer.write(`${anchorId}, ${componentFragment.id}`)
+            writer.write(`${anchorId}, ${componentFragment.id}`);
         }
-        writer.write(")")
+        writer.write(")");
     }
 }
 
 function generateDirectiveBlock(
     writer: RuntimeCodeWriter,
     directiveIndex: number,
-    nodeContext: TemplateNodeContext
+    nodeContext: TemplateNodeContext,
 ): GeneralFunc | undefined {
-    const node = nodeContext.node
-    const internalId = generateIdentifier.internal
-    const getterArgId = generateIdentifier.getterArg
-    const directive = nodeContext.sortedDirectives[directiveIndex]
+    const node = nodeContext.node;
+    const internalId = generateIdentifier.internal;
+    const getterArgId = generateIdentifier.getterArg;
+    const directive = nodeContext.sortedDirectives[directiveIndex];
 
     switch (directive?.name.raw) {
         case "#html": {
-            writer.wrapLine().write(`${internalId}.htmlBlock(`).indent()
-            writer.write(getTemplateNodeContext(nodeContext.node.children[0]).id)
-            writer.writeLine(",").write(`${getterArgId} => (`)
-            writer.writeInterpolatedText(node.children[0]).write(")")
+            writer.wrapLine().write(`${internalId}.htmlBlock(`).indent();
+            writer.write(getTemplateNodeContext(nodeContext.node.children[0]).id);
+            writer.writeLine(",").write(`${getterArgId} => (`);
+            writer.writeInterpolatedText(node.children[0]).write(")");
 
             if (directive.equalSign) {
-                writer.writeLine(",").write(`${getterArgId} => (`)
-                writer.writeParsedExpression(directive).write(")")
+                writer.writeLine(",").write(`${getterArgId} => (`);
+                writer.writeParsedExpression(directive).write(")");
             }
-            return (writer.dedent().write(")"), undefined)
+            return (writer.dedent().write(")"), undefined);
         }
 
         case "#target": {
-            writer.wrapLine().write(`${internalId}.targetBlock(`).indent()
-            writer.write(nodeContext.anchorId).writeLine(",").write(`${getterArgId} => (`)
-            writer.writeParsedExpression(directive).writeLine("),")
+            writer.wrapLine().write(`${internalId}.targetBlock(`).indent();
+            writer.write(nodeContext.anchorId).writeLine(",").write(`${getterArgId} => (`);
+            writer.writeParsedExpression(directive).writeLine("),");
             return generateDirectiveRender({
                 enclosure() {
-                    writer.dedent().write(")")
-                }
-            })
+                    writer.dedent().write(")");
+                },
+            });
         }
 
         case "#if": {
-            writer.wrapLine().write(`${internalId}.conditionBlock([`).indent()
+            writer.wrapLine().write(`${internalId}.conditionBlock([`).indent();
             // fallthrough
         }
         case "#elif": {
-            writer.write(`${getterArgId} => (`)
-            writer.writeParsedExpression(directive).write("),").wrapLine()
+            writer.write(`${getterArgId} => (`);
+            writer.writeParsedExpression(directive).write("),").wrapLine();
             // fallthrough
         }
         case "#else": {
             return generateDirectiveRender({
                 enclosure() {
                     if (doesDirectiveHasContinuousItem(nodeContext.node, directive)) {
-                        writer.writeLine(",")
+                        writer.writeLine(",");
                     } else {
-                        writer.dedent().write("])")
+                        writer.dedent().write("])");
                     }
-                }
-            })
+                },
+            });
         }
 
         case "#await": {
             const noRender = !!(
                 nodeContext.attributesMap["#then"] || nodeContext.attributesMap["#catch"]
-            )
-            writer.wrapLine().write(`${internalId}.promiseBlock(`).indent()
-            writer.write(`${getterArgId} => (`).writeParsedExpression(directive).writeLine("),")
+            );
+            writer.wrapLine().write(`${internalId}.promiseBlock(`).indent();
+            writer.write(`${getterArgId} => (`).writeParsedExpression(directive).writeLine("),");
 
             if (noRender) {
-                return (writer.writeLine(`${internalId}.UNDEF,`), generateNextDirective())
+                return (writer.writeLine(`${internalId}.UNDEF,`), generateNextDirective());
             }
             // fallthrough
         }
         case "#then": {
             if (!nodeContext.fragment?.content.length && !node.componentTag) {
-                return (writer.writeLine(`${internalId}.UNDEF,`), undefined)
+                return (writer.writeLine(`${internalId}.UNDEF,`), undefined);
             }
             // fallthrough
         }
         case "#catch": {
             if (directive.name.raw === "#catch") {
-                let withoutThenDirective = !!nodeContext.attributesMap["#await"]
+                let withoutThenDirective = !!nodeContext.attributesMap["#await"];
                 if (!withoutThenDirective) {
-                    const prevElementContext = getPrevElementContext(node)!
+                    const prevElementContext = getPrevElementContext(node)!;
                     if (prevElementContext.sortedDirectives[0].name.raw === "#await") {
                         withoutThenDirective =
-                            prevElementContext.sortedDirectives[1]?.name.raw !== "#then"
+                            prevElementContext.sortedDirectives[1]?.name.raw !== "#then";
                     } else {
                         withoutThenDirective =
-                            prevElementContext.sortedDirectives[0].name.raw !== "#then"
+                            prevElementContext.sortedDirectives[0].name.raw !== "#then";
                     }
                 }
                 if (withoutThenDirective) {
-                    writer.writeLine(`${internalId}.NIL,`)
+                    writer.writeLine(`${internalId}.NIL,`);
                 }
             }
             return generateDirectiveRender({
                 arg() {
-                    const patterns = getParsedDirective(directive)?.patterns
+                    const patterns = getParsedDirective(directive)?.patterns;
                     if (!patterns) {
-                        writer.write(getterArgId)
+                        writer.write(getterArgId);
                     } else {
-                        writer.write("(")
-                        writeContextPatterns(writer, patterns).write(")")
+                        writer.write("(");
+                        writeContextPatterns(writer, patterns).write(")");
                     }
                 },
                 enclosure() {
                     if (doesDirectiveHasContinuousItem(node, directive)) {
-                        writer.writeLine(",")
+                        writer.writeLine(",");
                     } else {
-                        writer.dedent().write(")")
+                        writer.dedent().write(")");
                     }
-                }
-            })
+                },
+            });
         }
 
         case "#for": {
-            const parsedDirective = getParsedDirective(directive)!
-            const patterns = parsedDirective.patterns
-            const keyDirective = nodeContext.attributesMap["#key"]
-            const fn = keyDirective ? "keyedListBlock" : "listBlock"
-            const selectorInfos = keyDirective ? getForBlockSelectorInfos(nodeContext) : []
-            const nodeGetterId = selectorInfos.length ? ensureIdWithNumSuffix("_getNodeByKey") : ""
+            const parsedDirective = getParsedDirective(directive)!;
+            const patterns = parsedDirective.patterns;
+            const keyDirective = nodeContext.attributesMap["#key"];
+            const fn = keyDirective ? "keyedListBlock" : "listBlock";
+            const selectorInfos = keyDirective ? getForBlockSelectorInfos(nodeContext) : [];
+            const nodeGetterId = selectorInfos.length ? ensureIdWithNumSuffix("_getNodeByKey") : "";
 
             if (keyDirective) {
-                analyzeResult.template.keyedSelectorInfos.set(nodeContext, selectorInfos)
+                analyzeResult.template.keyedSelectorInfos.set(nodeContext, selectorInfos);
             }
-            writer.wrapLine()
+            writer.wrapLine();
 
             if (nodeGetterId) {
-                writer.write(`const ${nodeGetterId} = `)
+                writer.write(`const ${nodeGetterId} = `);
             }
-            writer.write(`${internalId}.${fn}(`).indent()
+            writer.write(`${internalId}.${fn}(`).indent();
 
             if (keyDirective) {
-                writer.write(nodeContext.anchorId).write(",").wrapLine()
-                nodeContext.anchorId = ensureIdWithNumSuffix("_anchor")
+                writer.write(nodeContext.anchorId).write(",").wrapLine();
+                nodeContext.anchorId = ensureIdWithNumSuffix("_anchor");
             }
-            writer.write(`${getterArgId} => (`)
-            writer.writeParsedExpression(directive).write("),").wrapLine()
+            writer.write(`${getterArgId} => (`);
+            writer.writeParsedExpression(directive).write("),").wrapLine();
 
             if (keyDirective) {
                 if (!patterns.length) {
-                    writer.write(getterArgId)
+                    writer.write(getterArgId);
                 } else {
-                    writer.write("(")
-                    writeContextPatterns(writer, patterns).write(")")
+                    writer.write("(");
+                    writeContextPatterns(writer, patterns).write(")");
                 }
-                writer.write(" => {").indent().write("return ")
-                writer.writeParsedExpression(keyDirective).dedent().writeLine("},")
+                writer.write(" => {").indent().write("return ");
+                writer.writeParsedExpression(keyDirective).dedent().writeLine("},");
             }
             return generateDirectiveRender({
                 context() {
-                    writeContextDeclaration(writer, directive)
+                    writeContextDeclaration(writer, directive);
                 },
                 enclosure() {
-                    writer.dedent().write(")")
+                    writer.dedent().write(")");
 
                     if (nodeGetterId) {
                         for (const selectorInfo of selectorInfos) {
-                            writeSelectorDeclaration(writer, selectorInfo, nodeGetterId)
+                            writeSelectorDeclaration(writer, selectorInfo, nodeGetterId);
                         }
 
-                        writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false)
+                        writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false);
                         for (const selectorInfo of selectorInfos) {
-                            writer.wrapLine().write(`${selectorInfo.id}(`)
-                            writer.write(`${selectorInfo.topLevelTransformedTo})`)
+                            writer.wrapLine().write(`${selectorInfo.id}(`);
+                            writer.write(`${selectorInfo.topLevelTransformedTo})`);
                         }
-                        writer.dedent().write("})")
+                        writer.dedent().write("})");
                     }
                 },
                 arg() {
                     if (!patterns.length) {
                         if (!keyDirective) {
-                            writer.write(getterArgId)
+                            writer.write(getterArgId);
                         } else {
-                            writer.write(nodeContext.anchorId)
+                            writer.write(nodeContext.anchorId);
                         }
                     } else {
                         if (keyDirective) {
-                            writer.write(`(${nodeContext.anchorId}, `)
+                            writer.write(`(${nodeContext.anchorId}, `);
                         }
-                        writer.write(parsedDirective.context!.argId).write(keyDirective ? ")" : "")
+                        writer.write(parsedDirective.context!.argId).write(keyDirective ? ")" : "");
                     }
                 },
                 returns() {
                     if (inputDescriptor.options.debug && parsedDirective.context?.returnsId) {
-                        writer.wrapLine().write(`return ${parsedDirective.context.returnsId}`)
+                        writer.wrapLine().write(`return ${parsedDirective.context.returnsId}`);
                     }
-                }
-            })
+                },
+            });
         }
     }
 
     function generateDirectiveRender(insert?: DirectiveRenderInserts): GeneralFunc {
         if (insert?.arg) {
-            insert.arg()
+            insert.arg();
         } else {
-            writer.write(getterArgId)
+            writer.write(getterArgId);
         }
-        writer.write(" => {").indent(false)
-        insert?.context?.()
-        writeAnchorBracket(writer, nodeContext)
+        writer.write(" => {").indent(false);
+        insert?.context?.();
+        writeAnchorBracket(writer, nodeContext);
 
-        const childEnclosure = generateNextDirective()
+        const childEnclosure = generateNextDirective();
         return () => {
-            childEnclosure?.()
-            insert?.returns?.()
-            writer.dedent().write("}")
-            insert?.enclosure?.()
-        }
+            childEnclosure?.();
+            insert?.returns?.();
+            writer.dedent().write("}");
+            insert?.enclosure?.();
+        };
     }
 
     // 跳过 #html 指令的处理，推迟至节点选择完成后生成
     // Skip processing the `#html` directive; generate it after node selection is completed
     function generateNextDirective() {
-        const delta = nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1
-        return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext)
+        const delta =
+            nodeContext.sortedDirectives[directiveIndex + 1]?.name.raw === "#html" ? 2 : 1;
+        return generateDirectiveBlock(writer, directiveIndex + delta, nodeContext);
     }
 }
 
 function writeAnchorBracket(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
-    const bracket = nodeContext.anchorBracket
+    const bracket = nodeContext.anchorBracket;
     if (!bracket) {
-        return
+        return;
     }
 
-    const internalId = generateIdentifier.internal
-    const outerAnchorId = nodeContext.anchorId
-    const trailingAnchorId = bracket.selections[0].id
-    const interpretive = inputDescriptor.options.interpretiveComments ? "/* LEADING_ANCHOR */ " : ""
+    const internalId = generateIdentifier.internal;
+    const outerAnchorId = nodeContext.anchorId;
+    const trailingAnchorId = bracket.selections[0].id;
+    const interpretive = inputDescriptor.options.interpretiveComments
+        ? "/* LEADING_ANCHOR */ "
+        : "";
     writer.write(
-        `\nconst ${bracket.id} = ${bracket.getterId}(${interpretive}${FRAG_LEADING_ANCHOR})`
-    )
-    writer.write(`\nconst ${trailingAnchorId} = ${internalId}.getChild(${bracket.id})`)
-    writer.write(`\n${internalId}.insertBefore(${outerAnchorId}, ${bracket.id})`)
-    nodeContext.anchorId = trailingAnchorId
+        `\nconst ${bracket.id} = ${bracket.getterId}(${interpretive}${FRAG_LEADING_ANCHOR})`,
+    );
+    writer.write(`\nconst ${trailingAnchorId} = ${internalId}.getChild(${bracket.id})`);
+    writer.write(`\n${internalId}.insertBefore(${outerAnchorId}, ${bracket.id})`);
+    nodeContext.anchorId = trailingAnchorId;
 }
 
 function generateRenderEffect(
     writer: RuntimeCodeWriter,
     nodes: TemplateNode[],
-    skipCheckNode: TemplateNode | null
+    skipCheckNode: TemplateNode | null,
 ) {
-    let withinRenderEffect = false
-    const internalId = generateIdentifier.internal
-    const getterArgId = generateIdentifier.getterArg
-    const setterArgId = generateIdentifier.setterArg
+    let withinRenderEffect = false;
+    const internalId = generateIdentifier.internal;
+    const getterArgId = generateIdentifier.getterArg;
+    const setterArgId = generateIdentifier.setterArg;
 
     const generateRenderEffectCall = () => {
         if (!withinRenderEffect) {
-            withinRenderEffect = true
-            writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false)
+            withinRenderEffect = true;
+            writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false);
         }
-        return writer
-    }
+        return writer;
+    };
 
     const generate = (nodes: TemplateNode[], index: number, createRenderEffect: boolean) => {
         if (!nodes[index]) {
-            return
+            return;
         }
 
-        const node = nodes[index]
-        const nodeContext = getTemplateNodeContext(node)
-        const selectorInfos = getActiveSelectorInfos(nodeContext)
-        const textContentManagedBySelector = hasSelectorForTextNode(selectorInfos, nodeContext)
+        const node = nodes[index];
+        const nodeContext = getTemplateNodeContext(node);
+        const selectorInfos = getActiveSelectorInfos(nodeContext);
+        const textContentManagedBySelector = hasSelectorForTextNode(selectorInfos, nodeContext);
         const textContentHasRenderEffect =
-            !textContentManagedBySelector && doesTextContentHasRenderEffect(node)
+            !textContentManagedBySelector && doesTextContentHasRenderEffect(node);
 
         const dfs = () => {
             if (node.children.length) {
-                generate(node.children, 0, createRenderEffect)
+                generate(node.children, 0, createRenderEffect);
             }
             if (nodes[index + 1]) {
-                generate(nodes, index + 1, createRenderEffect)
+                generate(nodes, index + 1, createRenderEffect);
             }
-        }
+        };
 
         if (
             node.componentTag ||
             "slot" === node.tag ||
             (nodeContext.fragment && skipCheckNode !== node)
         ) {
-            return generate(nodes, index + 1, createRenderEffect)
+            return generate(nodes, index + 1, createRenderEffect);
         }
 
         const generateSetAttributeCall = (attribute: TemplateAttribute, outsideEffect: boolean) => {
-            const baseName = getAttributeBaseName(attribute.name.raw)
+            const baseName = getAttributeBaseName(attribute.name.raw);
             const interpolationSourceIndex = attribute.equalSign
                 ? attribute.value.loc.start.index
-                : attribute.loc.start.index
-            const isSvgElement = isSvgElementContext(nodeContext)
+                : attribute.loc.start.index;
+            const isSvgElement = isSvgElementContext(nodeContext);
             if (createRenderEffect) {
-                generateRenderEffectCall()
+                generateRenderEffectCall();
             }
             if (baseName === "class") {
                 const setClassMethod =
                     isSvgElement || nodeContext.inSlotContent
                         ? "setClassAttribute"
-                        : "setHtmlClassName"
-                const staticClassAttr = nodeContext.attributesMap["class"]
-                writer.wrapLine().write(`${internalId}.`)
-                writer.write(setClassMethod, interpolationSourceIndex)
-                writer.write("(").write(nodeContext.id).write(", ")
+                        : "setHtmlClassName";
+                const staticClassAttr = nodeContext.attributesMap["class"];
+                writer.wrapLine().write(`${internalId}.`);
+                writer.write(setClassMethod, interpolationSourceIndex);
+                writer.write("(").write(nodeContext.id).write(", ");
 
                 if (staticClassAttr) {
-                    writer.write("[")
+                    writer.write("[");
                     writer.writeTemplateStr(
                         getMaybeReusedString(staticClassAttr.value.raw),
-                        staticClassAttr.value.loc
-                    )
-                    writer.write(", ")
+                        staticClassAttr.value.loc,
+                    );
+                    writer.write(", ");
                 }
-                writer.writeParsedExpression(attribute, false, outsideEffect)
-                writer.write(`${staticClassAttr ? "]" : ""})`)
-                return
+                writer.writeParsedExpression(attribute, false, outsideEffect);
+                writer.write(`${staticClassAttr ? "]" : ""})`);
+                return;
             }
             if (baseName === "value" && node.tag === "select") {
-                writer.wrapLine().write(`${internalId}.`)
-                writer.write(`setSelectValue`, interpolationSourceIndex)
-                writer.write(`(${nodeContext.id}, `)
-                writer.writeParsedExpression(attribute, false, outsideEffect).write(")")
-                return
+                writer.wrapLine().write(`${internalId}.`);
+                writer.write(`setSelectValue`, interpolationSourceIndex);
+                writer.write(`(${nodeContext.id}, `);
+                writer.writeParsedExpression(attribute, false, outsideEffect).write(")");
+                return;
             }
 
-            const isXlinkAttr = baseName.startsWith("xlink:")
-            const attrName = isXlinkAttr ? baseName.slice(6) : baseName
+            const isXlinkAttr = baseName.startsWith("xlink:");
+            const attrName = isXlinkAttr ? baseName.slice(6) : baseName;
             const method = isXlinkAttr
                 ? "setXlinkAttribute"
                 : isSvgElement
                   ? "setAttribute"
-                  : "setHtmlAttribute"
-            writer.wrapLine().write(`${internalId}.`)
-            writer.write(method, interpolationSourceIndex)
-            writer.write(`(${nodeContext.id}, ${getMaybeReusedString(attrName)}, `)
-            writer.writeParsedExpression(attribute, false, outsideEffect).write(")")
-        }
+                  : "setHtmlAttribute";
+            writer.wrapLine().write(`${internalId}.`);
+            writer.write(method, interpolationSourceIndex);
+            writer.write(`(${nodeContext.id}, ${getMaybeReusedString(attrName)}, `);
+            writer.writeParsedExpression(attribute, false, outsideEffect).write(")");
+        };
 
         const writeSetTextCall = (outsideEffect: boolean) => {
             if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
                 if (createRenderEffect) {
-                    generateRenderEffectCall()
+                    generateRenderEffectCall();
                 }
 
                 const firstInterpolatedPart = node.content.find(part => {
-                    return part.isInterpolated
-                })
-                writer.wrapLine().write(`${internalId}.`)
-                writer.write("setText", firstInterpolatedPart?.loc.start.index ?? -1)
-                writer.write(`(${nodeContext.id}, `)
-                writer.writeInterpolatedText(node, true, outsideEffect).write(")")
+                    return part.isInterpolated;
+                });
+                writer.wrapLine().write(`${internalId}.`);
+                writer.write("setText", firstInterpolatedPart?.loc.start.index ?? -1);
+                writer.write(`(${nodeContext.id}, `);
+                writer.writeInterpolatedText(node, true, outsideEffect).write(")");
             }
-        }
+        };
 
         // dynamic attributes
-        const dynamicAttrsWithEffect: TemplateAttribute[] = []
-        const dynamicAttrsWithoutEffect: TemplateAttribute[] = []
-        const dynamicAttrsManagedBySelector: TemplateAttribute[] = []
+        const dynamicAttrsWithEffect: TemplateAttribute[] = [];
+        const dynamicAttrsWithoutEffect: TemplateAttribute[] = [];
+        const dynamicAttrsManagedBySelector: TemplateAttribute[] = [];
         for (const attribute of nodeContext.dynamicAttributes) {
             if (hasSelectorForAttribute(selectorInfos, nodeContext, attribute)) {
-                dynamicAttrsManagedBySelector.push(attribute)
-                continue
+                dynamicAttrsManagedBySelector.push(attribute);
+                continue;
             }
             if (
                 getParsedExpression(attribute)?.reactive &&
                 !equalsWithKeyDirectiveValue(nodeContext, attribute)
             ) {
-                dynamicAttrsWithEffect.push(attribute)
+                dynamicAttrsWithEffect.push(attribute);
             } else {
-                dynamicAttrsWithoutEffect.push(attribute)
+                dynamicAttrsWithoutEffect.push(attribute);
             }
         }
         if (!createRenderEffect) {
             for (const attribute of dynamicAttrsWithoutEffect) {
-                generateSetAttributeCall(attribute, true)
+                generateSetAttributeCall(attribute, true);
             }
             for (const attribute of dynamicAttrsManagedBySelector) {
-                generateSetAttributeCall(attribute, true)
+                generateSetAttributeCall(attribute, true);
             }
 
             // event handlers
             for (const event of nodeContext.eventListeners) {
-                const eventInfo = getParsedEventInfo(event)!
-                const wrapperFlag = eventInfo.wrapperFlag
-                const generalFlag = eventInfo.generalFlag
-                const wrapperFlagNames = wrapperFlag.items.map(item => item.name)
-                const generalFlagNames = generalFlag.items.map(item => item.name)
+                const eventInfo = getParsedEventInfo(event)!;
+                const wrapperFlag = eventInfo.wrapperFlag;
+                const generalFlag = eventInfo.generalFlag;
+                const wrapperFlagNames = wrapperFlag.items.map(item => item.name);
+                const generalFlagNames = generalFlag.items.map(item => item.name);
 
-                const expression = getParsedExpression(event)!
-                const baseName = eventInfo.eventName.slice(1)
-                const delegated = DELEGATABLE_EVENTS.has(baseName)
-                const stringifiedBaseName = getMaybeReusedString(baseName)
-                const stripedTypeExpressionNode = getStriptTypeOperationsNode(expression.node)
-                const insertInterpretiveComment = inputDescriptor.options.interpretiveComments
-                writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`)
-                writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ")
+                const expression = getParsedExpression(event)!;
+                const baseName = eventInfo.eventName.slice(1);
+                const delegated = DELEGATABLE_EVENTS.has(baseName);
+                const stringifiedBaseName = getMaybeReusedString(baseName);
+                const stripedTypeExpressionNode = getStriptTypeOperationsNode(expression.node);
+                const insertInterpretiveComment = inputDescriptor.options.interpretiveComments;
+                writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`);
+                writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ");
 
                 if (wrapperFlag.value) {
-                    writer.write(`${internalId}.createEventWrapper(`)
+                    writer.write(`${internalId}.createEventWrapper(`);
                 }
                 if (
                     !isInlineEventHandler(stripedTypeExpressionNode) &&
                     isSimpleHandlerReference(stripedTypeExpressionNode)
                 ) {
-                    writer.writeParsedExpression(event, false, true)
+                    writer.writeParsedExpression(event, false, true);
                 } else if (isFunctionLiteral(stripedTypeExpressionNode)) {
-                    writer.writeParsedExpression(event, false, true)
+                    writer.writeParsedExpression(event, false, true);
                 } else if (!isInlineEventHandler(stripedTypeExpressionNode)) {
-                    writer.write(`function ($arg){`).indent()
-                    writer.write(`${internalId}.call(`)
-                    writer.writeParsedExpression(event, false, true)
-                    writer.write(`, this, $arg)`)
-                    writer.dedent().write("}")
+                    writer.write(`function ($arg){`).indent();
+                    writer.write(`${internalId}.call(`);
+                    writer.writeParsedExpression(event, false, true);
+                    writer.write(`, this, $arg)`);
+                    writer.dedent().write("}");
                 } else {
-                    writer.write(`$arg => {`).indent()
-                    writer.writeParsedExpression(event, false, true)
-                    writer.dedent().write("}")
+                    writer.write(`$arg => {`).indent();
+                    writer.writeParsedExpression(event, false, true);
+                    writer.dedent().write("}");
                 }
                 if (wrapperFlag.value) {
                     if ((writer.write(", "), insertInterpretiveComment)) {
-                        writer.write(`/* ${wrapperFlagNames.join(" | ")} */ `)
+                        writer.write(`/* ${wrapperFlagNames.join(" | ")} */ `);
                     }
-                    writer.write(wrapperFlag.value.toString()).write(")")
+                    writer.write(wrapperFlag.value.toString()).write(")");
                 }
                 if (generalFlag.value) {
                     if ((writer.write(", "), insertInterpretiveComment)) {
-                        writer.write(`/* ${generalFlagNames.join("| ")} */ `)
+                        writer.write(`/* ${generalFlagNames.join("| ")} */ `);
                     }
-                    writer.write(generalFlag.value.toString())
+                    writer.write(generalFlag.value.toString());
                 }
-                writer.write(")")
+                writer.write(")");
             }
 
             // refernec attributes
             for (const attribute of nodeContext.referenceAttributes) {
                 const generateBindCall = (method: string, type: ReferenceBindingType) => {
-                    writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `)
+                    writer.wrapLine().write(`${internalId}.${method}(${nodeContext.id}, `);
 
                     if (type !== ReferenceBindingType.Setter) {
-                        writer.write(`${getterArgId} => (`)
-                        writer.writeParsedExpression(attribute).write(")")
+                        writer.write(`${getterArgId} => (`);
+                        writer.writeParsedExpression(attribute).write(")");
                     }
                     if (type === ReferenceBindingType.Both) {
-                        writer.write(", ")
+                        writer.write(", ");
                     }
                     if (type !== ReferenceBindingType.Getter) {
-                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute, true)
-                        writer.write(` = ${setterArgId}`).write(")")
+                        writer.write(`${setterArgId} => (`).writeParsedExpression(attribute, true);
+                        writer.write(` = ${setterArgId}`).write(")");
                     }
-                    writer.write(")")
-                }
+                    writer.write(")");
+                };
 
                 switch (attribute.name.raw) {
                     case "&number": {
-                        generateBindCall("bindInputNumber", ReferenceBindingType.Both)
-                        break
+                        generateBindCall("bindInputNumber", ReferenceBindingType.Both);
+                        break;
                     }
                     case "&checked": {
-                        generateBindCall("bindInputChecked", ReferenceBindingType.Both)
-                        break
+                        generateBindCall("bindInputChecked", ReferenceBindingType.Both);
+                        break;
                     }
                     case "&group": {
-                        generateBindCall("bindInputGroup", ReferenceBindingType.Getter)
-                        break
+                        generateBindCall("bindInputGroup", ReferenceBindingType.Getter);
+                        break;
                     }
                     case "&handle": {
-                        generateBindCall("bindHandleReceiver", ReferenceBindingType.Setter)
-                        break
+                        generateBindCall("bindHandleReceiver", ReferenceBindingType.Setter);
+                        break;
                     }
                     case "&value": {
                         if (node.tag !== "select") {
-                            generateBindCall("bindInputValue", ReferenceBindingType.Both)
+                            generateBindCall("bindInputValue", ReferenceBindingType.Both);
                         } else {
                             const multiple =
                                 nodeContext.attributesMap["multiple"] ||
-                                nodeContext.attributesMap["!multiple"]
+                                nodeContext.attributesMap["!multiple"];
                             generateBindCall(
                                 "bindSelectValue",
-                                multiple ? ReferenceBindingType.Getter : ReferenceBindingType.Both
-                            )
+                                multiple ? ReferenceBindingType.Getter : ReferenceBindingType.Both,
+                            );
                         }
-                        break
+                        break;
                     }
                 }
             }
 
             if (!textContentHasRenderEffect) {
-                writeSetTextCall(true)
+                writeSetTextCall(true);
             }
-            dfs()
+            dfs();
         }
 
         if (createRenderEffect) {
             for (const attribute of dynamicAttrsWithEffect) {
-                generateSetAttributeCall(attribute, false)
+                generateSetAttributeCall(attribute, false);
             }
             if (textContentHasRenderEffect) {
-                writeSetTextCall(false)
+                writeSetTextCall(false);
             }
-            dfs()
+            dfs();
         }
-    }
+    };
     for (let i = 0; i < 2; i++) {
-        generate(nodes, 0, !!i)
+        generate(nodes, 0, !!i);
     }
 
     if (withinRenderEffect) {
-        writer.dedent().write("})")
+        writer.dedent().write("})");
     }
 }
 
 function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
-    let needInsertComma = false
+    let needInsertComma = false;
 
-    const internalId = generateIdentifier.internal
-    const hasDefaultContent = !!nodeContext.fragment?.content.length
-    const slotName = nodeContext.attributesMap.name?.value.raw ?? "default"
+    const internalId = generateIdentifier.internal;
+    const hasDefaultContent = !!nodeContext.fragment?.content.length;
+    const slotName = nodeContext.attributesMap.name?.value.raw ?? "default";
 
     const insertTrailingComma = () => {
         if (needInsertComma) {
-            writer.writeLine(",")
+            writer.writeLine(",");
         }
-        return ((needInsertComma = true), writer)
-    }
+        return ((needInsertComma = true), writer);
+    };
 
-    writer.wrapLine().write(`${internalId}.renderSlot(`)
-    writer.write(`${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`)
+    writer.wrapLine().write(`${internalId}.renderSlot(`);
+    writer.write(`${getMaybeReusedString(slotName)}, ${nodeContext.anchorId}`);
 
     if (
         nodeContext.dynamicAttributes.length ||
         nodeContext.staticAttributes.some(attr => attr.name.raw !== "name")
     ) {
-        writer.writeLine(", {").indent()
+        writer.writeLine(", {").indent();
 
         for (const attribute of nodeContext.dynamicAttributes) {
-            const baseName = getAttributeBaseName(attribute.name.raw)
-            insertTrailingComma()
-            writeMetaKey(baseName, writer)
-            writer.write(": ").writeParsedExpression(attribute)
+            const baseName = getAttributeBaseName(attribute.name.raw);
+            insertTrailingComma();
+            writeMetaKey(baseName, writer);
+            writer.write(": ").writeParsedExpression(attribute);
         }
         for (const attribute of nodeContext.staticAttributes) {
-            const rawName = attribute.name.raw
+            const rawName = attribute.name.raw;
             if (rawName === "name") {
-                continue
+                continue;
             }
-            insertTrailingComma()
-            writeMetaKey(attribute.name.raw, writer).write(": ")
-            writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true")
+            insertTrailingComma();
+            writeMetaKey(attribute.name.raw, writer).write(": ");
+            writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true");
         }
-        writer.dedent().write("}")
+        writer.dedent().write("}");
     } else {
-        writer.write(`, ${internalId}.UNDEF`)
+        writer.write(`, ${internalId}.UNDEF`);
     }
 
     if (hasDefaultContent) {
-        writer.writeLine(", () => {").indent(false)
+        writer.writeLine(", () => {").indent(false);
     }
 
     return () => {
         if (hasDefaultContent) {
-            writer.dedent().write("}")
+            writer.dedent().write("}");
         }
-        writer.write(")")
-    }
+        writer.write(")");
+    };
 }
 
 function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
-    let needInsertComma = false
+    let needInsertComma = false;
 
-    const node = nodeContext.node
-    const parsedExpr = getParsedExpression(node)
-    const maybeDynamic = parsedExpr?.reactive
-    const internalId = generateIdentifier.internal
-    const componentId = generateIdentifier.component
-    const getterArgId = generateIdentifier.getterArg
-    const setterArgId = generateIdentifier.setterArg
-    const scopeDirective = nodeContext.attributesMap["#scope"]
-    const referenceHandleAttribute = nodeContext.attributesMap["&handle"]
-    const isE2eTesting = inputDescriptor.options.testing === TestingMode.E2e
-    const { topLevelIdentifiers, qkDefaultImportIdentifiers } = analyzeResult.script
+    const node = nodeContext.node;
+    const parsedExpr = getParsedExpression(node);
+    const maybeDynamic = parsedExpr?.reactive;
+    const internalId = generateIdentifier.internal;
+    const componentId = generateIdentifier.component;
+    const getterArgId = generateIdentifier.getterArg;
+    const setterArgId = generateIdentifier.setterArg;
+    const scopeDirective = nodeContext.attributesMap["#scope"];
+    const referenceHandleAttribute = nodeContext.attributesMap["&handle"];
+    const isE2eTesting = inputDescriptor.options.testing === TestingMode.E2e;
+    const { topLevelIdentifiers, qkDefaultImportIdentifiers } = analyzeResult.script;
 
     const hasSlots = node.children.some(child => {
-        return child.componentTag || getTemplateNodeContext(child).fragment!.content.length
-    })
+        return child.componentTag || getTemplateNodeContext(child).fragment!.content.length;
+    });
     const hasRefs = nodeContext.referenceAttributes.some(attr => {
-        return attr.name.raw !== "&handle"
-    })
-    const hasStaticAttrs = !!nodeContext.staticAttributes.length
-    const hasEventListeners = !!nodeContext.eventListeners.length
-    const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length
-    const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs
-    const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting))
+        return attr.name.raw !== "&handle";
+    });
+    const hasStaticAttrs = !!nodeContext.staticAttributes.length;
+    const hasEventListeners = !!nodeContext.eventListeners.length;
+    const hasDynamicAttrs = !!nodeContext.dynamicAttributes.length;
+    const hasProps = hasStaticAttrs || hasEventListeners || hasDynamicAttrs;
+    const hasScope = !!(scopeDirective && (inputDescriptor.styles.length || isE2eTesting));
 
     const hasMeta =
         hasSlots ||
@@ -760,91 +763,91 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
         hasRefs ||
         hasScope ||
         !node.hasActualAncestor ||
-        !!referenceHandleAttribute
+        !!referenceHandleAttribute;
 
     const isQkDirectComponent =
         parsedExpr &&
         ts.isIdentifier(parsedExpr.node) &&
         !topLevelIdentifiers[parsedExpr.node.text] &&
-        qkDefaultImportIdentifiers.has(parsedExpr.node.text)
+        qkDefaultImportIdentifiers.has(parsedExpr.node.text);
 
     const insertTrailingComma = () => {
         if (needInsertComma) {
-            writer.writeLine(",")
+            writer.writeLine(",");
         }
-        return ((needInsertComma = true), writer)
-    }
+        return ((needInsertComma = true), writer);
+    };
 
     if (maybeDynamic) {
-        writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`)
-        writer.writeParsedExpression(node).write(`), ${componentId} => {`).indent(false)
+        writer.wrapLine().write(`${internalId}.dynamicComponent(() => (`);
+        writer.writeParsedExpression(node).write(`), ${componentId} => {`).indent(false);
     }
     if (!isQkDirectComponent) {
-        writer.write(`\n${internalId}.renderComponent(`)
+        writer.write(`\n${internalId}.renderComponent(`);
 
         if (maybeDynamic) {
-            writer.write(`${componentId}, ${nodeContext.anchorId}`)
+            writer.write(`${componentId}, ${nodeContext.anchorId}`);
         } else {
-            writer.writeParsedExpression(node, false, true).write(`, ${nodeContext.anchorId}`)
+            writer.writeParsedExpression(node, false, true).write(`, ${nodeContext.anchorId}`);
         }
     } else {
         writer
             .write(`\n`)
             .writeParsedExpression(node, false, true)
-            .write(`(${nodeContext.anchorId}`)
+            .write(`(${nodeContext.anchorId}`);
     }
 
     if (hasMeta) {
-        writer.write(", {").indent()
+        writer.write(", {").indent();
     }
 
     if (hasProps) {
-        writer.write("p: {").indent()
+        writer.write("p: {").indent();
 
         for (const attribute of nodeContext.staticAttributes) {
-            const baseName = getAttributeBaseName(attribute.name.raw)
-            insertTrailingComma()
-            writeMetaKey(baseName, writer, true).write(": ")
+            const baseName = getAttributeBaseName(attribute.name.raw);
+            insertTrailingComma();
+            writeMetaKey(baseName, writer, true).write(": ");
 
             if (!attribute.equalSign) {
-                writer.write("true")
+                writer.write("true");
             } else {
                 writer.writeTemplateStr(
                     getMaybeReusedString(attribute.value.raw),
-                    attribute.value.loc
-                )
+                    attribute.value.loc,
+                );
             }
         }
         for (const event of nodeContext.eventListeners) {
-            const expression = getParsedExpression(event)!
-            const baseName = getParsedEventInfo(event)!.eventName.slice(1)
-            insertTrailingComma()
-            writeMetaKey(baseName, writer, true)
-            writer.write(": ").write(`${getterArgId} => (`)
+            const expression = getParsedExpression(event)!;
+            const baseName = getParsedEventInfo(event)!.eventName.slice(1);
+            insertTrailingComma();
+            writeMetaKey(baseName, writer, true);
+            writer.write(": ").write(`${getterArgId} => (`);
 
             if (isInlineEventHandler(expression.node)) {
-                writer.write(`$arg => {`).indent()
-                writer.writeParsedExpression(event, false, true)
-                writer.dedent().write("}")
+                writer.write(`$arg => {`).indent();
+                writer.writeParsedExpression(event, false, true);
+                writer.dedent().write("}");
             } else {
-                writer.writeParsedExpression(event, false, true)
+                writer.writeParsedExpression(event, false, true);
             }
-            writer.write(")")
+            writer.write(")");
         }
         for (const attribute of nodeContext.dynamicAttributes) {
-            const baseName = getAttributeBaseName(attribute.name.raw)
-            insertTrailingComma()
-            writeMetaKey(baseName, writer, true).write(": ")
-            writer.write(`${getterArgId} => (`).writeParsedExpression(attribute).write(")")
+            const baseName = getAttributeBaseName(attribute.name.raw);
+            insertTrailingComma();
+            writeMetaKey(baseName, writer, true).write(": ");
+            writer.write(`${getterArgId} => (`).writeParsedExpression(attribute).write(")");
         }
 
-        writer.dedent().write("}")
+        writer.dedent().write("}");
     }
 
     if (hasRefs && insertTrailingComma().write("r: {").indent()) {
         for (const attribute of nodeContext.referenceAttributes) {
             if (attribute.name.raw === "&handle") {
-                continue
+                continue;
             }
             if (
                 attribute !== nodeContext.referenceAttributes[0] &&
@@ -853,144 +856,144 @@ function generateComponentCall(writer: RuntimeCodeWriter, nodeContext: TemplateN
                     nodeContext.referenceAttributes[0].name.raw === "&handle"
                 )
             ) {
-                insertTrailingComma()
+                insertTrailingComma();
             }
-            writeMetaKey(getAttributeBaseName(attribute.name.raw), writer, true)
-            writer.write(": [").indent().write(`${getterArgId} => (`)
-            writeParsedExpression(writer, attribute, false)
-            writer.writeLine("),")
-            writer.write(`${setterArgId} => (`)
-            writer.writeParsedExpression(attribute, true)
-            writer.write(` = ${setterArgId})`).dedent().write("]")
+            writeMetaKey(getAttributeBaseName(attribute.name.raw), writer, true);
+            writer.write(": [").indent().write(`${getterArgId} => (`);
+            writeParsedExpression(writer, attribute, false);
+            writer.writeLine("),");
+            writer.write(`${setterArgId} => (`);
+            writer.writeParsedExpression(attribute, true);
+            writer.write(` = ${setterArgId})`).dedent().write("]");
         }
-        writer.dedent().write("}")
+        writer.dedent().write("}");
     }
 
     if (referenceHandleAttribute) {
-        insertTrailingComma().write(`h: ${setterArgId} => (`)
-        writer.writeParsedExpression(referenceHandleAttribute, true)
-        writer.write(` = ${setterArgId})`)
+        insertTrailingComma().write(`h: ${setterArgId} => (`);
+        writer.writeParsedExpression(referenceHandleAttribute, true);
+        writer.write(` = ${setterArgId})`);
     }
 
     if (hasSlots) {
-        insertTrailingComma().write("s: {").indent()
-        needInsertComma = false
+        insertTrailingComma().write("s: {").indent();
+        needInsertComma = false;
 
         for (const child of node.children) {
-            const childContext = getTemplateNodeContext(child)
+            const childContext = getTemplateNodeContext(child);
             if (!child.componentTag && !childContext.fragment!.content.length) {
-                continue
+                continue;
             }
 
-            const slotDirective = childContext.attributesMap["#slot"]
-            const expression = slotDirective && getParsedExpression(slotDirective)
-            const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"))
-            const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns
-            const slotName = expression ? (expression.node as TS.StringLiteral).text : "default"
-            insertTrailingComma()
-            writeMetaKey(slotName, writer, true).write(`: (${anchorId}`)
+            const slotDirective = childContext.attributesMap["#slot"];
+            const expression = slotDirective && getParsedExpression(slotDirective);
+            const anchorId = (childContext.anchorId = ensureIdWithNumSuffix("_anchor"));
+            const patterns = slotDirective && getParsedDirective(slotDirective)!.patterns;
+            const slotName = expression ? (expression.node as TS.StringLiteral).text : "default";
+            insertTrailingComma();
+            writeMetaKey(slotName, writer, true).write(`: (${anchorId}`);
 
             if (patterns?.length) {
-                writer.write(", ")
-                writeContextPatterns(writer, patterns)
+                writer.write(", ");
+                writeContextPatterns(writer, patterns);
             }
-            writer.write(") => {").indent(false)
-            generateTemplateRender(writer, [child], false, anchorId)
-            writer.dedent().write("}")
+            writer.write(") => {").indent(false);
+            generateTemplateRender(writer, [child], false, anchorId);
+            writer.dedent().write("}");
         }
-        writer.dedent().write("}")
+        writer.dedent().write("}");
     }
 
     if (hasScope) {
-        const scopeName = getMaybeReusedString(` qk-${inputDescriptor.options.hashId}`)
-        insertTrailingComma().write(`a: ${internalId}.getScopes(${scopeName})`)
+        const scopeName = getMaybeReusedString(` qk-${inputDescriptor.options.hashId}`);
+        insertTrailingComma().write(`a: ${internalId}.getScopes(${scopeName})`);
     } else if (!node.hasActualAncestor) {
-        insertTrailingComma().write(`a: ${internalId}.getScopes()`)
+        insertTrailingComma().write(`a: ${internalId}.getScopes()`);
     }
 
     if (hasMeta) {
-        writer.dedent().write("})")
+        writer.dedent().write("})");
     } else {
-        writer.write(`)`)
+        writer.write(`)`);
     }
 
     if (maybeDynamic) {
-        writer.dedent().write("})")
+        writer.dedent().write("})");
     }
 }
 
 function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateAttribute) {
-    const expectedContinuousDirective: string[] = []
+    const expectedContinuousDirective: string[] = [];
     switch (directive.name.raw) {
         case "#if":
         case "#elif": {
-            expectedContinuousDirective.push("#elif", "#else")
-            break
+            expectedContinuousDirective.push("#elif", "#else");
+            break;
         }
         case "#then":
         case "#await":
         case "#catch": {
-            expectedContinuousDirective.push("#then", "#catch")
-            break
+            expectedContinuousDirective.push("#then", "#catch");
+            break;
         }
         default: {
-            return false
+            return false;
         }
     }
 
-    const nextElementContext = getNextElementContent(node)
+    const nextElementContext = getNextElementContent(node);
     if (nextElementContext) {
         return expectedContinuousDirective.includes(
-            nextElementContext.sortedDirectives[0]?.name.raw
-        )
+            nextElementContext.sortedDirectives[0]?.name.raw,
+        );
     }
-    return false
+    return false;
 }
 
 function writeMetaKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
     if (toCamel) {
-        str = kebab2Camel(str)
+        str = kebab2Camel(str);
     }
 
-    const reusedStringInfo = analyzeResult.reusedStrings[str]
+    const reusedStringInfo = analyzeResult.reusedStrings[str];
     if (
         isValidIdentifierName(str) &&
         (str.length < 3 || !reusedStringInfo || reusedStringInfo.times < 2)
     ) {
-        return writer.write(str)
+        return writer.write(str);
     }
-    return writer.write(`[${getMaybeReusedString(str)}]`)
+    return writer.write(`[${getMaybeReusedString(str)}]`);
 }
 
 function doesTextContentHasRenderEffect(node: TemplateNode) {
     if (!node?.content?.length) {
-        return false
+        return false;
     }
 
     if (
         !node.content.some(part => {
-            return part.isInterpolated && getParsedExpression(part)?.reactive
+            return part.isInterpolated && getParsedExpression(part)?.reactive;
         })
     ) {
-        return false
+        return false;
     }
 
-    const validContentParts = getValidTextContentParts(node)
+    const validContentParts = getValidTextContentParts(node);
     return !(
         validContentParts.length === 1 &&
         validContentParts[0].isInterpolated &&
         equalsWithKeyDirectiveValue(getTemplateNodeContext(node), validContentParts[0])
-    )
+    );
 }
 
 function getActiveSelectorInfos(nodeContext: TemplateNodeContext) {
     for (let currentNode: TemplateNode | null = nodeContext.node; currentNode; ) {
-        const currentContext = getTemplateNodeContext(currentNode)
-        const selectorInfos = analyzeResult.template.keyedSelectorInfos.get(currentContext)
+        const currentContext = getTemplateNodeContext(currentNode);
+        const selectorInfos = analyzeResult.template.keyedSelectorInfos.get(currentContext);
         if (selectorInfos?.length) {
-            return selectorInfos
+            return selectorInfos;
         }
-        currentNode = currentNode.parent
+        currentNode = currentNode.parent;
     }
-    return []
+    return [];
 }

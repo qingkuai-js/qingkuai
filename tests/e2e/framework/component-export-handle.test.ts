@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -72,55 +72,55 @@ const scenario: E2EScenarioInput = {
                 <p id="child-count">Child count: {count}</p>
                 <button id="child-increase" @click={increase}>Increase inside child</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports invoking exported child API via parent handle", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#child-count")).toHaveText("Child count: 0")
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: none")
+        await expect(page.locator("#child-count")).toHaveText("Child count: 0");
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: none");
 
-        await page.locator("#btn-increase").click()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 1")
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
+        await page.locator("#btn-increase").click();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 1");
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
 
-        await page.locator("#btn-increase").click()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 2")
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 2")
+        await page.locator("#btn-increase").click();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 2");
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 2");
 
-        await page.locator("#btn-reset").click()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 0")
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
+        await page.locator("#btn-reset").click();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 0");
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0");
 
-        await page.locator("#child-increase").click()
-        await page.locator("#btn-read").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
-    })
+        await page.locator("#child-increase").click();
+        await page.locator("#btn-read").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
+    });
 
     test("clears handle on unmount and restores exported API after remount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#counter-export-panel")).toHaveCount(0)
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#counter-export-panel")).toHaveCount(0);
 
-        await page.locator("#btn-increase").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null-handle")
+        await page.locator("#btn-increase").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null-handle");
 
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#counter-export-panel")).toBeVisible()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 0")
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#counter-export-panel")).toBeVisible();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 0");
 
-        await page.locator("#btn-increase").click()
-        await expect(page.locator("#child-count")).toHaveText("Child count: 1")
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
-    })
-})
+        await page.locator("#btn-increase").click();
+        await expect(page.locator("#child-count")).toHaveText("Child count: 1");
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
+    });
+});

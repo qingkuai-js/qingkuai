@@ -1,16 +1,16 @@
-import { expect, test } from "vitest"
-import { formatSourceCode } from "../../../src/util/shared/sundry"
+import { expect, test } from "vitest";
+import { formatSourceCode } from "../../../src/util/shared/sundry";
 
 test("Function: formatSourceCode", () => {
-    expect(formatSourceCode("a\nb")).toBe("a\nb")
+    expect(formatSourceCode("a\nb")).toBe("a\nb");
 
     expect(
         formatSourceCode(`
 
             a
 
-        `)
-    ).toBe("a")
+        `),
+    ).toBe("a");
 
     expect(
         formatSourceCode(`
@@ -19,8 +19,8 @@ test("Function: formatSourceCode", () => {
             b
             c
 
-        `)
-    ).toBe("a\nb\nc")
+        `),
+    ).toBe("a\nb\nc");
 
     expect(
         formatSourceCode(`
@@ -29,8 +29,8 @@ test("Function: formatSourceCode", () => {
                     ...
                 </p>
             </div>
-        `)
-    ).toBe("<div>\n    <p>\n        ...\n    </p>\n</div>")
+        `),
+    ).toBe("<div>\n    <p>\n        ...\n    </p>\n</div>");
 
     expect(
         formatSourceCode(`
@@ -39,6 +39,6 @@ test("Function: formatSourceCode", () => {
 					xxx
 				</p>
 			</div>
-		`)
-    ).toBe("<div>\n\t<p>\n\t\txxx\n\t</p>\n</div>")
-})
+		`),
+    ).toBe("<div>\n\t<p>\n\t\txxx\n\t</p>\n</div>");
+});

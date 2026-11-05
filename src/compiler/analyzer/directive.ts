@@ -1,13 +1,13 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     TemplateNode,
     ParsedPattern,
     ParsedDirective,
-    TemplateAttribute
-} from "#type-declarations/compiler"
+    TemplateAttribute,
+} from "#type-declarations/compiler";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
 import {
     InvalidSlotName,
@@ -25,95 +25,99 @@ import {
     InvalidSlotDirectivePlacement,
     InvalidScopeDirectivePlacement,
     InvalidTargetDirectivePlacement,
-    HtmlDirectiveRequiresSingleTextChild
-} from "../message/error"
+    HtmlDirectiveRequiresSingleTextChild,
+} from "../message/error";
 import {
     getLocByIndex,
     getNonWhiteSpaceLocByLoc,
-    getNonWhitespaceLocByIndex
-} from "../../util/compiler/position"
+    getNonWhitespaceLocByIndex,
+} from "../../util/compiler/position";
 import {
     RedundantDirectiveValue,
     UnnecessaryHtmlDirective,
     UnnecessaryScopeDirective,
-    ScopeDirectiveHasActualAncestor
-} from "../message/warn"
-import { markNeedSourcemap } from "../ts-ast/sundry"
-import { parseContextPattern } from "../parser/script"
-import { analyzeInterpolation } from "./interpolation"
-import { isValidContextPattern } from "../ts-ast/assert"
-import { parseDirectiveValue } from "../parser/directive"
-import { analyzeResult, inputDescriptor } from "../state"
-import { ensureIdWithNumSuffix } from "../../util/compiler/sundry"
-import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk"
-import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants"
-import { TestingMode, AttributeValueEnclosure, HtmlDirectivePlacementKind } from "../enums"
-import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template"
-import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
+    ScopeDirectiveHasActualAncestor,
+} from "../message/warn";
+import { markNeedSourcemap } from "../ts-ast/sundry";
+import { parseContextPattern } from "../parser/script";
+import { analyzeInterpolation } from "./interpolation";
+import { isValidContextPattern } from "../ts-ast/assert";
+import { parseDirectiveValue } from "../parser/directive";
+import { analyzeResult, inputDescriptor } from "../state";
+import { ensureIdWithNumSuffix } from "../../util/compiler/sundry";
+import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk";
+import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants";
+import { TestingMode, AttributeValueEnclosure, HtmlDirectivePlacementKind } from "../enums";
+import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template";
+import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
-    let conflictingDirective: TemplateAttribute | undefined
+    let conflictingDirective: TemplateAttribute | undefined;
 
-    const nameLoc = directive.name.loc
-    const rawName = directive.name.raw
-    const rawValue = directive.value.raw
-    const nodeContext = getTemplateNodeContext(node)
-    const valueStartSourceIndex = directive.value.loc.start.index
+    const nameLoc = directive.name.loc;
+    const rawName = directive.name.raw;
+    const rawValue = directive.value.raw;
+    const nodeContext = getTemplateNodeContext(node);
+    const valueStartSourceIndex = directive.value.loc.start.index;
 
     const localAnalyzeInterpolation = (source: string, startSourceIndex: number) => {
-        return analyzeInterpolation(node, directive, source, startSourceIndex)
-    }
+        return analyzeInterpolation(node, directive, source, startSourceIndex);
+    };
 
     // 缺少指令值
     // Missing directive value.
     if (isRequiredValueDirective(rawName) && !directive.equalSign) {
-        MissingDirectiveValue(directive.loc, rawName)
+        MissingDirectiveValue(directive.loc, rawName);
     }
 
     // 未知指令
     // Unrecognized directives.
     if (!DIRECTIVE_LIST.has(rawName)) {
-        UnrecognizedDirective(nameLoc, rawName)
+        UnrecognizedDirective(nameLoc, rawName);
     }
 
     // 检查是否存在冲突的指令
     // Check for conflicting directives.
     if (CONFLICTING_DIRECTIVES_MAP[rawName]) {
         conflictingDirective = nodeContext.sortedDirectives.find(item => {
-            return CONFLICTING_DIRECTIVES_MAP[rawName].includes(item.name.raw)
-        })
+            return CONFLICTING_DIRECTIVES_MAP[rawName].includes(item.name.raw);
+        });
     }
     if (conflictingDirective) {
-        ConflictingDirectives(nameLoc, rawName, conflictingDirective.name.raw)
-        ConflictingDirectives(conflictingDirective.name.loc, rawName, conflictingDirective.name.raw)
+        ConflictingDirectives(nameLoc, rawName, conflictingDirective.name.raw);
+        ConflictingDirectives(
+            conflictingDirective.name.loc,
+            rawName,
+            conflictingDirective.name.raw,
+        );
     }
 
     switch (rawName) {
         case "#slot": {
             if (!node.parent || !node.parent.componentTag) {
-                InvalidSlotDirectivePlacement(nameLoc)
+                InvalidSlotDirectivePlacement(nameLoc);
             }
             if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
-                    parseDirectiveValue(directive)!
+                    parseDirectiveValue(directive)!;
                 const parsedDirective: ParsedDirective = {
                     src: {
                         directive,
-                        nodeContext
+                        nodeContext,
                     },
                     base,
                     keywordIndex,
                     patterns: [],
-                    baseStartSourceIndex
-                }
-                analyzeResult.template.parsedDirectives.set(directive, parsedDirective)
+                    baseStartSourceIndex,
+                };
+                analyzeResult.template.parsedDirectives.set(directive, parsedDirective);
 
                 // from 关键字后方的插槽名称必须是静态字符串字面量
                 // The slot name following the `from` keyword must be a static string literal.
                 if (!base.trim()) {
-                    ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex))
+                    ExpectedStringLiteral(getLocByIndex(baseStartSourceIndex));
                 } else {
-                    const expression = localAnalyzeInterpolation(base, baseStartSourceIndex)
+                    const expression = localAnalyzeInterpolation(base, baseStartSourceIndex);
                     if (
                         !expression ||
                         !(
@@ -121,177 +125,177 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                             ts.isNoSubstitutionTemplateLiteral(expression)
                         )
                     ) {
-                        ;(keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
+                        (keywordIndex === -1 ? ExpectedStringLiteral : InvalidSlotName)(
                             getNonWhitespaceLocByIndex(
                                 baseStartSourceIndex,
-                                baseStartSourceIndex + base.length
-                            )
-                        )
+                                baseStartSourceIndex + base.length,
+                            ),
+                        );
                     }
                 }
 
                 if (patterns.length > 1) {
                     const errorLoc = getNonWhitespaceLocByIndex(
                         valueStartSourceIndex,
-                        valueStartSourceIndex + keywordIndex
-                    )
-                    TooManyBindingPatterns(errorLoc, rawName, 1, patterns.length)
+                        valueStartSourceIndex + keywordIndex,
+                    );
+                    TooManyBindingPatterns(errorLoc, rawName, 1, patterns.length);
                 }
-                recordContextPatterns(parsedDirective, patterns)
+                recordContextPatterns(parsedDirective, patterns);
             }
-            return
+            return;
         }
 
         case "#for": {
             if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
-                    parseDirectiveValue(directive)!
+                    parseDirectiveValue(directive)!;
                 const parsedDirective: ParsedDirective = {
                     src: {
                         directive,
-                        nodeContext
+                        nodeContext,
                     },
                     context: {
                         returnsId: "",
-                        argId: ensureIdWithNumSuffix("_ctx")
+                        argId: ensureIdWithNumSuffix("_ctx"),
                     },
                     base,
                     keywordIndex,
                     patterns: [],
-                    baseStartSourceIndex
-                }
-                localAnalyzeInterpolation(base, baseStartSourceIndex)
-                analyzeResult.template.parsedDirectives.set(directive, parsedDirective)
+                    baseStartSourceIndex,
+                };
+                localAnalyzeInterpolation(base, baseStartSourceIndex);
+                analyzeResult.template.parsedDirectives.set(directive, parsedDirective);
 
                 if (patterns.length > 2) {
                     const errorLoc = getNonWhitespaceLocByIndex(
                         valueStartSourceIndex,
-                        valueStartSourceIndex + keywordIndex
-                    )
-                    TooManyBindingPatterns(errorLoc, rawName, 2, patterns.length)
+                        valueStartSourceIndex + keywordIndex,
+                    );
+                    TooManyBindingPatterns(errorLoc, rawName, 2, patterns.length);
                 }
-                recordContextPatterns(parsedDirective, patterns)
+                recordContextPatterns(parsedDirective, patterns);
             }
-            return
+            return;
         }
 
         case "#then":
         case "#catch": {
             if (!nodeContext.attributesMap["#await"]) {
-                let checkRes = false
-                let prevElementContext = getPrevElementContext(node)
+                let checkRes = false;
+                let prevElementContext = getPrevElementContext(node);
 
-                const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"]
-                const prevElementFirstDirective = prevElementContext?.sortedDirectives[0]
+                const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"];
+                const prevElementFirstDirective = prevElementContext?.sortedDirectives[0];
                 const extraMsg =
                     prevElementContext &&
                     prevElementContext.node.parent?.componentTag &&
                     prevElementFirstDirective?.name.raw !== "#slot"
                         ? ` Note that the preceding element has an implicit "#slot" directive.`
-                        : ""
+                        : "";
 
                 while (prevElementContext) {
                     if (prevElementContext.sortedDirectives[0]?.name.raw === "#await") {
                         if (prevElementContext.sortedDirectives[1]?.name.raw === rawName) {
-                            DuplicatePromiseBlockDirectives(directive.name.loc, rawName)
+                            DuplicatePromiseBlockDirectives(directive.name.loc, rawName);
                             DuplicatePromiseBlockDirectives(
                                 prevElementContext.sortedDirectives[1].name.loc,
-                                rawName
-                            )
+                                rawName,
+                            );
                         }
-                        checkRes = true
-                        break
+                        checkRes = true;
+                        break;
                     }
-                    prevElementContext = getPrevElementContext(prevElementContext.node)
+                    prevElementContext = getPrevElementContext(prevElementContext.node);
                 }
 
                 if (extraMsg || !checkRes) {
-                    MissingPrecedingDirective(directive.name.loc, rawName, expectedList, extraMsg)
+                    MissingPrecedingDirective(directive.name.loc, rawName, expectedList, extraMsg);
                 }
             }
 
             if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
-                const patterns: TS.ArrayBindingElement[] = []
-                const parseResult = parseContextPattern(rawValue, valueStartSourceIndex)
+                const patterns: TS.ArrayBindingElement[] = [];
+                const parseResult = parseContextPattern(rawValue, valueStartSourceIndex);
 
                 const reportInvalidPattern = (start: number, end: number) => {
-                    InvalidContextPattern(getNonWhitespaceLocByIndex(start, end))
-                }
+                    InvalidContextPattern(getNonWhitespaceLocByIndex(start, end));
+                };
 
                 if (!parseResult) {
                     reportInvalidPattern(
                         valueStartSourceIndex,
-                        valueStartSourceIndex + rawValue.length
-                    )
+                        valueStartSourceIndex + rawValue.length,
+                    );
                 } else {
                     for (const element of parseResult.elements) {
                         if (isValidContextPattern(element)) {
-                            patterns.push(element)
+                            patterns.push(element);
                         } else {
                             reportInvalidPattern(
                                 valueStartSourceIndex + element.getStart(),
-                                valueStartSourceIndex + element.getEnd()
-                            )
+                                valueStartSourceIndex + element.getEnd(),
+                            );
                         }
                     }
                 }
                 if (!patterns.length) {
-                    return
+                    return;
                 }
                 if (patterns.length > 1) {
                     TooManyBindingPatterns(
                         getNonWhiteSpaceLocByLoc(directive.value.loc),
                         rawName,
                         1,
-                        patterns.length
-                    )
+                        patterns.length,
+                    );
                 }
 
                 const parsedDirective: ParsedDirective = {
                     src: {
                         directive,
-                        nodeContext
+                        nodeContext,
                     },
                     base: "",
                     patterns: [],
                     keywordIndex: -1,
-                    baseStartSourceIndex: valueStartSourceIndex
-                }
-                recordContextPatterns(parsedDirective, patterns)
-                analyzeResult.template.parsedDirectives.set(directive, parsedDirective)
+                    baseStartSourceIndex: valueStartSourceIndex,
+                };
+                recordContextPatterns(parsedDirective, patterns);
+                analyzeResult.template.parsedDirectives.set(directive, parsedDirective);
             }
-            return
+            return;
         }
 
         case "#key": {
             if (!nodeContext.attributesMap["#for"]) {
-                InvalidKeyDirectivePlacement(nameLoc)
+                InvalidKeyDirectivePlacement(nameLoc);
             }
-            break
+            break;
         }
 
         case "#target": {
             if (node.parent && node.parent.componentTag) {
-                InvalidTargetDirectivePlacement(nameLoc)
+                InvalidTargetDirectivePlacement(nameLoc);
             }
-            break
+            break;
         }
 
         case "#scope": {
             if (directive.equalSign) {
-                RedundantDirectiveValue(directive.loc, rawName)
+                RedundantDirectiveValue(directive.loc, rawName);
             }
             if (!node.componentTag) {
-                InvalidScopeDirectivePlacement(nameLoc)
+                InvalidScopeDirectivePlacement(nameLoc);
             } else if (node.hasActualAncestor) {
-                ScopeDirectiveHasActualAncestor(nameLoc)
+                ScopeDirectiveHasActualAncestor(nameLoc);
             } else if (
                 !inputDescriptor.styles.length &&
                 inputDescriptor.options.testing !== TestingMode.E2e
             ) {
-                UnnecessaryScopeDirective(directive.loc)
+                UnnecessaryScopeDirective(directive.loc);
             }
-            break
+            break;
         }
 
         case "#html": {
@@ -300,82 +304,82 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     nameLoc,
                     node.componentTag
                         ? HtmlDirectivePlacementKind.Component
-                        : HtmlDirectivePlacementKind.Slot
-                )
+                        : HtmlDirectivePlacementKind.Slot,
+                );
             } else if (!(node.children.length === 1 && !node.children[0].tag)) {
-                HtmlDirectiveRequiresSingleTextChild(node.loc)
+                HtmlDirectiveRequiresSingleTextChild(node.loc);
             } else if (
                 !directive.value.raw &&
                 !node.children[0].content.some(item => item.isInterpolated)
             ) {
-                UnnecessaryHtmlDirective(directive.loc)
+                UnnecessaryHtmlDirective(directive.loc);
             }
-            break
+            break;
         }
 
         case "#else":
         case "#elif": {
             if (rawName === "#else" && directive.valueEnclosure !== AttributeValueEnclosure.None) {
-                RedundantDirectiveValue(directive.loc, rawName)
+                RedundantDirectiveValue(directive.loc, rawName);
             }
 
-            const expectedList = ["#if", "#elif"]
-            const prevElementContext = getPrevElementContext(node)
-            const prevElementFirstDirective = prevElementContext?.sortedDirectives[0]
+            const expectedList = ["#if", "#elif"];
+            const prevElementContext = getPrevElementContext(node);
+            const prevElementFirstDirective = prevElementContext?.sortedDirectives[0];
             const extraMsg =
                 prevElementContext &&
                 prevElementContext.node.parent?.componentTag &&
                 prevElementFirstDirective?.name.raw !== "#slot"
                     ? ` Note that the preceding element has an implicit "#slot" directive.`
-                    : ""
+                    : "";
             if (extraMsg || !expectedList.includes(prevElementFirstDirective?.name.raw ?? "")) {
-                MissingPrecedingDirective(nameLoc, rawName, expectedList, extraMsg)
+                MissingPrecedingDirective(nameLoc, rawName, expectedList, extraMsg);
             }
-            break
+            break;
         }
     }
 
     if (shouldAnalyzeAttributeValue(directive)) {
-        localAnalyzeInterpolation(rawValue, valueStartSourceIndex)
+        localAnalyzeInterpolation(rawValue, valueStartSourceIndex);
     }
 
     function recordContextPatterns(
         parsedDirective: ParsedDirective,
-        patternNodes: TS.ArrayBindingElement[]
+        patternNodes: TS.ArrayBindingElement[],
     ) {
         for (const patternNode of patternNodes) {
-            const validIdentifiers = new Set<string>()
+            const validIdentifiers = new Set<string>();
             const parsedPattern: ParsedPattern = {
                 node: patternNode,
                 directive: parsedDirective,
                 declaredIdentifiers: validIdentifiers,
-                sourceRange: [valueStartSourceIndex, valueStartSourceIndex]
-            }
-            parsedDirective.patterns.push(parsedPattern)
+                sourceRange: [valueStartSourceIndex, valueStartSourceIndex],
+            };
+            parsedDirective.patterns.push(parsedPattern);
 
             if (!ts.isOmittedExpression(patternNode)) {
                 if (inputDescriptor.options.sourcemap) {
                     walkTsNode(patternNode, node => {
-                        markNeedSourcemap(node, valueStartSourceIndex)
-                    })
+                        markNeedSourcemap(node, valueStartSourceIndex);
+                    });
                 }
                 parsedPattern.sourceRange = [
                     valueStartSourceIndex + patternNode.getStart(),
-                    valueStartSourceIndex + patternNode.getEnd()
-                ]
+                    valueStartSourceIndex + patternNode.getEnd(),
+                ];
                 walkBindingNameIdentifiers(patternNode.name, ({ text }) => {
-                    validIdentifiers.add(text)
-                    analyzeResult.script.fullIdentifiers.add(text)
-                    nodeContext.contextIdentifiers[text] = parsedDirective
-                })
+                    validIdentifiers.add(text);
+                    analyzeResult.script.fullIdentifiers.add(text);
+                    nodeContext.contextIdentifiers[text] = parsedDirective;
+                });
 
                 if (validIdentifiers.size === 0) {
                     EmptyContextPattern(
                         getNonWhitespaceLocByIndex(
                             valueStartSourceIndex + patternNode.getStart(),
-                            valueStartSourceIndex + patternNode.getEnd()
-                        )
-                    )
+                            valueStartSourceIndex + patternNode.getEnd(),
+                        ),
+                    );
                 }
             }
         }

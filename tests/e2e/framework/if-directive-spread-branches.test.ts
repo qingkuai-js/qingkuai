@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -41,22 +41,22 @@ const scenario: E2EScenarioInput = {
                 </qk:spread>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports qk spread if elif else branch switching", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#spread-branch-else")).toHaveText("Else branch")
+        await expect(page.locator("#spread-branch-else")).toHaveText("Else branch");
 
-        await page.locator("#cycle-spread-branch").click()
-        await expect(page.locator("#spread-branch-if")).toHaveText("If branch")
+        await page.locator("#cycle-spread-branch").click();
+        await expect(page.locator("#spread-branch-if")).toHaveText("If branch");
 
-        await page.locator("#cycle-spread-branch").click()
-        await expect(page.locator("#spread-branch-elif")).toHaveText("Elif branch")
+        await page.locator("#cycle-spread-branch").click();
+        await expect(page.locator("#spread-branch-elif")).toHaveText("Elif branch");
 
-        await page.locator("#cycle-spread-branch").click()
-        await expect(page.locator("#spread-branch-else")).toHaveText("Else branch")
-    })
-})
+        await page.locator("#cycle-spread-branch").click();
+        await expect(page.locator("#spread-branch-else")).toHaveText("Else branch");
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -86,28 +86,28 @@ const scenario: E2EScenarioInput = {
             <div id="footer-content" class="footer">
                 <p>© 2024 Async Footer Component</p>
             </div>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports async component rendering through named slots", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#header-loading")).toContainText("Loading header component...")
-        await expect(page.locator("#footer-loading")).toContainText("Loading footer component...")
-        await expect(page.locator("#header-content")).toHaveCount(0)
-        await expect(page.locator("#footer-content")).toHaveCount(0)
+        await expect(page.locator("#header-loading")).toContainText("Loading header component...");
+        await expect(page.locator("#footer-loading")).toContainText("Loading footer component...");
+        await expect(page.locator("#header-content")).toHaveCount(0);
+        await expect(page.locator("#footer-content")).toHaveCount(0);
 
-        await page.locator("#load-header").click()
-        await expect(page.locator("#header-content")).toBeVisible()
-        await expect(page.locator("#header-loading")).toHaveCount(0)
+        await page.locator("#load-header").click();
+        await expect(page.locator("#header-content")).toBeVisible();
+        await expect(page.locator("#header-loading")).toHaveCount(0);
 
-        await page.locator("#load-footer").click()
-        await expect(page.locator("#footer-content")).toBeVisible()
-        await expect(page.locator("#footer-loading")).toHaveCount(0)
-    })
-})
+        await page.locator("#load-footer").click();
+        await expect(page.locator("#footer-content")).toBeVisible();
+        await expect(page.locator("#footer-loading")).toHaveCount(0);
+    });
+});

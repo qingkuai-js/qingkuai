@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -25,31 +25,31 @@ const scenario: E2EScenarioInput = {
             <button id="switch-icon" @click={switchIcon}>Switch icon</button>
             <p id="state-href">Href: {iconHref}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("changes rendered geometry when xlink target switches", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         const bboxBefore = await page.locator("#icon-use").evaluate(node => {
-            const box = (node as SVGGraphicsElement).getBBox()
-            return { width: box.width, height: box.height }
-        })
-        expect(Math.round(bboxBefore.width)).toBe(8)
-        expect(Math.round(bboxBefore.height)).toBe(8)
+            const box = (node as SVGGraphicsElement).getBBox();
+            return { width: box.width, height: box.height };
+        });
+        expect(Math.round(bboxBefore.width)).toBe(8);
+        expect(Math.round(bboxBefore.height)).toBe(8);
 
-        await page.locator("#switch-icon").click()
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b")
+        await page.locator("#switch-icon").click();
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b");
 
         const bboxAfter = await page.locator("#icon-use").evaluate(node => {
-            const box = (node as SVGGraphicsElement).getBBox()
-            return { width: box.width, height: box.height }
-        })
-        expect(Math.round(bboxAfter.width)).toBe(34)
-        expect(Math.round(bboxAfter.height)).toBe(10)
-    })
-})
+            const box = (node as SVGGraphicsElement).getBBox();
+            return { width: box.width, height: box.height };
+        });
+        expect(Math.round(bboxAfter.width)).toBe(34);
+        expect(Math.round(bboxAfter.height)).toBe(10);
+    });
+});

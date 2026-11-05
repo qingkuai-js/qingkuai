@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -73,20 +73,20 @@ const scenario: E2EScenarioInput = {
             />
             <p id="counts">{tab}-{del}-{space}-{up}-{down}-{left}-{right}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("key aliases tab/delete/space/arrows all work", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#tab-input").press("Tab")
-        await page.locator("#delete-input").press("Delete")
-        await page.locator("#space-input").press("Space")
-        await page.locator("#up-input").press("ArrowUp")
-        await page.locator("#down-input").press("ArrowDown")
-        await page.locator("#left-input").press("ArrowLeft")
-        await page.locator("#right-input").press("ArrowRight")
-        await expect(page.locator("#counts")).toHaveText("1-1-1-1-1-1-1")
-    })
-})
+        await page.locator("#tab-input").press("Tab");
+        await page.locator("#delete-input").press("Delete");
+        await page.locator("#space-input").press("Space");
+        await page.locator("#up-input").press("ArrowUp");
+        await page.locator("#down-input").press("ArrowDown");
+        await page.locator("#left-input").press("ArrowLeft");
+        await page.locator("#right-input").press("ArrowRight");
+        await expect(page.locator("#counts")).toHaveText("1-1-1-1-1-1-1");
+    });
+});

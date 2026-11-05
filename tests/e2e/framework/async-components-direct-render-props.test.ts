@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -53,29 +53,29 @@ const scenario: E2EScenarioInput = {
                 <p class="card-count">Count: {count}</p>
                 <button class="card-emit" @click={emitSaved}>Emit saved</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("async component receives props, emits events and binds handle", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator(".card-title")).toHaveText("Title: Hello")
-        await expect(page.locator(".card-count")).toHaveText("Count: 0")
-        await expect(page.locator("#handle-count")).toHaveText("Handle: 0")
+        await visitScenario(scenario);
+        await expect(page.locator(".card-title")).toHaveText("Title: Hello");
+        await expect(page.locator(".card-count")).toHaveText("Count: 0");
+        await expect(page.locator("#handle-count")).toHaveText("Handle: 0");
 
         // 组件内触发事件回调 → 父 total 更新
         // Trigger event callback inside the component → parent total updates
-        await page.locator(".card-emit").click()
-        await expect(page.locator("#total")).toHaveText("Total: 1")
+        await page.locator(".card-emit").click();
+        await expect(page.locator("#total")).toHaveText("Total: 1");
 
         // 通过 &handle 调用组件导出方法
         // Call component exported method via &handle
-        await page.locator("#btn-bump").click()
-        await expect(page.locator(".card-count")).toHaveText("Count: 1")
-        await expect(page.locator("#handle-count")).toHaveText("Handle: 1")
-    })
-})
+        await page.locator("#btn-bump").click();
+        await expect(page.locator(".card-count")).toHaveText("Count: 1");
+        await expect(page.locator("#handle-count")).toHaveText("Handle: 1");
+    });
+});

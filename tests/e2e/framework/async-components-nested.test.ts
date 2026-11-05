@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -71,28 +71,28 @@ const scenario: E2EScenarioInput = {
             <div id="child-content" class="child">
                 <p>Child Component</p>
             </div>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports nested async component loading", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#parent-loading")).toContainText("Loading parent component...")
-        await expect(page.locator("#parent-content")).toHaveCount(0)
+        await expect(page.locator("#parent-loading")).toContainText("Loading parent component...");
+        await expect(page.locator("#parent-content")).toHaveCount(0);
 
-        await page.locator("#load-parent").click()
-        await expect(page.locator("#parent-content")).toBeVisible()
-        await expect(page.locator("#parent-loading")).toHaveCount(0)
+        await page.locator("#load-parent").click();
+        await expect(page.locator("#parent-content")).toBeVisible();
+        await expect(page.locator("#parent-loading")).toHaveCount(0);
 
         await expect(page.locator("#child-loading")).toContainText(
-            "Loading child component in slot..."
-        )
-        await expect(page.locator("#child-content")).toHaveCount(0)
+            "Loading child component in slot...",
+        );
+        await expect(page.locator("#child-content")).toHaveCount(0);
 
-        await page.locator("#load-child").click()
-        await expect(page.locator("#child-content")).toBeVisible()
-        await expect(page.locator("#child-loading")).toHaveCount(0)
-    })
-})
+        await page.locator("#load-child").click();
+        await expect(page.locator("#child-content")).toBeVisible();
+        await expect(page.locator("#child-loading")).toHaveCount(0);
+    });
+});

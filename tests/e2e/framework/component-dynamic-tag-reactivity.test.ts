@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -79,101 +79,101 @@ const scenario: E2EScenarioInput = {
                 <p class="value">Value: {value}</p>
                 <p class="count">Count: {props.count}</p>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("updates identifier component tag when expression changes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#counter-view")).toBeVisible()
-        await expect(page.locator("#badge-view")).toHaveCount(0)
-        await expect(page.locator("#counter-view .count")).toHaveText("Count: 0")
+        await expect(page.locator("#counter-view")).toBeVisible();
+        await expect(page.locator("#badge-view")).toHaveCount(0);
+        await expect(page.locator("#counter-view .count")).toHaveText("Count: 0");
 
-        await page.locator("#switch-identifier").click()
-        await expect(page.locator("#badge-view")).toBeVisible()
-        await expect(page.locator("#counter-view")).toHaveCount(0)
+        await page.locator("#switch-identifier").click();
+        await expect(page.locator("#badge-view")).toBeVisible();
+        await expect(page.locator("#counter-view")).toHaveCount(0);
 
-        await page.locator("#increase-parent").click()
-        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1")
-        await expect(page.locator("#badge-view .count")).toHaveText("Count: 1")
+        await page.locator("#increase-parent").click();
+        await expect(page.locator("#parent-count")).toHaveText("Parent count: 1");
+        await expect(page.locator("#badge-view .count")).toHaveText("Count: 1");
 
-        await page.locator("#switch-identifier").click()
-        await expect(page.locator("#counter-view")).toBeVisible()
-        await expect(page.locator("#badge-view")).toHaveCount(0)
-        await expect(page.locator("#counter-view .count")).toHaveText("Count: 1")
-    })
+        await page.locator("#switch-identifier").click();
+        await expect(page.locator("#counter-view")).toBeVisible();
+        await expect(page.locator("#badge-view")).toHaveCount(0);
+        await expect(page.locator("#counter-view .count")).toHaveText("Count: 1");
+    });
 
     test("rebinds exported handle to latest dynamic component instance", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#snapshot-handle").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
+        await page.locator("#snapshot-handle").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0");
 
-        await page.locator("#ping-handle").click()
-        await expect(page.locator("#counter-view .value")).toHaveText("Value: 1")
-        await page.locator("#snapshot-handle").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
+        await page.locator("#ping-handle").click();
+        await expect(page.locator("#counter-view .value")).toHaveText("Value: 1");
+        await page.locator("#snapshot-handle").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
 
-        await page.locator("#switch-identifier").click()
-        await expect(page.locator("#badge-view")).toBeVisible()
+        await page.locator("#switch-identifier").click();
+        await expect(page.locator("#badge-view")).toBeVisible();
 
-        await page.locator("#snapshot-handle").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 10")
+        await page.locator("#snapshot-handle").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 10");
 
-        await page.locator("#ping-handle").click()
-        await expect(page.locator("#badge-view .value")).toHaveText("Value: 12")
-        await page.locator("#snapshot-handle").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 12")
+        await page.locator("#ping-handle").click();
+        await expect(page.locator("#badge-view .value")).toHaveText("Value: 12");
+        await page.locator("#snapshot-handle").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 12");
 
-        await page.locator("#switch-identifier").click()
-        await expect(page.locator("#counter-view")).toBeVisible()
-        await page.locator("#snapshot-handle").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
-    })
+        await page.locator("#switch-identifier").click();
+        await expect(page.locator("#counter-view")).toBeVisible();
+        await page.locator("#snapshot-handle").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0");
+    });
 
     test("keeps handle isolated after high-frequency dynamic switches", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const switchButton = page.locator("#switch-identifier")
-        const pingButton = page.locator("#ping-handle")
-        const snapshotButton = page.locator("#snapshot-handle")
-        const snapshot = page.locator("#snapshot")
-        const counterValue = page.locator("#counter-view .value")
-        const badgeValue = page.locator("#badge-view .value")
+        const switchButton = page.locator("#switch-identifier");
+        const pingButton = page.locator("#ping-handle");
+        const snapshotButton = page.locator("#snapshot-handle");
+        const snapshot = page.locator("#snapshot");
+        const counterValue = page.locator("#counter-view .value");
+        const badgeValue = page.locator("#badge-view .value");
 
         for (let i = 0; i < 20; i++) {
-            await switchButton.click()
+            await switchButton.click();
 
             if (i % 2 === 0) {
-                await expect(page.locator("#badge-view")).toBeVisible()
-                await expect(page.locator("#counter-view")).toHaveCount(0)
+                await expect(page.locator("#badge-view")).toBeVisible();
+                await expect(page.locator("#counter-view")).toHaveCount(0);
 
-                await pingButton.click()
-                await expect(badgeValue).toHaveText("Value: 12")
+                await pingButton.click();
+                await expect(badgeValue).toHaveText("Value: 12");
 
-                await snapshotButton.click()
-                await expect(snapshot).toHaveText("Snapshot: 12")
+                await snapshotButton.click();
+                await expect(snapshot).toHaveText("Snapshot: 12");
             } else {
-                await expect(page.locator("#counter-view")).toBeVisible()
-                await expect(page.locator("#badge-view")).toHaveCount(0)
+                await expect(page.locator("#counter-view")).toBeVisible();
+                await expect(page.locator("#badge-view")).toHaveCount(0);
 
-                await pingButton.click()
-                await expect(counterValue).toHaveText("Value: 1")
+                await pingButton.click();
+                await expect(counterValue).toHaveText("Value: 1");
 
-                await snapshotButton.click()
-                await expect(snapshot).toHaveText("Snapshot: 1")
+                await snapshotButton.click();
+                await expect(snapshot).toHaveText("Snapshot: 1");
             }
         }
-    })
-})
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -43,31 +43,31 @@ const scenario: E2EScenarioInput = {
                 </p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("handles promise cancellation by replacing with new promise", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#timeout-pending")).toHaveText("Waiting (may timeout)...")
-        await expect(page.locator("#timeout-resolved")).toHaveCount(0)
+        await expect(page.locator("#timeout-pending")).toHaveText("Waiting (may timeout)...");
+        await expect(page.locator("#timeout-resolved")).toHaveCount(0);
 
-        await page.locator("#use-fast").click()
-        await expect(page.locator("#timeout-resolved")).toHaveText("Success: fast done")
-        await expect(page.locator("#timeout-pending")).toHaveCount(0)
-    })
+        await page.locator("#use-fast").click();
+        await expect(page.locator("#timeout-resolved")).toHaveText("Success: fast done");
+        await expect(page.locator("#timeout-pending")).toHaveCount(0);
+    });
 
     test("handles promise replacement with rejection", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#timeout-pending")).toHaveText("Waiting (may timeout)...")
+        await expect(page.locator("#timeout-pending")).toHaveText("Waiting (may timeout)...");
 
-        await page.locator("#trigger-timeout").click()
-        await expect(page.locator("#timeout-error")).toContainText("Failed: timeout")
-        await expect(page.locator("#timeout-pending")).toHaveCount(0)
-    })
-})
+        await page.locator("#trigger-timeout").click();
+        await expect(page.locator("#timeout-error")).toContainText("Failed: timeout");
+        await expect(page.locator("#timeout-pending")).toHaveCount(0);
+    });
+});

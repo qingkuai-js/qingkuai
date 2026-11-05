@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -45,23 +45,23 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        AsyncOne: `<article id="async-one">Async One</article>`
-    }
-}
+        AsyncOne: `<article id="async-one">Async One</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("recovers from real dynamic import failure", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#load-missing").click()
-        await expect(page.locator("#async-error")).toContainText("Failed:")
+        await page.locator("#load-missing").click();
+        await expect(page.locator("#async-error")).toContainText("Failed:");
 
-        await page.locator("#load-one").click()
-        await expect(page.locator("#async-loading")).toHaveText("Loading...")
-        await expect(page.locator("#async-error")).toHaveCount(0)
+        await page.locator("#load-one").click();
+        await expect(page.locator("#async-loading")).toHaveText("Loading...");
+        await expect(page.locator("#async-error")).toHaveCount(0);
 
-        await page.locator("#finish-one").click()
-        await expect(page.locator("#async-one")).toHaveText("Async One")
-        await expect(page.locator("#async-loading")).toHaveCount(0)
-    })
-})
+        await page.locator("#finish-one").click();
+        await expect(page.locator("#async-one")).toHaveText("Async One");
+        await expect(page.locator("#async-loading")).toHaveCount(0);
+    });
+});

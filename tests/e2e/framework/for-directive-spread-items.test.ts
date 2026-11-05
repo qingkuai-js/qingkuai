@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -30,22 +30,22 @@ const scenario: E2EScenarioInput = {
                 </qk:spread>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports for on qk spread with multi-child rendering", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#for-spread-host .for-spread-label")).toHaveText([
             "Spread A",
-            "Spread B"
-        ])
+            "Spread B",
+        ]);
 
-        await page.locator("#for-toggle-spread").click()
-        await expect(page.locator("#for-spread-host .for-spread-label")).toHaveText(["Spread C"])
-    })
-})
+        await page.locator("#for-toggle-spread").click();
+        await expect(page.locator("#for-spread-host .for-spread-label")).toHaveText(["Spread C"]);
+    });
+});

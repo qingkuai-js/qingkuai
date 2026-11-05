@@ -1,9 +1,9 @@
-import { describe, it } from "vitest"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
-import { matchTransformedScript as _matchTransformedScript } from "./_match"
+import { describe, it } from "vitest";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
+import { matchTransformedScript as _matchTransformedScript } from "./_match";
 
 describe("Production", () => {
-    const matchTransformedScript = _matchTransformedScript
+    const matchTransformedScript = _matchTransformedScript;
 
     describe("Marking", () => {
         it("should wrap the argument as a getter", () => {
@@ -25,9 +25,9 @@ describe("Production", () => {
                     const b = (_.derived satisfies any)?.(() => (count++))
                     const c = _.derived!<number[]>(() => (arr.concat([1, 2, 3])))
                     console.log(a.$, b.$, c.$)
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         it("should not wrap the argument as a getter", () => {
             matchTransformedScript(
@@ -56,10 +56,10 @@ describe("Production", () => {
                         return arr.concat([1, 2, 3])
                     })
                     console.log(a.$, b.$, c.$)
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Shorthand", () => {
         it("should not treat identifiers prefixed with $ as derived reactive values", () => {
@@ -81,10 +81,10 @@ describe("Production", () => {
                     const $b = count + 1
                     const $c = outter?.inner
                     console.log($a, $b, $c)
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Propagation", () => {
         it("should promote mutated sources of template-accessed derivedExp", () => {
@@ -106,9 +106,9 @@ describe("Production", () => {
                         count.$ = v
                     }
                     const double = _.derived(() => (count.$ * 2))
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         it("should promote mutated sources read inside nested callbacks of derivedExp", () => {
             matchTransformedScript(
@@ -129,9 +129,9 @@ describe("Production", () => {
                         count.$ = v
                     }
                     const double = _.derived(() => ([1, 2, 3].filter(i => i < count.$).length))
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         it("should promote mutated sources of template-accessed derived getters", () => {
             matchTransformedScript(
@@ -156,9 +156,9 @@ describe("Production", () => {
                     const double = _.derived(() => {
                         return count.$ * 2
                     })
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         it("should not promote sources when the derived value is not accessed in template", () => {
             matchTransformedScript(
@@ -179,10 +179,10 @@ describe("Production", () => {
                         count = v
                     }
                     const double = _.derived(() => (count * 2))
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Destructuring", () => {
         it("should transform destructuring derived declaration into destructuringDerived", () => {
@@ -202,18 +202,18 @@ describe("Production", () => {
                     const [code, msg] = _.destructuringDerived(({ code, msg }) => [code, msg], () => src, 2)
                     const [first, second] = _.destructuringDerived(([first, second]) => [first, second], () => list, 2)
                     console.log(code.$, msg.$, first.$, second.$)
-                `)
-            )
-        })
-    })
-})
+                `),
+            );
+        });
+    });
+});
 
 describe("Development", () => {
     const matchTransformedScript = (source: string, expected: string) => {
         return _matchTransformedScript(source, expected, {
-            debug: true
-        })
-    }
+            debug: true,
+        });
+    };
 
     describe("Marking", () => {
         it("should wrap the argument as a getter", () => {
@@ -238,9 +238,9 @@ describe("Development", () => {
                     let [_b, b] = (_.derived satisfies any)?.(() => (count++), _S2)
                     let [_c, c] = _.derived!<number[]>(() => (arr.concat([1, 2, 3])), _S3)
                     console.log(_a.$, _b.$, _c.$)
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         it("should not wrap the argument as a getter", () => {
             matchTransformedScript(
@@ -272,10 +272,10 @@ describe("Development", () => {
                         return arr.concat([1, 2, 3])
                     }, _S3)
                     console.log(_a.$, _b.$, _c.$)
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Shorthand", () => {
         it("should not treat identifiers prefixed with $ as derived reactive values", () => {
@@ -297,10 +297,10 @@ describe("Development", () => {
                     const $b = count + 1
                     const $c = outter?.inner
                     console.log($a, $b, $c)
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Destructuring", () => {
         it("should transform destructuring derived declaration into destructuringDerived with debug setters", () => {
@@ -318,11 +318,11 @@ describe("Development", () => {
                     let src = { code: 1, msg: "ok" }
                     let [[_code, code], [_msg, msg]]= _.destructuringDerived(({ code, msg }) => [code, msg], () => src, 2, [_S1, _S2])
                     console.log(_code.$, _msg.$)
-                `)
-            )
-        })
-    })
-})
+                `),
+            );
+        });
+    });
+});
 
 it("should never transform the identifiers prefixed with $ as derived reactive values", () => {
     for (let i = 0; i < 2; i++) {
@@ -336,8 +336,8 @@ it("should never transform the identifiers prefixed with $ as derived reactive v
                 const $a = obj
             `),
             {
-                debug: !!i
-            }
-        )
+                debug: !!i,
+            },
+        );
     }
-})
+});

@@ -1,27 +1,30 @@
-import type { StandaloneParseTemplateOptions, TemplateNode } from "#type-declarations/compiler"
+import type { StandaloneParseTemplateOptions, TemplateNode } from "#type-declarations/compiler";
 
-import { inputDescriptor } from "../state"
-import { isEmptyString } from "../../util/shared/assert"
-import { templateConditionalCommentRE } from "../regular"
-import { BLOCK_TAGS, DISALLOWED_TAGS } from "../constants"
-import { isBlankTextNode } from "../../util/compiler/assert"
-import { InvalidTemplateStructure, UsedDisallowedTag } from "../message/error"
-import { getParentTag, getStartTagOpenLoc } from "../../util/compiler/template"
+import { inputDescriptor } from "../state";
+import { isEmptyString } from "../../util/shared/assert";
+import { templateConditionalCommentRE } from "../regular";
+import { BLOCK_TAGS, DISALLOWED_TAGS } from "../constants";
+import { isBlankTextNode } from "../../util/compiler/assert";
+import { InvalidTemplateStructure, UsedDisallowedTag } from "../message/error";
+import { getParentTag, getStartTagOpenLoc } from "../../util/compiler/template";
 
-export function filterTemplateNodes(node: TemplateNode, options: StandaloneParseTemplateOptions): boolean {
+export function filterTemplateNodes(
+    node: TemplateNode,
+    options: StandaloneParseTemplateOptions,
+): boolean {
     if (!options.preserveBlankTextNodes && isBlankTextNode(node)) {
-        return false
+        return false;
     }
     if (DISALLOWED_TAGS.has(node.tag)) {
-        return (UsedDisallowedTag(getStartTagOpenLoc(node), node.tag), false)
+        return (UsedDisallowedTag(getStartTagOpenLoc(node), node.tag), false);
     }
     if (node.tag === "!") {
         return (
             inputDescriptor.options.preserveHtmlComments ||
             templateConditionalCommentRE.test(node.children[0]?.content[0]?.value ?? "")
-        )
+        );
     }
-    return !options.checkTemplateStructure || shouldNodeBePreserved(node)
+    return !options.checkTemplateStructure || shouldNodeBePreserved(node);
 }
 
 // 检查节点是否应该被保留：有些不符合 HTML 规范的标签嵌套可能会被修复，导致渲染出的 DOM 结构与预期不符
@@ -32,45 +35,45 @@ export function filterTemplateNodes(node: TemplateNode, options: StandaloneParse
 // For example: a <tbody> tag not wrapped in a <table> may have a parent node automatically
 // created by the browser client, or the tag may be removed altogether.
 function shouldNodeBePreserved(node: TemplateNode): boolean {
-    let arcn = node // Ancestor Rules Check Node
+    let arcn = node; // Ancestor Rules Check Node
 
-    const tag = node.tag
-    const parentTag = getParentTag(node) || ""
-    const startTagOpenLoc = getStartTagOpenLoc(node)
+    const tag = node.tag;
+    const parentTag = getParentTag(node) || "";
+    const startTagOpenLoc = getStartTagOpenLoc(node);
 
     const invalidTags = (() => {
         switch (parentTag) {
             case "li": {
-                return ["li"]
+                return ["li"];
             }
             case "td":
             case "th": {
-                return ["td", "th"]
+                return ["td", "th"];
             }
         }
-    })()
+    })();
 
     const expectedParentTags = (() => {
         switch (tag) {
             case "td":
             case "th": {
-                return ["tr"]
+                return ["tr"];
             }
             case "thead":
             case "tbody":
             case "tfoot":
             case "caption":
             case "colgroup": {
-                return ["table"]
+                return ["table"];
             }
             case "col": {
-                return ["colgroup"]
+                return ["colgroup"];
             }
             case "tr": {
-                return ["thead", "tbody", "tfoot"]
+                return ["thead", "tbody", "tfoot"];
             }
         }
-    })()
+    })();
 
     const expectedTags = (() => {
         switch (parentTag) {
@@ -83,31 +86,31 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
                     "tfoot",
                     "style",
                     "script",
-                    "template"
-                ]
+                    "template",
+                ];
             }
             case "option": {
-                return [""]
+                return [""];
             }
             case "optgroup": {
-                return ["option"]
+                return ["option"];
             }
             case "colgroup": {
-                return ["col", "template"]
+                return ["col", "template"];
             }
             case "thead":
             case "tbody":
             case "tfoot": {
-                return ["tr", "style", "script", "template"]
+                return ["tr", "style", "script", "template"];
             }
             case "tr": {
-                return ["th", "td", "style", "script", "template"]
+                return ["th", "td", "style", "script", "template"];
             }
             case "select": {
-                return ["", "option", "optgroup", "hr", "script", "template"]
+                return ["", "option", "optgroup", "hr", "script", "template"];
             }
         }
-    })()
+    })();
 
     // 当前节点的祖先标签规则：
     // 第一个数组表示：如果节点的某个祖先标签包含在其中，则应从解析结果中移除此节点；
@@ -122,15 +125,15 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
             case "a":
             case "form":
             case "button": {
-                return [[tag]]
+                return [[tag]];
             }
             case "rt":
             case "rp": {
-                return [["rt", "rp"]]
+                return [["rt", "rp"]];
             }
             case "dt":
             case "dd": {
-                return [["dt", "dd"], ["dl"]]
+                return [["dt", "dd"], ["dl"]];
             }
             case "h1":
             case "h2":
@@ -138,27 +141,27 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
             case "h4":
             case "h5":
             case "h6": {
-                return [["h1", "h2", "h3", "h4", "h5", "h6"]]
+                return [["h1", "h2", "h3", "h4", "h5", "h6"]];
             }
             default: {
-                return BLOCK_TAGS.has(tag) ? [["p"]] : void 0
+                return BLOCK_TAGS.has(tag) ? [["p"]] : void 0;
             }
         }
-    })()
+    })();
 
     if (ancestorRules) {
         while (arcn.parent) {
             if (ancestorRules[1]?.includes(arcn.parent.tag)) {
-                break
+                break;
             }
             if (ancestorRules[0].includes(arcn.parent.tag)) {
                 InvalidTemplateStructure(
                     startTagOpenLoc,
-                    `the <${tag}> tag cannot be descendant of <${arcn.parent.tag}>`
-                )
-                return false
+                    `the <${tag}> tag cannot be descendant of <${arcn.parent.tag}>`,
+                );
+                return false;
             }
-            arcn = arcn.parent
+            arcn = arcn.parent;
         }
     }
     if (
@@ -166,27 +169,27 @@ function shouldNodeBePreserved(node: TemplateNode): boolean {
         (expectedParentTags && !expectedParentTags.includes(parentTag)) ||
         (expectedTags && !expectedTags.includes(tag) && !isBlankTextNode(node))
     ) {
-        let msg = `the <${tag}> tag cannot be nested in <${parentTag}>`
+        let msg = `the <${tag}> tag cannot be nested in <${parentTag}>`;
         if (expectedParentTags) {
             msg += expectedParentTags.reduce(
                 (ret, cur, index) => {
                     if (isEmptyString(cur)) {
-                        cur = "#text"
+                        cur = "#text";
                     } else {
-                        cur = `<${cur}>`
+                        cur = `<${cur}>`;
                     }
                     if (expectedParentTags.length === 1) {
-                        return ret + cur
+                        return ret + cur;
                     }
                     if (index === expectedParentTags.length - 1) {
-                        return `${ret} or ${cur}`
+                        return `${ret} or ${cur}`;
                     }
-                    return `${ret}${index ? ", " : ""}${cur}`
+                    return `${ret}${index ? ", " : ""}${cur}`;
                 },
-                `, it can only be nested in ${expectedParentTags.length === 1 ? "" : "these tags: "}`
-            )
+                `, it can only be nested in ${expectedParentTags.length === 1 ? "" : "these tags: "}`,
+            );
         }
-        return (InvalidTemplateStructure(startTagOpenLoc, msg), false)
+        return (InvalidTemplateStructure(startTagOpenLoc, msg), false);
     }
-    return true
+    return true;
 }

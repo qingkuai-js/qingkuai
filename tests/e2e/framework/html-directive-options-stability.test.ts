@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -24,33 +24,33 @@ const scenario: E2EScenarioInput = {
             <button id="new-options-clone" @click={useEquivalentNewOptions}>New options clone</button>
             <div id="html-host" #html={htmlOptions}>{rawHtml}</div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("keeps html subtree when options reference stays unchanged", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const input = page.locator("#html-stable-input")
-        await input.fill("typed-value")
+        const input = page.locator("#html-stable-input");
+        await input.fill("typed-value");
 
-        await page.locator("#reuse-same-options").click()
-        await expect(input).toHaveValue("typed-value")
-    })
+        await page.locator("#reuse-same-options").click();
+        await expect(input).toHaveValue("typed-value");
+    });
 
     test("recreates html subtree when options reference changes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const input = page.locator("#html-stable-input")
-        await input.fill("typed-value")
+        const input = page.locator("#html-stable-input");
+        await input.fill("typed-value");
 
-        await page.locator("#new-options-clone").click()
-        await expect(page.locator("#html-stable-input")).toHaveValue("")
-    })
-})
+        await page.locator("#new-options-clone").click();
+        await expect(page.locator("#html-stable-input")).toHaveValue("");
+    });
+});

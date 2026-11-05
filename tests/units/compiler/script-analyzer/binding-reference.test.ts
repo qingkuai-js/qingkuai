@@ -1,49 +1,49 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import type { TsNodeWithContext } from "#type-declarations/ts-ast"
+import type { TsNodeWithContext } from "#type-declarations/ts-ast";
 
-import ts from "typescript"
+import ts from "typescript";
 
-import { expect, test } from "vitest"
-import { parseTsScript } from "../../../../src/util/testing/ts-ast"
-import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk"
+import { expect, test } from "vitest";
+import { parseTsScript } from "../../../../src/util/testing/ts-ast";
+import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk";
 
 function collectIdentifiers(source: string): Map<string, TsNodeWithContext<TS.Identifier>[]> {
-    const sourceFile = parseTsScript(source)
-    const map = new Map<string, TsNodeWithContext<TS.Identifier>[]>()
+    const sourceFile = parseTsScript(source);
+    const map = new Map<string, TsNodeWithContext<TS.Identifier>[]>();
 
     walkTsNodeWithContext(sourceFile, node => {
         if (!ts.isIdentifier(node)) {
-            return
+            return;
         }
-        const name = node.text
+        const name = node.text;
         if (!map.has(name)) {
-            map.set(name, [])
+            map.set(name, []);
         }
-        map.get(name)!.push(node)
-    })
+        map.get(name)!.push(node);
+    });
 
-    return map
+    return map;
 }
 
 function expectBinding(source: string, truthy: string[], falsy: string[]) {
-    const ids = collectIdentifiers(source)
+    const ids = collectIdentifiers(source);
 
     for (const name of truthy) {
-        const nodes = ids.get(name)
-        expect(nodes, `identifier "${name}" not found`).toBeTruthy()
+        const nodes = ids.get(name);
+        expect(nodes, `identifier "${name}" not found`).toBeTruthy();
         for (const node of nodes!) {
-            expect(node.isBindingReference, `"${name}" should be a binding reference`).toBe(true)
+            expect(node.isBindingReference, `"${name}" should be a binding reference`).toBe(true);
         }
     }
 
     for (const name of falsy) {
-        const nodes = ids.get(name)
-        expect(nodes, `identifier "${name}" not found`).toBeTruthy()
+        const nodes = ids.get(name);
+        expect(nodes, `identifier "${name}" not found`).toBeTruthy();
         for (const node of nodes!) {
             expect(node.isBindingReference, `"${name}" should NOT be a binding reference`).toBe(
-                false
-            )
+                false,
+            );
         }
     }
 }
@@ -92,11 +92,11 @@ test("Expression: references, property names and assignment targets", () => {
             "B",
             "C",
             "D",
-            "E"
+            "E",
         ],
-        ["c", "d", "f", "g", "i", "j", "z"]
-    )
-})
+        ["c", "d", "f", "g", "i", "j", "z"],
+    );
+});
 
 test("Declaration: variables, destructuring and resource declarations", () => {
     expectBinding(
@@ -136,10 +136,10 @@ test("Declaration: variables, destructuring and resource declarations", () => {
             "w",
             "x",
             "y",
-            "z"
-        ]
-    )
-})
+            "z",
+        ],
+    );
+});
 
 test("Declaration: functions and parameters", () => {
     expectBinding(
@@ -194,10 +194,10 @@ test("Declaration: functions and parameters", () => {
             "M",
             "N",
             "P",
-            "Q"
-        ]
-    )
-})
+            "Q",
+        ],
+    );
+});
 
 test("Declaration: classes, computed names and accessors", () => {
     expectBinding(
@@ -257,10 +257,10 @@ test("Declaration: classes, computed names and accessors", () => {
             "J",
             "K",
             "L",
-            "N"
-        ]
-    )
-})
+            "N",
+        ],
+    );
+});
 
 test("Module/Type: import and type-only syntax", () => {
     expectBinding(
@@ -277,9 +277,9 @@ test("Module/Type: import and type-only syntax", () => {
             const Q: K<M<R>> = S
         `,
         ["S"],
-        ["a", "b", "c", "d", "e", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"]
-    )
-})
+        ["a", "b", "c", "d", "e", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"],
+    );
+});
 
 test("Statement: labels, for statements and catch clauses", () => {
     expectBinding(
@@ -313,8 +313,8 @@ test("Statement: labels, for statements and catch clauses", () => {
             "v",
             "w",
             "x",
-            "D"
+            "D",
         ],
-        ["i", "l", "m", "p", "t", "A", "B", "C", "E"]
-    )
-})
+        ["i", "l", "m", "p", "t", "A", "B", "C", "E"],
+    );
+});

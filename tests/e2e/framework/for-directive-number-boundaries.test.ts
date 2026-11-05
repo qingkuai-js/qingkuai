@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -29,22 +29,22 @@ const scenario: E2EScenarioInput = {
                 <span #for={count} class="number-boundary-item">N</span>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports numeric for source boundary updates", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(2)
+        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(2);
 
-        await page.locator("#set-zero").click()
-        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(0)
+        await page.locator("#set-zero").click();
+        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(0);
 
-        await page.locator("#set-negative").click()
-        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(0)
+        await page.locator("#set-negative").click();
+        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(0);
 
-        await page.locator("#set-decimal").click()
-        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(3)
-    })
-})
+        await page.locator("#set-decimal").click();
+        await expect(page.locator("#number-boundary-host .number-boundary-item")).toHaveCount(3);
+    });
+});

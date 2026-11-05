@@ -3,8 +3,8 @@ import type {
     TemplateNode,
     ParsedDirective,
     TemplateAttribute,
-    TemplateNodeContext
-} from "#type-declarations/compiler"
+    TemplateNodeContext,
+} from "#type-declarations/compiler";
 
 import {
     walkTemplateNodes,
@@ -12,55 +12,55 @@ import {
     getStartTagOpenLoc,
     getParsedExpression,
     getTemplateNodeContext,
-    doesNodeHasValidTextContentPart
-} from "../../util/compiler/template"
+    doesNodeHasValidTextContentPart,
+} from "../../util/compiler/template";
 import {
     DuplicateSlotName,
     NestedSlotElement,
     DuplicateSlotAssignment,
-    ComponentTypeArgumentNeedsTS
-} from "../message/error"
-import { SPREAD_TAG } from "../constants"
-import { analyzeAttributes } from "./attribute"
-import { AnalyzeExpressionType } from "../enums"
-import { analyzeStaticTextContent } from "./text"
-import { newCleanObj } from "../../util/shared/sundry"
-import { objectAssign } from "../../util/shared/aliases"
-import { analyzeResult, inputDescriptor } from "../state"
-import { shouldBeSelectedAttrStartCharRE } from "../regular"
-import { isHtmlDirectiveChild } from "../../util/compiler/assert"
-import { StatefulUnkeyedForList, UnnecessarySpreadTag } from "../message/warn"
-import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
-import { getLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/position"
+    ComponentTypeArgumentNeedsTS,
+} from "../message/error";
+import { SPREAD_TAG } from "../constants";
+import { analyzeAttributes } from "./attribute";
+import { AnalyzeExpressionType } from "../enums";
+import { analyzeStaticTextContent } from "./text";
+import { newCleanObj } from "../../util/shared/sundry";
+import { objectAssign } from "../../util/shared/aliases";
+import { analyzeResult, inputDescriptor } from "../state";
+import { shouldBeSelectedAttrStartCharRE } from "../regular";
+import { isHtmlDirectiveChild } from "../../util/compiler/assert";
+import { StatefulUnkeyedForList, UnnecessarySpreadTag } from "../message/warn";
+import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation";
+import { getLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/position";
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
-    const reportedUnkeyedLists = new Set<TemplateNode>()
+    const reportedUnkeyedLists = new Set<TemplateNode>();
 
     const checkStatefulUnkeyedForList = (listAncestors: TemplateNode[]) => {
         for (const listNode of listAncestors) {
-            const listContext = getTemplateNodeContext(listNode)
+            const listContext = getTemplateNodeContext(listNode);
             if (listContext.attributesMap["#key"] || reportedUnkeyedLists.has(listNode)) {
-                continue
+                continue;
             }
-            reportedUnkeyedLists.add(listNode)
-            StatefulUnkeyedForList(getStartTagOpenLoc(listNode))
+            reportedUnkeyedLists.add(listNode);
+            StatefulUnkeyedForList(getStartTagOpenLoc(listNode));
         }
-    }
+    };
 
     walkTemplateNodes(nodes, node => {
-        let inSvgContext = false
-        let inSlotContent = false
-        let nodeContext: TemplateNodeContext
-        let parentListAncestors: TemplateNode[] = []
-        let parentContextIdentifiers: Record<string, ParsedDirective> | undefined
+        let inSvgContext = false;
+        let inSlotContent = false;
+        let nodeContext: TemplateNodeContext;
+        let parentListAncestors: TemplateNode[] = [];
+        let parentContextIdentifiers: Record<string, ParsedDirective> | undefined;
         if (node.parent) {
-            const parentContext = getTemplateNodeContext(node.parent)
-            parentListAncestors = parentContext.listAncestors
-            parentContextIdentifiers = parentContext.contextIdentifiers
+            const parentContext = getTemplateNodeContext(node.parent);
+            parentListAncestors = parentContext.listAncestors;
+            parentContextIdentifiers = parentContext.contextIdentifiers;
             inSvgContext =
                 "svg" === node.parent.tag ||
-                (parentContext.inSvgContext && !isSvgContextBoundary(node.parent))
-            inSlotContent = !!node.parent.componentTag || parentContext.inSlotContent
+                (parentContext.inSvgContext && !isSvgContextBoundary(node.parent));
+            inSlotContent = !!node.parent.componentTag || parentContext.inSlotContent;
         }
         analyzeResult.template.nodeContexts.set(
             node,
@@ -81,78 +81,78 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 shouldBeSelected: false,
                 attributesMap: newCleanObj(),
                 listAncestors: [...parentListAncestors],
-                contextIdentifiers: objectAssign(newCleanObj(), parentContextIdentifiers)
-            })
-        )
+                contextIdentifiers: objectAssign(newCleanObj(), parentContextIdentifiers),
+            }),
+        );
 
         if (node.componentTag) {
-            const startTagLog = getStartTagNameLoc(node)
+            const startTagLog = getStartTagNameLoc(node);
             if (node.typeArgument && !inputDescriptor.script.isTS) {
                 ComponentTypeArgumentNeedsTS(
                     getLocByIndex(
                         node.typeArgument.loc.start.index - 1,
-                        node.typeArgument.loc.end.index + 1
-                    )
-                )
+                        node.typeArgument.loc.end.index + 1,
+                    ),
+                );
             }
             analyzeTemplateAsExpression(
                 node,
                 node.componentTag,
                 node,
                 startTagLog,
-                AnalyzeExpressionType.Component
-            )
+                AnalyzeExpressionType.Component,
+            );
         }
 
         switch ((analyzeAttributes(node), node.tag)) {
             case "slot": {
                 for (let current = node.parent; current; current = current.parent) {
                     if (current.tag === "slot") {
-                        NestedSlotElement(getStartTagOpenLoc(current))
+                        NestedSlotElement(getStartTagOpenLoc(current));
                     }
                 }
-                recordSlotName(node, getTemplateNodeContext(node).attributesMap.name)
-                break
+                recordSlotName(node, getTemplateNodeContext(node).attributesMap.name);
+                break;
             }
             case "": {
                 for (const part of node.content) {
                     if (!part.isInterpolated) {
-                        analyzeStaticTextContent(node, part)
+                        analyzeStaticTextContent(node, part);
                     } else {
-                        analyzeInterpolation(node, part, part.value, part.loc.start.index)
+                        analyzeInterpolation(node, part, part.value, part.loc.start.index);
                     }
                 }
-                break
+                break;
             }
             default: {
                 if (node.tag === SPREAD_TAG) {
                     if (!node.children.length) {
-                        UnnecessarySpreadTag(getStartTagOpenLoc(node), "children")
+                        UnnecessarySpreadTag(getStartTagOpenLoc(node), "children");
                     }
                     if (!node.parent?.componentTag && !nodeContext.sortedDirectives.length) {
-                        UnnecessarySpreadTag(getStartTagOpenLoc(node), "directives")
+                        UnnecessarySpreadTag(getStartTagOpenLoc(node), "directives");
                     }
                 }
             }
         }
         if (nodeContext.attributesMap["#for"]) {
-            nodeContext.listAncestors.push(node)
+            nodeContext.listAncestors.push(node);
         }
-    })
+    });
 
     walkTemplateNodes(nodes, node => {
         if (node.componentTag) {
-            checkSlotAssignment(node)
+            checkSlotAssignment(node);
         }
         if (!inputDescriptor.options.checkMode) {
-            evaluateTemplateNodeSelection(node)
+            evaluateTemplateNodeSelection(node);
         }
 
-        const nodeContext = getTemplateNodeContext(node)
+        const nodeContext = getTemplateNodeContext(node);
         if (node.componentTag || nodeContext.referenceAttributes.length) {
-            checkStatefulUnkeyedForList(nodeContext.listAncestors)
+            checkStatefulUnkeyedForList(nodeContext.listAncestors);
         }
-    })
+    });
 }
 
 // 组件的子节点是插槽内容，落点由组件决定；foreignObject 内部的子节点属于 HTML 命名空间。
@@ -160,94 +160,94 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
 // by the component; the child nodes inside foreignObject belong to the HTML namespace.
 function isSvgContextBoundary(node: TemplateNode) {
     if (node.componentTag) {
-        return true
+        return true;
     }
 
     // foreignObject 标签名比较忽略大小写，HTML 解析器本身对 SVG 标签名做大小写纠正
     // The foreignObject tag name is compared case-insensitively,
     // and the HTML parser itself corrects the case of SVG tag names.
-    return "foreignobject" === node.tag.toLowerCase()
+    return "foreignobject" === node.tag.toLowerCase();
 }
 
 function markTemplateNodeShouldBeSelected(node: TemplateNode) {
-    const nodeContext = getTemplateNodeContext(node)
+    const nodeContext = getTemplateNodeContext(node);
     if (!nodeContext.shouldBeSelected) {
         if (node.parent) {
-            markTemplateNodeShouldBeSelected(node.parent)
+            markTemplateNodeShouldBeSelected(node.parent);
         }
         if ("slot" !== node.tag && SPREAD_TAG !== node.tag && !node.componentTag) {
-            nodeContext.shouldBeSelected = true
+            nodeContext.shouldBeSelected = true;
         }
     }
 }
 
 function evaluateTemplateNodeSelection(node: TemplateNode) {
     if (node.isEmbedded) {
-        return
+        return;
     }
 
     if ("" === node.tag) {
         if (isHtmlDirectiveChild(node) || node.content.some(part => part.isInterpolated)) {
-            markTemplateNodeShouldBeSelected(node)
+            markTemplateNodeShouldBeSelected(node);
         }
-        return
+        return;
     }
 
     if ("slot" === node.tag || node.componentTag) {
         if (node.parent) {
-            markTemplateNodeShouldBeSelected(node.parent)
+            markTemplateNodeShouldBeSelected(node.parent);
         }
-        return
+        return;
     }
 
     if (getTemplateNodeContext(node).sortedDirectives.length) {
         if (node.parent) {
-            markTemplateNodeShouldBeSelected(node.parent)
+            markTemplateNodeShouldBeSelected(node.parent);
         }
     }
     if (node.attributes.some(attr => shouldBeSelectedAttrStartCharRE.test(attr.name.raw))) {
-        markTemplateNodeShouldBeSelected(node)
-        return
+        markTemplateNodeShouldBeSelected(node);
+        return;
     }
 }
 
 // 检查组件一级子元素是否被分配到了相同的插槽出口
 // Check whether direct child elements of a component are assigned to the same slot outlet.
 function checkSlotAssignment(node: TemplateNode) {
-    const existingMap: Record<string, [ASTLocation, boolean]> = newCleanObj()
+    const existingMap: Record<string, [ASTLocation, boolean]> = newCleanObj();
 
     const recordExistingMap = (name: string, loc: ASTLocation) => {
-        const existing = existingMap[name]
+        const existing = existingMap[name];
         if (((existingMap[name] = [loc, false]), existing)) {
-            DuplicateSlotAssignment(loc, node.tag, name)
+            DuplicateSlotAssignment(loc, node.tag, name);
 
             if (!existing[1]) {
-                existingMap[name][1] = true
-                DuplicateSlotAssignment(existing[0], node.tag, name)
+                existingMap[name][1] = true;
+                DuplicateSlotAssignment(existing[0], node.tag, name);
             }
         }
-    }
+    };
 
     for (const child of node.children) {
         if ("" === child.tag && !doesNodeHasValidTextContentPart(child)) {
-            continue
+            continue;
         }
-        const directive = getTemplateNodeContext(child).attributesMap["#slot"]
-        const expressionInfo = getParsedExpression(directive)
+        const directive = getTemplateNodeContext(child).attributesMap["#slot"];
+        const expressionInfo = getParsedExpression(directive);
         if (expressionInfo) {
-            const { startSourceIndex, node } = expressionInfo
+            const { startSourceIndex, node } = expressionInfo;
             recordExistingMap(
                 inputDescriptor.source.slice(
                     startSourceIndex + node.getStart() + 1,
-                    startSourceIndex + node.getEnd() - 1
+                    startSourceIndex + node.getEnd() - 1,
                 ),
-                directive.loc
-            )
+                directive.loc,
+            );
         } else {
             recordExistingMap(
                 "default",
-                child.tag ? getStartTagOpenLoc(child) : getNonWhiteSpaceLocByLoc(child.loc)
-            )
+                child.tag ? getStartTagOpenLoc(child) : getNonWhiteSpaceLocByLoc(child.loc),
+            );
         }
     }
 }
@@ -255,15 +255,15 @@ function checkSlotAssignment(node: TemplateNode) {
 function recordSlotName(node: TemplateNode, attribute?: TemplateAttribute) {
     // 没有 name 属性的 slot 节点，默认插槽名称为 default
     // For a `slot` node without a `name` attribute, the default slot name is `default`.
-    const name = attribute?.value.raw ?? "default"
-    const existing = analyzeResult.template.slots[name]
+    const name = attribute?.value.raw ?? "default";
+    const existing = analyzeResult.template.slots[name];
     if (((analyzeResult.template.slots[name] = node), !existing)) {
-        return
+        return;
     }
 
     // 多个 slot 节点具有相同的 name 属性值
     // Multiple `slot` nodes share the same `name` attribute value.
-    const existringAttr = getTemplateNodeContext(existing).attributesMap.name
-    DuplicateSlotName(attribute?.loc ?? getStartTagOpenLoc(node), name)
-    DuplicateSlotName(existringAttr?.loc ?? getStartTagOpenLoc(existing), name)
+    const existringAttr = getTemplateNodeContext(existing).attributesMap.name;
+    DuplicateSlotName(attribute?.loc ?? getStartTagOpenLoc(node), name);
+    DuplicateSlotName(existringAttr?.loc ?? getStartTagOpenLoc(existing), name);
 }

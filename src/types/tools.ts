@@ -1,35 +1,35 @@
-export type ZeroOrOne = 0 | 1
-export type OneOrMany<T> = T | T[]
-export type GeneralFunc = () => void
-export type Getter<T = any> = () => T
-export type Pair<T> = FixedArray<T, 2>
-export type Setter<T = any> = (v: T) => void
-export type AnyObject = Record<ObjectKeys, any>
-export type ObjectKeys = string | number | symbol
-export type RegExpExecRet = ReturnType<RegExp["exec"]>
-export type ArbitraryFunc<R = any> = (...args: any) => R
+export type ZeroOrOne = 0 | 1;
+export type OneOrMany<T> = T | T[];
+export type GeneralFunc = () => void;
+export type Getter<T = any> = () => T;
+export type Pair<T> = FixedArray<T, 2>;
+export type Setter<T = any> = (v: T) => void;
+export type AnyObject = Record<ObjectKeys, any>;
+export type ObjectKeys = string | number | symbol;
+export type RegExpExecRet = ReturnType<RegExp["exec"]>;
+export type ArbitraryFunc<R = any> = (...args: any) => R;
 
 export type Thenable<T = any> = {
     then: (
         onfulfilled?: (value: T) => any,
-        onrejected?: (reason: any) => any
+        onrejected?: (reason: any) => any,
     ) => {
-        catch: (onrejected?: (reason: any) => any) => any
-    }
-}
+        catch: (onrejected?: (reason: any) => any) => any;
+    };
+};
 
-export type SetValue<S> = S extends Set<infer U> ? U : never
-export type MapKeyType<M> = M extends Map<infer U, any> ? U : never
-export type MapValueType<M> = M extends Map<any, infer U> ? U : never
+export type SetValue<S> = S extends Set<infer U> ? U : never;
+export type MapKeyType<M> = M extends Map<infer U, any> ? U : never;
+export type MapValueType<M> = M extends Map<any, infer U> ? U : never;
 
-export type Prettify<T> = { [K in keyof T]: T[K] } & {}
-export type Expand<T> = T extends object ? { [K in keyof T]: T[K] } : T
+export type Prettify<T> = { [K in keyof T]: T[K] } & {};
+export type Expand<T> = T extends object ? { [K in keyof T]: T[K] } : T;
 
 export type RequiredNonNullableKeys<T, K extends keyof T> = Omit<T, K> & {
-    [P in K]-?: NonNullable<T[P]>
-}
-export type RequiredKeys<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
+    [P in K]-?: NonNullable<T[P]>;
+};
+export type RequiredKeys<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>;
 
 export type FixedArray<T, L extends number, R extends T[] = []> = R["length"] extends L
     ? R
-    : FixedArray<T, L, [...R, T]>
+    : FixedArray<T, L, [...R, T]>;

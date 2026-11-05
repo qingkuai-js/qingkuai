@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -56,38 +56,38 @@ const scenario: E2EScenarioInput = {
         `,
         SyncPanel: `
             <article id="sync-panel">Sync Panel</article>
-        `
+        `,
     },
     compileOptions: {
-        replaceQkImports: true
-    }
-}
+        replaceQkImports: true,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test(".qk components receive props, slots, events and bind handle", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page).toHaveTitle("component-qk-import-props-slots")
+        await visitScenario(scenario);
+        await expect(page).toHaveTitle("component-qk-import-props-slots");
 
         // props + slots（命名/默认）+ 同步组件共存
         // props + slots (named/default) + sync component coexist
-        await expect(page.locator(".panel-title")).toHaveText("Title: Hello")
-        await expect(page.locator("#slot-header")).toHaveText("from-child")
-        await expect(page.locator("#slot-default")).toHaveText("Default slot body")
-        await expect(page.locator("#sync-panel")).toHaveText("Sync Panel")
-        await expect(page.locator("#handle-count")).toHaveText("Handle: 0")
+        await expect(page.locator(".panel-title")).toHaveText("Title: Hello");
+        await expect(page.locator("#slot-header")).toHaveText("from-child");
+        await expect(page.locator("#slot-default")).toHaveText("Default slot body");
+        await expect(page.locator("#sync-panel")).toHaveText("Sync Panel");
+        await expect(page.locator("#handle-count")).toHaveText("Handle: 0");
 
         // 组件事件回调 → 父 total 更新（"Hello".length = 5）
         // Component event callback → parent total update ("Hello".length = 5)
-        await page.locator(".panel-notify").click()
-        await expect(page.locator("#total")).toHaveText("Total: 5")
+        await page.locator(".panel-notify").click();
+        await expect(page.locator("#total")).toHaveText("Total: 5");
 
         // &handle 调用 .qk 组件导出方法
         // &handle calls the exported method of the .qk component
-        await page.locator("#btn-bump").click()
-        await expect(page.locator(".panel-count")).toHaveText("Count: 1")
-        await expect(page.locator("#handle-count")).toHaveText("Handle: 1")
-    })
-})
+        await page.locator("#btn-bump").click();
+        await expect(page.locator(".panel-count")).toHaveText("Count: 1");
+        await expect(page.locator("#handle-count")).toHaveText("Handle: 1");
+    });
+});

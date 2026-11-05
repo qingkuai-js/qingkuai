@@ -8,92 +8,92 @@
 // In current version, it was replaced by Set, if this structure is sure to be unused in future versions,
 // consider deleting this file please.
 
-import { NIL, UNDEF } from "../constants"
+import { NIL, UNDEF } from "../constants";
 
 export type LinkedListNode<T> = {
-    data: T
-    prev: PartialLinkedListNode<T>
-    next: PartialLinkedListNode<T>
-}
-export type PartialLinkedListNode<T> = LinkedListNode<T> | null
+    data: T;
+    prev: PartialLinkedListNode<T>;
+    next: PartialLinkedListNode<T>;
+};
+export type PartialLinkedListNode<T> = LinkedListNode<T> | null;
 
 // 双向链表
 // Bidirectional Linked List
 export class LinkedList<T> {
-    private _size = 0
-    private _head: PartialLinkedListNode<T> = NIL
-    private _tail: PartialLinkedListNode<T> = NIL
+    private _size = 0;
+    private _head: PartialLinkedListNode<T> = NIL;
+    private _tail: PartialLinkedListNode<T> = NIL;
 
     get size() {
-        return this._size
+        return this._size;
     }
 
     get head() {
-        return this._head
+        return this._head;
     }
 
     get tail() {
-        return this._tail
+        return this._tail;
     }
 
     toArray() {
-        const result: T[] = []
+        const result: T[] = [];
         for (const node of this) {
-            result.push(node.data)
+            result.push(node.data);
         }
-        return result
+        return result;
     }
 
     insert(data: T, before: PartialLinkedListNode<T> = NIL) {
         const newNode: LinkedListNode<T> = {
             data,
             next: before ?? NIL,
-            prev: before ? before.prev : this.tail
-        }
+            prev: before ? before.prev : this.tail,
+        };
         if (before) {
-            before.prev = newNode
+            before.prev = newNode;
         } else {
-            this._tail = newNode
+            this._tail = newNode;
         }
         if (newNode.prev) {
-            newNode.prev.next = newNode
+            newNode.prev.next = newNode;
         }
         if (!this.head || before === this.head) {
-            this._head = newNode
+            this._head = newNode;
         }
-        this._size++
+        this._size++;
     }
 
     remove(node: PartialLinkedListNode<T> | undefined) {
         if (!node) {
-            return
+            return;
         }
         if (node.prev) {
-            node.prev.next = node.next
+            node.prev.next = node.next;
         } else {
-            this._head = node.next
+            this._head = node.next;
         }
         if (node.next) {
-            node.next.prev = node.prev
+            node.next.prev = node.prev;
         } else {
-            this._tail = node.prev
+            this._tail = node.prev;
         }
-        node.prev = node.next = NIL
-        this._size--
+        node.prev = node.next = NIL;
+        this._size--;
     }
 
     [Symbol.iterator]() {
-        let current: PartialLinkedListNode<T> = this.head
+        let current: PartialLinkedListNode<T> = this.head;
         return {
             next(): IteratorResult<LinkedListNode<T>> {
                 if (current) {
-                    const value = current
-                    current = current.next
-                    return { value, done: false }
+                    const value = current;
+                    current = current.next;
+                    return { value, done: false };
                 }
-                return { done: true, value: UNDEF }
-            }
-        }
+                return { done: true, value: UNDEF };
+            },
+        };
     }
 
     // 其他方法暂未用到

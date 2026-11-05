@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -66,107 +66,107 @@ const scenario: E2EScenarioInput = {
             <div class="nested-counter">
                 <p id="counter-display">Count: {count}</p>
             </div>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("export binding works with multiple levels of nested conditionals", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#level1-text")).toBeVisible()
-        await expect(page.locator("#level2-text")).toBeVisible()
-        await expect(page.locator("#level3-text")).toBeVisible()
-        await expect(page.locator(".nested-counter")).toBeVisible()
+        await expect(page.locator("#level1-text")).toBeVisible();
+        await expect(page.locator("#level2-text")).toBeVisible();
+        await expect(page.locator("#level3-text")).toBeVisible();
+        await expect(page.locator(".nested-counter")).toBeVisible();
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 1")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 1");
 
-        await page.locator("#btn-inc").click()
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 3")
-    })
+        await page.locator("#btn-inc").click();
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 3");
+    });
 
     test("disabling intermediate level unmounts nested component", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 1")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 1");
 
-        await page.locator("#btn-l2").click()
-        await expect(page.locator("#level2-text")).toHaveCount(0)
-        await expect(page.locator(".nested-counter")).toHaveCount(0)
-        await expect(page.locator("#status")).toHaveText("L1:on | L2:off | L3:on")
+        await page.locator("#btn-l2").click();
+        await expect(page.locator("#level2-text")).toHaveCount(0);
+        await expect(page.locator(".nested-counter")).toHaveCount(0);
+        await expect(page.locator("#status")).toHaveText("L1:on | L2:off | L3:on");
 
-        await page.locator("#btn-inc").click()
+        await page.locator("#btn-inc").click();
 
-        await page.locator("#btn-l2").click()
-        await expect(page.locator("#level2-text")).toBeVisible()
-        await expect(page.locator(".nested-counter")).toBeVisible()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 0")
-    })
+        await page.locator("#btn-l2").click();
+        await expect(page.locator("#level2-text")).toBeVisible();
+        await expect(page.locator(".nested-counter")).toBeVisible();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 0");
+    });
 
     test("disabling deepest level unmounts component directly", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-inc").click()
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 2")
+        await page.locator("#btn-inc").click();
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 2");
 
-        await page.locator("#btn-l3").click()
-        await expect(page.locator("#level3-text")).toHaveCount(0)
-        await expect(page.locator(".nested-counter")).toHaveCount(0)
+        await page.locator("#btn-l3").click();
+        await expect(page.locator("#level3-text")).toHaveCount(0);
+        await expect(page.locator(".nested-counter")).toHaveCount(0);
 
-        await expect(page.locator("#level1-text")).toBeVisible()
-        await expect(page.locator("#level2-text")).toBeVisible()
+        await expect(page.locator("#level1-text")).toBeVisible();
+        await expect(page.locator("#level2-text")).toBeVisible();
 
-        await page.locator("#btn-l3").click()
-        await expect(page.locator(".nested-counter")).toBeVisible()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 0")
-    })
+        await page.locator("#btn-l3").click();
+        await expect(page.locator(".nested-counter")).toBeVisible();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 0");
+    });
 
     test("recursive enable/disable through multiple levels", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         for (let cycle = 0; cycle < 2; cycle++) {
             for (let level = 3; level >= 1; level--) {
-                await page.locator(`#btn-l${level}`).click()
-                await expect(page.locator(`#level${level}-text`)).toHaveCount(0)
+                await page.locator(`#btn-l${level}`).click();
+                await expect(page.locator(`#level${level}-text`)).toHaveCount(0);
             }
 
-            await expect(page.locator(".nested-counter")).toHaveCount(0)
+            await expect(page.locator(".nested-counter")).toHaveCount(0);
 
             for (let level = 1; level <= 3; level++) {
-                await page.locator(`#btn-l${level}`).click()
+                await page.locator(`#btn-l${level}`).click();
                 if (level < 3) {
-                    await expect(page.locator(`#level${level}-text`)).toBeVisible()
+                    await expect(page.locator(`#level${level}-text`)).toBeVisible();
                 }
             }
 
-            await expect(page.locator(".nested-counter")).toBeVisible()
-            await expect(page.locator("#counter-display")).toHaveText("Count: 0")
+            await expect(page.locator(".nested-counter")).toBeVisible();
+            await expect(page.locator("#counter-display")).toHaveText("Count: 0");
         }
-    })
+    });
 
     test("handle binding survives conditional re-renders without remount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-inc").click()
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 2")
+        await page.locator("#btn-inc").click();
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 2");
 
-        await expect(page.locator("#counter-display")).toHaveText("Count: 2")
+        await expect(page.locator("#counter-display")).toHaveText("Count: 2");
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#counter-display")).toHaveText("Count: 3")
-    })
-})
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#counter-display")).toHaveText("Count: 3");
+    });
+});

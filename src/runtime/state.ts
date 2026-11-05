@@ -1,23 +1,23 @@
-import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime"
+import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime";
 
-import { NIL } from "./constants"
+import { NIL } from "./constants";
 
-export let currentDestruction: Destruction | null = NIL
-export let currentInstance: ComponentInstanceBase | null = NIL
+export let currentDestruction: Destruction | null = NIL;
+export let currentInstance: ComponentInstanceBase | null = NIL;
 
-export const eventRegisterInfo: Record<string, boolean[]> = {}
+export const eventRegisterInfo: Record<string, boolean[]> = {};
 
 export function backToParentDestruction() {
     if (!currentDestruction) {
-        return
+        return;
     }
-    setCurrentDestruction(currentDestruction.p)
+    setCurrentDestruction(currentDestruction.p);
 }
 
 export function setCurrentDestruction(value: Destruction | null) {
-    return (currentDestruction = value)
+    return (currentDestruction = value);
 }
 
 export function setCurrentInstance(value: ComponentInstanceBase | null) {
-    return (currentInstance = value)
+    return (currentInstance = value);
 }

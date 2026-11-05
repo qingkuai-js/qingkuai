@@ -1,17 +1,17 @@
-import { expect, test } from "vitest"
-import { analyzeTemplateAndMatchMessages } from "./_match"
-import { analyzeResult } from "../../../../src/compiler/state"
-import { analyzeScript } from "../../../../src/compiler/analyzer/script"
-import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { analyzeTemplate } from "../../../../src/compiler/analyzer/template"
+import { expect, test } from "vitest";
+import { analyzeTemplateAndMatchMessages } from "./_match";
+import { analyzeResult } from "../../../../src/compiler/state";
+import { analyzeScript } from "../../../../src/compiler/analyzer/script";
+import { parseTemplateTesting } from "../../../../src/util/testing/sundry";
+import { analyzeTemplate } from "../../../../src/compiler/analyzer/template";
 
 function analyzeTemplateOnly(source: string) {
     const nodes = parseTemplateTesting(source, {
-        recover: true
-    })
-    analyzeScript()
-    analyzeTemplate(nodes)
-    return nodes
+        recover: true,
+    });
+    analyzeScript();
+    analyzeTemplate(nodes);
+    return nodes;
 }
 
 test("Built-in methods cannot be used in template expressions", () => {
@@ -19,70 +19,70 @@ test("Built-in methods cannot be used in template expressions", () => {
         {
             type: "error",
             range: [6, 14],
-            value: `The built-in method "reactive" cannot be used in template.`
-        }
-    ])
-})
+            value: `The built-in method "reactive" cannot be used in template.`,
+        },
+    ]);
+});
 
 test("raw used in template requires the call form", () => {
     analyzeTemplateAndMatchMessages(`<div>{raw}</div>`, [
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
-        }
-    ])
-})
+            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`,
+        },
+    ]);
+});
 
 test("raw passed around in template requires the call form", () => {
     analyzeTemplateAndMatchMessages(`<div>{fn(raw)}</div>`, [
         {
             type: "error",
             range: [9, 12],
-            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
-        }
-    ])
-})
+            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`,
+        },
+    ]);
+});
 
 test("raw used in template requires an argument", () => {
     analyzeTemplateAndMatchMessages(`<div>{raw()}</div>`, [
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`
-        }
-    ])
-})
+            value: `The built-in method "raw" must be passed an argument when used as a non-reactive read.`,
+        },
+    ]);
+});
 
 test("raw used in template accepts only one argument", () => {
     analyzeTemplateAndMatchMessages(`<div>{raw(a, b)}</div>`, [
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" can only be passed one argument when used as a non-reactive read.`
-        }
-    ])
-})
+            value: `The built-in method "raw" can only be passed one argument when used as a non-reactive read.`,
+        },
+    ]);
+});
 
 test("nested raw calls only report a warning", () => {
     analyzeTemplateAndMatchMessages(`<div>{raw(raw(a))}</div>`, [
         {
             type: "warning",
             range: [10, 13],
-            value: `Nesting "raw" calls is redundant because the argument is already read without tracking.`
-        }
-    ])
-})
+            value: `Nesting "raw" calls is redundant because the argument is already read without tracking.`,
+        },
+    ]);
+});
 
 test("member access on raw in template requires the call form", () => {
     analyzeTemplateAndMatchMessages(`<div>{raw.x}</div>`, [
         {
             type: "error",
             range: [6, 9],
-            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`
-        }
-    ])
-})
+            value: `The built-in method "raw" must be used as a function call when used as a non-reactive read.`,
+        },
+    ]);
+});
 
 test("raw callee wrapped in parentheses or type operations is still a raw call", () => {
     analyzeTemplateAndMatchMessages(
@@ -96,12 +96,12 @@ test("raw callee wrapped in parentheses or type operations is still a raw call",
         <div>{(raw as any)(config)}</div>
         <div>{raw!(config)}</div>
     `,
-        []
-    )
-    const expressions = [...analyzeResult.template.parsedExpressions.values()]
-    expect(expressions[0]?.rawCallExpressions).toHaveLength(1)
-    expect(expressions[1]?.rawCallExpressions).toHaveLength(1)
-})
+        [],
+    );
+    const expressions = [...analyzeResult.template.parsedExpressions.values()];
+    expect(expressions[0]?.rawCallExpressions).toHaveLength(1);
+    expect(expressions[1]?.rawCallExpressions).toHaveLength(1);
+});
 
 test("raw read does not promote pending identifiers and records untracked references", () => {
     analyzeTemplateOnly(`
@@ -112,16 +112,16 @@ test("raw read does not promote pending identifiers and records untracked refere
             }
         </lang-js>
         <div>{raw(config)}</div>
-    `)
-    expect(analyzeResult.script.topLevelIdentifiers["config"]?.status).toBe("pending")
+    `);
+    expect(analyzeResult.script.topLevelIdentifiers["config"]?.status).toBe("pending");
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(false)
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(false);
     expect(parsedExpression?.topLevelReferences["config"]).toEqual([
-        { declared: true, range: [4, 10], shorthand: false, untracked: true }
-    ])
-    expect(analyzeResult.script.topLevelIdentifiers["config"]?.usedExpressions.size).toBe(0)
-})
+        { declared: true, range: [4, 10], shorthand: false, untracked: true },
+    ]);
+    expect(analyzeResult.script.topLevelIdentifiers["config"]?.usedExpressions.size).toBe(0);
+});
 
 test("identifier promoted by tracked read elsewhere stays non-reactive in raw expressions", () => {
     analyzeTemplateOnly(`
@@ -132,14 +132,14 @@ test("identifier promoted by tracked read elsewhere stays non-reactive in raw ex
             }
         </lang-js>
         <div>{count}</div><div>{raw(count) + 1}</div>
-    `)
-    expect(analyzeResult.script.topLevelIdentifiers["count"]?.status).toBe("reactive")
+    `);
+    expect(analyzeResult.script.topLevelIdentifiers["count"]?.status).toBe("reactive");
 
-    const expressions = [...analyzeResult.template.parsedExpressions.values()]
-    expect(expressions[0]?.reactive).toBe(true)
-    expect(expressions[1]?.reactive).toBe(false)
-    expect(analyzeResult.script.topLevelIdentifiers["count"]?.usedExpressions.size).toBe(1)
-})
+    const expressions = [...analyzeResult.template.parsedExpressions.values()];
+    expect(expressions[0]?.reactive).toBe(true);
+    expect(expressions[1]?.reactive).toBe(false);
+    expect(analyzeResult.script.topLevelIdentifiers["count"]?.usedExpressions.size).toBe(1);
+});
 
 test("member accesses of reactive values inside raw arguments are non-reactive", () => {
     analyzeTemplateOnly(`
@@ -147,12 +147,12 @@ test("member accesses of reactive values inside raw arguments are non-reactive",
             let user = reactive({ name: "q", detail: {} })
         </lang-js>
         <div>{user.name + raw(user).detail}</div>
-    `)
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-    expect(parsedExpression?.topLevelReferences["user"].some(item => !item.untracked)).toBe(true)
-    expect(parsedExpression?.topLevelReferences["user"].some(item => item.untracked)).toBe(true)
-})
+    `);
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+    expect(parsedExpression?.topLevelReferences["user"].some(item => !item.untracked)).toBe(true);
+    expect(parsedExpression?.topLevelReferences["user"].some(item => item.untracked)).toBe(true);
+});
 
 test("reference attribute value wrapped with raw is valid and not promoted", () => {
     analyzeTemplateAndMatchMessages(`
@@ -160,76 +160,76 @@ test("reference attribute value wrapped with raw is valid and not promoted", () 
             let plain = ""
         </lang-js>
         <input &value={raw(plain)} />
-    `)
-    expect(analyzeResult.script.topLevelIdentifiers["plain"]?.status).toBe("literal")
-})
+    `);
+    expect(analyzeResult.script.topLevelIdentifiers["plain"]?.status).toBe("literal");
+});
 
 test("props are tracked as intrinsic vars and mark expression reactive", () => {
-    analyzeTemplateOnly(`<div>{props.count}</div>`)
-    expect(analyzeResult.script.usedIntrinsics.has("props")).toBe(true)
+    analyzeTemplateOnly(`<div>{props.count}</div>`);
+    expect(analyzeResult.script.usedIntrinsics.has("props")).toBe(true);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("refs are tracked as intrinsic vars and mark expression reactive", () => {
-    analyzeTemplateOnly(`<div>{refs.input}</div>`)
-    expect(analyzeResult.script.usedIntrinsics.has("refs")).toBe(true)
+    analyzeTemplateOnly(`<div>{refs.input}</div>`);
+    expect(analyzeResult.script.usedIntrinsics.has("refs")).toBe(true);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("contexts are tracked as intrinsic vars and mark expression reactive", () => {
-    analyzeTemplateOnly(`<div>{contexts.theme}</div>`)
-    expect(analyzeResult.script.usedIntrinsics.has("contexts")).toBe(true)
+    analyzeTemplateOnly(`<div>{contexts.theme}</div>`);
+    expect(analyzeResult.script.usedIntrinsics.has("contexts")).toBe(true);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("Kebab shorthand attribute keeps source length by leading spaces", () => {
-    const nodes = analyzeTemplateOnly(`<div !foo-bar></div>`)
-    const attr = nodes[0].attributes[0]
-    const parsedExpression = analyzeResult.template.parsedExpressions.get(attr)
-    expect(parsedExpression?.source).toBe(" fooBar")
-})
+    const nodes = analyzeTemplateOnly(`<div !foo-bar></div>`);
+    const attr = nodes[0].attributes[0];
+    const parsedExpression = analyzeResult.template.parsedExpressions.get(attr);
+    expect(parsedExpression?.source).toBe(" fooBar");
+});
 
 test("Invalid component tag", () => {
     analyzeTemplateAndMatchMessages(`<a..b></a..b>`, [
         {
             type: "error",
             range: [1, 5],
-            value: `Invalid component tag: <a..b>. It cannot be converted into a valid JavaScript identifier or member expression.`
-        }
-    ])
-})
+            value: `Invalid component tag: <a..b>. It cannot be converted into a valid JavaScript identifier or member expression.`,
+        },
+    ]);
+});
 
 test("Invalid shorthand dynamic attribute name reports error", () => {
     analyzeTemplateAndMatchMessages(`<div !for></div>`, [
         {
             type: "error",
             range: [5, 9],
-            value: `Invalid name for shorthand dynamic attribute: "!for". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`
-        }
-    ])
-})
+            value: `Invalid name for shorthand dynamic attribute: "!for". It cannot be converted into a valid JavaScript identifier. Please ensure that it is not a reserved word in JavaScript or TypeScript`,
+        },
+    ]);
+});
 
 test("Interpolation reactivity: props and refs access is reactive", () => {
-    analyzeTemplateOnly(`<div>{props.count + refs.input}</div>`)
-    expect(analyzeResult.script.usedIntrinsics.has("props")).toBe(true)
-    expect(analyzeResult.script.usedIntrinsics.has("refs")).toBe(true)
+    analyzeTemplateOnly(`<div>{props.count + refs.input}</div>`);
+    expect(analyzeResult.script.usedIntrinsics.has("props")).toBe(true);
+    expect(analyzeResult.script.usedIntrinsics.has("refs")).toBe(true);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("Interpolation reactivity: plain expression without props or refs is not reactive", () => {
-    analyzeTemplateOnly(`<div>{1 + 2}</div>`)
+    analyzeTemplateOnly(`<div>{1 + 2}</div>`);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(false)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(false);
+});
 
 test("Interpolation reactivity: non-literal top-level identifier is reactive", () => {
     analyzeTemplateOnly(`
@@ -237,11 +237,11 @@ test("Interpolation reactivity: non-literal top-level identifier is reactive", (
             let count = reactive()
         </lang-js>
         <div>{count}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("Interpolation reactivity: raw marked identifier is not reactive", () => {
     analyzeTemplateOnly(`
@@ -249,11 +249,11 @@ test("Interpolation reactivity: raw marked identifier is not reactive", () => {
             const a = raw(1)
         </lang-js>
         <div>{a}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(false)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(false);
+});
 
 test("Interpolation reactivity: degenerated const literal is not reactive", () => {
     analyzeTemplateOnly(`
@@ -261,11 +261,11 @@ test("Interpolation reactivity: degenerated const literal is not reactive", () =
             const msg = "hi"
         </lang-js>
         <div>{msg}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(false)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(false);
+});
 
 test("Interpolation reactivity: member access on raw object is reactive", () => {
     analyzeTemplateOnly(`
@@ -278,11 +278,11 @@ test("Interpolation reactivity: member access on raw object is reactive", () => 
             })
         </lang-js>
         <div>{obj.double}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("Interpolation reactivity: dynamic attribute with raw identifier is not reactive", () => {
     analyzeTemplateOnly(`
@@ -290,14 +290,14 @@ test("Interpolation reactivity: dynamic attribute with raw identifier is not rea
             const title = raw("t")
         </lang-js>
         <div !title={title}></div>
-    `)
+    `);
 
     const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
-        exp => exp?.source.trim() === "title"
-    )
-    expect(parsedExpression).toBeTruthy()
-    expect(parsedExpression?.reactive).toBe(false)
-})
+        exp => exp?.source.trim() === "title",
+    );
+    expect(parsedExpression).toBeTruthy();
+    expect(parsedExpression?.reactive).toBe(false);
+});
 
 test("Interpolation reactivity: literal top-level identifier is not reactive", () => {
     analyzeTemplateOnly(`
@@ -305,11 +305,11 @@ test("Interpolation reactivity: literal top-level identifier is not reactive", (
             let count = 1
         </lang-js>
         <div>{count}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(false)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(false);
+});
 
 test("Interpolation reactivity: imported member access is reactive", () => {
     analyzeTemplateOnly(`
@@ -317,11 +317,11 @@ test("Interpolation reactivity: imported member access is reactive", () => {
             import helpers from "./helpers"
         </lang-js>
         <div>{helpers.format()}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(true)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("Interpolation reactivity: imported identifier alone is not reactive", () => {
     analyzeTemplateOnly(`
@@ -329,11 +329,11 @@ test("Interpolation reactivity: imported identifier alone is not reactive", () =
             import helpers from "./helpers"
         </lang-js>
         <div>{helpers}</div>
-    `)
+    `);
 
-    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0]
-    expect(parsedExpression?.reactive).toBe(false)
-})
+    const parsedExpression = [...analyzeResult.template.parsedExpressions.values()][0];
+    expect(parsedExpression?.reactive).toBe(false);
+});
 
 test("Interpolation reactivity: reactive #for context access is reactive", () => {
     analyzeTemplateOnly(`
@@ -343,25 +343,25 @@ test("Interpolation reactivity: reactive #for context access is reactive", () =>
         <div #for={item of items}>
             <span>{item.name}</span>
         </div>
-    `)
+    `);
 
     const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
-        exp => exp?.source.trim() === "item.name"
-    )
-    expect(parsedExpression).toBeTruthy()
-    expect(parsedExpression?.reactive).toBe(true)
-})
+        exp => exp?.source.trim() === "item.name",
+    );
+    expect(parsedExpression).toBeTruthy();
+    expect(parsedExpression?.reactive).toBe(true);
+});
 
 test("Interpolation reactivity: non-reactive #for context access is not reactive", () => {
     analyzeTemplateOnly(`
         <div #for={item of [1, 2]}>
             <span>{item}</span>
         </div>
-    `)
+    `);
 
     const parsedExpression = Array.from(analyzeResult.template.parsedExpressions.values()).find(
-        exp => exp?.source.trim() === "item"
-    )
-    expect(parsedExpression).toBeTruthy()
-    expect(parsedExpression?.reactive).toBe(false)
-})
+        exp => exp?.source.trim() === "item",
+    );
+    expect(parsedExpression).toBeTruthy();
+    expect(parsedExpression?.reactive).toBe(false);
+});

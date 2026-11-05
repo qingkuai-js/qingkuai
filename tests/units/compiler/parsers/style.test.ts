@@ -1,9 +1,9 @@
-import { describe, test } from "vitest"
-import { matchTemplateNodeList } from "./_match"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { AttributeValueEnclosure } from "../../../../src/compiler/enums"
-import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
+import { describe, test } from "vitest";
+import { matchTemplateNodeList } from "./_match";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { AttributeValueEnclosure } from "../../../../src/compiler/enums";
+import { parseTemplateTesting } from "../../../../src/util/testing/sundry";
+import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position";
 
 describe("Top level", () => {
     test("Whether the preWhiteSpace property for pre element is true", () => {
@@ -12,9 +12,9 @@ describe("Top level", () => {
             preWhiteSpace: true,
             loc: getLocByIndex(0, 11),
             startTagEndPos: getPosByIndex(5),
-            endTagStartPos: getPosByIndex(5)
-        })
-    })
+            endTagStartPos: getPosByIndex(5),
+        });
+    });
 
     test("Modify the display property of the element to be pre related through comments", () => {
         const nodeList = parseTemplateTesting(
@@ -22,8 +22,8 @@ describe("Top level", () => {
                 <!-- white-space: pre -->
                 <div></div>
             `),
-            { preserveCommentNodes: false }
-        )
+            { preserveCommentNodes: false },
+        );
         matchTemplateNodeList(
             nodeList,
             {
@@ -31,11 +31,11 @@ describe("Top level", () => {
                     {
                         value: "\n",
                         isInterpolated: false,
-                        loc: getLocByIndex(25, 26)
-                    }
+                        loc: getLocByIndex(25, 26),
+                    },
                 ],
                 next: nodeList[1],
-                loc: getLocByIndex(25, 26)
+                loc: getLocByIndex(25, 26),
             },
             {
                 tag: "div",
@@ -43,10 +43,10 @@ describe("Top level", () => {
                 preWhiteSpace: true,
                 loc: getLocByIndex(26, 37),
                 startTagEndPos: getPosByIndex(31),
-                endTagStartPos: getPosByIndex(31)
-            }
-        )
-    })
+                endTagStartPos: getPosByIndex(31),
+            },
+        );
+    });
 
     test("Modify the display property of the element to be pre related through style attribute", () => {
         matchTemplateNodeList(
@@ -55,7 +55,7 @@ describe("Top level", () => {
                     <div
                         style="box-sizing:border-box;white-space:pre-line;"
                     ></div>
-                `)
+                `),
             ),
             {
                 tag: "div",
@@ -63,25 +63,25 @@ describe("Top level", () => {
                     {
                         name: {
                             raw: "style",
-                            loc: getLocByIndex(9, 14)
+                            loc: getLocByIndex(9, 14),
                         },
                         value: {
                             loc: getLocByIndex(16, 59),
-                            raw: "box-sizing:border-box;white-space:pre-line;"
+                            raw: "box-sizing:border-box;white-space:pre-line;",
                         },
                         equalSign: true,
                         loc: getLocByIndex(9, 60),
-                        valueEnclosure: AttributeValueEnclosure.Double
-                    }
+                        valueEnclosure: AttributeValueEnclosure.Double,
+                    },
                 ],
                 preWhiteSpace: true,
                 loc: getLocByIndex(0, 68),
                 startTagEndPos: getPosByIndex(62),
-                endTagStartPos: getPosByIndex(62)
-            }
-        )
-    })
-})
+                endTagStartPos: getPosByIndex(62),
+            },
+        );
+    });
+});
 
 describe("Nesting structure", () => {
     test("Whether the preWhiteSpace property for pre element is true", () => {
@@ -94,8 +94,8 @@ describe("Nesting structure", () => {
                         </span>
                     </pre>
                 </div>
-            `)
-        )
+            `),
+        );
 
         matchTemplateNodeList(nodeList, {
             tag: "div",
@@ -105,13 +105,13 @@ describe("Nesting structure", () => {
                         {
                             value: "\n    ",
                             isInterpolated: false,
-                            loc: getLocByIndex(5, 10)
-                        }
+                            loc: getLocByIndex(5, 10),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(5, 10),
-                    next: nodeList[0].children[1]
+                    next: nodeList[0].children[1],
                 },
                 {
                     tag: "pre",
@@ -121,14 +121,14 @@ describe("Nesting structure", () => {
                                 {
                                     value: "\n        ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(15, 24)
-                                }
+                                    loc: getLocByIndex(15, 24),
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
                             loc: getLocByIndex(15, 24),
                             parent: nodeList[0].children[1],
-                            next: nodeList[0].children[1].children[1]
+                            next: nodeList[0].children[1].children[1],
                         },
                         {
                             tag: "span",
@@ -138,14 +138,14 @@ describe("Nesting structure", () => {
                                         {
                                             isInterpolated: false,
                                             loc: getLocByIndex(30, 55),
-                                            value: "\n            ...\n        "
-                                        }
+                                            value: "\n            ...\n        ",
+                                        },
                                     ],
                                     preWhiteSpace: true,
                                     hasActualAncestor: true,
                                     loc: getLocByIndex(30, 55),
-                                    parent: nodeList[0].children[1].children[1]
-                                }
+                                    parent: nodeList[0].children[1].children[1],
+                                },
                             ],
                             preWhiteSpace: true,
                             loc: getLocByIndex(24, 62),
@@ -154,22 +154,22 @@ describe("Nesting structure", () => {
                             startTagEndPos: getPosByIndex(30),
                             endTagStartPos: getPosByIndex(55),
                             prev: nodeList[0].children[1].children[0],
-                            next: nodeList[0].children[1].children[2]
+                            next: nodeList[0].children[1].children[2],
                         },
                         {
                             content: [
                                 {
                                     value: "\n    ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(62, 67)
-                                }
+                                    loc: getLocByIndex(62, 67),
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
                             loc: getLocByIndex(62, 67),
                             parent: nodeList[0].children[1],
-                            prev: nodeList[0].children[1].children[1]
-                        }
+                            prev: nodeList[0].children[1].children[1],
+                        },
                     ],
                     preWhiteSpace: true,
                     parent: nodeList[0],
@@ -178,27 +178,27 @@ describe("Nesting structure", () => {
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
                     startTagEndPos: getPosByIndex(15),
-                    endTagStartPos: getPosByIndex(67)
+                    endTagStartPos: getPosByIndex(67),
                 },
                 {
                     content: [
                         {
                             value: "\n",
                             isInterpolated: false,
-                            loc: getLocByIndex(73, 74)
-                        }
+                            loc: getLocByIndex(73, 74),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(73, 74),
-                    prev: nodeList[0].children[1]
-                }
+                    prev: nodeList[0].children[1],
+                },
             ],
             loc: getLocByIndex(0, 80),
             startTagEndPos: getPosByIndex(5),
-            endTagStartPos: getPosByIndex(74)
-        })
-    })
+            endTagStartPos: getPosByIndex(74),
+        });
+    });
 
     test("Nesting structure with preWhiteSpace property modified through comments", () => {
         const nodeList = parseTemplateTesting(
@@ -212,8 +212,8 @@ describe("Nesting structure", () => {
                     </p>
                 </div>
             `),
-            { preserveCommentNodes: true }
-        )
+            { preserveCommentNodes: true },
+        );
 
         matchTemplateNodeList(nodeList, {
             tag: "div",
@@ -223,13 +223,13 @@ describe("Nesting structure", () => {
                         {
                             value: "\n    ",
                             isInterpolated: false,
-                            loc: getLocByIndex(5, 10)
-                        }
+                            loc: getLocByIndex(5, 10),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(5, 10),
-                    next: nodeList[0].children[1]
+                    next: nodeList[0].children[1],
                 },
                 {
                     tag: "!",
@@ -239,14 +239,14 @@ describe("Nesting structure", () => {
                                 {
                                     isInterpolated: false,
                                     loc: getLocByIndex(14, 34),
-                                    value: "white-space:pre-wrap"
-                                }
+                                    value: "white-space:pre-wrap",
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
                             loc: getLocByIndex(14, 34),
-                            parent: nodeList[0].children[1]
-                        }
+                            parent: nodeList[0].children[1],
+                        },
                     ],
                     parent: nodeList[0],
                     preWhiteSpace: true,
@@ -255,21 +255,21 @@ describe("Nesting structure", () => {
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
                     startTagEndPos: getPosByIndex(14),
-                    endTagStartPos: getPosByIndex(34)
+                    endTagStartPos: getPosByIndex(34),
                 },
                 {
                     content: [
                         {
                             value: "\n    ",
                             isInterpolated: false,
-                            loc: getLocByIndex(37, 42)
-                        }
+                            loc: getLocByIndex(37, 42),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(37, 42),
                     prev: nodeList[0].children[1],
-                    next: nodeList[0].children[3]
+                    next: nodeList[0].children[3],
                 },
                 {
                     tag: "p",
@@ -279,14 +279,14 @@ describe("Nesting structure", () => {
                                 {
                                     value: "\n        ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(45, 54)
-                                }
+                                    loc: getLocByIndex(45, 54),
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
                             loc: getLocByIndex(45, 54),
                             parent: nodeList[0].children[3],
-                            next: nodeList[0].children[3].children[1]
+                            next: nodeList[0].children[3].children[1],
                         },
                         {
                             tag: "span",
@@ -296,14 +296,14 @@ describe("Nesting structure", () => {
                                         {
                                             isInterpolated: false,
                                             loc: getLocByIndex(60, 85),
-                                            value: "\n            ...\n        "
-                                        }
+                                            value: "\n            ...\n        ",
+                                        },
                                     ],
                                     preWhiteSpace: true,
                                     hasActualAncestor: true,
                                     loc: getLocByIndex(60, 85),
-                                    parent: nodeList[0].children[3].children[1]
-                                }
+                                    parent: nodeList[0].children[3].children[1],
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
@@ -312,22 +312,22 @@ describe("Nesting structure", () => {
                             startTagEndPos: getPosByIndex(60),
                             endTagStartPos: getPosByIndex(85),
                             prev: nodeList[0].children[3].children[0],
-                            next: nodeList[0].children[3].children[2]
+                            next: nodeList[0].children[3].children[2],
                         },
                         {
                             content: [
                                 {
                                     value: "\n    ",
                                     isInterpolated: false,
-                                    loc: getLocByIndex(92, 97)
-                                }
+                                    loc: getLocByIndex(92, 97),
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
                             loc: getLocByIndex(92, 97),
                             parent: nodeList[0].children[3],
-                            prev: nodeList[0].children[3].children[1]
-                        }
+                            prev: nodeList[0].children[3].children[1],
+                        },
                     ],
                     preWhiteSpace: true,
                     parent: nodeList[0],
@@ -336,27 +336,27 @@ describe("Nesting structure", () => {
                     prev: nodeList[0].children[2],
                     next: nodeList[0].children[4],
                     startTagEndPos: getPosByIndex(45),
-                    endTagStartPos: getPosByIndex(97)
+                    endTagStartPos: getPosByIndex(97),
                 },
                 {
                     content: [
                         {
                             value: "\n",
                             isInterpolated: false,
-                            loc: getLocByIndex(101, 102)
-                        }
+                            loc: getLocByIndex(101, 102),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(101, 102),
-                    prev: nodeList[0].children[3]
-                }
+                    prev: nodeList[0].children[3],
+                },
             ],
             loc: getLocByIndex(0, 108),
             startTagEndPos: getPosByIndex(5),
-            endTagStartPos: getPosByIndex(102)
-        })
-    })
+            endTagStartPos: getPosByIndex(102),
+        });
+    });
 
     test("Modify the display property of the element to be pre related through style attribute", () => {
         const nodeList = parseTemplateTesting(
@@ -366,8 +366,8 @@ describe("Nesting structure", () => {
                         ...
                     </p>
                 </div>
-            `)
-        )
+            `),
+        );
 
         matchTemplateNodeList(nodeList, {
             tag: "div",
@@ -377,13 +377,13 @@ describe("Nesting structure", () => {
                         {
                             value: "\n    ",
                             isInterpolated: false,
-                            loc: getLocByIndex(5, 10)
-                        }
+                            loc: getLocByIndex(5, 10),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(5, 10),
-                    next: nodeList[0].children[1]
+                    next: nodeList[0].children[1],
                 },
                 {
                     tag: "p",
@@ -391,16 +391,16 @@ describe("Nesting structure", () => {
                         {
                             name: {
                                 raw: "style",
-                                loc: getLocByIndex(13, 18)
+                                loc: getLocByIndex(13, 18),
                             },
                             value: {
                                 raw: "white-space: pre",
-                                loc: getLocByIndex(20, 36)
+                                loc: getLocByIndex(20, 36),
                             },
                             equalSign: true,
                             loc: getLocByIndex(13, 37),
-                            valueEnclosure: AttributeValueEnclosure.Double
-                        }
+                            valueEnclosure: AttributeValueEnclosure.Double,
+                        },
                     ],
                     children: [
                         {
@@ -408,14 +408,14 @@ describe("Nesting structure", () => {
                                 {
                                     isInterpolated: false,
                                     loc: getLocByIndex(38, 55),
-                                    value: "\n        ...\n    "
-                                }
+                                    value: "\n        ...\n    ",
+                                },
                             ],
                             preWhiteSpace: true,
                             hasActualAncestor: true,
                             loc: getLocByIndex(38, 55),
-                            parent: nodeList[0].children[1]
-                        }
+                            parent: nodeList[0].children[1],
+                        },
                     ],
                     preWhiteSpace: true,
                     parent: nodeList[0],
@@ -424,25 +424,25 @@ describe("Nesting structure", () => {
                     prev: nodeList[0].children[0],
                     next: nodeList[0].children[2],
                     startTagEndPos: getPosByIndex(38),
-                    endTagStartPos: getPosByIndex(55)
+                    endTagStartPos: getPosByIndex(55),
                 },
                 {
                     content: [
                         {
                             value: "\n",
                             isInterpolated: false,
-                            loc: getLocByIndex(59, 60)
-                        }
+                            loc: getLocByIndex(59, 60),
+                        },
                     ],
                     parent: nodeList[0],
                     hasActualAncestor: true,
                     loc: getLocByIndex(59, 60),
-                    prev: nodeList[0].children[1]
-                }
+                    prev: nodeList[0].children[1],
+                },
             ],
             loc: getLocByIndex(0, 66),
             startTagEndPos: getPosByIndex(5),
-            endTagStartPos: getPosByIndex(60)
-        })
-    })
-})
+            endTagStartPos: getPosByIndex(60),
+        });
+    });
+});

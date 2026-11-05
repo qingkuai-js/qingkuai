@@ -1,16 +1,16 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     NamedNode,
     ScopeBoundary,
     TypeOperation,
-    MemberAccessExpression
-} from "#type-declarations/ts-ast"
+    MemberAccessExpression,
+} from "#type-declarations/ts-ast";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { any } from "../../util/shared/sundry"
-import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./sundry"
+import { any } from "../../util/shared/sundry";
+import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./sundry";
 
 // 判断节点是否为类型操作，如 as、<> 等
 // Determine whether the node is a type operation, e.g. `as`, `<>`, etc.
@@ -20,11 +20,11 @@ export function isTypeOperation(node: TS.Node): node is TypeOperation {
         ts.isNonNullExpression(node) ||
         ts.isSatisfiesExpression(node) ||
         ts.isTypeAssertionExpression(node)
-    )
+    );
 }
 
 export function hasParseError(sourceFile: TS.SourceFile) {
-    return any(sourceFile).parseDiagnostics?.length > 0
+    return any(sourceFile).parseDiagnostics?.length > 0;
 }
 
 export function isLiteral(node: TS.Node) {
@@ -38,23 +38,23 @@ export function isLiteral(node: TS.Node) {
         case ts.SyntaxKind.ClassExpression:
         case ts.SyntaxKind.RegularExpressionLiteral:
         case ts.SyntaxKind.NoSubstitutionTemplateLiteral: {
-            return true
+            return true;
         }
         case ts.SyntaxKind.Identifier: {
-            return (node as TS.Identifier).text === "undefined"
+            return (node as TS.Identifier).text === "undefined";
         }
         case ts.SyntaxKind.BinaryExpression: {
-            const binaryExpression = node as TS.BinaryExpression
+            const binaryExpression = node as TS.BinaryExpression;
             if (binaryExpression.operatorToken.kind === ts.SyntaxKind.CommaToken) {
-                return isLiteral(binaryExpression.right)
+                return isLiteral(binaryExpression.right);
             }
         }
     }
-    return false
+    return false;
 }
 
 export function isValidContextPattern(node: TS.ArrayBindingElement) {
-    return ts.isOmittedExpression(node) || !node.dotDotDotToken
+    return ts.isOmittedExpression(node) || !node.dotDotDotToken;
 }
 
 export function isParameterProperty(param: TS.ParameterDeclaration) {
@@ -64,64 +64,64 @@ export function isParameterProperty(param: TS.ParameterDeclaration) {
             mod.kind === ts.SyntaxKind.PrivateKeyword ||
             mod.kind === ts.SyntaxKind.ReadonlyKeyword ||
             mod.kind === ts.SyntaxKind.ProtectedKeyword
-        )
-    })
+        );
+    });
 }
 
 export function isFunctionLiteral(node: TS.Node) {
-    return ts.isFunctionExpression(node) || ts.isArrowFunction(node)
+    return ts.isFunctionExpression(node) || ts.isArrowFunction(node);
 }
 
 export function isArrayBindingNameIdentifier(node: TS.ArrayBindingElement) {
     if (ts.isOmittedExpression(node) || node.dotDotDotToken) {
-        return false
+        return false;
     }
-    return ts.isIdentifier(node.name)
+    return ts.isIdentifier(node.name);
 }
 
 // 判断节点是否为括号表达式的最后一个节点
 // Determine whether the node is the last node of a parenthesized expression.
 export function isLastNodeOfParenthesis(node: TS.Node) {
     if (!node.parent) {
-        return false
+        return false;
     }
     if (ts.isParenthesizedExpression(node.parent)) {
-        return true
+        return true;
     }
     if (
         ts.isBinaryExpression(node.parent) &&
         node.parent.operatorToken.kind === ts.SyntaxKind.CommaToken
     ) {
-        return node.parent.right === node
+        return node.parent.right === node;
     }
-    return false
+    return false;
 }
 
 // 判断节点是否为更新表达式（++ 或 --）
 // Determine whether the node is an update expression (++, --).
 export function isUpdateExpression(
-    node: TS.Node
+    node: TS.Node,
 ): node is TS.PrefixUnaryExpression | TS.PostfixUnaryExpression {
-    node = getStriptTypeOperationsNode(node)!
+    node = getStriptTypeOperationsNode(node)!;
 
     if (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) {
         if (
             node.operator === ts.SyntaxKind.PlusPlusToken ||
             node.operator === ts.SyntaxKind.MinusMinusToken
         ) {
-            return true
+            return true;
         }
     }
-    return false
+    return false;
 }
 
 // 判断节点是否为赋值表达式
 // Determine whether the node is an assignment expression.
 export function isAssignmentExpression(node: TS.Node): node is TS.BinaryExpression {
-    node = getStriptTypeOperationsNode(node)!
+    node = getStriptTypeOperationsNode(node)!;
 
     if (!ts.isBinaryExpression(node)) {
-        return false
+        return false;
     }
     switch (node.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
@@ -140,10 +140,10 @@ export function isAssignmentExpression(node: TS.Node): node is TS.BinaryExpressi
         case ts.SyntaxKind.LessThanLessThanEqualsToken:
         case ts.SyntaxKind.GreaterThanGreaterThanEqualsToken:
         case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken: {
-            return true
+            return true;
         }
         default: {
-            return false
+            return false;
         }
     }
 }
@@ -152,37 +152,37 @@ export function isAssignmentExpression(node: TS.Node): node is TS.BinaryExpressi
 // Determine whether the identifier node is an assignment target.
 export function isIdentifierAssignmentTarget(identifier: TS.Identifier) {
     for (let current: TS.Node = identifier; current; ) {
-        const parent = getStriptTypeOperationsParent(current)
+        const parent = getStriptTypeOperationsParent(current);
         if (!parent) {
-            return false
+            return false;
         }
         if (isUpdateExpression(parent)) {
-            return true
+            return true;
         }
         if (ts.isForInStatement(parent) || ts.isForOfStatement(parent)) {
-            return parent.initializer === identifier
+            return parent.initializer === identifier;
         }
         switch (parent.kind) {
             case ts.SyntaxKind.SpreadElement:
             case ts.SyntaxKind.ArrayLiteralExpression:
             case ts.SyntaxKind.ObjectLiteralExpression:
             case ts.SyntaxKind.ShorthandPropertyAssignment: {
-                break
+                break;
             }
             case ts.SyntaxKind.PropertyAssignment: {
                 if (current === (parent as TS.PropertyAssignment).initializer) {
-                    break
+                    break;
                 }
-                return false
+                return false;
             }
             default: {
                 if (isAssignmentExpression(parent)) {
-                    return identifier.getEnd() < parent.operatorToken.getStart()
+                    return identifier.getEnd() < parent.operatorToken.getStart();
                 }
-                return false
+                return false;
             }
         }
-        current = parent
+        current = parent;
     }
 }
 
@@ -190,10 +190,10 @@ export function isIdentifierAssignmentTarget(identifier: TS.Identifier) {
 // Determine whether this is a value identifier reference.
 export function isBindingReference(node: TS.Node) {
     if (!ts.isIdentifier(node)) {
-        return false
+        return false;
     }
     if (!node.parent) {
-        return true
+        return true;
     }
     switch (node.parent.kind) {
         case ts.SyntaxKind.BreakStatement:
@@ -208,7 +208,7 @@ export function isBindingReference(node: TS.Node) {
         case ts.SyntaxKind.InterfaceDeclaration:
         case ts.SyntaxKind.TypeAliasDeclaration:
         case ts.SyntaxKind.NamespaceExportDeclaration: {
-            return false
+            return false;
         }
 
         case ts.SyntaxKind.Parameter:
@@ -226,23 +226,23 @@ export function isBindingReference(node: TS.Node) {
         case ts.SyntaxKind.PropertyAssignment:
         case ts.SyntaxKind.ImportEqualsDeclaration:
         case ts.SyntaxKind.PropertyAccessExpression: {
-            return node !== (node.parent as NamedNode).name
+            return node !== (node.parent as NamedNode).name;
         }
 
         case ts.SyntaxKind.ExpressionWithTypeArguments: {
-            const grandParent = node.parent.parent
+            const grandParent = node.parent.parent;
             if (ts.isHeritageClause(grandParent)) {
-                return grandParent.token === ts.SyntaxKind.ExtendsKeyword
+                return grandParent.token === ts.SyntaxKind.ExtendsKeyword;
             }
-            break
+            break;
         }
 
         case ts.SyntaxKind.BindingElement: {
-            const bindingElement = node.parent as TS.BindingElement
-            return node !== bindingElement.propertyName && node !== bindingElement.name
+            const bindingElement = node.parent as TS.BindingElement;
+            return node !== bindingElement.propertyName && node !== bindingElement.name;
         }
     }
-    return true
+    return true;
 }
 
 // 判断节点是否为作用域边界
@@ -255,30 +255,30 @@ export function isScopeBoundary(node: TS.Node): node is ScopeBoundary {
         case ts.SyntaxKind.ModuleBlock:
         case ts.SyntaxKind.ClassExpression:
         case ts.SyntaxKind.ClassDeclaration: {
-            return true
+            return true;
         }
         default: {
-            const parentNode = node.parent
+            const parentNode = node.parent;
             switch (parentNode.kind) {
                 case ts.SyntaxKind.ArrowFunction: {
-                    const arrowFunction = parentNode as TS.ArrowFunction
-                    return node === arrowFunction.body
+                    const arrowFunction = parentNode as TS.ArrowFunction;
+                    return node === arrowFunction.body;
                 }
                 case ts.SyntaxKind.ForStatement: {
-                    const forStatement = parentNode as TS.ForStatement
+                    const forStatement = parentNode as TS.ForStatement;
                     return (
                         node === forStatement.statement ||
                         node === forStatement.condition ||
                         node === forStatement.incrementor
-                    )
+                    );
                 }
                 case ts.SyntaxKind.ForInStatement:
                 case ts.SyntaxKind.ForOfStatement: {
-                    const forInOrOfStatement = parentNode as TS.ForInStatement | TS.ForOfStatement
-                    return node === forInOrOfStatement.statement
+                    const forInOrOfStatement = parentNode as TS.ForInStatement | TS.ForOfStatement;
+                    return node === forInOrOfStatement.statement;
                 }
                 default: {
-                    return false
+                    return false;
                 }
             }
         }
@@ -288,11 +288,11 @@ export function isScopeBoundary(node: TS.Node): node is ScopeBoundary {
 // 判断节点是否为不可提升作用域边界的上下文
 // Determine whether the node is within a non-hoistable scope boundary context.
 export function isNonHoistableScopeBoundary(node: TS.Node) {
-    const parentNode = node.parent
+    const parentNode = node.parent;
     switch (node.kind) {
         case ts.SyntaxKind.SourceFile:
         case ts.SyntaxKind.ModuleBlock: {
-            return true
+            return true;
         }
         case ts.SyntaxKind.Block: {
             switch (parentNode?.kind) {
@@ -303,12 +303,12 @@ export function isNonHoistableScopeBoundary(node: TS.Node) {
                 case ts.SyntaxKind.FunctionDeclaration:
                 case ts.SyntaxKind.FunctionExpression:
                 case ts.SyntaxKind.MethodDeclaration: {
-                    return true
+                    return true;
                 }
             }
         }
     }
-    return ts.isArrowFunction(parentNode) && node === parentNode.body
+    return ts.isArrowFunction(parentNode) && node === parentNode.body;
 }
 
 export function isInlineEventHandler(node: TS.Node) {
@@ -318,10 +318,10 @@ export function isInlineEventHandler(node: TS.Node) {
         case ts.SyntaxKind.FunctionExpression:
         case ts.SyntaxKind.ElementAccessExpression:
         case ts.SyntaxKind.PropertyAccessExpression: {
-            return false
+            return false;
         }
         default: {
-            return true
+            return true;
         }
     }
 }
@@ -331,10 +331,10 @@ export function isSimpleHandlerReference(node: TS.Node) {
         case ts.SyntaxKind.Identifier:
         case ts.SyntaxKind.PropertyAccessExpression:
         case ts.SyntaxKind.ElementAccessExpression: {
-            return true
+            return true;
         }
         default: {
-            return false
+            return false;
         }
     }
 }
@@ -343,81 +343,81 @@ export function isPropertyEqual(a: TS.Node, b: TS.Node): boolean {
     const [x, y] = [a, b].map(node => {
         switch ((node = getStriptTypeOperationsNode(node)!).kind) {
             case ts.SyntaxKind.Identifier: {
-                return (node as TS.Identifier).text
+                return (node as TS.Identifier).text;
             }
             case ts.SyntaxKind.StringLiteral:
             case ts.SyntaxKind.NumericLiteral:
             case ts.SyntaxKind.NoSubstitutionTemplateLiteral: {
-                return String((node as TS.LiteralExpression).text)
+                return String((node as TS.LiteralExpression).text);
             }
             default: {
-                return null
+                return null;
             }
         }
-    })
-    return x !== null && y !== null && x === y
+    });
+    return x !== null && y !== null && x === y;
 }
 
 export function isExpressionEqual(a: TS.Node, b: TS.Node): boolean {
-    ;[a, b] = [a, b].map(node => getStriptTypeOperationsNode(node)!)
+    [a, b] = [a, b].map(node => getStriptTypeOperationsNode(node)!);
 
     if (a.kind !== b.kind) {
-        return false
+        return false;
     }
 
     switch (a.kind) {
         case ts.SyntaxKind.Identifier: {
-            return any(a).text === any(b).text
+            return any(a).text === any(b).text;
         }
         case ts.SyntaxKind.PropertyAccessExpression: {
             return (
                 isPropertyEqual(any(a).name, any(b).name) &&
                 isExpressionEqual(any(a).expression, any(b).expression)
-            )
+            );
         }
         case ts.SyntaxKind.ElementAccessExpression: {
             return (
                 isExpressionEqual(any(a).expression, any(b).expression) &&
                 isExpressionEqual(any(a).argumentExpression, any(b).argumentExpression)
-            )
+            );
         }
         default: {
-            return false
+            return false;
         }
     }
 }
 
 export function isRawCallExpression(node: TS.Node): node is TS.CallExpression {
     if (!ts.isCallExpression(node)) {
-        return false
+        return false;
     }
 
-    const callee = getStriptTypeOperationsNode(node.expression)
-    return ts.isIdentifier(callee) && callee.text === "raw"
+    const callee = getStriptTypeOperationsNode(node.expression);
+    return ts.isIdentifier(callee) && callee.text === "raw";
 }
 
 export function isMemberAccessExpression(node: TS.Node): node is MemberAccessExpression {
-    const strippedNode = getStriptTypeOperationsNode(node)
+    const strippedNode = getStriptTypeOperationsNode(node);
     return (
         ts.isNonNullExpression(strippedNode) ||
         ts.isElementAccessExpression(strippedNode) ||
         ts.isPropertyAccessExpression(strippedNode)
-    )
+    );
 }
 
 export function isLeftValue(node: TS.Node): boolean {
     if (ts.isSourceFile(node)) {
-        return false
+        return false;
     }
-    node = getStriptTypeOperationsNode(node)!
+    node = getStriptTypeOperationsNode(node)!;
 
     if (isMemberAccessExpression(node)) {
         return (
             !ts.isNonNullExpression(node) && !node.questionDotToken && isLeftValue(node.expression)
-        )
+        );
     }
     if (ts.isIdentifier(node)) {
-        return node.text !== "undefined"
+        return node.text !== "undefined";
     }
-    return false
+    return false;
 }

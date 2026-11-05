@@ -20,15 +20,15 @@
 // in every shipped declaration to the relative path; the virtual package is never
 // shipped, and the path is not an exports subpath, keeping it unreachable by users.
 
-import fsExtra from "fs-extra"
-import nodeUrl from "node:url"
-import nodePath from "node:path"
+import fsExtra from "fs-extra";
+import nodeUrl from "node:url";
+import nodePath from "node:path";
 
-const PWD = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url))
-const SOURCE_BRAND_DTS = nodePath.resolve(PWD, "../src/types/brand.d.ts")
-const SOURCE_TYPES_DIR = nodePath.dirname(SOURCE_BRAND_DTS)
-const VIRTUAL_DIR = nodePath.resolve(PWD, "../node_modules/@qingkuai/virtual")
-const VIRTUAL_BRAND_DTS = nodePath.join(VIRTUAL_DIR, "brand.d.ts")
+const PWD = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url));
+const SOURCE_BRAND_DTS = nodePath.resolve(PWD, "../src/types/brand.d.ts");
+const SOURCE_TYPES_DIR = nodePath.dirname(SOURCE_BRAND_DTS);
+const VIRTUAL_DIR = nodePath.resolve(PWD, "../node_modules/@qingkuai/virtual");
+const VIRTUAL_BRAND_DTS = nodePath.join(VIRTUAL_DIR, "brand.d.ts");
 
 // 上一次注入可能仍留在原地，且有两种形态：指向源码目录的目录联接（见下方 Windows 回退），
 // 或真实目录内的文件软链接。两者都必须整体移除——尤其是联接，穿过它去移除其中的
@@ -39,35 +39,39 @@ const VIRTUAL_BRAND_DTS = nodePath.join(VIRTUAL_DIR, "brand.d.ts")
 // real directory. Both must be removed as a whole — removing brand.d.ts through a
 // junction would delete the real source declaration.
 if (isSymbolicLink(VIRTUAL_DIR)) {
-    fsExtra.removeSync(VIRTUAL_DIR)
+    fsExtra.removeSync(VIRTUAL_DIR);
 }
-fsExtra.ensureDirSync(VIRTUAL_DIR)
+fsExtra.ensureDirSync(VIRTUAL_DIR);
 
 if (fsExtra.pathExistsSync(VIRTUAL_BRAND_DTS)) {
-    fsExtra.removeSync(VIRTUAL_BRAND_DTS)
+    fsExtra.removeSync(VIRTUAL_BRAND_DTS);
 }
 
 try {
-    fsExtra.symlinkSync(nodePath.relative(VIRTUAL_DIR, SOURCE_BRAND_DTS), VIRTUAL_BRAND_DTS, "file")
+    fsExtra.symlinkSync(
+        nodePath.relative(VIRTUAL_DIR, SOURCE_BRAND_DTS),
+        VIRTUAL_BRAND_DTS,
+        "file",
+    );
 } catch (error) {
     if (process.platform !== "win32") {
-        throw error
+        throw error;
     }
 
     // Windows 未开启开发者模式时，以目录联接（junction）挂载为虚拟包目录
     // When developer mode is not enabled on Windows, mount the
     // virtual package directory as a directory junction instead
-    fsExtra.removeSync(VIRTUAL_DIR)
-    fsExtra.symlinkSync(SOURCE_TYPES_DIR, VIRTUAL_DIR, "junction")
+    fsExtra.removeSync(VIRTUAL_DIR);
+    fsExtra.symlinkSync(SOURCE_TYPES_DIR, VIRTUAL_DIR, "junction");
     console.log(
-        "[install-brand] file symlinks are not permitted; mounted src/types as a directory junction instead"
-    )
+        "[install-brand] file symlinks are not permitted; mounted src/types as a directory junction instead",
+    );
 }
 
 function isSymbolicLink(path: string) {
     try {
-        return fsExtra.lstatSync(path).isSymbolicLink()
+        return fsExtra.lstatSync(path).isSymbolicLink();
     } catch {
-        return false
+        return false;
     }
 }

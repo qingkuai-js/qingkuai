@@ -3,40 +3,40 @@ import type {
     SelectionCache,
     TemplateFragment,
     SelectionCacheItem,
-    TemplateNodeContext
-} from "#type-declarations/compiler"
-import type { RuntimeCodeWriter } from "../writer"
+    TemplateNodeContext,
+} from "#type-declarations/compiler";
+import type { RuntimeCodeWriter } from "../writer";
 
 import {
     omitQuoteAttrValueRE,
     atLeastOneWhitespaceRE,
-    interpolatedAttrStartCharRE
-} from "../../regular"
+    interpolatedAttrStartCharRE,
+} from "../../regular";
 import {
     FRAGMENT_ROOT,
     FRAG_WITH_TARGET,
     FRAG_WHOLE_CONTENT,
     FRAG_LEADING_ANCHOR,
-    FRAG_ORPHAN_CONTENT
-} from "../../../util/shared/flags"
+    FRAG_ORPHAN_CONTENT,
+} from "../../../util/shared/flags";
 import {
     getTemplateNodeContext,
-    getGeneratedStaticTextContent
-} from "../../../util/compiler/template"
-import { AttributeValueEnclosure } from "../../enums"
-import { getLastElem } from "../../../util/shared/arrays"
-import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry"
-import { newCleanObj, traverseObject } from "../../../util/shared/sundry"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state"
-import { CREATE_ANCHOR_DIRECTIVES, FRAG_FLAG_INTERPRETIVE_MAP, SPREAD_TAG } from "../../constants"
+    getGeneratedStaticTextContent,
+} from "../../../util/compiler/template";
+import { AttributeValueEnclosure } from "../../enums";
+import { getLastElem } from "../../../util/shared/arrays";
+import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
+import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { CREATE_ANCHOR_DIRECTIVES, FRAG_FLAG_INTERPRETIVE_MAP, SPREAD_TAG } from "../../constants";
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
     if (!nodes.length) {
-        return []
+        return [];
     }
 
-    const fragments: TemplateFragment[] = []
-    const existingFragmentContentMap: Record<string, TemplateFragment> = newCleanObj()
+    const fragments: TemplateFragment[] = [];
+    const existingFragmentContentMap: Record<string, TemplateFragment> = newCleanObj();
 
     const newTemplateFragment = (defaults: Partial<TemplateFragment>) => {
         const empty: TemplateFragment = {
@@ -50,128 +50,128 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             nodeContext: null,
             getWith: undefined,
             directChildrenCount: 0,
-            usedCompressString: false
-        }
-        return Object.assign(empty, defaults)
-    }
+            usedCompressString: false,
+        };
+        return Object.assign(empty, defaults);
+    };
 
     function extendFragments(nodeContext: TemplateNodeContext | null) {
         const fragment = newTemplateFragment({
             nodeContext,
             inSvg: !!nodeContext?.inSvgContext,
-            inSlot: !!nodeContext?.inSlotContent
-        })
+            inSlot: !!nodeContext?.inSlotContent,
+        });
         if ((fragments.push(fragment), nodeContext)) {
-            return (nodeContext.fragment = fragment)
+            return (nodeContext.fragment = fragment);
         } else {
-            return (analyzeResult.template.componentFragment = fragment)
+            return (analyzeResult.template.componentFragment = fragment);
         }
     }
 
-    ;(function generate(
+    (function generate(
         nodes: TemplateNode[],
         fragment: TemplateFragment,
-        parentContext: TemplateNodeContext | null
+        parentContext: TemplateNodeContext | null,
     ) {
         const increaseDirectChildrenCount = () => {
             if (!parentContext) {
-                fragment.directChildrenCount++
+                fragment.directChildrenCount++;
             } else {
-                parentContext.selectableChildCount++
+                parentContext.selectableChildCount++;
             }
-        }
+        };
 
         const selectLastNode = (id: string, nodeContext?: TemplateNodeContext) => {
-            const nodeId = ensureIdWithNumSuffix("_" + id)
+            const nodeId = ensureIdWithNumSuffix("_" + id);
             fragment.selections.push({
                 id: nodeId,
                 parent: parentContext?.id,
                 replaceWithText: getLastElem(fragment.content)?.value === "<!>",
-                index: (parentContext?.selectableChildCount ?? fragment.directChildrenCount) - 1
-            })
+                index: (parentContext?.selectableChildCount ?? fragment.directChildrenCount) - 1,
+            });
             if (nodeContext) {
-                nodeContext.id = nodeId
+                nodeContext.id = nodeId;
             }
-            return nodeId
-        }
+            return nodeId;
+        };
 
         for (const node of nodes) {
             if (node.isEmbedded) {
-                continue
+                continue;
             }
 
-            const isComment = "!" === node.tag
-            const nodeContext = getTemplateNodeContext(node)
+            const isComment = "!" === node.tag;
+            const nodeContext = getTemplateNodeContext(node);
 
             const addEmptyTextNodeContent = (select = false) => {
                 if (getLastElem(fragment.content)?.isText) {
                     fragment.content.push({
                         isText: false,
-                        value: "<!>"
-                    })
+                        value: "<!>",
+                    });
                 } else {
                     fragment.content.push({
                         isText: true,
-                        value: " "
-                    })
+                        value: " ",
+                    });
                 }
-                increaseDirectChildrenCount()
-                return select ? selectLastNode("text", nodeContext) : ""
-            }
+                increaseDirectChildrenCount();
+                return select ? selectLastNode("text", nodeContext) : "";
+            };
 
             const createFragmentWithAnchor = (nodes: TemplateNode[]) => {
-                const existingFragment = nodeContext.fragment ?? extendFragments(nodeContext)
+                const existingFragment = nodeContext.fragment ?? extendFragments(nodeContext);
                 if (!node.parent?.componentTag) {
-                    nodeContext.anchorId = addEmptyTextNodeContent(true)
+                    nodeContext.anchorId = addEmptyTextNodeContent(true);
                 }
-                generate(nodes, existingFragment, null)
-            }
+                generate(nodes, existingFragment, null);
+            };
 
             const createAnchorBracket = () => {
                 if (
                     !nodeContext.sortedDirectives.some(directive => {
-                        return CREATE_ANCHOR_DIRECTIVES.has(directive.name.raw)
+                        return CREATE_ANCHOR_DIRECTIVES.has(directive.name.raw);
                     })
                 ) {
-                    return
+                    return;
                 }
 
                 const bracketFragment = newTemplateFragment({
                     content: [
                         {
                             isText: true,
-                            value: " "
-                        }
+                            value: " ",
+                        },
                     ],
                     selections: [
                         {
                             index: 0,
                             parent: undefined,
                             replaceWithText: false,
-                            id: ensureIdWithNumSuffix("_text")
-                        }
+                            id: ensureIdWithNumSuffix("_text"),
+                        },
                     ],
                     directChildrenCount: 1,
-                    id: ensureIdWithNumSuffix("_fragment")
-                })
-                fragments.push((nodeContext.anchorBracket = bracketFragment))
-            }
+                    id: ensureIdWithNumSuffix("_fragment"),
+                });
+                fragments.push((nodeContext.anchorBracket = bracketFragment));
+            };
 
             if ("slot" === node.tag) {
-                createFragmentWithAnchor(node.children)
-                createAnchorBracket()
-                continue
+                createFragmentWithAnchor(node.children);
+                createAnchorBracket();
+                continue;
             }
 
             if (node.componentTag) {
-                createFragmentWithAnchor([])
-                createAnchorBracket()
+                createFragmentWithAnchor([]);
+                createAnchorBracket();
 
                 for (const child of node.children) {
-                    const childContext = getTemplateNodeContext(child)
-                    generate([child], extendFragments(childContext), null)
+                    const childContext = getTemplateNodeContext(child);
+                    generate([child], extendFragments(childContext), null);
                 }
-                continue
+                continue;
             }
 
             // 如果节点只具有一个 #html 指令，只需要在其内部的文本节点处创建一个锚点
@@ -182,136 +182,136 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
                     nodeContext.sortedDirectives.length !== 1
                 ) {
                     if (CREATE_ANCHOR_DIRECTIVES.has(nodeContext.sortedDirectives[0].name.raw)) {
-                        createFragmentWithAnchor([node])
+                        createFragmentWithAnchor([node]);
                     } else {
                         nodeContext.anchorId = getTemplateNodeContext(
-                            getPrevHasDirectiveSibling(node)!
-                        ).anchorId
-                        generate([node], extendFragments(nodeContext), null)
+                            getPrevHasDirectiveSibling(node)!,
+                        ).anchorId;
+                        generate([node], extendFragments(nodeContext), null);
                     }
-                    continue
+                    continue;
                 }
             }
 
             if (SPREAD_TAG === node.tag) {
-                let parentContext: TemplateNodeContext | null = null
+                let parentContext: TemplateNodeContext | null = null;
                 if (nodeContext !== fragment.nodeContext) {
                     for (let cur = node.parent; cur; ) {
                         if (SPREAD_TAG === cur.tag) {
-                            const curNodeContext = getTemplateNodeContext(cur)
+                            const curNodeContext = getTemplateNodeContext(cur);
                             if (curNodeContext.sortedDirectives.length) {
-                                break
+                                break;
                             }
                         }
                         if ("slot" !== cur.tag && !cur.isEmbedded && !cur.componentTag) {
-                            parentContext = getTemplateNodeContext(cur)
-                            break
+                            parentContext = getTemplateNodeContext(cur);
+                            break;
                         }
                         // slot/组件/嵌入标签与透明 spread 均不是可选父级，继续向上查找
                         // slot/component/embedded tags and transparent spreads are not
                         // selectable parents; keep walking up the ancestor chain
-                        cur = cur.parent
+                        cur = cur.parent;
                     }
                 }
-                generate(node.children, fragment, parentContext)
-                continue
+                generate(node.children, fragment, parentContext);
+                continue;
             }
 
             if ("" === node.tag) {
                 if (nodeContext.shouldBeSelected) {
-                    addEmptyTextNodeContent(true)
+                    addEmptyTextNodeContent(true);
                 } else {
-                    const content = getGeneratedStaticTextContent(node.content[0])!
+                    const content = getGeneratedStaticTextContent(node.content[0])!;
                     if (content) {
-                        const lastContent = getLastElem(fragment.content)
+                        const lastContent = getLastElem(fragment.content);
                         if (lastContent?.isText) {
-                            selectLastNode("text")
-                            lastContent.value = "<!>"
-                            lastContent.isText = false
-                            getLastElem(fragment.selections)!.replaceWithText = true
+                            selectLastNode("text");
+                            lastContent.value = "<!>";
+                            lastContent.isText = false;
+                            getLastElem(fragment.selections)!.replaceWithText = true;
                         }
                         fragment.content.push({
                             isText: true,
-                            value: content
-                        })
-                        increaseDirectChildrenCount()
+                            value: content,
+                        });
+                        increaseDirectChildrenCount();
                     }
                 }
-                continue
+                continue;
             }
 
             if (isComment) {
                 fragment.content.push({
                     isText: false,
-                    value: "<!--"
-                })
+                    value: "<!--",
+                });
             } else {
                 fragment.content.push({
                     isText: false,
-                    value: `<${node.tag}`
-                })
+                    value: `<${node.tag}`,
+                });
             }
 
             for (const attribute of node.attributes) {
-                const rawName = attribute.name.raw
-                const rawValue = attribute.value.raw
-                const isStaticClass = rawName === "class"
+                const rawName = attribute.name.raw;
+                const rawValue = attribute.value.raw;
+                const isStaticClass = rawName === "class";
                 if (
                     !interpolatedAttrStartCharRE.test(rawName[0]) &&
                     (!isStaticClass || !nodeContext.attributesMap["!class"])
                 ) {
                     fragment.content.push({
                         isText: false,
-                        value: " "
-                    })
+                        value: " ",
+                    });
                     fragment.content.push({
                         isText: false,
-                        value: rawName
-                    })
+                        value: rawName,
+                    });
 
                     if (attribute.equalSign) {
                         const quote =
-                            attribute.valueEnclosure === AttributeValueEnclosure.Double ? '"' : "'"
-                        const couldOmitQuote = omitQuoteAttrValueRE.test(rawValue)
+                            attribute.valueEnclosure === AttributeValueEnclosure.Double ? '"' : "'";
+                        const couldOmitQuote = omitQuoteAttrValueRE.test(rawValue);
                         fragment.content.push({
                             isText: false,
-                            value: "="
-                        })
+                            value: "=",
+                        });
 
                         if (!couldOmitQuote) {
                             fragment.content.push({
                                 isText: false,
-                                value: quote
-                            })
+                                value: quote,
+                            });
                         }
                         if (isStaticClass) {
-                            const className = rawValue.replaceAll(atLeastOneWhitespaceRE, " ")
-                            const classList = className.trim().split(" ")
+                            const className = rawValue.replaceAll(atLeastOneWhitespaceRE, " ");
+                            const classList = className.trim().split(" ");
                             for (let i = 0; i < classList.length; i++) {
                                 if (classList[i]) {
                                     fragment.content.push({
                                         isText: false,
-                                        value: classList[i]
-                                    })
+                                        value: classList[i],
+                                    });
                                 }
                                 if (i !== classList.length - 1) {
                                     fragment.content.push({
                                         isText: false,
-                                        value: " "
-                                    })
+                                        value: " ",
+                                    });
                                 }
                             }
                         } else {
                             fragment.content.push({
                                 isText: false,
-                                value: rawValue
-                            })
+                                value: rawValue,
+                            });
                         }
                         if (!couldOmitQuote) {
                             fragment.content.push({
                                 isText: false,
-                                value: quote
-                            })
+                                value: quote,
+                            });
                         }
                     }
                 }
@@ -319,235 +319,235 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             if (inputDescriptor.styles.length) {
                 fragment.content.push({
                     isText: false,
-                    value: ` qk-${inputDescriptor.options.hashId}`
-                })
+                    value: ` qk-${inputDescriptor.options.hashId}`,
+                });
             }
             if (!isComment) {
                 fragment.content.push({
                     isText: false,
-                    value: ">"
-                })
+                    value: ">",
+                });
             }
             if ((increaseDirectChildrenCount(), nodeContext.shouldBeSelected)) {
-                selectLastNode(node.tag, nodeContext)
+                selectLastNode(node.tag, nodeContext);
             }
-            generate(node.children, fragment, nodeContext)
+            generate(node.children, fragment, nodeContext);
 
             if (!node.isSelfClosing) {
                 fragment.content.push({
                     isText: false,
-                    value: isComment ? "-->" : `</${node.tag}>`
-                })
+                    value: isComment ? "-->" : `</${node.tag}>`,
+                });
             }
         }
-    })(nodes, extendFragments(null), null)
+    })(nodes, extendFragments(null), null);
 
     for (const fragment of fragments) {
-        const joinedContent = fragment.content.map(item => item.value).join("")
-        const contentKey = (fragment.inSvg ? "svg:" : "html:") + joinedContent
-        const existingFragment = existingFragmentContentMap[contentKey]
+        const joinedContent = fragment.content.map(item => item.value).join("");
+        const contentKey = (fragment.inSvg ? "svg:" : "html:") + joinedContent;
+        const existingFragment = existingFragmentContentMap[contentKey];
         if (existingFragment) {
-            fragment.getWith = existingFragment
+            fragment.getWith = existingFragment;
         } else {
-            existingFragmentContentMap[contentKey] = fragment
+            existingFragmentContentMap[contentKey] = fragment;
         }
     }
-    return fragments
+    return fragments;
 }
 
 export function writeFragmentGetterDeclarations(
     writer: RuntimeCodeWriter,
-    fragments: TemplateFragment[]
+    fragments: TemplateFragment[],
 ) {
-    let hasFragmentGetterDeclaration = false
+    let hasFragmentGetterDeclaration = false;
     for (const fragment of fragments) {
         if (!fragment.content.length) {
-            continue
+            continue;
         }
         if (fragment.getWith) {
-            fragment.getterId = fragment.getWith!.getterId
+            fragment.getterId = fragment.getWith!.getterId;
         } else {
-            const internalId = generateIdentifier.internal
-            const compressStringsId = generateIdentifier.compressStrings
-            const fragmentGetterId = ensureIdWithNumSuffix("_getFragment")
-            const joinedContent = fragment.content.map(item => item.value).join("")
-            fragment.getterId = fragmentGetterId
-            writer.write(`const ${fragmentGetterId} = `)
-            writer.write(`${internalId}.${getFragmentGetterName(fragment)}(`)
+            const internalId = generateIdentifier.internal;
+            const compressStringsId = generateIdentifier.compressStrings;
+            const fragmentGetterId = ensureIdWithNumSuffix("_getFragment");
+            const joinedContent = fragment.content.map(item => item.value).join("");
+            fragment.getterId = fragmentGetterId;
+            writer.write(`const ${fragmentGetterId} = `);
+            writer.write(`${internalId}.${getFragmentGetterName(fragment)}(`);
 
-            let stringifiedContent = `\`${joinedContent.replaceAll("`", "\\`")}\``
+            let stringifiedContent = `\`${joinedContent.replaceAll("`", "\\`")}\``;
             if (inputDescriptor.options.debug) {
-                stringifiedContent = stringifiedContent.replaceAll("\n", "\\n")
+                stringifiedContent = stringifiedContent.replaceAll("\n", "\\n");
             }
-            writer.write(stringifiedContent)
+            writer.write(stringifiedContent);
 
             if (fragment.usedCompressString) {
-                writer.write(`, ${compressStringsId}`)
+                writer.write(`, ${compressStringsId}`);
             }
-            writer.writeLine(")")
-            hasFragmentGetterDeclaration = true
+            writer.writeLine(")");
+            hasFragmentGetterDeclaration = true;
         }
     }
     if (hasFragmentGetterDeclaration) {
-        writer.wrapLine()
+        writer.wrapLine();
     }
-    return writer
+    return writer;
 }
 
 export function writeFragmentSelections(
     writer: RuntimeCodeWriter,
     fragment: TemplateFragment,
-    slotAnchorId?: string
+    slotAnchorId?: string,
 ) {
-    const flagInterpretives: string[] = []
-    const selectionCache: SelectionCache = newCleanObj()
+    const flagInterpretives: string[] = [];
+    const selectionCache: SelectionCache = newCleanObj();
     if (!fragment.nodeContext || !fragment.nodeContext.node.hasActualAncestor) {
-        fragment.flag |= FRAGMENT_ROOT
+        fragment.flag |= FRAGMENT_ROOT;
     }
     if (isFragmentWholeContent(fragment)) {
-        fragment.flag |= FRAG_WHOLE_CONTENT
+        fragment.flag |= FRAG_WHOLE_CONTENT;
     }
     if (doesFragmentNeedLeadingAnchor(fragment)) {
-        fragment.flag |= FRAG_LEADING_ANCHOR
+        fragment.flag |= FRAG_LEADING_ANCHOR;
     } else if (isFragmentOrphan(fragment)) {
-        fragment.flag |= FRAG_ORPHAN_CONTENT
-        fragment.id = fragment.selections[0]?.id ?? ""
+        fragment.flag |= FRAG_ORPHAN_CONTENT;
+        fragment.id = fragment.selections[0]?.id ?? "";
     }
     if (doesFragmentHasTargetDirective(fragment)) {
-        fragment.flag |= FRAG_WITH_TARGET
+        fragment.flag |= FRAG_WITH_TARGET;
     }
     if (!fragment.id) {
-        fragment.id = ensureIdWithNumSuffix("_fragment")
+        fragment.id = ensureIdWithNumSuffix("_fragment");
     }
     traverseObject(FRAG_FLAG_INTERPRETIVE_MAP, (flag, interpret) => {
         if (fragment.flag & flag) {
-            flagInterpretives.push(interpret)
+            flagInterpretives.push(interpret);
         }
-    })
+    });
 
-    const internalId = generateIdentifier.internal
+    const internalId = generateIdentifier.internal;
     const interpretiveComment =
         fragment.flag && inputDescriptor.options.interpretiveComments
             ? `/* ${flagInterpretives.join(" | ")} */ `
-            : ""
-    writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`)
-    writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""}`)
+            : "";
+    writer.wrapLine().write(`const ${fragment.id} = ${fragment.getterId}(`);
+    writer.write(`${fragment.flag ? `${interpretiveComment}${fragment.flag}` : ""}`);
 
     // 插槽内容的落点由组件决定，实例化时把锚点传进去让它自己判断命名空间
     // The placement of slot content is decided by the component, so the anchor is
     // passed in for the getter to resolve the namespace itself.
     if (fragment.inSlot && slotAnchorId) {
-        writer.write(`, ${slotAnchorId}`)
+        writer.write(`, ${slotAnchorId}`);
     }
-    writer.write(")")
+    writer.write(")");
 
     for (const selection of fragment.selections) {
         if (fragment.flag & FRAG_ORPHAN_CONTENT && selection === fragment.selections[0]) {
-            continue
+            continue;
         }
 
-        const index = selection.index ?? 0
-        const parentId = selection.parent ?? fragment.id
-        const methodSuffis = selection.replaceWithText ? "AsText" : ""
-        let selectExpression = `${internalId}.getChild${methodSuffis}(${parentId}`
+        const index = selection.index ?? 0;
+        const parentId = selection.parent ?? fragment.id;
+        const methodSuffis = selection.replaceWithText ? "AsText" : "";
+        let selectExpression = `${internalId}.getChild${methodSuffis}(${parentId}`;
         if (index) {
-            const sameParentSelections = selectionCache[parentId]
+            const sameParentSelections = selectionCache[parentId];
             if (sameParentSelections?.length) {
-                let closest: SelectionCacheItem | null = null
+                let closest: SelectionCacheItem | null = null;
                 for (let i = sameParentSelections.length - 1; i >= 0; i--) {
-                    const item = sameParentSelections[i]
+                    const item = sameParentSelections[i];
                     if (item.index <= index) {
-                        closest = item
-                        break
+                        closest = item;
+                        break;
                     }
                 }
                 if (closest) {
-                    const distance = index - closest.index
+                    const distance = index - closest.index;
                     if (distance) {
-                        const getSiblingMethod = `getSibling${methodSuffis}`
+                        const getSiblingMethod = `getSibling${methodSuffis}`;
                         selectExpression =
                             `${internalId}.${getSiblingMethod}` +
-                            `(${closest.id}${distance > 1 ? `, ${distance}` : ""})`
+                            `(${closest.id}${distance > 1 ? `, ${distance}` : ""})`;
                     }
                 } else {
-                    selectExpression += `, ${index}`
+                    selectExpression += `, ${index}`;
                 }
             } else {
-                selectExpression += `, ${index}`
+                selectExpression += `, ${index}`;
             }
         }
         if (selectExpression.startsWith(`${internalId}.getChild`)) {
-            selectExpression += ")"
+            selectExpression += ")";
         }
 
-        writer.wrapLine().write(`const ${selection.id} = ${selectExpression}`)
-        ;(selectionCache[parentId] ??= []).push({
+        writer.wrapLine().write(`const ${selection.id} = ${selectExpression}`);
+        (selectionCache[parentId] ??= []).push({
             id: selection.id,
-            index
-        })
+            index,
+        });
     }
-    return writer
+    return writer;
 }
 
 function getPrevHasDirectiveSibling(node: TemplateNode) {
     while (node.prev && !getTemplateNodeContext(node.prev).sortedDirectives.length) {
-        node = node.prev
+        node = node.prev;
     }
-    return node.prev
+    return node.prev;
 }
 
 function isFragmentWholeContent(fragment: TemplateFragment) {
-    const nodeContext = fragment.nodeContext
+    const nodeContext = fragment.nodeContext;
     if (!nodeContext?.node.parent) {
-        return false
+        return false;
     }
 
     for (const sibling of nodeContext.node.parent.children) {
-        const siblingContext = getTemplateNodeContext(sibling)
+        const siblingContext = getTemplateNodeContext(sibling);
         if (siblingContext === nodeContext) {
-            continue
+            continue;
         }
         if (siblingContext.fragment) {
-            return false
+            return false;
         }
         switch (sibling.tag) {
             case "slot": {
-                return false
+                return false;
             }
             case SPREAD_TAG: {
-                return false
+                return false;
             }
         }
     }
-    return true
+    return true;
 }
 
 function doesFragmentHasTargetDirective(fragment: TemplateFragment) {
     return fragment.nodeContext?.sortedDirectives.some(directive => {
-        return directive.name.raw === "#target"
-    })
+        return directive.name.raw === "#target";
+    });
 }
 
 function doesFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
-    const nodeContext = fragment.nodeContext
+    const nodeContext = fragment.nodeContext;
     if (!nodeContext) {
         for (const [, nodeContext] of analyzeResult.template.nodeContexts) {
             if (nodeContext.fragment) {
-                return !!(nodeContext.node.componentTag || nodeContext.node.tag === SPREAD_TAG)
+                return !!(nodeContext.node.componentTag || nodeContext.node.tag === SPREAD_TAG);
             }
         }
-        return false
+        return false;
     }
     return nodeContext.node.children.some(child => {
         if (child.componentTag || child.tag === SPREAD_TAG) {
-            return true
+            return true;
         }
 
-        const childContext = getTemplateNodeContext(child)
+        const childContext = getTemplateNodeContext(child);
         return childContext.sortedDirectives.some(directive => {
-            return directive.name.raw !== "#slot"
-        })
-    })
+            return directive.name.raw !== "#slot";
+        });
+    });
 }
 
 function isFragmentOrphan(fragment: TemplateFragment) {
@@ -556,22 +556,22 @@ function isFragmentOrphan(fragment: TemplateFragment) {
         fragment.directChildrenCount !== 1 ||
         fragment.content[0].value === " "
     ) {
-        return false
+        return false;
     }
     if (fragment !== analyzeResult.template.componentFragment) {
-        return true
+        return true;
     }
 
-    const rootAnchorId = fragment.selections[0]?.id
+    const rootAnchorId = fragment.selections[0]?.id;
     if (!rootAnchorId) {
-        return true
+        return true;
     }
     for (const nodeContext of analyzeResult.template.nodeContexts.values()) {
         if (nodeContext.anchorId === rootAnchorId) {
-            return false
+            return false;
         }
     }
-    return true
+    return true;
 }
 
 // 插槽内容的落点由组件决定，只能由运行时按渲染位置选择解析入口
@@ -579,7 +579,7 @@ function isFragmentOrphan(fragment: TemplateFragment) {
 // so only the runtime knows which parse entry to use for it.
 function getFragmentGetterName(fragment: TemplateFragment) {
     if (fragment.inSvg) {
-        return "createSvgFragmentGetter"
+        return "createSvgFragmentGetter";
     }
-    return fragment.inSlot ? "createSlotFragmentGetter" : "createHtmlFragmentGetter"
+    return fragment.inSlot ? "createSlotFragmentGetter" : "createHtmlFragmentGetter";
 }

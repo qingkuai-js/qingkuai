@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -73,46 +73,46 @@ const scenario: E2EScenarioInput = {
                 <p class="format-featured">{props.featured ? "yes" : "no"}</p>
                 <button class="format-emit" @click={emitSaved}>Emit saved</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("treats kebab-case and PascalCase component tags equivalently", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const panels = page.locator(".format-panel")
-        await expect(panels.nth(0).locator(".format-title")).toHaveText("Shared title")
-        await expect(panels.nth(1).locator(".format-title")).toHaveText("Shared title")
-        await expect(panels.nth(0).locator(".format-featured")).toHaveText("yes")
-        await expect(panels.nth(1).locator(".format-featured")).toHaveText("yes")
+        const panels = page.locator(".format-panel");
+        await expect(panels.nth(0).locator(".format-title")).toHaveText("Shared title");
+        await expect(panels.nth(1).locator(".format-title")).toHaveText("Shared title");
+        await expect(panels.nth(0).locator(".format-featured")).toHaveText("yes");
+        await expect(panels.nth(1).locator(".format-featured")).toHaveText("yes");
 
-        await panels.nth(0).locator(".format-emit").click()
-        await panels.nth(1).locator(".format-emit").click()
+        await panels.nth(0).locator(".format-emit").click();
+        await panels.nth(1).locator(".format-emit").click();
 
-        await expect(page.locator("#kebab-tag-log")).toHaveText("Shared title:true")
-        await expect(page.locator("#camel-tag-log")).toHaveText("Shared title:true")
-    })
+        await expect(page.locator("#kebab-tag-log")).toHaveText("Shared title:true");
+        await expect(page.locator("#camel-tag-log")).toHaveText("Shared title:true");
+    });
 
     test("treats kebab-case and camelCase component attributes equivalently", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const panels = page.locator(".format-panel")
-        await expect(panels.nth(2).locator(".format-title")).toHaveText("Equivalent title")
-        await expect(panels.nth(3).locator(".format-title")).toHaveText("Equivalent title")
-        await expect(panels.nth(2).locator(".format-featured")).toHaveText("yes")
-        await expect(panels.nth(3).locator(".format-featured")).toHaveText("yes")
+        const panels = page.locator(".format-panel");
+        await expect(panels.nth(2).locator(".format-title")).toHaveText("Equivalent title");
+        await expect(panels.nth(3).locator(".format-title")).toHaveText("Equivalent title");
+        await expect(panels.nth(2).locator(".format-featured")).toHaveText("yes");
+        await expect(panels.nth(3).locator(".format-featured")).toHaveText("yes");
 
-        await panels.nth(2).locator(".format-emit").click()
-        await panels.nth(3).locator(".format-emit").click()
+        await panels.nth(2).locator(".format-emit").click();
+        await panels.nth(3).locator(".format-emit").click();
 
-        await expect(page.locator("#kebab-attr-log")).toHaveText("Equivalent title:true")
-        await expect(page.locator("#camel-attr-log")).toHaveText("Equivalent title:true")
-    })
-})
+        await expect(page.locator("#kebab-attr-log")).toHaveText("Equivalent title:true");
+        await expect(page.locator("#camel-attr-log")).toHaveText("Equivalent title:true");
+    });
+});

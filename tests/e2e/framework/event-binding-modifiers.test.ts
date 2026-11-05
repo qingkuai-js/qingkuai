@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -76,47 +76,47 @@ const scenario: E2EScenarioInput = {
             </div>
             <p id="self-count">{selfCount}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("once modifier fires handler only once", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#once-btn").click()
-        await expect(page.locator("#once-count")).toHaveText("1")
+        await page.locator("#once-btn").click();
+        await expect(page.locator("#once-count")).toHaveText("1");
 
-        await page.locator("#once-btn").click()
-        await page.locator("#once-btn").click()
-        await expect(page.locator("#once-count")).toHaveText("1")
-    })
+        await page.locator("#once-btn").click();
+        await page.locator("#once-btn").click();
+        await expect(page.locator("#once-count")).toHaveText("1");
+    });
 
     test("stop modifier prevents event propagation to parent", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#stop-btn").click()
-        await expect(page.locator("#stop-count")).toHaveText("1")
-        await expect(page.locator("#parent-count")).toHaveText("0")
+        await page.locator("#stop-btn").click();
+        await expect(page.locator("#stop-count")).toHaveText("1");
+        await expect(page.locator("#parent-count")).toHaveText("0");
 
-        await page.locator("#stop-parent").click()
-        await expect(page.locator("#parent-count")).toHaveText("1")
-    })
+        await page.locator("#stop-parent").click();
+        await expect(page.locator("#parent-count")).toHaveText("1");
+    });
 
     test("prevent modifier prevents default form submission", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#submit-btn").click()
-        await expect(page.locator("#submit-count")).toHaveText("1")
-        await expect(page.locator("[data-page='event-binding-modifiers']")).toBeVisible()
-    })
+        await page.locator("#submit-btn").click();
+        await expect(page.locator("#submit-count")).toHaveText("1");
+        await expect(page.locator("[data-page='event-binding-modifiers']")).toBeVisible();
+    });
 
     test("self modifier only fires when target is the element itself", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#self-inner-btn").click()
-        await expect(page.locator("#self-count")).toHaveText("0")
-    })
-})
+        await page.locator("#self-inner-btn").click();
+        await expect(page.locator("#self-count")).toHaveText("0");
+    });
+});

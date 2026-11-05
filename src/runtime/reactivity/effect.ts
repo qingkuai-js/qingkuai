@@ -5,10 +5,10 @@ import type {
     EffectHandle,
     WatchCallback,
     EffectCallback,
-    ComponentInstanceBase
-} from "#type-declarations/runtime"
-import type { ArbitraryFunc, Getter } from "#type-declarations/tools"
-import type { EffectFunc, WatchFunc } from "#type-declarations/runtime-ex"
+    ComponentInstanceBase,
+} from "#type-declarations/runtime";
+import type { ArbitraryFunc, Getter } from "#type-declarations/tools";
+import type { EffectFunc, WatchFunc } from "#type-declarations/runtime-ex";
 
 import {
     TIMING_UNSET,
@@ -23,63 +23,63 @@ import {
     EFFECT_NO_CHECK,
     EFFECT_SCHEDULING,
     EFFECT_DERIVED_DIRTY,
-    EFFECT_DERIVED_READING
-} from "./constants"
+    EFFECT_DERIVED_READING,
+} from "./constants";
 import {
     activeEffect,
     getIncrementEffectId,
     popRunningEffectStack,
-    pushRunningEffectStack
-} from "./state"
+    pushRunningEffectStack,
+} from "./state";
 import {
     currentInstance,
     currentDestruction,
     setCurrentInstance,
-    setCurrentDestruction
-} from "../state"
-import { objectAssign } from "../internal"
-import { getSubscription } from "./schedule"
-import { any } from "../../util/shared/sundry"
-import { isArray } from "../../util/shared/assert"
-import { NIL, NOOP, UNDEF, DEV_MODE } from "../constants"
-import { getLastElem, swapDelete } from "../../util/shared/arrays"
-import { CreateOnDisposedComponent, EffectOrWatchHasNoDependecies } from "../messages/warn"
+    setCurrentDestruction,
+} from "../state";
+import { objectAssign } from "../internal";
+import { getSubscription } from "./schedule";
+import { any } from "../../util/shared/sundry";
+import { isArray } from "../../util/shared/assert";
+import { NIL, NOOP, UNDEF, DEV_MODE } from "../constants";
+import { getLastElem, swapDelete } from "../../util/shared/arrays";
+import { CreateOnDisposedComponent, EffectOrWatchHasNoDependecies } from "../messages/warn";
 
 export const watch: WatchFunc = (instance, getter, callback) => {
-    return watchAt(TIMING_UNSET, instance, getter, callback)
-}
+    return watchAt(TIMING_UNSET, instance, getter, callback);
+};
 
 export const preWatch: WatchFunc = (instance, getter, callback) => {
-    return watchAt(TIMING_PRE, instance, getter, callback)
-}
+    return watchAt(TIMING_PRE, instance, getter, callback);
+};
 
 export const postWatch: WatchFunc = (instance, getter, callback) => {
-    return watchAt(TIMING_POST, instance, getter, callback)
-}
+    return watchAt(TIMING_POST, instance, getter, callback);
+};
 
 export const syncWatch: WatchFunc = (instance, getter, callback) => {
-    return watchAt(TIMING_SYNC, instance, getter, callback)
-}
+    return watchAt(TIMING_SYNC, instance, getter, callback);
+};
 
 export const effect: EffectFunc = (instance, callback) => {
-    return reactiveEffectAt(TIMING_UNSET, instance, callback)
-}
+    return reactiveEffectAt(TIMING_UNSET, instance, callback);
+};
 
 export const preEffect: EffectFunc = (instance, callback) => {
-    return reactiveEffectAt(TIMING_PRE, instance, callback)
-}
+    return reactiveEffectAt(TIMING_PRE, instance, callback);
+};
 
 export const postEffect: EffectFunc = (instance, callback) => {
-    return reactiveEffectAt(TIMING_POST, instance, callback)
-}
+    return reactiveEffectAt(TIMING_POST, instance, callback);
+};
 
 export const syncEffect: EffectFunc = (instance, callback) => {
-    return reactiveEffectAt(TIMING_SYNC, instance, callback)
-}
+    return reactiveEffectAt(TIMING_SYNC, instance, callback);
+};
 
 export function markActiveEffectNoCheck() {
     if (activeEffect) {
-        activeEffect.l |= EFFECT_NO_CHECK
+        activeEffect.l |= EFFECT_NO_CHECK;
     }
 }
 
@@ -106,39 +106,39 @@ export function markActiveEffectNoCheck() {
 // leaving the outer (list) effect without dependencies and never re-rendering it again.
 // The temporary effects are pooled by nesting depth instead; the common single-level
 // case still allocates nothing.
-let speculativeDepth = 0
-const speculativeEffects: Effect[] = []
+let speculativeDepth = 0;
+const speculativeEffects: Effect[] = [];
 
 export function renderEffect(fn: EffectCallback) {
-    const destruction = currentDestruction
+    const destruction = currentDestruction;
     if (destruction?.d) {
         if (DEV_MODE) {
-            CreateOnDisposedComponent("effect")
+            CreateOnDisposedComponent("effect");
         }
-        return
+        return;
     }
 
-    const depth = speculativeDepth++
-    const scratch = getSpeculativeEffect(depth)
-    scratch.f = fn
-    scratch.l = EFFECT_RENDER
-    scratch.c = NIL
-    scratch.d = destruction
+    const depth = speculativeDepth++;
+    const scratch = getSpeculativeEffect(depth);
+    scratch.f = fn;
+    scratch.l = EFFECT_RENDER;
+    scratch.c = NIL;
+    scratch.d = destruction;
 
-    let res: any
+    let res: any;
     try {
-        res = runEffectCollector(scratch)
+        res = runEffectCollector(scratch);
     } finally {
-        speculativeDepth = depth
+        speculativeDepth = depth;
     }
 
     // 没有依赖也没有清理函数：登记为上下文副作用即可
     // No dependencies and no cleanup function: registering it as a context effect is enough.
     if (!scratch.k.length && !res) {
         if (destruction) {
-            appendContextEffect(destruction, fn)
+            appendContextEffect(destruction, fn);
         }
-        return
+        return;
     }
 
     // 存在依赖（或清理函数）：把它变成真正的副作用，并直接沿用刚收集到的依赖链接
@@ -152,33 +152,33 @@ export function renderEffect(fn: EffectCallback) {
         l: scratch.l,
         t: TIMING_UNSET,
         d: destruction,
-        i: getIncrementEffectId()
-    }
-    scratch.k = []
-    scratch.d = NIL
+        i: getIncrementEffectId(),
+    };
+    scratch.k = [];
+    scratch.d = NIL;
 
-    const links = effect.k
+    const links = effect.k;
     for (let i = 0; i < links.length; i++) {
-        links[i].e = effect
+        links[i].e = effect;
     }
     if (destruction) {
-        attachEffectToDestruction(effect, destruction)
+        attachEffectToDestruction(effect, destruction);
     }
 }
 
 export function derivedEffect(fn: ArbitraryFunc) {
-    return createEffect(EFFECT_DERIVED | EFFECT_DERIVED_DIRTY, TIMING_SYNC, fn, currentDestruction)
+    return createEffect(EFFECT_DERIVED | EFFECT_DERIVED_DIRTY, TIMING_SYNC, fn, currentDestruction);
 }
 
 export function runAndUpdateEffect(effect: Effect) {
     if (effect.l & EFFECT_DISABLED) {
-        return
+        return;
     }
 
-    const res = (effect.c?.(), runEffectCollector(effect))
-    effect.l &= ~EFFECT_SCHEDULING
+    const res = (effect.c?.(), runEffectCollector(effect));
+    effect.l &= ~EFFECT_SCHEDULING;
 
-    const isWatch = !!(effect.l & EFFECT_WATCH)
+    const isWatch = !!(effect.l & EFFECT_WATCH);
 
     // 对于非监视器副作用：res 就是用户自定义的清理方法
     // For non-watcher effect: `res` is the user-defined cleanup function.
@@ -186,49 +186,49 @@ export function runAndUpdateEffect(effect: Effect) {
     // 对于监视器副作用：res 是监视目标的最新值，回调 effect.f 的返回值才是用户自定义的清理方法
     // For watcher effect: `res` is the latest value of the watched target,
     // `effect.f` is the callback, and its return value is the user-defined cleanup function.
-    effect.c = (isWatch ? effect.f(effect.v, (effect.v = res)) : res) || NIL
+    effect.c = (isWatch ? effect.f(effect.v, (effect.v = res)) : res) || NIL;
 
-    checkAndDestroyInvalidEffect(effect)
+    checkAndDestroyInvalidEffect(effect);
 }
 
 export function appendLinksToActiveEffect(from: Effect) {
-    const current = activeEffect
+    const current = activeEffect;
     if (!current || current.l & EFFECT_DISPOSED) {
-        return
+        return;
     }
 
-    const isSync = any(current.t == TIMING_SYNC) // avoid a ts bug
-    const fromLinks = from.k
+    const isSync = any(current.t == TIMING_SYNC); // avoid a ts bug
+    const fromLinks = from.k;
     for (let i = 0; i < fromLinks.length; i++) {
-        const link = fromLinks[i]
-        const toSub = getSubscription(link.s.w, link.s.p, isSync, true)!
+        const link = fromLinks[i];
+        const toSub = getSubscription(link.s.w, link.s.p, isSync, true)!;
         if (toSub.k[toSub.a]?.e !== current) {
             const newLink: Link = {
                 e: current,
                 s: toSub,
                 l: link.l,
-                i: toSub.k.length
-            }
-            toSub.a = newLink.i
-            toSub.k.push(newLink)
-            current.k.push(newLink)
+                i: toSub.k.length,
+            };
+            toSub.a = newLink.i;
+            toSub.k.push(newLink);
+            current.k.push(newLink);
         }
     }
 }
 
 export function disposeEffect(effect: Effect, byDestruction = false) {
     if (!byDestruction) {
-        detachEffectFromDestruction(effect)
+        detachEffectFromDestruction(effect);
     }
-    effect.c?.()
-    effect.c = NIL
+    effect.c?.();
+    effect.c = NIL;
     if (effect.k.length) {
-        unlink(effect)
+        unlink(effect);
     }
-    effect.x = -1
-    effect.d = NIL
-    effect.v = UNDEF
-    effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED
+    effect.x = -1;
+    effect.d = NIL;
+    effect.v = UNDEF;
+    effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED;
 }
 
 // 从所属 Destruction 中摘除副作用。仅有一个副作用时它被直接存放在 `d.e` 上，
@@ -238,40 +238,40 @@ export function disposeEffect(effect: Effect, byDestruction = false) {
 // on `d.e` and only multiple effects need an array, so the common case of a
 // render with one binding does not allocate at all.
 function detachEffectFromDestruction(effect: Effect) {
-    const destruction = effect.d
+    const destruction = effect.d;
     if (!destruction) {
-        return
+        return;
     }
-    const effects = destruction.e
+    const effects = destruction.e;
     if (!effects) {
-        return
+        return;
     }
     if (isArray(effects)) {
         if (effect.x >= 0 && effect.x < effects.length) {
-            getLastElem(effects)!.x = effect.x
-            swapDelete(effects, effect.x)
+            getLastElem(effects)!.x = effect.x;
+            swapDelete(effects, effect.x);
         }
         if (!effects.length) {
-            destruction.e = NIL
+            destruction.e = NIL;
         }
     } else if (effects === effect) {
-        destruction.e = NIL
+        destruction.e = NIL;
     }
-    effect.x = -1
+    effect.x = -1;
 }
 
 function attachEffectToDestruction(effect: Effect, destruction: Destruction) {
-    const effects = destruction.e
+    const effects = destruction.e;
     if (!effects) {
-        destruction.e = effect
-        effect.x = 0
+        destruction.e = effect;
+        effect.x = 0;
     } else if (isArray(effects)) {
-        effect.x = effects.length
-        effects.push(effect)
+        effect.x = effects.length;
+        effects.push(effect);
     } else {
-        destruction.e = [effects, effect]
-        effects.x = 0
-        effect.x = 1
+        destruction.e = [effects, effect];
+        effects.x = 0;
+        effect.x = 1;
     }
 }
 
@@ -279,27 +279,27 @@ function attachEffectToDestruction(effect: Effect, destruction: Destruction) {
 // A context effect only has to be re-run when the context of its render changes
 // (see `updateBlock` in the list directive).
 export function appendContextEffect(destruction: Destruction, fn: EffectCallback) {
-    const updaters = destruction.u
+    const updaters = destruction.u;
     if (!updaters) {
-        destruction.u = fn
+        destruction.u = fn;
     } else if (isArray(updaters)) {
-        updaters.push(fn)
+        updaters.push(fn);
     } else {
-        destruction.u = [updaters, fn]
+        destruction.u = [updaters, fn];
     }
 }
 
 export function runContextEffects(destruction: Destruction) {
-    const updaters = destruction.u
+    const updaters = destruction.u;
     if (!updaters) {
-        return
+        return;
     }
     if (isArray(updaters)) {
         for (let i = 0; i < updaters.length; i++) {
-            updaters[i]()
+            updaters[i]();
         }
     } else {
-        updaters()
+        updaters();
     }
 }
 
@@ -308,7 +308,7 @@ function createEffect(
     timing: number,
     fn: ArbitraryFunc,
     destruction: Destruction | null,
-    watchCallback?: WatchCallback<any>
+    watchCallback?: WatchCallback<any>,
 ): Effect {
     const effect: Effect = {
         f: fn,
@@ -318,144 +318,144 @@ function createEffect(
         l: flag,
         t: timing,
         d: destruction,
-        i: getIncrementEffectId()
-    }
+        i: getIncrementEffectId(),
+    };
     if (destruction?.d) {
         if (DEV_MODE) {
-            CreateOnDisposedComponent("effect")
+            CreateOnDisposedComponent("effect");
         }
         return objectAssign<Effect, Partial<Effect>>(effect, {
             d: NIL,
-            l: flag | EFFECT_DISPOSED | EFFECT_DISABLED
-        })
+            l: flag | EFFECT_DISPOSED | EFFECT_DISABLED,
+        });
     }
 
     if (watchCallback) {
-        effect.g = fn
-        effect.v = UNDEF
-        effect.f = watchCallback
+        effect.g = fn;
+        effect.v = UNDEF;
+        effect.f = watchCallback;
     }
 
-    const res = runEffectCollector(effect)
+    const res = runEffectCollector(effect);
     if (watchCallback) {
-        effect.v = res
+        effect.v = res;
     } else if (res) {
-        effect.c = res
+        effect.c = res;
     }
 
     // 将副作用记录到 Destruction
     // Record the effect onto `Destruction`
     if (checkAndDestroyInvalidEffect(effect) && destruction) {
-        attachEffectToDestruction(effect, destruction)
+        attachEffectToDestruction(effect, destruction);
     }
 
-    return effect
+    return effect;
 }
 
 function watchAt<T>(
     timing: number,
     instance: ComponentInstanceBase | null,
     getter: Getter<T>,
-    callback: WatchCallback<T>
+    callback: WatchCallback<T>,
 ) {
     return makeEffectHandle(
-        createEffect(EFFECT_WATCH, timing, getter, instance && instance._internal.d!, callback)
-    )
+        createEffect(EFFECT_WATCH, timing, getter, instance && instance._internal.d!, callback),
+    );
 }
 
 function reactiveEffectAt(
     timing: number,
     instance: ComponentInstanceBase | null,
-    callback: EffectCallback
+    callback: EffectCallback,
 ) {
-    return makeEffectHandle(createEffect(0, timing, callback, instance && instance._internal.d!))
+    return makeEffectHandle(createEffect(0, timing, callback, instance && instance._internal.d!));
 }
 
 function unlink(effect: Effect) {
-    const links = effect.k
+    const links = effect.k;
     for (let i = 0; i < links.length; i++) {
-        const link = links[i]
+        const link = links[i];
         // 若 link 不处于 link.s.k 末尾，需要更新原来末尾元素的 i 属性
         // 例如：对于 [a, b, c, d]，删除 b 后变为 [a, d, c]，那么需要将 d.i 修改为 b.i
         //
         // If the `link` is not at the end of `link.s.k`, update the `i` property of the original tail element.
         // For example, given [a, b, c, d], removing `b` results in [a, d, c], so `d.i` needs to be updated to `b.i`.
         if ((swapDelete(link.s.k, link.i), link.i < link.s.k.length)) {
-            link.s.k[link.i].i = link.i
+            link.s.k[link.i].i = link.i;
         }
     }
     // Reuse the same array instance to avoid allocations and release stale link references.
-    links.length = 0
+    links.length = 0;
 }
 
 function runEffectCollector(effect: Effect) {
     if (effect.k.length) {
-        unlink(effect)
+        unlink(effect);
     }
-    effect.l &= ~EFFECT_NO_CHECK
-    pushRunningEffectStack(effect)
+    effect.l &= ~EFFECT_NO_CHECK;
+    pushRunningEffectStack(effect);
 
-    const originalInstance = currentInstance
-    const parentDestruction = currentDestruction
+    const originalInstance = currentInstance;
+    const parentDestruction = currentDestruction;
     if (setCurrentDestruction(effect.d)?.m) {
-        setCurrentInstance(effect.d!.m)
+        setCurrentInstance(effect.d!.m);
     }
 
-    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)()
-    popRunningEffectStack()
-    setCurrentInstance(originalInstance)
-    setCurrentDestruction(parentDestruction)
+    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)();
+    popRunningEffectStack();
+    setCurrentInstance(originalInstance);
+    setCurrentDestruction(parentDestruction);
 
-    const collectedLinks = effect.k
-    const collectedLen = collectedLinks.length
+    const collectedLinks = effect.k;
+    const collectedLen = collectedLinks.length;
     if (collectedLen) {
-        const current = activeEffect
+        const current = activeEffect;
         for (let i = 0; i < collectedLen; i++) {
-            const link = collectedLinks[i]
+            const link = collectedLinks[i];
             if (current) {
-                link.s.a--
+                link.s.a--;
             } else {
-                link.s.a = -1
+                link.s.a = -1;
             }
         }
         if (current && !(effect.l & EFFECT_RENDER)) {
-            appendLinksToActiveEffect(effect)
+            appendLinksToActiveEffect(effect);
         }
     }
-    return res
+    return res;
 }
 
 // 检查并卸载无效的副作用：未依赖任何响应式值的副作用永远不会被再次触发
 // Check and dispose invalid effects: effects that do not depend on any reactive values will never be triggered again.
 function checkAndDestroyInvalidEffect(effect: Effect) {
     if (effect.l & (EFFECT_RENDER | EFFECT_NO_CHECK | EFFECT_DISABLED)) {
-        return true
+        return true;
     }
 
-    let isValid = effect.k.length > 0
+    let isValid = effect.k.length > 0;
     if (effect.l & EFFECT_DERIVED) {
-        const isReading = effect.l & EFFECT_DERIVED_READING
+        const isReading = effect.l & EFFECT_DERIVED_READING;
         if (isReading) {
-            effect.l &= ~EFFECT_DERIVED_READING
+            effect.l &= ~EFFECT_DERIVED_READING;
         }
 
         // 不脏的 DerivedEffect 或非读取状态时无需检查依赖项数量
         // No need to check dependency count when the DerivedEffect is not dirty or is not being read.
-        isValid ||= !isReading || !(effect.l & EFFECT_DERIVED_DIRTY)
+        isValid ||= !isReading || !(effect.l & EFFECT_DERIVED_DIRTY);
     }
 
     if (!isValid) {
-        disposeEffect(effect)
+        disposeEffect(effect);
         if (DEV_MODE) {
-            const isWatch = effect.l & EFFECT_WATCH
-            const isDerived = effect.l & EFFECT_DERIVED
+            const isWatch = effect.l & EFFECT_WATCH;
+            const isDerived = effect.l & EFFECT_DERIVED;
             EffectOrWatchHasNoDependecies(
                 isWatch || isDerived ? effect.g! : effect.f,
-                isWatch ? "watcher" : isDerived ? "derived reactive value" : ""
-            )
+                isWatch ? "watcher" : isDerived ? "derived reactive value" : "",
+            );
         }
     }
-    return isValid
+    return isValid;
 }
 
 function getSpeculativeEffect(depth: number): Effect {
@@ -467,23 +467,23 @@ function getSpeculativeEffect(depth: number): Effect {
         c: NIL,
         f: NOOP,
         t: TIMING_UNSET,
-        l: EFFECT_RENDER
-    })
+        l: EFFECT_RENDER,
+    });
 }
 
 function makeEffectHandle(effect: Effect): EffectHandle {
     return {
         stop: () => {
-            disposeEffect(effect)
+            disposeEffect(effect);
         },
         pause: () => {
-            effect.l |= EFFECT_DISABLED
+            effect.l |= EFFECT_DISABLED;
         },
         resume: () => {
             if (effect.l & EFFECT_DISPOSED) {
-                return
+                return;
             }
-            effect.l &= ~EFFECT_DISABLED
-        }
-    }
+            effect.l &= ~EFFECT_DISABLED;
+        },
+    };
 }

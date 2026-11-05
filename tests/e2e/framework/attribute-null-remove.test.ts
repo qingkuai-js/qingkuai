@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -28,29 +28,29 @@ const scenario: E2EScenarioInput = {
             <p id="state-data">Data: {dataValue}</p>
             <p id="state-title">Title: {titleValue}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("removes normal attributes when bound values become null or undefined", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#target")).toHaveAttribute("data-note", "init-data")
-        await expect(page.locator("#target")).toHaveAttribute("title", "init-title")
+        await expect(page.locator("#target")).toHaveAttribute("data-note", "init-data");
+        await expect(page.locator("#target")).toHaveAttribute("title", "init-title");
 
-        await page.locator("#set-null").click()
-        await expect(page.locator("#state-data")).toHaveText("Data: null")
-        await expect(page.locator("#state-title")).toHaveText("Title: null")
-        await expect(page.locator("#target")).not.toHaveAttribute("data-note", /.+/)
-        await expect(page.locator("#target")).not.toHaveAttribute("title", /.+/)
+        await page.locator("#set-null").click();
+        await expect(page.locator("#state-data")).toHaveText("Data: null");
+        await expect(page.locator("#state-title")).toHaveText("Title: null");
+        await expect(page.locator("#target")).not.toHaveAttribute("data-note", /.+/);
+        await expect(page.locator("#target")).not.toHaveAttribute("title", /.+/);
 
-        await page.locator("#set-undefined").click()
-        await expect(page.locator("#state-data")).toHaveText("Data: undefined")
-        await expect(page.locator("#state-title")).toHaveText("Title: undefined")
-        await expect(page.locator("#target")).not.toHaveAttribute("data-note", /.+/)
-        await expect(page.locator("#target")).not.toHaveAttribute("title", /.+/)
-    })
-})
+        await page.locator("#set-undefined").click();
+        await expect(page.locator("#state-data")).toHaveText("Data: undefined");
+        await expect(page.locator("#state-title")).toHaveText("Title: undefined");
+        await expect(page.locator("#target")).not.toHaveAttribute("data-note", /.+/);
+        await expect(page.locator("#target")).not.toHaveAttribute("title", /.+/);
+    });
+});

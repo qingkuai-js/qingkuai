@@ -1,6 +1,6 @@
-import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler"
+import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler";
 
-import { AttributeValueEnclosure } from "./enums"
+import { AttributeValueEnclosure } from "./enums";
 
 import {
     KEY_UP,
@@ -27,20 +27,20 @@ import {
     FRAG_WITH_TARGET,
     FRAG_WHOLE_CONTENT,
     FRAG_ORPHAN_CONTENT,
-    FRAG_LEADING_ANCHOR
-} from "../util/shared/flags"
-import { objectAssign } from "../util/shared/aliases"
+    FRAG_LEADING_ANCHOR,
+} from "../util/shared/flags";
+import { objectAssign } from "../util/shared/aliases";
 
-export const SPREAD_TAG = "qk:spread"
-export const PRESERVED_IDPREFIX = "__qk__"
+export const SPREAD_TAG = "qk:spread";
+export const PRESERVED_IDPREFIX = "__qk__";
 
 // Language Service Constants
 export const LSC = {
     UTIL: PRESERVED_IDPREFIX + "lsu",
     COMPONENT: PRESERVED_IDPREFIX + "component",
     DEFAULT_VALUES: PRESERVED_IDPREFIX + "defaultValues",
-    GET_TYPE_DELAY_MARKING: PRESERVED_IDPREFIX + "lsu.getTypeDelayMarking"
-}
+    GET_TYPE_DELAY_MARKING: PRESERVED_IDPREFIX + "lsu.getTypeDelayMarking",
+};
 
 export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     once: EVENT_ONCE,
@@ -64,8 +64,8 @@ export const EVENT_FLAGS_MAP: Readonly<Record<string, number>> = {
     alt: KEY_ALT,
     ctrl: KEY_CTRL,
     shift: KEY_SHIFT,
-    exact: KEY_EXACT
-}
+    exact: KEY_EXACT,
+};
 
 export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
     "#html",
@@ -79,12 +79,12 @@ export const ATTRIBUTE_PRIORITY_MAP: Readonly<Record<string, number>> = [
     "#then",
     "#await",
     "#slot",
-    "name"
+    "name",
 ].reduce((ret, name, index) => {
     return objectAssign(ret, {
-        [name]: index + 1
-    })
-}, {})
+        [name]: index + 1,
+    });
+}, {});
 
 export const BOUND_INSTANCE_INTRINSIC_MAP: Record<string, string> = {
     effect: "effect",
@@ -106,28 +106,28 @@ export const BOUND_INSTANCE_INTRINSIC_MAP: Record<string, string> = {
     onBeforeUpdate: "onBeforeUpdate",
     onAfterUpdate: "onAfterUpdate",
     onBeforeDestroy: "onBeforeDestroy",
-    onAfterDestroy: "onAfterDestroy"
-}
+    onAfterDestroy: "onAfterDestroy",
+};
 
 export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
     checkTemplateStructure: true,
     preserveBlankTextNodes: true,
     checkEmptyInterpolation: true,
-    checkAttributeValueEnclosure: true
-}
+    checkAttributeValueEnclosure: true,
+};
 
 export const FRAG_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
     [FRAGMENT_ROOT]: "ROOT",
     [FRAG_WHOLE_CONTENT]: "WHOLE_CONTENT",
     [FRAG_LEADING_ANCHOR]: "LEADING_ANCHOR",
     [FRAG_ORPHAN_CONTENT]: "ORPHAN_CONTENT",
-    [FRAG_WITH_TARGET]: "WITH_TARGET_DIRECTIVE"
-}
+    [FRAG_WITH_TARGET]: "WITH_TARGET_DIRECTIVE",
+};
 
 export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
     passive: ["prevent"],
-    prevent: ["passive"]
-}
+    prevent: ["passive"],
+};
 
 export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
     "#then": ["#catch"],
@@ -135,14 +135,14 @@ export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
     "#slot": ["#target"],
     "#if": ["#elif", "#else"],
     "#elif": ["#if", "#else"],
-    "#else": ["#if", "#elif"]
-}
+    "#else": ["#if", "#elif"],
+};
 
 export const ATTRIBUTE_VALUE_ENCLOSURE_MAP: Record<string, AttributeValueEnclosure> = {
     "{": AttributeValueEnclosure.Curly,
     "'": AttributeValueEnclosure.Single,
-    '"': AttributeValueEnclosure.Double
-}
+    '"': AttributeValueEnclosure.Double,
+};
 
 export const BLOCK_TAGS: ReadonlySet<string> = new Set([
     "address",
@@ -189,8 +189,8 @@ export const BLOCK_TAGS: ReadonlySet<string> = new Set([
     "summary",
     "center",
     "frameset",
-    "noframes"
-])
+    "noframes",
+]);
 
 export const VOID_TAGS: ReadonlySet<string> = new Set([
     "br",
@@ -209,8 +209,8 @@ export const VOID_TAGS: ReadonlySet<string> = new Set([
     "wbr",
     "frame",
     "isindex",
-    "basefont"
-])
+    "basefont",
+]);
 
 export const DELEGATABLE_EVENTS: ReadonlySet<string> = new Set([
     "beforeinput",
@@ -249,16 +249,16 @@ export const DELEGATABLE_EVENTS: ReadonlySet<string> = new Set([
     "touchcancel",
     "touchend",
     "touchmove",
-    "touchstart"
-])
+    "touchstart",
+]);
 
 export const DISALLOWED_TAGS: ReadonlySet<string> = new Set([
     "html",
     "head",
     "body",
     "frame",
-    "frameset"
-])
+    "frameset",
+]);
 export const DIRECTIVE_LIST: ReadonlySet<string> = new Set([
     "#if",
     "#elif",
@@ -271,15 +271,15 @@ export const DIRECTIVE_LIST: ReadonlySet<string> = new Set([
     "#catch",
     "#slot",
     "#html",
-    "#target"
-])
+    "#target",
+]);
 export const CREATE_ANCHOR_DIRECTIVES: ReadonlySet<string> = new Set([
     "#if",
     "#for",
     "#key",
     "#await",
-    "#target"
-])
+    "#target",
+]);
 
 export const REQUIRED_VALUE_DIRECTIVES: ReadonlySet<string> = new Set([
     "#if",
@@ -289,8 +289,8 @@ export const REQUIRED_VALUE_DIRECTIVES: ReadonlySet<string> = new Set([
     "#for",
     "#key",
     "#slot",
-    "#target"
-])
+    "#target",
+]);
 
 export const JS_RESERVED_KEYWORDS: ReadonlySet<string> = new Set([
     "break",
@@ -336,5 +336,5 @@ export const JS_RESERVED_KEYWORDS: ReadonlySet<string> = new Set([
     "protected",
     "public",
     "static",
-    "yield"
-])
+    "yield",
+]);

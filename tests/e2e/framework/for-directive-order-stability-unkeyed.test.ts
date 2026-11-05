@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -58,45 +58,45 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("unkeyed for follows source order across reorder operations", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const labels = page.locator("#order-list .order-item")
+        const labels = page.locator("#order-list .order-item");
 
-        await expect(labels).toHaveText(["Alpha", "Beta", "Gamma", "Delta"])
+        await expect(labels).toHaveText(["Alpha", "Beta", "Gamma", "Delta"]);
 
-        await page.locator("#move-last-first").click()
-        await expect(labels).toHaveText(["Delta", "Alpha", "Beta", "Gamma"])
+        await page.locator("#move-last-first").click();
+        await expect(labels).toHaveText(["Delta", "Alpha", "Beta", "Gamma"]);
 
-        await page.locator("#rotate-left").click()
-        await expect(labels).toHaveText(["Alpha", "Beta", "Gamma", "Delta"])
+        await page.locator("#rotate-left").click();
+        await expect(labels).toHaveText(["Alpha", "Beta", "Gamma", "Delta"]);
 
-        await page.locator("#reverse-items").click()
-        await expect(labels).toHaveText(["Delta", "Gamma", "Beta", "Alpha"])
-    })
+        await page.locator("#reverse-items").click();
+        await expect(labels).toHaveText(["Delta", "Gamma", "Beta", "Alpha"]);
+    });
 
     test("unkeyed for keeps displayed order aligned after mixed insert and remove", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const labels = page.locator("#order-list .order-item")
+        const labels = page.locator("#order-list .order-item");
 
-        await page.locator("#insert-head").click()
-        await expect(labels).toHaveText(["Item 5", "Alpha", "Beta", "Gamma", "Delta"])
+        await page.locator("#insert-head").click();
+        await expect(labels).toHaveText(["Item 5", "Alpha", "Beta", "Gamma", "Delta"]);
 
-        await page.locator("#remove-second").click()
-        await expect(labels).toHaveText(["Item 5", "Beta", "Gamma", "Delta"])
+        await page.locator("#remove-second").click();
+        await expect(labels).toHaveText(["Item 5", "Beta", "Gamma", "Delta"]);
 
-        await page.locator("#move-last-first").click()
-        await expect(labels).toHaveText(["Delta", "Item 5", "Beta", "Gamma"])
-    })
-})
+        await page.locator("#move-last-first").click();
+        await expect(labels).toHaveText(["Delta", "Item 5", "Beta", "Gamma"]);
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -40,29 +40,29 @@ const scenario: E2EScenarioInput = {
                 <span class="k"></span>
             </button>
             <span class="row-label" #if={props.label}>{props.label}</span>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readInstanceOrder = (page: E2EPageEvaluator) =>
         page.evaluate(() =>
             [...document.querySelectorAll(".row-btn")].map(btn => {
-                const label = btn.nextElementSibling
+                const label = btn.nextElementSibling;
                 return label && label.classList.contains("row-label")
                     ? label.textContent
-                    : "<broken-pair>"
-            })
-        )
+                    : "<broken-pair>";
+            }),
+        );
 
     test("keyed component order survives a same-getter fragment instantiated earlier", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(readInstanceOrder(page)).resolves.toEqual(["alpha", "beta", "gamma"])
+        await visitScenario(scenario);
+        await expect(readInstanceOrder(page)).resolves.toEqual(["alpha", "beta", "gamma"]);
 
-        await page.locator("#move").click()
-        await expect(readInstanceOrder(page)).resolves.toEqual(["beta", "gamma", "alpha"])
-    })
-})
+        await page.locator("#move").click();
+        await expect(readInstanceOrder(page)).resolves.toEqual(["beta", "gamma", "alpha"]);
+    });
+});

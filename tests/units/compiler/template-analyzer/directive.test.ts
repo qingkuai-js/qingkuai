@@ -1,6 +1,6 @@
-import { describe, test } from "vitest"
-import { analyzeTemplateAndMatchMessages } from "./_match"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { describe, test } from "vitest";
+import { analyzeTemplateAndMatchMessages } from "./_match";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
 
 describe("#html", () => {
     test("Without child", () => {
@@ -8,13 +8,13 @@ describe("#html", () => {
             {
                 type: "error",
                 range: [0, 17],
-                value: `A tag with the "#html" directive must have exactly one text node as its child.`
-            }
-        ])
-    })
+                value: `A tag with the "#html" directive must have exactly one text node as its child.`,
+            },
+        ]);
+    });
 
     test("Static child", () => {
-        analyzeTemplateAndMatchMessages(`<div #html={_}>...</div>`)
+        analyzeTemplateAndMatchMessages(`<div #html={_}>...</div>`);
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -27,40 +27,40 @@ describe("#html", () => {
                 {
                     type: "error",
                     range: [0, 48],
-                    value: `A tag with the "#html" directive must have exactly one text node as its child.`
-                }
-            ]
-        )
-    })
+                    value: `A tag with the "#html" directive must have exactly one text node as its child.`,
+                },
+            ],
+        );
+    });
 
     test("Invalid placement", () => {
         analyzeTemplateAndMatchMessages(`<slot #html></slot>`, [
             {
                 type: "error",
                 range: [6, 11],
-                value: `The "#html" directive cannot be used on <slot> tags.`
-            }
-        ])
+                value: `The "#html" directive cannot be used on <slot> tags.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<Comp #html></Comp>`, [
             {
                 type: "error",
                 range: [6, 11],
-                value: `The "#html" directive cannot be used on components.`
-            }
-        ])
-    })
+                value: `The "#html" directive cannot be used on components.`,
+            },
+        ]);
+    });
 
     test("Unnecessary directive", () => {
         analyzeTemplateAndMatchMessages(`<div #html>...</div>`, [
             {
                 type: "warning",
                 range: [5, 10],
-                value: `The "#html" directive without a value has no effect because the element content is entirely static.`
-            }
-        ])
-    })
-})
+                value: `The "#html" directive without a value has no effect because the element content is entirely static.`,
+            },
+        ]);
+    });
+});
 
 describe("#slot", () => {
     test("Invalid placement", () => {
@@ -68,50 +68,50 @@ describe("#slot", () => {
             {
                 type: "error",
                 range: [5, 10],
-                value: `The "#slot" directive can only be used on direct child elements of a component node.`
-            }
-        ])
-    })
+                value: `The "#slot" directive can only be used on direct child elements of a component node.`,
+            },
+        ]);
+    });
 
     test(`Keyword inside pattern`, () => {
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={ from from "xxx" }></div>
             </Comp>
-        `)
+        `);
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={ [from] from "xxx" }></div>
             </Comp>
-        `)
+        `);
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={ { from } from "xxx" }></div>
             </Comp>
-        `)
+        `);
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={ { a: from } from "xxx" }></div>
             </Comp>
-        `)
+        `);
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={ { from: { from } } from "xxx" }></div>
             </Comp>
-        `)
-    })
+        `);
+    });
 
     test("Without pattern", () => {
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={"from"}></div>
             </Comp>
-        `)
+        `);
         analyzeTemplateAndMatchMessages(`
             <Comp>
                 <div #slot={"default"}></div>
             </Comp>
-        `)
+        `);
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -123,11 +123,11 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [23, 24],
-                    value: `Expected a string literal.`
-                }
-            ]
-        )
-    })
+                    value: `Expected a string literal.`,
+                },
+            ],
+        );
+    });
 
     test(`Expression is missing after keyword`, () => {
         analyzeTemplateAndMatchMessages(
@@ -140,11 +140,11 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [34, 34],
-                    value: `Expected a string literal.`
-                }
-            ]
-        )
-    })
+                    value: `Expected a string literal.`,
+                },
+            ],
+        );
+    });
 
     test("More than one binding pattern was provided", () => {
         analyzeTemplateAndMatchMessages(
@@ -157,15 +157,15 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 27],
-                    value: `The "#slot" directive accepts at most 1 context pattern, but got 2.`
+                    value: `The "#slot" directive accepts at most 1 context pattern, but got 2.`,
                 },
                 {
                     type: "error",
                     range: [25, 27],
-                    value: `The context pattern is empty and does not declare any binding identifiers.`
-                }
-            ]
-        )
+                    value: `The context pattern is empty and does not declare any binding identifiers.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -177,11 +177,11 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 28],
-                    value: `The "#slot" directive accepts at most 1 context pattern, but got 2.`
-                }
-            ]
-        )
-    })
+                    value: `The "#slot" directive accepts at most 1 context pattern, but got 2.`,
+                },
+            ],
+        );
+    });
 
     test("Invalid slot name: non-static string", () => {
         analyzeTemplateAndMatchMessages(
@@ -194,10 +194,10 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [23, 24],
-                    value: `Expected a string literal.`
-                }
-            ]
-        )
+                    value: `Expected a string literal.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -210,16 +210,16 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [34, 41],
-                    value: `The "#slot" directive requires a string literal slot name after "from" keyword.`
+                    value: `The "#slot" directive requires a string literal slot name after "from" keyword.`,
                 },
                 {
                     type: "error",
                     range: [78, 91],
-                    value: `The "#slot" directive requires a string literal slot name after "from" keyword.`
-                }
-            ]
-        )
-    })
+                    value: `The "#slot" directive requires a string literal slot name after "from" keyword.`,
+                },
+            ],
+        );
+    });
 
     test("No context identifiers were declared by the binding pattern", () => {
         analyzeTemplateAndMatchMessages(
@@ -232,10 +232,10 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 26],
-                    value: `The context pattern is empty and does not declare any binding identifiers.`
-                }
-            ]
-        )
+                    value: `The context pattern is empty and does not declare any binding identifiers.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -247,10 +247,10 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 26],
-                    value: `The context pattern is empty and does not declare any binding identifiers.`
-                }
-            ]
-        )
+                    value: `The context pattern is empty and does not declare any binding identifiers.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -262,10 +262,10 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 35],
-                    value: `The context pattern is empty and does not declare any binding identifiers.`
-                }
-            ]
-        )
+                    value: `The context pattern is empty and does not declare any binding identifiers.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -277,12 +277,12 @@ describe("#slot", () => {
                 {
                     type: "error",
                     range: [24, 38],
-                    value: `The context pattern is empty and does not declare any binding identifiers.`
-                }
-            ]
-        )
-    })
-})
+                    value: `The context pattern is empty and does not declare any binding identifiers.`,
+                },
+            ],
+        );
+    });
+});
 
 describe("#scope", () => {
     test("Invalid placement on non-component", () => {
@@ -290,20 +290,20 @@ describe("#scope", () => {
             {
                 type: "error",
                 range: [5, 11],
-                value: `The "#scope" directive can only be used on components.`
-            }
-        ])
-    })
+                value: `The "#scope" directive can only be used on components.`,
+            },
+        ]);
+    });
 
     test("Invalid placement inside actual parent element", () => {
         analyzeTemplateAndMatchMessages(`<div><Comp #scope></Comp></div>`, [
             {
                 type: "warning",
                 range: [11, 17],
-                value: `The "#scope" directive is unnecessary here because this component already has an actual ancestor element.`
-            }
-        ])
-    })
+                value: `The "#scope" directive is unnecessary here because this component already has an actual ancestor element.`,
+            },
+        ]);
+    });
 
     test("Valid input", () => {
         analyzeTemplateAndMatchMessages(
@@ -312,122 +312,122 @@ describe("#scope", () => {
                 <lang-css>
                     div {}
                 </lang-css>
-            `)
-        )
-    })
+            `),
+        );
+    });
 
     test("Redundant value", () => {
         analyzeTemplateAndMatchMessages(`<Comp #scope={1}></Comp>`, [
             {
                 type: "warning",
                 range: [6, 16],
-                value: `The "#scope" directive does not need a value, and the redundant directive value will be ignored.`
+                value: `The "#scope" directive does not need a value, and the redundant directive value will be ignored.`,
             },
             {
                 type: "warning",
                 range: [6, 16],
-                value: `The "#scope" directive has no effect because the current component has no scoped styles.`
-            }
-        ])
-    })
-})
+                value: `The "#scope" directive has no effect because the current component has no scoped styles.`,
+            },
+        ]);
+    });
+});
 
 describe(`#for`, () => {
     test(`Keyword inside pattern or base`, () => {
-        analyzeTemplateAndMatchMessages(`<div #for={ of of arr }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ { of } of arr }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ { a: of } of arr }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ item of arr.of }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ item of of(arr) }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ item of "of" }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ item of \`of\` }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ item of { of: 1 } }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ of of arr.of }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ { of } of of(of) }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ { a: of } of { of: 1 } }></div>`)
-        analyzeTemplateAndMatchMessages(`<div #for={ { of: { of } } of \`of\` }></div>`)
-    })
+        analyzeTemplateAndMatchMessages(`<div #for={ of of arr }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ { of } of arr }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ { a: of } of arr }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ item of arr.of }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ item of of(arr) }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ item of "of" }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ item of \`of\` }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ item of { of: 1 } }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ of of arr.of }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ { of } of of(of) }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ { a: of } of { of: 1 } }></div>`);
+        analyzeTemplateAndMatchMessages(`<div #for={ { of: { of } } of \`of\` }></div>`);
+    });
 
     test("Expression is missing after keyword", () => {
         analyzeTemplateAndMatchMessages(`<div #for={ item of   }></div>`, [
             {
                 type: "error",
                 range: [20, 20],
-                value: `Expected an expression.`
-            }
-        ])
-    })
+                value: `Expected an expression.`,
+            },
+        ]);
+    });
 
     test("More than 2 binding patterns were provided", () => {
         analyzeTemplateAndMatchMessages(`<div #for={ a, b, c of arr }></div>`, [
             {
                 type: "error",
                 range: [12, 19],
-                value: `The "#for" directive accepts at most 2 context patterns, but got 3.`
-            }
-        ])
-    })
+                value: `The "#for" directive accepts at most 2 context patterns, but got 3.`,
+            },
+        ]);
+    });
 
     test("No context identifiers were declared by the binding patterns", () => {
         analyzeTemplateAndMatchMessages(`<div #for={ {} of arr }></div>`, [
             {
                 type: "error",
                 range: [12, 14],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #for={ [] of arr }></div>`, [
             {
                 type: "error",
                 range: [12, 14],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #for={ [,] of arr }></div>`, [
             {
                 type: "error",
                 range: [12, 15],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #for={ { a: {} } of arr }></div>`, [
             {
                 type: "error",
                 range: [12, 21],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #for={ ,{ a: [] } of arr }></div>`, [
             {
                 type: "error",
                 range: [13, 22],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #for={ a, { b: { c: [] } } of arr }></div>`, [
             {
                 type: "error",
                 range: [15, 31],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
-    })
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
 
     test(`Invalid expression at the first non-whitespace character after keyword`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ item of    ? }></div>`, [
             {
                 type: "error",
                 range: [23, 24],
-                value: `Invalid expression.`
-            }
-        ])
-    })
-})
+                value: `Invalid expression.`,
+            },
+        ]);
+    });
+});
 
 describe("#then", () => {
     test("Missing preceding directive", () => {
@@ -435,9 +435,9 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [5, 10],
-                value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`
-            }
-        ])
+                value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -450,10 +450,10 @@ describe("#then", () => {
                 {
                     type: "error",
                     range: [67, 72],
-                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`
-                }
-            ]
-        )
+                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -466,17 +466,17 @@ describe("#then", () => {
                 {
                     type: "error",
                     range: [55, 60],
-                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch". Note that the preceding element has an implicit "#slot" directive.`
-                }
-            ]
-        )
+                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch". Note that the preceding element has an implicit "#slot" directive.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <div #await={_}></div>
                 <div #then={_}></div>
-            `)
-        )
+            `),
+        );
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <Comp>
@@ -484,56 +484,56 @@ describe("#then", () => {
                     <div #slot={"b"} #await={_} #then></div>
                 </Comp>
             `),
-            []
-        )
-        analyzeTemplateAndMatchMessages(`<div #await={_} #then={_}></div>`)
-    })
+            [],
+        );
+        analyzeTemplateAndMatchMessages(`<div #await={_} #then={_}></div>`);
+    });
 
     test("Invalid binding pattern", () => {
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={call()}></div>`, [
             {
                 type: "error",
                 range: [23, 29],
-                value: `Invalid context pattern.`
-            }
-        ])
+                value: `Invalid context pattern.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={context=undefined}></div>`, [
             {
                 type: "error",
                 range: [23, 40],
-                value: `Invalid context pattern.`
-            }
-        ])
+                value: `Invalid context pattern.`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={[],{}}></div>`, [
             {
                 type: "error",
                 range: [23, 28],
-                value: `The "#then" directive accepts at most 1 context pattern, but got 2.`
+                value: `The "#then" directive accepts at most 1 context pattern, but got 2.`,
             },
             {
                 type: "error",
                 range: [23, 25],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
             },
             {
                 type: "error",
                 range: [26, 28],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
-    })
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
 
     test("No context identifiers were declared by the binding pattern", () => {
         analyzeTemplateAndMatchMessages(`<div #await={_} #then={{ a: [] }}></div>`, [
             {
                 type: "error",
                 range: [23, 32],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
-    })
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
 
     test(`A promise block can only use the "#then" directive once`, () => {
         analyzeTemplateAndMatchMessages(
@@ -546,17 +546,17 @@ describe("#then", () => {
                 {
                     type: "error",
                     range: [53, 58],
-                    value: `The "#then" directive can only appear once in a promise block.`
+                    value: `The "#then" directive can only appear once in a promise block.`,
                 },
                 {
                     type: "error",
                     range: [16, 21],
-                    value: `The "#then" directive can only appear once in a promise block.`
-                }
-            ]
-        )
-    })
-})
+                    value: `The "#then" directive can only appear once in a promise block.`,
+                },
+            ],
+        );
+    });
+});
 
 describe("#catch", () => {
     test("Missing preceding directive", () => {
@@ -564,9 +564,9 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [6, 12],
-                value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`
-            }
-        ])
+                value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -579,10 +579,10 @@ describe("#catch", () => {
                 {
                     type: "error",
                     range: [61, 67],
-                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`
-                }
-            ]
-        )
+                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -595,17 +595,17 @@ describe("#catch", () => {
                 {
                     type: "error",
                     range: [49, 55],
-                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then". Note that the preceding element has an implicit "#slot" directive.`
-                }
-            ]
-        )
+                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then". Note that the preceding element has an implicit "#slot" directive.`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <p #await={_}></p>
                 <p #then={_}></p>
-            `)
-        )
+            `),
+        );
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <Comp>
@@ -613,54 +613,54 @@ describe("#catch", () => {
                     <div #slot={"b"} #await={_} #catch></div>
                 </Comp>
             `),
-            []
-        )
-        analyzeTemplateAndMatchMessages(`<p #await={_} #then={_}></p>`)
-    })
+            [],
+        );
+        analyzeTemplateAndMatchMessages(`<p #await={_} #then={_}></p>`);
+    });
 
     test("Invalid binding pattern", () => {
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={a + b}></div>`, [
             {
                 type: "error",
                 range: [24, 29],
-                value: `Invalid context pattern.`
-            }
-        ])
+                value: `Invalid context pattern.`,
+            },
+        ]);
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={a ? b : c}></div>`, [
             {
                 type: "error",
                 range: [24, 33],
-                value: `Invalid context pattern.`
-            }
-        ])
+                value: `Invalid context pattern.`,
+            },
+        ]);
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={[], {}}></div>`, [
             {
                 type: "error",
                 range: [24, 30],
-                value: `The "#catch" directive accepts at most 1 context pattern, but got 2.`
+                value: `The "#catch" directive accepts at most 1 context pattern, but got 2.`,
             },
             {
                 type: "error",
                 range: [24, 26],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
             },
             {
                 type: "error",
                 range: [28, 30],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
-    })
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
 
     test("No context identifiers were declared by the binding pattern", () => {
         analyzeTemplateAndMatchMessages(`<div #await={_} #catch={[,{ a: [] },]}></div>`, [
             {
                 type: "error",
                 range: [24, 37],
-                value: `The context pattern is empty and does not declare any binding identifiers.`
-            }
-        ])
-    })
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
 
     test(`A promise block can only use the "#catch" directive once`, () => {
         analyzeTemplateAndMatchMessages(
@@ -673,17 +673,17 @@ describe("#catch", () => {
                 {
                     type: "error",
                     range: [53, 59],
-                    value: `The "#catch" directive can only appear once in a promise block.`
+                    value: `The "#catch" directive can only appear once in a promise block.`,
                 },
                 {
                     type: "error",
                     range: [16, 22],
-                    value: `The "#catch" directive can only appear once in a promise block.`
-                }
-            ]
-        )
-    })
-})
+                    value: `The "#catch" directive can only appear once in a promise block.`,
+                },
+            ],
+        );
+    });
+});
 
 describe("#else", () => {
     test("Redundant value", () => {
@@ -696,20 +696,20 @@ describe("#else", () => {
                 {
                     type: "warning",
                     range: [25, 36],
-                    value: `The "#else" directive does not need a value, and the redundant directive value will be ignored.`
-                }
-            ]
-        )
-    })
+                    value: `The "#else" directive does not need a value, and the redundant directive value will be ignored.`,
+                },
+            ],
+        );
+    });
 
     test("Missing preceding directive", () => {
         analyzeTemplateAndMatchMessages(`<div #else></div>`, [
             {
                 type: "error",
                 range: [5, 10],
-                value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
-            }
-        ])
+                value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
+            },
+        ]);
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -722,10 +722,10 @@ describe("#else", () => {
                 {
                     type: "error",
                     range: [64, 69],
-                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
-                }
-            ]
-        )
+                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
+                },
+            ],
+        );
 
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
@@ -738,33 +738,33 @@ describe("#else", () => {
                 {
                     type: "error",
                     range: [52, 57],
-                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`
-                }
-            ]
-        )
-    })
-})
+                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`,
+                },
+            ],
+        );
+    });
+});
 
 test("#key: used without #for directive", () => {
-    analyzeTemplateAndMatchMessages(`<div #for={0} #key={_}></div>`)
+    analyzeTemplateAndMatchMessages(`<div #for={0} #key={_}></div>`);
 
     analyzeTemplateAndMatchMessages(`<div #key={_}></div>`, [
         {
             type: "error",
             range: [5, 9],
-            value: `The "#key" directive is only allowed on a tag with the "#for" directive.`
-        }
-    ])
-})
+            value: `The "#key" directive is only allowed on a tag with the "#for" directive.`,
+        },
+    ]);
+});
 
 test("#elif: missing preceding directive", () => {
     analyzeTemplateAndMatchMessages(`<div #elif={_}></div>`, [
         {
             type: "error",
             range: [5, 10],
-            value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
-        }
-    ])
+            value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
+        },
+    ]);
 
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
@@ -777,10 +777,10 @@ test("#elif: missing preceding directive", () => {
             {
                 type: "error",
                 range: [64, 69],
-                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
-            }
-        ]
-    )
+                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
+            },
+        ],
+    );
 
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
@@ -793,15 +793,15 @@ test("#elif: missing preceding directive", () => {
             {
                 type: "error",
                 range: [52, 57],
-                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`
-            }
-        ]
-    )
-})
+                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`,
+            },
+        ],
+    );
+});
 
 test("#target: invalid placement", () => {
-    analyzeTemplateAndMatchMessages(`<div #target={_}></div>`)
-    analyzeTemplateAndMatchMessages(`<Comp #target={"body"} />`)
+    analyzeTemplateAndMatchMessages(`<div #target={_}></div>`);
+    analyzeTemplateAndMatchMessages(`<Comp #target={"body"} />`);
 
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
@@ -813,40 +813,40 @@ test("#target: invalid placement", () => {
             {
                 type: "error",
                 range: [16, 23],
-                value: `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`
-            }
-        ]
-    )
-})
+                value: `The "#target" directive cannot be used on direct component children because they are slot content, which would make the mount target ambiguous. Use it on the <slot> element instead.`,
+            },
+        ],
+    );
+});
 
 test("Missing directive value", () => {
     analyzeTemplateAndMatchMessages(`<div #if #for #await #key #target></div>`, [
         {
             type: "error",
             range: [14, 20],
-            value: `Directive "#await" requires a value.`
+            value: `Directive "#await" requires a value.`,
         },
         {
             type: "error",
             range: [5, 8],
-            value: `Directive "#if" requires a value.`
+            value: `Directive "#if" requires a value.`,
         },
         {
             type: "error",
             range: [26, 33],
-            value: `Directive "#target" requires a value.`
+            value: `Directive "#target" requires a value.`,
         },
         {
             type: "error",
             range: [9, 13],
-            value: `Directive "#for" requires a value.`
+            value: `Directive "#for" requires a value.`,
         },
         {
             type: "error",
             range: [21, 25],
-            value: `Directive "#key" requires a value.`
-        }
-    ])
+            value: `Directive "#key" requires a value.`,
+        },
+    ]);
 
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
@@ -858,15 +858,15 @@ test("Missing directive value", () => {
             {
                 type: "error",
                 range: [3, 6],
-                value: `Directive "#if" requires a value.`
+                value: `Directive "#if" requires a value.`,
             },
             {
                 type: "error",
                 range: [15, 20],
-                value: `Directive "#elif" requires a value.`
-            }
-        ]
-    )
+                value: `Directive "#elif" requires a value.`,
+            },
+        ],
+    );
 
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
@@ -878,83 +878,83 @@ test("Missing directive value", () => {
             {
                 type: "error",
                 range: [16, 21],
-                value: `Directive "#slot" requires a value.`
-            }
-        ]
-    )
+                value: `Directive "#slot" requires a value.`,
+            },
+        ],
+    );
 
-    analyzeTemplateAndMatchMessages("<div #html>{_}</div>")
-    analyzeTemplateAndMatchMessages(`<div #await={_} #then></div>`)
-    analyzeTemplateAndMatchMessages(`<div #await={_} #catch></div>`)
-})
+    analyzeTemplateAndMatchMessages("<div #html>{_}</div>");
+    analyzeTemplateAndMatchMessages(`<div #await={_} #then></div>`);
+    analyzeTemplateAndMatchMessages(`<div #await={_} #catch></div>`);
+});
 
 test("Unrecognized directives", () => {
     analyzeTemplateAndMatchMessages(`<div #custom={_}></div>`, [
         {
             type: "error",
             range: [5, 12],
-            value: `An attribute name beginning with "#" is treated as a directive, but "#custom" is not a recognized directive.`
-        }
-    ])
-})
+            value: `An attribute name beginning with "#" is treated as a directive, but "#custom" is not a recognized directive.`,
+        },
+    ]);
+});
 
 test("Conflicting directives", () => {
     analyzeTemplateAndMatchMessages(`<div #await={_} #then #catch></div>`, [
         {
             type: "error",
             range: [22, 28],
-            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`,
         },
         {
             type: "error",
             range: [16, 21],
-            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
-        }
-    ])
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`,
+        },
+    ]);
 
     analyzeTemplateAndMatchMessages(`<div #await={_} #catch #then={res}></div>`, [
         {
             type: "error",
             range: [16, 22],
-            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`,
         },
         {
             type: "error",
             range: [23, 28],
-            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`
-        }
-    ])
+            value: `Conflicting directives: "#catch" and "#then" cannot be used together.`,
+        },
+    ]);
 
     analyzeTemplateAndMatchMessages(`<div #if={_} #elif={_} #else></div>`, [
         {
             type: "error",
             range: [13, 18],
-            value: `Conflicting directives: "#elif" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#elif" and "#if" cannot be used together.`,
         },
         {
             type: "error",
             range: [5, 8],
-            value: `Conflicting directives: "#elif" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#elif" and "#if" cannot be used together.`,
         },
         {
             type: "error",
             range: [13, 18],
-            value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
+            value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
         },
         {
             type: "error",
             range: [23, 28],
-            value: `Conflicting directives: "#else" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#else" and "#if" cannot be used together.`,
         },
         {
             type: "error",
             range: [5, 8],
-            value: `Conflicting directives: "#else" and "#if" cannot be used together.`
+            value: `Conflicting directives: "#else" and "#if" cannot be used together.`,
         },
         {
             type: "error",
             range: [23, 28],
-            value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`
-        }
-    ])
-})
+            value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
+        },
+    ]);
+});

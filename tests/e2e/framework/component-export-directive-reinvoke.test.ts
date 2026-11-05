@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -79,108 +79,108 @@ const scenario: E2EScenarioInput = {
                 <p class="counter-value">Count: {count}</p>
                 <button class="btn-increment" @click={increment}>+1</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("handle is cleared on unmount and restored to fresh instance on remount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#counter-1")).toBeVisible()
+        await expect(page.locator("#counter-1")).toBeVisible();
 
         // increment via DOM, verify handle reflects current count
-        await page.locator("#counter-1 .btn-increment").click()
-        await page.locator("#btn-snap-1").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
+        await page.locator("#counter-1 .btn-increment").click();
+        await page.locator("#btn-snap-1").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
 
         // toggle off — handle should be cleared
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#counter-1")).toHaveCount(0)
-        await page.locator("#btn-snap-1").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null")
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#counter-1")).toHaveCount(0);
+        await page.locator("#btn-snap-1").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null");
 
         // toggle on — new instance, handle restored with fresh count
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#counter-1")).toBeVisible()
-        await page.locator("#btn-snap-1").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#counter-1")).toBeVisible();
+        await page.locator("#btn-snap-1").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0");
 
         // increment via handle on new instance
-        await page.locator("#btn-inc-1").click()
-        await expect(page.locator("#counter-1 .counter-value")).toHaveText("Count: 1")
-    })
+        await page.locator("#btn-inc-1").click();
+        await expect(page.locator("#counter-1 .counter-value")).toHaveText("Count: 1");
+    });
 
     test("switching between conditional branches assigns handles to correct instances", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#counter-1")).toBeVisible()
-        await page.locator("#btn-inc-1").click()
-        await page.locator("#btn-snap-1").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
+        await expect(page.locator("#counter-1")).toBeVisible();
+        await page.locator("#btn-inc-1").click();
+        await page.locator("#btn-snap-1").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
 
         // switch to second branch — counter-1 unmounts, counter-2 mounts
-        await page.locator("#btn-switch").click()
-        await expect(page.locator("#condition-state")).toHaveText("Condition: second")
-        await expect(page.locator("#counter-1")).toHaveCount(0)
-        await expect(page.locator("#counter-2")).toBeVisible()
+        await page.locator("#btn-switch").click();
+        await expect(page.locator("#condition-state")).toHaveText("Condition: second");
+        await expect(page.locator("#counter-1")).toHaveCount(0);
+        await expect(page.locator("#counter-2")).toBeVisible();
 
         // handle1 cleared, handle2 is fresh instance
-        await page.locator("#btn-snap-1").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null")
-        await page.locator("#btn-snap-2").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
+        await page.locator("#btn-snap-1").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null");
+        await page.locator("#btn-snap-2").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0");
 
         // increment counter-2 via handle
-        await page.locator("#btn-inc-2").click()
-        await page.locator("#btn-inc-2").click()
-        await expect(page.locator("#counter-2 .counter-value")).toHaveText("Count: 2")
+        await page.locator("#btn-inc-2").click();
+        await page.locator("#btn-inc-2").click();
+        await expect(page.locator("#counter-2 .counter-value")).toHaveText("Count: 2");
 
         // switch back — counter-1 remounts (fresh), counter-2 unmounts
-        await page.locator("#btn-switch").click()
-        await expect(page.locator("#counter-1")).toBeVisible()
-        await expect(page.locator("#counter-2")).toHaveCount(0)
+        await page.locator("#btn-switch").click();
+        await expect(page.locator("#counter-1")).toBeVisible();
+        await expect(page.locator("#counter-2")).toHaveCount(0);
 
         // handle1 restored with fresh count, handle2 cleared
-        await page.locator("#btn-snap-1").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0")
-        await page.locator("#btn-snap-2").click()
-        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null")
-    })
+        await page.locator("#btn-snap-1").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: 0");
+        await page.locator("#btn-snap-2").click();
+        await expect(page.locator("#snapshot")).toHaveText("Snapshot: null");
+    });
 
     test("repeated mount/unmount cycles always yield fresh handle with correct currentInstance", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         for (let i = 0; i < 3; i++) {
-            await expect(page.locator("#counter-1")).toBeVisible()
+            await expect(page.locator("#counter-1")).toBeVisible();
 
             // increment via handle, verify DOM
-            await page.locator("#btn-inc-1").click()
-            await expect(page.locator("#counter-1 .counter-value")).toHaveText("Count: 1")
-            await page.locator("#btn-snap-1").click()
-            await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1")
+            await page.locator("#btn-inc-1").click();
+            await expect(page.locator("#counter-1 .counter-value")).toHaveText("Count: 1");
+            await page.locator("#btn-snap-1").click();
+            await expect(page.locator("#snapshot")).toHaveText("Snapshot: 1");
 
             // toggle off — handle cleared
-            await page.locator("#btn-toggle").click()
-            await expect(page.locator("#counter-1")).toHaveCount(0)
-            await page.locator("#btn-snap-1").click()
-            await expect(page.locator("#snapshot")).toHaveText("Snapshot: null")
+            await page.locator("#btn-toggle").click();
+            await expect(page.locator("#counter-1")).toHaveCount(0);
+            await page.locator("#btn-snap-1").click();
+            await expect(page.locator("#snapshot")).toHaveText("Snapshot: null");
 
             // toggle on — fresh instance, count reset to 0
-            await page.locator("#btn-toggle").click()
-            await expect(page.locator("#counter-1")).toBeVisible()
-            await expect(page.locator("#counter-1 .counter-value")).toHaveText("Count: 0")
+            await page.locator("#btn-toggle").click();
+            await expect(page.locator("#counter-1")).toBeVisible();
+            await expect(page.locator("#counter-1 .counter-value")).toHaveText("Count: 0");
         }
 
-        await expect(page.locator("#invoke-count")).toHaveText("Invoke count: 6")
-    })
-})
+        await expect(page.locator("#invoke-count")).toHaveText("Invoke count: 6");
+    });
+});

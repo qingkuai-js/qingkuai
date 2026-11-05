@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -53,27 +53,27 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        AsyncOne: `<article id="async-one">Async One</article>`
-    }
-}
+        AsyncOne: `<article id="async-one">Async One</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("does not render stale async result after host unmount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#host-state")).toHaveText("shown")
-        await expect(page.locator("#async-loading")).toHaveText("Loading...")
+        await expect(page.locator("#host-state")).toHaveText("shown");
+        await expect(page.locator("#async-loading")).toHaveText("Loading...");
 
-        await page.locator("#reload-pending").click()
-        await page.locator("#hide-host").click()
-        await expect(page.locator("#host-state")).toHaveText("hidden")
-        await expect(page.locator("#async-host")).toHaveCount(0)
+        await page.locator("#reload-pending").click();
+        await page.locator("#hide-host").click();
+        await expect(page.locator("#host-state")).toHaveText("hidden");
+        await expect(page.locator("#async-host")).toHaveCount(0);
 
-        await page.locator("#resolve-pending").click()
-        await expect(page.locator("#resolve-count")).toHaveText("1")
-        await expect(page.locator("#async-one")).toHaveCount(0)
-    })
-})
+        await page.locator("#resolve-pending").click();
+        await expect(page.locator("#resolve-count")).toHaveText("1");
+        await expect(page.locator("#async-one")).toHaveCount(0);
+    });
+});

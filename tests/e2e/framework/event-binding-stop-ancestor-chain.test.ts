@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -43,17 +43,17 @@ const scenario: E2EScenarioInput = {
             </div>
             <p id="counts">{outer}-{middle}-{leaf}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("stop on middle ancestor blocks further bubbling", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#leaf").click()
-        await expect(page.locator("#counts")).toHaveText("0-1-1")
+        await page.locator("#leaf").click();
+        await expect(page.locator("#counts")).toHaveText("0-1-1");
 
-        await page.locator("#outer").click({ position: { x: 210, y: 210 } })
-        await expect(page.locator("#counts")).toHaveText("1-1-1")
-    })
-})
+        await page.locator("#outer").click({ position: { x: 210, y: 210 } });
+        await expect(page.locator("#counts")).toHaveText("1-1-1");
+    });
+});

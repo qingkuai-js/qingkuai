@@ -1,37 +1,37 @@
-import type { AnyObject } from "#type-declarations/tools"
-import type { ClassAttrValue } from "#type-declarations/runtime"
+import type { AnyObject } from "#type-declarations/tools";
+import type { ClassAttrValue } from "#type-declarations/runtime";
 
 import {
     CLASS_CACHE_KEY,
     VALUE_CACHE_KEY,
     ATTRIBUTE_PREFIX,
-    XLINK_NAMESPACE_URI
-} from "./constants"
-import { getElementValue } from "./dom"
-import { NotArrayOrSet } from "./messages/error"
-import { objectKeys } from "../util/shared/aliases"
-import { any, notEqual, optc } from "../util/shared/sundry"
-import { nextTick, reactiveNotEqual } from "../util/runtime/sundry"
-import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert"
+    XLINK_NAMESPACE_URI,
+} from "./constants";
+import { getElementValue } from "./dom";
+import { NotArrayOrSet } from "./messages/error";
+import { objectKeys } from "../util/shared/aliases";
+import { any, notEqual, optc } from "../util/shared/sundry";
+import { nextTick, reactiveNotEqual } from "../util/runtime/sundry";
+import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert";
 
 // 属性缓存键会被频繁用作 DOM 元素上的扩展属性名，缓存字符串拼接结果
 // 可以避免每次访问都为属性名重新分配字符串
 //
 // The cache keys are used as expando property names on DOM elements on hot
 // paths; memoizing the concatenation avoids re-allocating the name every time.
-const attributeCacheKeys = /*#__PURE__*/ new Map<string, string>()
+const attributeCacheKeys = /*#__PURE__*/ new Map<string, string>();
 
 export function setHtmlClassName(elem: Element, value: ClassAttrValue) {
-    const className = getClassName(value)
+    const className = getClassName(value);
     if (className === any(elem)[CLASS_CACHE_KEY]) {
-        return
+        return;
     }
-    any(elem)[CLASS_CACHE_KEY] = className
+    any(elem)[CLASS_CACHE_KEY] = className;
 
     if (className) {
-        elem.className = className
+        elem.className = className;
     } else {
-        elem.removeAttribute("class")
+        elem.removeAttribute("class");
     }
 }
 
@@ -42,7 +42,7 @@ export function setHtmlClassName(elem: Element, value: ClassAttrValue) {
 // namespace of slot content is only known at runtime; setAttribute is correct for both
 // SVG and HTML elements.
 export function setClassAttribute(elem: Element, value: ClassAttrValue) {
-    setAttribute(elem, "class", getClassName(value))
+    setAttribute(elem, "class", getClassName(value));
 }
 
 // HTML 元素的同名属性是可写的，直接赋值比 setAttribute 快；SVG 的只读属性在这里会
@@ -51,140 +51,140 @@ export function setClassAttribute(elem: Element, value: ClassAttrValue) {
 // The same-named property of an HTML element is writable and assigning it is faster than
 // setAttribute; SVG properties are read-only and throw, so SVG elements use setAttribute.
 export function setHtmlAttribute(elem: Element, name: string, value: any) {
-    const cacheKey = getAttributeCacheKey(name)
+    const cacheKey = getAttributeCacheKey(name);
     if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
-        return
+        return;
     }
     if (!isNull(value) && !isUndefined(value) && name in elem) {
         try {
-            any(elem)[name] = value
-            any(elem)[cacheKey] = value
-            return
+            any(elem)[name] = value;
+            any(elem)[cacheKey] = value;
+            return;
         } catch {
             // do nothing
         }
     }
-    setAttribute(elem, name, value)
+    setAttribute(elem, name, value);
 }
 
 export function setAttribute(elem: Element, name: string, value: any) {
-    const cacheKey = getAttributeCacheKey(name)
+    const cacheKey = getAttributeCacheKey(name);
     if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
-        return
+        return;
     }
-    any(elem)[cacheKey] = value
+    any(elem)[cacheKey] = value;
 
     if (isNull(value) || isUndefined(value)) {
-        elem.removeAttribute(name)
-        return
+        elem.removeAttribute(name);
+        return;
     }
 
     if (isBoolean(value)) {
         if (value) {
-            value = ""
+            value = "";
         } else {
-            elem.removeAttribute(name)
-            return
+            elem.removeAttribute(name);
+            return;
         }
     }
-    elem.setAttribute(name, value)
+    elem.setAttribute(name, value);
 }
 
 export function setXlinkAttribute(elem: Element, name: string, value: any) {
-    const localName = name
-    const qualifiedName = "xlink:" + localName
-    const key = getAttributeCacheKey(qualifiedName)
+    const localName = name;
+    const qualifiedName = "xlink:" + localName;
+    const key = getAttributeCacheKey(qualifiedName);
     if (!reactiveNotEqual(any(elem)[key], value)) {
-        return
+        return;
     }
-    any(elem)[key] = value
+    any(elem)[key] = value;
 
     if (isNull(value) || isUndefined(value) || value === false) {
-        elem.removeAttributeNS(XLINK_NAMESPACE_URI, localName)
-        return
+        elem.removeAttributeNS(XLINK_NAMESPACE_URI, localName);
+        return;
     }
 
     if (isBoolean(value)) {
-        value = ""
+        value = "";
     }
-    elem.setAttributeNS(XLINK_NAMESPACE_URI, qualifiedName, value)
+    elem.setAttributeNS(XLINK_NAMESPACE_URI, qualifiedName, value);
 }
 
 export function setInputGroup(elem: HTMLInputElement, target: any) {
-    const type = optc(target)
-    const containerIsArray = type === "Array"
+    const type = optc(target);
+    const containerIsArray = type === "Array";
     if (!containerIsArray && type !== "Set") {
-        return NotArrayOrSet("group", `<input>(radio/checkbox)`)
+        return NotArrayOrSet("group", `<input>(radio/checkbox)`);
     }
     setHtmlAttribute(
         elem,
         "checked",
-        target[containerIsArray ? "includes" : "has"](getElementValue(elem))
-    )
+        target[containerIsArray ? "includes" : "has"](getElementValue(elem)),
+    );
 }
 
 export function setSelectValue(elem: HTMLSelectElement, target: any) {
     nextTick(() => {
-        const options = elem.options ?? []
+        const options = elem.options ?? [];
         if (!elem.multiple) {
             if (notEqual(target, getElementValue(elem))) {
                 for (const option of options) {
-                    option.selected = !notEqual(target, getElementValue(option))
+                    option.selected = !notEqual(target, getElementValue(option));
                 }
-                any(elem)[VALUE_CACHE_KEY] = target
+                any(elem)[VALUE_CACHE_KEY] = target;
             }
         } else {
-            const containerIsArray = isArray(target)
+            const containerIsArray = isArray(target);
             if (!containerIsArray && optc(target) !== "Set") {
-                return NotArrayOrSet("value", "<select multiple>")
+                return NotArrayOrSet("value", "<select multiple>");
             }
             for (const option of options) {
                 setHtmlAttribute(
                     option,
                     "selected",
-                    target[containerIsArray ? "includes" : "has"](getElementValue(option))
-                )
+                    target[containerIsArray ? "includes" : "has"](getElementValue(option)),
+                );
             }
         }
-    })
+    });
 }
 
 function getAttributeCacheKey(name: string) {
-    let key = attributeCacheKeys.get(name)
+    let key = attributeCacheKeys.get(name);
     if (key === undefined) {
-        key = ATTRIBUTE_PREFIX + name
-        attributeCacheKeys.set(name, key)
+        key = ATTRIBUTE_PREFIX + name;
+        attributeCacheKeys.set(name, key);
     }
-    return key
+    return key;
 }
 
 function getClassNameWithObject(o: AnyObject) {
-    let className = ""
+    let className = "";
     for (const key of objectKeys(o)) {
         if (isString(key) && o[key]) {
-            className += (className ? " " : "") + key
+            className += (className ? " " : "") + key;
         }
     }
-    return className
+    return className;
 }
 
 function getClassNameString(value: any): string {
     if (isString(value)) {
-        return value
+        return value;
     }
     if (isArray(value)) {
-        let className = ""
+        let className = "";
         for (let i = 0; i < value.length; i++) {
-            className += getClassNameString(value[i])
+            className += getClassNameString(value[i]);
             if (i < value.length - 1) {
-                className += " "
+                className += " ";
             }
         }
-        return className
+        return className;
     }
-    return getClassNameWithObject(value)
+    return getClassNameWithObject(value);
 }
 
 function getClassName(value: ClassAttrValue) {
-    return isString(value) ? value : getClassNameString(value)
+    return isString(value) ? value : getClassNameString(value);
 }

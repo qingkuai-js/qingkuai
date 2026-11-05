@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -15,17 +15,17 @@ const scenario: E2EScenarioInput = {
             </select>
             <p id="state-single">Single: {singleSelected}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("regression: state is B but single select control initially reflects A", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#state-single")).toHaveText("Single: B")
-        await expect(page.locator("#single-select")).toHaveValue("B")
-    })
-})
+        await expect(page.locator("#state-single")).toHaveText("Single: B");
+        await expect(page.locator("#single-select")).toHaveValue("B");
+    });
+});

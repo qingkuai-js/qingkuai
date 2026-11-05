@@ -6,8 +6,8 @@ export {
     destructuringReact,
     destructuringConstReact,
     destructuringShallowReact,
-    destructuringShallowConstReact
-} from "./reactivity/value"
+    destructuringShallowConstReact,
+} from "./reactivity/value";
 
 export {
     setText,
@@ -19,8 +19,8 @@ export {
     getSiblingAsText,
     createHtmlFragmentGetter,
     createSvgFragmentGetter,
-    createSlotFragmentGetter
-} from "./dom"
+    createSlotFragmentGetter,
+} from "./dom";
 
 export {
     bindInputGroup,
@@ -28,8 +28,8 @@ export {
     bindInputNumber,
     bindSelectValue,
     bindInputChecked,
-    bindHandleReceiver
-} from "./reference"
+    bindHandleReceiver,
+} from "./reference";
 
 export {
     watch,
@@ -39,8 +39,8 @@ export {
     postWatch,
     postEffect,
     syncWatch,
-    syncEffect
-} from "./reactivity/effect"
+    syncEffect,
+} from "./reactivity/effect";
 
 export {
     init,
@@ -60,8 +60,8 @@ export {
     onAfterDestroy,
     renderComponent,
     setContextGetter,
-    dynamicComponent
-} from "./component"
+    dynamicComponent,
+} from "./component";
 
 export {
     setAttribute,
@@ -69,21 +69,21 @@ export {
     setHtmlAttribute,
     setHtmlClassName,
     setClassAttribute,
-    setXlinkAttribute
-} from "./attribute"
+    setXlinkAttribute,
+} from "./attribute";
 
-export { htmlBlock } from "./directives/html"
-export { toRaw } from "../util/runtime/sundry"
-export { renderSlot } from "./directives/slot"
-export { targetBlock } from "./directives/target"
-export { renderEffect } from "./reactivity/effect"
-export { promiseBlock } from "./directives/promise"
-export { alias, destructuringAlias } from "./debug"
-export { makeExpGetter } from "../util/runtime/sundry"
-export { conditionBlock } from "./directives/condition"
-export { noTrackingToRaw } from "./reactivity/optimization"
-export { objectAssign, call } from "../util/shared/aliases"
-export { listBlock, keyedListBlock } from "./directives/list"
-export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants"
-export { derived, destructuringDerived } from "./reactivity/derived"
-export { listen, createEventWrapper, initEvents, delegate } from "./event"
+export { htmlBlock } from "./directives/html";
+export { toRaw } from "../util/runtime/sundry";
+export { renderSlot } from "./directives/slot";
+export { targetBlock } from "./directives/target";
+export { renderEffect } from "./reactivity/effect";
+export { promiseBlock } from "./directives/promise";
+export { alias, destructuringAlias } from "./debug";
+export { makeExpGetter } from "../util/runtime/sundry";
+export { conditionBlock } from "./directives/condition";
+export { noTrackingToRaw } from "./reactivity/optimization";
+export { objectAssign, call } from "../util/shared/aliases";
+export { listBlock, keyedListBlock } from "./directives/list";
+export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants";
+export { derived, destructuringDerived } from "./reactivity/derived";
+export { listen, createEventWrapper, initEvents, delegate } from "./event";

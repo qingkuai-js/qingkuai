@@ -1,16 +1,16 @@
 import type {
     Subscription,
     ReactivityWrapper,
-    ComponentInstanceBase
-} from "#type-declarations/runtime"
+    ComponentInstanceBase,
+} from "#type-declarations/runtime";
 
 import {
     RESOLVED,
     AFTER_UPDATE,
     BEFORE_UPDATE,
     COMPONENT_UPDATING,
-    MAX_SCHEDULE_DEPTH
-} from "../constants"
+    MAX_SCHEDULE_DEPTH,
+} from "../constants";
 import {
     WRAPPER_MAP,
     OWN_KEYS,
@@ -24,8 +24,8 @@ import {
     EFFECT_SCHEDULING,
     LINK_OWN_CHANGED,
     LINK_VALUE_CHANGED,
-    SUB_IS_ITERATOR_KEY
-} from "./constants"
+    SUB_IS_ITERATOR_KEY,
+} from "./constants";
 import {
     batchSyncDepth,
     activeEffect,
@@ -36,37 +36,37 @@ import {
     resetSchedulingEffects,
     schedulingSubscriptions,
     setAsyncSchedulerIsIdle,
-    increRecursionScheduleCount
-} from "./state"
-import { runHooks } from "../component"
-import { runAndUpdateEffect } from "./effect"
-import { nextTick } from "../../util/runtime/sundry"
-import { MaximumUpdateDepthExceeded } from "../messages/error"
-import { isIteratorKey, isProxyWrapper } from "../../util/runtime/assert"
+    increRecursionScheduleCount,
+} from "./state";
+import { runHooks } from "../component";
+import { runAndUpdateEffect } from "./effect";
+import { nextTick } from "../../util/runtime/sundry";
+import { MaximumUpdateDepthExceeded } from "../messages/error";
+import { isIteratorKey, isProxyWrapper } from "../../util/runtime/assert";
 
 export function getSubscription(
     wrapper: ReactivityWrapper,
     property: any,
     sync: boolean,
-    shouldCreate = false
+    shouldCreate = false,
 ) {
-    const keyInWrapper = sync ? "s" : "a"
-    const wrappedByProxy = isProxyWrapper(wrapper)
+    const keyInWrapper = sync ? "s" : "a";
+    const wrappedByProxy = isProxyWrapper(wrapper);
     if (!wrappedByProxy) {
         if (wrapper[keyInWrapper]) {
-            return wrapper[keyInWrapper]
+            return wrapper[keyInWrapper];
         }
     } else {
         if (!wrapper[keyInWrapper]) {
             if (!shouldCreate) {
-                return
+                return;
             }
-            wrapper[keyInWrapper] = new Map()
+            wrapper[keyInWrapper] = new Map();
         }
 
-        let subscription: Subscription | undefined
+        let subscription: Subscription | undefined;
         if ((subscription = wrapper[keyInWrapper].get(property))) {
-            return subscription
+            return subscription;
         }
     }
     if (shouldCreate) {
@@ -75,44 +75,44 @@ export function getSubscription(
             l: 0,
             k: [],
             w: wrapper,
-            p: property
-        }
+            p: property,
+        };
         if (isIteratorKey(wrapper, property)) {
-            subscription.l = SUB_IS_ITERATOR_KEY
+            subscription.l = SUB_IS_ITERATOR_KEY;
         }
         if (!wrappedByProxy) {
-            wrapper[keyInWrapper] = subscription
+            wrapper[keyInWrapper] = subscription;
         } else {
-            wrapper[keyInWrapper]!.set(property, subscription)
+            wrapper[keyInWrapper]!.set(property, subscription);
         }
-        return subscription
+        return subscription;
     }
 }
 
 export function scheduleUpdate(
     wrapper?: ReactivityWrapper,
     property?: any,
-    linkFlag = LINK_VALUE_CHANGED
+    linkFlag = LINK_VALUE_CHANGED,
 ) {
     if (!linkFlag || schedulingPauseDepth) {
-        return
+        return;
     }
 
     if (wrapper) {
         for (let i = 0; i < 2; i++) {
-            const specifiedSub = getSubscription(wrapper, property, !i)
+            const specifiedSub = getSubscription(wrapper, property, !i);
             if (specifiedSub) {
-                extendSchedulingEffects(specifiedSub, linkFlag)
+                extendSchedulingEffects(specifiedSub, linkFlag);
             }
             if (!isProxyWrapper(wrapper)) {
-                continue
+                continue;
             }
 
             // 若 linkFlag 设置了 LINK_OWN_CHANGED 标志，则触发 OWN_KEYS 订阅
             if (linkFlag & LINK_OWN_CHANGED) {
-                const sub = getSubscription(wrapper, OWN_KEYS, !i)
+                const sub = getSubscription(wrapper, OWN_KEYS, !i);
                 if (sub) {
-                    extendSchedulingEffects(sub, linkFlag)
+                    extendSchedulingEffects(sub, linkFlag);
                 }
             }
 
@@ -122,9 +122,9 @@ export function scheduleUpdate(
                     (specifiedSub && specifiedSub.l & SUB_IS_ITERATOR_KEY) ||
                     isIteratorKey(wrapper, property)
                 ) {
-                    const sub = getSubscription(wrapper, ITERATOR_KEYS, !i)
+                    const sub = getSubscription(wrapper, ITERATOR_KEYS, !i);
                     if (sub) {
-                        extendSchedulingEffects(sub, linkFlag)
+                        extendSchedulingEffects(sub, linkFlag);
                     }
                 }
             }
@@ -134,42 +134,42 @@ export function scheduleUpdate(
     // 同步调度，若设置了 SCHEDULER_SYNC_PILE 标志，同步副作用将阻塞至此标志位被移除时运行
     if (schedulingEffects[0].length && !batchSyncDepth) {
         for (const effect of getSortedEffects(0)) {
-            runAndUpdateEffect(effect)
+            runAndUpdateEffect(effect);
         }
     }
 
     // 异步调度器处于空闲状态时，创建微任务执行更新调度
     // When the async scheduler is idle, create a microtask to perform the update scheduling
     if (asyncSchedulerIsIdle && schedulingEffects[1].length) {
-        setAsyncSchedulerIsIdle(false)
-        RESOLVED.then(update)
+        setAsyncSchedulerIsIdle(false);
+        RESOLVED.then(update);
     }
 }
 
 function update() {
-    const updatingComponents: ComponentInstanceBase[] = []
+    const updatingComponents: ComponentInstanceBase[] = [];
     for (const effect of getSortedEffects(1)) {
-        runAndUpdateEffect(effect)
+        runAndUpdateEffect(effect);
 
         // 首次渲染副作用时，触发组件的 onBeforeUpdate 并将组件加入 updatingComponents
         // For the first render effect, trigger the component's `onBeforeUpdate` and add it to `updatingComponents`
-        const instance = effect.d?.m
+        const instance = effect.d?.m;
         if (instance && effect.l & EFFECT_RENDER && !(instance._internal.l! & COMPONENT_UPDATING)) {
-            instance._internal.l = instance._internal.l! | COMPONENT_UPDATING
-            runHooks(instance, BEFORE_UPDATE)
-            updatingComponents.push(instance)
+            instance._internal.l = instance._internal.l! | COMPONENT_UPDATING;
+            runHooks(instance, BEFORE_UPDATE);
+            updatingComponents.push(instance);
         }
     }
 
     // 所有副作用执行完后，触发 updatingComponents 中组件的 onAfterUpdate
     // After all effects finish, trigger `onAfterUpdate` for all components in `updatingComponents`
     for (const component of updatingComponents) {
-        component._internal.l = component._internal.l! & ~COMPONENT_UPDATING
-        runHooks(component, AFTER_UPDATE)
+        component._internal.l = component._internal.l! & ~COMPONENT_UPDATING;
+        runHooks(component, AFTER_UPDATE);
     }
 
     if (!schedulingEffects[1].length) {
-        return resetSchedulerState()
+        return resetSchedulerState();
     }
 
     // 如果挂起列表不为空，则本轮调度执行的副作用中修改了其他响应式值，这会导致调度器的递归调用
@@ -179,41 +179,41 @@ function update() {
     // 为了防止更新调度器被无限递归调用，必须将这种递归调用深度限制在一个合理范围内（默认 300）
     // This recursion depth must be capped (300 by default) to prevent infinite recursive updates.
     if (increRecursionScheduleCount() > MAX_SCHEDULE_DEPTH) {
-        resetSchedulingEffects(1)
-        resetSchedulerState()
-        MaximumUpdateDepthExceeded()
+        resetSchedulingEffects(1);
+        resetSchedulerState();
+        MaximumUpdateDepthExceeded();
     }
-    nextTick(update)
+    nextTick(update);
 }
 
 // 排序规则：前置 > 未设置 > 后置，effect.t 相同时按 id 升序排序
 // Sorting rules: pre > unset > post; if `effect.t` is the same, sort by id in ascending order
 function getSortedEffects(index: number) {
     const ret = schedulingEffects[index].sort((a, b) => {
-        return a.t - b.t || a.i - b.i
-    })
-    return (resetSchedulingEffects(index), ret)
+        return a.t - b.t || a.i - b.i;
+    });
+    return (resetSchedulingEffects(index), ret);
 }
 
 function extendSchedulingEffects(subscription: Subscription, linkFlag: number) {
     if (!subscription || !subscription.k.length || subscription.l & SUB_SCHEDULING) {
-        return
+        return;
     }
 
-    let schedulePendingEffectCount = 0
-    const index = +(subscription.k[0].e.t != TIMING_SYNC)
+    let schedulePendingEffectCount = 0;
+    const index = +(subscription.k[0].e.t != TIMING_SYNC);
     for (let i = 0, link = subscription.k[0]; link; link = subscription.k[++i]) {
         if (link.e === activeEffect || link.e.l & EFFECT_DISABLED || !(link.l & linkFlag)) {
-            continue
+            continue;
         }
         if (!(link.e.l & EFFECT_SCHEDULING)) {
-            link.e.l |= EFFECT_SCHEDULING
-            schedulingEffects[index].push(link.e)
+            link.e.l |= EFFECT_SCHEDULING;
+            schedulingEffects[index].push(link.e);
         }
-        schedulePendingEffectCount++
+        schedulePendingEffectCount++;
     }
     if (schedulePendingEffectCount === subscription.k.length) {
-        subscription.l |= SUB_SCHEDULING
-        schedulingSubscriptions[index].push(subscription)
+        subscription.l |= SUB_SCHEDULING;
+        schedulingSubscriptions[index].push(subscription);
     }
 }

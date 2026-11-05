@@ -1,18 +1,18 @@
 export enum CompileMessageType {
     Error = "error",
-    Warning = "warning"
+    Warning = "warning",
 }
 
 export enum ReactivityMode {
     Reactive = "reactive",
-    Shallow = "shallow"
+    Shallow = "shallow",
 }
 
 export enum WhitespaceMode {
     Preserve = "preserve",
     Trim = "trim",
     Collapse = "collapse",
-    TrimCollapse = "trim-collapse"
+    TrimCollapse = "trim-collapse",
 }
 
 export enum IdentifierStatus {
@@ -22,21 +22,21 @@ export enum IdentifierStatus {
     Derived = "derived",
     Pending = "pending",
     Alias = "alias",
-    Literal = "literal"
+    Literal = "literal",
 }
 
 export enum InlayHintKind {
     Variable = "variable",
     Function = "function",
     Class = "class",
-    Enum = "enum"
+    Enum = "enum",
 }
 
 export enum AttributeValueEnclosure {
     Single = "single",
     Double = "double",
     Curly = "curly",
-    None = "none"
+    None = "none",
 }
 
 export enum SelectorOperationMethod {
@@ -45,7 +45,7 @@ export enum SelectorOperationMethod {
     SetHtmlAttribute = "setHtmlAttribute",
     SetXlinkAttribute = "setXlinkAttribute",
     SetHtmlClassName = "setHtmlClassName",
-    SetClassAttribute = "setClassAttribute"
+    SetClassAttribute = "setClassAttribute",
 }
 
 export enum PositionFlag {
@@ -56,43 +56,43 @@ export enum PositionFlag {
     IsComponentStart = 1 << 4,
     SourcemapEnd = (1 << 5) | PositionFlag.Sourcemap,
     SourcemapStart = (1 << 6) | PositionFlag.Sourcemap,
-    isInterpolatedAttributeStart = (1 << 7) | PositionFlag.IsAttributeStart
+    isInterpolatedAttributeStart = (1 << 7) | PositionFlag.IsAttributeStart,
 }
 
 export enum TestingMode {
     None,
     Unit,
-    E2e
+    E2e,
 }
 
 export enum RawArgumentKind {
     Unwrap,
-    Plain
+    Plain,
 }
 
 export enum ParseDiatnosticDealtKind {
     Record,
     Ignore,
-    Thrown
+    Thrown,
 }
 
 export enum AnalyzeExpressionType {
     Component,
-    Attribute
+    Attribute,
 }
 
 export enum HtmlDirectivePlacementKind {
     Slot,
-    Component
+    Component,
 }
 
 export enum ReferenceBindingType {
     Getter,
     Setter,
-    Both
+    Both,
 }
 
 export enum SelectorExpressionType {
     Prev,
-    Next
+    Next,
 }

@@ -4,10 +4,10 @@ import type {
     InputOptions,
     TextContentPart,
     ScriptDescriptor,
-    TemplateAttribute
-} from "#type-declarations/compiler"
-import type { RegExpExecRet } from "#type-declarations/tools"
-import type { ParseTemplateFunc } from "#type-declarations/compiler-ex"
+    TemplateAttribute,
+} from "#type-declarations/compiler";
+import type { RegExpExecRet } from "#type-declarations/tools";
+import type { ParseTemplateFunc } from "#type-declarations/compiler-ex";
 
 import {
     whitespacesRE,
@@ -23,8 +23,8 @@ import {
     templateAttributeNameRE,
     templateTagStructureRE,
     templateInvalidAttributeRE,
-    interpolatedAttrStartCharRE
-} from "../regular"
+    interpolatedAttrStartCharRE,
+} from "../regular";
 import {
     getPosByIndex,
     getLocByIndex,
@@ -33,8 +33,8 @@ import {
     markPositionFlag,
     getRangeByLocation,
     getLocWithDefaultEnd,
-    getPositionOfEachChar
-} from "../../util/compiler/position"
+    getPositionOfEachChar,
+} from "../../util/compiler/position";
 import {
     UnexpectedToken,
     TagIsNotClosing,
@@ -55,32 +55,32 @@ import {
     HyphenNotAllowedInMemberExpressionTag,
     EmbeddedStyleTagWithSrcCanHaveNoContent,
     InvalidValueEnclosureForStaticAttribute,
-    InvalidValueEnclosureForInterpolatedAttribute
-} from "../message/error"
-import { filterTemplateNodes } from "./filter"
-import { getLastElem } from "../../util/shared/arrays"
-import { objectAssign } from "../../util/shared/aliases"
-import { isNull, isUndefined } from "../../util/shared/assert"
-import { inputDescriptor, resetCompilerState } from "../state"
-import { PositionFlag, AttributeValueEnclosure, ReactivityMode } from "../enums"
-import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template"
-import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string"
-import { isEmbeddedStyleTag, isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert"
-import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS, SPREAD_TAG } from "../constants"
+    InvalidValueEnclosureForInterpolatedAttribute,
+} from "../message/error";
+import { filterTemplateNodes } from "./filter";
+import { getLastElem } from "../../util/shared/arrays";
+import { objectAssign } from "../../util/shared/aliases";
+import { isNull, isUndefined } from "../../util/shared/assert";
+import { inputDescriptor, resetCompilerState } from "../state";
+import { PositionFlag, AttributeValueEnclosure, ReactivityMode } from "../enums";
+import { getStartTagOpenLoc, getLeadingCommentNode } from "../../util/compiler/template";
+import { kebab2Camel, findEndBracket, findOutOfComment } from "../../util/compiler/string";
+import { isEmbeddedStyleTag, isNonEmptyExpression, isVoidTag } from "../../util/compiler/assert";
+import { ATTRIBUTE_VALUE_ENCLOSURE_MAP, PARSER_TEMPLATE_OPTIONS, SPREAD_TAG } from "../constants";
 
 export const parseTemplateStandalone: ParseTemplateFunc = (source, options = {}) => {
-    const inputOptions: Partial<InputOptions> = {}
+    const inputOptions: Partial<InputOptions> = {};
     if (options.recover) {
-        inputOptions.checkMode = true
+        inputOptions.checkMode = true;
     }
     if (isUndefined(options.preserveBlankTextNodes)) {
-        options.preserveBlankTextNodes = true
+        options.preserveBlankTextNodes = true;
     }
     if (isUndefined(options.preserveCommentNodes) || options.preserveCommentNodes) {
-        inputOptions.preserveHtmlComments = true
+        inputOptions.preserveHtmlComments = true;
     }
-    return (resetCompilerState(inputOptions), parseTemplate(source, options))
-}
+    return (resetCompilerState(inputOptions), parseTemplate(source, options));
+};
 
 export function newTemplateNode(): TemplateNode {
     return {
@@ -100,32 +100,32 @@ export function newTemplateNode(): TemplateNode {
         hasActualAncestor: false,
         loc: newASTLocation(),
         endTagStartPos: newASTPosition(),
-        startTagEndPos: newASTPosition()
-    }
+        startTagEndPos: newASTPosition(),
+    };
 }
 
 export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS) {
-    let index = 0
-    let dps = source // dynamic programming source
+    let index = 0;
+    let dps = source; // dynamic programming source
 
-    inputDescriptor.source = source
-    inputDescriptor.positions = getPositionOfEachChar(source)
+    inputDescriptor.source = source;
+    inputDescriptor.positions = getPositionOfEachChar(source);
 
-    const astList: TemplateNode[] = []
-    const scriptDescriptor = inputDescriptor.script
+    const astList: TemplateNode[] = [];
+    const scriptDescriptor = inputDescriptor.script;
 
     // 解析入口，递归执行解析方法
     // Parsing entry point: recursively execute the parsing process.
     for (let prev: TemplateNode | undefined = undefined; dps.length; ) {
-        const textNode = parseContent(null, prev)
+        const textNode = parseContent(null, prev);
         if (textNode) {
-            astList.push((prev = textNode))
+            astList.push((prev = textNode));
         }
 
         if (dps) {
-            const templateNode = parseTag(null, prev)
+            const templateNode = parseTag(null, prev);
             if (templateNode) {
-                astList.push((prev = templateNode))
+                astList.push((prev = templateNode));
             }
         }
     }
@@ -134,34 +134,34 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
     // Filter out invalid nodes and return the final parsing result
     return (function filterParseResult(list: TemplateNode[]) {
         return list.filter(node => {
-            const shouldReserve = filterTemplateNodes(node, options)
+            const shouldReserve = filterTemplateNodes(node, options);
             if (shouldReserve) {
-                node.children = filterParseResult(node.children)
+                node.children = filterParseResult(node.children);
             } else {
                 if (node.prev) {
-                    node.prev.next = node.next
+                    node.prev.next = node.next;
                 }
                 if (node.next) {
-                    node.next.prev = node.prev
+                    node.next.prev = node.prev;
                 }
             }
-            return shouldReserve
-        })
-    })(astList)
+            return shouldReserve;
+        });
+    })(astList);
 
     // 收缩 source 并修改 index，返回下次开始的位置
     // reduce souce and change index, returns the starting position for next time.
     function reduceSource(start: number) {
-        index += start
-        dps = dps.slice(start)
-        return getPosByIndex(index)
+        index += start;
+        dps = dps.slice(start);
+        return getPosByIndex(index);
     }
 
     // 将 dps 快进到非空白字符的位置，返回下次开始的位置
     // Fast-forward `dps` to the next non-whitespace character, returns the starting position for next time.
     function reduceSpaces() {
-        const spacesMatched = whitespacesRE.exec(dps)
-        return reduceSource(spacesMatched?.[0].length || 0)
+        const spacesMatched = whitespacesRE.exec(dps);
+        return reduceSource(spacesMatched?.[0].length || 0);
     }
 
     // 找到结束标签的关闭字符>，如果遇到无意义字符（非空白及>）则报错，返回结果表示是否存在关闭字符
@@ -169,76 +169,76 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
     // (non-whitespace and not `>`) is encountered. The return value indicates whether the closing character exists.
     function findCloseCharOfEndTag() {
         if ((reduceSpaces(), !dps.startsWith(">"))) {
-            const endCharIndex = dps.indexOf(">")
+            const endCharIndex = dps.indexOf(">");
             if (endCharIndex !== -1) {
-                UnexpectedToken(getLocByIndex(index, index + 1), dps[0], ">")
-                return (reduceSource(endCharIndex + 1), true)
+                UnexpectedToken(getLocByIndex(index, index + 1), dps[0], ">");
+                return (reduceSource(endCharIndex + 1), true);
             }
-            return (reduceSource(dps.length), false)
+            return (reduceSource(dps.length), false);
         }
-        return (reduceSource(1), true)
+        return (reduceSource(1), true);
     }
 
     // 解析出标签的 textContext 部分
     // Parse the textContent part of the tag.
     function parseContent(parent: TemplateNode | null, prev: TemplateNode | null = null) {
-        let contentEndRE = templateTagStructureRE
-        const contentStartIndex = index
-        const contentParts: TextContentPart[] = []
+        let contentEndRE = templateTagStructureRE;
+        const contentStartIndex = index;
+        const contentParts: TextContentPart[] = [];
 
         const extendContentParts = (part: TextContentPart) => {
             if ((contentParts.push(part), part.isInterpolated)) {
-                markPositionFlag(PositionFlag.InScript, ...getRangeByLocation(part.loc))
+                markPositionFlag(PositionFlag.InScript, ...getRangeByLocation(part.loc));
             }
-        }
+        };
 
         // textarea 节点都认作只有一个文本节点
         // A textarea element is treated as having only a single text node.
         if (parent?.tag === "textarea") {
-            contentEndRE = new RegExp(`</${parent.tag}`)
+            contentEndRE = new RegExp(`</${parent.tag}`);
         }
 
         while (dps.length) {
-            const startBracketIndex = dps.indexOf("{")
-            const partEndIndex = contentEndRE.exec(dps)?.index ?? dps.length
+            const startBracketIndex = dps.indexOf("{");
+            const partEndIndex = contentEndRE.exec(dps)?.index ?? dps.length;
             if (startBracketIndex === -1 || startBracketIndex > partEndIndex) {
                 if (partEndIndex) {
                     extendContentParts({
                         value: dps.slice(0, partEndIndex),
                         isInterpolated: false,
-                        loc: getLocByIndex(index, reduceSource(partEndIndex).index)
-                    })
+                        loc: getLocByIndex(index, reduceSource(partEndIndex).index),
+                    });
                 }
-                break
+                break;
             }
             if (startBracketIndex > 0) {
                 extendContentParts({
                     isInterpolated: false,
                     value: dps.slice(0, startBracketIndex),
-                    loc: getLocByIndex(index, reduceSource(startBracketIndex).index)
-                })
+                    loc: getLocByIndex(index, reduceSource(startBracketIndex).index),
+                });
             }
 
-            const endBracketIndex = findEndBracket(dps)
+            const endBracketIndex = findEndBracket(dps);
             if (endBracketIndex === -1) {
                 extendContentParts({
                     isInterpolated: true,
                     value: dps.slice(1),
-                    loc: getLocByIndex(index + 1, reduceSource(dps.length).index - 1)
-                })
-                UnclosedInterpolationBlock(getLocByIndex(index + startBracketIndex))
+                    loc: getLocByIndex(index + 1, reduceSource(dps.length).index - 1),
+                });
+                UnclosedInterpolationBlock(getLocByIndex(index + startBracketIndex));
             } else {
                 extendContentParts({
                     isInterpolated: true,
                     value: dps.slice(1, endBracketIndex),
-                    loc: getLocByIndex(index + 1, reduceSource(endBracketIndex + 1).index - 1)
-                })
+                    loc: getLocByIndex(index + 1, reduceSource(endBracketIndex + 1).index - 1),
+                });
             }
 
             if (options.checkEmptyInterpolation) {
-                const lastItem = getLastElem(contentParts)
+                const lastItem = getLastElem(contentParts);
                 if (lastItem?.isInterpolated && !isNonEmptyExpression(lastItem.value)) {
-                    EmptyInterpolationBlock(lastItem.loc)
+                    EmptyInterpolationBlock(lastItem.loc);
                 }
             }
         }
@@ -250,8 +250,8 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 prev,
                 parent,
                 content: contentParts,
-                loc: getLocByIndex(contentStartIndex, index)
-            })
+                loc: getLocByIndex(contentStartIndex, index),
+            });
         }
     }
 
@@ -259,15 +259,15 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         // 解析注释，此时tag为!
         // Parse comment; at this point, the tag is `!`.
         while (dps.startsWith("<!--")) {
-            const contentParts: TextContentPart[] = []
-            const closedIndex = (reduceSource(4), dps.indexOf("-->"))
-            const contentEndIndex = closedIndex === -1 ? dps.length : closedIndex
+            const contentParts: TextContentPart[] = [];
+            const closedIndex = (reduceSource(4), dps.indexOf("-->"));
+            const contentEndIndex = closedIndex === -1 ? dps.length : closedIndex;
             if (closedIndex && dps) {
                 contentParts.push({
                     isInterpolated: false,
                     value: dps.slice(0, contentEndIndex),
-                    loc: getLocByIndex(index, index + contentEndIndex)
-                })
+                    loc: getLocByIndex(index, index + contentEndIndex),
+                });
             }
 
             const commentNode = initTemplateNode({
@@ -276,14 +276,14 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 parent,
                 preWhiteSpace: true,
                 loc: getLocWithDefaultEnd(index - 4),
-                startTagEndPos: getPosByIndex(index)
-            })
+                startTagEndPos: getPosByIndex(index),
+            });
             if (closedIndex !== -1) {
-                commentNode.loc.end = reduceSource(closedIndex + 3)
-                commentNode.endTagStartPos = getPosByIndex(index - 3)
+                commentNode.loc.end = reduceSource(closedIndex + 3);
+                commentNode.endTagStartPos = getPosByIndex(index - 3);
             } else {
-                reduceSource(contentEndIndex)
-                TagIsNotClosing(getStartTagOpenLoc(commentNode), "#comment")
+                reduceSource(contentEndIndex);
+                TagIsNotClosing(getStartTagOpenLoc(commentNode), "#comment");
             }
             if (contentParts.length) {
                 initTemplateNode({
@@ -291,49 +291,49 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                     content: contentParts,
                     loc: getLocByIndex(
                         commentNode.startTagEndPos.index,
-                        closedIndex === -1 ? index : commentNode.endTagStartPos.index
-                    )
-                })
+                        closedIndex === -1 ? index : commentNode.endTagStartPos.index,
+                    ),
+                });
             }
-            return commentNode
+            return commentNode;
         }
 
-        let componentTag = ""
-        let startTagOpenRange: Range
-        let srcAttr: TemplateAttribute | null = null
-        let globalAttr: TemplateAttribute | null = null
-        let startTagClosingMatched: RegExpExecRet = null
-        let prevForChild: TemplateNode | undefined = undefined
+        let componentTag = "";
+        let startTagOpenRange: Range;
+        let srcAttr: TemplateAttribute | null = null;
+        let globalAttr: TemplateAttribute | null = null;
+        let startTagClosingMatched: RegExpExecRet = null;
+        let prevForChild: TemplateNode | undefined = undefined;
 
-        const tagOpenStr = templateTagStructureRE.exec(dps)![0]
+        const tagOpenStr = templateTagStructureRE.exec(dps)![0];
         const tagOpenLoc = getLocByIndex(
-            ...(startTagOpenRange = [index, index + tagOpenStr.length])
-        )
+            ...(startTagOpenRange = [index, index + tagOpenStr.length]),
+        );
 
         // 检查是否以结束标签开始
         // Check whether `dps` starts with an closing tag.
         if ((reduceSource(tagOpenStr.length), tagOpenStr.startsWith("</"))) {
-            TemplateStartsWithEndTag(tagOpenLoc, tagOpenStr.slice(2))
+            TemplateStartsWithEndTag(tagOpenLoc, tagOpenStr.slice(2));
 
             // 检查模式下直接快进到结束标签关闭字符，以继续执行解析
             // In checking mode, fast-forward directly to the end tag's closing character to resume parsing.
-            return (findCloseCharOfEndTag(), void 0)
+            return (findCloseCharOfEndTag(), void 0);
         }
 
-        const tag = tagOpenStr.slice(1)
-        const isVoidNode = isVoidTag(tag)
-        const isEmbeddedStyle = isEmbeddedStyleTag(tag)
-        const embeddedLang = embeddedLangTagRE.exec(tag)?.[1] ?? ""
-        const isComponent = !embeddedLang && componentTagRE.test(tag)
+        const tag = tagOpenStr.slice(1);
+        const isVoidNode = isVoidTag(tag);
+        const isEmbeddedStyle = isEmbeddedStyleTag(tag);
+        const embeddedLang = embeddedLangTagRE.exec(tag)?.[1] ?? "";
+        const isComponent = !embeddedLang && componentTagRE.test(tag);
 
         if (isComponent) {
             if (findOutOfComment(tag, ".") !== -1) {
                 if (findOutOfComment(tag, "-") !== -1) {
-                    HyphenNotAllowedInMemberExpressionTag(tagOpenLoc, tag)
+                    HyphenNotAllowedInMemberExpressionTag(tagOpenLoc, tag);
                 }
-                componentTag = tag
+                componentTag = tag;
             } else {
-                componentTag = kebab2Camel(tag, true)
+                componentTag = kebab2Camel(tag, true);
             }
         }
 
@@ -345,47 +345,47 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             parent,
             componentTag,
             isEmbedded: !!embeddedLang,
-            loc: getLocWithDefaultEnd(tagOpenLoc.start.index)
-        })
+            loc: getLocWithDefaultEnd(tagOpenLoc.start.index),
+        });
 
         // 嵌入语言标签只能出现在模板顶层
         // Embedded language tags can only appear at the top level of the template.
         if (embeddedLang && !isNull(templateNode.parent)) {
-            EmbeddedLangNotInTopLevel(tagOpenLoc, tag)
+            EmbeddedLangNotInTopLevel(tagOpenLoc, tag);
         }
 
         // 解析泛型参数
         // Parse generic parameters.
         if (isComponent && dps.startsWith("<")) {
-            const genericEndIndex = findEndBracket(dps)
+            const genericEndIndex = findEndBracket(dps);
             if (genericEndIndex !== -1) {
                 templateNode.typeArgument = {
                     raw: dps.slice(1, genericEndIndex),
-                    loc: getLocByIndex(index + 1, index + genericEndIndex)
-                }
+                    loc: getLocByIndex(index + 1, index + genericEndIndex),
+                };
                 markPositionFlag(
                     PositionFlag.InScript,
-                    ...getRangeByLocation(templateNode.typeArgument.loc)
-                )
+                    ...getRangeByLocation(templateNode.typeArgument.loc),
+                );
             } else {
-                UnclosedGenericParameter(getLocByIndex(index, index + dps.length))
+                UnclosedGenericParameter(getLocByIndex(index, index + dps.length));
             }
-            reduceSource(genericEndIndex === -1 ? dps.length : genericEndIndex + 1)
+            reduceSource(genericEndIndex === -1 ? dps.length : genericEndIndex + 1);
         }
 
         // 解析当前节点的属性列表
         // parse the attribute list of current node.
         while (reduceSpaces() && dps && !(startTagClosingMatched = tagCloseCharsRE.exec(dps))) {
-            let attrValue = ""
-            let endCharIndex = -1
-            let valueEndIndex = -1
-            let valueStartIndex = -1
-            let fullValueEndIndex = -1
-            let fullValueStartIndex = -1
-            let valueEnclosure: AttributeValueEnclosure = AttributeValueEnclosure.None
+            let attrValue = "";
+            let endCharIndex = -1;
+            let valueEndIndex = -1;
+            let valueStartIndex = -1;
+            let fullValueEndIndex = -1;
+            let fullValueStartIndex = -1;
+            let valueEnclosure: AttributeValueEnclosure = AttributeValueEnclosure.None;
 
-            const nameStartIndex = reduceSpaces().index
-            const attrNameMatched = templateAttributeNameRE.exec(dps)
+            const nameStartIndex = reduceSpaces().index;
+            const attrNameMatched = templateAttributeNameRE.exec(dps);
 
             // attrNameMatched 为 null 时表示属性名称非法
             // If `attrNameMatched` is null, the attribute name is invalid.
@@ -393,15 +393,15 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 InvalidAttributeFormat(
                     getLocByIndex(
                         index,
-                        reduceSource(templateInvalidAttributeRE.exec(dps)![0].length).index
-                    )
-                )
-                continue
+                        reduceSource(templateInvalidAttributeRE.exec(dps)![0].length).index,
+                    ),
+                );
+                continue;
             }
 
-            const attrName = attrNameMatched[0]
-            const nameEndIndex = reduceSource(attrName.length).index
-            const isInterpolatedAttr = interpolatedAttrStartCharRE.test(attrName[0])
+            const attrName = attrNameMatched[0];
+            const nameEndIndex = reduceSource(attrName.length).index;
+            const isInterpolatedAttr = interpolatedAttrStartCharRE.test(attrName[0]);
 
             // 属性和开始标签间无空白字符时为无效标签名称
             // Tag name is invalid when there is no whitespace between the attribute and the start tag
@@ -409,11 +409,11 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 InvalidElementTagName(
                     getLocByIndex(
                         tagOpenLoc.start.index + 1,
-                        tagOpenLoc.start.index + attrName.length
+                        tagOpenLoc.start.index + attrName.length,
                     ),
-                    (templateNode.rawTag = tag + attrName)
-                )
-                continue
+                    (templateNode.rawTag = tag + attrName),
+                );
+                continue;
             }
 
             // 插值属性的名长度为1时表示没有指定属性名称
@@ -422,18 +422,18 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 if (attrName.length === 1) {
                     NoNameForInterpolatedAttribute(
                         getLocByIndex(nameStartIndex, nameStartIndex + 1),
-                        attrName
-                    )
+                        attrName,
+                    );
                 }
             }
 
             // 解析属性值部分
             // Parse the attribute value.
-            const equalTokenMatched = equalTokenRE.exec(dps)
+            const equalTokenMatched = equalTokenRE.exec(dps);
             if (!isNull(equalTokenMatched)) {
-                const mi = equalTokenMatched.index
-                const ml = equalTokenMatched[0].length
-                const equalTokenEndIndex = reduceSource(mi + ml).index
+                const mi = equalTokenMatched.index;
+                const ml = equalTokenMatched[0].length;
+                const equalTokenEndIndex = reduceSource(mi + ml).index;
 
                 // 当静态属性值未被引号包裹或插值属性未被花括号包裹时报错；检查模式下，之后的连续非空白字符会被解析为属性值
                 // Report an error when a static attribute value is not enclosed in quotes or when an interpolated
@@ -444,31 +444,31 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                     ((isInterpolatedAttr && !startCurlyRE.test(dps)) ||
                         (!isInterpolatedAttr && !startQuoteRE.test(dps)))
                 ) {
-                    const endIndex = templateAttributeEndRE.exec(dps)!.index
+                    const endIndex = templateAttributeEndRE.exec(dps)!.index;
                     const errorLoc = getLocByIndex(
                         equalTokenEndIndex,
-                        equalTokenEndIndex + endIndex
-                    )
+                        equalTokenEndIndex + endIndex,
+                    );
                     if (!isInterpolatedAttr) {
-                        InvalidValueEnclosureForStaticAttribute(errorLoc)
+                        InvalidValueEnclosureForStaticAttribute(errorLoc);
                     } else {
-                        InvalidValueEnclosureForInterpolatedAttribute(errorLoc, attrName)
+                        InvalidValueEnclosureForInterpolatedAttribute(errorLoc, attrName);
                     }
-                    attrValue = dps.slice(0, endIndex)
-                    valueStartIndex = fullValueStartIndex = equalTokenEndIndex
-                    valueEndIndex = fullValueEndIndex = reduceSource(endIndex).index
+                    attrValue = dps.slice(0, endIndex);
+                    valueStartIndex = fullValueStartIndex = equalTokenEndIndex;
+                    valueEndIndex = fullValueEndIndex = reduceSource(endIndex).index;
                 } else {
-                    fullValueStartIndex = reduceSpaces().index
-                    valueStartIndex = fullValueStartIndex + 1
+                    fullValueStartIndex = reduceSpaces().index;
+                    valueStartIndex = fullValueStartIndex + 1;
                     valueEnclosure =
-                        ATTRIBUTE_VALUE_ENCLOSURE_MAP[dps[0]] ?? AttributeValueEnclosure.None
+                        ATTRIBUTE_VALUE_ENCLOSURE_MAP[dps[0]] ?? AttributeValueEnclosure.None;
 
                     // 找到属性值结束字符的位置
                     // Find the position of the attribute value's closing character
                     if (valueEnclosure === AttributeValueEnclosure.Curly) {
-                        endCharIndex = findEndBracket(dps)
+                        endCharIndex = findEndBracket(dps);
                     } else {
-                        endCharIndex = dps.indexOf(dps[0], 1)
+                        endCharIndex = dps.indexOf(dps[0], 1);
                     }
 
                     // 当属性值的结束字符不存在（右花括号或单双引号）时报错，空插值块也要报错
@@ -477,35 +477,35 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                     if (endCharIndex === -1) {
                         const unclosedAttributeValueLoc = getLocByIndex(
                             fullValueStartIndex,
-                            index + dps.length
-                        )
+                            index + dps.length,
+                        );
                         if (!isInterpolatedAttr) {
-                            UnclosedStaticAttributeValue(unclosedAttributeValueLoc)
+                            UnclosedStaticAttributeValue(unclosedAttributeValueLoc);
                         } else {
-                            UnclosedInterpolationBlock(unclosedAttributeValueLoc)
+                            UnclosedInterpolationBlock(unclosedAttributeValueLoc);
                         }
                     } else if (
                         valueEnclosure === AttributeValueEnclosure.Curly &&
                         !isNonEmptyExpression(dps.slice(1, endCharIndex))
                     ) {
                         if (options.checkEmptyInterpolation) {
-                            EmptyInterpolationBlock(getLocByIndex(index, index + endCharIndex + 1))
+                            EmptyInterpolationBlock(getLocByIndex(index, index + endCharIndex + 1));
                         }
                     }
 
                     // 完善属性值及其位置信息的相关记录
                     // Improve the related records of the attribute value and its location.
                     if (endCharIndex === -1) {
-                        attrValue = dps.slice(1)
-                        reduceSource(dps.length)
+                        attrValue = dps.slice(1);
+                        reduceSource(dps.length);
                     } else {
-                        valueEndIndex = index + endCharIndex
-                        attrValue = dps.slice(1, endCharIndex)
-                        fullValueEndIndex = reduceSource(endCharIndex + 1).index
+                        valueEndIndex = index + endCharIndex;
+                        attrValue = dps.slice(1, endCharIndex);
+                        fullValueEndIndex = reduceSource(endCharIndex + 1).index;
                     }
                 }
                 if (isInterpolatedAttr && valueEnclosure === AttributeValueEnclosure.Curly) {
-                    markPositionFlag(PositionFlag.InScript, valueStartIndex, valueEndIndex)
+                    markPositionFlag(PositionFlag.InScript, valueStartIndex, valueEndIndex);
                 }
             }
 
@@ -514,46 +514,46 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
             const attributeInfo: TemplateAttribute = {
                 name: {
                     raw: attrName,
-                    loc: getLocByIndex(nameStartIndex, nameEndIndex)
+                    loc: getLocByIndex(nameStartIndex, nameEndIndex),
                 },
                 value: {
                     raw: attrValue,
-                    loc: newASTLocation()
+                    loc: newASTLocation(),
                 },
                 valueEnclosure,
                 equalSign: !!equalTokenMatched,
-                loc: getLocWithDefaultEnd(nameStartIndex)
-            }
+                loc: getLocWithDefaultEnd(nameStartIndex),
+            };
             markPositionFlag(
                 isInterpolatedAttr
                     ? PositionFlag.isInterpolatedAttributeStart
                     : PositionFlag.IsAttributeStart,
-                nameStartIndex
-            )
-            templateNode.attributes.push(attributeInfo)
+                nameStartIndex,
+            );
+            templateNode.attributes.push(attributeInfo);
 
             if (isNull(equalTokenMatched)) {
-                attributeInfo.loc.end = getPosByIndex(nameEndIndex)
+                attributeInfo.loc.end = getPosByIndex(nameEndIndex);
             }
             if (valueEndIndex !== -1) {
-                attributeInfo.value.loc.end = getPosByIndex(valueEndIndex)
-                attributeInfo.loc.end = getPosByIndex(fullValueEndIndex)
+                attributeInfo.value.loc.end = getPosByIndex(valueEndIndex);
+                attributeInfo.loc.end = getPosByIndex(fullValueEndIndex);
             }
             if (attrName === "style") {
-                templateNode.preWhiteSpace ||= preWhiteSpaceRuleRE.test(attrValue)
+                templateNode.preWhiteSpace ||= preWhiteSpaceRuleRE.test(attrValue);
             }
             if (valueStartIndex !== -1) {
-                attributeInfo.value.loc.start = getPosByIndex(valueStartIndex)
+                attributeInfo.value.loc.start = getPosByIndex(valueStartIndex);
             }
 
             switch (attrName) {
                 case "src": {
-                    srcAttr = attributeInfo
-                    break
+                    srcAttr = attributeInfo;
+                    break;
                 }
                 case "global": {
-                    globalAttr = attributeInfo
-                    break
+                    globalAttr = attributeInfo;
+                    break;
                 }
 
                 // 嵌入脚本语言标签上的 shallow 属性需要修改 CompilerOptions.reactivityMode 为 shallow
@@ -562,12 +562,12 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                 case ReactivityMode.Reactive: {
                     if (templateNode.tag === "lang-js" || templateNode.tag === "lang-ts") {
                         if (attrName === ReactivityMode.Shallow) {
-                            inputDescriptor.options.reactivityMode = ReactivityMode.Shallow
+                            inputDescriptor.options.reactivityMode = ReactivityMode.Shallow;
                         } else {
-                            inputDescriptor.options.reactivityMode = ReactivityMode.Reactive
+                            inputDescriptor.options.reactivityMode = ReactivityMode.Reactive;
                         }
                     }
-                    break
+                    break;
                 }
             }
         }
@@ -575,9 +575,9 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
         // 快进到开始标签结束处，不存在闭合字符时直接返回此节点
         // Fast-forward to the end of the start tag; return this node directly if no closing character is found.
         if (isNull(startTagClosingMatched)) {
-            return (TagIsNotClosing(tagOpenLoc, tag), templateNode)
+            return (TagIsNotClosing(tagOpenLoc, tag), templateNode);
         }
-        templateNode.startTagEndPos = reduceSource(startTagClosingMatched[0].length)
+        templateNode.startTagEndPos = reduceSource(startTagClosingMatched[0].length);
 
         // 无需解析子节点
         // No need to parse child nodes.
@@ -590,53 +590,53 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                             lang: embeddedLang,
                             global: !!globalAttr,
                             loc: srcAttr.name.loc,
-                            code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
-                        })
+                            code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr),
+                        });
                     } else {
-                        EmbeddedStyleSrcRequiresValue(tagOpenLoc, tag)
+                        EmbeddedStyleSrcRequiresValue(tagOpenLoc, tag);
                     }
                 } else {
-                    SelfClosingEmbeddedStyleTagWithoutSrc(tagOpenLoc, tag)
+                    SelfClosingEmbeddedStyleTagWithoutSrc(tagOpenLoc, tag);
                 }
             } else if (!isVoidNode && !isComponent && tag !== "slot") {
-                TagCanNotBeSelfClosing(getLocByIndex(index - 2, index), tag)
+                TagCanNotBeSelfClosing(getLocByIndex(index - 2, index), tag);
             }
-            templateNode.loc.end = getPosByIndex(index)
-            templateNode.isSelfClosing = true
-            return templateNode
+            templateNode.loc.end = getPosByIndex(index);
+            templateNode.isSelfClosing = true;
+            return templateNode;
         }
 
         // 遇到 script/style 或嵌入语言标签时直接快进到结束标签的结尾
         // Fast-forward to the end of the end tag when encountering a script/style or embedded language tag.
         if (embeddedLang || tag === "script" || tag === "style") {
-            const endTagIndex = new RegExp("</" + tag).exec(dps)?.index ?? -1
-            const neverOver = endTagIndex === -1
+            const endTagIndex = new RegExp("</" + tag).exec(dps)?.index ?? -1;
+            const neverOver = endTagIndex === -1;
             if (neverOver) {
-                TagIsNotClosing(tagOpenLoc, tag)
+                TagIsNotClosing(tagOpenLoc, tag);
             }
 
             // 如果没有匹配到结束标签，整个 dps 都被认为是当前标签的内容
             // If no end tag is matched, the entire `dps` is treated as the content of the current tag.
-            const endTagSourceIndex = neverOver ? -1 : index + endTagIndex
-            const rawContent = dps.slice(0, neverOver ? undefined : endTagIndex)
-            reduceSource(neverOver ? dps.length : endTagIndex + tag.length + 2)
+            const endTagSourceIndex = neverOver ? -1 : index + endTagIndex;
+            const rawContent = dps.slice(0, neverOver ? undefined : endTagIndex);
+            reduceSource(neverOver ? dps.length : endTagIndex + tag.length + 2);
 
             // 检查结束标签是否闭合，并记录当前节点的相关位置信息
             // Check whether the end tag is properly closed and record the relevant position info of the current node.
             if (!neverOver) {
-                const endTagOpenLoc = getLocByIndex(endTagSourceIndex, index)
+                const endTagOpenLoc = getLocByIndex(endTagSourceIndex, index);
                 if (findCloseCharOfEndTag()) {
-                    templateNode.loc.end = getPosByIndex(index)
+                    templateNode.loc.end = getPosByIndex(index);
                 } else {
-                    TagIsNotClosing(endTagOpenLoc, tag, true)
+                    TagIsNotClosing(endTagOpenLoc, tag, true);
                 }
-                templateNode.endTagStartPos = endTagOpenLoc.start
+                templateNode.endTagStartPos = endTagOpenLoc.start;
             }
 
             const contentLoc = {
                 start: templateNode.startTagEndPos,
-                end: templateNode.endTagStartPos
-            }
+                end: templateNode.endTagStartPos,
+            };
 
             if (((templateNode.preWhiteSpace = true), rawContent)) {
                 initTemplateNode({
@@ -644,18 +644,18 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                         {
                             loc: contentLoc,
                             value: rawContent,
-                            isInterpolated: false
-                        }
+                            isInterpolated: false,
+                        },
                     ],
                     loc: contentLoc,
-                    parent: templateNode
-                })
+                    parent: templateNode,
+                });
             }
 
             // script 或 style 标签时直接返回节点
             // Return the node directly if it's a script or style tag.
             if (!embeddedLang) {
-                return templateNode
+                return templateNode;
             }
 
             // 具有 src 属性的嵌入式样式标签不允许有内容
@@ -668,84 +668,88 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
                             lang: embeddedLang,
                             global: !!globalAttr,
                             loc: srcAttr.name.loc,
-                            code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr)
-                        })
+                            code: getVirtualStyleContentWithSrc(embeddedLang, srcAttr),
+                        });
                     } else {
-                        EmbeddedStyleSrcRequiresValue(tagOpenLoc, tag)
+                        EmbeddedStyleSrcRequiresValue(tagOpenLoc, tag);
                     }
                 } else {
-                    EmbeddedStyleTagWithSrcCanHaveNoContent(tagOpenLoc, tag)
+                    EmbeddedStyleTagWithSrcCanHaveNoContent(tagOpenLoc, tag);
                 }
-                return templateNode
+                return templateNode;
             }
 
             // 记录嵌入样式/脚本语言块的相关信息
             // Record relevant information of embedded style/script blocks.
             if (embeddedLang === "js" || embeddedLang === "ts") {
                 if (scriptDescriptor.existing) {
-                    EmbeddedScriptBlockOutOfLimit(tagOpenLoc)
-                    return templateNode
+                    EmbeddedScriptBlockOutOfLimit(tagOpenLoc);
+                    return templateNode;
                 }
 
                 markPositionFlag(
                     PositionFlag.InScript,
                     contentLoc.start.index,
-                    contentLoc.end.index
-                )
+                    contentLoc.end.index,
+                );
                 objectAssign<ScriptDescriptor, ScriptDescriptor>(scriptDescriptor, {
                     startTagOpenRange,
                     existing: true,
                     loc: contentLoc,
                     code: rawContent,
                     isTS: embeddedLang === "ts",
-                    lineCount: contentLoc.end.line - contentLoc.start.line + 1
-                })
+                    lineCount: contentLoc.end.line - contentLoc.start.line + 1,
+                });
             } else {
                 inputDescriptor.styles.push({
                     startTagOpenRange,
                     loc: contentLoc,
                     code: rawContent,
                     lang: embeddedLang,
-                    global: !!globalAttr
-                })
-                markPositionFlag(PositionFlag.InStyle, contentLoc.start.index, contentLoc.end.index)
+                    global: !!globalAttr,
+                });
+                markPositionFlag(
+                    PositionFlag.InStyle,
+                    contentLoc.start.index,
+                    contentLoc.end.index,
+                );
             }
-            return templateNode
+            return templateNode;
         }
 
         // 自闭合标签或组件开始标签以 /> 结尾时，无需解析子节点，其他情况解析文本内容和子节点
         // when tag is self-closing tag or a component start tag end in `/>`, there is no
         // need to parse child nodes, otherwise, the content and child nodes should be parsed.
         while (true) {
-            const endTagMatched = new RegExp(`^</${tag}`).exec(dps)
+            const endTagMatched = new RegExp(`^</${tag}`).exec(dps);
             if (endTagMatched) {
-                const endtagStartIndex = index
-                reduceSource(endTagMatched[0].length)
-                templateNode.endTagStartPos = getPosByIndex(endtagStartIndex)
+                const endtagStartIndex = index;
+                reduceSource(endTagMatched[0].length);
+                templateNode.endTagStartPos = getPosByIndex(endtagStartIndex);
 
                 if (findCloseCharOfEndTag()) {
-                    templateNode.loc.end = getPosByIndex(index)
+                    templateNode.loc.end = getPosByIndex(index);
                 } else {
                     const endTagOpenLoc = getLocByIndex(
                         endtagStartIndex,
-                        endtagStartIndex + tag.length + 2
-                    )
-                    TagIsNotClosing(endTagOpenLoc, tag, true)
+                        endtagStartIndex + tag.length + 2,
+                    );
+                    TagIsNotClosing(endTagOpenLoc, tag, true);
                 }
-                return templateNode
+                return templateNode;
             }
 
             if (!dps) {
-                NoEndTagMatched(tagOpenLoc, tag)
-                return templateNode
+                NoEndTagMatched(tagOpenLoc, tag);
+                return templateNode;
             }
 
             // 继续递归解析 textContent 或子标签
             // Continue recursively parsing `textContent` or child tags.
             if (startWithTagStructureRE.test(dps)) {
-                prevForChild = parseTag(templateNode, prevForChild)
+                prevForChild = parseTag(templateNode, prevForChild);
             } else {
-                prevForChild = parseContent(templateNode, prevForChild)
+                prevForChild = parseContent(templateNode, prevForChild);
             }
         }
     }
@@ -753,47 +757,47 @@ export function parseTemplate(source: string, options = PARSER_TEMPLATE_OPTIONS)
     // 初始化一个模板语法树节点
     // Initialize a AST node for template.
     function initTemplateNode(options: Partial<TemplateNode> = {}): TemplateNode {
-        const parent = options.parent
+        const parent = options.parent;
         const templateNode = Object.assign(newTemplateNode(), {
             ...options,
-            rawTag: options.tag
-        })
+            rawTag: options.tag,
+        });
         if (options.prev) {
-            options.prev.next = templateNode
+            options.prev.next = templateNode;
         }
         if (options.tag) {
-            templateNode.isSelfClosing = isVoidTag(options.tag)
+            templateNode.isSelfClosing = isVoidTag(options.tag);
         }
 
         if (options.componentTag && options.loc) {
-            markPositionFlag(PositionFlag.IsComponentStart, options.loc.start.index)
+            markPositionFlag(PositionFlag.IsComponentStart, options.loc.start.index);
         }
 
         if (options.tag === "pre" || options.parent?.preWhiteSpace) {
-            templateNode.preWhiteSpace = true
+            templateNode.preWhiteSpace = true;
         }
         if (!templateNode.preWhiteSpace) {
             templateNode.preWhiteSpace = preWhiteSpaceRuleRE.test(
-                getLeadingCommentNode(templateNode)?.children[0]?.content[0]?.value ?? ""
-            )
+                getLeadingCommentNode(templateNode)?.children[0]?.content[0]?.value ?? "",
+            );
         }
 
         // 从父节点继承或父节点自身是实际元素时标记 hasActualAncestor
         // Inherit from parent, or mark when the parent itself is an actual element
         if (parent?.hasActualAncestor || (parent && isActualElement(parent))) {
-            templateNode.hasActualAncestor = true
+            templateNode.hasActualAncestor = true;
         }
 
-        return (parent?.children.push(templateNode), templateNode)
+        return (parent?.children.push(templateNode), templateNode);
     }
 }
 
 function getVirtualStyleContentWithSrc(lang: string, src: TemplateAttribute) {
-    const keyword = lang === "scss" || lang === "sass" ? "@use" : "@import"
+    const keyword = lang === "scss" || lang === "sass" ? "@use" : "@import";
     return `${keyword} ${inputDescriptor.source.slice(
         src.value.loc.start.index - 1,
-        src.value.loc.end.index + 1
-    )};`
+        src.value.loc.end.index + 1,
+    )};`;
 }
 
 function isActualElement(node: TemplateNode) {
@@ -803,5 +807,5 @@ function isActualElement(node: TemplateNode) {
         "!" !== node.tag &&
         "slot" !== node.tag &&
         SPREAD_TAG !== node.tag
-    )
+    );
 }

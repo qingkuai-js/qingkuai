@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -37,24 +37,24 @@ const scenario: E2EScenarioInput = {
             <article class="target-panel">
                 <slot></slot>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports target directive on component tag syntax", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(
-            page.locator("#target-component-tag-source #target-component-tag-content")
-        ).toHaveText("Component tag payload")
+            page.locator("#target-component-tag-source #target-component-tag-content"),
+        ).toHaveText("Component tag payload");
 
-        await page.locator("#target-component-tag-to-a").click()
-        await expect(page.locator("#target-component-tag-content")).toHaveCount(1)
+        await page.locator("#target-component-tag-to-a").click();
+        await expect(page.locator("#target-component-tag-content")).toHaveCount(1);
 
-        await page.locator("#target-component-tag-reset").click()
+        await page.locator("#target-component-tag-reset").click();
         await expect(
-            page.locator("#target-component-tag-source #target-component-tag-content")
-        ).toHaveCount(1)
-    })
-})
+            page.locator("#target-component-tag-source #target-component-tag-content"),
+        ).toHaveCount(1);
+    });
+});

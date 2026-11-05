@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -39,29 +39,29 @@ const scenario: E2EScenarioInput = {
             <article class="target-panel">
                 <slot></slot>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports target directive with component content", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#target-component-source #target-component-content")).toHaveText(
-            "Component payload"
-        )
+            "Component payload",
+        );
 
-        await page.locator("#target-component-to-b").click()
+        await page.locator("#target-component-to-b").click();
         await expect(page.locator("#target-dest-b #target-component-content")).toHaveText(
-            "Component payload"
-        )
+            "Component payload",
+        );
         await expect(
-            page.locator("#target-component-source #target-component-content")
-        ).toHaveCount(0)
+            page.locator("#target-component-source #target-component-content"),
+        ).toHaveCount(0);
 
-        await page.locator("#target-component-reset").click()
+        await page.locator("#target-component-reset").click();
         await expect(page.locator("#target-component-source #target-component-content")).toHaveText(
-            "Component payload"
-        )
-    })
-})
+            "Component payload",
+        );
+    });
+});

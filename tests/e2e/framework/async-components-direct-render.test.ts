@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -28,30 +28,30 @@ const scenario: E2EScenarioInput = {
         `,
         AsyncTwo: `
             <article id="async-two">Async Two Direct</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("renders async components written directly without #await", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page).toHaveTitle("async-components-direct-render")
-        await expect(page.locator("#async-one")).toHaveText("Async One Direct")
-        await expect(page.locator("#async-two")).toHaveText("Async Two Direct")
-    })
+        await expect(page).toHaveTitle("async-components-direct-render");
+        await expect(page.locator("#async-one")).toHaveText("Async One Direct");
+        await expect(page.locator("#async-two")).toHaveText("Async Two Direct");
+    });
 
     test("renders async components alongside a synchronous component", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#sync-panel")).toHaveText("Sync Panel")
-        await expect(page.locator("#async-one")).toHaveText("Async One Direct")
-        await expect(page.locator("#async-two")).toHaveText("Async Two Direct")
-    })
-})
+        await expect(page.locator("#sync-panel")).toHaveText("Sync Panel");
+        await expect(page.locator("#async-one")).toHaveText("Async One Direct");
+        await expect(page.locator("#async-two")).toHaveText("Async Two Direct");
+    });
+});

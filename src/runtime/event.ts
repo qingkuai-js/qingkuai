@@ -1,4 +1,4 @@
-import type { ArbitraryFunc } from "#type-declarations/tools"
+import type { ArbitraryFunc } from "#type-declarations/tools";
 
 import {
     KEY_ALT,
@@ -11,57 +11,57 @@ import {
     EVENT_STOP,
     EVENT_CAPTURE,
     EVENT_PREVENT,
-    EVENT_PASSIVE
-} from "../util/shared/flags"
-import { pushDestructionCleaner } from "./destroy"
-import { isUndefined } from "../util/shared/assert"
-import { any, createProxy } from "../util/shared/sundry"
-import { call, objectCreate } from "../util/shared/aliases"
-import { currentInstance, eventRegisterInfo } from "./state"
-import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP, KEY_NAME_FLAG } from "./constants"
+    EVENT_PASSIVE,
+} from "../util/shared/flags";
+import { pushDestructionCleaner } from "./destroy";
+import { isUndefined } from "../util/shared/assert";
+import { any, createProxy } from "../util/shared/sundry";
+import { call, objectCreate } from "../util/shared/aliases";
+import { currentInstance, eventRegisterInfo } from "./state";
+import { DELEGATE_PREFIX, DOCUMENT, EVENT_FLAG, KEY_FLAG_MAP, KEY_NAME_FLAG } from "./constants";
 
 // 事件类型到扩展属性名的映射会被每个带事件的元素使用，缓存后可以避免重复拼接字符串
 // The event-type to expando-name mapping is needed for every element that has an
 // event listener; memoizing it avoids re-building the name strings each time.
-const delegateKeyMap = /*#__PURE__*/ new Map<string, [string, string]>()
+const delegateKeyMap = /*#__PURE__*/ new Map<string, [string, string]>();
 
 export function initEvents(events: string[]) {
-    registerEvents((currentInstance!._internal.e = events))
+    registerEvents((currentInstance!._internal.e = events));
 }
 
 // 包装带有键位标志的事件
 // Wrap events with key flags.
 export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
     return function (this: EventTarget, event: KeyboardEvent) {
-        let checkRes: number | boolean | undefined = true
+        let checkRes: number | boolean | undefined = true;
         if (event.type.startsWith("key")) {
-            const keyFlag = any(KEY_FLAG_MAP)[event.key] as number | undefined
-            checkRes = keyFlag ? flag & keyFlag : !(flag & KEY_NAME_FLAG)
+            const keyFlag = any(KEY_FLAG_MAP)[event.key] as number | undefined;
+            checkRes = keyFlag ? flag & keyFlag : !(flag & KEY_NAME_FLAG);
         }
         if (!checkRes) {
-            return
+            return;
         }
 
         const pairs: [number, boolean][] = [
             [flag & KEY_ALT, event.altKey],
             [flag & KEY_META, event.metaKey],
             [flag & KEY_CTRL, event.ctrlKey],
-            [flag & KEY_SHIFT, event.shiftKey]
-        ]
+            [flag & KEY_SHIFT, event.shiftKey],
+        ];
         for (const pair of pairs) {
             if (!checkRes) {
-                break
+                break;
             }
             if (pair[0]) {
-                checkRes = pair[1]
+                checkRes = pair[1];
             } else if (flag & KEY_EXACT) {
-                checkRes = !pair[1]
+                checkRes = !pair[1];
             }
         }
         if (checkRes) {
-            call(fn, this, event)
+            call(fn, this, event);
         }
-    }
+    };
 }
 
 // 在根节点注册原生事件监听器，不同的 passive 属性独立注册（同类型只注册一个）
@@ -69,134 +69,134 @@ export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
 // for different `passive` option (only one will be registered for per type)
 export function registerEvents(registration: string[]) {
     for (let i = 0, passive = false; i < registration.length; i++) {
-        const registeIndex = +!passive
-        const eventName = registration[i]
+        const registeIndex = +!passive;
+        const eventName = registration[i];
         if (isUndefined(eventName)) {
-            passive = true
-            continue
+            passive = true;
+            continue;
         }
         if ((eventRegisterInfo[eventName] ??= [])[registeIndex]) {
-            continue
+            continue;
         }
         DOCUMENT!.addEventListener(
             eventName,
             event => {
-                dispatch(event, passive)
+                dispatch(event, passive);
             },
             {
                 passive,
-                capture: true
-            }
-        )
-        eventRegisterInfo[eventName][registeIndex] = true
+                capture: true,
+            },
+        );
+        eventRegisterInfo[eventName][registeIndex] = true;
     }
 }
 
 export function listen(elem: Element, type: string, handler: ArbitraryFunc, flag = 0) {
-    const capture = !!(flag & EVENT_CAPTURE)
+    const capture = !!(flag & EVENT_CAPTURE);
     const wrappedHandler = function (this: EventTarget, event: Event) {
         if (flag & EVENT_SELF && event.target !== elem) {
-            return
+            return;
         }
         if ((call(handler, this, event), flag & EVENT_STOP)) {
-            event.stopPropagation()
+            event.stopPropagation();
         }
         if (flag & EVENT_PREVENT) {
-            event.preventDefault()
+            event.preventDefault();
         }
-    }
+    };
     elem.addEventListener(type, wrappedHandler, {
         capture,
         once: !!(flag & EVENT_ONCE),
-        passive: !!(flag & EVENT_PASSIVE)
-    })
+        passive: !!(flag & EVENT_PASSIVE),
+    });
     pushDestructionCleaner(() => {
-        elem.removeEventListener(type, wrappedHandler, capture)
-    })
+        elem.removeEventListener(type, wrappedHandler, capture);
+    });
 }
 
 export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?: number) {
-    const keys = delegateKeysFor(type)
+    const keys = delegateKeysFor(type);
     if (flag) {
-        any(elem)[keys[1]] = flag
+        any(elem)[keys[1]] = flag;
     }
-    any(elem)[keys[0]] = handler
+    any(elem)[keys[0]] = handler;
 }
 
 function delegateKeysFor(type: string) {
-    let keys = delegateKeyMap.get(type)
+    let keys = delegateKeyMap.get(type);
     if (keys === undefined) {
-        keys = [DELEGATE_PREFIX + type, EVENT_FLAG + type]
-        delegateKeyMap.set(type, keys)
+        keys = [DELEGATE_PREFIX + type, EVENT_FLAG + type];
+        delegateKeyMap.set(type, keys);
     }
-    return keys
+    return keys;
 }
 
 function dispatch(event: Event, passive: boolean) {
-    const keys = delegateKeysFor(event.type)
-    const flagKey = keys[1]
-    const handlerKey = keys[0]
-    const bubblings: [EventTarget, number][] = []
-    const path = event.composedPath().slice(0, -4)
+    const keys = delegateKeysFor(event.type);
+    const flagKey = keys[1];
+    const handlerKey = keys[0];
+    const bubblings: [EventTarget, number][] = [];
+    const path = event.composedPath().slice(0, -4);
 
     const excuteEventHandler = (elem: EventTarget, phase: number) => {
-        const handler = any(elem)[handlerKey]
-        const flag = any(elem)[flagKey] ?? 0
+        const handler = any(elem)[handlerKey];
+        const flag = any(elem)[flagKey] ?? 0;
         if (flag & EVENT_PREVENT) {
-            event.preventDefault()
+            event.preventDefault();
         }
         if (flag & EVENT_ONCE) {
-            delete any(elem)[flagKey]
-            delete any(elem)[handlerKey]
+            delete any(elem)[flagKey];
+            delete any(elem)[handlerKey];
         }
         const wrappedEvent = createProxy(objectCreate(event), {
             get(_, property: keyof Event) {
                 if (property === "currentTarget") {
-                    return elem
+                    return elem;
                 }
                 if (property === "eventPhase") {
-                    return phase
+                    return phase;
                 }
-                return any(event)[property]
-            }
-        })
-        call(handler, elem, wrappedEvent)
-    }
+                return any(event)[property];
+            },
+        });
+        call(handler, elem, wrappedEvent);
+    };
 
-    let stopped = false
+    let stopped = false;
     for (let i = path.length - 1; i >= 0; i--) {
-        const elem = any(path[i])
-        const handler = elem[handlerKey]
+        const elem = any(path[i]);
+        const handler = elem[handlerKey];
         if (!handler) {
-            continue
+            continue;
         }
 
-        const flag = elem[flagKey] ?? 0
+        const flag = elem[flagKey] ?? 0;
         if (!!(flag & EVENT_PASSIVE) != passive) {
-            continue
+            continue;
         }
 
-        const isTarget = elem === event.target
+        const isTarget = elem === event.target;
         if (flag & EVENT_SELF && !isTarget) {
-            continue
+            continue;
         }
         if (!isTarget && !(flag & EVENT_CAPTURE)) {
-            bubblings.push([elem, flag])
-            continue
+            bubblings.push([elem, flag]);
+            continue;
         }
 
-        const phase = isTarget ? Event.AT_TARGET : Event.CAPTURING_PHASE
+        const phase = isTarget ? Event.AT_TARGET : Event.CAPTURING_PHASE;
         if ((excuteEventHandler(elem, phase), flag & EVENT_STOP)) {
-            stopped = true
-            break
+            stopped = true;
+            break;
         }
     }
 
     if (!stopped) {
         for (let i = bubblings.length - 1; i >= 0; i--) {
-            const [elem, flag] = bubblings[i]
+            const [elem, flag] = bubblings[i];
             if ((excuteEventHandler(elem, Event.BUBBLING_PHASE), flag & EVENT_STOP)) {
-                break
+                break;
             }
         }
     }

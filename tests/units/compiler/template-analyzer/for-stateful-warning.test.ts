@@ -1,8 +1,8 @@
-import { test } from "vitest"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { analyzeTemplateAndMatchMessages } from "./_match"
+import { test } from "vitest";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { analyzeTemplateAndMatchMessages } from "./_match";
 
-const warning = `The "#for" list items contain internal state that may leak between items without a "#key".`
+const warning = `The "#for" list items contain internal state that may leak between items without a "#key".`;
 
 test("Unkeyed #for with reference attributes suggests adding a #key", () => {
     analyzeTemplateAndMatchMessages(
@@ -15,11 +15,11 @@ test("Unkeyed #for with reference attributes suggests adding a #key", () => {
             {
                 type: "warning",
                 range: [0, 4],
-                value: warning
-            }
-        ]
-    )
-})
+                value: warning,
+            },
+        ],
+    );
+});
 
 test("Keyed #for with stateful items emits no warning", () => {
     analyzeTemplateAndMatchMessages(
@@ -27,9 +27,9 @@ test("Keyed #for with stateful items emits no warning", () => {
             <div #for={item of list} #key={item.id}>
                 <input &value={item.text} />
             </div>
-        `)
-    )
-})
+        `),
+    );
+});
 
 test("Pure display lists emit no warning", () => {
     analyzeTemplateAndMatchMessages(
@@ -37,9 +37,9 @@ test("Pure display lists emit no warning", () => {
             <div #for={item of list}>
                 <span>{item.text}</span>
             </div>
-        `)
-    )
-})
+        `),
+    );
+});
 
 test("Unkeyed #for with bare form controls emits no warning", () => {
     analyzeTemplateAndMatchMessages(
@@ -47,23 +47,23 @@ test("Unkeyed #for with bare form controls emits no warning", () => {
             <div #for={item of list}>
                 <input />
             </div>
-        `)
-    )
+        `),
+    );
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
             <div #for={item of list}>
                 <textarea></textarea>
             </div>
-        `)
-    )
+        `),
+    );
     analyzeTemplateAndMatchMessages(
         formatSourceCode(`
             <div #for={item of list}>
                 <select></select>
             </div>
-        `)
-    )
-})
+        `),
+    );
+});
 
 test("A #for descendant with a bare &handle reference counts as stateful", () => {
     analyzeTemplateAndMatchMessages(
@@ -76,11 +76,11 @@ test("A #for descendant with a bare &handle reference counts as stateful", () =>
             {
                 type: "warning",
                 range: [0, 4],
-                value: warning
-            }
-        ]
-    )
-})
+                value: warning,
+            },
+        ],
+    );
+});
 
 test("Unkeyed #for with a child component suggests adding a #key", () => {
     analyzeTemplateAndMatchMessages(
@@ -93,11 +93,11 @@ test("Unkeyed #for with a child component suggests adding a #key", () => {
             {
                 type: "warning",
                 range: [0, 4],
-                value: warning
-            }
-        ]
-    )
-})
+                value: warning,
+            },
+        ],
+    );
+});
 
 test("A #for element holding references itself counts as stateful", () => {
     analyzeTemplateAndMatchMessages(
@@ -108,11 +108,11 @@ test("A #for element holding references itself counts as stateful", () => {
             {
                 type: "warning",
                 range: [0, 6],
-                value: warning
-            }
-        ]
-    )
-})
+                value: warning,
+            },
+        ],
+    );
+});
 
 test("Multiple stateful descendants of one #for emit a single warning", () => {
     analyzeTemplateAndMatchMessages(
@@ -126,11 +126,11 @@ test("Multiple stateful descendants of one #for emit a single warning", () => {
             {
                 type: "warning",
                 range: [0, 4],
-                value: warning
-            }
-        ]
-    )
-})
+                value: warning,
+            },
+        ],
+    );
+});
 
 test("Nested unkeyed #for reports each stateful list once", () => {
     analyzeTemplateAndMatchMessages(
@@ -145,13 +145,13 @@ test("Nested unkeyed #for reports each stateful list once", () => {
             {
                 type: "warning",
                 range: [0, 4],
-                value: warning
+                value: warning,
             },
             {
                 type: "warning",
                 range: [31, 35],
-                value: warning
-            }
-        ]
-    )
-})
+                value: warning,
+            },
+        ],
+    );
+});

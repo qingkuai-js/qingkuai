@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -36,17 +36,17 @@ const scenario: E2EScenarioInput = {
         `,
         "layout/TinyFlag": `
             <span id="tiny-flag">{props.kind}</span>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports nested component rendering", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#component-nested-title")).toHaveText("Component Nested")
-        await expect(page.locator("#parent-shell-title")).toHaveText("Outer shell")
-        await expect(page.locator("#child-badge-text")).toHaveText("Inner badge")
-        await expect(page.locator("#tiny-flag")).toHaveText("deep nested")
-    })
-})
+        await expect(page.locator("#component-nested-title")).toHaveText("Component Nested");
+        await expect(page.locator("#parent-shell-title")).toHaveText("Outer shell");
+        await expect(page.locator("#child-badge-text")).toHaveText("Inner badge");
+        await expect(page.locator("#tiny-flag")).toHaveText("deep nested");
+    });
+});

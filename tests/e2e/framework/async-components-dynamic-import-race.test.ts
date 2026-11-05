@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -54,34 +54,34 @@ const scenario: E2EScenarioInput = {
     `,
     components: {
         AsyncOne: `<article id="async-one">Async One</article>`,
-        AsyncTwo: `<article id="async-two">Async Two</article>`
-    }
-}
+        AsyncTwo: `<article id="async-two">Async Two</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("ignores stale dynamic import results", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#load-slow-one").click()
-        await page.locator("#load-fast-two").click()
+        await page.locator("#load-slow-one").click();
+        await page.locator("#load-fast-two").click();
 
-        await expect(page.locator("#async-two")).toHaveText("Async Two")
-        await expect(page.locator("#async-one")).toHaveCount(0)
-        await expect(page.locator("#async-loading")).toHaveCount(0)
-    })
+        await expect(page.locator("#async-two")).toHaveText("Async Two");
+        await expect(page.locator("#async-one")).toHaveCount(0);
+        await expect(page.locator("#async-loading")).toHaveCount(0);
+    });
 
     test("keeps latest success when stale request rejects later", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#load-slow-fail").click()
-        await page.locator("#load-fast-two").click()
+        await page.locator("#load-slow-fail").click();
+        await page.locator("#load-fast-two").click();
 
-        await expect(page.locator("#async-two")).toHaveText("Async Two")
-        await expect(page.locator("#race-probe")).toHaveText("done")
-        await expect(page.locator("#async-error")).toHaveCount(0)
-        await expect(page.locator("#async-one")).toHaveCount(0)
-    })
-})
+        await expect(page.locator("#async-two")).toHaveText("Async Two");
+        await expect(page.locator("#race-probe")).toHaveText("done");
+        await expect(page.locator("#async-error")).toHaveCount(0);
+        await expect(page.locator("#async-one")).toHaveCount(0);
+    });
+});

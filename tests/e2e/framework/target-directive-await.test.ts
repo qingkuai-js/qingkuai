@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -33,20 +33,22 @@ const scenario: E2EScenarioInput = {
             </div>
             <div id="target-dest-a"></div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports target directive combined with await", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#target-await-to-a").click()
+        await page.locator("#target-await-to-a").click();
         await expect(page.locator("#target-dest-a #target-await-pending")).toHaveText(
-            "Await pending"
-        )
+            "Await pending",
+        );
 
-        await page.locator("#target-await-resolve").click()
-        await expect(page.locator("#target-dest-a #target-await-then")).toHaveText("Await resolved")
-        await expect(page.locator("#target-dest-a #target-await-pending")).toHaveCount(0)
-    })
-})
+        await page.locator("#target-await-resolve").click();
+        await expect(page.locator("#target-dest-a #target-await-then")).toHaveText(
+            "Await resolved",
+        );
+        await expect(page.locator("#target-dest-a #target-await-pending")).toHaveCount(0);
+    });
+});

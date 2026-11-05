@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -70,25 +70,29 @@ const scenario: E2EScenarioInput = {
             <article class="component-await-panel">
                 <slot></slot>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("keeps component await branches between stable siblings", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const children = page.locator("#component-await-order-host > *")
-        await expect(children).toHaveText(["Before", "Component pending", "After"])
+        const children = page.locator("#component-await-order-host > *");
+        await expect(children).toHaveText(["Before", "Component pending", "After"]);
 
-        await page.locator("#component-await-resolve").click()
-        await expect(children).toHaveText(["Before", "Component then: component resolved", "After"])
+        await page.locator("#component-await-resolve").click();
+        await expect(children).toHaveText([
+            "Before",
+            "Component then: component resolved",
+            "After",
+        ]);
 
-        await page.locator("#component-await-reset").click()
-        await page.locator("#component-await-reject").click()
-        await expect(children).toHaveText(["Before", "Component catch: component failed", "After"])
-    })
-})
+        await page.locator("#component-await-reset").click();
+        await page.locator("#component-await-reject").click();
+        await expect(children).toHaveText(["Before", "Component catch: component failed", "After"]);
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -39,38 +39,38 @@ const scenario: E2EScenarioInput = {
             <p id="expr-state-checked">Checked@1: {form.values.checked[1] ? "yes" : "no"}</p>
             <p id="expr-state-group">Group: {toggles.join(",")}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports member expression targets for form reference attributes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#expr-state-text")).toHaveText("Text: alpha")
-        await expect(page.locator("#expr-state-checked")).toHaveText("Checked@1: yes")
-        await expect(page.locator("#expr-state-group")).toHaveText("Group: x")
+        await expect(page.locator("#expr-state-text")).toHaveText("Text: alpha");
+        await expect(page.locator("#expr-state-checked")).toHaveText("Checked@1: yes");
+        await expect(page.locator("#expr-state-group")).toHaveText("Group: x");
 
-        await page.locator("#expr-text").fill("typed")
-        await page.locator("#expr-checked").uncheck()
-        await page.locator("#expr-group-y").check()
-        await page.locator("#expr-group-x").uncheck()
+        await page.locator("#expr-text").fill("typed");
+        await page.locator("#expr-checked").uncheck();
+        await page.locator("#expr-group-y").check();
+        await page.locator("#expr-group-x").uncheck();
 
-        await expect(page.locator("#expr-state-text")).toHaveText("Text: typed")
-        await expect(page.locator("#expr-state-checked")).toHaveText("Checked@1: no")
-        await expect(page.locator("#expr-state-group")).toHaveText("Group: y")
-    })
+        await expect(page.locator("#expr-state-text")).toHaveText("Text: typed");
+        await expect(page.locator("#expr-state-checked")).toHaveText("Checked@1: no");
+        await expect(page.locator("#expr-state-group")).toHaveText("Group: y");
+    });
 
     test("writes model expression updates back to controls", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#expr-apply-preset").click()
+        await page.locator("#expr-apply-preset").click();
 
-        await expect(page.locator("#expr-text")).toHaveValue("preset")
-        await expect(page.locator("#expr-checked")).not.toBeChecked()
-        await expect(page.locator("#expr-group-x")).not.toBeChecked()
-        await expect(page.locator("#expr-group-y")).toBeChecked()
-    })
-})
+        await expect(page.locator("#expr-text")).toHaveValue("preset");
+        await expect(page.locator("#expr-checked")).not.toBeChecked();
+        await expect(page.locator("#expr-group-x")).not.toBeChecked();
+        await expect(page.locator("#expr-group-y")).toBeChecked();
+    });
+});

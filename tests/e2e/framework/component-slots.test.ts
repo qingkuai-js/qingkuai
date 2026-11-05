@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -46,28 +46,28 @@ const scenario: E2EScenarioInput = {
                     </slot>
                 </div>
             </section>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test.describe("component slots case", () => {
         test("supports component slots with props and fallback", async ({
             page,
-            visitScenario
+            visitScenario,
         }) => {
-            await visitScenario(scenario)
+            await visitScenario(scenario);
 
-            await expect(page).toHaveTitle("component-slots")
-            await expect(page.locator("#component-slots-title")).toHaveText("Component Slots")
-            await expect(page.locator("#slot-showcase")).toBeVisible()
+            await expect(page).toHaveTitle("component-slots");
+            await expect(page.locator("#component-slots-title")).toHaveText("Component Slots");
+            await expect(page.locator("#slot-showcase")).toBeVisible();
 
-            await expect(page.locator("#slot-header-content")).toHaveText("Header from child")
-            await expect(page.locator("#slot-default-content")).toHaveText("Default slot: payload")
+            await expect(page.locator("#slot-header-content")).toHaveText("Header from child");
+            await expect(page.locator("#slot-default-content")).toHaveText("Default slot: payload");
 
-            await expect(page.locator("#slot-header-fallback")).toHaveCount(0)
-            await expect(page.locator("#slot-default-fallback")).toHaveCount(0)
-            await expect(page.locator("#slot-footer-fallback")).toHaveText("Footer fallback")
-        })
-    })
-})
+            await expect(page.locator("#slot-header-fallback")).toHaveCount(0);
+            await expect(page.locator("#slot-default-fallback")).toHaveCount(0);
+            await expect(page.locator("#slot-footer-fallback")).toHaveText("Footer fallback");
+        });
+    });
+});

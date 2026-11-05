@@ -1,12 +1,12 @@
-import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants"
+import { LSC, SPREAD_TAG, PRESERVED_IDPREFIX } from "./constants";
 
 import {
     isVoidTag,
     isEmbeddedStyleTag,
     isEmbeddedLanguageTag,
-    isRequiredValueDirective
-} from "../util/compiler/assert"
-import { formatSourceCode } from "../util/shared/sundry"
+    isRequiredValueDirective,
+} from "../util/compiler/assert";
+import { formatSourceCode } from "../util/shared/sundry";
 
 import {
     camel2Kebab,
@@ -15,8 +15,8 @@ import {
     findEndBracket,
     findOutOfComment,
     findOutOfLiteral,
-    findOutOfLiteralComment
-} from "../util/compiler/string"
+    findOutOfLiteralComment,
+} from "../util/compiler/string";
 
 import type {
     Camel2KebabFunc,
@@ -26,8 +26,8 @@ import type {
     FormatSourceCodeFunc,
     FindOutOfCommentFunc,
     FindOutOfLiteralFunc,
-    FindOutOfLiteralCommentFunc
-} from "#type-declarations/compiler-ex"
+    FindOutOfLiteralCommentFunc,
+} from "#type-declarations/compiler-ex";
 
 export type {
     ASTLocation,
@@ -42,24 +42,24 @@ export type {
     TemplateAttribute,
     ASTPositionWithFlag,
     TemplateNodeContext,
-    CompileIntermediateOptions
-} from "#type-declarations/compiler"
+    CompileIntermediateOptions,
+} from "#type-declarations/compiler";
 
-export type { CompileIntermediateResult } from "./compile"
+export type { CompileIntermediateResult } from "./compile";
 
 export const util: {
-    isVoidTag: typeof isVoidTag
-    camel2Kebab: Camel2KebabFunc
-    kebab2Camel: Kebab2CamelFunc
-    toPropertyKey: ToPropertyKeyFunc
-    findEndBracket: FindEndBracketFunc
-    findOutOfComment: FindOutOfCommentFunc
-    findOutOfLiteral: FindOutOfLiteralFunc
-    formatSourceCode: FormatSourceCodeFunc
-    isEmbeddedStyleTag: typeof isEmbeddedStyleTag
-    isEmbeddedLanguageTag: typeof isEmbeddedLanguageTag
-    findOutOfLiteralComment: FindOutOfLiteralCommentFunc
-    isRequiredValueDirective: typeof isRequiredValueDirective
+    isVoidTag: typeof isVoidTag;
+    camel2Kebab: Camel2KebabFunc;
+    kebab2Camel: Kebab2CamelFunc;
+    toPropertyKey: ToPropertyKeyFunc;
+    findEndBracket: FindEndBracketFunc;
+    findOutOfComment: FindOutOfCommentFunc;
+    findOutOfLiteral: FindOutOfLiteralFunc;
+    formatSourceCode: FormatSourceCodeFunc;
+    isEmbeddedStyleTag: typeof isEmbeddedStyleTag;
+    isEmbeddedLanguageTag: typeof isEmbeddedLanguageTag;
+    findOutOfLiteralComment: FindOutOfLiteralCommentFunc;
+    isRequiredValueDirective: typeof isRequiredValueDirective;
 } = {
     isVoidTag,
     camel2Kebab,
@@ -72,14 +72,14 @@ export const util: {
     isEmbeddedStyleTag,
     isEmbeddedLanguageTag,
     findOutOfLiteralComment,
-    isRequiredValueDirective
-}
+    isRequiredValueDirective,
+};
 
 export const constants = {
     LSC,
     SPREAD_TAG,
-    PRESERVED_IDPREFIX
-}
+    PRESERVED_IDPREFIX,
+};
 
 export {
     TestingMode,
@@ -89,12 +89,12 @@ export {
     WhitespaceMode,
     IdentifierStatus,
     CompileMessageType,
-    AttributeValueEnclosure
-} from "./enums"
-export { isCompileError } from "./message/error"
-export { isCompileWarning } from "./message/warn"
-export { parseDirectiveValue } from "./parser/directive"
-export { compile, compileIntermediate } from "./compile"
-export { getTypeScript, setTypeScript, setTypeScriptPath } from "./ts-api"
-export { parseEventFlagStandalone as parseEventFlag } from "./parser/event"
-export { parseTemplateStandalone as parseTemplate } from "./parser/template"
+    AttributeValueEnclosure,
+} from "./enums";
+export { isCompileError } from "./message/error";
+export { isCompileWarning } from "./message/warn";
+export { parseDirectiveValue } from "./parser/directive";
+export { compile, compileIntermediate } from "./compile";
+export { getTypeScript, setTypeScript, setTypeScriptPath } from "./ts-api";
+export { parseEventFlagStandalone as parseEventFlag } from "./parser/event";
+export { parseTemplateStandalone as parseTemplate } from "./parser/template";

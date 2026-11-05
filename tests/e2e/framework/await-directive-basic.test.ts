@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -70,33 +70,33 @@ const scenario: E2EScenarioInput = {
                 </p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("renders await pending state and resolves into then branch", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page).toHaveTitle("await-directive-basic")
-        await expect(page.locator("#branch-await")).toHaveText("Loading branch...")
+        await expect(page).toHaveTitle("await-directive-basic");
+        await expect(page.locator("#branch-await")).toHaveText("Loading branch...");
 
-        await page.locator("#branch-resolve").click()
-        await expect(page.locator("#branch-then")).toHaveText("Resolved user 7: Qingkuai")
-    })
+        await page.locator("#branch-resolve").click();
+        await expect(page.locator("#branch-then")).toHaveText("Resolved user 7: Qingkuai");
+    });
 
     test("renders catch branch after rejection and can reset back to await", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#branch-reject").click()
-        await expect(page.locator("#branch-catch")).toHaveText("Rejected 500: branch failed")
+        await page.locator("#branch-reject").click();
+        await expect(page.locator("#branch-catch")).toHaveText("Rejected 500: branch failed");
 
-        await page.locator("#branch-reset").click()
-        await expect(page.locator("#branch-await")).toHaveText("Loading branch...")
-    })
-})
+        await page.locator("#branch-reset").click();
+        await expect(page.locator("#branch-await")).toHaveText("Loading branch...");
+    });
+});

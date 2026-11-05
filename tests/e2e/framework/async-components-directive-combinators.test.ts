@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -86,103 +86,103 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        AsyncOne: `<article id="async-one">Async One</article>`
-    }
-}
+        AsyncOne: `<article id="async-one">Async One</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports target directive combined with async component branches", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#move-to-a").click()
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...")
+        await page.locator("#move-to-a").click();
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#load-one").click()
-        await expect(page.locator("#target-dest-a #async-one")).toHaveText("Async One")
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0)
+        await page.locator("#load-one").click();
+        await expect(page.locator("#target-dest-a #async-one")).toHaveText("Async One");
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0);
 
-        await page.locator("#fail-load").click()
-        await expect(page.locator("#target-dest-a #async-error")).toHaveText("Failed: load failed")
-        await expect(page.locator("#target-dest-a #async-one")).toHaveCount(0)
-    })
+        await page.locator("#fail-load").click();
+        await expect(page.locator("#target-dest-a #async-error")).toHaveText("Failed: load failed");
+        await expect(page.locator("#target-dest-a #async-one")).toHaveCount(0);
+    });
 
     test("supports full pending then catch flow after moving back to source", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#move-to-a").click()
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...")
+        await page.locator("#move-to-a").click();
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#move-to-source").click()
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0)
-        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...")
+        await page.locator("#move-to-source").click();
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0);
+        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#load-one").click()
-        await expect(page.locator("#target-source #async-one")).toHaveText("Async One")
-        await expect(page.locator("#target-dest-a #async-one")).toHaveCount(0)
+        await page.locator("#load-one").click();
+        await expect(page.locator("#target-source #async-one")).toHaveText("Async One");
+        await expect(page.locator("#target-dest-a #async-one")).toHaveCount(0);
 
-        await page.locator("#reset-pending").click()
-        await expect(page.locator("#target-source #async-loading")).toHaveCount(1)
-        await expect(page.locator("#target-source #async-one")).toHaveCount(0)
+        await page.locator("#reset-pending").click();
+        await expect(page.locator("#target-source #async-loading")).toHaveCount(1);
+        await expect(page.locator("#target-source #async-one")).toHaveCount(0);
 
-        await page.locator("#fail-load").click()
-        await expect(page.locator("#target-source #async-error")).toHaveText("Failed: load failed")
+        await page.locator("#fail-load").click();
+        await expect(page.locator("#target-source #async-error")).toHaveText("Failed: load failed");
 
-        await page.locator("#reset-pending").click()
-        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...")
-        await expect(page.locator("#target-source #async-error")).toHaveCount(0)
+        await page.locator("#reset-pending").click();
+        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...");
+        await expect(page.locator("#target-source #async-error")).toHaveCount(0);
 
-        await page.locator("#load-one").click()
-        await expect(page.locator("#target-source #async-one")).toHaveText("Async One")
-        await expect(page.locator("#target-source #async-loading")).toHaveCount(0)
-    })
+        await page.locator("#load-one").click();
+        await expect(page.locator("#target-source #async-one")).toHaveText("Async One");
+        await expect(page.locator("#target-source #async-loading")).toHaveCount(0);
+    });
 
     test("supports if directive combined with async component branches", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...")
+        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#hide-host").click()
-        await expect(page.locator("#async-host")).toHaveCount(0)
-        await expect(page.locator("#target-source #async-loading")).toHaveCount(0)
+        await page.locator("#hide-host").click();
+        await expect(page.locator("#async-host")).toHaveCount(0);
+        await expect(page.locator("#target-source #async-loading")).toHaveCount(0);
 
-        await page.locator("#show-host").click()
-        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...")
+        await page.locator("#show-host").click();
+        await expect(page.locator("#target-source #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#load-one").click()
-        await expect(page.locator("#target-source #async-one")).toHaveText("Async One")
-        await expect(page.locator("#target-source #async-error")).toHaveCount(0)
-    })
+        await page.locator("#load-one").click();
+        await expect(page.locator("#target-source #async-one")).toHaveText("Async One");
+        await expect(page.locator("#target-source #async-error")).toHaveCount(0);
+    });
 
     test("cleans moved pending branch on hide and keeps pending unique after reset", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#move-to-a").click()
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...")
+        await page.locator("#move-to-a").click();
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#hide-host").click()
-        await expect(page.locator("#async-host")).toHaveCount(0)
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0)
+        await page.locator("#hide-host").click();
+        await expect(page.locator("#async-host")).toHaveCount(0);
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0);
 
-        await page.locator("#show-host").click()
-        await page.locator("#reset-pending").click()
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(1)
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...")
+        await page.locator("#show-host").click();
+        await page.locator("#reset-pending").click();
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(1);
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveText("Loading...");
 
-        await page.locator("#load-one").click()
-        await expect(page.locator("#target-dest-a #async-one")).toHaveText("Async One")
-        await expect(page.locator("#target-dest-a #async-one")).toHaveCount(1)
-        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0)
-    })
-})
+        await page.locator("#load-one").click();
+        await expect(page.locator("#target-dest-a #async-one")).toHaveText("Async One");
+        await expect(page.locator("#target-dest-a #async-one")).toHaveCount(1);
+        await expect(page.locator("#target-dest-a #async-loading")).toHaveCount(0);
+    });
+});

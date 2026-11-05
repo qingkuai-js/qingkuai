@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -26,17 +26,17 @@ const scenario: E2EScenarioInput = {
                 <span #for={n of repeatItems} class="for-repeat-item">{n}</span>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports numeric source boundary updates", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#for-repeat-zero").click()
-        await expect(page.locator("#for-repeat-host .for-repeat-item")).toHaveCount(0)
+        await page.locator("#for-repeat-zero").click();
+        await expect(page.locator("#for-repeat-host .for-repeat-item")).toHaveCount(0);
 
-        await page.locator("#for-repeat-four").click()
-        await expect(page.locator("#for-repeat-host .for-repeat-item")).toHaveCount(4)
-    })
-})
+        await page.locator("#for-repeat-four").click();
+        await expect(page.locator("#for-repeat-host .for-repeat-item")).toHaveCount(4);
+    });
+});

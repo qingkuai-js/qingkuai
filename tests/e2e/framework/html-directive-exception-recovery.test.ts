@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -33,60 +33,60 @@ const scenario: E2EScenarioInput = {
             <button id="set-updated-html" @click={setUpdatedHtml}>Set updated html</button>
             <div id="html-host" #html={htmlOptions}>{rawHtml}</div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("captures runtime error when html options shape is invalid", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
-        const errorLogs: string[] = []
+        const pageErrors: string[] = [];
+        const errorLogs: string[] = [];
 
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
         page.on("console", message => {
             if (message.type() === "error") {
-                errorLogs.push(message.text())
+                errorLogs.push(message.text());
             }
-        })
+        });
 
-        await visitScenario(scenario)
-        await page.locator("#set-broken-options").click()
+        await visitScenario(scenario);
+        await page.locator("#set-broken-options").click();
 
         await expect
             .poll(() => [pageErrors.join("\n"), errorLogs.join("\n")].join("\n"))
-            .toMatch(/push is not a function|escapeTags\.push/)
-    })
+            .toMatch(/push is not a function|escapeTags\.push/);
+    });
 
     test("keeps previous html subtree after invalid options interruption", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
-        const errorLogs: string[] = []
+        const pageErrors: string[] = [];
+        const errorLogs: string[] = [];
 
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
         page.on("console", message => {
             if (message.type() === "error") {
-                errorLogs.push(message.text())
+                errorLogs.push(message.text());
             }
-        })
+        });
 
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#set-broken-options").click()
+        await page.locator("#set-broken-options").click();
         await expect
             .poll(() => [pageErrors.join("\n"), errorLogs.join("\n")].join("\n"))
-            .toMatch(/push is not a function|escapeTags\.push/)
+            .toMatch(/push is not a function|escapeTags\.push/);
 
-        await page.locator("#set-safe-options").click()
-        await page.locator("#set-updated-html").click()
-        await expect(page.locator("#html-host #html-updated")).toHaveCount(0)
-        await expect(page.locator("#html-host #html-safe")).toHaveText("Safe html")
-    })
-})
+        await page.locator("#set-safe-options").click();
+        await page.locator("#set-updated-html").click();
+        await expect(page.locator("#html-host #html-updated")).toHaveCount(0);
+        await expect(page.locator("#html-host #html-safe")).toHaveText("Safe html");
+    });
+});

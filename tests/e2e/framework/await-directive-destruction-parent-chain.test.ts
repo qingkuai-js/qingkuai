@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -77,40 +77,40 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="then-panel">Then value: {props.value}</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLog = (page: E2EPageEvaluator) => {
         return page.evaluate(() => {
-            return ((globalThis as any).__awaitDestructionParentChainLog as string[]).slice()
-        })
-    }
+            return ((globalThis as any).__awaitDestructionParentChainLog as string[]).slice();
+        });
+    };
 
     test("await then branch mounts after promise resolve", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#await-pending")).toHaveText("Pending...")
-        await expect(page.locator("#then-panel")).toHaveCount(0)
+        await expect(page.locator("#await-pending")).toHaveText("Pending...");
+        await expect(page.locator("#then-panel")).toHaveCount(0);
 
-        await page.locator("#btn-resolve").click()
-        await expect(page.locator("#then-panel")).toHaveText("Then value: ok-1")
-        await expect.poll(() => readLog(page)).toEqual(["then-mount-ok-1"])
-    })
+        await page.locator("#btn-resolve").click();
+        await expect(page.locator("#then-panel")).toHaveText("Then value: ok-1");
+        await expect.poll(() => readLog(page)).toEqual(["then-mount-ok-1"]);
+    });
 
     test("parent unmount destroys await then branch component", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-resolve").click()
-        await expect(page.locator("#then-panel")).toHaveText("Then value: ok-1")
+        await page.locator("#btn-resolve").click();
+        await expect(page.locator("#then-panel")).toHaveText("Then value: ok-1");
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#await-host-hidden")).toHaveText("Host hidden")
-        await expect(page.locator("#then-panel")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#await-host-hidden")).toHaveText("Host hidden");
+        await expect(page.locator("#then-panel")).toHaveCount(0);
 
         await expect
             .poll(() => readLog(page))
-            .toEqual(["then-mount-ok-1", "then-before-destroy-ok-1", "then-after-destroy-ok-1"])
-    })
-})
+            .toEqual(["then-mount-ok-1", "then-before-destroy-ok-1", "then-after-destroy-ok-1"]);
+    });
+});

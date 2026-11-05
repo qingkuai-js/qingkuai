@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -64,40 +64,40 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article class="row-panel">{props.label}</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("logs lifecycle when for removes component rows", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const log = page.locator("#row-log")
+        const log = page.locator("#row-log");
 
-        await expect(page.locator("#component-list .row-panel")).toHaveCount(2)
-        await expect(page.locator("#component-list")).toContainText("Alpha")
-        await expect(page.locator("#component-list")).toContainText("Beta")
-        await expect(log).toContainText("mount-1")
-        await expect(log).toContainText("mount-2")
+        await expect(page.locator("#component-list .row-panel")).toHaveCount(2);
+        await expect(page.locator("#component-list")).toContainText("Alpha");
+        await expect(page.locator("#component-list")).toContainText("Beta");
+        await expect(log).toContainText("mount-1");
+        await expect(log).toContainText("mount-2");
 
-        await page.locator("#remove-first").click()
-        await expect(page.locator("#component-list .row-panel")).toHaveText(["Beta"])
-        await expect(log).toContainText("before-destroy-1")
-        await expect(log).toContainText("after-destroy-1")
-    })
+        await page.locator("#remove-first").click();
+        await expect(page.locator("#component-list .row-panel")).toHaveText(["Beta"]);
+        await expect(log).toContainText("before-destroy-1");
+        await expect(log).toContainText("after-destroy-1");
+    });
 
     test("mounts only newly appended row component", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#add-item").click()
-        await expect(page.locator("#component-list .row-panel")).toHaveCount(3)
-        await expect(page.locator("#component-list")).toContainText("Alpha")
-        await expect(page.locator("#component-list")).toContainText("Beta")
-        await expect(page.locator("#component-list")).toContainText("Item 3")
+        await page.locator("#add-item").click();
+        await expect(page.locator("#component-list .row-panel")).toHaveCount(3);
+        await expect(page.locator("#component-list")).toContainText("Alpha");
+        await expect(page.locator("#component-list")).toContainText("Beta");
+        await expect(page.locator("#component-list")).toContainText("Item 3");
 
-        const logText = (await page.locator("#row-log").textContent()) ?? ""
-        expect(logText).toContain("mount-3")
-        expect(logText).not.toContain("before-destroy-")
-        expect(logText).not.toContain("after-destroy-")
-    })
-})
+        const logText = (await page.locator("#row-log").textContent()) ?? "";
+        expect(logText).toContain("mount-3");
+        expect(logText).not.toContain("before-destroy-");
+        expect(logText).not.toContain("after-destroy-");
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -49,7 +49,7 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="external-panel">External registration panel</article>
-        `
+        `,
     },
     modules: {
         "effect-registry": `
@@ -68,66 +68,66 @@ const scenario: E2EScenarioInput = {
             export function registerWatch(watch, getter, callback) {
                 watch(getter, callback)
             }
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("effect passed to an external module is usable", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#external-panel")).toBeVisible()
-        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 1")
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#external-panel")).toBeVisible();
+        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 1");
 
         // Still alive while mounted: responds to store changes.
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 1")
-        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 2")
-    })
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 1");
+        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 2");
+    });
 
     test("externally-registered effect stops when the component is destroyed", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#external-panel")).toBeVisible()
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#external-panel")).toBeVisible();
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 2")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 2");
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#external-panel")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#external-panel")).toHaveCount(0);
 
         // Disposed effect must not run again when the store changes.
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 2")
-        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 2")
-    })
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 2");
+        await expect(page.locator("#effect-runs")).toHaveText("Effect runs: 2");
+    });
 
     test("externally-registered watch stops when the component is destroyed", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#external-panel")).toBeVisible()
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#external-panel")).toBeVisible();
 
         // Watchers wait for the first change.
-        await expect(page.locator("#watch-runs")).toHaveText("Watch runs: 0")
+        await expect(page.locator("#watch-runs")).toHaveText("Watch runs: 0");
 
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#watch-runs")).toHaveText("Watch runs: 1")
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#watch-runs")).toHaveText("Watch runs: 1");
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#external-panel")).toHaveCount(0)
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#external-panel")).toHaveCount(0);
 
         // Disposed watch must not fire again when the store changes.
-        await page.locator("#btn-inc").click()
-        await expect(page.locator("#store-count")).toHaveText("Store count: 2")
-        await expect(page.locator("#watch-runs")).toHaveText("Watch runs: 1")
-    })
-})
+        await page.locator("#btn-inc").click();
+        await expect(page.locator("#store-count")).toHaveText("Store count: 2");
+        await expect(page.locator("#watch-runs")).toHaveText("Watch runs: 1");
+    });
+});

@@ -1,11 +1,11 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { analyzeResult } from "../state"
-import { InvalidExportStatement } from "../message/error"
-import { walkBindingNameIdentifiers } from "../ts-ast/walk"
-import { getScriptLocByNode } from "../../util/compiler/position"
+import { analyzeResult } from "../state";
+import { InvalidExportStatement } from "../message/error";
+import { walkBindingNameIdentifiers } from "../ts-ast/walk";
+import { getScriptLocByNode } from "../../util/compiler/position";
 
 export function analyzeExports(sourceFile: TS.SourceFile) {
     for (const statement of sourceFile.statements) {
@@ -13,28 +13,28 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
             // export = ...
             // export default ...
             case ts.SyntaxKind.ExportAssignment: {
-                const exportAssignment = statement as TS.ExportAssignment
+                const exportAssignment = statement as TS.ExportAssignment;
                 const exportFormat = exportAssignment.isExportEquals
                     ? "Assignment export"
-                    : "Default export"
-                analyzeResult.script.exportStatements.push(exportAssignment)
-                InvalidExportStatement(getScriptLocByNode(statement), exportFormat)
-                break
+                    : "Default export";
+                analyzeResult.script.exportStatements.push(exportAssignment);
+                InvalidExportStatement(getScriptLocByNode(statement), exportFormat);
+                break;
             }
 
             case ts.SyntaxKind.ExportDeclaration: {
-                const exportDeclaration = statement as TS.ExportDeclaration
-                analyzeResult.script.exportStatements.push(exportDeclaration)
+                const exportDeclaration = statement as TS.ExportDeclaration;
+                analyzeResult.script.exportStatements.push(exportDeclaration);
 
-                const moduleSpecifier = exportDeclaration.moduleSpecifier
+                const moduleSpecifier = exportDeclaration.moduleSpecifier;
                 const hasValidModuleSpecifier =
-                    !!moduleSpecifier && moduleSpecifier.pos !== moduleSpecifier.end
+                    !!moduleSpecifier && moduleSpecifier.pos !== moduleSpecifier.end;
 
                 if (!exportDeclaration.exportClause) {
                     if (hasValidModuleSpecifier) {
-                        InvalidExportStatement(getScriptLocByNode(statement), "Re-export")
+                        InvalidExportStatement(getScriptLocByNode(statement), "Re-export");
                     }
-                    break
+                    break;
                 }
 
                 // 不完整的输入: `export * as ns`
@@ -42,60 +42,60 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
                 if (ts.isNamespaceExport(exportDeclaration.exportClause)) {
                     InvalidExportStatement(
                         getScriptLocByNode(statement),
-                        hasValidModuleSpecifier ? "Re-export" : "Namespace export"
-                    )
-                    break
+                        hasValidModuleSpecifier ? "Re-export" : "Namespace export",
+                    );
+                    break;
                 }
 
                 if (hasValidModuleSpecifier) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Re-export")
-                    break
+                    InvalidExportStatement(getScriptLocByNode(statement), "Re-export");
+                    break;
                 }
 
                 if (exportDeclaration.isTypeOnly) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Type export")
-                    break
+                    InvalidExportStatement(getScriptLocByNode(statement), "Type export");
+                    break;
                 }
 
                 for (const element of exportDeclaration.exportClause.elements) {
                     if (element.isTypeOnly) {
-                        InvalidExportStatement(getScriptLocByNode(element), "Type export")
-                        continue
+                        InvalidExportStatement(getScriptLocByNode(element), "Type export");
+                        continue;
                     }
                     analyzeResult.script.exportedBindings.push({
                         local: element.propertyName?.text ?? element.name.text,
-                        exported: element.name.text
-                    })
+                        exported: element.name.text,
+                    });
                 }
-                break
+                break;
             }
 
             default: {
                 if (!ts.canHaveModifiers(statement)) {
-                    break
+                    break;
                 }
 
                 if (
                     !statement.modifiers?.some(mod => {
-                        return mod.kind === ts.SyntaxKind.ExportKeyword
+                        return mod.kind === ts.SyntaxKind.ExportKeyword;
                     })
                 ) {
-                    break
+                    break;
                 }
-                analyzeResult.script.exportStatements.push(statement)
+                analyzeResult.script.exportStatements.push(statement);
 
                 if (
                     statement.modifiers?.some(mod => {
-                        return mod.kind === ts.SyntaxKind.DefaultKeyword
+                        return mod.kind === ts.SyntaxKind.DefaultKeyword;
                     })
                 ) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Default export")
-                    break
+                    InvalidExportStatement(getScriptLocByNode(statement), "Default export");
+                    break;
                 }
 
                 if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) {
-                    InvalidExportStatement(getScriptLocByNode(statement), "Type export")
-                    break
+                    InvalidExportStatement(getScriptLocByNode(statement), "Type export");
+                    break;
                 }
 
                 if (
@@ -107,10 +107,10 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
                     if (statement.name) {
                         analyzeResult.script.exportedBindings.push({
                             local: statement.name.text,
-                            exported: statement.name.text
-                        })
+                            exported: statement.name.text,
+                        });
                     }
-                    break
+                    break;
                 }
 
                 if (ts.isVariableStatement(statement)) {
@@ -118,12 +118,12 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
                         walkBindingNameIdentifiers(declaration.name, id => {
                             analyzeResult.script.exportedBindings.push({
                                 local: id.text,
-                                exported: id.text
-                            })
-                        })
+                                exported: id.text,
+                            });
+                        });
                     }
                 }
-                break
+                break;
             }
         }
     }

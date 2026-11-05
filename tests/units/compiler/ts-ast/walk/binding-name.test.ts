@@ -1,66 +1,68 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
-import ts from "typescript"
+import ts from "typescript";
 
-import { expect, test } from "vitest"
-import { NOOP } from "../../../../../src/runtime/constants"
-import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk"
-import { findFirstAncestorUntil } from "../../../../../src/compiler/ts-ast/sundry"
-import { walkBindingNameIdentifiers } from "../../../../../src/compiler/ts-ast/walk"
-import { parseScript, parseContextPattern } from "../../../../../src/compiler/parser/script"
+import { expect, test } from "vitest";
+import { NOOP } from "../../../../../src/runtime/constants";
+import { walkTsNode } from "../../../../../src/compiler/ts-ast/walk";
+import { findFirstAncestorUntil } from "../../../../../src/compiler/ts-ast/sundry";
+import { walkBindingNameIdentifiers } from "../../../../../src/compiler/ts-ast/walk";
+import { parseScript, parseContextPattern } from "../../../../../src/compiler/parser/script";
 
 function extractIdentifiers(source: string) {
-    const result: string[][] = []
-    const existingIdentifiers = new Set<string>()
+    const result: string[][] = [];
+    const existingIdentifiers = new Set<string>();
     walkTsNode(parseScript(source), node => {
         if (!ts.isBindingName(node) || findFirstAncestorUntil(node, ts.isBindingName)) {
-            return
+            return;
         }
 
         if (ts.isIdentifier(node)) {
-            const parentNode = node.parent
+            const parentNode = node.parent;
             const isSupportedIdentifierPattern =
                 (ts.isBindingElement(parentNode) && parentNode.name === node) ||
                 (ts.isVariableDeclaration(parentNode) && parentNode.name === node) ||
-                (ts.isParameter(parentNode) && parentNode.name === node && !!parentNode.initializer)
+                (ts.isParameter(parentNode) &&
+                    parentNode.name === node &&
+                    !!parentNode.initializer);
             if (!isSupportedIdentifierPattern) {
-                return
+                return;
             }
         }
 
         walkBindingNameIdentifiers(node, (id, path) => {
             if (!existingIdentifiers.has(id.text)) {
-                existingIdentifiers.add(id.text)
-                result.push([id.text, path])
+                existingIdentifiers.add(id.text);
+                result.push([id.text, path]);
             }
-        })
-    })
-    return result
+        });
+    });
+    return result;
 }
 
 test("Whether default value is specified", () => {
     function expectedDefaultValueIsSpecified(source: string, expected: boolean) {
-        const pattern: TS.ArrayBindingPattern = parseContextPattern(source, 0)!
+        const pattern: TS.ArrayBindingPattern = parseContextPattern(source, 0)!;
         expect(
             walkBindingNameIdentifiers(pattern, NOOP).specifiedDefaultValue,
-            `source: ${source}`
-        ).toBe(expected)
+            `source: ${source}`,
+        ).toBe(expected);
     }
 
-    expectedDefaultValueIsSpecified("{ a }", false)
-    expectedDefaultValueIsSpecified("{ a, b }", false)
-    expectedDefaultValueIsSpecified("{ a, b: { c }, ...d }", false)
-    expectedDefaultValueIsSpecified("[a, [b, [c, [d]]], ...e]", false)
+    expectedDefaultValueIsSpecified("{ a }", false);
+    expectedDefaultValueIsSpecified("{ a, b }", false);
+    expectedDefaultValueIsSpecified("{ a, b: { c }, ...d }", false);
+    expectedDefaultValueIsSpecified("[a, [b, [c, [d]]], ...e]", false);
 
-    expectedDefaultValueIsSpecified("[a = b]", true)
-    expectedDefaultValueIsSpecified("{ a = b }", true)
-    expectedDefaultValueIsSpecified("[a, [b = c]]", true)
-    expectedDefaultValueIsSpecified("{ a, b = c }", true)
-    expectedDefaultValueIsSpecified("[a, [b, [c, [d = e]]]]", true)
-    expectedDefaultValueIsSpecified("{ a, b: { c: { d = e } } }", true)
-    expectedDefaultValueIsSpecified("[a, [b, [c, [d]]] = e, ...f]", true)
-    expectedDefaultValueIsSpecified("{ a: { b: { c } } = d, ...e}", true)
-})
+    expectedDefaultValueIsSpecified("[a = b]", true);
+    expectedDefaultValueIsSpecified("{ a = b }", true);
+    expectedDefaultValueIsSpecified("[a, [b = c]]", true);
+    expectedDefaultValueIsSpecified("{ a, b = c }", true);
+    expectedDefaultValueIsSpecified("[a, [b, [c, [d = e]]]]", true);
+    expectedDefaultValueIsSpecified("{ a, b: { c: { d = e } } }", true);
+    expectedDefaultValueIsSpecified("[a, [b, [c, [d]]] = e, ...f]", true);
+    expectedDefaultValueIsSpecified("{ a: { b: { c } } = d, ...e}", true);
+});
 
 test("Variable declarations", () => {
     const identifiers = extractIdentifiers(`
@@ -79,7 +81,7 @@ test("Variable declarations", () => {
         }: any = {}
 
         const [v, [w, [x, [y = z] = A] = B] = C, D] = []
-    `)
+    `);
     expect(identifiers).toEqual([
         ["a", ".a"],
         ["b", ".b"],
@@ -97,9 +99,9 @@ test("Variable declarations", () => {
         ["w", "[1][0]"],
         ["x", "[1][1][0]"],
         ["y", "[1][1][1][0]"],
-        ["D", "[2]"]
-    ])
-})
+        ["D", "[2]"],
+    ]);
+});
 
 test("Function parameters", () => {
     const identifiers = extractIdentifiers(`
@@ -133,7 +135,7 @@ test("Function parameters", () => {
                 E
             }){}
         }
-    `)
+    `);
     expect(identifiers).toEqual([
         ["b", ".a"],
         ["e", ".d.e"],
@@ -149,6 +151,6 @@ test("Function parameters", () => {
         ["z", "[2]"],
         ["B", ".A.B"],
         ["D", ".A.D"],
-        ["E", ".E"]
-    ])
-})
+        ["E", ".E"],
+    ]);
+});

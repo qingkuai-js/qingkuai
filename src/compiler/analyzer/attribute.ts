@@ -1,60 +1,60 @@
-import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler"
+import type { TemplateAttribute, TemplateNode } from "#type-declarations/compiler";
 
 import {
     DuplicateAttributes,
     DisallowedAttributeKind,
     ConflictingReactivityModes,
-    SlotNameAttributeMustBeStatic
-} from "../message/error"
-import { analyzeEvent } from "./event"
-import { analyzeDirective } from "./directive"
-import { AnalyzeExpressionType } from "../enums"
-import { newCleanObj } from "../../util/shared/sundry"
-import { analyzeReferenceAttribute } from "./reference"
-import { RedundantBooleanAttributeValue } from "../message/warn"
-import { getAttributeBaseName } from "../../util/compiler/sundry"
-import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants"
-import { getTemplateNodeContext } from "../../util/compiler/template"
-import { increaseReusedStringUsedTimes } from "../optimizer/compress"
-import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert"
-import { embeddedStyleLangRE, interpolatedAttrStartCharRE } from "../regular"
-import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation"
+    SlotNameAttributeMustBeStatic,
+} from "../message/error";
+import { analyzeEvent } from "./event";
+import { analyzeDirective } from "./directive";
+import { AnalyzeExpressionType } from "../enums";
+import { newCleanObj } from "../../util/shared/sundry";
+import { analyzeReferenceAttribute } from "./reference";
+import { RedundantBooleanAttributeValue } from "../message/warn";
+import { getAttributeBaseName } from "../../util/compiler/sundry";
+import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants";
+import { getTemplateNodeContext } from "../../util/compiler/template";
+import { increaseReusedStringUsedTimes } from "../optimizer/compress";
+import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
+import { embeddedStyleLangRE, interpolatedAttrStartCharRE } from "../regular";
+import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation";
 
 export function analyzeAttributes(node: TemplateNode) {
-    const nodeContext = getTemplateNodeContext(node)
-    const isEmbeddedScript = node.tag === "lang-js" || node.tag === "lang-ts"
-    const duplicateCheckAttrsMap: Record<string, TemplateAttribute> = newCleanObj()
-    const isEbeddedStyle = node.isEmbedded && embeddedStyleLangRE.test(node.tag.slice(5))
+    const nodeContext = getTemplateNodeContext(node);
+    const isEmbeddedScript = node.tag === "lang-js" || node.tag === "lang-ts";
+    const duplicateCheckAttrsMap: Record<string, TemplateAttribute> = newCleanObj();
+    const isEbeddedStyle = node.isEmbedded && embeddedStyleLangRE.test(node.tag.slice(5));
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
     const sortedAttributes = node.attributes.slice().sort((a, b) => {
-        const av = ATTRIBUTE_PRIORITY_MAP[a.name.raw] ?? 0
-        const bv = ATTRIBUTE_PRIORITY_MAP[b.name.raw] ?? 0
-        return bv - av
-    })
+        const av = ATTRIBUTE_PRIORITY_MAP[a.name.raw] ?? 0;
+        const bv = ATTRIBUTE_PRIORITY_MAP[b.name.raw] ?? 0;
+        return bv - av;
+    });
 
     for (const attribute of sortedAttributes) {
-        let mappedKey: string
-        const nameLoc = attribute.name.loc
-        const rawName = attribute.name.raw
-        const isEvent = "@" === rawName[0]
-        const isDynamic = "!" === rawName[0]
-        const isDirective = "#" === rawName[0]
-        const isReference = "&" === rawName[0]
-        const rawValue = attribute.value.raw
-        const isComponent = !!node.componentTag
-        const baseName = getAttributeBaseName(rawName)
+        let mappedKey: string;
+        const nameLoc = attribute.name.loc;
+        const rawName = attribute.name.raw;
+        const isEvent = "@" === rawName[0];
+        const isDynamic = "!" === rawName[0];
+        const isDirective = "#" === rawName[0];
+        const isReference = "&" === rawName[0];
+        const rawValue = attribute.value.raw;
+        const isComponent = !!node.componentTag;
+        const baseName = getAttributeBaseName(rawName);
 
         if (!node.isEmbedded && (isDynamic || (isReference && isComponent))) {
-            markAttributeNameAsReusedStrings(node, attribute)
+            markAttributeNameAsReusedStrings(node, attribute);
         }
 
         // 嵌入语言标签上只允许静态属性
         // Only static attributes are allowed on embedded language tags.
         if (node.isEmbedded && interpolatedAttrStartCharRE.test(rawName[0])) {
-            DisallowedAttributeKind(attribute.loc, node.tag, rawName)
-            continue
+            DisallowedAttributeKind(attribute.loc, node.tag, rawName);
+            continue;
         }
 
         if (
@@ -62,7 +62,7 @@ export function analyzeAttributes(node: TemplateNode) {
             ((isEbeddedStyle && rawName === "global") ||
                 (isEmbeddedScript && (rawName === "shallow" || rawName === "reactive")))
         ) {
-            RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName)
+            RedundantBooleanAttributeValue(attribute.loc, node.tag, rawName);
         }
 
         // 嵌入脚本标签上的 reactive 和 shallow 属性不能同时存在
@@ -72,29 +72,29 @@ export function analyzeAttributes(node: TemplateNode) {
             ((rawName === "shallow" && nodeContext.attributesMap.reactive) ||
                 (rawName === "reactive" && nodeContext.attributesMap.shallow))
         ) {
-            const existingKey = rawName === "shallow" ? "reactive" : "shallow"
-            ConflictingReactivityModes(attribute.name.loc, node.tag)
-            ConflictingReactivityModes(nodeContext.attributesMap[existingKey].name.loc, node.tag)
+            const existingKey = rawName === "shallow" ? "reactive" : "shallow";
+            ConflictingReactivityModes(attribute.name.loc, node.tag);
+            ConflictingReactivityModes(nodeContext.attributesMap[existingKey].name.loc, node.tag);
         }
 
         // SPREAD_TAG 标签仅允许指令作为属性
         // The SPREAD_TAG element only allows directives as attributes.
         if (!isDirective && SPREAD_TAG === node.tag) {
-            mappedKey = rawName
-            DisallowedAttributeKind(nameLoc, SPREAD_TAG, rawName)
+            mappedKey = rawName;
+            DisallowedAttributeKind(nameLoc, SPREAD_TAG, rawName);
         }
 
         if (!isDirective && "slot" === node.tag) {
             if (isEvent || isReference) {
-                mappedKey = rawName
-                DisallowedAttributeKind(nameLoc, node.tag, rawName)
+                mappedKey = rawName;
+                DisallowedAttributeKind(nameLoc, node.tag, rawName);
             }
 
             // slot 标签且只允许使用静态 name 属性
             // Slot tags only allow a static `name` attribute.
             if (baseName === "name" && (isDynamic || isReference)) {
-                mappedKey = rawName
-                SlotNameAttributeMustBeStatic(nameLoc)
+                mappedKey = rawName;
+                SlotNameAttributeMustBeStatic(nameLoc);
             }
         }
 
@@ -111,35 +111,35 @@ export function analyzeAttributes(node: TemplateNode) {
             (isComponent && isReference) ||
             (!isComponent && (isEvent || rawName === "!class"))
         ) {
-            mappedKey = rawName
+            mappedKey = rawName;
         } else {
-            mappedKey ??= baseName
+            mappedKey ??= baseName;
         }
 
         // 重复的属性
         // Duplicate attribute.
         if (duplicateCheckAttrsMap[mappedKey]) {
-            const existing = duplicateCheckAttrsMap[mappedKey]
-            DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent)
-            DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent)
+            const existing = duplicateCheckAttrsMap[mappedKey];
+            DuplicateAttributes(nameLoc, existing.name.raw, rawName, isComponent);
+            DuplicateAttributes(existing.name.loc, existing.name.raw, rawName, isComponent);
         }
-        nodeContext.attributesMap[rawName] = duplicateCheckAttrsMap[mappedKey] = attribute
+        nodeContext.attributesMap[rawName] = duplicateCheckAttrsMap[mappedKey] = attribute;
 
         switch (rawName[0]) {
             case "@": {
-                analyzeEvent(node, attribute)
-                nodeContext.eventListeners.push(attribute)
-                break
+                analyzeEvent(node, attribute);
+                nodeContext.eventListeners.push(attribute);
+                break;
             }
             case "#": {
-                analyzeDirective(node, attribute)
-                nodeContext.sortedDirectives.push(attribute)
-                break
+                analyzeDirective(node, attribute);
+                nodeContext.sortedDirectives.push(attribute);
+                break;
             }
             case "&": {
-                analyzeReferenceAttribute(node, attribute)
-                nodeContext.referenceAttributes.push(attribute)
-                break
+                analyzeReferenceAttribute(node, attribute);
+                nodeContext.referenceAttributes.push(attribute);
+                break;
             }
             case "!": {
                 if (!attribute.equalSign) {
@@ -148,33 +148,38 @@ export function analyzeAttributes(node: TemplateNode) {
                         rawName,
                         attribute,
                         nameLoc,
-                        AnalyzeExpressionType.Attribute
-                    )
+                        AnalyzeExpressionType.Attribute,
+                    );
                 }
                 if (shouldAnalyzeAttributeValue(attribute)) {
-                    analyzeInterpolation(node, attribute, rawValue, attribute.value.loc.start.index)
+                    analyzeInterpolation(
+                        node,
+                        attribute,
+                        rawValue,
+                        attribute.value.loc.start.index,
+                    );
                 }
-                nodeContext.dynamicAttributes.push(attribute)
-                break
+                nodeContext.dynamicAttributes.push(attribute);
+                break;
             }
             default: {
-                nodeContext.staticAttributes.push(attribute)
-                break
+                nodeContext.staticAttributes.push(attribute);
+                break;
             }
         }
     }
 }
 
 function markAttributeNameAsReusedStrings(node: TemplateNode, attribute: TemplateAttribute) {
-    const rawName = attribute.name.raw
-    const baseName = getAttributeBaseName(rawName)
+    const rawName = attribute.name.raw;
+    const baseName = getAttributeBaseName(rawName);
     if (node.componentTag) {
-        increaseReusedStringUsedTimes(baseName, true)
+        increaseReusedStringUsedTimes(baseName, true);
     } else if (rawName !== "!class") {
         if (!baseName.startsWith("xlink:")) {
-            increaseReusedStringUsedTimes(baseName)
+            increaseReusedStringUsedTimes(baseName);
         } else {
-            increaseReusedStringUsedTimes(baseName.slice(6))
+            increaseReusedStringUsedTimes(baseName.slice(6));
         }
     }
 }

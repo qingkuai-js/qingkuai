@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -35,51 +35,51 @@ const scenario: E2EScenarioInput = {
                 <p class="portal-body">portal body</p>
             </article>
             <span class="portal-note" #if={props.note}>{props.note}</span>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("keeps component roots inline while the target is unset", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#portal-source .portal-main")).toHaveCount(1)
-        await expect(page.locator("#portal-source .portal-note")).toHaveCount(1)
-        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(0)
-        await expect(page.locator("#portal-dest-a .portal-note")).toHaveCount(0)
-    })
+        await expect(page.locator("#portal-source .portal-main")).toHaveCount(1);
+        await expect(page.locator("#portal-source .portal-note")).toHaveCount(1);
+        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(0);
+        await expect(page.locator("#portal-dest-a .portal-note")).toHaveCount(0);
+    });
 
     test("moves every root of the component into the target element", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#portal-to-a").click()
+        await page.locator("#portal-to-a").click();
 
-        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(1)
-        await expect(page.locator("#portal-dest-a .portal-note")).toHaveCount(1)
-        await expect(page.locator("#portal-source .portal-main")).toHaveCount(0)
-        await expect(page.locator("#portal-source .portal-note")).toHaveCount(0)
-    })
+        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(1);
+        await expect(page.locator("#portal-dest-a .portal-note")).toHaveCount(1);
+        await expect(page.locator("#portal-source .portal-main")).toHaveCount(0);
+        await expect(page.locator("#portal-source .portal-note")).toHaveCount(0);
+    });
 
     test("moves component roots back inline when the target is unset", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#portal-to-a").click()
-        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(1)
+        await page.locator("#portal-to-a").click();
+        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(1);
 
-        await page.locator("#portal-reset").click()
+        await page.locator("#portal-reset").click();
 
-        await expect(page.locator("#portal-source .portal-main")).toHaveCount(1)
-        await expect(page.locator("#portal-source .portal-note")).toHaveCount(1)
-        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(0)
-        await expect(page.locator("#portal-dest-a .portal-note")).toHaveCount(0)
-    })
-})
+        await expect(page.locator("#portal-source .portal-main")).toHaveCount(1);
+        await expect(page.locator("#portal-source .portal-note")).toHaveCount(1);
+        await expect(page.locator("#portal-dest-a .portal-main")).toHaveCount(0);
+        await expect(page.locator("#portal-dest-a .portal-note")).toHaveCount(0);
+    });
+});

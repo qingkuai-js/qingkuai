@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -29,25 +29,25 @@ const scenario: E2EScenarioInput = {
             </div>
             <p id="counts">{hostCount}-{parentCount}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("delegation works with shadow composedPath", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await page.evaluate(() => {
-            const host = document.querySelector("#host") as HTMLElement
-            const root = host.attachShadow({ mode: "open" })
-            const button = document.createElement("button")
-            button.id = "shadow-btn"
-            button.textContent = "Shadow"
-            root.append(button)
+            const host = document.querySelector("#host") as HTMLElement;
+            const root = host.attachShadow({ mode: "open" });
+            const button = document.createElement("button");
+            button.id = "shadow-btn";
+            button.textContent = "Shadow";
+            root.append(button);
 
-            const shadowButton = host.shadowRoot!.querySelector("#shadow-btn") as HTMLButtonElement
-            shadowButton.click()
-        })
+            const shadowButton = host.shadowRoot!.querySelector("#shadow-btn") as HTMLButtonElement;
+            shadowButton.click();
+        });
 
-        await expect(page.locator("#counts")).toHaveText("1-1")
-    })
-})
+        await expect(page.locator("#counts")).toHaveText("1-1");
+    });
+});

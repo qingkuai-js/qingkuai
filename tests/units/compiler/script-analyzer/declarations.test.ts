@@ -1,39 +1,42 @@
-import type { CompileOptions } from "#type-declarations/compiler"
-import type { ExpectedCompileMessage, ExpectedTopLevelIdentifier } from "#type-declarations/testing"
+import type { CompileOptions } from "#type-declarations/compiler";
+import type {
+    ExpectedCompileMessage,
+    ExpectedTopLevelIdentifier,
+} from "#type-declarations/testing";
 
-import { expect, test } from "vitest"
-import { objectKeys } from "../../../../src/util/shared/aliases"
-import { traverseObject } from "../../../../src/util/shared/sundry"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { analyzeScript } from "../../../../src/compiler/analyzer/script"
-import { parseTemplate } from "../../../../src/compiler/parser/template"
-import { matchCompileMessages } from "../../../../src/util/testing/match"
-import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { IdentifierStatus, ReactivityMode } from "../../../../src/compiler/enums"
-import { analyzeResult, resetCompilerState } from "../../../../src/compiler/state"
+import { expect, test } from "vitest";
+import { objectKeys } from "../../../../src/util/shared/aliases";
+import { traverseObject } from "../../../../src/util/shared/sundry";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { analyzeScript } from "../../../../src/compiler/analyzer/script";
+import { parseTemplate } from "../../../../src/compiler/parser/template";
+import { matchCompileMessages } from "../../../../src/util/testing/match";
+import { parseTemplateTesting } from "../../../../src/util/testing/sundry";
+import { IdentifierStatus, ReactivityMode } from "../../../../src/compiler/enums";
+import { analyzeResult, resetCompilerState } from "../../../../src/compiler/state";
 
 function localAnalyzeWithOptions(source: string, options: CompileOptions) {
     resetCompilerState({
         checkMode: true,
-        ...options
-    })
-    parseTemplate(`<lang-ts>${formatSourceCode(source)}</lang-ts>`)
-    analyzeScript()
+        ...options,
+    });
+    parseTemplate(`<lang-ts>${formatSourceCode(source)}</lang-ts>`);
+    analyzeScript();
 }
 
 function localAnalyze(source: string) {
     parseTemplateTesting(`<lang-ts>${formatSourceCode(source)}</lang-ts>`, {
-        recover: true
-    })
-    analyzeScript()
+        recover: true,
+    });
+    analyzeScript();
 }
 
 function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
     for (const item of expected) {
-        item.range[0] += 9
-        item.range[1] += 9
+        item.range[0] += 9;
+        item.range[1] += 9;
     }
-    matchCompileMessages(expected)
+    matchCompileMessages(expected);
 }
 
 function checkTopLevelIdentifiers(expected: ExpectedTopLevelIdentifier[]) {
@@ -42,14 +45,14 @@ function checkTopLevelIdentifiers(expected: ExpectedTopLevelIdentifier[]) {
             name: key,
             hoist: value.hoist,
             status: value.status,
-            implicit: value.implicit
-        }).toEqual(expected[index])
-    })
+            implicit: value.implicit,
+        }).toEqual(expected[index]);
+    });
     for (const item of expected) {
         expect(
             !!analyzeResult.script.topLevelIdentifiers[item.name],
-            `The identifier "${item.name}" does not exist in topLevelIdentifiers`
-        ).toBeTruthy()
+            `The identifier "${item.name}" does not exist in topLevelIdentifiers`,
+        ).toBeTruthy();
     }
 }
 
@@ -62,51 +65,51 @@ test("Variable declarations with key: let, const", () => {
 
         const {e, f: g = h, ...i} = {}
         const [j, k = l, [m = n] = o, ...[p = q, ...r]] = shallow?.([])
-    `)
+    `);
     checkTopLevelIdentifiers([
         {
             name: "a",
             hoist: false,
             implicit: true,
-            status: IdentifierStatus.Literal
+            status: IdentifierStatus.Literal,
         },
         {
             name: "b",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Reactive
+            status: IdentifierStatus.Reactive,
         },
         {
             name: "c",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Shallow
+            status: IdentifierStatus.Shallow,
         },
         {
             name: "d",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Derived
+            status: IdentifierStatus.Derived,
         },
         ...["e", "g", "i"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: true,
-                status: IdentifierStatus.Pending
-            } satisfies ExpectedTopLevelIdentifier
+                status: IdentifierStatus.Pending,
+            } satisfies ExpectedTopLevelIdentifier;
         }),
         ...["j", "k", "m", "p", "r"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: false,
-                status: IdentifierStatus.Shallow
-            } satisfies ExpectedTopLevelIdentifier
-        })
-    ])
-    expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12)
-})
+                status: IdentifierStatus.Shallow,
+            } satisfies ExpectedTopLevelIdentifier;
+        }),
+    ]);
+    expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12);
+});
 
 test("Variable declaration with key: var", () => {
     localAnalyze(`
@@ -131,58 +134,58 @@ test("Variable declaration with key: var", () => {
         }
 
         var [q, r = s, ...t] = (shallow as any)()
-    `)
+    `);
     checkTopLevelIdentifiers([
         {
             name: "a",
             hoist: true,
             implicit: true,
-            status: IdentifierStatus.Literal
+            status: IdentifierStatus.Literal,
         },
         ...["b", "c", "f", "i", "l"].map(name => {
             return {
                 name,
                 hoist: true,
                 implicit: false,
-                status: IdentifierStatus.Reactive
-            } satisfies ExpectedTopLevelIdentifier
+                status: IdentifierStatus.Reactive,
+            } satisfies ExpectedTopLevelIdentifier;
         }),
         ...["m", "n", "o"].map(name => {
             return {
                 name,
                 hoist: true,
                 implicit: true,
-                status: IdentifierStatus.Literal
-            } satisfies ExpectedTopLevelIdentifier
+                status: IdentifierStatus.Literal,
+            } satisfies ExpectedTopLevelIdentifier;
         }),
         ...["q", "r", "t"].map(name => {
             return {
                 name,
                 hoist: true,
                 implicit: false,
-                status: IdentifierStatus.Shallow
-            } satisfies ExpectedTopLevelIdentifier
-        })
-    ])
-    expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12)
-})
+                status: IdentifierStatus.Shallow,
+            } satisfies ExpectedTopLevelIdentifier;
+        }),
+    ]);
+    expect(objectKeys(analyzeResult.script.topLevelIdentifiers).length).toBe(12);
+});
 
 test("Typescript enum declarations", () => {
     localAnalyze(`
         enum a{}
         const enum b{}
-    `)
+    `);
     checkTopLevelIdentifiers([
         ...["a", "b"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: true,
-                status: IdentifierStatus.Pending
-            } satisfies ExpectedTopLevelIdentifier
-        })
-    ])
-})
+                status: IdentifierStatus.Pending,
+            } satisfies ExpectedTopLevelIdentifier;
+        }),
+    ]);
+});
 
 test("Function declarations", () => {
     localAnalyze(`
@@ -191,16 +194,16 @@ test("Function declarations", () => {
         if(true){
             function b(){}
         }
-    `)
+    `);
     checkTopLevelIdentifiers([
         {
             name: "a",
             hoist: true,
             implicit: true,
-            status: IdentifierStatus.Literal
-        }
-    ])
-})
+            status: IdentifierStatus.Literal,
+        },
+    ]);
+});
 
 test("Class declarations", () => {
     localAnalyze(`
@@ -209,19 +212,19 @@ test("Class declarations", () => {
         if(true){
             class B{}
         }
-    `)
+    `);
     checkTopLevelIdentifiers([
         {
             name: "A",
             hoist: false,
             implicit: true,
-            status: IdentifierStatus.Literal
-        }
-    ])
-})
+            status: IdentifierStatus.Literal,
+        },
+    ]);
+});
 
 test("Redeclarations for derived reactive value", () => {
-    const unnecessaryDerived = `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`
+    const unnecessaryDerived = `The derived reactive value is read-only and cannot be explicitly mutated. Declaring it as mutable is unnecessary, consider declaring it with \`const\`.`;
 
     localAnalyze(`
         var a
@@ -253,106 +256,106 @@ test("Redeclarations for derived reactive value", () => {
         
         var i = 1
         var i = 2
-    `)
+    `);
     checkTopLevelIdentifiers([
         {
             name: "a",
             hoist: true,
             implicit: false,
-            status: IdentifierStatus.Reactive
+            status: IdentifierStatus.Reactive,
         },
         {
             name: "b",
             hoist: true,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "c",
             hoist: true,
             implicit: false,
-            status: IdentifierStatus.Derived
+            status: IdentifierStatus.Derived,
         },
         {
             name: "d",
             hoist: true,
             implicit: false,
-            status: IdentifierStatus.Shallow
+            status: IdentifierStatus.Shallow,
         },
         {
             name: "e",
             hoist: true,
             implicit: false,
-            status: IdentifierStatus.Derived
+            status: IdentifierStatus.Derived,
         },
         {
             name: "f",
             hoist: true,
             implicit: false,
-            status: IdentifierStatus.Derived
+            status: IdentifierStatus.Derived,
         },
         {
             name: "$g",
             hoist: true,
             implicit: true,
-            status: IdentifierStatus.Pending
+            status: IdentifierStatus.Pending,
         },
         {
             name: "h",
             hoist: true,
             implicit: true,
-            status: IdentifierStatus.Literal
+            status: IdentifierStatus.Literal,
         },
         {
             name: "i",
             hoist: true,
             implicit: true,
-            status: IdentifierStatus.Pending
-        }
-    ])
+            status: IdentifierStatus.Pending,
+        },
+    ]);
     localMatchCompileMessages([
         {
             type: "warning",
             range: [70, 89],
-            value: unnecessaryDerived
+            value: unnecessaryDerived,
         },
         {
             type: "error",
             range: [94, 95],
-            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`,
         },
         {
             type: "warning",
             range: [144, 158],
-            value: unnecessaryDerived
+            value: unnecessaryDerived,
         },
         {
             type: "error",
             range: [138, 139],
-            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`,
         },
         {
             type: "warning",
             range: [164, 178],
-            value: unnecessaryDerived
+            value: unnecessaryDerived,
         },
         {
             type: "warning",
             range: [183, 197],
-            value: unnecessaryDerived
+            value: unnecessaryDerived,
         },
         {
             type: "error",
             range: [183, 184],
-            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`,
         },
         {
             type: "error",
             range: [231, 232],
-            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`
-        }
-    ])
-})
+            value: `The identifier cannot be redeclared when it is marked as a derived reactive value.`,
+        },
+    ]);
+});
 
 test("Redeclarations for alias", () => {
     localAnalyze(`
@@ -362,25 +365,25 @@ test("Redeclarations for alias", () => {
         var b = alias(_._)
         var c = alias(_._)
         var c = alias(_._)
-    `)
+    `);
     localMatchCompileMessages([
         {
             type: "error",
             range: [23, 24],
-            value: `The identifier cannot be redeclared when it is marked as an alias.`
+            value: `The identifier cannot be redeclared when it is marked as an alias.`,
         },
         {
             type: "error",
             range: [29, 30],
-            value: `The identifier cannot be redeclared when it is marked as an alias.`
+            value: `The identifier cannot be redeclared when it is marked as an alias.`,
         },
         {
             type: "error",
             range: [73, 74],
-            value: `The identifier cannot be redeclared when it is marked as an alias.`
-        }
-    ])
-})
+            value: `The identifier cannot be redeclared when it is marked as an alias.`,
+        },
+    ]);
+});
 
 test("Literals", () => {
     localAnalyze(`
@@ -391,18 +394,18 @@ test("Literals", () => {
         let e = true
         let f = \`\`
         let g = () => {}
-    `)
+    `);
     checkTopLevelIdentifiers([
         ...["a", "b", "c", "d", "e", "f", "g"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: true,
-                status: IdentifierStatus.Literal
-            } satisfies ExpectedTopLevelIdentifier
-        })
-    ])
-})
+                status: IdentifierStatus.Literal,
+            } satisfies ExpectedTopLevelIdentifier;
+        }),
+    ]);
+});
 
 test("Literals will be updated later", () => {
     localAnalyze(`
@@ -418,34 +421,34 @@ test("Literals will be updated later", () => {
         c = undefined
         ;[d, e] = []
         ;({f, g} = {})
-    `)
+    `);
     checkTopLevelIdentifiers([
         ...["a", "b", "c", "d", "e", "f", "g"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: true,
-                status: IdentifierStatus.Pending
-            } satisfies ExpectedTopLevelIdentifier
-        })
-    ])
-})
+                status: IdentifierStatus.Pending,
+            } satisfies ExpectedTopLevelIdentifier;
+        }),
+    ]);
+});
 
 test("Identifiers prefixed with $ in destructuring declarations are treated as ordinary bindings", () => {
     localAnalyze(`
         const {$a, $b} = obj
-    `)
+    `);
     checkTopLevelIdentifiers([
         ...["$a", "$b"].map(name => {
             return {
                 name,
                 hoist: false,
                 implicit: true,
-                status: IdentifierStatus.Pending
-            } satisfies ExpectedTopLevelIdentifier
-        })
-    ])
-})
+                status: IdentifierStatus.Pending,
+            } satisfies ExpectedTopLevelIdentifier;
+        }),
+    ]);
+});
 
 test("Status of pre-mutation of literals should be pending", () => {
     localAnalyze(`
@@ -453,22 +456,22 @@ test("Status of pre-mutation of literals should be pending", () => {
             a++
         }
         let a = 0
-    `)
+    `);
     checkTopLevelIdentifiers([
         {
             name: "fn",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "a",
             hoist: false,
             implicit: true,
-            status: IdentifierStatus.Pending
-        }
-    ])
-})
+            status: IdentifierStatus.Pending,
+        },
+    ]);
+});
 
 test("Const declarations are not inferred as reactive when allowConstReactive is false", () => {
     localAnalyzeWithOptions(
@@ -479,36 +482,36 @@ test("Const declarations are not inferred as reactive when allowConstReactive is
             var d = {}
         `,
         {
-            allowConstReactive: false
-        }
-    )
+            allowConstReactive: false,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "a",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "b",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "c",
             hoist: false,
             implicit: true,
-            status: IdentifierStatus.Pending
+            status: IdentifierStatus.Pending,
         },
         {
             name: "d",
             hoist: true,
             implicit: true,
-            status: IdentifierStatus.Pending
-        }
-    ])
-})
+            status: IdentifierStatus.Pending,
+        },
+    ]);
+});
 
 test("Explicitly marking a const as reactive errors when allowConstReactive is false", () => {
     localAnalyzeWithOptions(
@@ -519,22 +522,22 @@ test("Explicitly marking a const as reactive errors when allowConstReactive is f
             const d = derived(() => a)
         `,
         {
-            allowConstReactive: false
-        }
-    )
+            allowConstReactive: false,
+        },
+    );
     localMatchCompileMessages([
         {
             type: "error",
             range: [6, 22],
-            value: `Marking a \`const\` declaration with the "reactive" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
+            value: `Marking a \`const\` declaration with the "reactive" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`,
         },
         {
             type: "error",
             range: [29, 44],
-            value: `Marking a \`const\` declaration with the "shallow" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`
-        }
-    ])
-})
+            value: `Marking a \`const\` declaration with the "shallow" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`,
+        },
+    ]);
+});
 
 test("requireReactivityMark: unmarked top-level variable declarations raise 1074", () => {
     localAnalyzeWithOptions(
@@ -543,22 +546,22 @@ test("requireReactivityMark: unmarked top-level variable declarations raise 1074
             const done = true
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     localMatchCompileMessages([
         {
             type: "error",
             range: [4, 24],
-            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
         },
         {
             type: "error",
             range: [31, 42],
-            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
-        }
-    ])
-})
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
+        },
+    ]);
+});
 
 test("requireReactivityMark: raw mark on a const literal is the canonical form", () => {
     localAnalyzeWithOptions(
@@ -566,19 +569,19 @@ test("requireReactivityMark: raw mark on a const literal is the canonical form",
             const n = raw(0)
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "n",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
-        }
-    ])
-    localMatchCompileMessages([])
-})
+            status: IdentifierStatus.Raw,
+        },
+    ]);
+    localMatchCompileMessages([]);
+});
 
 test("requireReactivityMark: reactive/shallow mark on a const literal keeps the downgrade warning", () => {
     localAnalyzeWithOptions(
@@ -587,36 +590,36 @@ test("requireReactivityMark: reactive/shallow mark on a const literal keeps the 
             const b = shallow("")
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "a",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "b",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
-        }
-    ])
+            status: IdentifierStatus.Raw,
+        },
+    ]);
     localMatchCompileMessages([
         {
             type: "warning",
             range: [6, 21],
-            value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
+            value: `This value will never change, so marking it reactive is unnecessary and it will be treated as a raw(non-reactive) value.`,
         },
         {
             type: "warning",
             range: [28, 43],
-            value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
-        }
-    ])
-})
+            value: `This value will never change, so marking it shallow reactive is unnecessary and it will be treated as a raw(non-reactive) value.`,
+        },
+    ]);
+});
 
 test("requireReactivityMark: explicit marks keep their statuses", () => {
     localAnalyzeWithOptions(
@@ -626,31 +629,31 @@ test("requireReactivityMark: explicit marks keep their statuses", () => {
             const double = derived(() => count * 2)
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "state",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Reactive
+            status: IdentifierStatus.Reactive,
         },
         {
             name: "count",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Alias
+            status: IdentifierStatus.Alias,
         },
         {
             name: "double",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Derived
-        }
-    ])
-    localMatchCompileMessages([])
-})
+            status: IdentifierStatus.Derived,
+        },
+    ]);
+    localMatchCompileMessages([]);
+});
 
 test("requireReactivityMark: derivedExp with a function literal degrades to raw", () => {
     localAnalyzeWithOptions(
@@ -659,31 +662,31 @@ test("requireReactivityMark: derivedExp with a function literal degrades to raw"
             const g = derived(() => 1)
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "f",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "g",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Derived
-        }
-    ])
+            status: IdentifierStatus.Derived,
+        },
+    ]);
     localMatchCompileMessages([
         {
             type: "warning",
             range: [6, 29],
-            value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`
-        }
-    ])
-})
+            value: `This value will never change, so marking it derived reactive is unnecessary and it will be treated as a raw(non-reactive) value.`,
+        },
+    ]);
+});
 
 test("requireReactivityMark: destructuring declarations", () => {
     localAnalyzeWithOptions(
@@ -693,37 +696,37 @@ test("requireReactivityMark: destructuring declarations", () => {
             const { code } = reactive(obj)
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "obj",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Reactive
+            status: IdentifierStatus.Reactive,
         },
         {
             name: "a",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
+            status: IdentifierStatus.Raw,
         },
         {
             name: "code",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Reactive
-        }
-    ])
+            status: IdentifierStatus.Reactive,
+        },
+    ]);
     localMatchCompileMessages([
         {
             type: "error",
             range: [44, 55],
-            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
-        }
-    ])
-})
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
+        },
+    ]);
+});
 
 test("requireReactivityMark: a call to a non-built-in method raises 1074", () => {
     localAnalyzeWithOptions(
@@ -731,25 +734,25 @@ test("requireReactivityMark: a call to a non-built-in method raises 1074", () =>
             const value = loadValue()
         `,
         {
-            requireReactivityMark: true
-        }
-    )
+            requireReactivityMark: true,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "value",
             hoist: false,
             implicit: false,
-            status: IdentifierStatus.Raw
-        }
-    ])
+            status: IdentifierStatus.Raw,
+        },
+    ]);
     localMatchCompileMessages([
         {
             type: "error",
             range: [6, 25],
-            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`
-        }
-    ])
-})
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
+        },
+    ]);
+});
 
 test("shallow mode: non-built-in call initializer stays literal until mutated", () => {
     localAnalyzeWithOptions(
@@ -757,16 +760,16 @@ test("shallow mode: non-built-in call initializer stays literal until mutated", 
             let value = loadValue()
         `,
         {
-            reactivityMode: ReactivityMode.Shallow
-        }
-    )
+            reactivityMode: ReactivityMode.Shallow,
+        },
+    );
     checkTopLevelIdentifiers([
         {
             name: "value",
             hoist: false,
             implicit: true,
-            status: IdentifierStatus.Literal
-        }
-    ])
-    localMatchCompileMessages([])
-})
+            status: IdentifierStatus.Literal,
+        },
+    ]);
+    localMatchCompileMessages([]);
+});

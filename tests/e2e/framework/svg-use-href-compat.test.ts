@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -25,27 +25,27 @@ const scenario: E2EScenarioInput = {
             <button id="switch-icon" @click={switchIcon}>Switch icon</button>
             <p id="state-href">Href: {iconHref}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("updates use href attribute with dynamic !href binding", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         const hrefInitial = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttribute("href"))
-        expect(hrefInitial).toBe("#shape-a")
+            .evaluate(node => node.getAttribute("href"));
+        expect(hrefInitial).toBe("#shape-a");
 
-        await page.locator("#switch-icon").click()
-        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b")
+        await page.locator("#switch-icon").click();
+        await expect(page.locator("#state-href")).toHaveText("Href: #shape-b");
 
         const hrefAfterSwitch = await page
             .locator("#icon-use")
-            .evaluate(node => node.getAttribute("href"))
-        expect(hrefAfterSwitch).toBe("#shape-b")
-    })
-})
+            .evaluate(node => node.getAttribute("href"));
+        expect(hrefAfterSwitch).toBe("#shape-b");
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -23,22 +23,22 @@ const scenario: E2EScenarioInput = {
             <button id="html-escape-none" @click={useNoEscape}>No escape</button>
             <div id="html-host" #html={htmlOptions}>{rawHtml}</div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports escapeStyle option", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#html-host style#html-style")).toHaveCount(1)
-        await expect(page.locator("#html-host #html-style-tail")).toHaveText("Styled tail")
+        await expect(page.locator("#html-host style#html-style")).toHaveCount(1);
+        await expect(page.locator("#html-host #html-style-tail")).toHaveText("Styled tail");
 
-        await page.locator("#html-escape-style").click()
-        await expect(page.locator("#html-host style#html-style")).toHaveCount(0)
-        await expect(page.locator("#html-host")).toContainText("#html-style-tail")
-        await expect(page.locator("#html-host #html-style-tail")).toHaveText("Styled tail")
+        await page.locator("#html-escape-style").click();
+        await expect(page.locator("#html-host style#html-style")).toHaveCount(0);
+        await expect(page.locator("#html-host")).toContainText("#html-style-tail");
+        await expect(page.locator("#html-host #html-style-tail")).toHaveText("Styled tail");
 
-        await page.locator("#html-escape-none").click()
-        await expect(page.locator("#html-host style#html-style")).toHaveCount(1)
-    })
-})
+        await page.locator("#html-escape-none").click();
+        await expect(page.locator("#html-host style#html-style")).toHaveCount(1);
+    });
+});

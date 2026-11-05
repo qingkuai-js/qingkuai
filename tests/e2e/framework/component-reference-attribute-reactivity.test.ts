@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -27,23 +27,23 @@ const scenario: E2EScenarioInput = {
                 <p id="child-score">Child score: {refs.score}</p>
                 <button id="child-increase" @click={increase}>Increase</button>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("syncs component reference attribute writes back to parent let target", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#parent-score")).toHaveText("Parent score: 1")
-        await expect(page.locator("#child-score")).toHaveText("Child score: 1")
+        await expect(page.locator("#parent-score")).toHaveText("Parent score: 1");
+        await expect(page.locator("#child-score")).toHaveText("Child score: 1");
 
-        await page.locator("#child-increase").click()
+        await page.locator("#child-increase").click();
 
-        await expect(page.locator("#parent-score")).toHaveText("Parent score: 2")
-        await expect(page.locator("#child-score")).toHaveText("Child score: 2")
-    })
-})
+        await expect(page.locator("#parent-score")).toHaveText("Parent score: 2");
+        await expect(page.locator("#child-score")).toHaveText("Child score: 2");
+    });
+});

@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -69,36 +69,36 @@ const scenario: E2EScenarioInput = {
             <article class="for-component-item">
                 <slot></slot>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports for on component tags", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#for-component-list .for-component-item")).toHaveCount(2)
+        await expect(page.locator("#for-component-list .for-component-item")).toHaveCount(2);
 
-        await page.locator("#for-add-item").click()
-        await expect(page.locator("#for-component-list .for-component-item")).toHaveCount(3)
+        await page.locator("#for-add-item").click();
+        await expect(page.locator("#for-component-list .for-component-item")).toHaveCount(3);
 
-        await page.locator("#for-remove-item").click()
-        await expect(page.locator("#for-component-list .for-component-item")).toHaveCount(2)
-    })
+        await page.locator("#for-remove-item").click();
+        await expect(page.locator("#for-component-list .for-component-item")).toHaveCount(2);
+    });
 
     test("keeps component for blocks between stable siblings during updates", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const markers = page.locator("#for-component-order-host .for-component-order-marker")
-        await expect(markers).toHaveText(["Before", "After"])
+        const markers = page.locator("#for-component-order-host .for-component-order-marker");
+        await expect(markers).toHaveText(["Before", "After"]);
 
-        await page.locator("#for-add-item").click()
-        await expect(markers).toHaveText(["Before", "After"])
+        await page.locator("#for-add-item").click();
+        await expect(markers).toHaveText(["Before", "After"]);
 
-        await page.locator("#for-remove-item").click()
-        await expect(markers).toHaveText(["Before", "After"])
-    })
-})
+        await page.locator("#for-remove-item").click();
+        await expect(markers).toHaveText(["Before", "After"]);
+    });
+});

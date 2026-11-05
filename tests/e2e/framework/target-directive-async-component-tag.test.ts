@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -29,28 +29,28 @@ const scenario: E2EScenarioInput = {
         </section>
     `,
     components: {
-        AsyncPanel: `<article id="async-panel">Async Panel</article>`
-    }
-}
+        AsyncPanel: `<article id="async-panel">Async Panel</article>`,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("async component tag renders and teleports to #target", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#source #async-panel")).toHaveText("Async Panel")
+        await visitScenario(scenario);
+        await expect(page.locator("#source #async-panel")).toHaveText("Async Panel");
 
         // 移到 #dest-a
         // Move to #dest-a
-        await page.locator("#btn-to-a").click()
-        await expect(page.locator("#dest-a #async-panel")).toHaveCount(1)
-        await expect(page.locator("#source #async-panel")).toHaveCount(0)
+        await page.locator("#btn-to-a").click();
+        await expect(page.locator("#dest-a #async-panel")).toHaveCount(1);
+        await expect(page.locator("#source #async-panel")).toHaveCount(0);
 
         // 回到 inline
         // Back to inline
-        await page.locator("#btn-reset").click()
-        await expect(page.locator("#source #async-panel")).toHaveText("Async Panel")
-        await expect(page.locator("#dest-a #async-panel")).toHaveCount(0)
-    })
-})
+        await page.locator("#btn-reset").click();
+        await expect(page.locator("#source #async-panel")).toHaveText("Async Panel");
+        await expect(page.locator("#dest-a #async-panel")).toHaveCount(0);
+    });
+});

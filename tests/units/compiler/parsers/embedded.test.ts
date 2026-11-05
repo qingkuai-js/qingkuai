@@ -1,10 +1,10 @@
-import { expect, test } from "vitest"
-import { inputDescriptor } from "../../../../src/compiler/state"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { matchCompileMessages } from "../../../../src/util/testing/match"
-import { parseTemplateTesting } from "../../../../src/util/testing/sundry"
-import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match"
-import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position"
+import { expect, test } from "vitest";
+import { inputDescriptor } from "../../../../src/compiler/state";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { matchCompileMessages } from "../../../../src/util/testing/match";
+import { parseTemplateTesting } from "../../../../src/util/testing/sundry";
+import { matchTemplateNodeList, matchTemplateNodeListAndMessages } from "./_match";
+import { getLocByIndex, getPosByIndex } from "../../../../src/util/compiler/position";
 
 test("Single embedded script language block", () => {
     const nodeList = parseTemplateTesting(
@@ -15,8 +15,8 @@ test("Single embedded script language block", () => {
                     name = "QingKuai"
                 })
             </lang-js>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(nodeList, {
         tag: "lang-js",
         children: [
@@ -25,21 +25,21 @@ test("Single embedded script language block", () => {
                     {
                         isInterpolated: false,
                         loc: getLocByIndex(9, 89),
-                        value: `\n    let name = "World"\n    setTimeout(() => {\n        name = "QingKuai"\n    })\n`
-                    }
+                        value: `\n    let name = "World"\n    setTimeout(() => {\n        name = "QingKuai"\n    })\n`,
+                    },
                 ],
                 parent: nodeList[0],
                 preWhiteSpace: true,
-                loc: getLocByIndex(9, 89)
-            }
+                loc: getLocByIndex(9, 89),
+            },
         ],
         isEmbedded: true,
         preWhiteSpace: true,
         loc: getLocByIndex(0, 99),
         startTagEndPos: getPosByIndex(9),
-        endTagStartPos: getPosByIndex(89)
-    })
-})
+        endTagStartPos: getPosByIndex(89),
+    });
+});
 
 test("Single embedded style language block", () => {
     const nodeList = parseTemplateTesting(
@@ -49,8 +49,8 @@ test("Single embedded style language block", () => {
                     background-color: red;
                 }
             </lang-css>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(nodeList, {
         tag: "lang-css",
         children: [
@@ -59,21 +59,21 @@ test("Single embedded style language block", () => {
                     {
                         isInterpolated: false,
                         loc: getLocByIndex(10, 65),
-                        value: "\n    .container {\n        background-color: red;\n    }\n"
-                    }
+                        value: "\n    .container {\n        background-color: red;\n    }\n",
+                    },
                 ],
                 parent: nodeList[0],
                 preWhiteSpace: true,
-                loc: getLocByIndex(10, 65)
-            }
+                loc: getLocByIndex(10, 65),
+            },
         ],
         isEmbedded: true,
         preWhiteSpace: true,
         loc: getLocByIndex(0, 76),
         startTagEndPos: getPosByIndex(10),
-        endTagStartPos: getPosByIndex(65)
-    })
-})
+        endTagStartPos: getPosByIndex(65),
+    });
+});
 
 test("Whether multiple embedded script language block will cause parsing error", () => {
     matchTemplateNodeListAndMessages(() => {
@@ -82,8 +82,8 @@ test("Whether multiple embedded script language block will cause parsing error",
                 <lang-js></lang-js>
                 <lang-ts></lang-ts>
             `),
-            { recover: true }
-        )
+            { recover: true },
+        );
         return [
             nodeList,
             {
@@ -93,19 +93,19 @@ test("Whether multiple embedded script language block will cause parsing error",
                 preWhiteSpace: true,
                 loc: getLocByIndex(0, 19),
                 startTagEndPos: getPosByIndex(9),
-                endTagStartPos: getPosByIndex(9)
+                endTagStartPos: getPosByIndex(9),
             },
             {
                 content: [
                     {
                         value: "\n",
                         isInterpolated: false,
-                        loc: getLocByIndex(19, 20)
-                    }
+                        loc: getLocByIndex(19, 20),
+                    },
                 ],
                 prev: nodeList[0],
                 next: nodeList[2],
-                loc: getLocByIndex(19, 20)
+                loc: getLocByIndex(19, 20),
             },
             {
                 tag: "lang-ts",
@@ -114,25 +114,25 @@ test("Whether multiple embedded script language block will cause parsing error",
                 preWhiteSpace: true,
                 loc: getLocByIndex(20, 39),
                 startTagEndPos: getPosByIndex(29),
-                endTagStartPos: getPosByIndex(29)
-            }
-        ]
+                endTagStartPos: getPosByIndex(29),
+            },
+        ];
     }, [
         {
             type: "error",
             range: [20, 28],
-            value: "The embedded script block is out of limit: only one is allowed."
-        }
-    ])
-})
+            value: "The embedded script block is out of limit: only one is allowed.",
+        },
+    ]);
+});
 
 test("Whether multiple embedded style language blocks will not cause parsing error", () => {
     const nodeList = parseTemplateTesting(
         formatSourceCode(`
             <lang-css></lang-css>
             <lang-scss></lang-scss>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(
         nodeList,
         {
@@ -142,19 +142,19 @@ test("Whether multiple embedded style language blocks will not cause parsing err
             preWhiteSpace: true,
             loc: getLocByIndex(0, 21),
             startTagEndPos: getPosByIndex(10),
-            endTagStartPos: getPosByIndex(10)
+            endTagStartPos: getPosByIndex(10),
         },
         {
             content: [
                 {
                     value: "\n",
                     isInterpolated: false,
-                    loc: getLocByIndex(21, 22)
-                }
+                    loc: getLocByIndex(21, 22),
+                },
             ],
             prev: nodeList[0],
             next: nodeList[2],
-            loc: getLocByIndex(21, 22)
+            loc: getLocByIndex(21, 22),
         },
         {
             tag: "lang-scss",
@@ -163,10 +163,10 @@ test("Whether multiple embedded style language blocks will not cause parsing err
             preWhiteSpace: true,
             loc: getLocByIndex(22, 45),
             startTagEndPos: getPosByIndex(33),
-            endTagStartPos: getPosByIndex(33)
-        }
-    )
-})
+            endTagStartPos: getPosByIndex(33),
+        },
+    );
+});
 
 test("Whether <script> and <style> element will not be parsed as embedded language block", () => {
     const nodeList = parseTemplateTesting(
@@ -177,8 +177,8 @@ test("Whether <script> and <style> element will not be parsed as embedded langua
             <style>
                 .container {}
             </style>
-        `)
-    )
+        `),
+    );
     matchTemplateNodeList(
         nodeList,
         {
@@ -189,32 +189,32 @@ test("Whether <script> and <style> element will not be parsed as embedded langua
                         {
                             isInterpolated: false,
                             loc: getLocByIndex(8, 27),
-                            value: `\n    console.log()\n`
-                        }
+                            value: `\n    console.log()\n`,
+                        },
                     ],
                     parent: nodeList[0],
                     preWhiteSpace: true,
                     hasActualAncestor: true,
-                    loc: getLocByIndex(8, 27)
-                }
+                    loc: getLocByIndex(8, 27),
+                },
             ],
             next: nodeList[1],
             preWhiteSpace: true,
             loc: getLocByIndex(0, 36),
             startTagEndPos: getPosByIndex(8),
-            endTagStartPos: getPosByIndex(27)
+            endTagStartPos: getPosByIndex(27),
         },
         {
             content: [
                 {
                     value: "\n",
                     isInterpolated: false,
-                    loc: getLocByIndex(36, 37)
-                }
+                    loc: getLocByIndex(36, 37),
+                },
             ],
             prev: nodeList[0],
             next: nodeList[2],
-            loc: getLocByIndex(36, 37)
+            loc: getLocByIndex(36, 37),
         },
         {
             tag: "style",
@@ -224,154 +224,154 @@ test("Whether <script> and <style> element will not be parsed as embedded langua
                         {
                             isInterpolated: false,
                             loc: getLocByIndex(44, 63),
-                            value: "\n    .container {}\n"
-                        }
+                            value: "\n    .container {}\n",
+                        },
                     ],
                     parent: nodeList[2],
                     preWhiteSpace: true,
                     hasActualAncestor: true,
-                    loc: getLocByIndex(44, 63)
-                }
+                    loc: getLocByIndex(44, 63),
+                },
             ],
             prev: nodeList[1],
             preWhiteSpace: true,
             loc: getLocByIndex(37, 71),
             startTagEndPos: getPosByIndex(44),
-            endTagStartPos: getPosByIndex(63)
-        }
-    )
-})
+            endTagStartPos: getPosByIndex(63),
+        },
+    );
+});
 
 test("Embedded style block without end tag reports unclosed start tag", () => {
     parseTemplateTesting("<style>.a{color:red}", {
-        recover: true
-    })
+        recover: true,
+    });
     matchCompileMessages([
         {
             type: "error",
             range: [0, 6],
-            value: "The start tag <style> is not closed."
-        }
-    ])
-})
+            value: "The start tag <style> is not closed.",
+        },
+    ]);
+});
 
 test("Embedded script end tag without closing angle reports end tag not closed", () => {
     parseTemplateTesting("<script>console.log(1)</script", {
-        recover: true
-    })
+        recover: true,
+    });
     matchCompileMessages([
         {
             type: "error",
             range: [22, 30],
-            value: "The end tag </script> is not closed."
-        }
-    ])
-})
+            value: "The end tag </script> is not closed.",
+        },
+    ]);
+});
 
 test("Embedded language blocks nested in normal elements are rejected", () => {
     parseTemplateTesting("<div><lang-js></lang-js></div>", {
-        recover: true
-    })
+        recover: true,
+    });
     matchCompileMessages([
         {
             type: "error",
             range: [5, 13],
-            value: "The embedded language block <lang-js> can only be used in the top level of the template."
-        }
-    ])
-})
+            value: "The embedded language block <lang-js> can only be used in the top level of the template.",
+        },
+    ]);
+});
 
 test("Embedded style: self-closing with src generates virtual import code", () => {
-    const nodeList = parseTemplateTesting(`<lang-css src="./theme.css" />`)
+    const nodeList = parseTemplateTesting(`<lang-css src="./theme.css" />`);
 
-    expect(nodeList.length).toBe(1)
-    expect(nodeList[0].tag).toBe("lang-css")
-    expect(nodeList[0].isSelfClosing).toBe(true)
+    expect(nodeList.length).toBe(1);
+    expect(nodeList[0].tag).toBe("lang-css");
+    expect(nodeList[0].isSelfClosing).toBe(true);
     expect(inputDescriptor.styles).toEqual([
         expect.objectContaining({
             lang: "css",
             global: false,
-            code: `@import "./theme.css";`
-        })
-    ])
-})
+            code: `@import "./theme.css";`,
+        }),
+    ]);
+});
 
 test("Embedded style: src uses @use for scss-like languages", () => {
-    parseTemplateTesting(`<lang-scss src="./theme.scss"></lang-scss>`)
+    parseTemplateTesting(`<lang-scss src="./theme.scss"></lang-scss>`);
 
     expect(inputDescriptor.styles).toEqual([
         expect.objectContaining({
             lang: "scss",
             global: false,
-            code: `@use "./theme.scss";`
-        })
-    ])
-})
+            code: `@use "./theme.scss";`,
+        }),
+    ]);
+});
 
 test("Embedded style: global attribute marks style descriptor as global", () => {
-    parseTemplateTesting(`<lang-css global src="./theme.css" />`)
+    parseTemplateTesting(`<lang-css global src="./theme.css" />`);
 
     expect(inputDescriptor.styles).toEqual([
         expect.objectContaining({
             lang: "css",
             global: true,
-            code: `@import "./theme.css";`
-        })
-    ])
-})
+            code: `@import "./theme.css";`,
+        }),
+    ]);
+});
 
 test("Embedded style: self-closing block without src reports error", () => {
     parseTemplateTesting(`<lang-css />`, {
-        recover: true
-    })
+        recover: true,
+    });
 
     matchCompileMessages([
         {
             type: "error",
             range: [0, 9],
-            value: `The self-closing embedded style tag <lang-css> must have a "src" attribute to specify the source file of the style.`
-        }
-    ])
-})
+            value: `The self-closing embedded style tag <lang-css> must have a "src" attribute to specify the source file of the style.`,
+        },
+    ]);
+});
 
 test("Embedded style: style block with src cannot have content", () => {
     parseTemplateTesting(`<lang-css src="./theme.css">.a{color:red}</lang-css>`, {
-        recover: true
-    })
+        recover: true,
+    });
 
     matchCompileMessages([
         {
             type: "error",
             range: [0, 9],
-            value: `The embedded style tag <lang-css> with a "src" attribute cannot have content.`
-        }
-    ])
-})
+            value: `The embedded style tag <lang-css> with a "src" attribute cannot have content.`,
+        },
+    ]);
+});
 
 test("Embedded style: self-closing block with empty src reports error", () => {
     parseTemplateTesting(`<lang-css src="" />`, {
-        recover: true
-    })
+        recover: true,
+    });
 
     matchCompileMessages([
         {
             type: "error",
             range: [0, 9],
-            value: `The "src" attribute on <lang-css> requires a non-empty value.`
-        }
-    ])
-})
+            value: `The "src" attribute on <lang-css> requires a non-empty value.`,
+        },
+    ]);
+});
 
 test("Embedded style: non-self-closing block with empty src reports error", () => {
     parseTemplateTesting(`<lang-css src=""></lang-css>`, {
-        recover: true
-    })
+        recover: true,
+    });
 
     matchCompileMessages([
         {
             type: "error",
             range: [0, 9],
-            value: `The "src" attribute on <lang-css> requires a non-empty value.`
-        }
-    ])
-})
+            value: `The "src" attribute on <lang-css> requires a non-empty value.`,
+        },
+    ]);
+});

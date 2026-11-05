@@ -1,55 +1,55 @@
-import type { FragmentGetter, FragmentParser, MountCollector } from "#type-declarations/runtime"
+import type { FragmentGetter, FragmentParser, MountCollector } from "#type-declarations/runtime";
 
 import {
     DOCUMENT,
     NODE_CONTEXT,
     FRAGMENT_FLAG,
     VALUE_CACHE_KEY,
-    SVG_NAMESPACE_URI
-} from "./constants"
-import { any } from "../util/shared/sundry"
-import { arrayFrom } from "../util/shared/arrays"
-import { isElement } from "../util/runtime/assert"
-import { currentDestruction, currentInstance } from "./state"
-import { isArray, isNumber, isString, isUndefined } from "../util/shared/assert"
-import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags"
+    SVG_NAMESPACE_URI,
+} from "./constants";
+import { any } from "../util/shared/sundry";
+import { arrayFrom } from "../util/shared/arrays";
+import { isElement } from "../util/runtime/assert";
+import { currentDestruction, currentInstance } from "./state";
+import { isArray, isNumber, isString, isUndefined } from "../util/shared/assert";
+import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags";
 
 export function newTextNode() {
-    return DOCUMENT!.createTextNode("")
+    return DOCUMENT!.createTextNode("");
 }
 
 export function getParentElement(node: Node) {
-    return node.parentElement
+    return node.parentElement;
 }
 
 export function selectElement(selector: string) {
-    return DOCUMENT!.querySelector(selector)
+    return DOCUMENT!.querySelector(selector);
 }
 
 export function setText(text: any, content: any) {
     if (!isString(content) && !isNumber(content)) {
-        content = "" + content
+        content = "" + content;
     }
     if (content !== text[NODE_CONTEXT]) {
-        text[NODE_CONTEXT] = text.nodeValue = content
+        text[NODE_CONTEXT] = text.nodeValue = content;
     }
 }
 
 export function appendChild(target: Element, node: Node) {
-    target.appendChild(node)
+    target.appendChild(node);
 }
 
 export function getSibling(node: ChildNode, distance = 1) {
     while (distance--) {
-        node = node.nextSibling!
+        node = node.nextSibling!;
     }
-    return node
+    return node;
 }
 
 export function getChildAsText(target: Element, index = 0) {
-    const textNode = newTextNode()
-    const child = getChild(target, index)
-    return (child.replaceWith(textNode), textNode)
+    const textNode = newTextNode();
+    const child = getChild(target, index);
+    return (child.replaceWith(textNode), textNode);
 }
 
 // 挂载收集器把一个连续渲染区间的内容先在文档外组装，再一次性插入文档。
@@ -65,155 +65,155 @@ export function getChildAsText(target: Element, index = 0) {
 // means the batch has been inserted, so later content goes right before the reference
 // and the collector keeps acting as the mount position of that run.
 export function createMountCollector(reference: ChildNode): MountCollector {
-    return [reference, DOCUMENT!.createDocumentFragment()]
+    return [reference, DOCUMENT!.createDocumentFragment()];
 }
 
 export function flushMountCollector(collector: MountCollector) {
-    const fragment = collector[1]
+    const fragment = collector[1];
     if (fragment) {
-        collector[0].before(fragment)
-        collector[1] = null
+        collector[0].before(fragment);
+        collector[1] = null;
     }
 }
 
 export function insertBefore(reference: ChildNode | MountCollector, node: Node) {
     if (isArray(reference)) {
-        const fragment = reference[1]
+        const fragment = reference[1];
         if (fragment) {
-            fragment.appendChild(node)
+            fragment.appendChild(node);
         } else {
-            reference[0].before(node)
+            reference[0].before(node);
         }
-        return
+        return;
     }
-    reference.before(node)
+    reference.before(node);
 }
 
 export function getSiblingAsText(node: ChildNode, distance = 1) {
-    const textNode = newTextNode()
-    const child = getSibling(node, distance)
-    return (child.replaceWith(textNode), textNode)
+    const textNode = newTextNode();
+    const child = getSibling(node, distance);
+    return (child.replaceWith(textNode), textNode);
 }
 
 export function getElementValue(elem: Element) {
-    return any(elem)[VALUE_CACHE_KEY] ?? any(elem).value
+    return any(elem)[VALUE_CACHE_KEY] ?? any(elem).value;
 }
 
 export function getChild(node: Element, index = 0) {
     if ((node as any)[FRAGMENT_FLAG] & FRAG_LEADING_ANCHOR) {
-        index++
+        index++;
     }
 
-    let child = node.firstChild as ChildNode
+    let child = node.firstChild as ChildNode;
     while (index-- > 0) {
-        child = child.nextSibling as ChildNode
+        child = child.nextSibling as ChildNode;
     }
-    return child
+    return child;
 }
 
 export function createHtmlFragmentGetter(html: string, arr?: string[]) {
-    return createGetter(html, arr, parseHtmlFragment)
+    return createGetter(html, arr, parseHtmlFragment);
 }
 
 export function createSvgFragmentGetter(html: string, arr?: string[]) {
-    return createGetter(html, arr, parseSvgFragment)
+    return createGetter(html, arr, parseSvgFragment);
 }
 
 // 插槽内容的落点由组件决定，只能由调用方在实例化时把锚点传进来；两种解析结果各缓存一份
 // Where slot content lands is decided by the component, so the caller passes
 // the anchor when instantiating; both parse results are cached separately.
 export function createSlotFragmentGetter(html: string, arr?: string[]) {
-    let htmlGetter: FragmentGetter | undefined
-    let svgGetter: FragmentGetter | undefined
+    let htmlGetter: FragmentGetter | undefined;
+    let svgGetter: FragmentGetter | undefined;
     return (flag = 0, anchor?: Node) => {
-        const parent = anchor?.parentNode as Element | null
+        const parent = anchor?.parentNode as Element | null;
 
         // foreignObject 元素本身属于 SVG 命名空间，但它的子节点属于 HTML 命名空间
         // A foreignObject element lives in the SVG namespace while its children
         // belong to the HTML namespace.
         const isSvg =
             parent?.namespaceURI === SVG_NAMESPACE_URI &&
-            "foreignobject" !== parent.localName.toLowerCase()
+            "foreignobject" !== parent.localName.toLowerCase();
         if (isSvg) {
-            return (svgGetter ??= createSvgFragmentGetter(html, arr))(flag)
+            return (svgGetter ??= createSvgFragmentGetter(html, arr))(flag);
         }
-        return (htmlGetter ??= createHtmlFragmentGetter(html, arr))(flag)
-    }
+        return (htmlGetter ??= createHtmlFragmentGetter(html, arr))(flag);
+    };
 }
 
 // 创建一个 HTML 片段获取器，重复获取时返回原片段的克隆副本以降低开销
 // Create an HTML fragment getter that returns a cloned instance of
 // the original fragment on each retrieval to minimize reuse overhead
 function createGetter(html: string, arr: string[] | undefined, parse: FragmentParser) {
-    let singleNode: ChildNode | undefined
-    let content: DocumentFragment | undefined
+    let singleNode: ChildNode | undefined;
+    let content: DocumentFragment | undefined;
     return (flag = 0) => {
         if (isUndefined(content)) {
-            content = parse(arr ? restoreHtmlForFragment(html, arr) : html)
+            content = parse(arr ? restoreHtmlForFragment(html, arr) : html);
         }
 
-        let ret: any
-        const isOrphan = flag & FRAG_ORPHAN_CONTENT
+        let ret: any;
+        const isOrphan = flag & FRAG_ORPHAN_CONTENT;
         if (isOrphan && !(flag & FRAG_LEADING_ANCHOR)) {
             if (isUndefined(singleNode)) {
-                singleNode = content.firstChild as ChildNode
+                singleNode = content.firstChild as ChildNode;
             }
-            ret = singleNode.cloneNode(true)
+            ret = singleNode.cloneNode(true);
         } else {
-            ret = content.cloneNode(true)
+            ret = content.cloneNode(true);
 
             if (flag & FRAG_LEADING_ANCHOR) {
-                ret.prepend(newTextNode())
+                ret.prepend(newTextNode());
             } else if (isOrphan) {
-                ret = ret.firstChild!
+                ret = ret.firstChild!;
             }
         }
         if (flag & FRAGMENT_ROOT) {
-            attachScopesToRoot(ret)
+            attachScopesToRoot(ret);
         }
         if (flag) {
-            ret[FRAGMENT_FLAG] = flag
+            ret[FRAGMENT_FLAG] = flag;
         }
         if (currentDestruction) {
             if (isOrphan) {
-                currentDestruction.s = ret
-                currentDestruction.n = ret
+                currentDestruction.s = ret;
+                currentDestruction.n = ret;
             } else {
-                currentDestruction.s = ret.firstChild
-                currentDestruction.n = ret.lastChild
+                currentDestruction.s = ret.firstChild;
+                currentDestruction.n = ret.lastChild;
             }
-            currentDestruction.f = flag
+            currentDestruction.f = flag;
         }
-        return ret
-    }
+        return ret;
+    };
 }
 
 function parseHtmlFragment(html: string) {
-    const template = DOCUMENT!.createElement("template")
-    template.innerHTML = html
-    return template.content
+    const template = DOCUMENT!.createElement("template");
+    template.innerHTML = html;
+    return template.content;
 }
 
 // 在遇到 <svg> 标签时切换到 SVG 命名空间
 // Switch to the SVG namespace when encountering an <svg> tag
 function parseSvgFragment(html: string) {
-    const template = DOCUMENT!.createElement("template")
-    template.innerHTML = "<svg>" + html + "</svg>"
+    const template = DOCUMENT!.createElement("template");
+    template.innerHTML = "<svg>" + html + "</svg>";
 
-    const wrapper = template.content.firstChild as Element | null
+    const wrapper = template.content.firstChild as Element | null;
     const wrapped =
         wrapper !== null &&
         wrapper.namespaceURI === SVG_NAMESPACE_URI &&
-        template.content.childNodes.length == 1
+        template.content.childNodes.length == 1;
     if (wrapped) {
-        const fragment = DOCUMENT!.createDocumentFragment()
+        const fragment = DOCUMENT!.createDocumentFragment();
         while (wrapper.firstChild) {
-            fragment.appendChild(wrapper.firstChild)
+            fragment.appendChild(wrapper.firstChild);
         }
-        return fragment
+        return fragment;
     }
-    template.innerHTML = html
-    return template.content
+    template.innerHTML = html;
+    return template.content;
 }
 
 // 将压缩后的 HTML 字符串恢复原貌
@@ -221,31 +221,31 @@ function parseSvgFragment(html: string) {
 function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
     for (let i = 0; i < html.length; ) {
         if (html.charCodeAt(i) !== 124) {
-            ret += html[i++]
-            continue
+            ret += html[i++];
+            continue;
         }
 
-        const nextCode = html.charCodeAt(++i)
+        const nextCode = html.charCodeAt(++i);
         if (nextCode === 124) {
-            ret += "|"
-            i++
-            continue
+            ret += "|";
+            i++;
+            continue;
         }
 
         if (nextCode < 48 || nextCode > 57) {
-            ret += "|"
-            continue
+            ret += "|";
+            continue;
         }
 
-        let index = nextCode - 48
-        let code = html.charCodeAt(++i)
+        let index = nextCode - 48;
+        let code = html.charCodeAt(++i);
         while (code >= 48 && code <= 57) {
-            index = index * 10 + (code - 48)
-            code = html.charCodeAt(++i)
+            index = index * 10 + (code - 48);
+            code = html.charCodeAt(++i);
         }
-        ret += arr[index]
+        ret += arr[index];
     }
-    return ret
+    return ret;
 }
 
 // 将祖先 scope 链中的所有 scope 属性设置到根元素上
@@ -257,13 +257,13 @@ function restoreHtmlForFragment(html: string, arr: string[], ret = "") {
 // value is always the empty string, so the generic setter's compare cache is of no
 // use here, and skipping it lets bundlers shake the whole attribute cache away.
 function attachScopesToRoot(node: Element | DocumentFragment): void {
-    const scopes = currentInstance?._internal.a
+    const scopes = currentInstance?._internal.a;
     if (!scopes?.length) {
-        return
+        return;
     }
     for (const element of isElement(node) ? [node] : arrayFrom(node.children)) {
         for (const scope of scopes) {
-            element.setAttribute(scope, "")
+            element.setAttribute(scope, "");
         }
     }
 }

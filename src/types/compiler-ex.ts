@@ -1,4 +1,4 @@
-import type TS from "typescript"
+import type TS from "typescript";
 
 import type {
     Range,
@@ -7,8 +7,8 @@ import type {
     CompileMessage,
     ComponentTagPart,
     TemplateAttribute,
-    StandaloneParseTemplateOptions
-} from "#type-declarations/compiler"
+    StandaloneParseTemplateOptions,
+} from "#type-declarations/compiler";
 
 export interface Camel2KebabFunc {
     /**
@@ -44,7 +44,7 @@ export interface Camel2KebabFunc {
      * The converted kebab-case string, or the original string when it is
      * preserved by configuration.
      */
-    (str: string, allowFullLower?: boolean): string
+    (str: string, allowFullLower?: boolean): string;
 }
 
 export interface Kebab2CamelFunc {
@@ -79,7 +79,7 @@ export interface Kebab2CamelFunc {
      * @returns 转换后的 camelCase 或 PascalCase 字符串。\
      * The converted camelCase or PascalCase string.
      */
-    (str: string, startWithUppercase?: boolean): string
+    (str: string, startWithUppercase?: boolean): string;
 }
 
 export interface ToPropertyKeyFunc {
@@ -114,7 +114,7 @@ export interface ToPropertyKeyFunc {
      * A valid object property key, either the original identifier or a
      * quoted string literal.
      */
-    (str: string): string
+    (str: string): string;
 }
 
 export interface FindEndBracketFunc {
@@ -149,7 +149,7 @@ export interface FindEndBracketFunc {
      * @throws 当首字符不是受支持的开始括号时抛出异常。\
      * Throws when the first character is not a supported opening bracket.
      */
-    (str: string): number
+    (str: string): number;
 }
 
 export interface FindOutOfLiteralFunc {
@@ -185,7 +185,7 @@ export interface FindOutOfLiteralFunc {
      * @returns 匹配项的起始索引；未找到时返回 `-1`。\
      * The starting index of the match, or `-1` if no valid match is found.
      */
-    (str: string, substr: string, startIndex?: number): number
+    (str: string, substr: string, startIndex?: number): number;
 
     /**
      * 按与上方相同的规则在 JavaScript 源码中查找正则匹配项。\
@@ -211,7 +211,7 @@ export interface FindOutOfLiteralFunc {
      * A tuple in the form `[index, length]`, or `[-1, 0]` if no valid
      * match is found.
      */
-    (str: string, pattern: RegExp, startIndex?: number): Range
+    (str: string, pattern: RegExp, startIndex?: number): Range;
 }
 
 export interface FindOutOfCommentFunc {
@@ -243,7 +243,7 @@ export interface FindOutOfCommentFunc {
      * @returns 匹配项的起始索引；未找到时返回 `-1`。\
      * The starting index of the match, or `-1` if no valid match is found.
      */
-    (str: string, substr: string, startIndex?: number): number
+    (str: string, substr: string, startIndex?: number): number;
 
     /**
      * 按与上方相同的规则在 JavaScript 源码中查找正则匹配项。\
@@ -269,7 +269,7 @@ export interface FindOutOfCommentFunc {
      * A tuple in the form `[index, length]`, or `[-1, 0]` if no valid
      * match is found.
      */
-    (str: string, pattern: RegExp, startIndex?: number): Range
+    (str: string, pattern: RegExp, startIndex?: number): Range;
 }
 
 export interface FindOutOfLiteralCommentFunc {
@@ -302,7 +302,7 @@ export interface FindOutOfLiteralCommentFunc {
      * @returns 匹配项的起始索引；未找到时返回 `-1`。\
      * The starting index of the match, or `-1` if no valid match is found.
      */
-    (str: string, substr: string, startIndex?: number): number
+    (str: string, substr: string, startIndex?: number): number;
 
     /**
      * 按与上方相同的规则在 JavaScript 源码中查找正则匹配项。\
@@ -328,7 +328,7 @@ export interface FindOutOfLiteralCommentFunc {
      * A tuple in the form `[index, length]`, or `[-1, 0]` if no valid
      * match is found.
      */
-    (str: string, pattern: RegExp, startIndex?: number): Range
+    (str: string, pattern: RegExp, startIndex?: number): Range;
 }
 
 export interface ParseDirectiveValueFunc {
@@ -369,12 +369,12 @@ export interface ParseDirectiveValueFunc {
      * patterns, and optional diagnostics.
      */
     (directive: TemplateAttribute): {
-        base: string
-        keywordIndex: number
-        baseStartSourceIndex: number
-        patterns: TS.ArrayBindingElement[]
-        messages?: CompileMessage[]
-    }
+        base: string;
+        keywordIndex: number;
+        baseStartSourceIndex: number;
+        patterns: TS.ArrayBindingElement[];
+        messages?: CompileMessage[];
+    };
 }
 
 export interface ParseEventFlagFunc {
@@ -411,11 +411,11 @@ export interface ParseEventFlagFunc {
      * and optional diagnostics.
      */
     (event: TemplateAttribute): {
-        eventName: string
-        generalFlag: EventFlagInfo
-        wrapperFlag: EventFlagInfo
-        messages?: CompileMessage[]
-    }
+        eventName: string;
+        generalFlag: EventFlagInfo;
+        wrapperFlag: EventFlagInfo;
+        messages?: CompileMessage[];
+    };
 }
 
 export interface ParseComponentTagFunc {
@@ -447,7 +447,7 @@ export interface ParseComponentTagFunc {
      * An array of `ComponentTagPart` objects. Each item contains the
      * converted identifier and its source range.
      */
-    (componentNode: TemplateNode): ComponentTagPart[]
+    (componentNode: TemplateNode): ComponentTagPart[];
 }
 
 export interface ParseTemplateFunc {
@@ -519,7 +519,7 @@ export interface ParseTemplateFunc {
      * In non-recovery mode, throws when an unrecoverable parsing error is
      * encountered.
      */
-    (source: string, options?: StandaloneParseTemplateOptions): TemplateNode[]
+    (source: string, options?: StandaloneParseTemplateOptions): TemplateNode[];
 }
 
 export interface FormatSourceCodeFunc {
@@ -552,5 +552,5 @@ export interface FormatSourceCodeFunc {
      * @returns 缩进规范化后的代码字符串。\
      * The normalized code string with adjusted indentation.
      */
-    (source: string): string
+    (source: string): string;
 }

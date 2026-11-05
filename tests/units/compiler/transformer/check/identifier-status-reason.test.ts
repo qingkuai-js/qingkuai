@@ -1,29 +1,29 @@
-import { expect, test } from "vitest"
-import { PositionFlag } from "../../../../../src/compiler"
-import { inputDescriptor } from "../../../../../src/compiler/state"
-import { parseScript } from "../../../../../src/compiler/parser/script"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
-import { compileIntermediate } from "../../../../../src/compiler/compile"
-import { matchCompileMessages } from "../../../../../src/util/testing/match"
+import { expect, test } from "vitest";
+import { PositionFlag } from "../../../../../src/compiler";
+import { inputDescriptor } from "../../../../../src/compiler/state";
+import { parseScript } from "../../../../../src/compiler/parser/script";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
+import { compileIntermediate } from "../../../../../src/compiler/compile";
+import { matchCompileMessages } from "../../../../../src/util/testing/match";
 
 function expectValidESMSyntax(code: string, label: string) {
-    expect(() => parseScript(code), label).not.toThrow()
+    expect(() => parseScript(code), label).not.toThrow();
 }
 
 function compileIntermediateAndAssertNoErrors(source: string, label: string) {
-    const result = compileIntermediate(source)
-    expect(result.messages.filter(msg => msg.type === "error")).toEqual([])
-    expectValidESMSyntax(result.code, `${label}-intermediate`)
+    const result = compileIntermediate(source);
+    expect(result.messages.filter(msg => msg.type === "error")).toEqual([]);
+    expectValidESMSyntax(result.code, `${label}-intermediate`);
     if (inputDescriptor.script.existing) {
         for (
             let i = inputDescriptor.script.loc.start.index;
             i < inputDescriptor.script.loc.end.index;
             i++
         ) {
-            expect(result.isPositionFlagSetAtIndex(PositionFlag.InScript, i)).toBe(true)
+            expect(result.isPositionFlagSetAtIndex(PositionFlag.InScript, i)).toBe(true);
         }
     }
-    return result
+    return result;
 }
 
 test("Intermediate: inferred raw reason is unmutated for literal used in template", () => {
@@ -33,14 +33,14 @@ test("Intermediate: inferred raw reason is unmutated for literal used in templat
         </lang-js>
 
         <p>{ count }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-unmutated")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-unmutated");
     expect(result.identifierStatusInfo).toMatchObject({
         count: {
-            description: "raw (never mutated)"
-        }
-    })
-})
+            description: "raw (never mutated)",
+        },
+    });
+});
 
 test("Intermediate: function call in template does not count as direct identifier access", () => {
     const source = formatSourceCode(`
@@ -52,17 +52,17 @@ test("Intermediate: function call in template does not count as direct identifie
         </lang-js>
 
         <p>{ getCount() }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-indirect-access")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-indirect-access");
     expect(result.identifierStatusInfo).toMatchObject({
         state: {
-            description: "raw (not accessed in template)"
+            description: "raw (not accessed in template)",
         },
         getCount: {
-            description: "raw (never mutated)"
-        }
-    })
-})
+            description: "raw (never mutated)",
+        },
+    });
+});
 
 test("Intermediate: object literal not used in template is raw with not-accessed reason", () => {
     const source = formatSourceCode(`
@@ -71,14 +71,14 @@ test("Intermediate: object literal not used in template is raw with not-accessed
         </lang-js>
 
         <p>static text</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-not-accessed")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-not-accessed");
     expect(result.identifierStatusInfo).toMatchObject({
         state: {
-            description: "raw (not accessed in template)"
-        }
-    })
-})
+            description: "raw (not accessed in template)",
+        },
+    });
+});
 
 test("Intermediate: explicit raw marker carries explicit raw reason", () => {
     const source = formatSourceCode(`
@@ -87,14 +87,14 @@ test("Intermediate: explicit raw marker carries explicit raw reason", () => {
         </lang-js>
 
         <p>{ config.value }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-explicit-raw")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-explicit-raw");
     expect(result.identifierStatusInfo).toMatchObject({
         config: {
-            description: "raw (explicit raw)"
-        }
-    })
-})
+            description: "raw (explicit raw)",
+        },
+    });
+});
 
 test("Intermediate: alias marker carries alias reason", () => {
     const source = formatSourceCode(`
@@ -103,14 +103,14 @@ test("Intermediate: alias marker carries alias reason", () => {
         </lang-js>
 
         <p>{ config }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-alias")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-alias");
     expect(result.identifierStatusInfo).toMatchObject({
         config: {
-            description: "alias -> props.config"
-        }
-    })
-})
+            description: "alias -> props.config",
+        },
+    });
+});
 
 test("Intermediate: function declaration stays raw even when called in template", () => {
     const source = formatSourceCode(`
@@ -121,14 +121,14 @@ test("Intermediate: function declaration stays raw even when called in template"
         </lang-js>
 
         <p>{ getLabel() }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-function-used")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-function-used");
     expect(result.identifierStatusInfo).toMatchObject({
         getLabel: {
-            description: "raw (never mutated)"
-        }
-    })
-})
+            description: "raw (never mutated)",
+        },
+    });
+});
 
 test("Intermediate: literal used and then mutated becomes reactive", () => {
     const source = formatSourceCode(`
@@ -141,17 +141,17 @@ test("Intermediate: literal used and then mutated becomes reactive", () => {
 
         <p>{ count }</p>
         <button @click={inc}>+</button>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-literal-mutated")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-literal-mutated");
     expect(result.identifierStatusInfo).toMatchObject({
         count: {
-            status: "reactive"
+            status: "reactive",
         },
         inc: {
-            description: "raw (never mutated)"
-        }
-    })
-})
+            description: "raw (never mutated)",
+        },
+    });
+});
 
 test("Intermediate: const function literal used in template is implicit raw", () => {
     const source = formatSourceCode(`
@@ -160,14 +160,14 @@ test("Intermediate: const function literal used in template is implicit raw", ()
         </lang-js>
 
         <p>{ getValue }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-implicit-raw")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-implicit-raw");
     expect(result.identifierStatusInfo).toMatchObject({
         getValue: {
-            description: "raw (implicit raw)"
-        }
-    })
-})
+            description: "raw (implicit raw)",
+        },
+    });
+});
 
 test("Intermediate: reactive mark on const literal is downgraded to raw", () => {
     const source = formatSourceCode(`
@@ -176,14 +176,14 @@ test("Intermediate: reactive mark on const literal is downgraded to raw", () => 
         </lang-js>
 
         <p>{ value }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-downgraded-raw")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-downgraded-raw");
     expect(result.identifierStatusInfo).toMatchObject({
         value: {
-            description: "raw (downgraded)"
-        }
-    })
-})
+            description: "raw (downgraded)",
+        },
+    });
+});
 
 test("Intermediate: shallow intrinsic keeps shallow status", () => {
     const source = formatSourceCode(`
@@ -192,14 +192,14 @@ test("Intermediate: shallow intrinsic keeps shallow status", () => {
         </lang-js>
 
         <p>{ state.n }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-shallow")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-shallow");
     expect(result.identifierStatusInfo).toMatchObject({
         state: {
-            status: "shallow"
-        }
-    })
-})
+            status: "shallow",
+        },
+    });
+});
 
 test("Intermediate: derived intrinsic keeps derived status", () => {
     const source = formatSourceCode(`
@@ -208,14 +208,14 @@ test("Intermediate: derived intrinsic keeps derived status", () => {
         </lang-js>
 
         <p>{ value }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-derived")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-derived");
     expect(result.identifierStatusInfo).toMatchObject({
         value: {
-            status: "derived"
-        }
-    })
-})
+            status: "derived",
+        },
+    });
+});
 
 test("Intermediate: identifier only read inside raw is marked non-reactive in template", () => {
     const source = formatSourceCode(`
@@ -224,14 +224,14 @@ test("Intermediate: identifier only read inside raw is marked non-reactive in te
         </lang-js>
 
         <p>{ raw(config).value }</p>
-    `)
-    const result = compileIntermediateAndAssertNoErrors(source, "id-status-untracked")
+    `);
+    const result = compileIntermediateAndAssertNoErrors(source, "id-status-untracked");
     expect(result.identifierStatusInfo).toMatchObject({
         config: {
-            description: "raw (untracked in template)"
-        }
-    })
-})
+            description: "raw (untracked in template)",
+        },
+    });
+});
 
 test("Intermediate: alias to a plain identifier is reported as invalid alias", () => {
     const source = formatSourceCode(`
@@ -241,21 +241,21 @@ test("Intermediate: alias to a plain identifier is reported as invalid alias", (
         </lang-js>
 
         <p>{ config.value }</p>
-    `)
-    const result = compileIntermediate(source)
+    `);
+    const result = compileIntermediate(source);
     matchCompileMessages([
         {
             type: "error",
             range: [59, 72],
-            value: `The "alias" built-in method cannot be used to create an alias for a standalone identifier.`
-        }
-    ])
+            value: `The "alias" built-in method cannot be used to create an alias for a standalone identifier.`,
+        },
+    ]);
     expect(result.identifierStatusInfo).toMatchObject({
         config: {
-            description: "alias (invalid)"
-        }
-    })
-})
+            description: "alias (invalid)",
+        },
+    });
+});
 
 test("Intermediate: alias ignores arguments after the first", () => {
     const source = formatSourceCode(`
@@ -264,15 +264,15 @@ test("Intermediate: alias ignores arguments after the first", () => {
         </lang-js>
 
         <p>{ a.value }</p>
-    `)
-    const result = compileIntermediate(source)
-    matchCompileMessages([])
+    `);
+    const result = compileIntermediate(source);
+    matchCompileMessages([]);
     expect(result.identifierStatusInfo).toMatchObject({
         a: {
-            description: "alias -> props.config"
-        }
-    })
-})
+            description: "alias -> props.config",
+        },
+    });
+});
 
 test("Intermediate: alias with a non-lvalue first argument is reported as invalid alias", () => {
     const source = formatSourceCode(`
@@ -281,21 +281,21 @@ test("Intermediate: alias with a non-lvalue first argument is reported as invali
         </lang-js>
 
         <p>{ b }</p>
-    `)
-    const result = compileIntermediate(source)
+    `);
+    const result = compileIntermediate(source);
     matchCompileMessages([
         {
             type: "error",
             range: [24, 32],
-            value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`
-        }
-    ])
+            value: `The built-in method "alias" must accept exactly one mutable target(lvalue) as its argument.`,
+        },
+    ]);
     expect(result.identifierStatusInfo).toMatchObject({
         b: {
-            description: "alias (invalid)"
-        }
-    })
-})
+            description: "alias (invalid)",
+        },
+    });
+});
 
 test("Intermediate: alias with a spread first argument is reported as invalid alias", () => {
     const source = formatSourceCode(`
@@ -304,18 +304,18 @@ test("Intermediate: alias with a spread first argument is reported as invalid al
         </lang-js>
 
         <p>{ c.value }</p>
-    `)
-    const result = compileIntermediate(source)
+    `);
+    const result = compileIntermediate(source);
     matchCompileMessages([
         {
             type: "error",
             range: [30, 38],
-            value: `The built-in method "alias" does not support spread element as its argument.`
-        }
-    ])
+            value: `The built-in method "alias" does not support spread element as its argument.`,
+        },
+    ]);
     expect(result.identifierStatusInfo).toMatchObject({
         c: {
-            description: "alias (invalid)"
-        }
-    })
-})
+            description: "alias (invalid)",
+        },
+    });
+});

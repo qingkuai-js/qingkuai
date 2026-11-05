@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -75,31 +75,31 @@ const scenario: E2EScenarioInput = {
                 </p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("teleports to a delayed node rendered by await", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#target-delayed-await-pending")).toHaveText(
-            "Waiting delayed destination"
-        )
-        await expect(page.locator("#target-delayed-dest")).toHaveCount(0)
+            "Waiting delayed destination",
+        );
+        await expect(page.locator("#target-delayed-dest")).toHaveCount(0);
 
-        await page.locator("#target-delayed-resolve").click()
-        await expect(page.locator("#target-delayed-dest")).toHaveText("Delayed destination ready")
+        await page.locator("#target-delayed-resolve").click();
+        await expect(page.locator("#target-delayed-dest")).toHaveText("Delayed destination ready");
 
-        await page.locator("#target-delayed-teleport").click()
+        await page.locator("#target-delayed-teleport").click();
         await expect(page.locator("#target-delayed-dest #target-delayed-content")).toHaveText(
-            "Delayed payload"
-        )
-        await expect(page.locator("#target-delayed-source #target-delayed-content")).toHaveCount(0)
+            "Delayed payload",
+        );
+        await expect(page.locator("#target-delayed-source #target-delayed-content")).toHaveCount(0);
 
-        await page.locator("#target-delayed-reset").click()
+        await page.locator("#target-delayed-reset").click();
         await expect(page.locator("#target-delayed-source #target-delayed-content")).toHaveText(
-            "Delayed payload"
-        )
-        await expect(page.locator("#target-delayed-dest #target-delayed-content")).toHaveCount(0)
-    })
-})
+            "Delayed payload",
+        );
+        await expect(page.locator("#target-delayed-dest #target-delayed-content")).toHaveCount(0);
+    });
+});

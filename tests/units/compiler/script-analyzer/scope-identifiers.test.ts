@@ -1,29 +1,29 @@
-import ts from "typescript"
+import ts from "typescript";
 
-import { expect, test } from "vitest"
-import { parseTsScript } from "../../../../src/util/testing/ts-ast"
-import { isShadowedIdentifier } from "../../../../src/compiler/ts-ast/context"
-import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk"
+import { expect, test } from "vitest";
+import { parseTsScript } from "../../../../src/util/testing/ts-ast";
+import { isShadowedIdentifier } from "../../../../src/compiler/ts-ast/context";
+import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk";
 
 function checkScopeIdentifiersByMatrix(source: string, full: string[][]) {
-    const sourceFile = parseTsScript(source)
+    const sourceFile = parseTsScript(source);
     walkTsNodeWithContext(sourceFile, node => {
         if (!ts.isIdentifier(node)) {
-            return
+            return;
         }
 
-        const match = /^_mark(\d+)_$/.exec(node.text)
+        const match = /^_mark(\d+)_$/.exec(node.text);
         if (!match) {
-            return
+            return;
         }
 
-        const expected = full[parseInt(match[1], 10) - 1]
+        const expected = full[parseInt(match[1], 10) - 1];
         new Set(full.flat()).forEach(name => {
             expect(isShadowedIdentifier(node, name), `${match[0]}:${name}`).toBe(
-                expected.includes(name)
-            )
-        })
-    })
+                expected.includes(name),
+            );
+        });
+    });
 }
 
 test("Expression scopeIdentifiers in nested blocks", () => {
@@ -66,7 +66,7 @@ test("Expression scopeIdentifiers in nested blocks", () => {
                 _mark6_;
             }
         }
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a", "b", "c", "e", "h", "l", "m", "v"],
@@ -74,9 +74,9 @@ test("Expression scopeIdentifiers in nested blocks", () => {
         ["a", "b", "c", "e", "h", "l", "m", "n", "o", "p", "q", "r", "v"],
         ["a", "b", "c", "e", "h", "l", "m", "v", "y"],
         ["a", "b", "c", "e", "h", "l", "m", "v", "w"],
-        ["a", "b", "c", "e", "h", "l", "m", "v", "x"]
-    ])
-})
+        ["a", "b", "c", "e", "h", "l", "m", "v", "x"],
+    ]);
+});
 
 test("Function scopes with generic parameters", () => {
     const source = `
@@ -107,16 +107,16 @@ test("Function scopes with generic parameters", () => {
                 const z = 1
             }
         }
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a", "b", "c", "e", "f", "g", "i", "o", "x", "y"],
         ["a", "b", "c", "e", "f", "g", "i", "j", "k", "m", "n", "o", "x", "y"],
         ["a", "b", "c", "e", "f", "g", "i", "o", "p", "q", "s", "x", "y"],
         ["a", "b", "c", "e", "f", "g", "i", "o", "p", "q", "s", "t", "v", "w", "x", "y"],
-        ["a", "b", "c", "e", "f", "g", "i", "o", "x", "y", "z"]
-    ])
-})
+        ["a", "b", "c", "e", "f", "g", "i", "o", "x", "y", "z"],
+    ]);
+});
 
 test("Class scopes with generic parameters", () => {
     const source = `
@@ -147,7 +147,7 @@ test("Class scopes with generic parameters", () => {
                 }
             }
         }
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a"],
@@ -155,9 +155,9 @@ test("Class scopes with generic parameters", () => {
         ["a", "k", "l", "n"],
         ["a", "k", "l", "n", "t"],
         ["a", "k", "l", "n", "v", "w", "y", "z", "B", "E"],
-        ["a", "k", "l", "n", "H", "I", "L", "N", "O"]
-    ])
-})
+        ["a", "k", "l", "n", "H", "I", "L", "N", "O"],
+    ]);
+});
 
 test("For-statement scopes", () => {
     const source = `
@@ -194,7 +194,7 @@ test("For-statement scopes", () => {
         for ({ w, x: y = z } of []) {
             _mark7_
         }
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a", "b", "d", "g", "h"],
@@ -203,9 +203,9 @@ test("For-statement scopes", () => {
         ["t"],
         ["u"],
         [],
-        []
-    ])
-})
+        [],
+    ]);
+});
 
 test("Arrow functions without block bodies", () => {
     const source = `
@@ -216,16 +216,16 @@ test("Arrow functions without block bodies", () => {
 
             const m = <v,>([n, o = p, ...q]: v, ...r) => (_mark4_, <w,>(s: w = u, ...v) => _mark5_)
         }
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a", "m"],
         ["a", "b", "c", "e", "m"],
         ["a", "g", "j", "k", "m"],
         ["a", "m", "n", "o", "q", "r"],
-        ["a", "m", "n", "o", "q", "r", "s", "v"]
-    ])
-})
+        ["a", "m", "n", "o", "q", "r", "s", "v"],
+    ]);
+});
 
 test("For-related no-block scopes remain stable", () => {
     const source = `
@@ -234,7 +234,7 @@ test("For-related no-block scopes remain stable", () => {
             for (var [h, i = j] in _mark4_) _mark5_;
         for (const { k = l, m: n = o } of {})
             ((p = q, ...r: s) => (_mark6_, t))(_mark7_)
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a", "b"],
@@ -243,9 +243,9 @@ test("For-related no-block scopes remain stable", () => {
         ["c", "e", "g"],
         ["c", "e", "g"],
         ["k", "n", "p", "r"],
-        ["k", "n"]
-    ])
-})
+        ["k", "n"],
+    ]);
+});
 
 test("Generic type parameters do not become runtime identifiers", () => {
     const source = `
@@ -254,10 +254,10 @@ test("Generic type parameters do not become runtime identifiers", () => {
         }
 
         const c = <d,>() => _mark2_
-    `
+    `;
 
-    checkScopeIdentifiersByMatrix(source, [["a"], []])
-})
+    checkScopeIdentifiersByMatrix(source, [["a"], []]);
+});
 
 test("Generic: type-only references do not pollute runtime scopeIdentifiers", () => {
     const source = `
@@ -271,10 +271,10 @@ test("Generic: type-only references do not pollute runtime scopeIdentifiers", ()
 
             const h = <i extends j = k>(l: i): m<i> => (_mark2_, l)
         }
-    `
+    `;
 
     checkScopeIdentifiersByMatrix(source, [
         ["a", "b", "f", "h"],
-        ["a", "b", "h", "l"]
-    ])
-})
+        ["a", "b", "h", "l"],
+    ]);
+});

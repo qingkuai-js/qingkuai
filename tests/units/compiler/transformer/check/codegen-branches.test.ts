@@ -1,22 +1,22 @@
-import { test, expect } from "vitest"
+import { test, expect } from "vitest";
 
-import { LSC } from "../../../../../src/compiler/constants"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
-import { compileIntermediate } from "../../../../../src/compiler/compile"
+import { LSC } from "../../../../../src/compiler/constants";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
+import { compileIntermediate } from "../../../../../src/compiler/compile";
 
 function compileIntermediateResult(source: string) {
-    return compileIntermediate(formatSourceCode(source))
+    return compileIntermediate(formatSourceCode(source));
 }
 
 test("Component dynamic attribute with non-curly value is stringified", () => {
-    const result = compileIntermediateResult(`<Comp !foo="bar"></Comp>`)
-    expect(result.code).toContain('foo: "\\"bar\\""')
-})
+    const result = compileIntermediateResult(`<Comp !foo="bar"></Comp>`);
+    expect(result.code).toContain('foo: "\\"bar\\""');
+});
 
 test("Component event with non-curly value is stringified", () => {
-    const result = compileIntermediateResult(`<Comp @click="handler"></Comp>`)
-    expect(result.code).toContain('click: "\\"handler\\""')
-})
+    const result = compileIntermediateResult(`<Comp @click="handler"></Comp>`);
+    expect(result.code).toContain('click: "\\"handler\\""');
+});
 
 test("Non-component shorthand event uses validateEventHandler", () => {
     const result = compileIntermediateResult(`
@@ -24,15 +24,15 @@ test("Non-component shorthand event uses validateEventHandler", () => {
             let tap = () => {}
         </lang-js>
         <button @tap></button>
-    `)
-    expect(result.code).toContain(`${LSC.UTIL}.validateEventHandler("tap", tap);`)
-})
+    `);
+    expect(result.code).toContain(`${LSC.UTIL}.validateEventHandler("tap", tap);`);
+});
 
 test("Slot shorthand event does not call validateEventHandler", () => {
-    const result = compileIntermediateResult(`<slot @tap></slot>`)
-    expect(result.code).toContain("tap;")
-    expect(result.code).not.toContain(`${LSC.UTIL}.validateEventHandler("tap"`)
-})
+    const result = compileIntermediateResult(`<slot @tap></slot>`);
+    expect(result.code).toContain("tap;");
+    expect(result.code).not.toContain(`${LSC.UTIL}.validateEventHandler("tap"`);
+});
 
 test("Slot dynamic attribute writes getTypeDelayMarking call", () => {
     const result = compileIntermediateResult(`
@@ -40,23 +40,23 @@ test("Slot dynamic attribute writes getTypeDelayMarking call", () => {
             let v = 1
         </lang-js>
         <slot name="main" !label={v}></slot>
-    `)
-    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "label", v);`)
-})
+    `);
+    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "label", v);`);
+});
 
 test("Slot static name attribute is skipped in type-delay marking", () => {
     const result = compileIntermediateResult(`
         <slot name="main" title="hello"></slot>
-    `)
-    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "title", "hello");`)
-    expect(result.code).not.toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "name"`)
-})
+    `);
+    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "title", "hello");`);
+    expect(result.code).not.toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "name"`);
+});
 
 test("#then without #await emits fallback wrapper", () => {
-    const result = compileIntermediateResult(`<div #then={value}></div>`)
-    expect(result.code).toContain(";(")
-    expect(result.code).toContain(") => {")
-})
+    const result = compileIntermediateResult(`<div #then={value}></div>`);
+    expect(result.code).toContain(";(");
+    expect(result.code).toContain(") => {");
+});
 
 test("TypeScript source uses typed default export branch", () => {
     const result = compileIntermediateResult(`
@@ -64,10 +64,10 @@ test("TypeScript source uses typed default export branch", () => {
             let count = 0
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(result.code).toContain("as __qk__lsu.QingkuaiComponent<typeof __qk__component>;")
-    expect(result.code).not.toContain("/** @type")
-})
+    `);
+    expect(result.code).toContain("as __qk__lsu.QingkuaiComponent<typeof __qk__component>;");
+    expect(result.code).not.toContain("/** @type");
+});
 
 test("Dotted component tag keeps property chain in confirmComponent", () => {
     const result = compileIntermediateResult(`
@@ -75,9 +75,9 @@ test("Dotted component tag keeps property chain in confirmComponent", () => {
             const NS = { Comp: () => null }
         </lang-js>
         <NS.Comp></NS.Comp>
-    `)
-    expect(result.code).toContain("__qk__lsu.confirmComponent(NS.Comp)")
-})
+    `);
+    expect(result.code).toContain("__qk__lsu.confirmComponent(NS.Comp)");
+});
 
 test("Generic type arguments on intrinsic declarations are preserved in intermediate code", () => {
     const result = compileIntermediateResult(`
@@ -88,10 +88,10 @@ test("Generic type arguments on intrinsic declarations are preserved in intermed
             console.log(a, b)
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(result.code).toContain("derived<string[]>(")
-    expect(result.code).toContain("raw!<number[]>(")
-})
+    `);
+    expect(result.code).toContain("derived<string[]>(");
+    expect(result.code).toContain("raw!<number[]>(");
+});
 
 test("Generic type arguments on watchExp calls are preserved in intermediate code", () => {
     const result = compileIntermediateResult(`
@@ -100,9 +100,9 @@ test("Generic type arguments on watchExp calls are preserved in intermediate cod
             watchExp<number[]>(count + 1, () => {})
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(result.code).toContain("watchExp<number[]>(")
-})
+    `);
+    expect(result.code).toContain("watchExp<number[]>(");
+});
 
 test("Component #slot with invalid value falls back to default slot and writes invalid expression", () => {
     const result = compileIntermediateResult(`
@@ -112,19 +112,19 @@ test("Component #slot with invalid value falls back to default slot and writes i
         <Comp>
             <div #slot={}></div>
         </Comp>
-    `)
-    expect(result.code).toContain("default: (")
-})
+    `);
+    expect(result.code).toContain("default: (");
+});
 
 test("Shorthand input reference writes property for validator path", () => {
-    const result = compileIntermediateResult(`<input &value>`)
-    expect(result.code).toContain(`${LSC.UTIL}.validateString(value);`)
-})
+    const result = compileIntermediateResult(`<input &value>`);
+    expect(result.code).toContain(`${LSC.UTIL}.validateString(value);`);
+});
 
 test("#slot on non-component writes parsed expression directly", () => {
-    const result = compileIntermediateResult(`<div #slot={"main"}></div>`)
-    expect(result.code).toContain('"main";')
-})
+    const result = compileIntermediateResult(`<div #slot={"main"}></div>`);
+    expect(result.code).toContain('"main";');
+});
 
 test("Component unknown directive expression is flushed as invalid expression", () => {
     const result = compileIntermediateResult(`
@@ -132,9 +132,9 @@ test("Component unknown directive expression is flushed as invalid expression", 
             let bad = 1
         </lang-js>
         <Comp #unknown={bad}></Comp>
-    `)
-    expect(result.code).toContain("bad;")
-})
+    `);
+    expect(result.code).toContain("bad;");
+});
 
 test("Component dynamic attribute with valid expression writes prop expression", () => {
     const result = compileIntermediateResult(`
@@ -142,9 +142,9 @@ test("Component dynamic attribute with valid expression writes prop expression",
             let title = "ok"
         </lang-js>
         <Comp !title={title}></Comp>
-    `)
-    expect(result.code).toContain("title: title,")
-})
+    `);
+    expect(result.code).toContain("title: title,");
+});
 
 test("Component event with valid expression writes event prop", () => {
     const result = compileIntermediateResult(`
@@ -152,19 +152,19 @@ test("Component event with valid expression writes event prop", () => {
             let fn = () => {}
         </lang-js>
         <Comp @click={fn}></Comp>
-    `)
-    expect(result.code).toContain("click: fn,")
-})
+    `);
+    expect(result.code).toContain("click: fn,");
+});
 
 test("Component event shorthand can be flushed as invalid expression", () => {
-    const result = compileIntermediateResult(`<Comp @a-b></Comp>`)
-    expect(result.code).toContain("aB,")
-})
+    const result = compileIntermediateResult(`<Comp @a-b></Comp>`);
+    expect(result.code).toContain("aB,");
+});
 
 test("Invalid reference shorthand on normal element writes property expression", () => {
-    const result = compileIntermediateResult(`<div &foo></div>`)
-    expect(result.code).toContain("foo;")
-})
+    const result = compileIntermediateResult(`<div &foo></div>`);
+    expect(result.code).toContain("foo;");
+});
 
 test("Invalid reference on component is flushed as invalid expression", () => {
     const result = compileIntermediateResult(`
@@ -172,14 +172,14 @@ test("Invalid reference on component is flushed as invalid expression", () => {
             let x = 1
         </lang-js>
         <Comp &foo={x}></Comp>
-    `)
-    expect(result.code).toContain("foo: x,")
-})
+    `);
+    expect(result.code).toContain("foo: x,");
+});
 
 test("Non-component invalid event expression writes raw value statement", () => {
-    const result = compileIntermediateResult(`<button @click={}></button>`)
-    expect(result.code).not.toContain("validateEventHandler")
-})
+    const result = compileIntermediateResult(`<button @click={}></button>`);
+    expect(result.code).not.toContain("validateEventHandler");
+});
 
 test("Export declarations are stripped to declarations", () => {
     const result = compileIntermediateResult(`
@@ -190,36 +190,36 @@ test("Export declarations are stripped to declarations", () => {
             export { b }
         </lang-js>
         <div>{a}</div>
-    `)
-    expect(result.code).toContain("const a = 1")
-    expect(result.code).toContain("function f()")
-    expect(result.code).toContain("const b = 2")
-    expect(result.code).not.toContain("export const")
-    expect(result.code).not.toContain("export function")
-    expect(result.code).not.toContain("export { b }")
-})
+    `);
+    expect(result.code).toContain("const a = 1");
+    expect(result.code).toContain("function f()");
+    expect(result.code).toContain("const b = 2");
+    expect(result.code).not.toContain("export const");
+    expect(result.code).not.toContain("export function");
+    expect(result.code).not.toContain("export { b }");
+});
 
 test("Component type argument is emitted", () => {
-    const result = compileIntermediateResult(`<Comp<string>></Comp>`)
-    expect(result.code).toContain("__qk__lsu.confirmComponent(Comp)<string>(")
-})
+    const result = compileIntermediateResult(`<Comp<string>></Comp>`);
+    expect(result.code).toContain("__qk__lsu.confirmComponent(Comp)<string>(");
+});
 
 test("Slot shorthand dynamic attribute writes type-delay identifier", () => {
     const result = compileIntermediateResult(`
         <slot name="main" !flag></slot>
-    `)
-    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "flag", flag);`)
-})
+    `);
+    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "flag", flag);`);
+});
 
 test("Component invalid dynamic expression is flushed", () => {
-    const result = compileIntermediateResult(`<Comp !name={}></Comp>`)
-    expect(result.code).not.toContain("name: {},")
-})
+    const result = compileIntermediateResult(`<Comp !name={}></Comp>`);
+    expect(result.code).not.toContain("name: {},");
+});
 
 test("Component invalid event expression is flushed", () => {
-    const result = compileIntermediateResult(`<Comp @click={}></Comp>`)
-    expect(result.code).not.toContain("click: {},")
-})
+    const result = compileIntermediateResult(`<Comp @click={}></Comp>`);
+    expect(result.code).not.toContain("click: {},");
+});
 
 test("Import declarations are preserved in generated prelude", () => {
     const result = compileIntermediateResult(`
@@ -228,9 +228,9 @@ test("Import declarations are preserved in generated prelude", () => {
             const n = 1
         </lang-js>
         <div>{n}</div>
-    `)
-    expect(result.code).toContain('import { readFileSync } from "node:fs";')
-})
+    `);
+    expect(result.code).toContain('import { readFileSync } from "node:fs";');
+});
 
 test("Intrinsic derived function literal is preserved in script output", () => {
     const result = compileIntermediateResult(`
@@ -240,28 +240,28 @@ test("Intrinsic derived function literal is preserved in script output", () => {
             const x = derived(() => 2)
         </lang-ts>
         <div>{v} {x}</div>
-    `)
-    expect(result.code).toContain("const x = derived(() => 2)")
-})
+    `);
+    expect(result.code).toContain("const x = derived(() => 2)");
+});
 
 test("Component implicit default slot encloses children", () => {
     const result = compileIntermediateResult(`
         <Comp>
             <div>child</div>
         </Comp>
-    `)
-    expect(result.code).toContain("default: () => {")
-})
+    `);
+    expect(result.code).toContain("default: () => {");
+});
 
 test("Invalid #html expression is emitted as invalid statement", () => {
-    const result = compileIntermediateResult(`<div #html={}></div>`)
-    expect(result.code).not.toContain(`${LSC.UTIL}.validateHtmlBlockOptions(`)
-})
+    const result = compileIntermediateResult(`<div #html={}></div>`);
+    expect(result.code).not.toContain(`${LSC.UTIL}.validateHtmlBlockOptions(`);
+});
 
 test("Invalid #target expression is emitted as invalid statement", () => {
-    const result = compileIntermediateResult(`<div #target={}></div>`)
-    expect(result.code).not.toContain(`${LSC.UTIL}.validateTargetDirectiveValue(`)
-})
+    const result = compileIntermediateResult(`<div #target={}></div>`);
+    expect(result.code).not.toContain(`${LSC.UTIL}.validateTargetDirectiveValue(`);
+});
 
 test("#for and #catch without patterns hit invalid pattern branch", () => {
     const result = compileIntermediateResult(`
@@ -270,10 +270,10 @@ test("#for and #catch without patterns hit invalid pattern branch", () => {
         </lang-js>
         <div #for={}></div>
         <div #catch={}></div>
-    `)
-    expect(result.code).not.toContain("getListPair(")
-    expect(result.code).toMatch(/\n\s*;\n/)
-})
+    `);
+    expect(result.code).not.toContain("getListPair(");
+    expect(result.code).toMatch(/\n\s*;\n/);
+});
 
 test("Check codegen: defaults literal kept and props/refs asserted via default-values identifier", () => {
     const result = compileIntermediateResult(`
@@ -282,16 +282,16 @@ test("Check codegen: defaults literal kept and props/refs asserted via default-v
             console.log(props)
         </lang-ts>
         <div>{props.count}</div>
-    `)
-    expect(result.code).toContain("defaults({ props: { count: 0 } })")
-    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
+    `);
+    expect(result.code).toContain("defaults({ props: { count: 0 } })");
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`);
     expect(result.code).toContain(
-        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg({ props: { count: 0 } })`
-    )
-    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).not.toContain("applyDefaults")
-})
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg({ props: { count: 0 } })`,
+    );
+    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`);
+    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`);
+    expect(result.code).not.toContain("applyDefaults");
+});
 
 test("Check codegen: JS script also keeps defaults literal and asserts via default-values identifier", () => {
     const result = compileIntermediateResult(`
@@ -300,15 +300,15 @@ test("Check codegen: JS script also keeps defaults literal and asserts via defau
             console.log(props, refs)
         </lang-js>
         <div>{props.count} {refs.seed}</div>
-    `)
-    expect(result.code).not.toContain("AssertDefaults<Props, Refs>")
-    expect(result.code).toContain("defaults({ props: { count: 0 }, refs: { seed: 1 } })")
+    `);
+    expect(result.code).not.toContain("AssertDefaults<Props, Refs>");
+    expect(result.code).toContain("defaults({ props: { count: 0 }, refs: { seed: 1 } })");
     expect(result.code).toContain(
-        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg({ props: { count: 0 }, refs: { seed: 1 } })`
-    )
-    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`)
-})
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg({ props: { count: 0 }, refs: { seed: 1 } })`,
+    );
+    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`);
+    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`);
+});
 
 test("Check codegen: defaults spread argument is extracted via extractFirstArg", () => {
     const result = compileIntermediateResult(`
@@ -318,16 +318,16 @@ test("Check codegen: defaults spread argument is extracted via extractFirstArg",
             console.log(props)
         </lang-ts>
         <div>{props.count}</div>
-    `)
-    expect(result.code).not.toContain("= ...")
-    expect(result.code).toContain("defaults(...[config])")
-    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
+    `);
+    expect(result.code).not.toContain("= ...");
+    expect(result.code).toContain("defaults(...[config])");
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`);
     expect(result.code).toContain(
-        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg(...[config])`
-    )
-    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`)
-    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`)
-})
+        `const ${LSC.DEFAULT_VALUES} = ${LSC.UTIL}.extractFirstArg(...[config])`,
+    );
+    expect(result.code).toContain(`${LSC.UTIL}.assertProps(props, ${LSC.DEFAULT_VALUES})`);
+    expect(result.code).toContain(`${LSC.UTIL}.assertRefs(refs, ${LSC.DEFAULT_VALUES})`);
+});
 
 test("Check codegen: contexts usage emits assertDefaults with contexts and assertContexts", () => {
     const result = compileIntermediateResult(`
@@ -337,10 +337,10 @@ test("Check codegen: contexts usage emits assertDefaults with contexts and asser
             console.log(contexts.theme)
         </lang-ts>
         <div>{contexts.theme}</div>
-    `)
-    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
-    expect(result.code).toContain(`${LSC.UTIL}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`)
-})
+    `);
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`);
+    expect(result.code).toContain(`${LSC.UTIL}.assertContexts(contexts, ${LSC.DEFAULT_VALUES})`);
+});
 
 test("Check codegen: setContext usage emits a single top-level assertSetContext assertion", () => {
     const result = compileIntermediateResult(`
@@ -351,10 +351,10 @@ test("Check codegen: setContext usage emits a single top-level assertSetContext 
             console.log(contexts.theme)
         </lang-ts>
         <div>{contexts.theme}</div>
-    `)
-    expect(result.code).toContain('setContext("theme", mode)')
-    expect(result.code).toContain("__qk__lsu.assertSetContext(setContext, contexts)")
-})
+    `);
+    expect(result.code).toContain('setContext("theme", mode)');
+    expect(result.code).toContain("__qk__lsu.assertSetContext(setContext, contexts)");
+});
 
 test("Check codegen: setContextGetter usage emits a single top-level assertSetContextGetter assertion", () => {
     const result = compileIntermediateResult(`
@@ -364,10 +364,10 @@ test("Check codegen: setContextGetter usage emits a single top-level assertSetCo
             console.log(contexts.theme)
         </lang-ts>
         <div>{contexts.theme}</div>
-    `)
-    expect(result.code).toContain('setContextGetter("theme", () => mode)')
-    expect(result.code).toContain("__qk__lsu.assertSetContextGetter(setContextGetter, contexts)")
-})
+    `);
+    expect(result.code).toContain('setContextGetter("theme", () => mode)');
+    expect(result.code).toContain("__qk__lsu.assertSetContextGetter(setContextGetter, contexts)");
+});
 
 test("Check codegen: assertDefaults always passes contexts for language-service assertions", () => {
     const result = compileIntermediateResult(`
@@ -375,7 +375,7 @@ test("Check codegen: assertDefaults always passes contexts for language-service 
             console.log(props)
         </lang-ts>
         <div>{props.count}</div>
-    `)
-    expect(result.code).not.toContain("assertContexts")
-    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`)
-})
+    `);
+    expect(result.code).not.toContain("assertContexts");
+    expect(result.code).toContain(`${LSC.UTIL}.assertDefaults(defaults, props, refs, contexts);`);
+});

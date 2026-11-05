@@ -1,11 +1,11 @@
-import { test, expect } from "vitest"
-import { compile } from "../../../../../src/compiler/compile"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { test, expect } from "vitest";
+import { compile } from "../../../../../src/compiler/compile";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 function compileRuntime(source: string, debug = false) {
-    const result = compile(formatSourceCode(source), { debug })
-    expect(result.messages.filter(item => item.type === "error")).toEqual([])
-    return result.code
+    const result = compile(formatSourceCode(source), { debug });
+    expect(result.messages.filter(item => item.type === "error")).toEqual([]);
+    return result.code;
 }
 
 test("Type arguments on derived calls are preserved after renaming", () => {
@@ -16,9 +16,9 @@ test("Type arguments on derived calls are preserved after renaming", () => {
             console.log(a)
         </lang-ts>
         <div></div>
-    `)
-    expect(code).toContain("const a = _.derived<string[]>(() => obj.list)")
-})
+    `);
+    expect(code).toContain("const a = _.derived<string[]>(() => obj.list)");
+});
 
 test("Type arguments combined with non-null assertion on derivedExp are preserved", () => {
     const code = compileRuntime(`
@@ -28,9 +28,9 @@ test("Type arguments combined with non-null assertion on derivedExp are preserve
             console.log(a)
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(code).toContain("const a = _.derived!<number[]>(() => (count + 1))")
-})
+    `);
+    expect(code).toContain("const a = _.derived!<number[]>(() => (count + 1))");
+});
 
 test("Type arguments combined with satisfies expression are preserved", () => {
     const code = compileRuntime(`
@@ -40,9 +40,9 @@ test("Type arguments combined with satisfies expression are preserved", () => {
             console.log(a)
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(code).toContain("const a = (_.derived satisfies any)<number[]>(() => (count + 1))")
-})
+    `);
+    expect(code).toContain("const a = (_.derived satisfies any)<number[]>(() => (count + 1))");
+});
 
 test("Type arguments are removed with the call shell for destructuring derivedExp", () => {
     const code = compileRuntime(`
@@ -51,11 +51,11 @@ test("Type arguments are removed with the call shell for destructuring derivedEx
             const [a, b] = derivedExp<number[]>(src)
         </lang-ts>
         <div>{a} {b}</div>
-    `)
-    expect(code).not.toContain("<number[]>")
-    expect(code).toContain("let src = _.react([1, 2])")
-    expect(code).toContain("destructuringDerived(([a, b]) => [a, b], () => (src.$), 2)")
-})
+    `);
+    expect(code).not.toContain("<number[]>");
+    expect(code).toContain("let src = _.react([1, 2])");
+    expect(code).toContain("destructuringDerived(([a, b]) => [a, b], () => (src.$), 2)");
+});
 
 test("Type arguments are removed with the call shell for destructuring derivedExp in debug mode", () => {
     const code = compileRuntime(
@@ -66,12 +66,12 @@ test("Type arguments are removed with the call shell for destructuring derivedEx
         </lang-ts>
         <div>{a} {b}</div>
     `,
-        true
-    )
-    expect(code).toContain("destructuringDerived((")
-    expect(code).toContain(", 2, [")
-    expect(code).not.toContain("<number[]>")
-})
+        true,
+    );
+    expect(code).toContain("destructuringDerived((");
+    expect(code).toContain(", 2, [");
+    expect(code).not.toContain("<number[]>");
+});
 
 test("Type arguments on raw calls survive the declaration transform", () => {
     const code = compileRuntime(`
@@ -81,9 +81,9 @@ test("Type arguments on raw calls survive the declaration transform", () => {
             console.log(a)
         </lang-ts>
         <div></div>
-    `)
-    expect(code).toContain("const a = obj.list")
-})
+    `);
+    expect(code).toContain("const a = obj.list");
+});
 
 test("Type arguments on argument-less raw calls survive the declaration transform", () => {
     const code = compileRuntime(`
@@ -92,9 +92,9 @@ test("Type arguments on argument-less raw calls survive the declaration transfor
             console.log(a)
         </lang-ts>
         <div></div>
-    `)
-    expect(code).toContain("const a = _.UNDEF")
-})
+    `);
+    expect(code).toContain("const a = _.UNDEF");
+});
 
 test("Type arguments on watchExp calls survive the getter wrapping and renaming", () => {
     const code = compileRuntime(`
@@ -103,9 +103,9 @@ test("Type arguments on watchExp calls survive the getter wrapping and renaming"
             watchExp<number[]>(count + 1, () => {})
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(code).toContain("watch<number[]>(() => (count + 1), () => {})")
-})
+    `);
+    expect(code).toContain("watch<number[]>(() => (count + 1), () => {})");
+});
 
 test("Type arguments combined with non-null assertion on syncWatchExp are preserved", () => {
     const code = compileRuntime(`
@@ -114,9 +114,9 @@ test("Type arguments combined with non-null assertion on syncWatchExp are preser
             syncWatchExp!<number[]>(count + 1, () => {})
         </lang-ts>
         <div>{count}</div>
-    `)
-    expect(code).toContain("syncWatch!<number[]>(() => (count + 1), () => {})")
-})
+    `);
+    expect(code).toContain("syncWatch!<number[]>(() => (count + 1), () => {})");
+});
 
 test("Type arguments on setContextExp calls survive the getter wrapping and renaming", () => {
     const code = compileRuntime(`
@@ -125,9 +125,9 @@ test("Type arguments on setContextExp calls survive the getter wrapping and rena
             setContextExp!<string>("theme", mode)
         </lang-ts>
         <div></div>
-    `)
-    expect(code).toContain('setContextGetter<string>("theme", () => (mode))')
-})
+    `);
+    expect(code).toContain('setContextGetter<string>("theme", () => (mode))');
+});
 
 test("Type arguments on alias calls are preserved in debug mode", () => {
     const code = compileRuntime(
@@ -138,7 +138,7 @@ test("Type arguments on alias calls are preserved in debug mode", () => {
         </lang-ts>
         <div>{a}</div>
     `,
-        true
-    )
-    expect(code).toContain("_.alias<string>(")
-})
+        true,
+    );
+    expect(code).toContain("_.alias<string>(");
+});

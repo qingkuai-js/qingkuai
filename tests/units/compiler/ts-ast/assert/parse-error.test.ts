@@ -1,7 +1,7 @@
-import ts from "typescript"
+import ts from "typescript";
 
-import { expect, test } from "vitest"
-import { hasParseError } from "../../../../../src/compiler/ts-ast/assert"
+import { expect, test } from "vitest";
+import { hasParseError } from "../../../../../src/compiler/ts-ast/assert";
 
 test("parse error detection", () => {
     const validSourceFile = ts.createSourceFile(
@@ -9,16 +9,16 @@ test("parse error detection", () => {
         "const value = 1",
         ts.ScriptTarget.Latest,
         true,
-        ts.ScriptKind.TS
-    )
+        ts.ScriptKind.TS,
+    );
     const invalidSourceFile = ts.createSourceFile(
         "invalid.ts",
         "const value =",
         ts.ScriptTarget.Latest,
         true,
-        ts.ScriptKind.TS
-    )
+        ts.ScriptKind.TS,
+    );
 
-    expect(hasParseError(validSourceFile)).toBeFalsy()
-    expect(hasParseError(invalidSourceFile)).toBeTruthy()
-})
+    expect(hasParseError(validSourceFile)).toBeFalsy();
+    expect(hasParseError(invalidSourceFile)).toBeTruthy();
+});

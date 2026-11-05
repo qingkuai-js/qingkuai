@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -27,21 +27,21 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports nested for blocks and inner-list updates", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#for-nested-groups .for-group-title")).toHaveText([
             "Group A",
-            "Group B"
-        ])
+            "Group B",
+        ]);
 
-        await page.locator("#for-append-group-entry").click()
+        await page.locator("#for-append-group-entry").click();
         await expect(
-            page.locator("#for-nested-groups .for-group-item").first().locator(".for-group-entry")
-        ).toHaveText(["A1", "A2", "A3"])
-    })
-})
+            page.locator("#for-nested-groups .for-group-item").first().locator(".for-group-entry"),
+        ).toHaveText(["A1", "A2", "A3"]);
+    });
+});

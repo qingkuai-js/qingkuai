@@ -1,9 +1,9 @@
-import { test, describe } from "vitest"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
-import { matchTransformedScript as _matchTransformedScript } from "./_match"
+import { test, describe } from "vitest";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
+import { matchTransformedScript as _matchTransformedScript } from "./_match";
 
 describe("Production", () => {
-    const matchTransformedScript = _matchTransformedScript
+    const matchTransformedScript = _matchTransformedScript;
 
     describe("Explicit VariableDeclaration", () => {
         describe("Non-destructuring", () => {
@@ -27,9 +27,9 @@ describe("Production", () => {
                             b = 10; _b.$ = b;
                             var c
                         console.log(a, _b.$, c)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -46,9 +46,9 @@ describe("Production", () => {
 
                         let a = _.react(10)
                         console.log(a.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -65,9 +65,9 @@ describe("Production", () => {
 
                         const a = _.constReact(obj)
                         console.log(a)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -87,9 +87,9 @@ describe("Production", () => {
                         var a,
                             b: any = 1; _b.$ = b;
                         console.log(a, _b.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -106,9 +106,9 @@ describe("Production", () => {
 
                         let count = _.shallowReact(0)
                         console.log(count.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -125,9 +125,9 @@ describe("Production", () => {
 
                         const a = _.shallowConstReact(obj)
                         console.log(a)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("constant declarations with the literal initial values", () => {
                 for (const fn of ["reactive", "shallow"]) {
@@ -155,11 +155,11 @@ describe("Production", () => {
                         const e = () => {}
                         const f = function anonymous() {}
                         console.log(a, b, c, d, e, f)
-                    `)
-                    )
+                    `),
+                    );
                 }
-            })
-        })
+            });
+        });
 
         describe("Destructuring", () => {
             test("var reactive", () => {
@@ -183,9 +183,9 @@ describe("Production", () => {
                             var c,
                             d;
                         console.log(_a.$, _b.$, c, d)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -202,9 +202,9 @@ describe("Production", () => {
 
                         let [a, b] = _.destructuringReact(({ a, b = { c } }) => [[a, 1], [b, 1]], obj)
                         console.log(a.$, b.$, c)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -217,9 +217,9 @@ describe("Production", () => {
                     formatSourceCode(`
                         const [a, b] = _.destructuringConstReact(([a, [b = c] = d]) => [[a, 1], [b, 1]], "")
                         console.log(a, b, c, d)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -242,9 +242,9 @@ describe("Production", () => {
                         var [a, [b]] = obj; [_a.$, _b.$] = [a, b];
                             var [c = 0, ...d] = arr; [_c.$, _d.$] = [c, d];
                         console.log(_a.$, _b.$, _c.$, _d.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -261,9 +261,9 @@ describe("Production", () => {
                         
                         let [a, c, e] = _.destructuringShallowReact(({ a, b: c = d, ...e }) => [[a, 1], [c, 1], [e, 1]], obj)
                         console.log(a.$, b, c.$, d, e.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -280,11 +280,11 @@ describe("Production", () => {
 
                         const [a] = _.destructuringShallowConstReact(([a]) => [[a, 1]], null)
                         console.log(a)
-                    `)
-                )
-            })
-        })
-    })
+                    `),
+                );
+            });
+        });
+    });
 
     describe("Implicit VariableDeclaration", () => {
         describe("Non-destructuring", () => {
@@ -309,9 +309,9 @@ describe("Production", () => {
                             b = 20; _b.$ = b;
                             var c = 30
                         console.log(a, _b.$, c)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -333,9 +333,9 @@ describe("Production", () => {
                             b = 20,
                             c = _.react(obj)
                         console.log(a.$++, b, c.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -355,9 +355,9 @@ describe("Production", () => {
                         const a = _.constReact(obj),
                             b = _.constReact(arr)
                         console.log(a, b)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const stays raw when allowConstReactive is false", () => {
                 matchTransformedScript(
@@ -379,10 +379,10 @@ describe("Production", () => {
                         console.log(a, b)
                     `),
                     {
-                        allowConstReactive: false
-                    }
-                )
-            })
+                        allowConstReactive: false,
+                    },
+                );
+            });
 
             test("let is still reactive when allowConstReactive is false", () => {
                 matchTransformedScript(
@@ -402,10 +402,10 @@ describe("Production", () => {
                         console.log(c.$)
                     `),
                     {
-                        allowConstReactive: false
-                    }
-                )
-            })
+                        allowConstReactive: false,
+                    },
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -430,9 +430,9 @@ describe("Production", () => {
                             c = null; _c.$ = c;
                         _c.$ = 1
                         console.log(a, b, _c.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -454,9 +454,9 @@ describe("Production", () => {
                             b = obj
                         let c = arr
                         console.log(a.$, b, c)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -476,10 +476,10 @@ describe("Production", () => {
                         const a = 1,
                             b = _.shallowConstReact(arr)
                         console.log(a, b)
-                    `)
-                )
-            })
-        })
+                    `),
+                );
+            });
+        });
 
         describe("Destructuring", () => {
             test("var reactive", () => {
@@ -500,9 +500,9 @@ describe("Production", () => {
 
                         var {a, b: c = d, ...e} = obj as any; [_a.$, _c.$] = [a, c];
                         console.log(_a.$, b, _c.$, d, e)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -520,9 +520,9 @@ describe("Production", () => {
 
                         let [a, b, e] = _.destructuringReact(([a, [b = c] = d, ...e]) => [[a, 1], [b, 0], [e, 1]], arr)
                         console.log(a.$, b, c, d, e.$)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -540,9 +540,9 @@ describe("Production", () => {
 
                         const [a, c] = _.destructuringConstReact(({ a, b: { c } }) => [[a, 1], [c, 1]], obj)
                         console.log(a, b, c)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -560,9 +560,9 @@ describe("Production", () => {
 
                         var [a, [b, ...c], ...d] = ""
                         console.log(a, b, c, d)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -580,9 +580,9 @@ describe("Production", () => {
 
                         let [a, [b], ...c] = arr
                         console.log(a, b, c)
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -600,11 +600,11 @@ describe("Production", () => {
 
                         const [a, c, e] = _.destructuringShallowConstReact(({ a, b: { c } = d, ...e }: any) => [[a, 1], [c, 0], [e, 1]], obj satisfies Record<string, string>)
                         console.log(a, b, c, d, e)
-                    `)
-                )
-            })
-        })
-    })
+                    `),
+                );
+            });
+        });
+    });
 
     describe("Implicit FunctionDeclaration", () => {
         test("reactive", () => {
@@ -630,9 +630,9 @@ describe("Production", () => {
                     function c() {}
                     b = _c.$ = null
                     console.log(a, b, _c.$)
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         test("shallow", () => {
             matchTransformedScript(
@@ -651,10 +651,10 @@ describe("Production", () => {
 
                     function a<T>(...args: any) {}
                     console.log(_a.$)
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Implicit ClassDeclaration", () => {
         test("reactive", () => {
@@ -673,9 +673,9 @@ describe("Production", () => {
 
                     let A = _.react(class A {})
                     console.log(A.$ ??= B)
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         test("shallow", () => {
             matchTransformedScript(
@@ -699,10 +699,10 @@ describe("Production", () => {
                     class C {}
                     A.$ = B = null
                     console.log(A.$, B, C)
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Implicit TSEnumDeclaration", () => {
         test("reactive", () => {
@@ -736,9 +736,9 @@ describe("Production", () => {
                     enum a {}
                     _.objectAssign(_a.$ ??= {}, a);
                     console.log(_a.$, _b.$, _c.$)
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         test("shallow", () => {
             matchTransformedScript(
@@ -765,18 +765,18 @@ describe("Production", () => {
                     enum b {}
                     _b.$ = b;
                     console.log(_a.$, _b.$)
-                `)
-            )
-        })
-    })
-})
+                `),
+            );
+        });
+    });
+});
 
 describe("Development", () => {
     const matchTransformedScript = (source: string, expected: string) => {
         _matchTransformedScript(source, expected, {
-            debug: true
-        })
-    }
+            debug: true,
+        });
+    };
     describe("Explicit VariableDeclaration", () => {
         describe("Non-destructuring", () => {
             test("var reactive", () => {
@@ -804,9 +804,9 @@ describe("Development", () => {
                         _a.$++
                         _b.$ ??= String(_a.$)
                         _a.$ && _b.$
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -826,9 +826,9 @@ describe("Development", () => {
                         let [_count, count] = _.react?.(0, _S1)
                         _count.$ &&= 1
                         _count.$ ?? 5
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -847,9 +847,9 @@ describe("Development", () => {
                         const obj = _.constReact<{a: number}>({ a: 1 } as const)
                         obj.a
                         obj["a"]
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -869,9 +869,9 @@ describe("Development", () => {
                         var a: number | undefined = _.UNDEF; _a.$ = a;
                         _a.$ ||= 10
                         _a.$ &&= 20
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -893,9 +893,9 @@ describe("Development", () => {
                             [_list1, list] = _.shallowReact([1,2,3], _S1)
                         for (const i of _list1.$) i;
                         [..._list1.$]
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -914,9 +914,9 @@ describe("Development", () => {
                         const fn = _.shallowConstReact<(x:number)=>number>(foo)
                         fn(1)
                         fn?.()
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("constant declarations with the literal initial values", () => {
                 matchTransformedScript(
@@ -939,10 +939,10 @@ describe("Development", () => {
                         const c = undefined
                         const d = 123
                         void(\`\${a}\${b}\${c}\${d}\`)
-                    `)
-                )
-            })
-        })
+                    `),
+                );
+            });
+        });
 
         describe("Destructuring", () => {
             test("var reactive", () => {
@@ -962,9 +962,9 @@ describe("Development", () => {
 
                         var { a, b: { c } } = { a: 1, b: { c: 2 } }; [_a.$, _c.$] = [a, c];
                         _a.$ ?? _c.$
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -987,9 +987,9 @@ describe("Development", () => {
                             _y,
                             [[_x1, x], [_y1, y]] = _.destructuringReact(([x = 1, ...y]) => [[x, 1], [y, 1]], [0,2,3], [_S1, _S2])
                         _y1.$.length && _x1.$
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -1006,9 +1006,9 @@ describe("Development", () => {
 
                         const [a] = _.destructuringConstReact(([a]) => [[a, 1]], [10])
                         a &&= 2
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -1027,9 +1027,9 @@ describe("Development", () => {
 
                         var [a, { b }] = [{ b: 1 }]; [_a.$, _b.$] = [a, b];
                         _a.$ ?? _b.$
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -1048,9 +1048,9 @@ describe("Development", () => {
 
                         let [[_a, a], [_rest, rest]] = _.destructuringShallowReact(({ a, ...rest }) => [[a, 1], [rest, 1]], { a: 1, b: 2 }, [_S1, _S2])
                         _rest.$[_a.$]
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -1067,11 +1067,11 @@ describe("Development", () => {
 
                         const [a] = _.destructuringShallowConstReact(({ a = 1 }) => [[a, 1]], {})
                         ++a
-                    `)
-                )
-            })
-        })
-    })
+                    `),
+                );
+            });
+        });
+    });
 
     describe("Implicit VariableDeclaration", () => {
         describe("Non-destructuring", () => {
@@ -1092,9 +1092,9 @@ describe("Development", () => {
 
                         var a = 1; _a.$ = a;
                         _a.$++
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -1113,9 +1113,9 @@ describe("Development", () => {
 
                         let [_a, a] = _.react(1 satisfies number, _S1)
                         _a.$ ??= 2
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -1133,9 +1133,9 @@ describe("Development", () => {
 
                         const obj = _.constReact({ a: 1 })
                         obj?.a
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -1154,9 +1154,9 @@ describe("Development", () => {
 
                         var a = 0; _a.$ = a;
                         _a.$ ||= 1
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -1175,9 +1175,9 @@ describe("Development", () => {
 
                         let [_a, a]: number | null = _.shallowReact(null, _S1)
                         _a.$ ??= 1
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -1195,10 +1195,10 @@ describe("Development", () => {
 
                         const a = _.shallowConstReact(obj)
                         a + 1
-                    `)
-                )
-            })
-        })
+                    `),
+                );
+            });
+        });
 
         describe("Destructuring", () => {
             test("var reactive", () => {
@@ -1218,9 +1218,9 @@ describe("Development", () => {
 
                         var { a } = { a: 1 }; [_a.$] = [a];
                         _a.$++
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let reactive", () => {
                 matchTransformedScript(
@@ -1239,9 +1239,9 @@ describe("Development", () => {
 
                         let [[_a, a]] = _.destructuringReact(([a]) => [[a, 1]], [1], [_S1])
                         _a.$ &&= 2
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const reactive", () => {
                 matchTransformedScript(
@@ -1259,9 +1259,9 @@ describe("Development", () => {
 
                         const [a] = _.destructuringConstReact(({ a }) => [[a, 1]], { a: 1 })
                         a ?? 0
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("var shallow", () => {
                 matchTransformedScript(
@@ -1281,9 +1281,9 @@ describe("Development", () => {
 
                         var [a, b] = [1, 2]; [_a.$, _b.$] = [a, b];
                         _b.$ = _a.$++
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("let shallow", () => {
                 matchTransformedScript(
@@ -1302,9 +1302,9 @@ describe("Development", () => {
 
                         let [[_a, a]] = _.destructuringShallowReact(({ a }) => [[a, 1]], { a: 1 }, [_S1])
                         _a.$ &&= 3
-                    `)
-                )
-            })
+                    `),
+                );
+            });
 
             test("const shallow", () => {
                 matchTransformedScript(
@@ -1322,11 +1322,11 @@ describe("Development", () => {
 
                         const [a] = _.destructuringShallowConstReact(([a]) => [[a, 1]], [1])
                         a ??= 5
-                    `)
-                )
-            })
-        })
-    })
+                    `),
+                );
+            });
+        });
+    });
 
     describe("Implicit FunctionDeclaration", () => {
         test("reactive", () => {
@@ -1348,9 +1348,9 @@ describe("Development", () => {
                     function a<T>():T {}
                     function b() {}
                     ;(_b.$ ??= ()=>{})(a())
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         test("shallow", () => {
             matchTransformedScript(
@@ -1369,10 +1369,10 @@ describe("Development", () => {
 
                     function a() {}
                     ;(_a.$ satisfies Function)!()
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Implicit ClassDeclaration", () => {
         test("reactive", () => {
@@ -1395,9 +1395,9 @@ describe("Development", () => {
                     let [_A, A] = _.react(class A {}, _S1)
                     let [_B, B] = _.react(class B {}, _S2)
                     new _B.$!(new _A.$!())
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         test("shallow", () => {
             matchTransformedScript(
@@ -1416,10 +1416,10 @@ describe("Development", () => {
 
                     let [_A, A] = _.shallowReact(class A {}, _S1)
                     _A.$.static()
-                `)
-            )
-        })
-    })
+                `),
+            );
+        });
+    });
 
     describe("Implicit TSEnumDeclaration", () => {
         test("reactive", () => {
@@ -1447,9 +1447,9 @@ describe("Development", () => {
                     enum a {}
                     _.objectAssign(_a.$ ??= {}, a);
                     console.log(_b.$, _a.$)
-                `)
-            )
-        })
+                `),
+            );
+        });
 
         test("shallow", () => {
             matchTransformedScript(
@@ -1471,8 +1471,8 @@ describe("Development", () => {
                     _a.$ = a;
                     enum b {}
                     console.log(_a.$, b)
-                `)
-            )
-        })
-    })
-})
+                `),
+            );
+        });
+    });
+});

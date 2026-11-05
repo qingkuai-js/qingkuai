@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -46,14 +46,14 @@ const scenario: E2EScenarioInput = {
                 </p>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports same-tag await and catch", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#inline-reject-trigger").click()
-        await expect(page.locator("#inline-catch")).toHaveText("Inline rejected: inline failed")
-    })
-})
+        await page.locator("#inline-reject-trigger").click();
+        await expect(page.locator("#inline-catch")).toHaveText("Inline rejected: inline failed");
+    });
+});

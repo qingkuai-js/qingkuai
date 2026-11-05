@@ -1,13 +1,13 @@
-import type TS from "typescript"
-import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex"
-import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler"
+import type TS from "typescript";
+import type { ParseDirectiveValueFunc } from "#type-declarations/compiler-ex";
+import type { CompileMessage, TemplateAttribute } from "#type-declarations/compiler";
 
-import { parseContextPattern } from "./script"
-import { inputDescriptor, messages } from "../state"
-import { InvalidContextPattern } from "../message/error"
-import { isValidContextPattern } from "../ts-ast/assert"
-import { findOutOfLiteralComment } from "../../util/compiler/string"
-import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
+import { parseContextPattern } from "./script";
+import { inputDescriptor, messages } from "../state";
+import { InvalidContextPattern } from "../message/error";
+import { isValidContextPattern } from "../ts-ast/assert";
+import { findOutOfLiteralComment } from "../../util/compiler/string";
+import { getNonWhitespaceLocByIndex } from "../../util/compiler/position";
 
 // 解析指令值：此方法主要用于解析格式为 模式 + 关键字 + 表达式 的指令值，目前值为此格式的指令有：#slot 和 #for
 // Parse directive values: this method is mainly used to parse directive values in the format `pattern + keyword + expression`.
@@ -17,53 +17,53 @@ import { getNonWhitespaceLocByIndex } from "../../util/compiler/position"
 // During parsing, literals and comment ranges are skipped when searching for the keyword. Parsing is considered successful
 // if the pattern before the keyword can be correctly parsed; otherwise, the entire directive value is treated as an expression.
 export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: TemplateAttribute) => {
-    const rawName = directive.name.raw
-    const rawValue = directive.value.raw
-    const startSourceIndex = directive.value.loc.start.index
+    const rawName = directive.name.raw;
+    const rawValue = directive.value.raw;
+    const startSourceIndex = directive.value.loc.start.index;
 
     const notKeywordReturns = {
         base: rawValue,
         patterns: [],
         keywordIndex: -1,
-        baseStartSourceIndex: startSourceIndex
-    }
+        baseStartSourceIndex: startSourceIndex,
+    };
 
     if (rawName !== "#for" && rawName !== "#slot") {
-        return notKeywordReturns
+        return notKeywordReturns;
     }
 
-    const keyword = { "#for": "of", "#slot": "from" }[rawName]
-    const [findTarget, findLength] = [` ${keyword} `, keyword.length + 2]
+    const keyword = { "#for": "of", "#slot": "from" }[rawName];
+    const [findTarget, findLength] = [` ${keyword} `, keyword.length + 2];
 
     for (let i = 0; i < rawValue.length; i += findLength - 1) {
         if (-1 === (i = findOutOfLiteralComment(rawValue, findTarget, i))) {
-            return notKeywordReturns
+            return notKeywordReturns;
         }
 
-        const pattern = parseContextPattern(rawValue.slice(0, i), startSourceIndex)
+        const pattern = parseContextPattern(rawValue.slice(0, i), startSourceIndex);
         if (!pattern?.elements.length) {
-            continue
+            continue;
         }
 
-        const baseStartIndex = i + findLength
-        const base = rawValue.slice(baseStartIndex)
+        const baseStartIndex = i + findLength;
+        const base = rawValue.slice(baseStartIndex);
         if (pattern && pattern.elements.hasTrailingComma && base.trimStart().startsWith(keyword)) {
-            continue
+            continue;
         }
 
         // ArrayPattern 中的元素需要满足 ContextPattern 类型才视为有效
         // Elements in an ArrayPattern must satisfy the ContextPattern type to be considered valid.
-        const patterns: TS.ArrayBindingElement[] = []
+        const patterns: TS.ArrayBindingElement[] = [];
         for (const element of pattern.elements) {
             if (isValidContextPattern(element)) {
-                patterns.push(element)
+                patterns.push(element);
             } else {
                 InvalidContextPattern(
                     getNonWhitespaceLocByIndex(
                         element.getStart() + startSourceIndex,
-                        element.getEnd() + startSourceIndex
-                    )
-                )
+                        element.getEnd() + startSourceIndex,
+                    ),
+                );
             }
         }
 
@@ -71,29 +71,29 @@ export const parseDirectiveValue: ParseDirectiveValueFunc = (directive: Template
             base,
             patterns,
             keywordIndex: i,
-            baseStartSourceIndex: startSourceIndex + baseStartIndex
-        }
+            baseStartSourceIndex: startSourceIndex + baseStartIndex,
+        };
     }
 
-    return notKeywordReturns
-}
+    return notKeywordReturns;
+};
 
 export const parseDirectiveValueStandalone: ParseDirectiveValueFunc = (
-    directive: TemplateAttribute
+    directive: TemplateAttribute,
 ) => {
-    const isCheckMode = inputDescriptor.options.checkMode
-    const originMessageLen = messages.length
-    inputDescriptor.options.checkMode = true
+    const isCheckMode = inputDescriptor.options.checkMode;
+    const originMessageLen = messages.length;
+    inputDescriptor.options.checkMode = true;
 
-    const ret = parseDirectiveValue(directive)
-    inputDescriptor.options.checkMode = isCheckMode
+    const ret = parseDirectiveValue(directive);
+    inputDescriptor.options.checkMode = isCheckMode;
 
-    let parseMessages: CompileMessage[] | undefined = undefined
+    let parseMessages: CompileMessage[] | undefined = undefined;
     if (originMessageLen !== messages.length) {
-        parseMessages = messages.slice(originMessageLen)
+        parseMessages = messages.slice(originMessageLen);
     }
     if (parseMessages?.length) {
-        ret.messages = parseMessages
+        ret.messages = parseMessages;
     }
-    return ret
-}
+    return ret;
+};

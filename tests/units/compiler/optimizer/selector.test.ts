@@ -2,29 +2,29 @@ import {
     getForBlockSelectorInfos,
     hasSelectorForAttribute,
     hasSelectorForTextNode,
-    writeSelectorDeclaration
-} from "../../../../src/compiler/optimizer/selector"
-import { expect, test } from "vitest"
-import { compile } from "../../../../src/compiler/compile"
-import { analyzeResult } from "../../../../src/compiler/state"
-import { formatSourceCode } from "../../../../src/util/shared/sundry"
-import { SelectorOperationMethod } from "../../../../src/compiler/enums"
-import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer"
+    writeSelectorDeclaration,
+} from "../../../../src/compiler/optimizer/selector";
+import { expect, test } from "vitest";
+import { compile } from "../../../../src/compiler/compile";
+import { analyzeResult } from "../../../../src/compiler/state";
+import { formatSourceCode } from "../../../../src/util/shared/sundry";
+import { SelectorOperationMethod } from "../../../../src/compiler/enums";
+import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer";
 
 function getForNodeContextFromAnalyzeResult() {
     for (const nodeContext of analyzeResult.template.nodeContexts.values()) {
         if (nodeContext.attributesMap["#for"]) {
-            return nodeContext
+            return nodeContext;
         }
     }
 }
 
 test("getForBlockSelectorInfos returns empty when #for/#key pair is incomplete", () => {
-    compile(`<div #for={item of items}>{foo[item.id]}</div>`)
+    compile(`<div #for={item of items}>{foo[item.id]}</div>`);
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
-})
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([]);
+});
 
 test("getForBlockSelectorInfos collects selector operations from compiled template", () => {
     compile(
@@ -36,30 +36,30 @@ test("getForBlockSelectorInfos collects selector operations from compiled templa
             <div #for={item of items} #key={item.id} class="a b" !class={selected === item.id ? "on" : "off"} !title={selected === item.id}>
                 <span>{selected === item.id}</span>
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const infos = getForBlockSelectorInfos(forNodeContext)
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    const infos = getForBlockSelectorInfos(forNodeContext);
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetHtmlClassName
-        })
-    ).toBe(true)
+            return item.operation.method === SelectorOperationMethod.SetHtmlClassName;
+        }),
+    ).toBe(true);
     expect(
         infos.some(item => {
             return (
                 item.operation.attrName === "title" &&
                 item.operation.method === SelectorOperationMethod.SetHtmlAttribute
-            )
-        })
-    ).toBe(true)
+            );
+        }),
+    ).toBe(true);
 
     // The inner text interpolation of the item cannot be taken over by the
     // selector (setText writing nodeValue is a no-op for element nodes)
     expect(infos.some(item => item.operation.method === SelectorOperationMethod.SetText)).toBe(
-        false
-    )
+        false,
+    );
 
     compile(
         formatSourceCode(`
@@ -68,15 +68,15 @@ test("getForBlockSelectorInfos collects selector operations from compiled templa
                 let selected = reactive("a")
             </lang-js>
             <use #for={item of items} #key={item.id} !xlink:href={selected === item.id ? "#a" : "#b"}></use>
-        `)
-    )
+        `),
+    );
 
-    const useContext = getForNodeContextFromAnalyzeResult()!
+    const useContext = getForNodeContextFromAnalyzeResult()!;
     expect(
         getForBlockSelectorInfos(useContext).some(
-            item => item.operation.method === SelectorOperationMethod.SetXlinkAttribute
-        )
-    ).toBe(true)
+            item => item.operation.method === SelectorOperationMethod.SetXlinkAttribute,
+        ),
+    ).toBe(true);
 
     // !value on <select> is intentionally excluded from selector optimization.
     compile(
@@ -86,11 +86,11 @@ test("getForBlockSelectorInfos collects selector operations from compiled templa
                 let selected = reactive("a")
             </lang-js>
             <select #for={item of items} #key={item.id} !value={selected === item.id}></select>
-        `)
-    )
-    const selectContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(selectContext)).toEqual([])
-})
+        `),
+    );
+    const selectContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(selectContext)).toEqual([]);
+});
 
 test("hasSelectorForAttribute and hasSelectorForTextNode work with compiled selector infos", () => {
     compile(
@@ -102,27 +102,27 @@ test("hasSelectorForAttribute and hasSelectorForTextNode work with compiled sele
             <div #for={item of items} #key={item.id} !title={selected === item.id}>
                 <span>{selected === item.id}</span>
             </div>
-        `)
-    )
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const infos = getForBlockSelectorInfos(forNodeContext)
+        `),
+    );
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    const infos = getForBlockSelectorInfos(forNodeContext);
     const titleInfo = infos.find(item => {
         return (
             item.operation.attrName === "title" &&
             item.operation.method === SelectorOperationMethod.SetHtmlAttribute
-        )
-    })!
+        );
+    })!;
     expect(
-        hasSelectorForAttribute(infos, titleInfo.targetNodeContext, titleInfo.targetAttribute!)
-    ).toBe(true)
+        hasSelectorForAttribute(infos, titleInfo.targetNodeContext, titleInfo.targetAttribute!),
+    ).toBe(true);
 
     // 项内层文本插值不再由选择器接管
     const textNodeContext = Array.from(analyzeResult.template.nodeContexts.values()).find(item => {
-        return item.node.tag === ""
-    })
-    expect(textNodeContext).toBeTruthy()
-    expect(hasSelectorForTextNode(infos, textNodeContext!)).toBe(false)
-})
+        return item.node.tag === "";
+    });
+    expect(textNodeContext).toBeTruthy();
+    expect(hasSelectorForTextNode(infos, textNodeContext!)).toBe(false);
+});
 
 test("writeSelectorDeclaration emits update wrapper from compiled selector info", () => {
     compile(
@@ -132,21 +132,21 @@ test("writeSelectorDeclaration emits update wrapper from compiled selector info"
                 let selected = reactive("a")
             </lang-js>
             <div #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"}></div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
     const selectorInfo = getForBlockSelectorInfos(forNodeContext).find(item => {
-        return item.operation.method === SelectorOperationMethod.SetHtmlClassName
-    })!
-    const writer = new RuntimeCodeWriter(false)
-    writeSelectorDeclaration(writer, selectorInfo, "getNode")
-    expect(writer.code).toContain(`const ${selectorInfo.id} = (() => {`)
-    expect(writer.code).toContain("const prevNode = getNode(prevValue)")
-    expect(writer.code).toContain("const node = getNode(key)")
-    expect(writer.code).toContain("setHtmlClassName(prevNode")
-    expect(writer.code).toContain("setHtmlClassName(node")
-})
+        return item.operation.method === SelectorOperationMethod.SetHtmlClassName;
+    })!;
+    const writer = new RuntimeCodeWriter(false);
+    writeSelectorDeclaration(writer, selectorInfo, "getNode");
+    expect(writer.code).toContain(`const ${selectorInfo.id} = (() => {`);
+    expect(writer.code).toContain("const prevNode = getNode(prevValue)");
+    expect(writer.code).toContain("const node = getNode(key)");
+    expect(writer.code).toContain("setHtmlClassName(prevNode");
+    expect(writer.code).toContain("setHtmlClassName(node");
+});
 
 test("getForBlockSelectorInfos returns empty for invalid #key expression node types", () => {
     compile(
@@ -158,12 +158,12 @@ test("getForBlockSelectorInfos returns empty for invalid #key expression node ty
             <div #for={item of items} #key={item.id + 1}>
                 {foo[item.id]}
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
-})
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([]);
+});
 
 test("getForBlockSelectorInfos returns empty when #for context arg is missing", () => {
     compile(
@@ -175,12 +175,12 @@ test("getForBlockSelectorInfos returns empty when #for context arg is missing", 
             <div #for={items} #key={item.id}>
                 {foo[item.id]}
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
-})
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([]);
+});
 
 test("getForBlockSelectorInfos skips non-optimizable children in for-block", () => {
     compile(
@@ -196,22 +196,22 @@ test("getForBlockSelectorInfos skips non-optimizable children in for-block", () 
                 <div !title={foo[item.id]}></div>
                 <select !value={foo[item.id]}></select>
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const infos = getForBlockSelectorInfos(forNodeContext)
-    expect(infos.some(item => item.targetNodeContext.node.tag === "slot")).toBe(false)
-    expect(infos.some(item => item.targetNodeContext.node.componentTag)).toBe(false)
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    const infos = getForBlockSelectorInfos(forNodeContext);
+    expect(infos.some(item => item.targetNodeContext.node.tag === "slot")).toBe(false);
+    expect(infos.some(item => item.targetNodeContext.node.componentTag)).toBe(false);
     expect(
         infos.some(item => {
             return (
                 item.operation.attrName === "value" &&
                 item.operation.method === SelectorOperationMethod.SetHtmlAttribute
-            )
-        })
-    ).toBe(false)
-})
+            );
+        }),
+    ).toBe(false);
+});
 
 test("getForBlockSelectorInfos validates selector expressions from compiled sources", () => {
     const cases = [
@@ -226,7 +226,7 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                     {foo[item.id] + bar}
                 </div>
             `),
-            expectedEmpty: true
+            expectedEmpty: true,
         },
         {
             source: formatSourceCode(`
@@ -238,7 +238,7 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                     {foo[item.name]}
                 </div>
             `),
-            expectedEmpty: true
+            expectedEmpty: true,
         },
         {
             source: formatSourceCode(`
@@ -250,7 +250,7 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                     {foo[item.id]}
                 </div>
             `),
-            expectedEmpty: true
+            expectedEmpty: true,
         },
         {
             source: formatSourceCode(`
@@ -262,7 +262,7 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                     {foo[item.other]}
                 </div>
             `),
-            expectedEmpty: true
+            expectedEmpty: true,
         },
         {
             source: formatSourceCode(`
@@ -272,29 +272,29 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                 </lang-js>
                 <div #for={item of items} #key={item.id} !title={selected === item.id}></div>
             `),
-            expectedEmpty: false
-        }
-    ]
+            expectedEmpty: false,
+        },
+    ];
 
     for (const { source, expectedEmpty } of cases) {
-        compile(source)
+        compile(source);
 
-        const forNodeContext = getForNodeContextFromAnalyzeResult()!
-        const infos = getForBlockSelectorInfos(forNodeContext)
+        const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+        const infos = getForBlockSelectorInfos(forNodeContext);
         if (expectedEmpty) {
-            expect(infos).toEqual([])
+            expect(infos).toEqual([]);
         } else {
-            expect(infos.length).toBeGreaterThan(0)
+            expect(infos.length).toBeGreaterThan(0);
             expect(
                 infos.some(
                     item =>
                         item.operation.method === SelectorOperationMethod.SetHtmlAttribute &&
-                        item.operation.attrName === "title"
-                )
-            ).toBe(true)
+                        item.operation.attrName === "title",
+                ),
+            ).toBe(true);
         }
     }
-})
+});
 
 test("getForBlockSelectorInfos ignores dynamic attributes without parsable expression", () => {
     compile(
@@ -306,16 +306,16 @@ test("getForBlockSelectorInfos ignores dynamic attributes without parsable expre
             <div #for={item of items} #key={item.id} !title={selected === item.id}>
                 <div !title></div>
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const infos = getForBlockSelectorInfos(forNodeContext)
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    const infos = getForBlockSelectorInfos(forNodeContext);
     expect(
-        infos.some(item => item.operation.method === SelectorOperationMethod.SetHtmlAttribute)
-    ).toBe(true)
-    expect(infos.length).toBe(1)
-})
+        infos.some(item => item.operation.method === SelectorOperationMethod.SetHtmlAttribute),
+    ).toBe(true);
+    expect(infos.length).toBe(1);
+});
 
 test("getForBlockSelectorInfos skips selectors  contextusing from nested #for", () => {
     compile(
@@ -327,12 +327,12 @@ test("getForBlockSelectorInfos skips selectors  contextusing from nested #for", 
             <div #for={item of items} #key={item.id}>
                 <p #for={sub of item.subs} #key={sub.id}>{foo[sub.id]}</p>
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
-})
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([]);
+});
 
 test("getForBlockSelectorInfos rejects selector expressions with extra binding refs", () => {
     compile(
@@ -344,12 +344,12 @@ test("getForBlockSelectorInfos rejects selector expressions with extra binding r
             <div #for={item of items} #key={item.id}>
                 {foo[(x => x)(item.id)]}
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
-})
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([]);
+});
 
 test("writeSelectorDeclaration handles shorthand refs and repeated key ranges", () => {
     // The dependency reference in the object literal shorthand cannot fall on either
@@ -363,11 +363,11 @@ test("writeSelectorDeclaration handles shorthand refs and repeated key ranges", 
             <div #for={item of items} #key={item.id}>
                 {({ foo })[item.id] + ({ foo })[item.id]}
             </div>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([])
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    expect(getForBlockSelectorInfos(forNodeContext)).toEqual([]);
 
     compile(
         formatSourceCode(`
@@ -376,18 +376,18 @@ test("writeSelectorDeclaration handles shorthand refs and repeated key ranges", 
                 let selected = reactive("a")
             </lang-js>
             <div #for={item of items} #key={item.id} !class={(selected === item.id) + (selected === item.id)}></div>
-        `)
-    )
+        `),
+    );
 
-    const repeatedForNodeContext = getForNodeContextFromAnalyzeResult()!
+    const repeatedForNodeContext = getForNodeContextFromAnalyzeResult()!;
     const selectorInfo = getForBlockSelectorInfos(repeatedForNodeContext).find(item => {
-        return item.operation.method === SelectorOperationMethod.SetHtmlClassName
-    })!
-    const writer = new RuntimeCodeWriter(false)
-    writeSelectorDeclaration(writer, selectorInfo, "getNode")
-    expect(writer.code.match(/prevValue === key/g)).toHaveLength(2)
-    expect(writer.code.match(/selected\.\$ === key/g)).toHaveLength(2)
-})
+        return item.operation.method === SelectorOperationMethod.SetHtmlClassName;
+    })!;
+    const writer = new RuntimeCodeWriter(false);
+    writeSelectorDeclaration(writer, selectorInfo, "getNode");
+    expect(writer.code.match(/prevValue === key/g)).toHaveLength(2);
+    expect(writer.code.match(/selected\.\$ === key/g)).toHaveLength(2);
+});
 
 test("getForBlockSelectorInfos picks the svg setters inside an svg subtree", () => {
     compile(
@@ -399,37 +399,37 @@ test("getForBlockSelectorInfos picks the svg setters inside an svg subtree", () 
             <svg viewBox="0 0 10 10" !width={selected === "a" ? 10 : 20}>
                 <rect #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"} !x={selected === item.id ? 1 : 2}></rect>
             </svg>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const infos = getForBlockSelectorInfos(forNodeContext)
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    const infos = getForBlockSelectorInfos(forNodeContext);
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetClassAttribute
-        })
-    ).toBe(true)
+            return item.operation.method === SelectorOperationMethod.SetClassAttribute;
+        }),
+    ).toBe(true);
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetAttribute
-        })
-    ).toBe(true)
+            return item.operation.method === SelectorOperationMethod.SetAttribute;
+        }),
+    ).toBe(true);
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetHtmlClassName
-        })
-    ).toBe(false)
+            return item.operation.method === SelectorOperationMethod.SetHtmlClassName;
+        }),
+    ).toBe(false);
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetHtmlAttribute
-        })
-    ).toBe(false)
+            return item.operation.method === SelectorOperationMethod.SetHtmlAttribute;
+        }),
+    ).toBe(false);
 
-    const writer = new RuntimeCodeWriter(false)
-    writeSelectorDeclaration(writer, infos[0], "getNode")
-    expect(writer.code).not.toContain("setHtmlClassName")
-    expect(writer.code).not.toContain("setHtmlAttribute")
-})
+    const writer = new RuntimeCodeWriter(false);
+    writeSelectorDeclaration(writer, infos[0], "getNode");
+    expect(writer.code).not.toContain("setHtmlClassName");
+    expect(writer.code).not.toContain("setHtmlAttribute");
+});
 
 test("getForBlockSelectorInfos picks the class attribute setter for slot content", () => {
     compile(
@@ -442,25 +442,25 @@ test("getForBlockSelectorInfos picks the class attribute setter for slot content
             <Icon>
                 <rect #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"}></rect>
             </Icon>
-        `)
-    )
+        `),
+    );
 
-    const forNodeContext = getForNodeContextFromAnalyzeResult()!
-    const infos = getForBlockSelectorInfos(forNodeContext)
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!;
+    const infos = getForBlockSelectorInfos(forNodeContext);
 
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetClassAttribute
-        })
-    ).toBe(true)
+            return item.operation.method === SelectorOperationMethod.SetClassAttribute;
+        }),
+    ).toBe(true);
     expect(
         infos.some(item => {
-            return item.operation.method === SelectorOperationMethod.SetHtmlClassName
-        })
-    ).toBe(false)
+            return item.operation.method === SelectorOperationMethod.SetHtmlClassName;
+        }),
+    ).toBe(false);
 
-    const writer = new RuntimeCodeWriter(false)
-    writeSelectorDeclaration(writer, infos[0], "getNode")
-    expect(writer.code).toContain("setClassAttribute")
-    expect(writer.code).not.toContain("setHtmlClassName")
-})
+    const writer = new RuntimeCodeWriter(false);
+    writeSelectorDeclaration(writer, infos[0], "getNode");
+    expect(writer.code).toContain("setClassAttribute");
+    expect(writer.code).not.toContain("setHtmlClassName");
+});

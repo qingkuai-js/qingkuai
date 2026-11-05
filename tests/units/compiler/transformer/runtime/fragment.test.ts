@@ -1,31 +1,31 @@
-import type { Pair } from "#type-declarations/tools"
+import type { Pair } from "#type-declarations/tools";
 
 import {
     matchTemplateNodesAnchorId,
     matchTemplateNodesRuntimeId,
     matchGeneratedFragmentDebug,
-    matchGeneratedFragmentNonDebug
-} from "./_match"
-import { describe, expect, test } from "vitest"
-import { compile } from "../../../../../src/compiler/compile"
-import { WhitespaceMode } from "../../../../../src/compiler/enums"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+    matchGeneratedFragmentNonDebug,
+} from "./_match";
+import { describe, expect, test } from "vitest";
+import { compile } from "../../../../../src/compiler/compile";
+import { WhitespaceMode } from "../../../../../src/compiler/enums";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 function getRandomDirective() {
     return ["#if={bool}", "#for={3}", "#target={document.body}", "#await={promise}"][
         Math.floor(Math.random() * 4)
-    ]
+    ];
 }
 
 describe("debug mode", () => {
-    const matchGeneratedFragment = matchGeneratedFragmentDebug
+    const matchGeneratedFragment = matchGeneratedFragmentDebug;
 
     test("Empty content", () => {
-        matchGeneratedFragment("", "")
+        matchGeneratedFragment("", "");
         matchGeneratedFragment("", "", {
-            debug: true
-        })
-    })
+            debug: true,
+        });
+    });
 
     describe("Whitespace rule", () => {
         test("trim", () => {
@@ -34,19 +34,19 @@ describe("debug mode", () => {
                 ["  1 2  3   0  ", "1 2  3   0"],
                 ["\n<div>\n\t...\n</div>", "<div>...</div>"],
                 ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2  3   0</div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2  3   0</p></div>"]
-            ]
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2  3   0</p></div>"],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Trim
-                    }
-                )
+                        whitespace: WhitespaceMode.Trim,
+                    },
+                );
             }
-            matchGeneratedFragment("    ", "")
-        })
+            matchGeneratedFragment("    ", "");
+        });
 
         test("preserve", () => {
             const data: Pair<string>[] = [
@@ -57,19 +57,19 @@ describe("debug mode", () => {
                 ["\n<div>\n\t1 2  3   0\n</div>", "\\n<div>\\n\t1 2  3   0\\n</div>"],
                 [
                     "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>",
-                    "<div>\\n\t<p>\\n\t\t1 2  3   0\\n\t</p>\\n</div>"
-                ]
-            ]
+                    "<div>\\n\t<p>\\n\t\t1 2  3   0\\n\t</p>\\n</div>",
+                ],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Preserve
-                    }
-                )
+                        whitespace: WhitespaceMode.Preserve,
+                    },
+                );
             }
-        })
+        });
 
         test("collapse", () => {
             const data: Pair<string>[] = [
@@ -78,18 +78,18 @@ describe("debug mode", () => {
                 ["  1 2  3   0  ", " 1 2 3 0 "],
                 ["\n<div>\n\t...\n</div>", " <div> ... </div>"],
                 ["\n<div>\n\t1 2  3   0\n</div>", " <div> 1 2 3 0 </div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div> <p> 1 2 3 0 </p> </div>"]
-            ]
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div> <p> 1 2 3 0 </p> </div>"],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Collapse
-                    }
-                )
+                        whitespace: WhitespaceMode.Collapse,
+                    },
+                );
             }
-        })
+        });
 
         test("trim-collapse", () => {
             const data: Pair<string>[] = [
@@ -97,23 +97,23 @@ describe("debug mode", () => {
                 ["  1 2  3   0  ", "1 2 3 0"],
                 ["\n<div>\n\t...\n</div>", "<div>...</div>"],
                 ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2 3 0</div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2 3 0</p></div>"]
-            ]
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2 3 0</p></div>"],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
-                    `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`
-                )
+                    `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
+                );
             }
-            matchGeneratedFragment("    ", "")
-        })
-    })
+            matchGeneratedFragment("    ", "");
+        });
+    });
 
     test("Single tag", () => {
         matchGeneratedFragment(
             " <div> </div> ",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div></div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div></div>\`)`,
+        );
 
         matchGeneratedFragment(
             `
@@ -122,46 +122,46 @@ describe("debug mode", () => {
                 </lang-js>
                 <span> 1 2  3   0</span>
             `,
-            `const _getFragment2 = _.createHtmlFragmentGetter(\`<span>1 2 3 0</span>\`)`
-        )
+            `const _getFragment2 = _.createHtmlFragmentGetter(\`<span>1 2 3 0</span>\`)`,
+        );
 
         const nodeList = matchGeneratedFragment(
             "<div>{a}</div>",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
-            [nodeList[0].children[0], "_text1"]
-        ])
-    })
+            [nodeList[0].children[0], "_text1"],
+        ]);
+    });
 
     test("Comment tag", () => {
         matchGeneratedFragment(
             "<!-- xxx -->",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<!-- xxx -->\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<!-- xxx -->\`)`,
+        );
 
         matchGeneratedFragment(
             `
                 <!-- a -->
                 <!-- b -->
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<!-- a --><!-- b -->\`)`
-        )
-    })
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<!-- a --><!-- b -->\`)`,
+        );
+    });
 
     test("Self-closing tag", () => {
         matchGeneratedFragment(
             "<input class='container' />",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input class=container>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input class=container>\`)`,
+        );
 
         const nodeList = matchGeneratedFragment(
             "<input !id />",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input>\`)`
-        )
-        matchTemplateNodesRuntimeId([[nodeList[0], "_input1"]])
-    })
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input>\`)`,
+        );
+        matchTemplateNodesRuntimeId([[nodeList[0], "_input1"]]);
+    });
 
     test("Spread tag", () => {
         let nodeList = matchGeneratedFragment(
@@ -170,9 +170,9 @@ describe("debug mode", () => {
                     <button @click={() => {}}></button>
                 </qk:spread>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<button></button>\`)`
-        )
-        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_button1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<button></button>\`)`,
+        );
+        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_button1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -182,13 +182,13 @@ describe("debug mode", () => {
                     </qk:spread>
                 </qk:spread>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`name:<span> </span>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`name:<span> </span>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_span1"],
-            [nodeList[1].children[1].children[1].children[0], "_text1"]
-        ])
-    })
+            [nodeList[1].children[1].children[1].children[0], "_text1"],
+        ]);
+    });
 
     test("Directives", () => {
         let nodeList = matchGeneratedFragment(
@@ -198,13 +198,13 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div> </div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[1], "_div1"],
-            [nodeList[1].children[0], "_text2"]
-        ])
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+            [nodeList[1].children[0], "_text2"],
+        ]);
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -224,19 +224,19 @@ describe("debug mode", () => {
                 const _getFragment4 = _.createHtmlFragmentGetter(\`<div><p>no content</p></div>\`)
             `,
             {
-                debug: true
-            }
-        )
+                debug: true,
+            },
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[3], "_text1"]
-        ])
+            [nodeList[3], "_text1"],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1], "_div1"],
             [nodeList[1].children[1], "_p1"],
-            [nodeList[1].children[1].children[0], "_text3"]
-        ])
-    })
+            [nodeList[1].children[1].children[0], "_text3"],
+        ]);
+    });
 
     test("Convert preceding text anchor to comment anchor when static text follows", () => {
         const nodeList = matchGeneratedFragment(
@@ -249,19 +249,19 @@ describe("debug mode", () => {
                 const _getFragment2 = _.createHtmlFragmentGetter(\` \`)
             `,
             {
-                whitespace: WhitespaceMode.Collapse
-            }
-        )
+                whitespace: WhitespaceMode.Collapse,
+            },
+        );
 
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[3], "_text1"]
-        ])
+            [nodeList[3], "_text1"],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1], "_text1"],
-            [nodeList[3].children[0], "_text3"]
-        ])
-    })
+            [nodeList[3].children[0], "_text3"],
+        ]);
+    });
 
     test("Top-level directive root keeps anchor in fragment", () => {
         const nodeList = matchGeneratedFragment(
@@ -271,30 +271,30 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div> </div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[1], "_div1"],
-            [nodeList[1].children[0], "_text2"]
-        ])
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
-    })
+            [nodeList[1].children[0], "_text2"],
+        ]);
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
+    });
 
     test("replaceWithText selection should not be rewritten to getSibling", () => {
         const input = formatSourceCode(`
             <Comp #if={condition}></Comp>
             <Comp #else></Comp>
             <div @click={onClick}></div>
-        `)
+        `);
 
         const { code } = compile(input, {
             debug: false,
-            whitespace: WhitespaceMode.Collapse
-        })
+            whitespace: WhitespaceMode.Collapse,
+        });
 
-        expect(code).toContain("const _text4 = _.getSiblingAsText(_text3, 2)")
-        expect(code).toContain("const _div1 = _.getSibling(_text4, 2)")
-    })
+        expect(code).toContain("const _text4 = _.getSiblingAsText(_text3, 2)");
+        expect(code).toContain("const _div1 = _.getSibling(_text4, 2)");
+    });
 
     test("Directives on spread tag", () => {
         let nodeList = matchGeneratedFragment(
@@ -308,13 +308,13 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div> </div>\`)
-            `
-        )
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+            `,
+        );
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1], "_div1"],
-            [nodeList[1].children[1].children[0], "_text2"]
-        ])
+            [nodeList[1].children[1].children[0], "_text2"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -327,12 +327,12 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div>ok</div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], "_text2"]
-        ])
+            [nodeList[1].children[1], "_text2"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -347,18 +347,18 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div><p> </p></div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], "_text2"],
-            [nodeList[1].children[1].children[1], "_text3"]
-        ])
+            [nodeList[1].children[1].children[1], "_text3"],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_div1"],
             [nodeList[1].children[1].children[1].children[1], "_p1"],
-            [nodeList[1].children[1].children[1].children[1].children[0], "_text4"]
-        ])
+            [nodeList[1].children[1].children[1].children[1].children[0], "_text4"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -370,23 +370,23 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div></div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], "_text2"]
-        ])
-    })
+            [nodeList[1].children[1], "_text2"],
+        ]);
+    });
 
     test("Component tag", () => {
         for (let i = 0; i < 2; i++) {
-            const directive = i ? getRandomDirective() : ""
+            const directive = i ? getRandomDirective() : "";
 
             let nodeList = matchGeneratedFragment(
                 `<Comp ${directive} />`,
-                `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-            )
-            matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
+                `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+            );
+            matchTemplateNodesAnchorId([[nodeList[0], "_text1"]]);
 
             nodeList = matchGeneratedFragment(
                 formatSourceCode(`
@@ -401,10 +401,10 @@ describe("debug mode", () => {
                     const _getFragment3 = _.createSlotFragmentGetter(\`<p></p>\`)
                 `,
                 {
-                    whitespace: WhitespaceMode.Preserve
-                }
-            )
-            matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
+                    whitespace: WhitespaceMode.Preserve,
+                },
+            );
+            matchTemplateNodesAnchorId([[nodeList[0], "_text1"]]);
 
             nodeList = matchGeneratedFragment(
                 `
@@ -417,18 +417,18 @@ describe("debug mode", () => {
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                     const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                     const _getFragment3 = _.createSlotFragmentGetter(\`<div> </div>\`)
-                `
-            )
+                `,
+            );
             matchTemplateNodesAnchorId([
                 [nodeList[1], "_text1"],
                 [nodeList[1].children[1], ""],
-                [nodeList[1].children[3], ""]
-            ])
+                [nodeList[1].children[3], ""],
+            ]);
             matchTemplateNodesRuntimeId([
                 [nodeList[1].children[1], "_div1"],
                 [nodeList[1].children[3], "_div2"],
-                [nodeList[1].children[3].children[0], i ? "_text3" : "_text2"]
-            ])
+                [nodeList[1].children[3].children[0], i ? "_text3" : "_text2"],
+            ]);
 
             nodeList = matchGeneratedFragment(
                 `
@@ -445,21 +445,21 @@ describe("debug mode", () => {
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                     const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                     const _getFragment3 = _.createSlotFragmentGetter(\`<p> </p><button></button>\`)
-                `
-            )
+                `,
+            );
             matchTemplateNodesAnchorId([
                 [nodeList[1], "_text1"],
                 [nodeList[1].children[1], ""],
                 [nodeList[1].children[3], ""],
-                [nodeList[1].children[5], ""]
-            ])
+                [nodeList[1].children[5], ""],
+            ]);
             matchTemplateNodesRuntimeId([
                 [nodeList[1].children[1], "_div1"],
                 [nodeList[1].children[5].children[1], "_p1"],
-                [nodeList[1].children[5].children[3], "_button1"]
-            ])
+                [nodeList[1].children[5].children[3], "_button1"],
+            ]);
         }
-    })
+    });
 
     test("Component tag with preceding directive", () => {
         const nodeList = matchGeneratedFragment(
@@ -473,13 +473,13 @@ describe("debug mode", () => {
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                 const _getFragment3 = _.createHtmlFragmentGetter(\`<p></p>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[3], "_text1"]
-        ])
-    })
+            [nodeList[3], "_text1"],
+        ]);
+    });
 
     test("Nesting components", () => {
         let nodeList = matchGeneratedFragment(
@@ -488,12 +488,12 @@ describe("debug mode", () => {
                     <Test />
                 </Comp>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], ""]
-        ])
+            [nodeList[1].children[1], ""],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -502,21 +502,21 @@ describe("debug mode", () => {
                     <Test2 #slot={"2"} />
                 </Comp>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], ""],
-            [nodeList[1].children[3], ""]
-        ])
-    })
+            [nodeList[1].children[3], ""],
+        ]);
+    });
 
     test("Slot tag", () => {
         let nodeList = matchGeneratedFragment(
             `<slot></slot>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -527,11 +527,11 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div></div>\`)
-            `
-        )
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
-        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_div1"]])
-    })
+            `,
+        );
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
+        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_div1"]]);
+    });
 
     test("Slot tag in component", () => {
         let nodeList = matchGeneratedFragment(
@@ -545,13 +545,13 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], ""]
-        ])
-        matchTemplateNodesRuntimeId([[nodeList[1].children[1].children[1], "_div1"]])
+            [nodeList[1].children[1], ""],
+        ]);
+        matchTemplateNodesRuntimeId([[nodeList[1].children[1].children[1], "_div1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -568,19 +568,19 @@ describe("debug mode", () => {
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                 const _getFragment3 = _.createSlotFragmentGetter(\`<p> </p>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], ""],
-            [nodeList[1].children[3], ""]
-        ])
+            [nodeList[1].children[3], ""],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_div1"],
             [nodeList[1].children[3].children[1], "_p1"],
-            [nodeList[1].children[3].children[1].children[0], "_text3"]
-        ])
-    })
+            [nodeList[1].children[3].children[1].children[0], "_text3"],
+        ]);
+    });
 
     test("Directives on slot tag", () => {
         const nodeList = matchGeneratedFragment(
@@ -594,60 +594,60 @@ describe("debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<span> </span>:<span> </span>\`)
-            `
-        )
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+            `,
+        );
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1], "_span1"],
             [nodeList[1].children[3], "_span2"],
             [nodeList[1].children[1].children[0], "_text2"],
-            [nodeList[1].children[3].children[0], "_text3"]
-        ])
-    })
+            [nodeList[1].children[3].children[0], "_text3"],
+        ]);
+    });
 
     test(`With "#html" directive`, () => {
         let nodeList = matchGeneratedFragment(
             `<div #html> static content </div>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
-            [nodeList[0].children[0], "_text1"]
-        ])
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
+            [nodeList[0].children[0], "_text1"],
+        ]);
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
 
         nodeList = matchGeneratedFragment(
             `<div #html> hellow {name}! </div>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
-            [nodeList[0].children[0], "_text1"]
-        ])
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
+            [nodeList[0].children[0], "_text1"],
+        ]);
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
 
         nodeList = matchGeneratedFragment(
             `<qk:spread #html> hello {name}! </qk:spread>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
-        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
+        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             `<qk:spread #html> static content </qk:spread>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
-        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]])
-    })
-})
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
+        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]]);
+    });
+});
 
 describe("non-debug mode", () => {
-    const matchGeneratedFragment = matchGeneratedFragmentNonDebug
+    const matchGeneratedFragment = matchGeneratedFragmentNonDebug;
 
     test("Empty content", () => {
-        matchGeneratedFragment("", "")
-    })
+        matchGeneratedFragment("", "");
+    });
 
     describe("Whitespace rule", () => {
         test("trim", () => {
@@ -656,36 +656,36 @@ describe("non-debug mode", () => {
                 ["  1 2  3   0  ", "1 2  3   0"],
                 ["\n<div>\n\t...\n</div>", "<div>...</div>"],
                 ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2  3   0</div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2  3   0</p></div>"]
-            ]
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2  3   0</p></div>"],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Trim
-                    }
-                )
+                        whitespace: WhitespaceMode.Trim,
+                    },
+                );
             }
             matchGeneratedFragment("    ", "", {
-                whitespace: WhitespaceMode.Trim
-            })
-        })
+                whitespace: WhitespaceMode.Trim,
+            });
+        });
 
         test("preserve", () => {
             const noNewlineData: Pair<string>[] = [
                 ["    ", "    "],
                 [" ... ", " ... "],
-                ["  1 2  3   0  ", "  1 2  3   0  "]
-            ]
+                ["  1 2  3   0  ", "  1 2  3   0  "],
+            ];
             for (const [from, to] of noNewlineData) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Preserve
-                    }
-                )
+                        whitespace: WhitespaceMode.Preserve,
+                    },
+                );
             }
 
             const newlineData: Pair<string>[] = [
@@ -693,19 +693,19 @@ describe("non-debug mode", () => {
                 ["\n<div>\n\t1 2  3   0\n</div>", "\n<div>\n\t1 2  3   0\n</div>"],
                 [
                     "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>",
-                    "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>"
-                ]
-            ]
+                    "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>",
+                ],
+            ];
             for (const [from, to] of newlineData) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Preserve
-                    }
-                )
+                        whitespace: WhitespaceMode.Preserve,
+                    },
+                );
             }
-        })
+        });
 
         test("collapse", () => {
             const data: Pair<string>[] = [
@@ -714,18 +714,18 @@ describe("non-debug mode", () => {
                 ["  1 2  3   0  ", " 1 2 3 0 "],
                 ["\n<div>\n\t...\n</div>", " <div> ... </div>"],
                 ["\n<div>\n\t1 2  3   0\n</div>", " <div> 1 2 3 0 </div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div> <p> 1 2 3 0 </p> </div>"]
-            ]
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div> <p> 1 2 3 0 </p> </div>"],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.Collapse
-                    }
-                )
+                        whitespace: WhitespaceMode.Collapse,
+                    },
+                );
             }
-        })
+        });
 
         test("trim-collapse", () => {
             const data: Pair<string>[] = [
@@ -733,28 +733,28 @@ describe("non-debug mode", () => {
                 ["  1 2  3   0  ", "1 2 3 0"],
                 ["\n<div>\n\t...\n</div>", "<div>...</div>"],
                 ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2 3 0</div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2 3 0</p></div>"]
-            ]
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2 3 0</p></div>"],
+            ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
                     from,
                     `const _getFragment1 = _.createHtmlFragmentGetter(\`${to}\`)`,
                     {
-                        whitespace: WhitespaceMode.TrimCollapse
-                    }
-                )
+                        whitespace: WhitespaceMode.TrimCollapse,
+                    },
+                );
             }
             matchGeneratedFragment("    ", "", {
-                whitespace: WhitespaceMode.TrimCollapse
-            })
-        })
-    })
+                whitespace: WhitespaceMode.TrimCollapse,
+            });
+        });
+    });
 
     test("Single tag", () => {
         matchGeneratedFragment(
             " <div> </div> ",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div></div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div></div>\`)`,
+        );
 
         matchGeneratedFragment(
             `
@@ -763,42 +763,42 @@ describe("non-debug mode", () => {
                 </lang-js>
                 <span> 1 2  3   0</span>
             `,
-            `const _getFragment2 = _.createHtmlFragmentGetter(\`<span>1 2 3 0</span>\`)`
-        )
+            `const _getFragment2 = _.createHtmlFragmentGetter(\`<span>1 2 3 0</span>\`)`,
+        );
 
         const nodeList = matchGeneratedFragment(
             "<div>{a}</div>",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
-            [nodeList[0].children[0], "_text1"]
-        ])
-    })
+            [nodeList[0].children[0], "_text1"],
+        ]);
+    });
 
     test("Comment tag", () => {
-        matchGeneratedFragment("<!-- xxx -->", "")
+        matchGeneratedFragment("<!-- xxx -->", "");
         matchGeneratedFragment(
             `
                 <!-- a -->
                 <!-- b -->
             `,
-            ""
-        )
-    })
+            "",
+        );
+    });
 
     test("Self-closing tag", () => {
         matchGeneratedFragment(
             "<input class='container' />",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input class=container>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input class=container>\`)`,
+        );
 
         const nodeList = matchGeneratedFragment(
             "<input !id />",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input>\`)`
-        )
-        matchTemplateNodesRuntimeId([[nodeList[0], "_input1"]])
-    })
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<input>\`)`,
+        );
+        matchTemplateNodesRuntimeId([[nodeList[0], "_input1"]]);
+    });
 
     test("Spread tag", () => {
         let nodeList = matchGeneratedFragment(
@@ -807,9 +807,9 @@ describe("non-debug mode", () => {
                     <button @click={() => {}}></button>
                 </qk:spread>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<button></button>\`)`
-        )
-        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_button1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<button></button>\`)`,
+        );
+        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_button1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -819,13 +819,13 @@ describe("non-debug mode", () => {
                     </qk:spread>
                 </qk:spread>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`name:<span> </span>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`name:<span> </span>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_span1"],
-            [nodeList[1].children[1].children[1].children[0], "_text1"]
-        ])
-    })
+            [nodeList[1].children[1].children[1].children[0], "_text1"],
+        ]);
+    });
 
     describe("String compression", () => {
         test("No compression when repeated content only appears in getWith fragments", () => {
@@ -837,10 +837,10 @@ describe("non-debug mode", () => {
                 `
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                     const _getFragment2 = _.createHtmlFragmentGetter(\`<div></div>\`)
-                `
-            )
-            matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
-        })
+                `,
+            );
+            matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
+        });
 
         test("Repeated tag names across multiple distinct fragments", () => {
             const nodeList = matchGeneratedFragment(
@@ -864,18 +864,18 @@ describe("non-debug mode", () => {
                     const _getFragment2 = _.createHtmlFragmentGetter(\`|0> |1\`, _compressStrings)
                     const _getFragment3 = _.createHtmlFragmentGetter(\`<p> |2\`, _compressStrings)
                     const _getFragment4 = _.createHtmlFragmentGetter(\`|0><p>no content|2|1\`, _compressStrings)
-                `
-            )
+                `,
+            );
             matchTemplateNodesAnchorId([
                 [nodeList[1], "_text1"],
-                [nodeList[3], "_text1"]
-            ])
+                [nodeList[3], "_text1"],
+            ]);
             matchTemplateNodesRuntimeId([
                 [nodeList[1], "_div1"],
                 [nodeList[1].children[1], "_p1"],
-                [nodeList[1].children[1].children[0], "_text3"]
-            ])
-        })
+                [nodeList[1].children[1].children[0], "_text3"],
+            ]);
+        });
 
         test("Repeated tag within one fragment compresses intra-fragment duplicates", () => {
             // <span> appears twice in the same fragment, triggering compression
@@ -894,16 +894,16 @@ describe("non-debug mode", () => {
 
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                     const _getFragment2 = _.createHtmlFragmentGetter(\`|0> |1:|0> |1\`, _compressStrings)
-                `
-            )
-            matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+                `,
+            );
+            matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
             matchTemplateNodesRuntimeId([
                 [nodeList[1].children[1], "_span1"],
                 [nodeList[1].children[3], "_span2"],
                 [nodeList[1].children[1].children[0], "_text2"],
-                [nodeList[1].children[3].children[0], "_text3"]
-            ])
-        })
+                [nodeList[1].children[3].children[0], "_text3"],
+            ]);
+        });
 
         test("No compression when repeated branch fragments are deduped by getWith", () => {
             const nodeList = matchGeneratedFragment(
@@ -917,14 +917,14 @@ describe("non-debug mode", () => {
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                     const _getFragment2 = _.createHtmlFragmentGetter(\`<div> </div>\`)
                     const _getFragment3 = _.createHtmlFragmentGetter(\`<p> </p>\`)
-                `
-            )
-            matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+                `,
+            );
+            matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
             matchTemplateNodesRuntimeId([
                 [nodeList[1], "_div1"],
-                [nodeList[1].children[1], "_p1"]
-            ])
-        })
+                [nodeList[1].children[1], "_p1"],
+            ]);
+        });
 
         test("Threshold behavior: compress '</a>' but keep '<a' uncompressed", () => {
             matchGeneratedFragment(
@@ -934,9 +934,9 @@ describe("non-debug mode", () => {
                     const _compressStrings = [_s1]
 
                     const _getFragment1 = _.createHtmlFragmentGetter(\`<a>|0<a>|0\`, _compressStrings)
-                `
-            )
-        })
+                `,
+            );
+        });
 
         test("Pipe characters in non-compressed parts are escaped to ||", () => {
             // </div> and </p> each appear only once so are not compressed,
@@ -958,9 +958,9 @@ describe("non-debug mode", () => {
                     const _getFragment1 = _.createHtmlFragmentGetter(\` <!>\`)
                     const _getFragment2 = _.createHtmlFragmentGetter(\`<div>|0> |1</div>\`, _compressStrings)
                     const _getFragment3 = _.createHtmlFragmentGetter(\`<p>|0> |1</p>\`, _compressStrings)
-                `
-            )
-        })
+                `,
+            );
+        });
 
         test("Literal pipe characters are escaped when compression is enabled", () => {
             matchGeneratedFragment(
@@ -980,10 +980,10 @@ describe("non-debug mode", () => {
                     const _getFragment1 = _.createHtmlFragmentGetter(\` <!>\`)
                     const _getFragment2 = _.createHtmlFragmentGetter(\`<div>a||b|0> |1c||d</div>\`, _compressStrings)
                     const _getFragment3 = _.createHtmlFragmentGetter(\`<p>|0> |1</p>\`, _compressStrings)
-                `
-            )
-        })
-    })
+                `,
+            );
+        });
+    });
 
     test("Directives on spread tag", () => {
         let nodeList = matchGeneratedFragment(
@@ -997,13 +997,13 @@ describe("non-debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div> </div>\`)
-            `
-        )
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+            `,
+        );
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1], "_div1"],
-            [nodeList[1].children[1].children[0], "_text2"]
-        ])
+            [nodeList[1].children[1].children[0], "_text2"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1016,12 +1016,12 @@ describe("non-debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div>ok</div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], "_text2"]
-        ])
+            [nodeList[1].children[1], "_text2"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1036,18 +1036,18 @@ describe("non-debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div><p> </p></div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], "_text2"],
-            [nodeList[1].children[1].children[1], "_text3"]
-        ])
+            [nodeList[1].children[1].children[1], "_text3"],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_div1"],
             [nodeList[1].children[1].children[1].children[1], "_p1"],
-            [nodeList[1].children[1].children[1].children[1].children[0], "_text4"]
-        ])
+            [nodeList[1].children[1].children[1].children[1].children[0], "_text4"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1059,20 +1059,20 @@ describe("non-debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div></div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], "_text2"]
-        ])
-    })
+            [nodeList[1].children[1], "_text2"],
+        ]);
+    });
 
     test("Component tag", () => {
         let nodeList = matchGeneratedFragment(
             "<Comp />",
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             formatSourceCode(`
@@ -1087,10 +1087,10 @@ describe("non-debug mode", () => {
                     const _getFragment3 = _.createSlotFragmentGetter(\`<p></p>\`)
             `,
             {
-                whitespace: WhitespaceMode.Preserve
-            }
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
+                whitespace: WhitespaceMode.Preserve,
+            },
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1107,18 +1107,18 @@ describe("non-debug mode", () => {
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`|0>|1\`, _compressStrings)
                 const _getFragment3 = _.createSlotFragmentGetter(\`|0> |1\`, _compressStrings)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], ""],
-            [nodeList[1].children[3], ""]
-        ])
+            [nodeList[1].children[3], ""],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1], "_div1"],
             [nodeList[1].children[3], "_div2"],
-            [nodeList[1].children[3].children[0], "_text2"]
-        ])
+            [nodeList[1].children[3].children[0], "_text2"],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1135,20 +1135,20 @@ describe("non-debug mode", () => {
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                 const _getFragment3 = _.createSlotFragmentGetter(\`<p> </p><button></button>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], ""],
             [nodeList[1].children[3], ""],
-            [nodeList[1].children[5], ""]
-        ])
+            [nodeList[1].children[5], ""],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1], "_div1"],
             [nodeList[1].children[5].children[1], "_p1"],
-            [nodeList[1].children[5].children[3], "_button1"]
-        ])
-    })
+            [nodeList[1].children[5].children[3], "_button1"],
+        ]);
+    });
 
     test("Component tag with preceding directive", () => {
         const nodeList = matchGeneratedFragment(
@@ -1162,13 +1162,13 @@ describe("non-debug mode", () => {
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                 const _getFragment3 = _.createHtmlFragmentGetter(\`<p></p>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[3], "_text1"]
-        ])
-    })
+            [nodeList[3], "_text1"],
+        ]);
+    });
 
     test("Nesting components", () => {
         let nodeList = matchGeneratedFragment(
@@ -1177,12 +1177,12 @@ describe("non-debug mode", () => {
                     <Test />
                 </Comp>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], ""]
-        ])
+            [nodeList[1].children[1], ""],
+        ]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1191,21 +1191,21 @@ describe("non-debug mode", () => {
                     <Test2 #slot={"2"} />
                 </Comp>
             `,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], ""],
-            [nodeList[1].children[3], ""]
-        ])
-    })
+            [nodeList[1].children[3], ""],
+        ]);
+    });
 
     test("Slot tag", () => {
         let nodeList = matchGeneratedFragment(
             `<slot></slot>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1216,11 +1216,11 @@ describe("non-debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`<div></div>\`)
-            `
-        )
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
-        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_div1"]])
-    })
+            `,
+        );
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
+        matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_div1"]]);
+    });
 
     test("Slot tag in component", () => {
         let nodeList = matchGeneratedFragment(
@@ -1234,13 +1234,13 @@ describe("non-debug mode", () => {
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
-            [nodeList[1].children[1], ""]
-        ])
-        matchTemplateNodesRuntimeId([[nodeList[1].children[1].children[1], "_div1"]])
+            [nodeList[1].children[1], ""],
+        ]);
+        matchTemplateNodesRuntimeId([[nodeList[1].children[1].children[1], "_div1"]]);
 
         nodeList = matchGeneratedFragment(
             `
@@ -1257,19 +1257,19 @@ describe("non-debug mode", () => {
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createSlotFragmentGetter(\`<div></div>\`)
                 const _getFragment3 = _.createSlotFragmentGetter(\`<p> </p>\`)
-            `
-        )
+            `,
+        );
         matchTemplateNodesAnchorId([
             [nodeList[1], "_text1"],
             [nodeList[1].children[1], ""],
-            [nodeList[1].children[3], ""]
-        ])
+            [nodeList[1].children[3], ""],
+        ]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_div1"],
             [nodeList[1].children[3].children[1], "_p1"],
-            [nodeList[1].children[3].children[1].children[0], "_text3"]
-        ])
-    })
+            [nodeList[1].children[3].children[1].children[0], "_text3"],
+        ]);
+    });
 
     test("Directives on slot tag", () => {
         const nodeList = matchGeneratedFragment(
@@ -1287,50 +1287,50 @@ describe("non-debug mode", () => {
 
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                 const _getFragment2 = _.createHtmlFragmentGetter(\`|0> |1:|0> |1\`, _compressStrings)
-            `
-        )
-        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]])
+            `,
+        );
+        matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1], "_span1"],
             [nodeList[1].children[3], "_span2"],
             [nodeList[1].children[1].children[0], "_text2"],
-            [nodeList[1].children[3].children[0], "_text3"]
-        ])
-    })
+            [nodeList[1].children[3].children[0], "_text3"],
+        ]);
+    });
 
     test(`With "#html" directive`, () => {
         let nodeList = matchGeneratedFragment(
             `<div #html> static content </div>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
-            [nodeList[0].children[0], "_text1"]
-        ])
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
+            [nodeList[0].children[0], "_text1"],
+        ]);
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
 
         nodeList = matchGeneratedFragment(
             `<div #html> hellow {name}! </div>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`
-        )
+            `const _getFragment1 = _.createHtmlFragmentGetter(\`<div> </div>\`)`,
+        );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
-            [nodeList[0].children[0], "_text1"]
-        ])
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
+            [nodeList[0].children[0], "_text1"],
+        ]);
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
 
         nodeList = matchGeneratedFragment(
             `<qk:spread #html> hello {name}! </qk:spread>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
-        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]])
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
+        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]]);
 
         nodeList = matchGeneratedFragment(
             `<qk:spread #html> static content </qk:spread>`,
-            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`
-        )
-        matchTemplateNodesAnchorId([[nodeList[0], ""]])
-        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]])
-    })
-})
+            `const _getFragment1 = _.createHtmlFragmentGetter(\` \`)`,
+        );
+        matchTemplateNodesAnchorId([[nodeList[0], ""]]);
+        matchTemplateNodesRuntimeId([[nodeList[0].children[0], "_text1"]]);
+    });
+});

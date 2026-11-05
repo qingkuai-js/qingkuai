@@ -1,14 +1,14 @@
-import type { CompileOptions } from "#type-declarations/compiler"
+import type { CompileOptions } from "#type-declarations/compiler";
 
-import { test, expect } from "vitest"
-import { compile } from "../../../../../src/compiler/compile"
-import { ReactivityMode } from "../../../../../src/compiler/enums"
-import { formatSourceCode } from "../../../../../src/util/shared/sundry"
+import { test, expect } from "vitest";
+import { compile } from "../../../../../src/compiler/compile";
+import { ReactivityMode } from "../../../../../src/compiler/enums";
+import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 function compileRuntime(source: string, debug = false, options: CompileOptions = {}) {
-    const result = compile(formatSourceCode(source), { ...options, debug })
-    expect(result.messages.filter(item => item.type === "error")).toEqual([])
-    return result.code
+    const result = compile(formatSourceCode(source), { ...options, debug });
+    expect(result.messages.filter(item => item.type === "error")).toEqual([]);
+    return result.code;
 }
 
 test("Runtime script: debug const alias/derived in one declaration converts contiguous entries", () => {
@@ -20,12 +20,12 @@ test("Runtime script: debug const alias/derived in one declaration converts cont
         </lang-js>
         <div>{a} {b} {c}</div>
     `,
-        true
-    )
-    expect(code).toContain("let a = _.alias(")
-    expect(code).toContain(", [_b, b] = _.derived(")
-    expect(code).toContain("const c = 3")
-})
+        true,
+    );
+    expect(code).toContain("let a = _.alias(");
+    expect(code).toContain(", [_b, b] = _.derived(");
+    expect(code).toContain("const c = 3");
+});
 
 test("Runtime script: alias shorthand reference rewrites object shorthand", () => {
     const code = compileRuntime(
@@ -37,10 +37,10 @@ test("Runtime script: alias shorthand reference rewrites object shorthand", () =
         </lang-js>
         <div>{obj.a}</div>
     `,
-        true
-    )
-    expect(code).toContain("{ a: a[_.REFERENCE_VALUE] }")
-})
+        true,
+    );
+    expect(code).toContain("{ a: a[_.REFERENCE_VALUE] }");
+});
 
 test("Runtime script: watchExp always wraps its first argument as getter", () => {
     const code = compileRuntime(`
@@ -49,9 +49,9 @@ test("Runtime script: watchExp always wraps its first argument as getter", () =>
             watchExp(count + 1, () => {})
         </lang-js>
         <div>{count}</div>
-    `)
-    expect(code).toContain("watch(() => (count + 1), () => {})")
-})
+    `);
+    expect(code).toContain("watch(() => (count + 1), () => {})");
+});
 
 test("Runtime script: watchExp wraps function literal argument instead of using it as getter", () => {
     const code = compileRuntime(`
@@ -60,9 +60,9 @@ test("Runtime script: watchExp wraps function literal argument instead of using 
             watchExp(() => count, () => {})
         </lang-js>
         <div>{count}</div>
-    `)
-    expect(code).toContain("watch(() => (() => count), () => {})")
-})
+    `);
+    expect(code).toContain("watch(() => (() => count), () => {})");
+});
 
 test("Runtime script: watchExp with type assertion still rewrites to base watch", () => {
     const code = compileRuntime(`
@@ -71,9 +71,9 @@ test("Runtime script: watchExp with type assertion still rewrites to base watch"
             const w = (watchExp as any)(count + 1, () => {})
         </lang-js>
         <div>{count}</div>
-    `)
-    expect(code).toContain("(watch as any)(() => (count + 1), () => {})")
-})
+    `);
+    expect(code).toContain("(watch as any)(() => (count + 1), () => {})");
+});
 
 test("Runtime script: destructuring derivedExp in debug emits setter tuple suffix", () => {
     const code = compileRuntime(
@@ -84,11 +84,11 @@ test("Runtime script: destructuring derivedExp in debug emits setter tuple suffi
         </lang-js>
         <div>{a} {b}</div>
     `,
-        true
-    )
-    expect(code).toContain("destructuringDerived((")
-    expect(code).toContain(", 2, [")
-})
+        true,
+    );
+    expect(code).toContain("destructuringDerived((");
+    expect(code).toContain(", 2, [");
+});
 
 test("Runtime script: reactive without argument in debug injects UNDEF setter", () => {
     const code = compileRuntime(
@@ -98,10 +98,10 @@ test("Runtime script: reactive without argument in debug injects UNDEF setter", 
         </lang-js>
         <div>{value}</div>
     `,
-        true
-    )
-    expect(code).toContain("_.react(_.UNDEF")
-})
+        true,
+    );
+    expect(code).toContain("_.react(_.UNDEF");
+});
 
 test("Runtime script: destructuring reactive without argument uses UNDEF tuple input", () => {
     const code = compileRuntime(
@@ -111,11 +111,11 @@ test("Runtime script: destructuring reactive without argument uses UNDEF tuple i
         </lang-js>
         <div>{a} {b}</div>
     `,
-        true
-    )
-    expect(code).toContain("destructuringReact((")
-    expect(code).toContain("], _.UNDEF")
-})
+        true,
+    );
+    expect(code).toContain("destructuringReact((");
+    expect(code).toContain("], _.UNDEF");
+});
 
 test("Runtime script: setContext stores as-is, setContextExp wraps as getter", () => {
     const code = compileRuntime(
@@ -131,21 +131,21 @@ test("Runtime script: setContext stores as-is, setContextExp wraps as getter", (
             console.log(contexts.theme)
         </lang-js>
         <div>{contexts.theme}</div>
-    `
-    )
-    expect(code).toContain("const setContext = (...args) => _.setContext(instance, ...args)")
+    `,
+    );
+    expect(code).toContain("const setContext = (...args) => _.setContext(instance, ...args)");
     expect(code).toContain(
-        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)"
-    )
+        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)",
+    );
     expect(code).not.toContain(
-        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
-    )
-    expect(code).toContain("const contexts = _.initContexts(_meta)")
-    expect(code).toContain('setContext("theme", mode)')
-    expect(code).toContain('setContext("version", 1)')
-    expect(code).toContain('setContext("handler", handler)')
-    expect(code).toContain('setContextGetter("themeExp", () => (mode))')
-})
+        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)",
+    );
+    expect(code).toContain("const contexts = _.initContexts(_meta)");
+    expect(code).toContain('setContext("theme", mode)');
+    expect(code).toContain('setContext("version", 1)');
+    expect(code).toContain('setContext("handler", handler)');
+    expect(code).toContain('setContextGetter("themeExp", () => (mode))');
+});
 
 test("Runtime script: setContext without template usage still captures instance", () => {
     const code = compileRuntime(
@@ -154,16 +154,16 @@ test("Runtime script: setContext without template usage still captures instance"
             setContext("theme", 1)
         </lang-js>
         <div></div>
-    `
-    )
-    expect(code).toContain("const instance = _.init(")
-    expect(code).toContain("const setContext = (...args) => _.setContext(instance, ...args)")
+    `,
+    );
+    expect(code).toContain("const instance = _.init(");
+    expect(code).toContain("const setContext = (...args) => _.setContext(instance, ...args)");
 
-    expect(code).not.toContain("_.initContexts(")
+    expect(code).not.toContain("_.initContexts(");
     expect(code).not.toContain(
-        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
-    )
-})
+        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)",
+    );
+});
 
 test("Runtime script: setContextExp without setContext still injects setContextGetter closure", () => {
     const code = compileRuntime(
@@ -173,18 +173,18 @@ test("Runtime script: setContextExp without setContext still injects setContextG
             setContextExp("theme", mode)
         </lang-js>
         <div></div>
-    `
-    )
-    expect(code).toContain("const instance = _.init(")
+    `,
+    );
+    expect(code).toContain("const instance = _.init(");
     expect(code).toContain(
-        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)"
-    )
+        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)",
+    );
     expect(code).not.toContain(
-        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)"
-    )
-    expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)")
-    expect(code).toContain('setContextGetter("theme", () => (mode))')
-})
+        "const setContextExp = (key, exp) => _.setContextExp(instance, key, exp)",
+    );
+    expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)");
+    expect(code).toContain('setContextGetter("theme", () => (mode))');
+});
 
 test("Runtime script: setContextGetter injects dedicated closure", () => {
     const code = compileRuntime(
@@ -194,14 +194,14 @@ test("Runtime script: setContextGetter injects dedicated closure", () => {
             setContextGetter("theme", () => mode)
         </lang-js>
         <div></div>
-    `
-    )
-    expect(code).toContain("const instance = _.init(")
+    `,
+    );
+    expect(code).toContain("const instance = _.init(");
     expect(code).toContain(
-        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)"
-    )
-    expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)")
-})
+        "const setContextGetter = (...args) => _.setContextGetter(instance, ...args)",
+    );
+    expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)");
+});
 
 test("Runtime script: initializer-less declaration with assertion and type drops both markers", () => {
     // `let x!: T` 无初始化器，被提升为响应式后插入 `= react()`，`!` 与类型标注都必须移除
@@ -211,11 +211,11 @@ test("Runtime script: initializer-less declaration with assertion and type drops
             value = 1
         </lang-js>
         <div>{value}</div>
-    `)
-    expect(code).toContain("let value = _.react()")
-    expect(code).not.toContain("!:")
-    expect(code).not.toContain(": number")
-})
+    `);
+    expect(code).toContain("let value = _.react()");
+    expect(code).not.toContain("!:");
+    expect(code).not.toContain(": number");
+});
 
 test("Runtime script: initializer-less declaration with assertion only drops the assertion token", () => {
     const code = compileRuntime(`
@@ -224,10 +224,10 @@ test("Runtime script: initializer-less declaration with assertion only drops the
             value = 1
         </lang-js>
         <div>{value}</div>
-    `)
-    expect(code).toContain("let value = _.react()")
-    expect(code).not.toContain("let value!")
-})
+    `);
+    expect(code).toContain("let value = _.react()");
+    expect(code).not.toContain("let value!");
+});
 
 test("Runtime script: initializer-less declaration with type only drops the type annotation and its colon", () => {
     const code = compileRuntime(`
@@ -236,10 +236,10 @@ test("Runtime script: initializer-less declaration with type only drops the type
             value = 1
         </lang-js>
         <div>{value}</div>
-    `)
-    expect(code).toContain("let value = _.react()")
-    expect(code).not.toContain(": number")
-})
+    `);
+    expect(code).toContain("let value = _.react()");
+    expect(code).not.toContain(": number");
+});
 
 test("Runtime script: initializer-less declaration markers are dropped before debug destructuring", () => {
     const code = compileRuntime(
@@ -250,12 +250,12 @@ test("Runtime script: initializer-less declaration markers are dropped before de
         </lang-js>
         <div>{value}</div>
     `,
-        true
-    )
-    expect(code).toContain("const _S1 = v => (value = v)")
-    expect(code).toContain("let [_value, value] = _.react(_.UNDEF, _S1)")
-    expect(code).not.toContain("!:")
-})
+        true,
+    );
+    expect(code).toContain("const _S1 = v => (value = v)");
+    expect(code).toContain("let [_value, value] = _.react(_.UNDEF, _S1)");
+    expect(code).not.toContain("!:");
+});
 
 test("Runtime script: initializer-less declaration markers are dropped in shallow mode", () => {
     const code = compileRuntime(
@@ -268,12 +268,12 @@ test("Runtime script: initializer-less declaration markers are dropped in shallo
     `,
         false,
         {
-            reactivityMode: ReactivityMode.Shallow
-        }
-    )
-    expect(code).toContain("let value = _.shallowReact()")
-    expect(code).not.toContain("!:")
-})
+            reactivityMode: ReactivityMode.Shallow,
+        },
+    );
+    expect(code).toContain("let value = _.shallowReact()");
+    expect(code).not.toContain("!:");
+});
 
 test("Runtime script: each declarator in a multi-declarator statement drops its own markers", () => {
     const code = compileRuntime(`
@@ -283,8 +283,8 @@ test("Runtime script: each declarator in a multi-declarator statement drops its 
             b = "x"
         </lang-js>
         <div>{a} {b}</div>
-    `)
-    expect(code).toContain("let a = _.react(), b = _.react()")
-    expect(code).not.toContain("!:")
-    expect(code).not.toContain(": string")
-})
+    `);
+    expect(code).toContain("let a = _.react(), b = _.react()");
+    expect(code).not.toContain("!:");
+    expect(code).not.toContain(": string");
+});

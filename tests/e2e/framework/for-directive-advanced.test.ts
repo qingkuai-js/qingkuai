@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -45,19 +45,19 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports nested if branches inside for items", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
         await expect(page.locator("#for-if-nested-list .for-if-hit")).toHaveText([
             "show:Alpha",
-            "show:Beta"
-        ])
+            "show:Beta",
+        ]);
 
-        await page.locator("#for-toggle-even-only").click()
-        await expect(page.locator("#for-if-nested-list .for-if-hit")).toHaveText(["show:Beta"])
-    })
-})
+        await page.locator("#for-toggle-even-only").click();
+        await expect(page.locator("#for-if-nested-list .for-if-hit")).toHaveText(["show:Beta"]);
+    });
+});

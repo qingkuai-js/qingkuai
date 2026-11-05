@@ -1,6 +1,6 @@
-import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EPageEvaluator, E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -73,57 +73,57 @@ const scenario: E2EScenarioInput = {
             </lang-js>
 
             <article id="no-check-panel">NoCheck panel</article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const readLeak = (page: E2EPageEvaluator) => {
         return page.evaluate(() => {
-            return { ...(globalThis as any).__defaultsEdgeLeak }
-        })
-    }
+            return { ...(globalThis as any).__defaultsEdgeLeak };
+        });
+    };
 
     test("refs-only defaults render and stay writable without props", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const panel = page.locator(".refs-only-panel")
-        await expect(panel.locator(".panel-seed")).toHaveText("Seed: 10")
-        await expect(panel.locator(".panel-tag")).toHaveText("Tag: default-tag")
+        const panel = page.locator(".refs-only-panel");
+        await expect(panel.locator(".panel-seed")).toHaveText("Seed: 10");
+        await expect(panel.locator(".panel-tag")).toHaveText("Tag: default-tag");
 
-        await panel.locator(".panel-bump").click()
-        await expect(panel.locator(".panel-seed")).toHaveText("Seed: 11")
-        await expect(panel.locator(".panel-tag")).toHaveText("Tag: default-tag")
-    })
+        await panel.locator(".panel-bump").click();
+        await expect(panel.locator(".panel-seed")).toHaveText("Seed: 11");
+        await expect(panel.locator(".panel-tag")).toHaveText("Tag: default-tag");
+    });
 
     test("effect reading a props default is kept alive and cleaned up on unmount", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#no-check-panel")).toHaveCount(0)
+        await expect(page.locator("#no-check-panel")).toHaveCount(0);
 
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#no-check-panel")).toHaveText("NoCheck panel")
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, effectCleanups: 0 })
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#no-check-panel")).toHaveText("NoCheck panel");
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, effectCleanups: 0 });
 
         // Effect only reads non-reactive props, yet markActiveEffectNoCheck keeps
         // it registered in the destruction chain, so its cleanup must run on unmount.
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#no-check-panel")).toHaveCount(0)
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, effectCleanups: 1 })
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#no-check-panel")).toHaveCount(0);
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 1, effectCleanups: 1 });
 
         // Re-mounting creates a fresh instance; the cycle repeats.
-        await page.locator("#btn-show").click()
-        await expect(page.locator("#no-check-panel")).toHaveText("NoCheck panel")
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, effectCleanups: 1 })
+        await page.locator("#btn-show").click();
+        await expect(page.locator("#no-check-panel")).toHaveText("NoCheck panel");
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, effectCleanups: 1 });
 
-        await page.locator("#btn-hide").click()
-        await expect(page.locator("#no-check-panel")).toHaveCount(0)
-        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, effectCleanups: 2 })
-    })
-})
+        await page.locator("#btn-hide").click();
+        await expect(page.locator("#no-check-panel")).toHaveCount(0);
+        await expect.poll(() => readLeak(page)).toEqual({ effectRuns: 2, effectCleanups: 2 });
+    });
+});

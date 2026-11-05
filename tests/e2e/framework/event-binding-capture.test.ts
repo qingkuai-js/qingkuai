@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -43,14 +43,14 @@ const scenario: E2EScenarioInput = {
             </div>
             <p id="order">{order}</p>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("capture and bubble phases execute in correct order", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await page.locator("#target-btn").click()
-        await expect(page.locator("#order")).toHaveText("capture:1>target:2>bubble:3")
-    })
-})
+        await page.locator("#target-btn").click();
+        await expect(page.locator("#order")).toHaveText("capture:1>target:2>bubble:3");
+    });
+});

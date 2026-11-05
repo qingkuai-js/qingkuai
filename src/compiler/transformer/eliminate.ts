@@ -1,19 +1,19 @@
-import ts from "../ts-api"
+import ts from "../ts-api";
 
-import { CodeEditor } from "./editor"
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../state"
+import { CodeEditor } from "./editor";
+import { analyzeResult, generateIdentifier, inputDescriptor } from "../state";
 
 export function eliminate(editor: CodeEditor) {
     for (const decl of analyzeResult.script.importDeclarations) {
-        editor.remove(decl.getFullStart(), decl.getEnd())
+        editor.remove(decl.getFullStart(), decl.getEnd());
     }
 
     for (const statement of analyzeResult.script.exportStatements) {
         switch (statement.kind) {
             case ts.SyntaxKind.ExportAssignment:
             case ts.SyntaxKind.ExportDeclaration: {
-                editor.remove(statement.getFullStart(), statement.getEnd())
-                break
+                editor.remove(statement.getFullStart(), statement.getEnd());
+                break;
             }
             default: {
                 if (ts.canHaveModifiers(statement)) {
@@ -22,18 +22,18 @@ export function eliminate(editor: CodeEditor) {
                             modifier.kind === ts.SyntaxKind.ExportKeyword ||
                             modifier.kind === ts.SyntaxKind.DefaultKeyword
                         ) {
-                            editor.remove(modifier.getStart(), modifier.getEnd())
+                            editor.remove(modifier.getStart(), modifier.getEnd());
                         }
                     }
                 }
-                break
+                break;
             }
         }
     }
 
     if (!inputDescriptor.options.checkMode) {
-        const internalId = generateIdentifier.internal
-        const { defaultsCall, usedIntrinsics } = analyzeResult.script
+        const internalId = generateIdentifier.internal;
+        const { defaultsCall, usedIntrinsics } = analyzeResult.script;
         for (const node of analyzeResult.script.eliminatedNodes) {
             if (
                 defaultsCall &&
@@ -44,10 +44,10 @@ export function eliminate(editor: CodeEditor) {
                 editor.replace(
                     defaultsCall.expression.getStart(),
                     defaultsCall.expression.getEnd(),
-                    `${internalId}.applyDefaults`
-                )
+                    `${internalId}.applyDefaults`,
+                );
             } else {
-                editor.remove(node.getStart(), node.getEnd())
+                editor.remove(node.getStart(), node.getEnd());
             }
         }
     }

@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test"
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { Page } from "@playwright/test";
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -76,98 +76,98 @@ const scenario: E2EScenarioInput = {
             <article id="list-scope-root">
                 <span id="list-scope-inner">item: {props.label}</span>
             </article>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     const getScopeAttrs = async (page: Page, selector: string) => {
         return page.locator(selector).evaluate(node => {
-            return node.getAttributeNames().filter(name => name.startsWith("qk-"))
-        })
-    }
+            return node.getAttributeNames().filter(name => name.startsWith("qk-"));
+        });
+    };
 
     test("applies ancestor scope to all root elements in multi-root component", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#multi-root-title")).toBeVisible()
+        await visitScenario(scenario);
+        await expect(page.locator("#multi-root-title")).toBeVisible();
 
-        const headerAttrs = await getScopeAttrs(page, "#multi-root-header")
-        const mainAttrs = await getScopeAttrs(page, "#multi-root-main")
-        const footerAttrs = await getScopeAttrs(page, "#multi-root-footer")
-        const headerInnerAttrs = await getScopeAttrs(page, "#multi-root-header-inner")
-        const mainInnerAttrs = await getScopeAttrs(page, "#multi-root-main-inner")
+        const headerAttrs = await getScopeAttrs(page, "#multi-root-header");
+        const mainAttrs = await getScopeAttrs(page, "#multi-root-main");
+        const footerAttrs = await getScopeAttrs(page, "#multi-root-footer");
+        const headerInnerAttrs = await getScopeAttrs(page, "#multi-root-header-inner");
+        const mainInnerAttrs = await getScopeAttrs(page, "#multi-root-main-inner");
 
         // All root elements should have page scope = 1
-        expect(headerAttrs.length).toBe(1)
-        expect(mainAttrs.length).toBe(1)
-        expect(footerAttrs.length).toBe(1)
+        expect(headerAttrs.length).toBe(1);
+        expect(mainAttrs.length).toBe(1);
+        expect(footerAttrs.length).toBe(1);
 
         // Inner elements should have no scope = 0
-        expect(headerInnerAttrs.length).toBe(0)
-        expect(mainInnerAttrs.length).toBe(0)
+        expect(headerInnerAttrs.length).toBe(0);
+        expect(mainInnerAttrs.length).toBe(0);
 
         // All root elements should share the same scope attributes
-        expect(headerAttrs.sort()).toEqual(mainAttrs.sort())
-        expect(headerAttrs.sort()).toEqual(footerAttrs.sort())
-    })
+        expect(headerAttrs.sort()).toEqual(mainAttrs.sort());
+        expect(headerAttrs.sort()).toEqual(footerAttrs.sort());
+    });
 
     test("re-render preserves scope attributes on #scope component", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#multi-root-title")).toBeVisible()
+        await visitScenario(scenario);
+        await expect(page.locator("#multi-root-title")).toBeVisible();
 
         // Initial: page scope only = 1
-        const initialAttrs = await getScopeAttrs(page, "#toggle-root")
-        expect(initialAttrs.length).toBe(1)
+        const initialAttrs = await getScopeAttrs(page, "#toggle-root");
+        expect(initialAttrs.length).toBe(1);
 
         // Toggle off (removes ToggleScope, re-renders)
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#toggle-count")).toHaveText("1")
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#toggle-count")).toHaveText("1");
 
         // Toggle on again
-        await page.locator("#btn-toggle").click()
-        await expect(page.locator("#toggle-count")).toHaveText("2")
+        await page.locator("#btn-toggle").click();
+        await expect(page.locator("#toggle-count")).toHaveText("2");
 
         // After re-render, scope should still be present
-        const reRenderedAttrs = await getScopeAttrs(page, "#toggle-root")
-        expect(reRenderedAttrs.length).toBe(1)
-        expect(reRenderedAttrs).toEqual(initialAttrs)
-    })
+        const reRenderedAttrs = await getScopeAttrs(page, "#toggle-root");
+        expect(reRenderedAttrs.length).toBe(1);
+        expect(reRenderedAttrs).toEqual(initialAttrs);
+    });
 
     test("each iteration in #for gets correct scope attributes", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
-        await expect(page.locator("#multi-root-title")).toBeVisible()
+        await visitScenario(scenario);
+        await expect(page.locator("#multi-root-title")).toBeVisible();
 
-        const allRoots = page.locator('[id="list-scope-root"]')
-        await expect(allRoots).toHaveCount(2)
+        const allRoots = page.locator('[id="list-scope-root"]');
+        await expect(allRoots).toHaveCount(2);
 
         // Each item's root: ancestor scope only = 1
         for (let i = 0; i < 2; i++) {
             const attrs = await allRoots.nth(i).evaluate(node => {
-                return node.getAttributeNames().filter(name => name.startsWith("qk-"))
-            })
-            expect(attrs.length).toBe(1)
-            expect(attrs[0]).toMatch(/^qk-[a-f0-9]+$/)
+                return node.getAttributeNames().filter(name => name.startsWith("qk-"));
+            });
+            expect(attrs.length).toBe(1);
+            expect(attrs[0]).toMatch(/^qk-[a-f0-9]+$/);
         }
 
         // Add a new item
-        await page.locator("#btn-add-item").click()
-        await expect(allRoots).toHaveCount(3)
+        await page.locator("#btn-add-item").click();
+        await expect(allRoots).toHaveCount(3);
 
         // New item should also have correct scope
         for (let i = 0; i < 3; i++) {
             const attrs = await allRoots.nth(i).evaluate(node => {
-                return node.getAttributeNames().filter(name => name.startsWith("qk-"))
-            })
-            expect(attrs.length).toBe(1)
+                return node.getAttributeNames().filter(name => name.startsWith("qk-"));
+            });
+            expect(attrs.length).toBe(1);
         }
-    })
-})
+    });
+});

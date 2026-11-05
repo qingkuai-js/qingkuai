@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -83,51 +83,51 @@ const scenario: E2EScenarioInput = {
         `,
         IfChainElsePanel: `
             <div id="component-chain-else">Component else branch</div>
-        `
-    }
-}
+        `,
+    },
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("supports if on component tags", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#component-fallback")).toHaveText("Component fallback")
+        await expect(page.locator("#component-fallback")).toHaveText("Component fallback");
 
-        await page.locator("#toggle-component").click()
-        await expect(page.locator("#component-content")).toHaveText("Component content")
+        await page.locator("#toggle-component").click();
+        await expect(page.locator("#component-content")).toHaveText("Component content");
 
-        await page.locator("#toggle-component").click()
-        await expect(page.locator("#component-fallback")).toHaveText("Component fallback")
-    })
+        await page.locator("#toggle-component").click();
+        await expect(page.locator("#component-fallback")).toHaveText("Component fallback");
+    });
 
     test("keeps component if branch between stable siblings", async ({ page, visitScenario }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        const children = page.locator("#component-order-host > *")
-        await expect(children).toHaveText(["Before", "After"])
+        const children = page.locator("#component-order-host > *");
+        await expect(children).toHaveText(["Before", "After"]);
 
-        await page.locator("#toggle-component").click()
-        await expect(children).toHaveText(["Before", "Component content", "After"])
+        await page.locator("#toggle-component").click();
+        await expect(children).toHaveText(["Before", "Component content", "After"]);
 
-        await page.locator("#toggle-component").click()
-        await expect(children).toHaveText(["Before", "After"])
-    })
+        await page.locator("#toggle-component").click();
+        await expect(children).toHaveText(["Before", "After"]);
+    });
 
     test("supports full component if elif else chain switching", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        await visitScenario(scenario)
+        await visitScenario(scenario);
 
-        await expect(page.locator("#component-chain-else")).toHaveText("Component else branch")
+        await expect(page.locator("#component-chain-else")).toHaveText("Component else branch");
 
-        await page.locator("#cycle-component-branch").click()
-        await expect(page.locator("#component-chain-if")).toHaveText("Component if branch")
+        await page.locator("#cycle-component-branch").click();
+        await expect(page.locator("#component-chain-if")).toHaveText("Component if branch");
 
-        await page.locator("#cycle-component-branch").click()
-        await expect(page.locator("#component-chain-elif")).toHaveText("Component elif branch")
+        await page.locator("#cycle-component-branch").click();
+        await expect(page.locator("#component-chain-elif")).toHaveText("Component elif branch");
 
-        await page.locator("#cycle-component-branch").click()
-        await expect(page.locator("#component-chain-else")).toHaveText("Component else branch")
-    })
-})
+        await page.locator("#cycle-component-branch").click();
+        await expect(page.locator("#component-chain-else")).toHaveText("Component else branch");
+    });
+});

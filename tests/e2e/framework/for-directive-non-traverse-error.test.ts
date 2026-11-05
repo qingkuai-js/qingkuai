@@ -1,6 +1,6 @@
-import type { E2EScenarioInput } from "#type-declarations/testing"
+import type { E2EScenarioInput } from "#type-declarations/testing";
 
-import { defineE2ETestFile } from "../scenario-module"
+import { defineE2ETestFile } from "../scenario-module";
 
 const scenario: E2EScenarioInput = {
     input: `
@@ -28,49 +28,49 @@ const scenario: E2EScenarioInput = {
                 </span>
             </div>
         </section>
-    `
-}
+    `,
+};
 
 export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expect }) => {
     test("throws runtime error when for source becomes non-traversable", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
+        const pageErrors: string[] = [];
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
 
-        await visitScenario(scenario)
-        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"])
+        await visitScenario(scenario);
+        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"]);
 
-        await page.locator("#set-non-traversable").click()
+        await page.locator("#set-non-traversable").click();
 
         await expect
             .poll(() => pageErrors.join("\n"))
-            .toContain('The given value for "#for" directive is non-traversable.')
-    })
+            .toContain('The given value for "#for" directive is non-traversable.');
+    });
 
     test("keeps previous rendered list after non-traversable interruption", async ({
         page,
-        visitScenario
+        visitScenario,
     }) => {
-        const pageErrors: string[] = []
+        const pageErrors: string[] = [];
         page.on("pageerror", error => {
-            pageErrors.push(error.message)
-        })
+            pageErrors.push(error.message);
+        });
 
-        await visitScenario(scenario)
-        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"])
+        await visitScenario(scenario);
+        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"]);
 
-        await page.locator("#set-non-traversable").click()
+        await page.locator("#set-non-traversable").click();
         await expect
             .poll(() => pageErrors.join("\n"))
-            .toContain('The given value for "#for" directive is non-traversable.')
+            .toContain('The given value for "#for" directive is non-traversable.');
 
-        await page.locator("#set-traversable").click()
+        await page.locator("#set-traversable").click();
 
         // After a non-traversable runtime error, current behavior keeps previous nodes.
-        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"])
-    })
-})
+        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"]);
+    });
+});
