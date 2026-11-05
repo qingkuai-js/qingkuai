@@ -316,7 +316,7 @@ function writeDomOperationCall(
         case SelectorOperationMethod.SetHtmlAttribute: {
             writer.write(`${internalId}.`)
             writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
-            writer.write(`${getMaybeReusedString(info.operation.attrName ?? "")}, `)
+            writer.write(`${getMaybeReusedString(info.operation.attrName!)}, `)
             writeSelectorExpression(writer, info, expressionType).write(")")
             break
         }
@@ -324,7 +324,7 @@ function writeDomOperationCall(
         case SelectorOperationMethod.SetXlinkAttribute: {
             writer.write(`${internalId}.`)
             writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
-            writer.write(`${getMaybeReusedString(info.operation.attrName ?? "")}, `)
+            writer.write(`${getMaybeReusedString(info.operation.attrName!)}, `)
             writeSelectorExpression(writer, info, expressionType).write(")")
             break
         }
