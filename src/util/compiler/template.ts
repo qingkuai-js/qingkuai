@@ -1,4 +1,9 @@
-import type { TemplateAttribute, TemplateNode, TextContentPart } from "#type-declarations/compiler"
+import type {
+    TemplateNode,
+    TextContentPart,
+    TemplateAttribute,
+    TemplateNodeContext
+} from "#type-declarations/compiler"
 
 import { getLocByIndex } from "./position"
 import { isBlankTextNode } from "./assert"
@@ -31,6 +36,10 @@ export function getParsedExpression(key: any) {
 
 export function getTemplateNodeContext(node: TemplateNode) {
     return analyzeResult.template.nodeContexts.get(node)!
+}
+
+export function isSvgElementContext(nodeContext: TemplateNodeContext) {
+    return nodeContext.inSvgContext || "svg" === nodeContext.node.tag
 }
 
 export function getParsedEventInfo(key: TemplateAttribute) {

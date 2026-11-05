@@ -88,7 +88,7 @@ test("Dynamic attribute function call generates a render effect", () => {
         <div !title={getTitle()}></div>
     `)
     expect(code).toContain("_.renderEffect(() => {")
-    expect(code).toContain(`_.setAttribute(_div1, "title", getTitle())`)
+    expect(code).toContain(`_.setHtmlAttribute(_div1, "title", getTitle())`)
 })
 
 test("Dynamic attribute with standalone non-reactive identifier does not generate a render effect", () => {
@@ -99,7 +99,7 @@ test("Dynamic attribute with standalone non-reactive identifier does not generat
         <div !title={title}></div>
     `)
     expect(code).not.toContain("_.renderEffect")
-    expect(code).toContain(`_.setAttribute(_div1, "title", title)`)
+    expect(code).toContain(`_.setHtmlAttribute(_div1, "title", title)`)
 })
 
 test("Raw calls keep the interpolation static", () => {

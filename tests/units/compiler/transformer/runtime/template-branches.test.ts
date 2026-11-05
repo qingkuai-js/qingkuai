@@ -362,7 +362,7 @@ test("Class and select dynamic attributes use dedicated setters", () => {
         <div class="base" !class={cls}></div>
         <select !value={selected}></select>
     `)
-    expect(code).toContain("_.setClassName(")
+    expect(code).toContain("_.setHtmlClassName(")
     expect(code).toContain('["base", ')
     expect(code).toContain("_.setSelectValue(")
 })
@@ -607,7 +607,7 @@ test("svg namespace context is not inherited across a component", () => {
     expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/)
 })
 
-test("svg namespace context is not inherited across a slot", () => {
+test("svg namespace context is inherited by slot fallback content", () => {
     const code = compileRuntime(`
         <svg viewBox="0 0 10 10">
             <slot>
@@ -615,7 +615,36 @@ test("svg namespace context is not inherited across a slot", () => {
             </slot>
         </svg>
     `)
-    expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/)
+    expect(code).toMatch(/createSvgFragmentGetter\(`<path><\/path>`\)/)
+})
+
+test("svg namespace context reaches the attributes of slot fallback content", () => {
+    const code = compileRuntime(`
+        <svg viewBox="0 0 10 10">
+            <slot>
+                <path !class={label} !opacity={count}></path>
+            </slot>
+        </svg>
+    `)
+    expect(code).toMatch(/_\.setClassAttribute\(/)
+    expect(code).toMatch(/_\.setAttribute\(/)
+    expect(code).not.toMatch(/_\.setHtmlClassName\(/)
+    expect(code).not.toMatch(/_\.setHtmlAttribute\(/)
+})
+
+test("svg namespace context stops at foreignObject regardless of tag casing", () => {
+    for (const tag of ["foreignObject", "foreignobject"]) {
+        const code = compileRuntime(`
+            <svg viewBox="0 0 10 10">
+                <${tag}>
+                    <div !class={label}></div>
+                    <path #if={bool}></path>
+                </${tag}>
+            </svg>
+        `)
+        expect(code).toMatch(/_\.setHtmlClassName\(/)
+        expect(code).toMatch(/createFragmentGetter\(`<path><\/path>`\)/)
+    }
 })
 
 test("identical fragments in svg and html contexts are not merged", () => {

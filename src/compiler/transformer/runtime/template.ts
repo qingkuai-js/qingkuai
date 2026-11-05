@@ -26,6 +26,7 @@ import {
     getParsedEventInfo,
     getParsedDirective,
     getParsedExpression,
+    isSvgElementContext,
     getPrevElementContext,
     getNextElementContent,
     getTemplateNodeContext,
@@ -55,7 +56,6 @@ export function generateTemplateRender(
     }
 
     const componentFragment = analyzeResult.template.componentFragment
-
     if (isRoot && componentFragment?.content.length) {
         writeFragmentSelections(writer, componentFragment)
         generateRenderEffect(writer, nodes, null)
@@ -278,11 +278,11 @@ function generateDirectiveBlock(
             const parsedDirective = getParsedDirective(directive)!
             const patterns = parsedDirective.patterns
             const keyDirective = nodeContext.attributesMap["#key"]
+            const fn = keyDirective ? "keyedListBlock" : "listBlock"
             const selectorInfos =
                 keyDirective && !inputDescriptor.options.debug
                     ? getForBlockSelectorInfos(nodeContext)
                     : []
-            const fn = keyDirective ? "keyedListBlock" : "listBlock"
             const nodeGetterId = selectorInfos.length ? ensureIdWithNumSuffix("_getNodeByKey") : ""
 
             if (keyDirective) {
@@ -452,13 +452,15 @@ function generateRenderEffect(
             const interpolationSourceIndex = attribute.equalSign
                 ? attribute.value.loc.start.index
                 : attribute.loc.start.index
+            const isSvgElement = isSvgElementContext(nodeContext)
             if (createRenderEffect) {
                 generateRenderEffectCall()
             }
             if (baseName === "class") {
+                const setClassMethod = isSvgElement ? "setClassAttribute" : "setHtmlClassName"
                 const staticClassAttr = nodeContext.attributesMap["class"]
                 writer.wrapLine().write(`${internalId}.`)
-                writer.write("setClassName", interpolationSourceIndex)
+                writer.write(setClassMethod, interpolationSourceIndex)
                 writer.write("(").write(nodeContext.id).write(", ")
 
                 if (staticClassAttr) {
@@ -483,7 +485,11 @@ function generateRenderEffect(
 
             const isXlinkAttr = baseName.startsWith("xlink:")
             const attrName = isXlinkAttr ? baseName.slice(6) : baseName
-            const method = isXlinkAttr ? "setXlinkAttribute" : "setAttribute"
+            const method = isXlinkAttr
+                ? "setXlinkAttribute"
+                : isSvgElement
+                  ? "setAttribute"
+                  : "setHtmlAttribute"
             writer.wrapLine().write(`${internalId}.`)
             writer.write(method, interpolationSourceIndex)
             writer.write(`(${nodeContext.id}, ${getMaybeReusedString(attrName)}, `)

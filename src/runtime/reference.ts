@@ -7,7 +7,7 @@ import { ATTRIBUTE_PREFIX } from "./constants"
 import { isArray } from "../util/shared/assert"
 import { pushDestructionCleaner } from "./destroy"
 import { spliceByElem } from "../util/shared/arrays"
-import { listen, renderEffect, setAttribute, setSelectValue } from "./internal"
+import { listen, renderEffect, setHtmlAttribute, setSelectValue } from "./internal"
 
 export function bindHandleReceiver(handle: any, setter: Setter) {
     pushDestructionCleaner(() => {
@@ -18,17 +18,17 @@ export function bindHandleReceiver(handle: any, setter: Setter) {
 
 export function bindInputValue(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
     listen(elem, "input", () => setValue(elem.value))
-    renderEffect(() => setAttribute(elem, "value", getTarget()))
+    renderEffect(() => setHtmlAttribute(elem, "value", getTarget()))
 }
 
 export function bindInputNumber(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
     listen(elem, "input", () => setValue(+elem.value))
-    renderEffect(() => setAttribute(elem, "value", getTarget()))
+    renderEffect(() => setHtmlAttribute(elem, "value", getTarget()))
 }
 
 export function bindInputChecked(elem: HTMLInputElement, getTarget: Getter, setValue: Setter) {
     listen(elem, "change", () => setValue(elem.checked))
-    renderEffect(() => setAttribute(elem, "checked", getTarget()))
+    renderEffect(() => setHtmlAttribute(elem, "checked", getTarget()))
 }
 
 export function bindInputGroup(elem: HTMLInputElement, getTarget: Getter) {

@@ -21,8 +21,8 @@ import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/share
 // paths; memoizing the concatenation avoids re-allocating the name every time.
 const attributeCacheKeys = /*#__PURE__*/ new Map<string, string>()
 
-export function setClassName(elem: Element, value: ClassAttrValue) {
-    const className = isString(value) ? value : getClassNameString(value)
+export function setHtmlClassName(elem: Element, value: ClassAttrValue) {
+    const className = getClassName(value)
     if (className === any(elem)[CLASS_CACHE_KEY]) {
         return
     }
@@ -33,6 +33,38 @@ export function setClassName(elem: Element, value: ClassAttrValue) {
     } else {
         elem.removeAttribute("class")
     }
+}
+
+// 按属性写入 class：SVG 元素的 className 是只读的，插槽内容的元素命名空间只有运行时
+// 才知道，这两种情况都用 setAttribute，对 SVG 与 HTML 元素都成立
+//
+// Writes the class as an attribute. The className of an SVG element is read-only, and the
+// namespace of slot content is only known at runtime; setAttribute is correct for both
+// SVG and HTML elements.
+export function setClassAttribute(elem: Element, value: ClassAttrValue) {
+    setAttribute(elem, "class", getClassName(value))
+}
+
+// HTML 元素的同名属性是可写的，直接赋值比 setAttribute 快；SVG 的只读属性在这里会
+// 抛错，因此 SVG 元素统一使用 setAttribute
+//
+// The same-named property of an HTML element is writable and assigning it is faster than
+// setAttribute; SVG properties are read-only and throw, so SVG elements use setAttribute.
+export function setHtmlAttribute(elem: Element, name: string, value: any) {
+    const cacheKey = getAttributeCacheKey(name)
+    if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
+        return
+    }
+    if (!isNull(value) && !isUndefined(value) && name in elem) {
+        try {
+            any(elem)[name] = value
+            any(elem)[cacheKey] = value
+            return
+        } catch {
+            // do nothing
+        }
+    }
+    setAttribute(elem, name, value)
 }
 
 export function setAttribute(elem: Element, name: string, value: any) {
@@ -47,14 +79,6 @@ export function setAttribute(elem: Element, name: string, value: any) {
         return
     }
 
-    if (name in elem) {
-        try {
-            any(elem)[name] = value
-            return
-        } catch {
-            // do nothing
-        }
-    }
     if (isBoolean(value)) {
         if (value) {
             value = ""
@@ -92,7 +116,7 @@ export function setInputGroup(elem: HTMLInputElement, target: any) {
     if (!containerIsArray && type !== "Set") {
         return NotArrayOrSet("group", `<input>(radio/checkbox)`)
     }
-    setAttribute(
+    setHtmlAttribute(
         elem,
         "checked",
         target[containerIsArray ? "includes" : "has"](getElementValue(elem))
@@ -115,7 +139,7 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
                 return NotArrayOrSet("value", "<select multiple>")
             }
             for (const option of options) {
-                setAttribute(
+                setHtmlAttribute(
                     option,
                     "selected",
                     target[containerIsArray ? "includes" : "has"](getElementValue(option))
@@ -159,4 +183,8 @@ function getClassNameString(value: any): string {
         return className
     }
     return getClassNameWithObject(value)
+}
+
+function getClassName(value: ClassAttrValue) {
+    return isString(value) ? value : getClassNameString(value)
 }

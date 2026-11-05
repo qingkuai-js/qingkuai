@@ -8,7 +8,8 @@ import type {
     RawArgumentKind,
     IdentifierStatus,
     CompileMessageType,
-    AttributeValueEnclosure
+    AttributeValueEnclosure,
+    SelectorOperationMethod
 } from "../compiler/enums"
 import type { GeneralFunc, Pair } from "#type-declarations/tools"
 import type { TopLevelDeclarationNode, TopLevelDeclaratorNode } from "./ts-ast"
@@ -376,27 +377,16 @@ export type DirectiveRenderInserts = Partial<{
     enclosure: GeneralFunc
 }>
 
+export interface SelectorOperation {
+    method: SelectorOperationMethod
+    attrName?: string
+    staticClassAttr?: TemplateAttribute
+}
+
 export type CompileIntermediateOptions = Pick<
     CompileOptions,
     "allowConstReactive" | "requireReactivityMark"
 >
-
-export type SelectorOperation =
-    | {
-          method: "setText"
-      }
-    | {
-          method: "setAttribute"
-          attrName: string
-      }
-    | {
-          method: "setXlinkAttribute"
-          attrName: string
-      }
-    | {
-          method: "setClassName"
-          staticClassAttr?: TemplateAttribute
-      }
 
 export type SelectionCacheItem = {
     id: string

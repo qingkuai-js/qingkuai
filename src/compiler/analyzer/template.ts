@@ -152,8 +152,18 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
     })
 }
 
+// 组件的子节点是插槽内容，落点由组件决定；foreignObject 内部的子节点属于 HTML 命名空间。
+// The child nodes of a component are slot content, and the landing point is determined
+// by the component; the child nodes inside foreignObject belong to the HTML namespace.
 function isSvgContextBoundary(node: TemplateNode) {
-    return !!(node.componentTag || "slot" === node.tag)
+    if (node.componentTag) {
+        return true
+    }
+
+    // foreignObject 标签名比较忽略大小写，HTML 解析器本身对 SVG 标签名做大小写纠正
+    // The foreignObject tag name is compared case-insensitively,
+    // and the HTML parser itself corrects the case of SVG tag names.
+    return "foreignobject" === node.tag.toLowerCase()
 }
 
 function markTemplateNodeShouldBeSelected(node: TemplateNode) {

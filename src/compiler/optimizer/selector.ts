@@ -4,6 +4,8 @@ import type {
     Range,
     ParsedExpression,
     TemplateAttribute,
+    ParsedDirective,
+    SelectorOperation,
     TemplateNodeContext,
     GeneratedSelectorInfo
 } from "#type-declarations/compiler"
@@ -11,13 +13,17 @@ import type { RuntimeCodeWriter } from "../transformer/writer"
 
 import ts from "../ts-api"
 
+import {
+    getParsedDirective,
+    getParsedExpression,
+    isSvgElementContext
+} from "../../util/compiler/template"
 import { walkTsNode } from "../ts-ast/walk"
 import { getMaybeReusedString } from "./compress"
-import { SelectorExpressionType } from "../enums"
 import { CodeEditor } from "../transformer/editor"
 import { analyzeResult, generateIdentifier } from "../state"
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry"
-import { getParsedDirective, getParsedExpression } from "../../util/compiler/template"
+import { SelectorExpressionType, SelectorOperationMethod } from "../enums"
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../util/compiler/sundry"
 import { isBindingReference, isExpressionEqual, isMemberAccessExpression } from "../ts-ast/assert"
 
@@ -72,9 +78,9 @@ export function getForBlockSelectorInfos(forNodeContext: TemplateNodeContext) {
             operation,
             keyDirective,
             forNodeContext,
-            targetNodeContext: forNodeContext,
             expressionKey: attribute,
             targetAttribute: attribute,
+            targetNodeContext: forNodeContext,
             id: ensureIdWithNumSuffix("_selector"),
             topLevelIdentifierName: selectorValidation.topLevelIdentifierName,
             topLevelTransformedTo: selectorValidation.topLevelTransformedTo
@@ -122,37 +128,59 @@ export function hasSelectorForTextNode(
     nodeContext: TemplateNodeContext
 ) {
     return selectorInfos.some(item => {
-        return item.targetNodeContext === nodeContext && item.operation.method === "setText"
+        return (
+            item.targetNodeContext === nodeContext &&
+            item.operation.method === SelectorOperationMethod.SetText
+        )
     })
 }
 
-function getSelectorOperation(nodeContext: TemplateNodeContext, attribute: TemplateAttribute) {
+function getSelectorOperation(
+    nodeContext: TemplateNodeContext,
+    attribute: TemplateAttribute
+): SelectorOperation | undefined {
     const baseName = getAttributeBaseName(attribute.name.raw)
     if (baseName === "value" && nodeContext.node.tag === "select") {
         return
     }
 
+    const isSvgElement = isSvgElementContext(nodeContext)
     if (baseName === "class") {
-        return {
-            method: "setClassName" as const,
-            staticClassAttr: nodeContext.attributesMap.class
+        const staticClassAttr = nodeContext.attributesMap.class
+        if (isSvgElement) {
+            return {
+                staticClassAttr,
+                method: SelectorOperationMethod.SetClassAttribute
+            }
+        } else {
+            return {
+                staticClassAttr,
+                method: SelectorOperationMethod.SetHtmlClassName
+            }
         }
     }
     if (baseName.startsWith("xlink:")) {
         return {
-            method: "setXlinkAttribute" as const,
+            method: SelectorOperationMethod.SetXlinkAttribute,
             attrName: baseName.slice(6)
         }
     }
-    return {
-        method: "setAttribute" as const,
-        attrName: baseName
+    if (isSvgElement) {
+        return {
+            attrName: baseName,
+            method: SelectorOperationMethod.SetAttribute
+        }
+    } else {
+        return {
+            attrName: baseName,
+            method: SelectorOperationMethod.SetHtmlAttribute
+        }
     }
 }
 
 function validateSelectorExpression(
     expression: ParsedExpression,
-    parsedForDirective: NonNullable<ReturnType<typeof getParsedDirective>>,
+    parsedForDirective: ParsedDirective,
     parsedKeyExpression: ParsedExpression
 ):
     | {
@@ -268,8 +296,10 @@ function writeDomOperationCall(
     const internalId = generateIdentifier.internal
 
     switch (info.operation.method) {
-        case "setClassName": {
-            writer.write(`${internalId}.`).write("setClassName", sourceIndex).write(`(${nodeId}, `)
+        case SelectorOperationMethod.SetHtmlClassName:
+        case SelectorOperationMethod.SetClassAttribute: {
+            writer.write(`${internalId}.`)
+            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
 
             if (info.operation.staticClassAttr) {
                 writer.write("[")
@@ -278,8 +308,7 @@ function writeDomOperationCall(
                     info.operation.staticClassAttr.value.loc
                 )
                 writer.write(", ")
-                writeSelectorExpression(writer, info, expressionType)
-                writer.write("]")
+                writeSelectorExpression(writer, info, expressionType).write("]")
             } else {
                 writeSelectorExpression(writer, info, expressionType)
             }
@@ -287,26 +316,26 @@ function writeDomOperationCall(
             break
         }
 
-        case "setAttribute": {
-            writer.write(`${internalId}.`).write("setAttribute", sourceIndex)
-            writer.write(`(${nodeId}, `).write(`${getMaybeReusedString(info.operation.attrName)}, `)
-            writeSelectorExpression(writer, info, expressionType)
-            writer.write(")")
+        case SelectorOperationMethod.SetAttribute:
+        case SelectorOperationMethod.SetHtmlAttribute: {
+            writer.write(`${internalId}.`)
+            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
+            writer.write(`${getMaybeReusedString(info.operation.attrName ?? "")}, `)
+            writeSelectorExpression(writer, info, expressionType).write(")")
             break
         }
 
-        case "setXlinkAttribute": {
-            writer.write(`${internalId}.`).write("setXlinkAttribute", sourceIndex)
-            writer.write(`(${nodeId}, `).write(`${getMaybeReusedString(info.operation.attrName)}, `)
-            writeSelectorExpression(writer, info, expressionType)
-            writer.write(")")
+        case SelectorOperationMethod.SetXlinkAttribute: {
+            writer.write(`${internalId}.`)
+            writer.write(info.operation.method, sourceIndex).write(`(${nodeId}, `)
+            writer.write(`${getMaybeReusedString(info.operation.attrName ?? "")}, `)
+            writeSelectorExpression(writer, info, expressionType).write(")")
             break
         }
 
-        case "setText": {
+        case SelectorOperationMethod.SetText: {
             writer.write(`${internalId}.`).write("setText", sourceIndex).write(`(${nodeId}, `)
-            writeSelectorExpression(writer, info, expressionType)
-            writer.write(")")
+            writeSelectorExpression(writer, info, expressionType).write(")")
             break
         }
     }
@@ -342,7 +371,7 @@ function writeSelectorExpression(
     for (const [start, end] of normalizeRanges(keyRanges).toSorted((a, b) => b[0] - a[0])) {
         editor.replace(start, end, "key", true)
     }
-    writer.writeEditedScript(editor)
+    return writer.writeEditedScript(editor)
 }
 
 function areRangesPairedInEquality(
@@ -373,11 +402,17 @@ function areRangesPairedInEquality(
                 if (coveredKeys[j]) {
                     continue
                 }
+
+                // prettier-ignore
                 if (
-                    (isSameRange(node.left, topLevelRanges[i]) &&
-                        isSameRange(node.right, keyRanges[j])) ||
-                    (isSameRange(node.left, keyRanges[j]) &&
-                        isSameRange(node.right, topLevelRanges[i]))
+                    (
+                        isSameRange(node.left, topLevelRanges[i]) &&
+                        isSameRange(node.right, keyRanges[j])
+                    ) ||
+                    (
+                        isSameRange(node.left, keyRanges[j]) &&
+                        isSameRange(node.right, topLevelRanges[i])
+                    )
                 ) {
                     coveredTopLevels[i] = coveredKeys[j] = true
                     break

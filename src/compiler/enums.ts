@@ -39,6 +39,15 @@ export enum AttributeValueEnclosure {
     None = "none"
 }
 
+export enum SelectorOperationMethod {
+    SetText = "setText",
+    SetAttribute = "setAttribute",
+    SetHtmlAttribute = "setHtmlAttribute",
+    SetXlinkAttribute = "setXlinkAttribute",
+    SetHtmlClassName = "setHtmlClassName",
+    SetClassAttribute = "setClassAttribute"
+}
+
 export enum PositionFlag {
     InScript = 1 << 0,
     InStyle = 1 << 1,

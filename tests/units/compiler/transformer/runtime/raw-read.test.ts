@@ -300,7 +300,7 @@ test("Dynamic attribute with raw value does not generate a render effect", () =>
         </lang-js>
         <div !title={title}></div>
     `)
-    expect(code).toContain(`_.setAttribute(_div1, "title", title)`)
+    expect(code).toContain(`_.setHtmlAttribute(_div1, "title", title)`)
     expect(code).not.toContain("_.renderEffect")
 })
 

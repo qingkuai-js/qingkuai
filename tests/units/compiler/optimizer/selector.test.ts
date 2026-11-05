@@ -1,13 +1,14 @@
-import { describe, expect, test } from "vitest"
 import {
     getForBlockSelectorInfos,
     hasSelectorForAttribute,
     hasSelectorForTextNode,
     writeSelectorDeclaration
 } from "../../../../src/compiler/optimizer/selector"
+import { expect, test } from "vitest"
 import { compile } from "../../../../src/compiler/compile"
 import { analyzeResult } from "../../../../src/compiler/state"
 import { formatSourceCode } from "../../../../src/util/shared/sundry"
+import { SelectorOperationMethod } from "../../../../src/compiler/enums"
 import { RuntimeCodeWriter } from "../../../../src/compiler/transformer/writer"
 
 function getForNodeContextFromAnalyzeResult() {
@@ -37,18 +38,28 @@ test("getForBlockSelectorInfos collects selector operations from compiled templa
             </div>
         `)
     )
+
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const infos = getForBlockSelectorInfos(forNodeContext)
-    expect(infos.some(item => item.operation.method === "setClassName")).toBe(true)
     expect(
-        infos.some(
-            item => item.operation.method === "setAttribute" && item.operation.attrName === "title"
-        )
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetHtmlClassName
+        })
+    ).toBe(true)
+    expect(
+        infos.some(item => {
+            return (
+                item.operation.attrName === "title" &&
+                item.operation.method === SelectorOperationMethod.SetHtmlAttribute
+            )
+        })
     ).toBe(true)
 
     // The inner text interpolation of the item cannot be taken over by the
     // selector (setText writing nodeValue is a no-op for element nodes)
-    expect(infos.some(item => item.operation.method === "setText")).toBe(false)
+    expect(infos.some(item => item.operation.method === SelectorOperationMethod.SetText)).toBe(
+        false
+    )
 
     compile(
         formatSourceCode(`
@@ -59,10 +70,11 @@ test("getForBlockSelectorInfos collects selector operations from compiled templa
             <use #for={item of items} #key={item.id} !xlink:href={selected === item.id ? "#a" : "#b"}></use>
         `)
     )
+
     const useContext = getForNodeContextFromAnalyzeResult()!
     expect(
         getForBlockSelectorInfos(useContext).some(
-            item => item.operation.method === "setXlinkAttribute"
+            item => item.operation.method === SelectorOperationMethod.SetXlinkAttribute
         )
     ).toBe(true)
 
@@ -94,18 +106,20 @@ test("hasSelectorForAttribute and hasSelectorForTextNode work with compiled sele
     )
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const infos = getForBlockSelectorInfos(forNodeContext)
-
-    const titleInfo = infos.find(
-        item => item.operation.method === "setAttribute" && item.operation.attrName === "title"
-    )!
+    const titleInfo = infos.find(item => {
+        return (
+            item.operation.attrName === "title" &&
+            item.operation.method === SelectorOperationMethod.SetHtmlAttribute
+        )
+    })!
     expect(
         hasSelectorForAttribute(infos, titleInfo.targetNodeContext, titleInfo.targetAttribute!)
     ).toBe(true)
 
     // 项内层文本插值不再由选择器接管
-    const textNodeContext = Array.from(analyzeResult.template.nodeContexts.values()).find(
-        item => item.node.tag === ""
-    )
+    const textNodeContext = Array.from(analyzeResult.template.nodeContexts.values()).find(item => {
+        return item.node.tag === ""
+    })
     expect(textNodeContext).toBeTruthy()
     expect(hasSelectorForTextNode(infos, textNodeContext!)).toBe(false)
 })
@@ -120,17 +134,18 @@ test("writeSelectorDeclaration emits update wrapper from compiled selector info"
             <div #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"}></div>
         `)
     )
+
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const selectorInfo = getForBlockSelectorInfos(forNodeContext).find(item => {
-        return item.operation.method === "setClassName"
+        return item.operation.method === SelectorOperationMethod.SetHtmlClassName
     })!
     const writer = new RuntimeCodeWriter(false)
     writeSelectorDeclaration(writer, selectorInfo, "getNode")
     expect(writer.code).toContain(`const ${selectorInfo.id} = (() => {`)
     expect(writer.code).toContain("const prevNode = getNode(prevValue)")
     expect(writer.code).toContain("const node = getNode(key)")
-    expect(writer.code).toContain("setClassName(prevNode")
-    expect(writer.code).toContain("setClassName(node")
+    expect(writer.code).toContain("setHtmlClassName(prevNode")
+    expect(writer.code).toContain("setHtmlClassName(node")
 })
 
 test("getForBlockSelectorInfos returns empty for invalid #key expression node types", () => {
@@ -189,9 +204,12 @@ test("getForBlockSelectorInfos skips non-optimizable children in for-block", () 
     expect(infos.some(item => item.targetNodeContext.node.tag === "slot")).toBe(false)
     expect(infos.some(item => item.targetNodeContext.node.componentTag)).toBe(false)
     expect(
-        infos.some(
-            item => item.operation.method === "setAttribute" && item.operation.attrName === "value"
-        )
+        infos.some(item => {
+            return (
+                item.operation.attrName === "value" &&
+                item.operation.method === SelectorOperationMethod.SetHtmlAttribute
+            )
+        })
     ).toBe(false)
 })
 
@@ -232,7 +250,6 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
                     {foo[item.id]}
                 </div>
             `),
-            // const 声明的 reactive 代理读取（transformTo 不带 .$）与成员访问依赖都不能优化
             expectedEmpty: true
         },
         {
@@ -271,7 +288,7 @@ test("getForBlockSelectorInfos validates selector expressions from compiled sour
             expect(
                 infos.some(
                     item =>
-                        item.operation.method === "setAttribute" &&
+                        item.operation.method === SelectorOperationMethod.SetHtmlAttribute &&
                         item.operation.attrName === "title"
                 )
             ).toBe(true)
@@ -294,7 +311,9 @@ test("getForBlockSelectorInfos ignores dynamic attributes without parsable expre
 
     const forNodeContext = getForNodeContextFromAnalyzeResult()!
     const infos = getForBlockSelectorInfos(forNodeContext)
-    expect(infos.some(item => item.operation.method === "setAttribute")).toBe(true)
+    expect(
+        infos.some(item => item.operation.method === SelectorOperationMethod.SetHtmlAttribute)
+    ).toBe(true)
     expect(infos.length).toBe(1)
 })
 
@@ -362,10 +381,52 @@ test("writeSelectorDeclaration handles shorthand refs and repeated key ranges", 
 
     const repeatedForNodeContext = getForNodeContextFromAnalyzeResult()!
     const selectorInfo = getForBlockSelectorInfos(repeatedForNodeContext).find(item => {
-        return item.operation.method === "setClassName"
+        return item.operation.method === SelectorOperationMethod.SetHtmlClassName
     })!
     const writer = new RuntimeCodeWriter(false)
     writeSelectorDeclaration(writer, selectorInfo, "getNode")
     expect(writer.code.match(/prevValue === key/g)).toHaveLength(2)
     expect(writer.code.match(/selected\.\$ === key/g)).toHaveLength(2)
+})
+
+test("getForBlockSelectorInfos picks the svg setters inside an svg subtree", () => {
+    compile(
+        formatSourceCode(`
+            <lang-js>
+                let items = [{ id: "a" }]
+                let selected = reactive("a")
+            </lang-js>
+            <svg viewBox="0 0 10 10" !width={selected === "a" ? 10 : 20}>
+                <rect #for={item of items} #key={item.id} !class={selected === item.id ? "on" : "off"} !x={selected === item.id ? 1 : 2}></rect>
+            </svg>
+        `)
+    )
+
+    const forNodeContext = getForNodeContextFromAnalyzeResult()!
+    const infos = getForBlockSelectorInfos(forNodeContext)
+    expect(
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetClassAttribute
+        })
+    ).toBe(true)
+    expect(
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetAttribute
+        })
+    ).toBe(true)
+    expect(
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetHtmlClassName
+        })
+    ).toBe(false)
+    expect(
+        infos.some(item => {
+            return item.operation.method === SelectorOperationMethod.SetHtmlAttribute
+        })
+    ).toBe(false)
+
+    const writer = new RuntimeCodeWriter(false)
+    writeSelectorDeclaration(writer, infos[0], "getNode")
+    expect(writer.code).not.toContain("setHtmlClassName")
+    expect(writer.code).not.toContain("setHtmlAttribute")
 })

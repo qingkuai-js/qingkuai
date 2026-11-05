@@ -136,10 +136,10 @@ test("Runtime regression: keyed list selection emits selector helper and event c
     expect(prod.code).toContain("_.renderEffect(() => {")
     expect(prod.code).toContain("_selector1(selected.$)")
     expect(prod.code).toContain("if (prevNode) {")
-    expect(prod.code).toContain('_.setClassName(prevNode, prevValue === key ? "danger" : "")')
+    expect(prod.code).toContain('_.setHtmlClassName(prevNode, prevValue === key ? "danger" : "")')
     expect(prod.code).toContain("if (node) {")
     expect(prod.code).toMatch(
-        /_\.setClassName\(node, [^\n]*selected\.\$ === key \? "danger" : ""\)/
+        /_\.setHtmlClassName\(node, [^\n]*selected\.\$ === key \? "danger" : ""\)/
     )
     expect(prod.code).not.toContain("_selector1(_ctx")
 

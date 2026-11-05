@@ -62,6 +62,15 @@ export {
     dynamicComponent
 } from "./component"
 
+export {
+    setAttribute,
+    setSelectValue,
+    setHtmlAttribute,
+    setHtmlClassName,
+    setClassAttribute,
+    setXlinkAttribute
+} from "./attribute"
+
 export { htmlBlock } from "./directives/html"
 export { toRaw } from "../util/runtime/sundry"
 export { renderSlot } from "./directives/slot"
@@ -77,4 +86,3 @@ export { listBlock, keyedListBlock } from "./directives/list"
 export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants"
 export { derived, destructuringDerived } from "./reactivity/derived"
 export { listen, createEventWrapper, initEvents, delegate } from "./event"
-export { setAttribute, setClassName, setSelectValue, setXlinkAttribute } from "./attribute"
