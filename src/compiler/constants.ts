@@ -219,7 +219,7 @@ export const DELEGATABLE_EVENTS: ReadonlySet<string> = new Set([
     "copy",
     "cut",
     "contextmenu",
-    "dbclick",
+    "dblclick",
     "drag",
     "dragend",
     "dragenter",
