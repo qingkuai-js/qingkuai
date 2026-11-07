@@ -78,11 +78,16 @@ export function generateTemplateRender(
             }
         };
 
-        // slot 指令只声明内容的归属，不生成渲染块，指令链要从它之后的第一条指令开始
-        // The slot directive only declares the ownership of the content and does not generate
-        // a rendering block. The directive chain should start from the first directive after it.
+        // slot 指令只声明内容的归属，不生成渲染块；html 指令伴随其他指令时会推迟到节点选择完成
+        // 后生成，因此指令链都从它们之后开始
+        //
+        // The slot directive only declares the ownership of the content and generates no rendering
+        // block, and the html directive is generated after node selection when other directives
+        // coexist, so the directive chain starts after both of them.
+        const htmlDeferred =
+            !!nodeContext.attributesMap["#html"] && nodeContext.sortedDirectives.length !== 1;
         const directiveStartIndex = nodeContext.sortedDirectives.findIndex(item => {
-            return item.name.raw !== "#slot";
+            return item.name.raw !== "#slot" && !(htmlDeferred && item.name.raw === "#html");
         });
         if (directiveStartIndex !== -1) {
             wrapInsertPostfix(generateDirectiveBlock(writer, directiveStartIndex, nodeContext));
@@ -113,7 +118,7 @@ export function generateTemplateRender(
          * method will not generate the directive block call statement for it, because in this case the call
          * statement must wait until other nodes (anchor) are selected before it can be generated.
          */
-        if (nodeContext.attributesMap["#html"] && nodeContext.sortedDirectives.length !== 1) {
+        if (htmlDeferred) {
             const htmlDirectiveIndex = nodeContext.sortedDirectives.findIndex(item => {
                 return item.name.raw === "#html";
             });

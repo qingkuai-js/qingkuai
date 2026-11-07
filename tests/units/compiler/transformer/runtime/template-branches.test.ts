@@ -109,6 +109,20 @@ test("Named slot content supports condition and list directives", () => {
     expect(code).toContain("const _fragment3");
 });
 
+test("Named slot content with html directive generates a single html block", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Comp from "./Foo.qk"
+            let html = "<b>x</b>"
+        </lang-js>
+        <Comp>
+            <span #slot={"a"} #html>{html}</span>
+        </Comp>
+    `);
+    expect(code).toContain("_.htmlBlock(");
+    expect(code.match(/_\.htmlBlock\(/g)).toHaveLength(1);
+});
+
 test("Component refs skip &handle in r block and pass setter via context.h", () => {
     const code = compileRuntime(`
         <lang-js>
