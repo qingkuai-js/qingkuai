@@ -61,6 +61,10 @@ export const RedundantBooleanAttributeValue = withLocation(
     },
 );
 
+export const NativeFlagIgnoredOnNonDelegatedEvent = withLocation(9016, (eventName: string) => {
+    return `The event flag "native" only applies to delegated events. "${eventName}" is never delegated, so it has no effect and will be ignored.`;
+});
+
 export const KeyFlagIgnoredOnNonKeyboardEvent = withLocation(
     9010,
     (name: string, eventName: string) => {

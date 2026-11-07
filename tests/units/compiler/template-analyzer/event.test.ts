@@ -127,6 +127,50 @@ test("Duplicate event flag", () => {
     ]);
 });
 
+test("The native event flag only affects delegated events", () => {
+    analyzeTemplateAndMatchMessages(`<div @scroll|native></div>`, [
+        {
+            type: "warning",
+            range: [13, 19],
+            value: `The event flag "native" only applies to delegated events. "@scroll" is never delegated, so it has no effect and will be ignored.`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<div @scroll|native|passive={_}></div>`, [
+        {
+            type: "warning",
+            range: [13, 19],
+            value: `The event flag "native" only applies to delegated events. "@scroll" is never delegated, so it has no effect and will be ignored.`,
+        },
+    ]);
+
+    // 可被委托的事件使用该标志是有意义的；组件事件由组件自身派发，委托标志整体冗余（9009）
+    analyzeTemplateAndMatchMessages(`<div @click|native></div>`);
+    analyzeTemplateAndMatchMessages(`<div @click|native|stop></div>`);
+    analyzeTemplateAndMatchMessages(`<Comp @click|native />`, [
+        {
+            type: "warning",
+            range: [12, 19],
+            value: `Event flags for component event listeners are redundant and will be ignored.`,
+        },
+    ]);
+});
+
+test("Duplicate native event flag is reported once for the duplicate and once for the ineffective flag", () => {
+    analyzeTemplateAndMatchMessages(`<div @scroll|native|native></div>`, [
+        {
+            type: "warning",
+            range: [20, 26],
+            value: `Duplicate event flag "native" is redundant and will be ignored.`,
+        },
+        {
+            type: "warning",
+            range: [13, 19],
+            value: `The event flag "native" only applies to delegated events. "@scroll" is never delegated, so it has no effect and will be ignored.`,
+        },
+    ]);
+});
+
 test("The key related event flag can only be used on keyboard events", () => {
     analyzeTemplateAndMatchMessages(`<div @click|enter></div>`, [
         {

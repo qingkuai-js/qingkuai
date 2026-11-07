@@ -4,12 +4,12 @@ import { analyzeResult } from "../state";
 import { parseEventFlag } from "../parser/event";
 import { AnalyzeExpressionType } from "../enums";
 import { DELEGATABLE_EVENTS } from "../constants";
-import { RedundantEventFlags } from "../message/warn";
 import { getLocByIndex } from "../../util/compiler/position";
 import { EVENT_PASSIVE, EVENT_NATIVE } from "../../util/shared/flags";
 import { increaseReusedStringUsedTimes } from "../optimizer/compress";
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation";
+import { RedundantEventFlags, NativeFlagIgnoredOnNonDelegatedEvent } from "../message/warn";
 
 export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     const nameLoc = event.name.loc;
@@ -29,15 +29,23 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
     // The `native` flag means the handler wants the native event and executes
     // in native order; these events do not go into the delegation registry.
     const delegateEventName = parseResult.eventName.slice(1);
-    if (
-        !isComponent &&
-        !(parseResult.generalFlag.value & EVENT_NATIVE) &&
-        DELEGATABLE_EVENTS.has(delegateEventName)
-    ) {
-        const passive = parseResult.generalFlag.value & EVENT_PASSIVE;
-        analyzeResult.template.delegateEvents[passive ? "passive" : "nonPassive"].add(
-            delegateEventName,
-        );
+    if (!isComponent) {
+        if (parseResult.generalFlag.value & EVENT_NATIVE) {
+            if (!DELEGATABLE_EVENTS.has(delegateEventName)) {
+                const nativeFlag = parseResult.generalFlag.items.find(
+                    item => item.name === "native",
+                )!;
+                NativeFlagIgnoredOnNonDelegatedEvent(
+                    getLocByIndex(...nativeFlag.sourceRange),
+                    parseResult.eventName,
+                );
+            }
+        } else if (DELEGATABLE_EVENTS.has(delegateEventName)) {
+            const passive = parseResult.generalFlag.value & EVENT_PASSIVE;
+            analyzeResult.template.delegateEvents[passive ? "passive" : "nonPassive"].add(
+                delegateEventName,
+            );
+        }
     }
 
     // 同名简写语法，更新顶级作用域标识符的响应性状态
