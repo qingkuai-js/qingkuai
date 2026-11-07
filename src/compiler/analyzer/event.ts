@@ -5,8 +5,8 @@ import { parseEventFlag } from "../parser/event";
 import { AnalyzeExpressionType } from "../enums";
 import { DELEGATABLE_EVENTS } from "../constants";
 import { RedundantEventFlags } from "../message/warn";
-import { EVENT_PASSIVE } from "../../util/shared/flags";
 import { getLocByIndex } from "../../util/compiler/position";
+import { EVENT_PASSIVE, EVENT_NATIVE } from "../../util/shared/flags";
 import { increaseReusedStringUsedTimes } from "../optimizer/compress";
 import { shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
 import { analyzeInterpolation, analyzeTemplateAsExpression } from "./interpolation";
@@ -25,8 +25,15 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
         );
     }
 
+    // native 标志表示处理器要拿原生事件、按原生顺序执行，这类事件不进委托注册表
+    // The `native` flag means the handler wants the native event and executes
+    // in native order; these events do not go into the delegation registry.
     const delegateEventName = parseResult.eventName.slice(1);
-    if (!isComponent && DELEGATABLE_EVENTS.has(delegateEventName)) {
+    if (
+        !isComponent &&
+        !(parseResult.generalFlag.value & EVENT_NATIVE) &&
+        DELEGATABLE_EVENTS.has(delegateEventName)
+    ) {
         const passive = parseResult.generalFlag.value & EVENT_PASSIVE;
         analyzeResult.template.delegateEvents[passive ? "passive" : "nonPassive"].add(
             delegateEventName,

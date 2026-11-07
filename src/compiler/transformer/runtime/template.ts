@@ -37,10 +37,10 @@ import { writeFragmentSelections } from "./fragment";
 import { writeParsedExpression } from "./interpolation";
 import { kebab2Camel } from "../../../util/compiler/string";
 import { getMaybeReusedString } from "../../optimizer/compress";
-import { FRAG_LEADING_ANCHOR } from "../../../util/shared/flags";
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
+import { FRAG_LEADING_ANCHOR, EVENT_NATIVE } from "../../../util/shared/flags";
 import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
@@ -552,10 +552,12 @@ function generateRenderEffect(
 
                 const expression = getParsedExpression(event)!;
                 const baseName = eventInfo.eventName.slice(1);
-                const delegated = DELEGATABLE_EVENTS.has(baseName);
+                const runtimeFlag = generalFlag.value & ~EVENT_NATIVE;
                 const stringifiedBaseName = getMaybeReusedString(baseName);
                 const stripedTypeExpressionNode = getStriptTypeOperationsNode(expression.node);
                 const insertInterpretiveComment = inputDescriptor.options.interpretiveComments;
+                const delegated =
+                    DELEGATABLE_EVENTS.has(baseName) && !(generalFlag.value & EVENT_NATIVE);
                 writer.wrapLine().write(`${internalId}.${delegated ? "delegate" : "listen"}(`);
                 writer.write(`${nodeContext.id}, `).write(stringifiedBaseName).write(", ");
 
@@ -586,11 +588,11 @@ function generateRenderEffect(
                     }
                     writer.write(wrapperFlag.value.toString()).write(")");
                 }
-                if (generalFlag.value) {
+                if (runtimeFlag) {
                     if ((writer.write(", "), insertInterpretiveComment)) {
                         writer.write(`/* ${generalFlagNames.join("| ")} */ `);
                     }
-                    writer.write(generalFlag.value.toString());
+                    writer.write(runtimeFlag.toString());
                 }
                 writer.write(")");
             }

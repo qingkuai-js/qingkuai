@@ -252,6 +252,25 @@ test("Runtime codegen: many delegated events generate wrapped event registration
     expect(code).toMatch(/_.initEvents\(\[[\s\S]*\n[\s\S]*\]\)/);
 });
 
+test("Runtime codegen: |native routes a delegatable event to the native listener path", () => {
+    const code = compileRuntime(`
+        <lang-js>function h() {}</lang-js>
+        <button @click|native={h}></button>
+    `);
+    expect(code).toContain('_.listen(_button1, "click", h)');
+    expect(code).not.toContain("_.delegate(");
+    expect(code).not.toContain("initEvents(");
+});
+
+test("Runtime codegen: the native flag is not written to the output", () => {
+    const code = compileRuntime(`
+        <lang-js>function h() {}</lang-js>
+        <button @click|native|stop={h}></button>
+    `);
+    expect(code).toContain('_.listen(_button1, "click", h, 2)');
+    expect(code).not.toContain(", 66)");
+});
+
 test("CodeEditor: result applies remove/insert/replace and keeps index map", () => {
     compileTestingSource(`<lang-js>abcd</lang-js>`);
     const scriptStartIndex = inputDescriptor.script.loc.start.index;

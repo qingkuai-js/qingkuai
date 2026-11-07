@@ -73,6 +73,7 @@ export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => 
             case "once":
             case "stop":
             case "self":
+            case "native":
             case "passive":
             case "prevent":
             case "capture": {

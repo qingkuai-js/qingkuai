@@ -4,6 +4,7 @@ export const EVENT_SELF = 1 << 2;
 export const EVENT_PREVENT = 1 << 3;
 export const EVENT_CAPTURE = 1 << 4;
 export const EVENT_PASSIVE = 1 << 5;
+export const EVENT_NATIVE = 1 << 6;
 
 export const KEY_TAB = 1 << 0;
 export const KEY_ENTER = 1 << 1;
