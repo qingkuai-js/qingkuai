@@ -1267,3 +1267,70 @@ describe("Map prototype methods", () => {
         expect(map[WRAPPER].s.has(ITERATOR_KEYS)).toBeTruthy();
     });
 });
+
+describe("Array methods that return source elements over a store", () => {
+    const createItems = () =>
+        constReact([
+            {
+                id: 1,
+                v: 1,
+            },
+            {
+                id: 2,
+                v: 2,
+            },
+        ]);
+
+    test("filter hands out proxies so item fields stay tracked", () => {
+        const items = createItems();
+        const filtered = items.filter((item: any) => item.id > 0);
+        expect(filtered[0]).toBe(items[0]);
+
+        syncEffect(() => {
+            arr.push(filtered[0].v);
+        });
+        expect(arr).toEqual([1]);
+
+        items[0].v = 10;
+        expect(arr).toEqual([1, 10]);
+    });
+
+    test("slice and at hand out proxies", () => {
+        const items = createItems();
+        expect(items.slice(0, 1)[0]).toBe(items[0]);
+        expect(items.at(1)).toBe(items[1]);
+        expect(items.at(-1)).toBe(items[1]);
+        expect(items.at(9)).toBe(undefined);
+
+        syncEffect(() => {
+            arr.push(items.at(-1).v);
+        });
+        expect(arr).toEqual([2]);
+
+        items[1].v = 20;
+        expect(arr).toEqual([2, 20]);
+    });
+
+    test("copy-style array methods hand out proxies", () => {
+        const items = createItems();
+        expect(items.toReversed()[0]).toBe(items[1]);
+        expect(items.toSorted((a: any, b: any) => b.id - a.id)[0]).toBe(items[1]);
+        expect(items.toSpliced(0, 1)[0]).toBe(items[1]);
+        expect(items.concat([{ id: 3, v: 3 }])[0]).toBe(items[0]);
+        expect(items.flat()[0]).toBe(items[0]);
+    });
+
+    test("splice hands out proxies for the removed elements", () => {
+        const items = createItems();
+        const first = items[0];
+        const removed = items.splice(0, 1);
+        expect(removed[0]).toBe(first);
+    });
+
+    test("a shallow store keeps handing out raw elements", () => {
+        const items = shallowConstReact([{ id: 1 }]);
+        expect(isReactive(items.filter(() => true)[0])).toBe(false);
+        expect(isReactive(items.slice(0)[0])).toBe(false);
+        expect(isReactive(items.at(0))).toBe(false);
+    });
+});

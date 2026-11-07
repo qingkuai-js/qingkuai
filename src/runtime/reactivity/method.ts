@@ -65,17 +65,20 @@ function createReactiveMethods(): ReactiveMethods {
             forEach: commonMethodsForSetAndMap.forEach,
 
             flat(depth = 1) {
-                return _flat(this[WRAPPER], depth);
+                const wrapper = this[WRAPPER];
+                return _wrapItems(wrapper, _flat(wrapper, depth));
             },
             concat(...items) {
-                return _concat(this[WRAPPER], ...items);
+                const wrapper = this[WRAPPER];
+                return _wrapItems(wrapper, _concat(wrapper, ...items));
             },
 
             sort(compareFn) {
                 return _sort(this[WRAPPER], "sort", compareFn);
             },
             toSorted(compareFn) {
-                return _sort(this[WRAPPER], "toSorted", compareFn);
+                const wrapper = this[WRAPPER];
+                return _wrapItems(wrapper, _sort(wrapper, "toSorted", compareFn));
             },
 
             pop() {
@@ -110,13 +113,15 @@ function createReactiveMethods(): ReactiveMethods {
                 return _linkIteratorKeys(this[WRAPPER], "toString");
             },
             toReversed() {
-                return _linkIteratorKeys(this[WRAPPER], "toReversed");
+                const wrapper = this[WRAPPER];
+                return _wrapItems(wrapper, _linkIteratorKeys(wrapper, "toReversed"));
             },
             join(separator) {
                 return _linkIteratorKeys(this[WRAPPER], "join", separator);
             },
-            toSpliced(start, deleteCount) {
-                return _linkIteratorKeys(this[WRAPPER], "toSpliced", start, deleteCount);
+            toSpliced(...args) {
+                const wrapper = this[WRAPPER];
+                return _wrapItems(wrapper, _linkIteratorKeys(wrapper, "toSpliced", ...args));
             },
 
             map(callback, thisArg) {
@@ -129,7 +134,8 @@ function createReactiveMethods(): ReactiveMethods {
                 return _traverse(this[WRAPPER], "every", predicate, thisArg);
             },
             filter(predicate, thisArg) {
-                return _traverse(this[WRAPPER], "filter", predicate, thisArg);
+                const wrapper = this[WRAPPER];
+                return _wrapItems(wrapper, _traverse(wrapper, "filter", predicate, thisArg));
             },
             findIndex(predicate, thisArg) {
                 return _traverse(this[WRAPPER], "findIndex", predicate, thisArg);
@@ -154,7 +160,11 @@ function createReactiveMethods(): ReactiveMethods {
                 if (!deleteCount && !items.length) {
                     return [];
                 }
-                return _batchUpdateWithRaw(this[WRAPPER], "splice", start, deleteCount, ...items);
+                const wrapper = this[WRAPPER];
+                return _wrapItems(
+                    wrapper,
+                    _batchUpdateWithRaw(wrapper, "splice", start, deleteCount, ...items),
+                );
             },
         },
         [WRAPPER_SET]: {
@@ -285,6 +295,18 @@ function _linkIteratorKeys(wrapper: ReactivityWrapper, funcName: string, ...args
 // Implements for: find, findLast
 function _find(wrapper: ReactivityWrapper, funcName: string, predicate: any, thisArg: any) {
     return wrapper.p[wrapper.p[funcName + "Index"](predicate, thisArg)];
+}
+
+function _wrapItems(wrapper: ReactivityWrapper, items: any[]) {
+    if (!isShallow(wrapper)) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (couldReact(item)) {
+                items[i] = constReact(item);
+            }
+        }
+    }
+    return items;
 }
 
 // Implements for: forEach, map, flatMap, every, filter
