@@ -22,10 +22,10 @@ import {
     EVENT_PASSIVE,
 } from "../util/shared/flags";
 import { pushDestructionCleaner } from "./destroy";
-import { isUndefined } from "../util/shared/assert";
 import { any, createProxy } from "../util/shared/sundry";
 import { call, objectCreate } from "../util/shared/aliases";
 import { currentInstance, eventRegisterInfo } from "./state";
+import { isFunction, isUndefined } from "../util/shared/assert";
 
 // 事件类型到扩展属性名的映射会被每个带事件的元素使用，缓存后可以避免重复拼接字符串
 // The event-type to expando-name mapping is needed for every element that has an
@@ -143,8 +143,12 @@ function dispatch(event: Event, passive: boolean) {
     const keys = delegateKeysFor(event.type);
     const flagKey = keys[1];
     const handlerKey = keys[0];
-    const bubblings: [EventTarget, number][] = [];
-    const path = event.composedPath().slice(0, -4);
+    const path = event.composedPath();
+    const bubblings: EventTarget[] = [];
+
+    let stopped = false;
+    let stopPropagation: (() => void) | undefined;
+    let stopImmediatePropagation: (() => void) | undefined;
 
     const excuteEventHandler = (elem: EventTarget, phase: number) => {
         const handler = any(elem)[handlerKey];
@@ -156,21 +160,49 @@ function dispatch(event: Event, passive: boolean) {
             delete any(elem)[flagKey];
             delete any(elem)[handlerKey];
         }
+
         const wrappedEvent = createProxy(objectCreate(event), {
-            get(_, property: keyof Event) {
+            get(_, property: keyof Event | "constructor") {
                 if (property === "currentTarget") {
                     return elem;
                 }
                 if (property === "eventPhase") {
                     return phase;
                 }
-                return any(event)[property];
+
+                const value = any(event)[property];
+                if (!isFunction(value)) {
+                    return value;
+                }
+                if (property === "stopPropagation") {
+                    return (stopPropagation ??= () => {
+                        event.stopPropagation();
+                        stopped = true;
+                    });
+                }
+                if (property === "stopImmediatePropagation") {
+                    return (stopImmediatePropagation ??= () => {
+                        event.stopImmediatePropagation();
+                        stopped = true;
+                    });
+                }
+                return property === "constructor" ? value : value.bind(event);
             },
         });
-        call(handler, elem, wrappedEvent);
+        try {
+            call(handler, elem, wrappedEvent);
+        } catch (err) {
+            queueMicrotask(() => {
+                throw err;
+            });
+        }
+        if (stopped || flag & EVENT_STOP) {
+            event.stopPropagation();
+            return true;
+        }
+        return false;
     };
 
-    let stopped = false;
     for (let i = path.length - 1; i >= 0; i--) {
         const elem = any(path[i]);
         const handler = elem[handlerKey];
@@ -188,21 +220,26 @@ function dispatch(event: Event, passive: boolean) {
             continue;
         }
         if (!isTarget && !(flag & EVENT_CAPTURE)) {
-            bubblings.push([elem, flag]);
+            bubblings.push(elem);
             continue;
         }
 
         const phase = isTarget ? Event.AT_TARGET : Event.CAPTURING_PHASE;
-        if ((excuteEventHandler(elem, phase), flag & EVENT_STOP)) {
+        if (excuteEventHandler(elem, phase)) {
             stopped = true;
             break;
         }
     }
 
-    if (!stopped) {
+    // 不冒泡的事件（selectstart 等）在原生语义里不会触达祖先上的监听器；document 在捕获阶段
+    // 能收到它，只说明捕获会经过祖先，不代表合成冒泡也该走一遍
+    //
+    // A non-bubbling event (selectstart and friends) never reaches listeners on ancestors.
+    // Receiving it on document only means the capture phase passes through them, it does not
+    // mean the simulated bubbling should run as well.
+    if (!stopped && event.bubbles) {
         for (let i = bubblings.length - 1; i >= 0; i--) {
-            const [elem, flag] = bubblings[i];
-            if ((excuteEventHandler(elem, Event.BUBBLING_PHASE), flag & EVENT_STOP)) {
+            if (excuteEventHandler(bubblings[i], Event.BUBBLING_PHASE)) {
                 break;
             }
         }
