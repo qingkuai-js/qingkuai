@@ -270,9 +270,9 @@ test("Non-delegatable event uses listen call", () => {
         <lang-js>
             let y = 0
         </lang-js>
-        <div @wheel={y++}></div>
+        <div @scroll={y++}></div>
     `);
-    expect(code).toContain('_.listen(_div1, "wheel", $arg => {');
+    expect(code).toContain('_.listen(_div1, "scroll", $arg => {');
     expect(code).toContain("y.$++");
 });
 
