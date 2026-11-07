@@ -78,12 +78,14 @@ export function generateTemplateRender(
             }
         };
 
-        if (
-            nodeContext.sortedDirectives.some(item => {
-                return item.name.raw !== "#slot";
-            })
-        ) {
-            wrapInsertPostfix(generateDirectiveBlock(writer, 0, nodeContext));
+        // slot 指令只声明内容的归属，不生成渲染块，指令链要从它之后的第一条指令开始
+        // The slot directive only declares the ownership of the content and does not generate
+        // a rendering block. The directive chain should start from the first directive after it.
+        const directiveStartIndex = nodeContext.sortedDirectives.findIndex(item => {
+            return item.name.raw !== "#slot";
+        });
+        if (directiveStartIndex !== -1) {
+            wrapInsertPostfix(generateDirectiveBlock(writer, directiveStartIndex, nodeContext));
         }
         if (node.componentTag) {
             generateComponentCall(writer, nodeContext, slotNsId);

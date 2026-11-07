@@ -86,6 +86,29 @@ test("Slot with dynamic and static attrs builds slot props object", () => {
     expect(code).toContain("fixed: true");
 });
 
+test("Named slot content supports condition and list directives", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            import Comp from "./Foo.qk"
+            let visible = true
+            let items = [1, 2]
+        </lang-js>
+        <Comp>
+            <span #slot={"a"} #if={visible}>A</span>
+            <span #slot={"b"} #for={item of items}>{item}</span>
+            <span #slot={"c"}>C</span>
+        </Comp>
+    `);
+    expect(code).toContain("a: (_anchor1, _ns1) => {");
+    expect(code).toContain("b: (_anchor2, _ns1) => {");
+    expect(code).toContain("c: (_anchor3, _ns1) => {");
+    expect(code).toContain("_.conditionBlock([");
+    expect(code).toContain("__ => (visible)");
+    expect(code).toContain("_.listBlock(");
+    expect(code).toContain("__ => (items.$)");
+    expect(code).toContain("const _fragment3");
+});
+
 test("Component refs skip &handle in r block and pass setter via context.h", () => {
     const code = compileRuntime(`
         <lang-js>
