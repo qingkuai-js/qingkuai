@@ -36,7 +36,7 @@ export interface TraverseContext {
 
 export interface TraverseInfo extends TraverseContext {
     d: Destruction;
-    s: Setter | undefined;
+    s: Setter | undefined; // row context setter, returned only by debug builds
 }
 
 export interface ComponentInstanceBase {
@@ -87,7 +87,6 @@ export interface Destruction {
     a: GeneralFunc[] | null; // cleaners
     c: Destruction[] | null; // children
     m: ComponentInstance<any> | null; // component
-    u: EffectCallback | EffectCallback[] | null; // updaters
     i: number; // index (within the parent's children array, -1 when detached)
 }
 

@@ -114,11 +114,9 @@ test("destroy should disconnect destruction from parent/effects", () => {
 
     const tracked = react(0);
     const nestedEffect = renderEffect(() => tracked.$);
-    // 不依赖响应式值的渲染副作用不会产生副作用对象，只登记为上下文副作用
-    // A render effect that reads nothing reactive creates no effect object, it is
-    // only registered as a context effect.
+    const nestedEffects = nested.e;
     renderEffect(NOOP);
-    expect(nested.u).toBe(NOOP);
+    expect(nested.e).toBe(nestedEffects);
 
     createDestruction(nested, NIL);
     const nestedChildEffect = renderEffect(() => tracked.$);
@@ -137,7 +135,6 @@ test("destroy should disconnect destruction from parent/effects", () => {
     expect(parent.c?.includes(nested)).toBeFalsy();
     expect(nested.f).toBe(0);
     expect(nested.e).toBeNull();
-    expect(nested.u).toBeNull();
     expect(nested.c).toBeNull();
     expect(nested.a).toBeNull();
     expect(nested.m).toBeNull();

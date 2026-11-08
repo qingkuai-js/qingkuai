@@ -52,7 +52,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
             writer.write(", ");
         }
         if (shouldWrite) {
-            writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}`);
+            writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}.$`);
         }
     }
     return writer.writeLine(multiPatterns ? "])" : ")").writeLine(`${setterId}(${contextId})`);

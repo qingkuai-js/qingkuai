@@ -710,6 +710,7 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     const nsArgument = getNamespaceArgument(nodeContext);
 
     const internalId = generateIdentifier.internal;
+    const getterArgId = generateIdentifier.getterArg;
     const hasDefaultContent = !!nodeContext.fragment?.content.length;
     const slotName = nodeContext.attributesMap.name?.value.raw ?? "default";
 
@@ -733,7 +734,8 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
             const baseName = getAttributeBaseName(attribute.name.raw);
             insertTrailingComma();
             writeMetaKey(baseName, writer);
-            writer.write(": ").writeParsedExpression(attribute);
+            writer.write(": ").write(`${getterArgId} => (`);
+            writer.writeParsedExpression(attribute).write(")");
         }
         for (const attribute of nodeContext.staticAttributes) {
             const rawName = attribute.name.raw;

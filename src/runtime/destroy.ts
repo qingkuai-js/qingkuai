@@ -26,7 +26,6 @@ export function createDestruction(
         f: 0,
         i: -1,
         e: NIL,
-        u: NIL,
         c: NIL,
         a: NIL,
         s: NIL,
@@ -92,6 +91,6 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         runHooks(instance, AFTER_DESTROY);
     }
     destruction.d = true;
-    destruction.c = destruction.a = destruction.e = destruction.u = NIL;
+    destruction.c = destruction.a = destruction.e = NIL;
     destruction.s = destruction.n = destruction.m = destruction.p = NIL;
 }

@@ -367,7 +367,7 @@ test("Raw read of a directive context identifier is unwrapped with toRaw", () =>
         </lang-js>
         <li #for={item of list}>{raw(item)}</li>
     `);
-    expect(code).toContain("_.toRaw(_ctx1.m)");
+    expect(code).toContain("_.toRaw(_ctx1.m.$)");
 });
 
 test("Raw read of a hoisted reactive var keeps the plain var binding", () => {
@@ -437,7 +437,7 @@ test("Raw read of a directive context identifier shadowing a raw-value identifie
         </lang-js>
         <ul><li #for={item of [1, 2]}>{raw(item)}</li></ul>
     `);
-    expect(code).toContain("_.toRaw(_ctx1.m)");
+    expect(code).toContain("_.toRaw(_ctx1.m.$)");
 });
 
 test("Raw call on a shallow identifier is optimized to toRaw", () => {

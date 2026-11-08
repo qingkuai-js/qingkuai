@@ -56,7 +56,7 @@ export function writeParsedExpression(
         }
 
         const contextKey = parsedPattern === parsedDirective.patterns[0] ? "m" : "x";
-        const transformed = `${parsedDirective.context.argId}.${contextKey}`;
+        const transformed = `${parsedDirective.context.argId}.${contextKey}.$`;
         if (reference.shorthand) {
             editor.insert(reference.range[1], `: ${transformed}`);
         } else {

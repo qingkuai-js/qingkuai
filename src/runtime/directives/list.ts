@@ -16,6 +16,7 @@ import {
 } from "./constants";
 import {
     currentInstance,
+    resolvedContext,
     currentDestruction,
     setCurrentInstance,
     setCurrentDestruction,
@@ -29,16 +30,16 @@ import {
 } from "../dom";
 import { invokeRender } from "./render";
 import { optc } from "../../util/shared/sundry";
+import { shallowReact } from "../reactivity/value";
+import { renderEffect } from "../reactivity/effect";
 import { arrayFrom } from "../../util/shared/arrays";
 import { walkNodes } from "../../util/runtime/sundry";
 import { destroy, createDestruction } from "../destroy";
-import { EFFECT_SCHEDULING } from "../reactivity/constants";
-import { reactiveNotEqual } from "../../util/runtime/sundry";
 import { FRAG_WHOLE_CONTENT } from "../../util/shared/flags";
 import { NIL, REFLECT, UNDEF, DEV_MODE } from "../constants";
 import { DuplicateKey, NonTraverse } from "../messages/error";
+import { pauseTracking, resumeTracking } from "../reactivity/optimization";
 import { isArray, isNumber, isString, isUndefined } from "../../util/shared/assert";
-import { renderEffect, runAndUpdateEffect, runContextEffects } from "../reactivity/effect";
 
 export function keyedListBlock(
     anchor: ChildNode,
@@ -63,8 +64,8 @@ export function keyedListBlock(
         const info = {
             s: UNDEF,
             d: NIL,
-            m: NIL,
-            x: NIL,
+            m: shallowReact(NIL),
+            x: shallowReact(NIL),
         } as unknown as TraverseInfo;
         fillContext(traversable, index, info);
 
@@ -73,7 +74,13 @@ export function keyedListBlock(
         const originalInstance = currentInstance;
         const destruction = createDestruction(parentDestruction, componentInstance);
         setCurrentInstance(componentInstance);
-        info.s = runtimeRender(reference, info);
+        pauseTracking();
+
+        try {
+            info.s = runtimeRender(reference, info);
+        } finally {
+            resumeTracking();
+        }
         setCurrentInstance(originalInstance);
         setCurrentDestruction(parentDestruction);
         info.d = destruction;
@@ -128,14 +135,10 @@ export function keyedListBlock(
             return;
         }
 
-        const keyContext: TraverseContext = {
-            m: NIL,
-            x: NIL,
-        };
         const newKeys: any[] = Array(newLength);
         for (let i = 0; i < newLength; i++) {
-            fillContext(traversable, i, keyContext);
-            newKeys[i] = getKey(keyContext.m, keyContext.x);
+            resolveContext(traversable, i, resolvedContext);
+            newKeys[i] = getKey(resolvedContext.m, resolvedContext.x);
         }
 
         let start = 0;
@@ -341,7 +344,12 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     const parentDestruction = currentDestruction;
 
     const mountListInfo = (index: number) => {
-        const info = { s: UNDEF, d: NIL, m: NIL, x: NIL } as unknown as TraverseInfo;
+        const info = {
+            s: UNDEF,
+            d: NIL,
+            m: shallowReact(NIL),
+            x: shallowReact(NIL),
+        } as unknown as TraverseInfo;
         fillContext(traversable, index, info);
         info.d = invokeRender(() => (info.s = render(info)), componentInstance, parentDestruction);
         return info;
@@ -522,31 +530,28 @@ function findDuplicateKey(keys: any[], appendedFrom: number) {
 }
 
 function updateBlock(oldInfo: TraverseInfo, traversable: Traversable, index: number) {
-    const oldM = oldInfo.m;
-    const oldX = oldInfo.x;
     fillContext(traversable, index, oldInfo);
 
-    if (reactiveNotEqual(oldM, oldInfo.m) || reactiveNotEqual(oldX, oldInfo.x)) {
-        oldInfo.s?.(oldInfo);
-
-        // 行内副作用只需在上下文变化时重新执行，单个副作用被直接存放
-        // on the info object, so that it can be re-run without any extra allocations.
-        const effects = oldInfo.d.e;
-        if (isArray(effects)) {
-            for (let i = 0; i < effects.length; i++) {
-                const effect = effects[i];
-                if (effect && !(effect.l & EFFECT_SCHEDULING)) {
-                    runAndUpdateEffect(effect);
-                }
+    if (DEV_MODE) {
+        const setter = oldInfo.s;
+        if (setter) {
+            pauseTracking();
+            try {
+                setter(oldInfo);
+            } finally {
+                resumeTracking();
             }
-        } else if (effects && !(effects.l & EFFECT_SCHEDULING)) {
-            runAndUpdateEffect(effects);
         }
-        runContextEffects(oldInfo.d);
     }
 }
 
 function fillContext(traversable: Traversable, index: number, context: TraverseContext) {
+    resolveContext(traversable, index, resolvedContext);
+    context.m.$ = resolvedContext.m;
+    context.x.$ = resolvedContext.x;
+}
+
+function resolveContext(traversable: Traversable, index: number, context: TraverseContext) {
     switch (traversable.t) {
         case TRAVERSE_SET: {
             const key = traversable.k?.[index];

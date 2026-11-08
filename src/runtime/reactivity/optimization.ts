@@ -43,8 +43,12 @@ export const updateWithRaw = updateWithRawGen();
 export const batchUpdateWithRaw = updateWithRawGen(true);
 
 export function noTracking<R>(fn: ArbitraryFunc<R>) {
-    const result = (pauseTracking(), fn());
-    return (resumeTracking(), result);
+    pauseTracking();
+    try {
+        return fn();
+    } finally {
+        resumeTracking();
+    }
 }
 
 export function noUpdating<R>(fn: ArbitraryFunc<R>) {

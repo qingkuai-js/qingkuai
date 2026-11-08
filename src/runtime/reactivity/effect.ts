@@ -121,9 +121,9 @@ export function renderEffect(fn: EffectCallback) {
     const depth = speculativeDepth++;
     const scratch = getSpeculativeEffect(depth);
     scratch.f = fn;
-    scratch.l = EFFECT_RENDER;
     scratch.c = NIL;
     scratch.d = destruction;
+    scratch.l = EFFECT_RENDER;
 
     let res: any;
     try {
@@ -132,12 +132,9 @@ export function renderEffect(fn: EffectCallback) {
         speculativeDepth = depth;
     }
 
-    // 没有依赖也没有清理函数：登记为上下文副作用即可
-    // No dependencies and no cleanup function: registering it as a context effect is enough.
+    // 没有依赖也没有清理函数，直接退出
+    // No dependencies and no cleanup function, exit directly.
     if (!scratch.k.length && !res) {
-        if (destruction) {
-            appendContextEffect(destruction, fn);
-        }
         return;
     }
 
@@ -146,8 +143,8 @@ export function renderEffect(fn: EffectCallback) {
     // links that were collected during the speculative run.
     const effect: Effect = {
         f: fn,
-        k: scratch.k,
         x: -1,
+        k: scratch.k,
         c: res || NIL,
         l: scratch.l,
         t: TIMING_UNSET,
@@ -272,34 +269,6 @@ function attachEffectToDestruction(effect: Effect, destruction: Destruction) {
         destruction.e = [effects, effect];
         effects.x = 0;
         effect.x = 1;
-    }
-}
-
-// 上下文副作用只需要在所属渲染的上下文变化时重新执行（见 list 指令的 updateBlock）
-// A context effect only has to be re-run when the context of its render changes
-// (see `updateBlock` in the list directive).
-export function appendContextEffect(destruction: Destruction, fn: EffectCallback) {
-    const updaters = destruction.u;
-    if (!updaters) {
-        destruction.u = fn;
-    } else if (isArray(updaters)) {
-        updaters.push(fn);
-    } else {
-        destruction.u = [updaters, fn];
-    }
-}
-
-export function runContextEffects(destruction: Destruction) {
-    const updaters = destruction.u;
-    if (!updaters) {
-        return;
-    }
-    if (isArray(updaters)) {
-        for (let i = 0; i < updaters.length; i++) {
-            updaters[i]();
-        }
-    } else {
-        updaters();
     }
 }
 

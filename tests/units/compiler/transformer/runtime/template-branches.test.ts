@@ -82,7 +82,7 @@ test("Slot with dynamic and static attrs builds slot props object", () => {
         <slot name="main" !title={label} fixed></slot>
     `);
     expect(code).toContain('_.renderSlot("main",');
-    expect(code).toContain("title: label");
+    expect(code).toContain("title: __ => (label)");
     expect(code).toContain("fixed: true");
 });
 
