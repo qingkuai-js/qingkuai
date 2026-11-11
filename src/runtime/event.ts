@@ -27,10 +27,7 @@ import { call, objectCreate } from "../util/shared/aliases";
 import { currentInstance, eventRegisterInfo } from "./state";
 import { isFunction, isUndefined } from "../util/shared/assert";
 
-// 事件类型到扩展属性名的映射会被每个带事件的元素使用，缓存后可以避免重复拼接字符串
-// The event-type to expando-name mapping is needed for every element that has an
-// event listener; memoizing it avoids re-building the name strings each time.
-const delegateKeyMap = /*#__PURE__*/ new Map<string, [string, string]>();
+const delegateKeyMap = new Map<string, [handlerKey: string, flagKey: string]>();
 
 export function initEvents(events: string[]) {
     registerEvents((currentInstance!._internal.e = events));
@@ -85,10 +82,12 @@ export function registerEvents(registration: string[]) {
         if ((eventRegisterInfo[eventName] ??= [])[registeIndex]) {
             continue;
         }
+
+        const keys = delegateKeysFor(eventName);
         DOCUMENT!.addEventListener(
             eventName,
             event => {
-                dispatch(event, passive);
+                dispatch(event, passive, keys[0], keys[1]);
             },
             {
                 passive,
@@ -139,10 +138,7 @@ function delegateKeysFor(type: string) {
     return keys;
 }
 
-function dispatch(event: Event, passive: boolean) {
-    const keys = delegateKeysFor(event.type);
-    const flagKey = keys[1];
-    const handlerKey = keys[0];
+function dispatch(event: Event, passive: boolean, handlerKey: string, flagKey: string) {
     const path = event.composedPath();
     const bubblings: EventTarget[] = [];
 
@@ -231,12 +227,8 @@ function dispatch(event: Event, passive: boolean) {
         }
     }
 
-    // 不冒泡的事件（selectstart 等）在原生语义里不会触达祖先上的监听器；document 在捕获阶段
-    // 能收到它，只说明捕获会经过祖先，不代表合成冒泡也该走一遍
-    //
-    // A non-bubbling event (selectstart and friends) never reaches listeners on ancestors.
-    // Receiving it on document only means the capture phase passes through them, it does not
-    // mean the simulated bubbling should run as well.
+    // 冒泡阶段，事件从目标元素向上冒泡到根节点
+    // Bubbling phase, the event bubbles up from the target element to the root node
     if (!stopped && event.bubbles) {
         for (let i = bubblings.length - 1; i >= 0; i--) {
             if (excuteEventHandler(bubblings[i], Event.BUBBLING_PHASE)) {
