@@ -382,7 +382,7 @@ export function writeFragmentGetterDeclarations(
             writer.write(`const ${fragmentGetterId} = `);
             writer.write(`${internalId}.${getFragmentGetterName(fragment)}(`);
 
-            let stringifiedContent = `\`${joinedContent.replaceAll("`", "\\`")}\``;
+            let stringifiedContent = "`" + escapeTemplateText(joinedContent) + "`";
             if (inputDescriptor.options.debug) {
                 stringifiedContent = stringifiedContent.replaceAll("\n", "\\n");
             }
@@ -527,6 +527,10 @@ function isFragmentWholeContent(fragment: TemplateFragment) {
         }
     }
     return true;
+}
+
+function escapeTemplateText(value: string) {
+    return value.replaceAll("`", "\\`").replaceAll("${", "\\${");
 }
 
 function doesFragmentHasTargetDirective(fragment: TemplateFragment) {
