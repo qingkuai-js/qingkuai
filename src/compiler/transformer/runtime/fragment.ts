@@ -24,6 +24,7 @@ import {
     getGeneratedStaticTextContent,
 } from "../../../util/compiler/template";
 import { getLastElem } from "../../../util/shared/arrays";
+import { trimClosingTags } from "../../optimizer/closing-tags";
 import { AttributeValueEnclosure, NamespaceMode } from "../../enums";
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
@@ -341,6 +342,12 @@ export function getTemplateFragments(nodes: TemplateNode[]) {
             }
         }
     })(nodes, extendFragments(null), null);
+
+    // 调试模式不做闭合标签裁剪优化
+    // Do not trim closing tags in debug mode
+    if (!inputDescriptor.options.debug) {
+        trimClosingTags(fragments);
+    }
 
     for (const fragment of fragments) {
         const joinedContent = fragment.content.map(item => item.value).join("");

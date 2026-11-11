@@ -58,7 +58,7 @@ test("Root fragment uses standalone scope attribute", () => {
         </lang-css>
         <div></div>
     `);
-    expect(code).toMatch(/createInheritedFragmentGetter\(`?<div qk-[a-f0-9]+><\/div>`?\)/);
+    expect(code).toMatch(/createInheritedFragmentGetter\(`?<div qk-[a-f0-9]+>`?\)/);
     expect(code).toContain("return _.mount(_anchor, _fragment1)");
 });
 
@@ -681,7 +681,7 @@ test("svg namespace context stops at foreignObject regardless of tag casing", ()
             </svg>
         `);
         expect(code).toMatch(/_\.setHtmlClassName\(/);
-        expect(code).toMatch(/createHtmlFragmentGetter\(`<path><\/path>`\)/);
+        expect(code).toMatch(/createHtmlFragmentGetter\(`<path>`\)/);
     }
 });
 

@@ -661,9 +661,9 @@ describe("non-debug mode", () => {
             const data: Pair<string>[] = [
                 [" ... ", "..."],
                 ["  1 2  3   0  ", "1 2  3   0"],
-                ["\n<div>\n\t...\n</div>", "<div>...</div>"],
-                ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2  3   0</div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2  3   0</p></div>"],
+                ["\n<div>\n\t...\n</div>", "<div>..."],
+                ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2  3   0"],
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2  3   0"],
             ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
@@ -696,11 +696,11 @@ describe("non-debug mode", () => {
             }
 
             const newlineData: Pair<string>[] = [
-                ["\n<div>\n\t...\n</div>", "\n<div>\n\t...\n</div>"],
-                ["\n<div>\n\t1 2  3   0\n</div>", "\n<div>\n\t1 2  3   0\n</div>"],
+                ["\n<div>\n\t...\n</div>", "\n<div>\n\t...\n"],
+                ["\n<div>\n\t1 2  3   0\n</div>", "\n<div>\n\t1 2  3   0\n"],
                 [
                     "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>",
-                    "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>",
+                    "<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n",
                 ],
             ];
             for (const [from, to] of newlineData) {
@@ -719,9 +719,9 @@ describe("non-debug mode", () => {
                 ["    ", " "],
                 [" ... ", " ... "],
                 ["  1 2  3   0  ", " 1 2 3 0 "],
-                ["\n<div>\n\t...\n</div>", " <div> ... </div>"],
-                ["\n<div>\n\t1 2  3   0\n</div>", " <div> 1 2 3 0 </div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div> <p> 1 2 3 0 </p> </div>"],
+                ["\n<div>\n\t...\n</div>", " <div> ... "],
+                ["\n<div>\n\t1 2  3   0\n</div>", " <div> 1 2 3 0 "],
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div> <p> 1 2 3 0 </p> "],
             ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
@@ -738,9 +738,9 @@ describe("non-debug mode", () => {
             const data: Pair<string>[] = [
                 [" ... ", "..."],
                 ["  1 2  3   0  ", "1 2 3 0"],
-                ["\n<div>\n\t...\n</div>", "<div>...</div>"],
-                ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2 3 0</div>"],
-                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2 3 0</p></div>"],
+                ["\n<div>\n\t...\n</div>", "<div>..."],
+                ["\n<div>\n\t1 2  3   0\n</div>", "<div>1 2 3 0"],
+                ["<div>\n\t<p>\n\t\t1 2  3   0\n\t</p>\n</div>", "<div><p>1 2 3 0"],
             ];
             for (const [from, to] of data) {
                 matchGeneratedFragment(
@@ -760,7 +760,7 @@ describe("non-debug mode", () => {
     test("Single tag", () => {
         matchGeneratedFragment(
             " <div> </div> ",
-            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div></div>\`)`,
+            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div>\`)`,
         );
 
         matchGeneratedFragment(
@@ -770,12 +770,12 @@ describe("non-debug mode", () => {
                 </lang-js>
                 <span> 1 2  3   0</span>
             `,
-            `const _getFragment2 = _.createInheritedFragmentGetter(\`<span>1 2 3 0</span>\`)`,
+            `const _getFragment2 = _.createInheritedFragmentGetter(\`<span>1 2 3 0\`)`,
         );
 
         const nodeList = matchGeneratedFragment(
             "<div>{a}</div>",
-            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div> </div>\`)`,
+            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div> \`)`,
         );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
@@ -814,7 +814,7 @@ describe("non-debug mode", () => {
                     <button @click={() => {}}></button>
                 </qk:spread>
             `,
-            `const _getFragment1 = _.createInheritedFragmentGetter(\`<button></button>\`)`,
+            `const _getFragment1 = _.createInheritedFragmentGetter(\`<button>\`)`,
         );
         matchTemplateNodesRuntimeId([[nodeList[1].children[1], "_button1"]]);
 
@@ -826,7 +826,7 @@ describe("non-debug mode", () => {
                     </qk:spread>
                 </qk:spread>
             `,
-            `const _getFragment1 = _.createInheritedFragmentGetter(\`name:<span> </span>\`)`,
+            `const _getFragment1 = _.createInheritedFragmentGetter(\`name:<span> \`)`,
         );
         matchTemplateNodesRuntimeId([
             [nodeList[1].children[1].children[1], "_span1"],
@@ -843,7 +843,7 @@ describe("non-debug mode", () => {
                 `,
                 `
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
+                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
                 `,
             );
             matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
@@ -863,14 +863,12 @@ describe("non-debug mode", () => {
                 `,
                 `
                     const _s1 = "<div"
-                    const _s2 = "</div>"
-                    const _s3 = "</p>"
-                    const _compressStrings = [_s1, _s2, _s3]
+                    const _compressStrings = [_s1]
 
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                    const _getFragment2 = _.createInheritedFragmentGetter(\`|0> |1\`, _compressStrings)
-                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p> |2\`, _compressStrings)
-                    const _getFragment4 = _.createInheritedFragmentGetter(\`|0><p>no content|2|1\`, _compressStrings)
+                    const _getFragment2 = _.createInheritedFragmentGetter(\`|0> \`, _compressStrings)
+                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p> \`)
+                    const _getFragment4 = _.createInheritedFragmentGetter(\`|0><p>no content\`, _compressStrings)
                 `,
             );
             matchTemplateNodesAnchorId([
@@ -896,11 +894,10 @@ describe("non-debug mode", () => {
                 `,
                 `
                     const _s1 = "<span"
-                    const _s2 = "</span>"
-                    const _compressStrings = [_s1, _s2]
+                    const _compressStrings = [_s1]
 
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                    const _getFragment2 = _.createInheritedFragmentGetter(\`|0> |1:|0> |1\`, _compressStrings)
+                    const _getFragment2 = _.createInheritedFragmentGetter(\`|0> </span>:|0> \`, _compressStrings)
                 `,
             );
             matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
@@ -922,8 +919,8 @@ describe("non-debug mode", () => {
                 `,
                 `
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div> </div>\`)
-                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p> </p>\`)
+                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div> \`)
+                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p> \`)
                 `,
             );
             matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
@@ -959,12 +956,11 @@ describe("non-debug mode", () => {
                 `,
                 `
                     const _s1 = "<span"
-                    const _s2 = "</span>"
-                    const _compressStrings = [_s1, _s2]
+                    const _compressStrings = [_s1]
 
                     const _getFragment1 = _.createInheritedFragmentGetter(\` <!>\`)
-                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div>|0> |1</div>\`, _compressStrings)
-                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p>|0> |1</p>\`, _compressStrings)
+                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div>|0> \`, _compressStrings)
+                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p>|0> \`, _compressStrings)
                 `,
             );
         });
@@ -981,12 +977,11 @@ describe("non-debug mode", () => {
                 `,
                 `
                     const _s1 = "<span"
-                    const _s2 = "</span>"
-                    const _compressStrings = [_s1, _s2]
+                    const _compressStrings = [_s1]
 
                     const _getFragment1 = _.createInheritedFragmentGetter(\` <!>\`)
-                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div>a||b|0> |1c||d</div>\`, _compressStrings)
-                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p>|0> |1</p>\`, _compressStrings)
+                    const _getFragment2 = _.createInheritedFragmentGetter(\`<div>a||b|0> </span>c||d\`, _compressStrings)
+                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p>|0> \`, _compressStrings)
                 `,
             );
         });
@@ -1003,7 +998,7 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div> </div>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div> \`)
             `,
         );
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
@@ -1022,7 +1017,7 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>ok</div>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>ok\`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1042,7 +1037,7 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div><p> </p></div>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div><p> \`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1065,7 +1060,7 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1091,7 +1086,7 @@ describe("non-debug mode", () => {
             `
                     const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
                     const _getFragment2 = _.createHtmlFragmentGetter(\`\n    static content\n    \`)
-                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p></p>\`)
+                    const _getFragment3 = _.createInheritedFragmentGetter(\`<p>\`)
             `,
             {
                 whitespace: WhitespaceMode.Preserve,
@@ -1108,12 +1103,11 @@ describe("non-debug mode", () => {
             `,
             `
                 const _s1 = "<div"
-                const _s2 = "</div>"
-                const _compressStrings = [_s1, _s2]
+                const _compressStrings = [_s1]
 
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`|0>|1\`, _compressStrings)
-                const _getFragment3 = _.createInheritedFragmentGetter(\`|0> |1\`, _compressStrings)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`|0>\`, _compressStrings)
+                const _getFragment3 = _.createInheritedFragmentGetter(\`|0> \`, _compressStrings)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1140,8 +1134,8 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
-                const _getFragment3 = _.createInheritedFragmentGetter(\`<p> </p><button></button>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
+                const _getFragment3 = _.createInheritedFragmentGetter(\`<p> </p><button>\`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1167,8 +1161,8 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
-                const _getFragment3 = _.createInheritedFragmentGetter(\`<p></p>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
+                const _getFragment3 = _.createInheritedFragmentGetter(\`<p>\`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1222,7 +1216,7 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
             `,
         );
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
@@ -1240,7 +1234,7 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1262,8 +1256,8 @@ describe("non-debug mode", () => {
             `,
             `
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`<div></div>\`)
-                const _getFragment3 = _.createInheritedFragmentGetter(\`<p> </p>\`)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`<div>\`)
+                const _getFragment3 = _.createInheritedFragmentGetter(\`<p> \`)
             `,
         );
         matchTemplateNodesAnchorId([
@@ -1289,11 +1283,10 @@ describe("non-debug mode", () => {
             `,
             `
                 const _s1 = "<span"
-                const _s2 = "</span>"
-                const _compressStrings = [_s1, _s2]
+                const _compressStrings = [_s1]
 
                 const _getFragment1 = _.createHtmlFragmentGetter(\` \`)
-                const _getFragment2 = _.createInheritedFragmentGetter(\`|0> |1:|0> |1\`, _compressStrings)
+                const _getFragment2 = _.createInheritedFragmentGetter(\`|0> </span>:|0> \`, _compressStrings)
             `,
         );
         matchTemplateNodesAnchorId([[nodeList[1], "_text1"]]);
@@ -1308,7 +1301,7 @@ describe("non-debug mode", () => {
     test(`With "#html" directive`, () => {
         let nodeList = matchGeneratedFragment(
             `<div #html> static content </div>`,
-            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div> </div>\`)`,
+            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div> \`)`,
         );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],
@@ -1318,7 +1311,7 @@ describe("non-debug mode", () => {
 
         nodeList = matchGeneratedFragment(
             `<div #html> hellow {name}! </div>`,
-            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div> </div>\`)`,
+            `const _getFragment1 = _.createInheritedFragmentGetter(\`<div> \`)`,
         );
         matchTemplateNodesRuntimeId([
             [nodeList[0], "_div1"],

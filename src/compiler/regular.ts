@@ -1,7 +1,9 @@
 export const tagCloseCharsRE = /^\/?>/;
 export const componentTagRE = /^[A-Z]|[-.]/;
 export const templateAttributeEndRE = /\s|>|$/;
+export const startTagNameRE = /^<([a-zA-Z][\w-]*)/;
 export const templateInvalidAttributeRE = /^[^\s>]+/;
+export const tagNameRE = /^<\s*\/?\s*([a-zA-Z][\w-]*)/;
 export const templateAttributeNameRE = /^[^\s='"\{\}><\/]+/;
 export const templateConditionalCommentRE = /(?:^\[if |<\!\[endif\]$)/;
 export const embeddedStyleLangRE = /^(?:css|s[ca]ss|less|stylus|postcss)$/;
