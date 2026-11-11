@@ -13,7 +13,7 @@ import {
 import { getElementValue } from "./dom";
 import { NotArrayOrSet } from "./messages/error";
 import { objectKeys } from "../util/shared/aliases";
-import { any, notEqual, optc } from "../util/shared/sundry";
+import { notEqual, optc } from "../util/shared/sundry";
 import { nextTick, reactiveNotEqual } from "../util/runtime/sundry";
 import { isArray, isBoolean, isNull, isString, isUndefined } from "../util/shared/assert";
 
@@ -30,10 +30,10 @@ const attributeCacheKeys = /*#__PURE__*/ new Map<string, string>();
 // SVG element is read-only, so SVG elements are written as an attribute.
 export function setHtmlClassName(elem: Element, value: ClassAttrValue) {
     const className = getClassName(value);
-    if (className === any(elem)[CLASS_CACHE_KEY]) {
+    if (className === (elem as any)[CLASS_CACHE_KEY]) {
         return;
     }
-    any(elem)[CLASS_CACHE_KEY] = className;
+    (elem as any)[CLASS_CACHE_KEY] = className;
 
     if (!className) {
         elem.removeAttribute("class");
@@ -62,13 +62,13 @@ export function setClassAttribute(elem: Element, value: ClassAttrValue) {
 // property attempt entirely.
 export function setHtmlAttribute(elem: Element, name: string, value: any) {
     const cacheKey = getAttributeCacheKey(name);
-    if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
+    if (!reactiveNotEqual((elem as any)[cacheKey], value)) {
         return;
     }
     if (!isNull(value) && !isUndefined(value) && !isSvgElement(elem) && name in elem) {
         try {
-            any(elem)[name] = value;
-            any(elem)[cacheKey] = value;
+            (elem as any)[name] = value;
+            (elem as any)[cacheKey] = value;
             return;
         } catch {
             // do nothing
@@ -79,10 +79,10 @@ export function setHtmlAttribute(elem: Element, name: string, value: any) {
 
 export function setAttribute(elem: Element, name: string, value: any) {
     const cacheKey = getAttributeCacheKey(name);
-    if (!reactiveNotEqual(any(elem)[cacheKey], value)) {
+    if (!reactiveNotEqual((elem as any)[cacheKey], value)) {
         return;
     }
-    any(elem)[cacheKey] = value;
+    (elem as any)[cacheKey] = value;
 
     if (isNull(value) || isUndefined(value)) {
         elem.removeAttribute(name);
@@ -104,10 +104,10 @@ export function setXlinkAttribute(elem: Element, name: string, value: any) {
     const localName = name;
     const qualifiedName = "xlink:" + localName;
     const key = getAttributeCacheKey(qualifiedName);
-    if (!reactiveNotEqual(any(elem)[key], value)) {
+    if (!reactiveNotEqual((elem as any)[key], value)) {
         return;
     }
-    any(elem)[key] = value;
+    (elem as any)[key] = value;
 
     if (isNull(value) || isUndefined(value) || value === false) {
         elem.removeAttributeNS(XLINK_NAMESPACE_URI, localName);
@@ -141,7 +141,7 @@ export function setSelectValue(elem: HTMLSelectElement, target: any) {
                 for (const option of options) {
                     option.selected = !notEqual(target, getElementValue(option));
                 }
-                any(elem)[VALUE_CACHE_KEY] = target;
+                (elem as any)[VALUE_CACHE_KEY] = target;
             }
         } else {
             const containerIsArray = isArray(target);
@@ -200,5 +200,5 @@ function getClassName(value: ClassAttrValue) {
 }
 
 function isSvgElement(elem: Element) {
-    return (any(elem)[SVG_FLAG] ??= elem.namespaceURI === SVG_NAMESPACE_URI);
+    return ((elem as any)[SVG_FLAG] ??= elem.namespaceURI === SVG_NAMESPACE_URI);
 }

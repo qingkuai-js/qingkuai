@@ -9,15 +9,15 @@ import {
     REF_PROPERTY_ID,
 } from "../../runtime/reactivity/constants";
 import { isRefProperty } from "./assert";
+import { notEqual } from "../shared/sundry";
 import { isFunction } from "../shared/assert";
-import { any, notEqual } from "../shared/sundry";
 import { constReact } from "../../runtime/internal";
 import { FRAG_ORPHAN_CONTENT } from "../shared/flags";
 import { refProperties } from "../../runtime/reactivity/state";
 import { EXP_GETTER, NIL, RESOLVED } from "../../runtime/constants";
 
 export const toRaw: ToRawFunc = v => {
-    const wrapper = any(v)?.[WRAPPER];
+    const wrapper = (v as any)?.[WRAPPER];
     return wrapper ? wrapper.r : v;
 };
 

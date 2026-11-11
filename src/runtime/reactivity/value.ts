@@ -34,7 +34,7 @@ import { getSubscription, scheduleUpdate } from "./schedule";
 import { couldReact, isReactive } from "../../util/runtime/assert";
 import { isFunction, isUndefined } from "../../util/shared/assert";
 import { batchUpdateWithRaw, batchUpdating } from "./optimization";
-import { any, createProxy, hasOwn, notEqual, optc } from "../../util/shared/sundry";
+import { createProxy, hasOwn, notEqual, optc } from "../../util/shared/sundry";
 
 export const proxyCache = new WeakMap<AnyObject, ReactivityWrapper>();
 export const shallowProxyCache = new WeakMap<AnyObject, ReactivityWrapper>();
@@ -186,7 +186,7 @@ function reactWithProxy(target: any, flag = 0): any {
             // 访问 Array、Set、Map 的原型方法时，返回方法包装器
             // Return a method wrapper when accessing prototype methods of Array, Set, or Map.
             if (prototypeKey && isFunction(propValue)) {
-                const origin = any(protoMap()[prototypeKey])[property];
+                const origin = (protoMap()[prototypeKey] as any)[property];
                 if (origin === target[property]) {
                     return reactiveMethods()[prototypeKey][property] || origin;
                 }

@@ -3,7 +3,6 @@ import type TS from "typescript";
 import ts from "../ts-api";
 
 import { walkTsNode } from "../ts-ast/walk";
-import { any } from "../../util/shared/sundry";
 import { hasParseError } from "../ts-ast/assert";
 import { isString } from "../../util/shared/assert";
 import { ParseDiatnosticDealtKind } from "../enums";
@@ -100,7 +99,7 @@ function createSourceFile(
     );
     if (hasParseError(sourceFile)) {
         let message = "Syntax error";
-        const diagnostics: TS.Diagnostic[] = any(sourceFile).parseDiagnostics;
+        const diagnostics: TS.Diagnostic[] = (sourceFile as any).parseDiagnostics;
         if (isString(diagnostics[0].messageText)) {
             message = diagnostics[0].messageText;
         } else {

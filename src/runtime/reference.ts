@@ -1,7 +1,6 @@
 import type { Getter, Setter } from "#type-declarations/tools";
 
 import { getElementValue } from "./dom";
-import { any } from "../util/shared/sundry";
 import { setInputGroup } from "./attribute";
 import { ATTRIBUTE_PREFIX } from "./constants";
 import { isArray } from "../util/shared/assert";
@@ -76,7 +75,9 @@ export function bindSelectValue(elem: HTMLSelectElement, getTarget: Getter, setV
         } else {
             for (const option of options) {
                 if (option.selected) {
-                    setValue((any(option)[ATTRIBUTE_PREFIX + "value"] = getElementValue(option)));
+                    setValue(
+                        ((option as any)[ATTRIBUTE_PREFIX + "value"] = getElementValue(option)),
+                    );
                 }
             }
         }

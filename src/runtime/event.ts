@@ -22,7 +22,7 @@ import {
     EVENT_PASSIVE,
 } from "../util/shared/flags";
 import { pushDestructionCleaner } from "./destroy";
-import { any, createProxy } from "../util/shared/sundry";
+import { createProxy } from "../util/shared/sundry";
 import { call, objectCreate } from "../util/shared/aliases";
 import { currentInstance, eventRegisterInfo } from "./state";
 import { isFunction, isUndefined } from "../util/shared/assert";
@@ -42,7 +42,7 @@ export function createEventWrapper(fn: ArbitraryFunc, flag: number) {
     return function (this: EventTarget, event: KeyboardEvent) {
         let checkRes: number | boolean | undefined = true;
         if (event.type.startsWith("key")) {
-            const keyFlag = any(KEY_FLAG_MAP)[event.key] as number | undefined;
+            const keyFlag = (KEY_FLAG_MAP as any)[event.key] as number | undefined;
             checkRes = keyFlag ? flag & keyFlag : !(flag & KEY_NAME_FLAG);
         }
         if (!checkRes) {
@@ -125,9 +125,9 @@ export function listen(elem: Element, type: string, handler: ArbitraryFunc, flag
 export function delegate(elem: any, type: string, handler: ArbitraryFunc, flag?: number) {
     const keys = delegateKeysFor(type);
     if (flag) {
-        any(elem)[keys[1]] = flag;
+        (elem as any)[keys[1]] = flag;
     }
-    any(elem)[keys[0]] = handler;
+    (elem as any)[keys[0]] = handler;
 }
 
 function delegateKeysFor(type: string) {
@@ -151,14 +151,14 @@ function dispatch(event: Event, passive: boolean) {
     let stopImmediatePropagation: (() => void) | undefined;
 
     const excuteEventHandler = (elem: EventTarget, phase: number) => {
-        const handler = any(elem)[handlerKey];
-        const flag = any(elem)[flagKey] ?? 0;
+        const handler = (elem as any)[handlerKey];
+        const flag = (elem as any)[flagKey] ?? 0;
         if (flag & EVENT_PREVENT) {
             event.preventDefault();
         }
         if (flag & EVENT_ONCE) {
-            delete any(elem)[flagKey];
-            delete any(elem)[handlerKey];
+            delete (elem as any)[flagKey];
+            delete (elem as any)[handlerKey];
         }
 
         const wrappedEvent = createProxy(objectCreate(event), {
@@ -170,7 +170,7 @@ function dispatch(event: Event, passive: boolean) {
                     return phase;
                 }
 
-                const value = any(event)[property];
+                const value = (event as any)[property];
                 if (!isFunction(value)) {
                     return value;
                 }
@@ -204,7 +204,7 @@ function dispatch(event: Event, passive: boolean) {
     };
 
     for (let i = path.length - 1; i >= 0; i--) {
-        const elem = any(path[i]);
+        const elem = path[i] as any;
         const handler = elem[handlerKey];
         if (!handler) {
             continue;

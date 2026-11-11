@@ -39,7 +39,6 @@ import {
 } from "../state";
 import { objectAssign } from "../internal";
 import { getSubscription } from "./schedule";
-import { any } from "../../util/shared/sundry";
 import { isArray } from "../../util/shared/assert";
 import { NIL, NOOP, UNDEF, DEV_MODE } from "../constants";
 import { getLastElem, swapDelete } from "../../util/shared/arrays";
@@ -194,7 +193,7 @@ export function appendLinksToActiveEffect(from: Effect) {
         return;
     }
 
-    const isSync = any(current.t == TIMING_SYNC); // avoid a ts bug
+    const isSync = current.t == (TIMING_SYNC as any); // avoid a ts bug
     const fromLinks = from.k;
     for (let i = 0; i < fromLinks.length; i++) {
         const link = fromLinks[i];

@@ -1,6 +1,5 @@
 import type { ArbitraryFunc } from "#type-declarations/tools";
 
-import { any } from "./sundry";
 import { OBJECT } from "../../runtime/constants";
 
 export function stringify(v: any) {
@@ -28,7 +27,7 @@ export function apply(fn: ArbitraryFunc, caller: any, ...args: any) {
 }
 
 export const objectAssign: typeof Object.assign = (...args: any) => {
-    return any(OBJECT.assign)(...args);
+    return (OBJECT.assign as any)(...args);
 };
 
 export const getPrototypeOf: typeof Object.getPrototypeOf = o => {
@@ -40,11 +39,11 @@ export const setPrototypeOf: typeof Object.setPrototypeOf = (o, proto) => {
 };
 
 export const defineProperty: typeof Object.defineProperty = (o, p, attributes) => {
-    return any(OBJECT.defineProperty)(o, p, attributes);
+    return (OBJECT.defineProperty as any)(o, p, attributes);
 };
 
 export const defineProperties: typeof Object.defineProperties = (o, properties) => {
-    return any(OBJECT.defineProperties)(o, properties);
+    return (OBJECT.defineProperties as any)(o, properties);
 };
 
 export const getOwnPropertyDescriptor: typeof Object.getOwnPropertyDescriptor = (o, p) => {

@@ -7,7 +7,6 @@ import {
     VALUE_CACHE_KEY,
     SVG_NAMESPACE_URI,
 } from "./constants";
-import { any } from "../util/shared/sundry";
 import { arrayFrom } from "../util/shared/arrays";
 import { isElement } from "../util/runtime/assert";
 import { currentDestruction, currentInstance } from "./state";
@@ -96,7 +95,7 @@ export function getSiblingAsText(node: ChildNode, distance = 1) {
 }
 
 export function getElementValue(elem: Element) {
-    return any(elem)[VALUE_CACHE_KEY] ?? any(elem).value;
+    return (elem as any)[VALUE_CACHE_KEY] ?? (elem as any).value;
 }
 
 export function getChild(node: Element, index = 0) {

@@ -1,4 +1,4 @@
-import { any, optc } from "../../../src/util/shared/sundry";
+import { optc } from "../../../src/util/shared/sundry";
 import { isReactive } from "../../../src/util/runtime/assert";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { createTestInstance } from "../../../src/util/testing/sundry";
@@ -491,7 +491,7 @@ describe("Array prototype methods", () => {
         nums.push({ v: 1 });
         expect(arr).toEqual([0, 3, 4]);
 
-        any(getLastElem(nums)).v++;
+        (getLastElem(nums) as any).v++;
         expect(arr).toEqual([0, 3, 4]);
     });
 
@@ -519,7 +519,7 @@ describe("Array prototype methods", () => {
         nums.push({ v: 9 });
         expect(arr).toEqual([3, 3, 4, 10]);
 
-        any(getLastElem(nums)).v++;
+        (getLastElem(nums) as any).v++;
         expect(arr).toEqual([3, 3, 4, 11]);
     });
 

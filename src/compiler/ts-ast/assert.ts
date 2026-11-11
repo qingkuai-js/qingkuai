@@ -9,7 +9,6 @@ import type {
 
 import ts from "../ts-api";
 
-import { any } from "../../util/shared/sundry";
 import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./sundry";
 
 // 判断节点是否为类型操作，如 as、<> 等
@@ -24,7 +23,7 @@ export function isTypeOperation(node: TS.Node): node is TypeOperation {
 }
 
 export function hasParseError(sourceFile: TS.SourceFile) {
-    return any(sourceFile).parseDiagnostics?.length > 0;
+    return (sourceFile as any).parseDiagnostics?.length > 0;
 }
 
 export function isLiteral(node: TS.Node) {
@@ -367,18 +366,18 @@ export function isExpressionEqual(a: TS.Node, b: TS.Node): boolean {
 
     switch (a.kind) {
         case ts.SyntaxKind.Identifier: {
-            return any(a).text === any(b).text;
+            return (a as any).text === (b as any).text;
         }
         case ts.SyntaxKind.PropertyAccessExpression: {
             return (
-                isPropertyEqual(any(a).name, any(b).name) &&
-                isExpressionEqual(any(a).expression, any(b).expression)
+                isPropertyEqual((a as any).name, (b as any).name) &&
+                isExpressionEqual((a as any).expression, (b as any).expression)
             );
         }
         case ts.SyntaxKind.ElementAccessExpression: {
             return (
-                isExpressionEqual(any(a).expression, any(b).expression) &&
-                isExpressionEqual(any(a).argumentExpression, any(b).argumentExpression)
+                isExpressionEqual((a as any).expression, (b as any).expression) &&
+                isExpressionEqual((a as any).argumentExpression, (b as any).argumentExpression)
             );
         }
         default: {

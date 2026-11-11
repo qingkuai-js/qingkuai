@@ -42,7 +42,7 @@ import {
 } from "./state";
 import { isElement } from "../util/runtime/assert";
 import { invokeRender } from "./directives/render";
-import { any, runAll } from "../util/shared/sundry";
+import { runAll } from "../util/shared/sundry";
 import { makeExpGetter } from "../util/runtime/sundry";
 import { createDestruction, destroy } from "./destroy";
 import { bindHandleReceiver, shallowConstReact } from "./internal";
@@ -90,7 +90,7 @@ export const mountApp: MountAppFunc = (component, target) => {
 
     const anchor = newTextNode();
     appendChild(target, anchor);
-    any(component)(anchor);
+    (component as any)(anchor);
 };
 
 export const getCurrentInstance: GetCurrentInstanceFunc = () => {
@@ -98,7 +98,7 @@ export const getCurrentInstance: GetCurrentInstanceFunc = () => {
 };
 
 export const getContexts: GetContextsFunc = instance => {
-    return any(instance._internal.c!);
+    return instance._internal.c! as any;
 };
 
 export const setContext: SetContextFunc = (instance, key, value) => {
@@ -118,7 +118,7 @@ export const setContext: SetContextFunc = (instance, key, value) => {
 };
 
 export const setContextGetter: SetContextGetterFunc = (instance, key, getter) => {
-    any(setContext)(instance, key, makeExpGetter(getter));
+    (setContext as any)(instance, key, makeExpGetter(getter));
 };
 
 export function init(anchor: Node, meta: ComponentMeta) {

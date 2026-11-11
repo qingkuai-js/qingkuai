@@ -14,10 +14,6 @@ export const formatSourceCode: FormatSourceCodeFunc = (code: string) => {
     return code.replace(new RegExp(`(?<=^|\\n)${uselessIndentStr}`, "g"), "");
 };
 
-export function any(v: any) {
-    return v;
-}
-
 export function newCleanObj() {
     return objectCreate(NIL);
 }
