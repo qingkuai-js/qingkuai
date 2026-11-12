@@ -41,6 +41,7 @@ import { isReactive } from "../../../src/util/runtime/assert";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { matchGlobalError } from "../../../src/util/testing/match";
 import { isArray, isNumber } from "../../../src/util/shared/assert";
+import { activeEffect } from "../../../src/runtime/reactivity/state";
 import { arrayFrom, emptyArr } from "../../../src/util/shared/arrays";
 import { createWarningMatcher } from "../../../src/util/testing/sundry";
 import { constReact, react } from "../../../src/runtime/reactivity/value";
@@ -104,6 +105,18 @@ beforeEach(cleanup);
 
 function makeConsecutiveNumbersArr(length: number) {
     return arrayFrom({ length }, (_, i) => i);
+}
+
+async function flushThrowingUpdate(trigger: () => void) {
+    const ignore = () => {};
+    process.on("unhandledRejection", ignore);
+    try {
+        trigger();
+        await nextTick();
+        await sleep(0);
+    } finally {
+        process.off("unhandledRejection", ignore);
+    }
 }
 
 test("destroy should disconnect destruction from parent/effects", () => {
@@ -794,4 +807,78 @@ describe("Traversal operations of specified types are tracked as ITERATOR_KEYS d
         expect(invokeMarker).toHaveBeenCalledTimes(5);
         expect(nums[WRAPPER].a.get(ITERATOR_KEYS).k.length).toBe(2);
     });
+});
+
+test("Whether updates keep working after a render effect throws", async () => {
+    const source = react(0);
+    const seen: number[] = [];
+    let shouldThrow = false;
+
+    renderEffect(() => {
+        const value = source.$;
+        if (shouldThrow) {
+            throw new Error("effect boom");
+        }
+        seen.push(value);
+    });
+    expect(seen).toEqual([0]);
+
+    source.$ = 1;
+    await nextTick();
+    expect(seen).toEqual([0, 1]);
+
+    shouldThrow = true;
+    await flushThrowingUpdate(() => (source.$ = 2));
+
+    // 抛错只影响抛出它的那次更新，后续写入仍然会触发调度
+    // A throw only affects the update it happened in; later writes are still scheduled.
+    shouldThrow = false;
+    source.$ = 3;
+    await nextTick();
+    expect(seen).toEqual([0, 1, 3]);
+});
+
+test("Whether the remaining effects of a batch run when one effect throws", async () => {
+    const source = react(0);
+    const seen: string[] = [];
+    let shouldThrow = false;
+
+    renderEffect(() => {
+        const value = source.$;
+        if (shouldThrow) {
+            throw new Error("effect boom");
+        }
+        seen.push("first:" + value);
+    });
+    renderEffect(() => {
+        seen.push("second:" + source.$);
+    });
+    expect(seen).toEqual(["first:0", "second:0"]);
+
+    shouldThrow = true;
+    await flushThrowingUpdate(() => (source.$ = 1));
+
+    // 同一批中某个副作用抛错，不应阻止其余副作用执行
+    // An effect throwing inside a batch must not prevent the remaining effects from running.
+    expect(seen).toContain("second:1");
+});
+
+test("Whether the running effect context is restored when an effect throws", async () => {
+    const source = react(0);
+    let shouldThrow = false;
+
+    renderEffect(() => {
+        source.$;
+        if (shouldThrow) {
+            throw new Error("effect boom");
+        }
+    });
+
+    shouldThrow = true;
+    await flushThrowingUpdate(() => (source.$ = 1));
+
+    // 运行栈必须还原，否则之后创建的绑定会挂到错误的 effect 上
+    // The running stack must be restored, otherwise bindings created afterwards link to
+    // the wrong effect.
+    expect(activeEffect).toBe(NIL);
 });
