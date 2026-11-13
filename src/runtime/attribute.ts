@@ -171,7 +171,7 @@ function getAttributeCacheKey(name: string) {
 function getClassNameWithObject(o: AnyObject) {
     let className = "";
     for (const key of objectKeys(o)) {
-        if (isString(key) && o[key]) {
+        if (o[key]) {
             className += (className ? " " : "") + key;
         }
     }
