@@ -62,7 +62,7 @@ const scenario: E2EScenarioInput = {
             <div id="await-host">
                 <p id="await-branch" #await={taskPromise}>Pending...</p>
                 <p id="then-branch" #then={value}>Then: {value}</p>
-                <p id="catch-branch" #catch={reason}>Catch: {reason}</p>
+                <p id="catch-branch" #catch={{ err: reason }}>Catch: {reason}</p>
             </div>
         </section>
     `,

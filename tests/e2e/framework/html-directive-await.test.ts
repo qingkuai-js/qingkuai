@@ -37,7 +37,7 @@ const scenario: E2EScenarioInput = {
                     {'<span id="html-await-pending-inner">Pending html</span>'}
                 </div>
                 <div id="html-await-then" #then={value} #html>{value}</div>
-                <div id="html-await-catch" #catch={err} #html>{err}</div>
+                <div id="html-await-catch" #catch={{ err }} #html>{err}</div>
             </div>
         </section>
     `,

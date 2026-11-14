@@ -61,7 +61,7 @@ const scenario: E2EScenarioInput = {
                     <span id="structured-then-id">{resolvedId}</span>
                     <strong id="structured-then-name">{resolvedName}</strong>
                 </div>
-                <div #catch={{ msg, code }}>
+                <div #catch={{ err: { msg, code } }}>
                     <span id="structured-catch-msg">{msg}</span>
                     Structured rejected
                     <strong id="structured-catch-code">{code}</strong>

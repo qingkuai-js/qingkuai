@@ -229,16 +229,16 @@ test("Intermediate: slot receives dynamic attribute and tracks dependency usage"
     expect(result.code).toContain("void(count)");
 });
 
-test("Intermediate: #catch with destructuring pattern writes anyValue", () => {
+test("Intermediate: #catch with destructuring pattern writes catchPayload", () => {
     const result = compileAndAssertNoErrors(`
         <lang-js>
             let p = Promise.resolve()
         </lang-js>
         <div #await={p}>loading</div>
         <div #then={res}>done: {res}</div>
-        <div #catch={err}>err: {err}</div>
+        <div #catch={{ err }}>err: {err}</div>
     `);
-    expect(result.code).toContain(`${LSC.UTIL}.anyValue`);
+    expect(result.code).toContain(`${LSC.UTIL}.catchPayload`);
 });
 
 test("Intermediate: #catch without pattern still generates valid code", () => {

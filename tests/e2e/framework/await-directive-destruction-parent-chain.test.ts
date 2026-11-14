@@ -55,7 +55,7 @@ const scenario: E2EScenarioInput = {
             <div id="await-host" #if={showHost}>
                 <p id="await-pending" #await={branchPromise}>Pending...</p>
                 <ThenPanel #then={value} @log={appendLog} !value={value} />
-                <p id="await-catch" #catch={reason}>Catch: {reason}</p>
+                <p id="await-catch" #catch={{ err: reason }}>Catch: {reason}</p>
             </div>
             <p id="await-host-hidden" #else>Host hidden</p>
         </section>

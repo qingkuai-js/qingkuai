@@ -69,7 +69,7 @@ const scenario: E2EScenarioInput = {
                 </div>
                 <p
                     id="target-delayed-await-catch"
-                    #catch={err}
+                    #catch={{ err }}
                 >
                     {err}
                 </p>

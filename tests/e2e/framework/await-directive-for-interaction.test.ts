@@ -53,7 +53,7 @@ const scenario: E2EScenarioInput = {
                     <p class="item-resolved" #then={res}>
                         {res}
                     </p>
-                    <p class="item-error" #catch={err}>
+                    <p class="item-error" #catch={{ err }}>
                         {err}
                     </p>
                 </li>

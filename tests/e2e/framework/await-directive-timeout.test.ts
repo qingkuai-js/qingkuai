@@ -38,7 +38,7 @@ const scenario: E2EScenarioInput = {
                 <p id="timeout-resolved" #then={result}>
                     Success: {result}
                 </p>
-                <p id="timeout-error" #catch={err}>
+                <p id="timeout-error" #catch={{ err }}>
                     Failed: {err} {timeoutReason}
                 </p>
             </div>

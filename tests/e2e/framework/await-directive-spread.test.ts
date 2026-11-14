@@ -59,7 +59,7 @@ const scenario: E2EScenarioInput = {
                     <span id="spread-then-label">{label}</span>
                     <strong id="spread-then-extra">{extra}</strong>
                 </qk:spread>
-                <qk:spread #catch={{ msg, code }}>
+                <qk:spread #catch={{ err: { msg, code } }}>
                     <span id="spread-catch-msg">{msg}</span>
                     Spread catch text
                     <strong id="spread-catch-code">{code}</strong>

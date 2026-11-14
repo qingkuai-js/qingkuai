@@ -64,7 +64,7 @@ const scenario: E2EScenarioInput = {
                 </p>
                 <p
                     id="branch-catch"
-                    #catch={{ msg, code }}
+                    #catch={{ err: { msg, code } }}
                 >
                     Rejected {code}: {msg}
                 </p>

@@ -29,7 +29,7 @@ const scenario: E2EScenarioInput = {
             <div id="target-await-source">
                 <p id="target-await-pending" #await={awaitValuePromise} #target={awaitTarget}>Await pending</p>
                 <p id="target-await-then" #then={msg} #target={awaitTarget}>{msg}</p>
-                <p id="target-await-catch" #catch={err} #target={awaitTarget}>{err}</p>
+                <p id="target-await-catch" #catch={{ err }} #target={awaitTarget}>{err}</p>
             </div>
             <div id="target-dest-a"></div>
         </section>

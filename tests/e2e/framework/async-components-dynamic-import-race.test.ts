@@ -49,7 +49,7 @@ const scenario: E2EScenarioInput = {
             <qk:spread #then={LoadedComponentModule}>
                 <LoadedComponentModule />
             </qk:spread>
-            <div id="async-error" #catch={err}>Failed: {err}</div>
+            <div id="async-error" #catch={{ err }}>Failed: {err}</div>
         </section>
     `,
     components: {

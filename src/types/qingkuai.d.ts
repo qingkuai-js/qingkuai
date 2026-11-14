@@ -16,6 +16,10 @@ export namespace __qk__lsu {
     export type ComponentInstance<T extends QingkuaiComponent<any>> = _ComponentInstance<T>;
 
     export const anyValue: any;
+    export const catchPayload: {
+        err: any;
+        retry: GeneralFunc;
+    };
     export const getListPair: {
         <T>(value: Set<T>): [T, T];
         <K, V>(value: Map<K, V>): [V, K];

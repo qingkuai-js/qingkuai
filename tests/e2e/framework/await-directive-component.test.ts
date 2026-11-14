@@ -58,7 +58,7 @@ const scenario: E2EScenarioInput = {
                 <AsyncPanel #then={res}>
                     <span id="component-await-then">Component then: {res}</span>
                 </AsyncPanel>
-                <AsyncPanel #catch={err}>
+                <AsyncPanel #catch={{ err }}>
                     <span id="component-await-catch">Component catch: {err}</span>
                 </AsyncPanel>
                 <span class="component-await-marker">After</span>

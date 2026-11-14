@@ -58,7 +58,7 @@ export default formatSourceCode(`
 
 		<section #await={pending}>loading...</section>
 		<section #then={res}>done: {res.value}</section>
-		<section #catch={err}>fail: {err?.message}</section>
+		<section #catch={{ err }}>fail: {err?.message}</section>
 
 		<div #html={rawHtml}>{rawText}</div>
 

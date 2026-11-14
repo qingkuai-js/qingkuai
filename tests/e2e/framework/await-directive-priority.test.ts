@@ -64,7 +64,7 @@ const scenario: E2EScenarioInput = {
                 </p>
                 <p
                     id="priority-catch"
-                    #catch={err}
+                    #catch={{ err }}
                 >
                     Priority catch: {err}
                 </p>

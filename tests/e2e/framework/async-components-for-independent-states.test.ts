@@ -83,7 +83,7 @@ const scenario: E2EScenarioInput = {
                     </qk:spread>
                     <p
                         class="async-item-error"
-                        #catch={err}
+                        #catch={{ err }}
                     >
                         {item.label}: {err}
                     </p>

@@ -40,7 +40,7 @@ const scenario: E2EScenarioInput = {
                 <p
                     id="inline-catch"
                     #await={inlineRejectPromise}
-                    #catch={err}
+                    #catch={{ err }}
                 >
                     Inline rejected: {err}
                 </p>

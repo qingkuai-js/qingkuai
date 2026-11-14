@@ -60,6 +60,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         : undefined;
 
     const ANY_VALUE = `${LSU}.anyValue`;
+    const CATCH_PAYLOAD = `${LSU}.catchPayload`;
     const SLOT_TYPE = `Readonly<${slotNamesType || `${LSU}.EmptyObject`}>`;
     const COMPONENT_TYPE = `${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>`;
     const INSTANCE_TYPE = `${LSU}.ComponentInstance<${LSU}.QingkuaiComponent<typeof ${LSC.COMPONENT}>>`;
@@ -229,7 +230,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                         indentAndWriteStartEnclosure();
 
                         if (generatePatterns(writer, directive)) {
-                            writer.write(ANY_VALUE).write(";");
+                            writer.write(CATCH_PAYLOAD).write(";");
                         } else {
                             writeInvalidExpression(writer, rawValue, valueRange);
                         }

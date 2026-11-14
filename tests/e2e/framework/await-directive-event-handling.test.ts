@@ -40,7 +40,7 @@ const scenario: E2EScenarioInput = {
                     <p id="event-data">{data}</p>
                     <button id="action-btn" @click={incrementClick}>Action</button>
                 </div>
-                <p id="event-error" #catch={err}>{err}</p>
+                <p id="event-error" #catch={{ err }}>{err}</p>
             </div>
 
             <p id="click-count">Clicks: {clickCount}</p>

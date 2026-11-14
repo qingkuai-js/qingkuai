@@ -3,6 +3,7 @@ import type { CancelablePromise, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "../constants";
 import { invokeRender } from "./render";
+import { react } from "../reactivity/value";
 import { NotPromise } from "../messages/error";
 import { renderEffect } from "../reactivity/effect";
 import { isThenable } from "../../util/shared/assert";
@@ -20,8 +21,14 @@ export function promiseBlock(
     let state: number;
     let pms: CancelablePromise | null;
     let destruction: Destruction | null;
+
+    const retryToken = react(0);
     const componentInstance = currentInstance!;
     const parentDestruction = currentDestruction;
+
+    const retry = () => {
+        retryToken.$++;
+    };
 
     // 待办：添加端到端测试
     // TODO: Add end-to-end tests
@@ -52,9 +59,10 @@ export function promiseBlock(
                 changeState(PROMISE_SETTLED, renderThen, result);
             },
             reason => {
-                changeState(PROMISE_SETTLED, renderCatch, reason);
+                changeState(PROMISE_SETTLED, renderCatch, { err: reason, retry });
             },
         );
+        retryToken.$;
     });
 }
 

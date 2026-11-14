@@ -50,7 +50,7 @@ const scenario: E2EScenarioInput = {
                 <p id="memory-resolved" #then={val}>
                     Resolved: {val}
                 </p>
-                <p id="memory-error" #catch={err}>{err}</p>
+                <p id="memory-error" #catch={{ err }}>{err}</p>
             </div>
 
             <p id="resolve-count">Resolve count: {resolveCount}</p>
