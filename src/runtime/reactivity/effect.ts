@@ -44,6 +44,9 @@ import { NIL, NOOP, UNDEF, DEV_MODE } from "../constants";
 import { getLastElem, swapDelete } from "../../util/shared/arrays";
 import { CreateOnDisposedComponent, EffectOrWatchHasNoDependecies } from "../messages/warn";
 
+let speculativeDepth = 0;
+const speculativeEffects: Effect[] = [];
+
 export const watch: WatchFunc = (instance, getter, callback) => {
     return watchAt(TIMING_UNSET, instance, getter, callback);
 };
@@ -82,32 +85,6 @@ export function markActiveEffectNoCheck() {
     }
 }
 
-// 渲染副作用先以"投机"方式执行一次：若它没有读取任何响应式值（例如列表行的
-// 绑定只读取循环上下文），它就永远不会被响应式调度器触发，只会在上下文变化时
-// 由列表重新执行。这种情况不需要副作用对象，直接把回调记录到 Destruction 上，
-// 让"每个列表行零额头分配"成为常态，同时消除这些对象带来的 GC 压力。
-//
-// A render effect is first executed speculatively: if it read no reactive value
-// (a list row binding that only reads the loop context, for instance) it can never
-// be triggered by the reactive scheduler and is only re-run by the list when the
-// context changes. Such a binding needs no effect object at all, so the callback is
-// recorded on the `Destruction` instead, making "zero overhead per row" the norm
-// and removing the GC pressure of those objects.
-//
-// 投机执行会嵌套：列表块挂载每一行时，行内的绑定会再次调用 renderEffect，所以临时
-// 对象不能全局共用一个——内层调用会解绑并覆盖外层刚收集到的依赖链接，使外层（列表）
-// 副作用失去依赖、不再随数据变化重新渲染。这里按嵌套深度复用一组对象，单层渲染
-// （绝大多数情况）依旧零分配。
-//
-// The speculative run nests: mounting a row runs the row's bindings, which call
-// `renderEffect` again. The temporary effect must therefore not be shared globally — an
-// inner call would unlink and overwrite the links the outer run has just collected,
-// leaving the outer (list) effect without dependencies and never re-rendering it again.
-// The temporary effects are pooled by nesting depth instead; the common single-level
-// case still allocates nothing.
-let speculativeDepth = 0;
-const speculativeEffects: Effect[] = [];
-
 export function renderEffect(fn: EffectCallback) {
     const destruction = currentDestruction;
     if (destruction?.d) {
@@ -117,6 +94,7 @@ export function renderEffect(fn: EffectCallback) {
         return;
     }
 
+    let res: any;
     const depth = speculativeDepth++;
     const scratch = getSpeculativeEffect(depth);
     scratch.f = fn;
@@ -124,9 +102,14 @@ export function renderEffect(fn: EffectCallback) {
     scratch.d = destruction;
     scratch.l = EFFECT_RENDER;
 
-    let res: any;
     try {
         res = runEffectCollector(scratch);
+    } catch (err) {
+        if (scratch.k.length) {
+            unlink(scratch);
+        }
+        scratch.d = scratch.c = NIL;
+        throw err;
     } finally {
         speculativeDepth = depth;
     }
@@ -137,9 +120,6 @@ export function renderEffect(fn: EffectCallback) {
         return;
     }
 
-    // 存在依赖（或清理函数）：把它变成真正的副作用，并直接沿用刚收集到的依赖链接
-    // Dependencies (or a cleanup) exist: turn it into a real effect and reuse the
-    // links that were collected during the speculative run.
     const effect: Effect = {
         f: fn,
         x: -1,
@@ -171,8 +151,15 @@ export function runAndUpdateEffect(effect: Effect) {
         return;
     }
 
-    const res = (effect.c?.(), runEffectCollector(effect));
-    effect.l &= ~EFFECT_SCHEDULING;
+    let res: any;
+    try {
+        const cleanup = effect.c;
+        effect.c = NIL;
+        cleanup?.();
+        res = runEffectCollector(effect);
+    } finally {
+        effect.l &= ~EFFECT_SCHEDULING;
+    }
 
     const isWatch = !!(effect.l & EFFECT_WATCH);
 
@@ -216,15 +203,16 @@ export function disposeEffect(effect: Effect, byDestruction = false) {
     if (!byDestruction) {
         detachEffectFromDestruction(effect);
     }
-    effect.c?.();
-    effect.c = NIL;
     if (effect.k.length) {
         unlink(effect);
     }
+
+    const cleanup = effect.c;
     effect.x = -1;
-    effect.d = NIL;
     effect.v = UNDEF;
+    effect.c = effect.d = NIL;
     effect.l |= EFFECT_DISABLED | EFFECT_DISPOSED;
+    cleanup?.();
 }
 
 // 从所属 Destruction 中摘除副作用。仅有一个副作用时它被直接存放在 `d.e` 上，
@@ -369,15 +357,19 @@ function runEffectCollector(effect: Effect) {
         setCurrentInstance(effect.d!.m);
     }
 
-    const res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)();
-    popRunningEffectStack();
-    setCurrentInstance(originalInstance);
-    setCurrentDestruction(parentDestruction);
+    let res: any;
+    let succeeded = false;
+    try {
+        res = (effect.l & EFFECT_WATCH ? effect.g! : effect.f)();
+        succeeded = true;
+    } finally {
+        popRunningEffectStack();
+        setCurrentInstance(originalInstance);
+        setCurrentDestruction(parentDestruction);
 
-    const collectedLinks = effect.k;
-    const collectedLen = collectedLinks.length;
-    if (collectedLen) {
         const current = activeEffect;
+        const collectedLinks = effect.k;
+        const collectedLen = collectedLinks.length;
         for (let i = 0; i < collectedLen; i++) {
             const link = collectedLinks[i];
             if (current) {
@@ -386,7 +378,7 @@ function runEffectCollector(effect: Effect) {
                 link.s.a = -1;
             }
         }
-        if (current && !(effect.l & EFFECT_RENDER)) {
+        if (succeeded && current && !(effect.l & EFFECT_RENDER)) {
             appendLinksToActiveEffect(effect);
         }
     }

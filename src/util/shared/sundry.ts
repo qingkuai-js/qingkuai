@@ -1,5 +1,5 @@
+import type { AnyObject, ObjectKeys } from "#type-declarations/tools";
 import type { FormatSourceCodeFunc } from "#type-declarations/compiler-ex";
-import type { AnyObject, ArbitraryFunc, ObjectKeys } from "#type-declarations/tools";
 
 import { objectAssign, setPrototypeOf } from "./aliases";
 import { NIL, OBJECT_PROTO } from "../../runtime/constants";
@@ -40,12 +40,6 @@ export function hasOwn(o: AnyObject, key: ObjectKeys) {
 
 export function cloneObject<T extends AnyObject>(o: T): T {
     return objectAssign({}, o);
-}
-
-export function runAll<T extends ArbitraryFunc>(fns: T[]) {
-    for (const fn of fns) {
-        fn();
-    }
 }
 
 export function stripPrototype<T extends AnyObject>(o: T): T {

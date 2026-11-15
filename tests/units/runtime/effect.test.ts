@@ -2,6 +2,7 @@ import type { Getter } from "#type-declarations/tools";
 import type { EffectCallback, WatchCallback } from "#type-declarations/runtime";
 
 import {
+    disposeEffect,
     watch as _watch,
     effect as _effect,
     syncWatch as _syncWatch,
@@ -11,8 +12,20 @@ import {
     postEffect as _postEffect,
     syncEffect as _syncEffect,
     renderEffect as _renderEffect,
-    disposeEffect,
 } from "../../../src/runtime/reactivity/effect";
+import {
+    currentInstance,
+    currentDestruction,
+    setCurrentDestruction,
+    backToParentDestruction,
+} from "../../../src/runtime/state";
+import {
+    sleep,
+    getErrorMessage,
+    getCurrentEffect,
+    createTestInstance,
+    destructionHasEffect,
+} from "../../../src/util/testing/sundry";
 import {
     WRAPPER,
     TIMING_PRE,
@@ -23,20 +36,7 @@ import {
     EFFECT_DISABLED,
     EFFECT_DISPOSED,
 } from "../../../src/runtime/reactivity/constants";
-import {
-    sleep,
-    getErrorMessage,
-    getCurrentEffect,
-    createTestInstance,
-    destructionHasEffect,
-} from "../../../src/util/testing/sundry";
-import {
-    currentDestruction,
-    setCurrentDestruction,
-    backToParentDestruction,
-} from "../../../src/runtime/state";
 import { checkEffectDependaceManager } from "./_match";
-import { NIL, NOOP } from "../../../src/runtime/constants";
 import { isReactive } from "../../../src/util/runtime/assert";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { matchGlobalError } from "../../../src/util/testing/match";
@@ -45,8 +45,11 @@ import { activeEffect } from "../../../src/runtime/reactivity/state";
 import { arrayFrom, emptyArr } from "../../../src/util/shared/arrays";
 import { createWarningMatcher } from "../../../src/util/testing/sundry";
 import { constReact, react } from "../../../src/runtime/reactivity/value";
+import { NIL, NOOP, BEFORE_DESTROY } from "../../../src/runtime/constants";
 import { MaximumUpdateDepthExceeded } from "../../../src/runtime/messages/error";
 import { getRefProperty, toRaw, nextTick } from "../../../src/util/runtime/sundry";
+import { batchUpdating, noUpdating } from "../../../src/runtime/reactivity/optimization";
+import { onBeforeDestroy, onBeforeUpdate, runHooks } from "../../../src/runtime/component";
 import { createDestruction, destroy, pushDestructionCleaner } from "../../../src/runtime/destroy";
 
 const arr: any[] = [];
@@ -880,4 +883,279 @@ test("Whether the running effect context is restored when an effect throws", asy
     // The running stack must be restored, otherwise bindings created afterwards link to
     // the wrong effect.
     expect(activeEffect).toBe(NIL);
+});
+
+test("Whether the remaining sync effects run when one effect throws", () => {
+    const source = react(0);
+    const seen: string[] = [];
+    let shouldThrow = false;
+
+    syncEffect(() => {
+        const value = source.$;
+        if (shouldThrow) {
+            throw new Error("sync effect boom");
+        }
+        seen.push("first:" + value);
+    });
+    syncEffect(() => {
+        seen.push("second:" + source.$);
+    });
+
+    shouldThrow = true;
+    expect(() => (source.$ = 1)).toThrow("sync effect boom");
+
+    // 同步批在抛出前已经从队列摘下，同批其余副作用必须执行完毕
+    // The sync batch is already dequeued, so the rest of it must finish before the error surfaces.
+    expect(seen).toContain("second:1");
+});
+
+test("Whether the sync batch depth is restored when the batch throws", () => {
+    const source = react(0);
+    const seen: number[] = [];
+
+    syncEffect(() => {
+        seen.push(source.$);
+    });
+    expect(seen).toEqual([0]);
+
+    expect(() =>
+        batchUpdating(() => {
+            throw new Error("batch boom");
+        }),
+    ).toThrow("batch boom");
+
+    // 批深度未恢复时，同步副作用在后续所有写入中都不会再执行
+    // If the batch depth were not restored, sync effects would never run on later writes.
+    source.$ = 1;
+    expect(seen).toEqual([0, 1]);
+});
+
+test("Whether scheduling resumes when a paused batch throws", () => {
+    const source = react(0);
+    const seen: number[] = [];
+
+    syncEffect(() => {
+        seen.push(source.$);
+    });
+
+    expect(() =>
+        noUpdating(() => {
+            source.$ = 1;
+            throw new Error("paused boom");
+        }),
+    ).toThrow("paused boom");
+
+    // 暂停深度未恢复时，之后的所有写入都不会再触发调度
+    // If the pause depth were not restored, no later write would schedule anything.
+    source.$ = 2;
+    expect(seen).toEqual([0, 2]);
+});
+
+test("Whether a throwing cleanup still unregisters the effect", async () => {
+    const source = react(0);
+    const seen: number[] = [];
+    const { handle } = effect(() => {
+        seen.push(source.$);
+        return () => {
+            throw new Error("cleanup boom");
+        };
+    });
+
+    expect(() => handle.stop()).toThrow("cleanup boom");
+
+    source.$ = 1;
+    await nextTick();
+    // 清理函数抛错时副作用必须已经摘链并置位，不能再被调度
+    // When the cleanup throws, the effect must already be unlinked and marked, so it can
+    // never be scheduled again.
+    expect(seen).toEqual([0]);
+});
+
+test("Whether a throwing cleanup runs only once and the effect keeps updating", async () => {
+    const source = react(0);
+    const seen: number[] = [];
+    let cleanupCalls = 0;
+
+    effect(() => {
+        const value = source.$;
+        seen.push(value);
+        return () => {
+            cleanupCalls++;
+            if (value === 0) {
+                throw new Error("cleanup boom");
+            }
+        };
+    });
+    expect(seen).toEqual([0]);
+    expect(cleanupCalls).toBe(0);
+
+    await flushThrowingUpdate(() => (source.$ = 1));
+
+    // 清理函数抛错后：回调没有运行，清理函数已经摘下，不能在下一轮被重复执行
+    // After the cleanup throws: the callback did not run and the cleanup was already
+    // detached, so it must not run again on the next pass.
+    expect(seen).toEqual([0]);
+    expect(cleanupCalls).toBe(1);
+
+    source.$ = 2;
+    await nextTick();
+
+    // 抛错没有让副作用卡在“调度中”，下一轮照常执行并安装新的清理函数
+    // The throw did not leave the effect stuck in "scheduling": the next pass runs normally
+    // and installs the new cleanup.
+    expect(seen).toEqual([0, 2]);
+    expect(cleanupCalls).toBe(1);
+
+    source.$ = 3;
+    await nextTick();
+    expect(seen).toEqual([0, 2, 3]);
+    expect(cleanupCalls).toBe(2);
+});
+
+test("Whether the watch callback is skipped when the previous cleanup throws", async () => {
+    const source = react(0);
+    const seen: string[] = [];
+    let cleanupCalls = 0;
+
+    watch(
+        () => source.$,
+        (pre, cur) => {
+            seen.push(`${pre}->${cur}`);
+            return () => {
+                cleanupCalls++;
+                if (cur === 1) {
+                    throw new Error("cleanup boom");
+                }
+            };
+        },
+    );
+    // 创建时只收集依赖，不调用监视回调
+    expect(seen).toEqual([]);
+
+    source.$ = 1;
+    await nextTick();
+    expect(seen).toEqual(["0->1"]);
+    expect(cleanupCalls).toBe(0);
+
+    await flushThrowingUpdate(() => (source.$ = 2));
+
+    // 清理函数抛错时监视回调不执行（否则会以 undefined 作为新值调用用户代码），
+    // 也不会安装新的清理函数
+    // When the cleanup throws, the watch callback is not invoked (which would call user code
+    // with `undefined` as the new value), and no new cleanup is installed.
+    expect(seen).toEqual(["0->1"]);
+    expect(cleanupCalls).toBe(1);
+
+    source.$ = 3;
+    await nextTick();
+
+    // 恢复后的下一轮以上一条成功观察到的值作为旧值
+    // The next successful pass uses the last successfully observed value as the old value.
+    expect(seen).toEqual(["0->1", "1->3"]);
+});
+
+test("Whether a speculative render effect stays unreachable after it throws", async () => {
+    const source = react(0);
+    let calls = 0;
+
+    expect(() =>
+        renderEffect(() => {
+            calls++;
+            source.$;
+            throw new Error("mount boom");
+        }),
+    ).toThrow("mount boom");
+
+    source.$ = 1;
+    await nextTick();
+    // 池化的投机对象不能因为半途收集的链接被调度器唤醒
+    // The pooled speculative object must not be woken by the links it collected half-way.
+    expect(calls).toBe(1);
+});
+
+test("Whether the current instance is restored when a lifecycle hook throws", () => {
+    const originalInstance = currentInstance;
+    const instance = { _internal: { f: [], d: NIL } } as any;
+
+    onBeforeDestroy(instance, () => {
+        throw new Error("hook boom");
+    });
+
+    expect(() => runHooks(instance, BEFORE_DESTROY)).toThrow("hook boom");
+    expect(currentInstance).toBe(originalInstance);
+});
+
+test("Whether the remaining lifecycle hooks run when one hook throws", () => {
+    const originalInstance = currentInstance;
+    const instance = { _internal: { f: [], d: NIL } } as any;
+    const seen: string[] = [];
+
+    onBeforeDestroy(instance, () => {
+        seen.push("first");
+        throw new Error("hook boom");
+    });
+    onBeforeDestroy(instance, () => {
+        seen.push("second");
+    });
+
+    expect(() => runHooks(instance, BEFORE_DESTROY)).toThrow("hook boom");
+
+    // 同一阶段的钩子相互独立，错误在全部执行完后才抛出
+    expect(seen).toEqual(["first", "second"]);
+    expect(currentInstance).toBe(originalInstance);
+});
+
+test("Whether the remaining effects run when an update hook throws", async () => {
+    const originalDestruction = currentDestruction;
+    const instance = { _internal: { f: [], l: 0 } } as any;
+    const tracked = react(0);
+    const seen: string[] = [];
+
+    onBeforeUpdate(instance, () => {
+        throw new Error("hook boom");
+    });
+
+    createDestruction(null, instance);
+    renderEffect(() => {
+        seen.push("first:" + tracked.$);
+    });
+    renderEffect(() => {
+        seen.push("second:" + tracked.$);
+    });
+    setCurrentDestruction(originalDestruction);
+
+    await flushThrowingUpdate(() => (tracked.$ = 1));
+
+    // 组件的更新钩子失败不应阻止同批其余副作用执行
+    expect(seen).toContain("second:1");
+});
+
+test("Whether the remaining cleanups run when a cleanup throws", () => {
+    const parent = currentDestruction!;
+    const nested = createDestruction(parent);
+    const tracked = react(0);
+    const seen: string[] = [];
+
+    pushDestructionCleaner(() => {
+        seen.push("first");
+        throw new Error("cleanup boom");
+    });
+    pushDestructionCleaner(() => {
+        seen.push("second");
+    });
+    syncEffect(() => {
+        tracked.$;
+        return () => {
+            seen.push("effect");
+        };
+    });
+    backToParentDestruction();
+
+    expect(() => destroy(nested, false)).not.toThrow();
+
+    // 清理项彼此独立，一个失败不影响其余项；结构收尾仍然完成，错误只在开发模式提示
+    expect(seen).toEqual(["first", "second", "effect"]);
+    expect(nested.d).toBe(true);
+    expect(nested.e).toBeNull();
+    expect(warningMatcher.mock.calls.some(args => args.join(" ").includes("8006"))).toBe(true);
 });

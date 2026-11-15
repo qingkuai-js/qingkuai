@@ -80,9 +80,9 @@ export function keyedListBlock(
             info.s = runtimeRender(reference, info);
         } finally {
             resumeTracking();
+            setCurrentInstance(originalInstance);
+            setCurrentDestruction(parentDestruction);
         }
-        setCurrentInstance(originalInstance);
-        setCurrentDestruction(parentDestruction);
         info.d = destruction;
         infos.set(key, info);
     };

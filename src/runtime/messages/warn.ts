@@ -19,6 +19,14 @@ export function InvalidAssignment(target: string) {
     );
 }
 
+export function ErrorThrownDuringDestruction(error: unknown) {
+    warnWithCode(
+        8006,
+        `An error was thrown while destroying a component or element. The remaining cleanup still ran. Error: %O`,
+        error,
+    );
+}
+
 export function LifecycleHookRegisteredAfterPhase(name: string) {
     warnWithCode(
         8004,

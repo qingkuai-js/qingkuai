@@ -61,7 +61,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             .toMatch(/push is not a function|escapeTags\.push/);
     });
 
-    test("keeps previous html subtree after invalid options interruption", async ({
+    test("renders the updated html subtree after an invalid options interruption", async ({
         page,
         visitScenario,
     }) => {
@@ -86,7 +86,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await page.locator("#set-safe-options").click();
         await page.locator("#set-updated-html").click();
-        await expect(page.locator("#html-host #html-updated")).toHaveCount(0);
-        await expect(page.locator("#html-host #html-safe")).toHaveText("Safe html");
+        await expect(page.locator("#html-host #html-updated")).toHaveText("Updated html");
+        await expect(page.locator("#html-host #html-safe")).toHaveCount(0);
     });
 });

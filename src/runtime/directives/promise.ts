@@ -62,6 +62,8 @@ export function promiseBlock(
                 changeState(PROMISE_SETTLED, renderCatch, { err: reason, retry });
             },
         );
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         retryToken.$;
     });
 }

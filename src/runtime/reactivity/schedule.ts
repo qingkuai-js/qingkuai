@@ -132,10 +132,17 @@ export function scheduleUpdate(
         }
     }
 
-    // 同步调度，若设置了 SCHEDULER_SYNC_PILE 标志，同步副作用将阻塞至此标志位被移除时运行
     if (schedulingEffects[0].length && !batchSyncDepth) {
+        let firstError: unknown;
         for (const effect of getSortedEffects(0)) {
-            runAndUpdateEffect(effect);
+            try {
+                runAndUpdateEffect(effect);
+            } catch (err) {
+                firstError ??= err;
+            }
+        }
+        if (firstError) {
+            throw firstError;
         }
     }
 
@@ -148,54 +155,79 @@ export function scheduleUpdate(
 }
 
 function update() {
-    for (let passes = 0; true; ) {
-        const updatingComponents: ComponentInstanceBase[] = [];
-        for (const effect of getSortedEffects(1)) {
-            runAndUpdateEffect(effect);
+    let passes = 0;
+    let chained = false;
+    let firstError: unknown;
+    try {
+        while (true) {
+            const updatingComponents: ComponentInstanceBase[] = [];
+            for (const effect of getSortedEffects(1)) {
+                try {
+                    runAndUpdateEffect(effect);
+                } catch (err) {
+                    firstError ??= err;
+                }
 
-            // 首次渲染副作用时，触发组件的 onBeforeUpdate 并将组件加入 updatingComponents
-            // For the first render effect, trigger the component's `onBeforeUpdate` and add it to `updatingComponents`
-            const instance = effect.d?.m;
-            if (
-                instance &&
-                effect.l & EFFECT_RENDER &&
-                !(instance._internal.l! & COMPONENT_UPDATING)
-            ) {
-                instance._internal.l = instance._internal.l! | COMPONENT_UPDATING;
-                runHooks(instance, BEFORE_UPDATE);
-                updatingComponents.push(instance);
+                // 首次渲染副作用时，触发组件的 onBeforeUpdate 并将组件加入 updatingComponents
+                // For the first render effect, trigger the component's `onBeforeUpdate` and add it to `updatingComponents`
+                const instance = effect.d?.m;
+                if (
+                    instance &&
+                    effect.l & EFFECT_RENDER &&
+                    !(instance._internal.l! & COMPONENT_UPDATING)
+                ) {
+                    instance._internal.l = instance._internal.l! | COMPONENT_UPDATING;
+                    updatingComponents.push(instance);
+                    try {
+                        runHooks(instance, BEFORE_UPDATE);
+                    } catch (err) {
+                        firstError ??= err;
+                    }
+                }
+            }
+
+            // 所有副作用执行完后，触发 updatingComponents 中组件的 onAfterUpdate
+            // After all effects finish, trigger `onAfterUpdate` for all components in `updatingComponents`
+            for (const component of updatingComponents) {
+                component._internal.l = component._internal.l! & ~COMPONENT_UPDATING;
+                try {
+                    runHooks(component, AFTER_UPDATE);
+                } catch (err) {
+                    firstError ??= err;
+                }
+            }
+
+            if (!schedulingEffects[1].length) {
+                break;
+            }
+
+            // 如果挂起列表不为空，则本轮调度执行的副作用中修改了其他响应式值，这会导致调度器的递归调用
+            // If the waiting list is not empty, it means that the effects executed in the current update
+            // cycle have modified other reactive values, causing the scheduler to be invoked recursively.
+            //
+            // 为了防止更新调度器被无限递归调用，必须将这种递归调用深度限制在一个合理范围内（默认 300）
+            // This recursion depth must be capped (300 by default) to prevent infinite recursive updates.
+            if (increRecursionScheduleCount() > MAX_SCHEDULE_DEPTH) {
+                resetSchedulingEffects(1);
+                resetSchedulerState();
+                MaximumUpdateDepthExceeded();
+            }
+
+            // 每轮微任务最多执行 MAX_SCHEDULE_PASSES（默认 8） 次更新，超出后将调度器挂起至下一轮微任务执行
+            // To prevent the scheduler from being called too many times in a single microtask,
+            // the maximum number of passes is limited to MAX_SCHEDULE_PASSES (8 by default).
+            if (++passes >= MAX_SCHEDULE_PASSES) {
+                nextTick(update);
+                chained = true;
+                break;
             }
         }
-
-        // 所有副作用执行完后，触发 updatingComponents 中组件的 onAfterUpdate
-        // After all effects finish, trigger `onAfterUpdate` for all components in `updatingComponents`
-        for (const component of updatingComponents) {
-            component._internal.l = component._internal.l! & ~COMPONENT_UPDATING;
-            runHooks(component, AFTER_UPDATE);
+        if (firstError) {
+            throw firstError;
         }
-
-        if (!schedulingEffects[1].length) {
-            return resetSchedulerState();
-        }
-
-        // 如果挂起列表不为空，则本轮调度执行的副作用中修改了其他响应式值，这会导致调度器的递归调用
-        // If the waiting list is not empty, it means that the effects executed in the current update
-        // cycle have modified other reactive values, causing the scheduler to be invoked recursively.
-        //
-        // 为了防止更新调度器被无限递归调用，必须将这种递归调用深度限制在一个合理范围内（默认 300）
-        // This recursion depth must be capped (300 by default) to prevent infinite recursive updates.
-        if (increRecursionScheduleCount() > MAX_SCHEDULE_DEPTH) {
-            resetSchedulingEffects(1);
+    } finally {
+        if (!chained) {
             resetSchedulerState();
-            MaximumUpdateDepthExceeded();
-        }
-
-        // 每轮微任务最多执行 MAX_SCHEDULE_PASSES（默认 8） 次更新，超出后将调度器挂起至下一轮微任务执行
-        // To prevent the scheduler from being called too many times in a single microtask,
-        // the maximum number of passes is limited to MAX_SCHEDULE_PASSES (8 by default).
-        if (++passes >= MAX_SCHEDULE_PASSES) {
-            nextTick(update);
-            return;
         }
     }
 }

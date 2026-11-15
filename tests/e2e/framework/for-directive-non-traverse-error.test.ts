@@ -51,7 +51,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             .toContain('The given value for "#for" directive is non-traversable.');
     });
 
-    test("keeps previous rendered list after non-traversable interruption", async ({
+    test("renders the new list after a non-traversable interruption", async ({
         page,
         visitScenario,
     }) => {
@@ -69,8 +69,6 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             .toContain('The given value for "#for" directive is non-traversable.');
 
         await page.locator("#set-traversable").click();
-
-        // After a non-traversable runtime error, current behavior keeps previous nodes.
-        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["A", "B"]);
+        await expect(page.locator("#non-traverse-host .non-traverse-item")).toHaveText(["C", "D"]);
     });
 });

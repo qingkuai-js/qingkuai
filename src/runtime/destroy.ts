@@ -2,13 +2,13 @@ import type { ArbitraryFunc } from "#type-declarations/tools";
 import type { ComponentInstanceBase, Destruction } from "#type-declarations/runtime";
 
 import { runHooks } from "./component";
-import { runAll } from "../util/shared/sundry";
 import { isArray } from "../util/shared/assert";
 import { walkNodes } from "../util/runtime/sundry";
 import { swapDelete } from "../util/shared/arrays";
 import { disposeEffect } from "./reactivity/effect";
-import { AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants";
+import { ErrorThrownDuringDestruction } from "./messages/warn";
 import { currentDestruction, setCurrentDestruction } from "./state";
+import { DEV_MODE, AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants";
 import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags";
 
 export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
@@ -43,16 +43,27 @@ export function createDestruction(
 }
 
 export function destroy(destruction: Destruction, detachNodes = true, detachFromParent = true) {
-    const effects = destruction.e;
+    let firstError: unknown;
+    let effects = destruction.e;
     const cleaners = destruction.a;
     const children = destruction.c;
     const instance = destruction.m;
     const isComponentOwned = instance?._internal.d === destruction;
     if (isComponentOwned) {
-        runHooks(instance, BEFORE_DESTROY);
+        try {
+            runHooks(instance, BEFORE_DESTROY);
+        } catch (err) {
+            firstError ??= err;
+        }
     }
     if (cleaners) {
-        runAll(cleaners);
+        for (let i = 0; i < cleaners.length; i++) {
+            try {
+                cleaners[i]();
+            } catch (err) {
+                firstError ??= err;
+            }
+        }
     }
     if (children) {
         const childDetach = detachNodes && !destruction.s;
@@ -62,12 +73,15 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         }
     }
     if (effects) {
-        if (isArray(effects)) {
-            for (let i = 0; i < effects.length; i++) {
+        if (!isArray(effects)) {
+            effects = [effects];
+        }
+        for (let i = 0; i < effects.length; i++) {
+            try {
                 disposeEffect(effects[i], true);
+            } catch (err) {
+                firstError ??= err;
             }
-        } else {
-            disposeEffect(effects, true);
         }
     }
     if (detachFromParent && destruction.p?.c) {
@@ -87,8 +101,15 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
             walkNodes(destruction, node => node.remove());
         }
     }
-    if (isComponentOwned) {
-        runHooks(instance, AFTER_DESTROY);
+    try {
+        if (isComponentOwned) {
+            runHooks(instance, AFTER_DESTROY);
+        }
+    } catch (err) {
+        firstError ??= err;
+    }
+    if (firstError && DEV_MODE) {
+        ErrorThrownDuringDestruction(firstError);
     }
     destruction.d = true;
     destruction.c = destruction.a = destruction.e = NIL;

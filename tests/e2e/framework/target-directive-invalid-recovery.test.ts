@@ -61,7 +61,7 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             .toContain("Invalid Element node");
     });
 
-    test("keeps target content in previous state after invalid target interruption", async ({
+    test("moves target content again after an invalid target interruption", async ({
         page,
         visitScenario,
     }) => {
@@ -85,14 +85,13 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             .toContain("Invalid Element node");
 
         await page.locator("#set-target-a").click();
-        await expect(page.locator("#target-dest-a #target-content")).toHaveCount(0);
-        await expect(page.locator("#target-source-container #target-content")).toHaveText(
-            "Target payload",
-        );
+        await expect(page.locator("#target-dest-a #target-content")).toHaveText("Target payload");
+        await expect(page.locator("#target-source-container #target-content")).toHaveCount(0);
 
         await page.locator("#reset-inline").click();
         await expect(page.locator("#target-source-container #target-content")).toHaveText(
             "Target payload",
         );
+        await expect(page.locator("#target-dest-a #target-content")).toHaveCount(0);
     });
 });

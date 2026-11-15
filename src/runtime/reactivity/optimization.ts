@@ -52,13 +52,24 @@ export function noTracking<R>(fn: ArbitraryFunc<R>) {
 }
 
 export function noUpdating<R>(fn: ArbitraryFunc<R>) {
-    const result = (pauseUpdating(), fn());
-    return (resumeUpdating(), result);
+    pauseUpdating();
+    try {
+        return fn();
+    } finally {
+        resumeUpdating();
+    }
 }
 
 export function batchUpdating<R>(fn: ArbitraryFunc<R>) {
-    const result = (startBatchUpdating(), fn());
-    return (stopBatchUpdating(), scheduleUpdate(), result);
+    let result: R;
+    startBatchUpdating();
+    try {
+        result = fn();
+    } finally {
+        stopBatchUpdating();
+    }
+    scheduleUpdate();
+    return result;
 }
 
 export function noTrackingToRaw<R>(fn: ArbitraryFunc<R>) {

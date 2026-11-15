@@ -42,7 +42,6 @@ import {
 } from "./state";
 import { isElement } from "../util/runtime/assert";
 import { invokeRender } from "./directives/render";
-import { runAll } from "../util/shared/sundry";
 import { makeExpGetter } from "../util/runtime/sundry";
 import { createDestruction, destroy } from "./destroy";
 import { bindHandleReceiver, shallowConstReact } from "./internal";
@@ -166,12 +165,27 @@ export function dynamicComponent(getComponent: Getter, render: ArbitraryFunc) {
 }
 
 export function runHooks(instance: ComponentInstanceBase, index: number) {
+    const originalInstance = currentInstance;
     const hooks = instance._internal.f?.[index];
-    if (hooks?.length) {
-        const originalInstance = currentInstance;
-        setCurrentInstance(instance);
-        runAll(hooks);
+    if (!hooks?.length) {
+        return;
+    }
+
+    let firstError: unknown;
+    setCurrentInstance(instance);
+    try {
+        for (let i = 0; i < hooks.length; i++) {
+            try {
+                hooks[i]();
+            } catch (err) {
+                firstError ??= err;
+            }
+        }
+    } finally {
         setCurrentInstance(originalInstance);
+    }
+    if (firstError) {
+        throw firstError;
     }
 }
 
