@@ -339,6 +339,10 @@ export const DuplicateSlotAssignment = withLocation(1051, (component: string, na
     return `Multiple nodes are assigned to the same slot("${name}") in <${component}>. Consider using a different slot name in the "#slot" directive.`;
 });
 
+export const ShadowedChainDirective = withLocation(1075, (directive: string, shadowing: string) => {
+    return `The "${directive}" directive cannot be used here because it is shadowed by the higher-priority "${shadowing}" directive on the same element.`;
+});
+
 export const ConstReactiveDisallowedByOption = withLocation(1070, (intrinsic: string) => {
     return `Marking a \`const\` declaration with the "${intrinsic}" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`;
 });

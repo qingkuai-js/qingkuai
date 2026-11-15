@@ -450,6 +450,11 @@ describe("#then", () => {
                 {
                     type: "error",
                     range: [67, 72],
+                    value: `The "#then" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+                },
+                {
+                    type: "error",
+                    range: [67, 72],
                     value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`,
                 },
             ],
@@ -463,6 +468,11 @@ describe("#then", () => {
                 </Comp>
             `),
             [
+                {
+                    type: "error",
+                    range: [55, 60],
+                    value: `The "#then" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+                },
                 {
                     type: "error",
                     range: [55, 60],
@@ -579,6 +589,11 @@ describe("#catch", () => {
                 {
                     type: "error",
                     range: [61, 67],
+                    value: `The "#catch" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+                },
+                {
+                    type: "error",
+                    range: [61, 67],
                     value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`,
                 },
             ],
@@ -592,6 +607,11 @@ describe("#catch", () => {
                 </Comp>
             `),
             [
+                {
+                    type: "error",
+                    range: [49, 55],
+                    value: `The "#catch" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+                },
                 {
                     type: "error",
                     range: [49, 55],
@@ -722,6 +742,11 @@ describe("#else", () => {
                 {
                     type: "error",
                     range: [64, 69],
+                    value: `The "#else" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+                },
+                {
+                    type: "error",
+                    range: [64, 69],
                     value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
                 },
             ],
@@ -735,6 +760,11 @@ describe("#else", () => {
                 </Comp>
             `),
             [
+                {
+                    type: "error",
+                    range: [52, 57],
+                    value: `The "#else" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+                },
                 {
                     type: "error",
                     range: [52, 57],
@@ -777,6 +807,11 @@ test("#elif: missing preceding directive", () => {
             {
                 type: "error",
                 range: [64, 69],
+                value: `The "#elif" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+            },
+            {
+                type: "error",
+                range: [64, 69],
                 value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
             },
         ],
@@ -790,6 +825,11 @@ test("#elif: missing preceding directive", () => {
             </Comp>
         `),
         [
+            {
+                type: "error",
+                range: [52, 57],
+                value: `The "#elif" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
+            },
             {
                 type: "error",
                 range: [52, 57],
@@ -957,4 +997,32 @@ test("Conflicting directives", () => {
             value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
         },
     ]);
+
+    analyzeTemplateAndMatchMessages(
+        formatSourceCode(`
+            <div #if={_}></div>
+            <div #await={_} #else></div>
+        `),
+        [
+            {
+                type: "error",
+                range: [36, 41],
+                value: `The "#else" directive cannot be used here because it is shadowed by the higher-priority "#await" directive on the same element.`,
+            },
+        ],
+    );
+
+    analyzeTemplateAndMatchMessages(
+        formatSourceCode(`
+            <div #if={_}></div>
+            <div #await={_} #elif={_}></div>
+        `),
+        [
+            {
+                type: "error",
+                range: [36, 41],
+                value: `The "#elif" directive cannot be used here because it is shadowed by the higher-priority "#await" directive on the same element.`,
+            },
+        ],
+    );
 });

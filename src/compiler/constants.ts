@@ -131,6 +131,13 @@ export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
     prevent: ["passive"],
 };
 
+export const CHAIN_CONTINUATION_DIRECTIVES: ReadonlySet<string> = new Set([
+    "#then",
+    "#catch",
+    "#elif",
+    "#else",
+]);
+
 export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
     "#then": ["#catch"],
     "#catch": ["#then"],

@@ -17,6 +17,7 @@ import {
     UnrecognizedDirective,
     MissingDirectiveValue,
     InvalidContextPattern,
+    ShadowedChainDirective,
     TooManyBindingPatterns,
     MissingPrecedingDirective,
     InvalidHtmlDirectivePlacement,
@@ -38,6 +39,11 @@ import {
     UnnecessaryScopeDirective,
     ScopeDirectiveHasActualAncestor,
 } from "../message/warn";
+import {
+    DIRECTIVE_LIST,
+    CONFLICTING_DIRECTIVES_MAP,
+    CHAIN_CONTINUATION_DIRECTIVES,
+} from "../constants";
 import { markNeedSourcemap } from "../ts-ast/sundry";
 import { parseContextPattern } from "../parser/script";
 import { analyzeInterpolation } from "./interpolation";
@@ -46,7 +52,6 @@ import { parseDirectiveValue } from "../parser/directive";
 import { analyzeResult, inputDescriptor } from "../state";
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry";
 import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk";
-import { CONFLICTING_DIRECTIVES_MAP, DIRECTIVE_LIST } from "../constants";
 import { TestingMode, AttributeValueEnclosure, HtmlDirectivePlacementKind } from "../enums";
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template";
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
@@ -90,6 +95,20 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             rawName,
             conflictingDirective.name.raw,
         );
+    }
+
+    // 延续前置链的指令必须自己就是元素上的最高优先级指令：#await 就地消费的 #then/#catch除外
+    // The directive that continues the preceding chain must be the highest priority
+    // directive on the element itself: #then/#catch consumed in place of #await.
+    if (
+        !conflictingDirective &&
+        nodeContext.sortedDirectives.length &&
+        CHAIN_CONTINUATION_DIRECTIVES.has(rawName)
+    ) {
+        const predecessor = nodeContext.sortedDirectives[nodeContext.sortedDirectives.length - 1];
+        if ((rawName !== "#then" && rawName !== "#catch") || predecessor.name.raw !== "#await") {
+            ShadowedChainDirective(nameLoc, rawName, predecessor.name.raw);
+        }
     }
 
     switch (rawName) {
