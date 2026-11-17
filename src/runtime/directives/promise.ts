@@ -3,7 +3,7 @@ import type { CancelablePromise, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "../constants";
 import { invokeRender } from "./render";
-import { react } from "../reactivity/value";
+import { shallowReact } from "../reactivity/value";
 import { NotPromise } from "../messages/error";
 import { renderEffect } from "../reactivity/effect";
 import { isThenable } from "../../util/shared/assert";
@@ -22,7 +22,7 @@ export function promiseBlock(
     let pms: CancelablePromise | null;
     let destruction: Destruction | null;
 
-    const retryToken = react(0);
+    const retryToken = shallowReact(0);
     const componentInstance = currentInstance!;
     const parentDestruction = currentDestruction;
 
