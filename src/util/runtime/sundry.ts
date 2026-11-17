@@ -12,7 +12,7 @@ import { isRefProperty } from "./assert";
 import { notEqual } from "../shared/sundry";
 import { isFunction } from "../shared/assert";
 import { constReact } from "../../runtime/internal";
-import { FRAG_ORPHAN_CONTENT } from "../shared/flags";
+import { DST_ORPHAN_CONTENT } from "../shared/flags";
 import { refProperties } from "../../runtime/reactivity/state";
 import { EXP_GETTER, NIL, RESOLVED } from "../../runtime/constants";
 
@@ -92,7 +92,7 @@ export function walkNodes(destruction: Destruction, callback: (node: ChildNode) 
     if (!destruction.s || !destruction.n) {
         return;
     }
-    if (destruction.f & FRAG_ORPHAN_CONTENT) {
+    if (destruction.l & DST_ORPHAN_CONTENT) {
         callback(destruction.s);
     } else {
         for (let node: ChildNode | null = destruction.s; node; ) {

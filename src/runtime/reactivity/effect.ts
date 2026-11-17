@@ -40,6 +40,7 @@ import {
 import { objectAssign } from "../internal";
 import { getSubscription } from "./schedule";
 import { isArray } from "../../util/shared/assert";
+import { DST_DESTRUCTED } from "../../util/shared/flags";
 import { NIL, NOOP, UNDEF, DEV_MODE } from "../constants";
 import { getLastElem, swapDelete } from "../../util/shared/arrays";
 import { CreateOnDisposedComponent, EffectOrWatchHasNoDependecies } from "../messages/warn";
@@ -87,7 +88,9 @@ export function markActiveEffectNoCheck() {
 
 export function renderEffect(fn: EffectCallback) {
     const destruction = currentDestruction;
-    if (destruction?.d) {
+
+    // @ts-expect-error: undefined will be converted to 0 implicitly
+    if (destruction?.l & DST_DESTRUCTED) {
         if (DEV_MODE) {
             CreateOnDisposedComponent("effect");
         }
@@ -276,7 +279,9 @@ function createEffect(
         d: destruction,
         i: getIncrementEffectId(),
     };
-    if (destruction?.d) {
+
+    // @ts-expect-error: undefined will be converted to 0 implicitly
+    if (destruction?.l & DST_DESTRUCTED) {
         if (DEV_MODE) {
             CreateOnDisposedComponent("effect");
         }

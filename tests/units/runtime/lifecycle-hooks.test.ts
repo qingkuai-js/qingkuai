@@ -7,6 +7,7 @@ import {
     onBeforeDestroy,
     onAfterDestroy,
 } from "../../../src/runtime/component";
+import { DST_DESTRUCTED } from "../../../src/util/shared/flags";
 import { setCurrentInstance } from "../../../src/runtime/state";
 import { describe, expect, test, beforeEach, vi } from "vitest";
 import { createWarningMatcher } from "../../../src/util/testing/sundry";
@@ -22,7 +23,7 @@ function createInstance() {
     return {
         _internal: {
             d: {
-                d: false,
+                l: 0,
             },
             l: 0,
             f: NIL,
@@ -68,7 +69,9 @@ describe("Lifecycle hook registration guards", () => {
 
     test("destroy hook registrations after destroy warn 8004 and are ignored", () => {
         const instance = createInstance();
-        instance._internal.d = { d: true } as any;
+        instance._internal.d = {
+            l: DST_DESTRUCTED,
+        } as any;
 
         onBeforeDestroy(instance, vi.fn());
         onAfterDestroy(instance, vi.fn());

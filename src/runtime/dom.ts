@@ -1,17 +1,11 @@
 import type { FragmentGetter, FragmentParser, MountCollector } from "#type-declarations/runtime";
 
-import {
-    DOCUMENT,
-    NODE_CONTEXT,
-    FRAGMENT_FLAG,
-    VALUE_CACHE_KEY,
-    SVG_NAMESPACE_URI,
-} from "./constants";
 import { arrayFrom } from "../util/shared/arrays";
 import { isElement } from "../util/runtime/assert";
 import { currentDestruction, currentInstance } from "./state";
 import { isArray, isNumber, isString, isUndefined } from "../util/shared/assert";
-import { FRAG_LEADING_ANCHOR, FRAG_ORPHAN_CONTENT, FRAGMENT_ROOT } from "../util/shared/flags";
+import { DST_LEADING_ANCHOR, DST_ORPHAN_CONTENT, DST_ROOT } from "../util/shared/flags";
+import { DOCUMENT, NODE_CONTEXT, DST_FLAG, VALUE_CACHE_KEY, SVG_NAMESPACE_URI } from "./constants";
 
 export function newTextNode() {
     return DOCUMENT!.createTextNode("");
@@ -99,7 +93,7 @@ export function getElementValue(elem: Element) {
 }
 
 export function getChild(node: Element, index = 0) {
-    if ((node as any)[FRAGMENT_FLAG] & FRAG_LEADING_ANCHOR) {
+    if ((node as any)[DST_FLAG] & DST_LEADING_ANCHOR) {
         index++;
     }
 
@@ -147,8 +141,8 @@ function createGetter(html: string, arr: string[] | undefined, parse: FragmentPa
         }
 
         let ret: any;
-        const isOrphan = flag & FRAG_ORPHAN_CONTENT;
-        if (isOrphan && !(flag & FRAG_LEADING_ANCHOR)) {
+        const isOrphan = flag & DST_ORPHAN_CONTENT;
+        if (isOrphan && !(flag & DST_LEADING_ANCHOR)) {
             if (isUndefined(singleNode)) {
                 singleNode = content.firstChild as ChildNode;
             }
@@ -156,17 +150,17 @@ function createGetter(html: string, arr: string[] | undefined, parse: FragmentPa
         } else {
             ret = content.cloneNode(true);
 
-            if (flag & FRAG_LEADING_ANCHOR) {
+            if (flag & DST_LEADING_ANCHOR) {
                 ret.prepend(newTextNode());
             } else if (isOrphan) {
                 ret = ret.firstChild!;
             }
         }
-        if (flag & FRAGMENT_ROOT) {
+        if (flag & DST_ROOT) {
             attachScopesToRoot(ret);
         }
         if (flag) {
-            ret[FRAGMENT_FLAG] = flag;
+            ret[DST_FLAG] = flag;
         }
         if (currentDestruction) {
             if (isOrphan) {
@@ -176,7 +170,7 @@ function createGetter(html: string, arr: string[] | undefined, parse: FragmentPa
                 currentDestruction.s = ret.firstChild;
                 currentDestruction.n = ret.lastChild;
             }
-            currentDestruction.f = flag;
+            currentDestruction.l = flag;
         }
         return ret;
     };

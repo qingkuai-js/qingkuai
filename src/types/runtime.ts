@@ -78,8 +78,7 @@ export interface Effect {
 }
 
 export interface Destruction {
-    d: boolean; // disposed
-    f: number; // fragment flag
+    l: number; // flags
     e: Effect | Effect[] | null; // effects
     p: Destruction | null; // parent
     n: ChildNode | null; // end node

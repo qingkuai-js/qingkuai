@@ -24,11 +24,11 @@ import {
     EVENT_CAPTURE,
     EVENT_PASSIVE,
     EVENT_NATIVE,
-    FRAGMENT_ROOT,
-    FRAG_WITH_TARGET,
-    FRAG_WHOLE_CONTENT,
-    FRAG_ORPHAN_CONTENT,
-    FRAG_LEADING_ANCHOR,
+    DST_ROOT,
+    DST_WITH_TARGET,
+    DST_WHOLE_CONTENT,
+    DST_ORPHAN_CONTENT,
+    DST_LEADING_ANCHOR,
 } from "../util/shared/flags";
 import { objectAssign } from "../util/shared/aliases";
 
@@ -118,12 +118,12 @@ export const PARSER_TEMPLATE_OPTIONS: StandaloneParseTemplateOptions = {
     checkAttributeValueEnclosure: true,
 };
 
-export const FRAG_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
-    [FRAGMENT_ROOT]: "ROOT",
-    [FRAG_WHOLE_CONTENT]: "WHOLE_CONTENT",
-    [FRAG_LEADING_ANCHOR]: "LEADING_ANCHOR",
-    [FRAG_ORPHAN_CONTENT]: "ORPHAN_CONTENT",
-    [FRAG_WITH_TARGET]: "WITH_TARGET_DIRECTIVE",
+export const DST_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
+    [DST_ROOT]: "ROOT",
+    [DST_WHOLE_CONTENT]: "WHOLE_CONTENT",
+    [DST_LEADING_ANCHOR]: "LEADING_ANCHOR",
+    [DST_ORPHAN_CONTENT]: "ORPHAN_CONTENT",
+    [DST_WITH_TARGET]: "WITH_TARGET_DIRECTIVE",
 };
 
 export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {

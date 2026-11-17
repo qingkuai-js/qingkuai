@@ -9,7 +9,7 @@ import { disposeEffect } from "./reactivity/effect";
 import { ErrorThrownDuringDestruction } from "./messages/warn";
 import { currentDestruction, setCurrentDestruction } from "./state";
 import { DEV_MODE, AFTER_DESTROY, BEFORE_DESTROY, NIL } from "./constants";
-import { FRAG_ORPHAN_CONTENT, FRAG_WITH_TARGET } from "../util/shared/flags";
+import { DST_DESTRUCTED, DST_ORPHAN_CONTENT, DST_WITH_TARGET } from "../util/shared/flags";
 
 export function pushDestructionCleaner(cleaner: ArbitraryFunc) {
     if (!currentDestruction) {
@@ -23,14 +23,13 @@ export function createDestruction(
     instance: ComponentInstanceBase | null = NIL,
 ) {
     const destruction: Destruction = {
-        f: 0,
+        l: 0,
         i: -1,
         e: NIL,
         c: NIL,
         a: NIL,
         s: NIL,
         n: NIL,
-        d: false,
         m: instance,
         p: parentDestruction,
     };
@@ -68,7 +67,7 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
     if (children) {
         const childDetach = detachNodes && !destruction.s;
         for (let i = 0; i < children.length; i++) {
-            const hasTargetDirective = !!(children[i].f & FRAG_WITH_TARGET);
+            const hasTargetDirective = !!(children[i].l & DST_WITH_TARGET);
             destroy(children[i], childDetach || hasTargetDirective, false);
         }
     }
@@ -95,7 +94,7 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
         destruction.i = -1;
     }
     if (detachNodes && destruction.s && destruction.n) {
-        if (destruction.f & FRAG_ORPHAN_CONTENT) {
+        if (destruction.l & DST_ORPHAN_CONTENT) {
             destruction.s.remove();
         } else {
             walkNodes(destruction, node => node.remove());
@@ -111,7 +110,7 @@ export function destroy(destruction: Destruction, detachNodes = true, detachFrom
     if (firstError && DEV_MODE) {
         ErrorThrownDuringDestruction(firstError);
     }
-    destruction.d = true;
+    destruction.l |= DST_DESTRUCTED;
     destruction.c = destruction.a = destruction.e = NIL;
     destruction.s = destruction.n = destruction.m = destruction.p = NIL;
 }

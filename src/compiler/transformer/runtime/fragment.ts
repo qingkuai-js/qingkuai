@@ -13,11 +13,11 @@ import {
     interpolatedAttrStartCharRE,
 } from "../../regular";
 import {
-    FRAGMENT_ROOT,
-    FRAG_WITH_TARGET,
-    FRAG_WHOLE_CONTENT,
-    FRAG_LEADING_ANCHOR,
-    FRAG_ORPHAN_CONTENT,
+    DST_ROOT,
+    DST_WITH_TARGET,
+    DST_WHOLE_CONTENT,
+    DST_LEADING_ANCHOR,
+    DST_ORPHAN_CONTENT,
 } from "../../../util/shared/flags";
 import {
     getTemplateNodeContext,
@@ -29,7 +29,7 @@ import { AttributeValueEnclosure, NamespaceMode } from "../../enums";
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
-import { CREATE_ANCHOR_DIRECTIVES, FRAG_FLAG_INTERPRETIVE_MAP, SPREAD_TAG } from "../../constants";
+import { CREATE_ANCHOR_DIRECTIVES, DST_FLAG_INTERPRETIVE_MAP, SPREAD_TAG } from "../../constants";
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
     if (!nodes.length) {
@@ -409,24 +409,24 @@ export function writeFragmentSelections(
     const flagInterpretives: string[] = [];
     const selectionCache: SelectionCache = newCleanObj();
     if (!fragment.nodeContext || !fragment.nodeContext.node.hasActualAncestor) {
-        fragment.flag |= FRAGMENT_ROOT;
+        fragment.flag |= DST_ROOT;
     }
     if (isFragmentWholeContent(fragment)) {
-        fragment.flag |= FRAG_WHOLE_CONTENT;
+        fragment.flag |= DST_WHOLE_CONTENT;
     }
     if (doesFragmentNeedLeadingAnchor(fragment)) {
-        fragment.flag |= FRAG_LEADING_ANCHOR;
+        fragment.flag |= DST_LEADING_ANCHOR;
     } else if (isFragmentOrphan(fragment)) {
-        fragment.flag |= FRAG_ORPHAN_CONTENT;
+        fragment.flag |= DST_ORPHAN_CONTENT;
         fragment.id = fragment.selections[0]?.id ?? "";
     }
     if (doesFragmentHasTargetDirective(fragment)) {
-        fragment.flag |= FRAG_WITH_TARGET;
+        fragment.flag |= DST_WITH_TARGET;
     }
     if (!fragment.id) {
         fragment.id = ensureIdWithNumSuffix("_fragment");
     }
-    traverseObject(FRAG_FLAG_INTERPRETIVE_MAP, (flag, interpret) => {
+    traverseObject(DST_FLAG_INTERPRETIVE_MAP, (flag, interpret) => {
         if (fragment.flag & flag) {
             flagInterpretives.push(interpret);
         }
@@ -449,7 +449,7 @@ export function writeFragmentSelections(
     writer.write(")");
 
     for (const selection of fragment.selections) {
-        if (fragment.flag & FRAG_ORPHAN_CONTENT && selection === fragment.selections[0]) {
+        if (fragment.flag & DST_ORPHAN_CONTENT && selection === fragment.selections[0]) {
             continue;
         }
 
@@ -563,7 +563,7 @@ function doesFragmentNeedLeadingAnchor(fragment: TemplateFragment) {
 
 function isFragmentOrphan(fragment: TemplateFragment) {
     if (
-        fragment.flag & FRAG_LEADING_ANCHOR ||
+        fragment.flag & DST_LEADING_ANCHOR ||
         fragment.directChildrenCount !== 1 ||
         fragment.content[0].value === " "
     ) {

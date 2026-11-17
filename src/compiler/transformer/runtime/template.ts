@@ -40,7 +40,7 @@ import { getMaybeReusedString } from "../../optimizer/compress";
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
-import { FRAG_LEADING_ANCHOR, EVENT_NATIVE } from "../../../util/shared/flags";
+import { DST_LEADING_ANCHOR, EVENT_NATIVE } from "../../../util/shared/flags";
 import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
@@ -401,7 +401,7 @@ function writeAnchorBracket(writer: RuntimeCodeWriter, nodeContext: TemplateNode
         ? "/* LEADING_ANCHOR */ "
         : "";
     writer.write(
-        `\nconst ${bracket.id} = ${bracket.getterId}(${interpretive}${FRAG_LEADING_ANCHOR})`,
+        `\nconst ${bracket.id} = ${bracket.getterId}(${interpretive}${DST_LEADING_ANCHOR})`,
     );
     writer.write(`\nconst ${trailingAnchorId} = ${internalId}.getChild(${bracket.id})`);
     writer.write(`\n${internalId}.insertBefore(${outerAnchorId}, ${bracket.id})`);

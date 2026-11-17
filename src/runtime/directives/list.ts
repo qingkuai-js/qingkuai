@@ -35,7 +35,7 @@ import { renderEffect } from "../reactivity/effect";
 import { arrayFrom } from "../../util/shared/arrays";
 import { walkNodes } from "../../util/runtime/sundry";
 import { destroy, createDestruction } from "../destroy";
-import { FRAG_WHOLE_CONTENT } from "../../util/shared/flags";
+import { DST_WHOLE_CONTENT } from "../../util/shared/flags";
 import { NIL, REFLECT, UNDEF, DEV_MODE } from "../constants";
 import { DuplicateKey, NonTraverse } from "../messages/error";
 import { pauseTracking, resumeTracking } from "../reactivity/optimization";
@@ -508,7 +508,7 @@ function getFirstNodeOfDestruction(destruction: Destruction) {
 }
 
 function isWholeContentDestruction(destruction: Destruction) {
-    return !!(destruction.f & FRAG_WHOLE_CONTENT);
+    return !!(destruction.l & DST_WHOLE_CONTENT);
 }
 
 // 仅在已经确定存在重复 key 时调用，用于定位重复项并作为错误信息的一部分

@@ -641,7 +641,7 @@ test("svg namespace context is not inherited across a component", () => {
         </svg>
     `);
     expect(code).toMatch(/createInheritedFragmentGetter\(`<path><\/path>`\)/);
-    expect(code).toContain("const _fragment2 = _getFragment2(16, _ns1)");
+    expect(code).toContain("const _fragment2 = _getFragment2(32, _ns1)");
     expect(code).not.toMatch(/createSvgFragmentGetter\(`<path/);
 });
 
@@ -804,7 +804,7 @@ test("slot content fragments take the namespace of the slot", () => {
         </lang-js>
         <Icon><circle r="4"></circle></Icon>
     `);
-    expect(code).toContain("const _fragment2 = _getFragment2(21, _ns1)");
+    expect(code).toContain("const _fragment2 = _getFragment2(41, _ns1)");
     expect(code).toMatch(/createInheritedFragmentGetter\(`<circle r=4><\/circle>`\)/);
 });
 

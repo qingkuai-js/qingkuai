@@ -21,8 +21,9 @@ export const KEY_CTRL = 1 << 11;
 export const KEY_SHIFT = 1 << 12;
 export const KEY_EXACT = 1 << 13;
 
-export const FRAGMENT_ROOT = 1 << 0;
-export const FRAG_WITH_TARGET = 1 << 1;
-export const FRAG_WHOLE_CONTENT = 1 << 2;
-export const FRAG_LEADING_ANCHOR = 1 << 3;
-export const FRAG_ORPHAN_CONTENT = 1 << 4;
+export const DST_ROOT = 1 << 0;
+export const DST_DESTRUCTED = 1 << 1;
+export const DST_WITH_TARGET = 1 << 2;
+export const DST_WHOLE_CONTENT = 1 << 3;
+export const DST_LEADING_ANCHOR = 1 << 4;
+export const DST_ORPHAN_CONTENT = 1 << 5;

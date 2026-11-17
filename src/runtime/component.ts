@@ -42,6 +42,7 @@ import {
 } from "./state";
 import { isElement } from "../util/runtime/assert";
 import { invokeRender } from "./directives/render";
+import { DST_DESTRUCTED } from "../util/shared/flags";
 import { makeExpGetter } from "../util/runtime/sundry";
 import { createDestruction, destroy } from "./destroy";
 import { bindHandleReceiver, shallowConstReact } from "./internal";
@@ -332,7 +333,7 @@ export function renderComponent(target: any, anchor: Text, meta: ComponentMeta) 
     target.then((resolved: any) => {
         // 父组件实例已销毁
         // The parent component instance is destroyed
-        if (parentInstanceDestruction.d) {
+        if (parentInstanceDestruction.l & DST_DESTRUCTED) {
             if (DEV_MODE) {
                 CreateOnDisposedComponent("component");
             }
@@ -341,7 +342,7 @@ export function renderComponent(target: any, anchor: Text, meta: ComponentMeta) 
 
         // 当前渲染 destruction 销毁时静默跳过
         // Silently skip if the current render destruction is destroyed
-        if (parentDestruction.d) {
+        if (parentDestruction.l & DST_DESTRUCTED) {
             return;
         }
 
@@ -366,9 +367,12 @@ function registerLifecycleHook(
     name: string,
 ) {
     const meta = instance._internal;
+    // meta.l 和 meta.d.l 使用非空断言不影响运行时行为，仅用于阻止 TypeScript 报错
+    // The non-null assertion of meta.l and meta.d.l does not affect runtime behavior,
+    // it is only used to prevent TypeScript errors
     if (
-        (index == AFTER_MOUNT && (meta.l ?? 0) & COMPONENT_MOUNTED) ||
-        ((index == BEFORE_DESTROY || index == AFTER_DESTROY) && meta.d?.d)
+        (index == AFTER_MOUNT && meta.l! & COMPONENT_MOUNTED) ||
+        ((index == BEFORE_DESTROY || index == AFTER_DESTROY) && meta.d!.l & DST_DESTRUCTED)
     ) {
         if (DEV_MODE) {
             LifecycleHookRegisteredAfterPhase(name);

@@ -39,6 +39,7 @@ import {
 import { checkEffectDependaceManager } from "./_match";
 import { isReactive } from "../../../src/util/runtime/assert";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { DST_DESTRUCTED } from "../../../src/util/shared/flags";
 import { matchGlobalError } from "../../../src/util/testing/match";
 import { isArray, isNumber } from "../../../src/util/shared/assert";
 import { activeEffect } from "../../../src/runtime/reactivity/state";
@@ -149,7 +150,7 @@ test("destroy should disconnect destruction from parent/effects", () => {
     expect(nestedEffect.d).toBeNull();
     expect(nestedChildEffect.d).toBeNull();
     expect(parent.c?.includes(nested)).toBeFalsy();
-    expect(nested.f).toBe(0);
+    expect(nested.l).toBe(DST_DESTRUCTED);
     expect(nested.e).toBeNull();
     expect(nested.c).toBeNull();
     expect(nested.a).toBeNull();
@@ -1075,7 +1076,7 @@ test("Whether a speculative render effect stays unreachable after it throws", as
 
 test("Whether the current instance is restored when a lifecycle hook throws", () => {
     const originalInstance = currentInstance;
-    const instance = { _internal: { f: [], d: NIL } } as any;
+    const instance = { _internal: { f: [], d: { l: 0 } } } as any;
 
     onBeforeDestroy(instance, () => {
         throw new Error("hook boom");
@@ -1087,7 +1088,7 @@ test("Whether the current instance is restored when a lifecycle hook throws", ()
 
 test("Whether the remaining lifecycle hooks run when one hook throws", () => {
     const originalInstance = currentInstance;
-    const instance = { _internal: { f: [], d: NIL } } as any;
+    const instance = { _internal: { f: [], d: { l: 0 } } } as any;
     const seen: string[] = [];
 
     onBeforeDestroy(instance, () => {
@@ -1101,6 +1102,7 @@ test("Whether the remaining lifecycle hooks run when one hook throws", () => {
     expect(() => runHooks(instance, BEFORE_DESTROY)).toThrow("hook boom");
 
     // 同一阶段的钩子相互独立，错误在全部执行完后才抛出
+    // Hooks in the same phase are independent, and the error is thrown after all of them have run.
     expect(seen).toEqual(["first", "second"]);
     expect(currentInstance).toBe(originalInstance);
 });
@@ -1127,6 +1129,8 @@ test("Whether the remaining effects run when an update hook throws", async () =>
     await flushThrowingUpdate(() => (tracked.$ = 1));
 
     // 组件的更新钩子失败不应阻止同批其余副作用执行
+    // A component's update hook throwing must not prevent the remaining effects
+    // in the same batch from running.
     expect(seen).toContain("second:1");
 });
 
@@ -1154,8 +1158,10 @@ test("Whether the remaining cleanups run when a cleanup throws", () => {
     expect(() => destroy(nested, false)).not.toThrow();
 
     // 清理项彼此独立，一个失败不影响其余项；结构收尾仍然完成，错误只在开发模式提示
+    // Cleanups are independent: one failing does not affect the others,
+    // and the destruction still completes, with the error only being warned in dev mode.
     expect(seen).toEqual(["first", "second", "effect"]);
-    expect(nested.d).toBe(true);
+    expect(nested.l & DST_DESTRUCTED).toBe(DST_DESTRUCTED);
     expect(nested.e).toBeNull();
     expect(warningMatcher.mock.calls.some(args => args.join(" ").includes("8006"))).toBe(true);
 });
