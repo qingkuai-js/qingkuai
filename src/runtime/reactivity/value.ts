@@ -1,6 +1,12 @@
-import type { createStoreFunc, ToReactiveFunc } from "#type-declarations/runtime-ex";
+import type {
+    Link,
+    ProxyWrapper,
+    AccessorWrapper,
+    ReactivityWrapper,
+    DestructuringFunc,
+} from "#type-declarations/runtime";
 import type { AnyObject, ArbitraryFunc, Setter } from "#type-declarations/tools";
-import type { Link, DestructuringFunc, ReactivityWrapper } from "#type-declarations/runtime";
+import type { createStoreFunc, ToReactiveFunc } from "#type-declarations/runtime-ex";
 
 import {
     OWN_KEYS,
@@ -128,7 +134,7 @@ function reactWithAncestor(
     }
 
     const isChanged = flag & WRAPPER_SHALLOW ? notEqual : reactiveNotEqual;
-    const wrapper = newReactivityWrapper(target, flag);
+    const wrapper = newAccessorWrapper(target, flag);
     wrapper.p = {
         [WRAPPER]: wrapper,
 
@@ -170,7 +176,7 @@ function reactWithProxy(target: any, flag = 0): any {
 
     const isShallow = flag & WRAPPER_SHALLOW;
     const isChanged = isShallow ? notEqual : reactiveNotEqual;
-    const wrapper = newReactivityWrapper(target, (flag |= WRAPPER_PROXY | typeFlag));
+    const wrapper = newProxyWrapper(target, (flag |= WRAPPER_PROXY | typeFlag));
 
     const proxy: any = createProxy(target, {
         get(target, property, receiver) {
@@ -306,11 +312,11 @@ function reactWithProxy(target: any, flag = 0): any {
         },
 
         has(_, property) {
-            let currentWrapper: ReactivityWrapper | undefined = wrapper;
+            let currentWrapper: ProxyWrapper | undefined = wrapper;
             mutualLink(currentWrapper, getRefProperty(flag, property), LINK_IN_CHANGED);
 
             while (currentWrapper && !hasOwn(currentWrapper.r, property)) {
-                const parent: ReactivityWrapper | undefined = constReact(
+                const parent: ProxyWrapper | undefined = constReact(
                     getPrototypeOf(currentWrapper.r),
                 )?.[WRAPPER];
                 if (!parent) {
@@ -326,7 +332,17 @@ function reactWithProxy(target: any, flag = 0): any {
     return (cacheWrapper(target, wrapper), (wrapper.p = proxy));
 }
 
-function newReactivityWrapper(target: any, flag: number): ReactivityWrapper {
+function newAccessorWrapper(target: any, flag: number): AccessorWrapper {
+    return {
+        r: target,
+        p: UNDEF,
+        l: flag,
+        s: NIL,
+        a: NIL,
+    };
+}
+
+function newProxyWrapper(target: any, flag: number): ProxyWrapper {
     return {
         b: NIL,
         c: NIL,

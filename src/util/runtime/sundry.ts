@@ -1,6 +1,6 @@
 import type { ObjectKeys } from "#type-declarations/tools";
+import type { Destruction, ProxyWrapper } from "#type-declarations/runtime";
 import type { NextTickFunc, ToRawFunc } from "#type-declarations/runtime-ex";
-import type { Destruction, ReactivityWrapper } from "#type-declarations/runtime";
 
 import {
     WRAPPER,
@@ -38,8 +38,8 @@ export function reverse(v: any) {
 }
 
 export function walkWrapperChildren(
-    wrapper: ReactivityWrapper,
-    callback: (child: ReactivityWrapper) => boolean,
+    wrapper: ProxyWrapper,
+    callback: (child: ProxyWrapper) => boolean,
 ) {
     if (!wrapper.c) {
         return;

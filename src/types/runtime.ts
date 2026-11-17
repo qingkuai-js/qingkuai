@@ -93,9 +93,19 @@ export interface BaseWrapper {
     r: any; // raw
     p: any; // proxy
     l: number; // flag
+}
+
+export interface AccessorWrapper extends BaseWrapper {
+    s: Subscription | null; // sync subscription
+    a: Subscription | null; // async subscription
+}
+
+export interface ProxyWrapper extends BaseWrapper {
     o: ObjectKeys[] | null; // own keys
-    b: ReactivityWrapper | null; // inherit by
-    c: Set<ReactivityWrapper> | null; // derived children
+    b: ProxyWrapper | null; // inherit by
+    c: Set<ProxyWrapper> | null; // derived children
+    s: Map<any, Subscription> | null; // sync subscriptions
+    a: Map<any, Subscription> | null; // async subscriptions
 }
 
 export interface Link {
@@ -113,15 +123,7 @@ export interface Subscription {
     a: number; // active link index
 }
 
-export interface AccessorWrapperExtra {
-    s: Subscription | null; // sync subscriptions
-    a: Subscription | null; // async subscriptions
-}
-
-export interface ProxyWrapperExtra {
-    s: Map<any, Subscription> | null; // sync subscriptions
-    a: Map<any, Subscription> | null; // async subscriptions
-}
+export type ReactivityWrapper = ProxyWrapper | AccessorWrapper;
 
 export type ReactiveValue<T extends AnyObject> = T & {
     [WRAPPER]: ReactivityWrapper;
@@ -134,12 +136,8 @@ export type ReactiveMethods = Record<
 export type RefProperty = [typeof REF_PROPERTY_ID, ObjectKeys];
 
 export type DestructuringFunc = (target: any) => any[];
-export type ProxyWrapper = BaseWrapper & ProxyWrapperExtra;
-export type ReactivityWrapper = ProxyWrapper | AccessorWrapper;
 export type FragmentParser = (html: string) => DocumentFragment;
-export type AccessorWrapper = BaseWrapper & AccessorWrapperExtra;
 export type FragmentGetter = (flag?: number, ns?: boolean) => any;
-export type WrapperExtra = AccessorWrapperExtra | ProxyWrapperExtra;
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra;
 
 export type EffectCallback = () => void | GeneralFunc;
