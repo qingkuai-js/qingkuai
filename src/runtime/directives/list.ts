@@ -62,7 +62,6 @@ export function keyedListBlock(
         runtimeRender: ArbitraryFunc,
     ) => {
         const info = {
-            s: UNDEF,
             d: NIL,
             m: shallowReact(NIL),
             x: shallowReact(NIL),
@@ -77,7 +76,10 @@ export function keyedListBlock(
         pauseTracking();
 
         try {
-            info.s = runtimeRender(reference, info);
+            const setter = runtimeRender(reference, info);
+            if (DEV_MODE) {
+                info.s = setter;
+            }
         } finally {
             resumeTracking();
             setCurrentInstance(originalInstance);
@@ -345,13 +347,21 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
 
     const mountListInfo = (index: number) => {
         const info = {
-            s: UNDEF,
             d: NIL,
             m: shallowReact(NIL),
             x: shallowReact(NIL),
         } as unknown as TraverseInfo;
         fillContext(traversable, index, info);
-        info.d = invokeRender(() => (info.s = render(info)), componentInstance, parentDestruction);
+        info.d = invokeRender(
+            () => {
+                const setter = render(info);
+                if (DEV_MODE) {
+                    info.s = setter;
+                }
+            },
+            componentInstance,
+            parentDestruction,
+        );
         return info;
     };
 
