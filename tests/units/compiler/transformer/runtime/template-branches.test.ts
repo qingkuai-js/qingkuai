@@ -1,5 +1,6 @@
 import { test, expect } from "vitest";
 import { compile } from "../../../../../src/compiler/compile";
+import { COMP_SVG_NS } from "../../../../../src/util/shared/flags";
 import { formatSourceCode } from "../../../../../src/util/shared/sundry";
 
 function compileRuntime(source: string, debug = false) {
@@ -749,7 +750,7 @@ test("a component in svg carries the svg namespace in its meta", () => {
         </lang-js>
         <svg viewBox="0 0 10 10"><Child></Child></svg>
     `);
-    expect(code).toContain("n: true");
+    expect(code).toContain(`l: ${COMP_SVG_NS}`);
     expect(code).toContain("_.renderComponent(Child, _text1, {");
 });
 
@@ -760,7 +761,7 @@ test("a component inside foreignObject returns to the html namespace", () => {
         </lang-js>
         <svg viewBox="0 0 10 10"><foreignObject><Child></Child></foreignObject></svg>
     `);
-    expect(code).toMatch(/n: false/);
+    expect(code).toContain("l: 0");
 });
 
 test("a component without a static namespace emits no namespace key", () => {
@@ -770,7 +771,7 @@ test("a component without a static namespace emits no namespace key", () => {
         </lang-js>
         <div><Child></Child></div>
     `);
-    expect(code).not.toMatch(/n: (?:true|false|_ns)/);
+    expect(code).not.toMatch(/l: (?:\d|\()/);
 });
 
 test("a component inside slot content takes the namespace resolved by the slot", () => {
@@ -781,20 +782,20 @@ test("a component inside slot content takes the namespace resolved by the slot",
         </lang-js>
         <Icon><Child></Child></Icon>
     `);
-    expect(code).toContain("n: _ns1");
+    expect(code).toContain("l: _ns1");
     expect(code).toContain("(_anchor1, _ns1) => {");
 });
 
 test("a slot inside svg asks for the svg namespace", () => {
     const code = compileRuntime(`<svg viewBox="0 0 10 10"><slot></slot></svg>`);
-    expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, _.UNDEF, true)');
+    expect(code).toContain(`_.renderSlot("default", _text1, _.UNDEF, _.UNDEF, ${COMP_SVG_NS})`);
 });
 
 test("a slot inside foreignObject asks for the html namespace", () => {
     const code = compileRuntime(`
         <svg viewBox="0 0 10 10"><foreignObject><slot></slot></foreignObject></svg>
     `);
-    expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, _.UNDEF, false)');
+    expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, _.UNDEF, 0)');
 });
 
 test("slot content fragments take the namespace of the slot", () => {

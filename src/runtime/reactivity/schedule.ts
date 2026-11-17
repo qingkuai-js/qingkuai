@@ -8,7 +8,6 @@ import {
     RESOLVED,
     AFTER_UPDATE,
     BEFORE_UPDATE,
-    COMPONENT_UPDATING,
     MAX_SCHEDULE_DEPTH,
     MAX_SCHEDULE_PASSES,
 } from "../constants";
@@ -42,6 +41,7 @@ import {
 import { runHooks } from "../component";
 import { runAndUpdateEffect } from "./effect";
 import { nextTick } from "../../util/runtime/sundry";
+import { COMP_UPDATING } from "../../util/shared/flags";
 import { MaximumUpdateDepthExceeded } from "../messages/error";
 import { isIteratorKey, isProxyWrapper } from "../../util/runtime/assert";
 
@@ -174,9 +174,9 @@ function update() {
                 if (
                     instance &&
                     effect.l & EFFECT_RENDER &&
-                    !(instance._internal.l! & COMPONENT_UPDATING)
+                    !(instance._internal.l! & COMP_UPDATING)
                 ) {
-                    instance._internal.l = instance._internal.l! | COMPONENT_UPDATING;
+                    instance._internal.l = instance._internal.l! | COMP_UPDATING;
                     updatingComponents.push(instance);
                     try {
                         runHooks(instance, BEFORE_UPDATE);
@@ -189,7 +189,7 @@ function update() {
             // 所有副作用执行完后，触发 updatingComponents 中组件的 onAfterUpdate
             // After all effects finish, trigger `onAfterUpdate` for all components in `updatingComponents`
             for (const component of updatingComponents) {
-                component._internal.l = component._internal.l! & ~COMPONENT_UPDATING;
+                component._internal.l = component._internal.l! & ~COMP_UPDATING;
                 try {
                     runHooks(component, AFTER_UPDATE);
                 } catch (err) {

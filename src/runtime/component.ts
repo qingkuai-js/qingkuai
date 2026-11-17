@@ -24,7 +24,6 @@ import {
     AFTER_UPDATE,
     BEFORE_DESTROY,
     AFTER_DESTROY,
-    COMPONENT_MOUNTED,
 } from "./constants";
 import {
     objectKeys,
@@ -42,13 +41,13 @@ import {
 } from "./state";
 import { isElement } from "../util/runtime/assert";
 import { invokeRender } from "./directives/render";
-import { DST_DESTRUCTED } from "../util/shared/flags";
 import { makeExpGetter } from "../util/runtime/sundry";
 import { createDestruction, destroy } from "./destroy";
 import { bindHandleReceiver, shallowConstReact } from "./internal";
 import { isFunction, isThenable, isString } from "../util/shared/assert";
 import { markActiveEffectNoCheck, renderEffect } from "./reactivity/effect";
 import { InvalidElementNode, CannotRenderComponent } from "./messages/error";
+import { DST_DESTRUCTED, COMP_MOUNTED, COMP_SVG_NS } from "../util/shared/flags";
 import { CreateOnDisposedComponent, LifecycleHookRegisteredAfterPhase } from "./messages/warn";
 import { appendChild, getParentElement, insertBefore, newTextNode, selectElement } from "./dom";
 
@@ -122,12 +121,6 @@ export const setContextGetter: SetContextGetterFunc = (instance, key, getter) =>
 };
 
 export function init(anchor: Node, meta: ComponentMeta) {
-    // 组件的命名空间由调用方决定：未指定时跟随父实例，false 表示显式回到 HTML 命名空间
-    // The namespace of a component is decided by its caller: unspecified follows
-    // the parent instance, and false explicitly falls back to the HTML namespace.
-    if (currentInstance?._internal.n) {
-        meta.n ??= true;
-    }
     const instance: ComponentInstanceBase = {
         _internal: meta,
         parent: currentInstance,
@@ -136,8 +129,9 @@ export function init(anchor: Node, meta: ComponentMeta) {
     if (meta.h) {
         bindHandleReceiver(instance, meta.h);
     }
-    meta.l = 0;
+    meta.l ??= currentInstance?._internal.l ?? 0;
     meta.f = NIL;
+    meta.l &= COMP_SVG_NS;
     meta.d = createDestruction(currentDestruction, instance);
     meta.c = objectCreate(currentInstance?._internal.c ?? NIL);
     return setCurrentInstance(instance);
@@ -199,7 +193,7 @@ export function mount(anchor?: ChildNode, fragment?: Node) {
     runHooks(instance, AFTER_MOUNT);
     backToParentDestruction();
     setCurrentInstance(instance.parent);
-    instance._internal.l = (instance._internal.l ?? 0) | COMPONENT_MOUNTED;
+    instance._internal.l = (instance._internal.l ?? 0) | COMP_MOUNTED;
     return instance;
 }
 
@@ -371,8 +365,9 @@ function registerLifecycleHook(
     // The non-null assertion of meta.l and meta.d.l does not affect runtime behavior,
     // it is only used to prevent TypeScript errors
     if (
-        (index == AFTER_MOUNT && meta.l! & COMPONENT_MOUNTED) ||
-        ((index == BEFORE_DESTROY || index == AFTER_DESTROY) && meta.d!.l & DST_DESTRUCTED)
+        (index == AFTER_MOUNT && meta.l! & COMP_MOUNTED) ||
+        // @ts-expect-error: undefinex will be converted to 0 implicitly
+        ((index == BEFORE_DESTROY || index == AFTER_DESTROY) && meta.d?.l & DST_DESTRUCTED)
     ) {
         if (DEV_MODE) {
             LifecycleHookRegisteredAfterPhase(name);

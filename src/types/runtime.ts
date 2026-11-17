@@ -58,7 +58,6 @@ export type ComponentMeta = Partial<{
     r: AnyObject; // raw refs
     c: AnyObject; // contexts
     R: AnyObject; // bound refs
-    n: boolean; // svg namespace
     e: string[]; // delegated events
     a: string[]; // ancestor scope chain
     f: GeneralFunc[][] | null; // lifecycle hooks
@@ -137,7 +136,7 @@ export type RefProperty = [typeof REF_PROPERTY_ID, ObjectKeys];
 
 export type DestructuringFunc = (target: any) => any[];
 export type FragmentParser = (html: string) => DocumentFragment;
-export type FragmentGetter = (flag?: number, ns?: boolean) => any;
+export type FragmentGetter = (flag?: number, nsFlags?: number) => any;
 export type CancelablePromise = Promise<any> & CancelablePromiseExtra;
 
 export type EffectCallback = () => void | GeneralFunc;

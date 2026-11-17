@@ -7,11 +7,12 @@ import {
     onBeforeDestroy,
     onAfterDestroy,
 } from "../../../src/runtime/component";
+import { NIL } from "../../../src/runtime/constants";
 import { DST_DESTRUCTED } from "../../../src/util/shared/flags";
 import { setCurrentInstance } from "../../../src/runtime/state";
 import { describe, expect, test, beforeEach, vi } from "vitest";
 import { createWarningMatcher } from "../../../src/util/testing/sundry";
-import { COMPONENT_MOUNTED, COMPONENT_UPDATING, NIL } from "../../../src/runtime/constants";
+import { COMP_MOUNTED, COMP_UPDATING } from "../../../src/util/shared/flags";
 
 const warningMatcher = createWarningMatcher();
 
@@ -45,7 +46,7 @@ describe("Lifecycle hook registration guards", () => {
 
     test("onAfterMount registration after mount warns 8004 and is ignored", () => {
         const instance = createInstance();
-        instance._internal.l = COMPONENT_MOUNTED;
+        instance._internal.l = COMP_MOUNTED;
 
         onAfterMount(instance, vi.fn());
 
@@ -88,7 +89,7 @@ describe("Lifecycle hook registration guards", () => {
 
     test("update hook registration after mount does not warn (recurring window)", () => {
         const instance = createInstance();
-        instance._internal.l = COMPONENT_MOUNTED | COMPONENT_UPDATING;
+        instance._internal.l = COMP_MOUNTED | COMP_UPDATING;
 
         onBeforeUpdate(instance, vi.fn());
 
@@ -106,7 +107,7 @@ describe("Lifecycle hook registration guards", () => {
         setCurrentInstance(null);
 
         expect(callback).toHaveBeenCalledTimes(1);
-        expect((instance._internal.l ?? 0) & COMPONENT_MOUNTED).toBe(COMPONENT_MOUNTED);
+        expect((instance._internal.l ?? 0) & COMP_MOUNTED).toBe(COMP_MOUNTED);
     });
 
     test("registering onAfterMount inside an onAfterMount callback does not warn", () => {

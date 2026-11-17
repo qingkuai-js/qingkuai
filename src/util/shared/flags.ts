@@ -27,3 +27,7 @@ export const DST_WITH_TARGET = 1 << 2;
 export const DST_WHOLE_CONTENT = 1 << 3;
 export const DST_LEADING_ANCHOR = 1 << 4;
 export const DST_ORPHAN_CONTENT = 1 << 5;
+
+export const COMP_MOUNTED = 1 << 0;
+export const COMP_UPDATING = 1 << 1;
+export const COMP_SVG_NS = 1 << 2;

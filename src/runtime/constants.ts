@@ -48,9 +48,6 @@ export const AFTER_UPDATE = 2;
 export const BEFORE_DESTROY = 3;
 export const AFTER_DESTROY = 4;
 
-export const COMPONENT_MOUNTED = 1;
-export const COMPONENT_UPDATING = 2;
-
 // sundry
 export const KEY_NAME_FLAG =
     KEY_SPACE |

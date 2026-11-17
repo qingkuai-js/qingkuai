@@ -40,9 +40,9 @@ import { getMaybeReusedString } from "../../optimizer/compress";
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
-import { DST_LEADING_ANCHOR, EVENT_NATIVE } from "../../../util/shared/flags";
 import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { DST_LEADING_ANCHOR, EVENT_NATIVE, COMP_SVG_NS } from "../../../util/shared/flags";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 
@@ -688,13 +688,13 @@ function generateRenderEffect(
 // A statically known namespace is written as a literal and an inherited one is
 // omitted for the runtime to resolve; only calls inside slot content have to carry
 // the namespace that the slot owner resolved.
-function getNamespaceArgument(nodeContext: TemplateNodeContext, slotNsId?: string) {
+function getNamespaceFlags(nodeContext: TemplateNodeContext, slotNsId?: string) {
     switch (nodeContext.namespaceMode) {
         case NamespaceMode.Svg: {
-            return "true";
+            return String(COMP_SVG_NS);
         }
         case NamespaceMode.Html: {
-            return "false";
+            return "0";
         }
         default: {
             if (nodeContext.inSlotContent) {
@@ -707,7 +707,7 @@ function getNamespaceArgument(nodeContext: TemplateNodeContext, slotNsId?: strin
 
 function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeContext) {
     let needInsertComma = false;
-    const nsArgument = getNamespaceArgument(nodeContext);
+    const nsFlags = getNamespaceFlags(nodeContext);
 
     const internalId = generateIdentifier.internal;
     const getterArgId = generateIdentifier.getterArg;
@@ -747,13 +747,13 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
             writer.write(attribute.equalSign ? getMaybeReusedString(attribute.value.raw) : "true");
         }
         writer.dedent().write("}");
-    } else if (hasDefaultContent || nsArgument) {
+    } else if (hasDefaultContent || nsFlags) {
         writer.write(`, ${internalId}.UNDEF`);
     }
 
     if (hasDefaultContent) {
         writer.writeLine(", () => {").indent(false);
-    } else if (nsArgument) {
+    } else if (nsFlags) {
         writer.write(`, ${internalId}.UNDEF`);
     }
 
@@ -761,8 +761,8 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
         if (hasDefaultContent) {
             writer.dedent().write("}");
         }
-        if (nsArgument) {
-            writer.write(`, ${nsArgument}`);
+        if (nsFlags) {
+            writer.write(`, ${nsFlags}`);
         }
         writer.write(")");
     };
@@ -774,7 +774,7 @@ function generateComponentCall(
     slotNsId?: string,
 ) {
     let needInsertComma = false;
-    const nsArgument = getNamespaceArgument(nodeContext, slotNsId);
+    const nsFlags = getNamespaceFlags(nodeContext, slotNsId);
 
     const node = nodeContext.node;
     const parsedExpr = getParsedExpression(node);
@@ -806,7 +806,7 @@ function generateComponentCall(
         hasProps ||
         hasRefs ||
         hasScope ||
-        !!nsArgument ||
+        !!nsFlags ||
         !node.hasActualAncestor ||
         !!referenceHandleAttribute;
 
@@ -956,8 +956,8 @@ function generateComponentCall(
         insertTrailingComma().write(`a: ${internalId}.getScopes()`);
     }
 
-    if (nsArgument) {
-        insertTrailingComma().write(`n: ${nsArgument}`);
+    if (nsFlags) {
+        insertTrailingComma().write(`l: ${nsFlags}`);
     }
 
     if (hasMeta) {

@@ -1,10 +1,15 @@
 import type { FragmentGetter, FragmentParser, MountCollector } from "#type-declarations/runtime";
 
+import {
+    DST_ROOT,
+    COMP_SVG_NS,
+    DST_LEADING_ANCHOR,
+    DST_ORPHAN_CONTENT,
+} from "../util/shared/flags";
 import { arrayFrom } from "../util/shared/arrays";
 import { isElement } from "../util/runtime/assert";
 import { currentDestruction, currentInstance } from "./state";
 import { isArray, isNumber, isString, isUndefined } from "../util/shared/assert";
-import { DST_LEADING_ANCHOR, DST_ORPHAN_CONTENT, DST_ROOT } from "../util/shared/flags";
 import { DOCUMENT, NODE_CONTEXT, DST_FLAG, VALUE_CACHE_KEY, SVG_NAMESPACE_URI } from "./constants";
 
 export function newTextNode() {
@@ -121,8 +126,10 @@ export function createSvgFragmentGetter(html: string, arr?: string[]) {
 export function createInheritedFragmentGetter(html: string, arr?: string[]) {
     let htmlGetter: FragmentGetter | undefined;
     let svgGetter: FragmentGetter | undefined;
-    return (flag = 0, ns = currentInstance?._internal.n) => {
-        if (ns) {
+
+    // @ts-expect-error: undefined will be converted to 0 implicitly
+    return (flag = 0, nsFlags = currentInstance?._internal.l & COMP_SVG_NS) => {
+        if (nsFlags & COMP_SVG_NS) {
             return (svgGetter ??= createSvgFragmentGetter(html, arr))(flag);
         }
         return (htmlGetter ??= createHtmlFragmentGetter(html, arr))(flag);
