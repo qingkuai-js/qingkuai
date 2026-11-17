@@ -77,7 +77,7 @@ jobs:
   # Browser E2E tests only run on Linux: the full browser matrix is covered in nightly
   e2e:
     name: E2E (chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
