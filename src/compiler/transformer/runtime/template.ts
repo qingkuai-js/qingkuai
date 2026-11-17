@@ -218,7 +218,7 @@ function generateDirectiveBlock(
         case "#else": {
             return generateDirectiveRender({
                 enclosure() {
-                    if (doesDirectiveHasContinuousItem(nodeContext.node, directive)) {
+                    if (doesDirectiveHasContinuousItem(node, directive)) {
                         writer.writeLine(",");
                     } else {
                         writer.dedent().write("])");
@@ -979,10 +979,12 @@ function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateA
             expectedContinuousDirective.push("#elif", "#else");
             break;
         }
-        case "#then":
-        case "#await":
-        case "#catch": {
+        case "#await": {
             expectedContinuousDirective.push("#then", "#catch");
+            break;
+        }
+        case "#then": {
+            expectedContinuousDirective.push("#catch");
             break;
         }
         default: {

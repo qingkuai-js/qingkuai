@@ -435,7 +435,7 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [5, 10],
-                value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`,
+                value: `The "#then" directive requires one of the following preceding directives: "#await".`,
             },
         ]);
 
@@ -452,11 +452,6 @@ describe("#then", () => {
                     range: [67, 72],
                     value: `The "#then" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
                 },
-                {
-                    type: "error",
-                    range: [67, 72],
-                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch".`,
-                },
             ],
         );
 
@@ -472,11 +467,6 @@ describe("#then", () => {
                     type: "error",
                     range: [55, 60],
                     value: `The "#then" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
-                },
-                {
-                    type: "error",
-                    range: [55, 60],
-                    value: `The "#then" directive requires one of the following preceding directives: "#await", "#catch". Note that the preceding element has an implicit "#slot" directive.`,
                 },
             ],
         );
@@ -549,13 +539,12 @@ describe("#then", () => {
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <dit #await={_} #then></dit>
-                <div #catch></div>
                 <div #then></div>
             `),
             [
                 {
                     type: "error",
-                    range: [53, 58],
+                    range: [34, 39],
                     value: `The "#then" directive can only appear once in a promise block.`,
                 },
                 {
@@ -565,6 +554,38 @@ describe("#then", () => {
                 },
             ],
         );
+    });
+
+    test("After an in-place catch", () => {
+        analyzeTemplateAndMatchMessages(`<div #await={_} #catch></div><div #then={_}></div>`, [
+            {
+                type: "error",
+                range: [34, 39],
+                value: `The "#then" directive requires one of the following preceding directives: "#await".`,
+            },
+        ]);
+    });
+
+    test("After a non-anchor element", () => {
+        analyzeTemplateAndMatchMessages(`<div #await={_}></div><div></div><div #then={_}></div>`, [
+            {
+                type: "error",
+                range: [38, 43],
+                value: `The "#then" directive requires one of the following preceding directives: "#await".`,
+            },
+        ]);
+    });
+
+    test("Shadowed by the implicit slot of a component child", () => {
+        analyzeTemplateAndMatchMessages(`<Comp><div #then></div></Comp>`, [
+            {
+                type: "error",
+                range: [11, 16],
+                value: `The "#then" directive cannot be used here because it is shadowed by the implicit "#slot" directive on the same element.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<Comp><div #await={_} #then></div></Comp>`);
     });
 });
 
@@ -591,11 +612,6 @@ describe("#catch", () => {
                     range: [61, 67],
                     value: `The "#catch" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
                 },
-                {
-                    type: "error",
-                    range: [61, 67],
-                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`,
-                },
             ],
         );
 
@@ -611,11 +627,6 @@ describe("#catch", () => {
                     type: "error",
                     range: [49, 55],
                     value: `The "#catch" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
-                },
-                {
-                    type: "error",
-                    range: [49, 55],
-                    value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then". Note that the preceding element has an implicit "#slot" directive.`,
                 },
             ],
         );
@@ -686,13 +697,12 @@ describe("#catch", () => {
         analyzeTemplateAndMatchMessages(
             formatSourceCode(`
                 <dit #await={_} #catch></dit>
-                <div #then></div>
                 <div #catch></div>
             `),
             [
                 {
                     type: "error",
-                    range: [53, 59],
+                    range: [35, 41],
                     value: `The "#catch" directive can only appear once in a promise block.`,
                 },
                 {
@@ -702,6 +712,28 @@ describe("#catch", () => {
                 },
             ],
         );
+    });
+
+    test("After a non-anchor element", () => {
+        analyzeTemplateAndMatchMessages(`<div #await={_}></div><div></div><div #catch></div>`, [
+            {
+                type: "error",
+                range: [38, 44],
+                value: `The "#catch" directive requires one of the following preceding directives: "#await", "#then".`,
+            },
+        ]);
+    });
+
+    test("Shadowed by the implicit slot of a component child", () => {
+        analyzeTemplateAndMatchMessages(`<Comp><div #catch></div></Comp>`, [
+            {
+                type: "error",
+                range: [11, 17],
+                value: `The "#catch" directive cannot be used here because it is shadowed by the implicit "#slot" directive on the same element.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<Comp><div #await={_} #catch></div></Comp>`);
     });
 });
 
@@ -744,11 +776,6 @@ describe("#else", () => {
                     range: [64, 69],
                     value: `The "#else" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
                 },
-                {
-                    type: "error",
-                    range: [64, 69],
-                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
-                },
             ],
         );
 
@@ -765,13 +792,16 @@ describe("#else", () => {
                     range: [52, 57],
                     value: `The "#else" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
                 },
-                {
-                    type: "error",
-                    range: [52, 57],
-                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`,
-                },
             ],
         );
+
+        analyzeTemplateAndMatchMessages(`<div #await={_} #if={_}></div><div #else></div>`, [
+            {
+                type: "error",
+                range: [35, 40],
+                value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element's "#if" directive is not its highest-priority directive ("#await" takes precedence); a chain can only continue from the highest-priority directive.`,
+            },
+        ]);
     });
 });
 
@@ -809,11 +839,6 @@ test("#elif: missing preceding directive", () => {
                 range: [64, 69],
                 value: `The "#elif" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
             },
-            {
-                type: "error",
-                range: [64, 69],
-                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
-            },
         ],
     );
 
@@ -829,11 +854,6 @@ test("#elif: missing preceding directive", () => {
                 type: "error",
                 range: [52, 57],
                 value: `The "#elif" directive cannot be used here because it is shadowed by the higher-priority "#slot" directive on the same element.`,
-            },
-            {
-                type: "error",
-                range: [52, 57],
-                value: `The "#elif" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element has an implicit "#slot" directive.`,
             },
         ],
     );

@@ -26,6 +26,11 @@ export interface CompileError extends Error {
     description: string;
 }
 
+export interface NonPrimaryAnchor {
+    anchor: string;
+    primary: string;
+}
+
 export interface ScriptDescriptor {
     code: string;
     isTS: boolean;

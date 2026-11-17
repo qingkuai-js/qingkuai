@@ -4,7 +4,9 @@ import type {
     TemplateNode,
     ParsedPattern,
     ParsedDirective,
+    NonPrimaryAnchor,
     TemplateAttribute,
+    TemplateNodeContext,
 } from "#type-declarations/compiler";
 
 import ts from "../ts-api";
@@ -45,6 +47,7 @@ import {
     CHAIN_CONTINUATION_DIRECTIVES,
 } from "../constants";
 import { markNeedSourcemap } from "../ts-ast/sundry";
+import { getLastElem } from "../../util/shared/arrays";
 import { parseContextPattern } from "../parser/script";
 import { analyzeInterpolation } from "./interpolation";
 import { isValidContextPattern } from "../ts-ast/assert";
@@ -57,6 +60,7 @@ import { getPrevElementContext, getTemplateNodeContext } from "../../util/compil
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
 
 export function analyzeDirective(node: TemplateNode, directive: TemplateAttribute) {
+    let shadowed = false;
     let conflictingDirective: TemplateAttribute | undefined;
 
     const nameLoc = directive.name.loc;
@@ -97,17 +101,21 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         );
     }
 
-    // 延续前置链的指令必须自己就是元素上的最高优先级指令：#await 就地消费的 #then/#catch除外
-    // The directive that continues the preceding chain must be the highest priority
-    // directive on the element itself: #then/#catch consumed in place of #await.
-    if (
-        !conflictingDirective &&
-        nodeContext.sortedDirectives.length &&
-        CHAIN_CONTINUATION_DIRECTIVES.has(rawName)
-    ) {
-        const predecessor = nodeContext.sortedDirectives[nodeContext.sortedDirectives.length - 1];
-        if ((rawName !== "#then" && rawName !== "#catch") || predecessor.name.raw !== "#await") {
-            ShadowedChainDirective(nameLoc, rawName, predecessor.name.raw);
+    // 检查链式指令是否被遮蔽
+    // Check if the chain directive is shadowed.
+    if (!conflictingDirective && CHAIN_CONTINUATION_DIRECTIVES.has(rawName)) {
+        const directiveAbove = getLastElem(nodeContext.sortedDirectives);
+        if (directiveAbove) {
+            if (
+                (rawName !== "#then" && rawName !== "#catch") ||
+                directiveAbove.name.raw !== "#await"
+            ) {
+                shadowed = true;
+                ShadowedChainDirective(nameLoc, rawName, directiveAbove.name.raw);
+            }
+        } else if (node.parent?.componentTag) {
+            shadowed = true;
+            ShadowedChainDirective(nameLoc, rawName, "#slot", true);
         }
     }
 
@@ -200,36 +208,33 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
         case "#then":
         case "#catch": {
-            if (!nodeContext.attributesMap["#await"]) {
-                let checkRes = false;
-                let prevElementContext = getPrevElementContext(node);
-
-                const expectedList = ["#await", rawName === "#then" ? "#catch" : "#then"];
-                const prevElementFirstDirective = prevElementContext?.sortedDirectives[0];
-                const extraMsg =
-                    prevElementContext &&
-                    prevElementContext.node.parent?.componentTag &&
-                    prevElementFirstDirective?.name.raw !== "#slot"
-                        ? ` Note that the preceding element has an implicit "#slot" directive.`
-                        : "";
-
-                while (prevElementContext) {
-                    if (prevElementContext.sortedDirectives[0]?.name.raw === "#await") {
-                        if (prevElementContext.sortedDirectives[1]?.name.raw === rawName) {
-                            DuplicatePromiseBlockDirectives(directive.name.loc, rawName);
-                            DuplicatePromiseBlockDirectives(
-                                prevElementContext.sortedDirectives[1].name.loc,
-                                rawName,
-                            );
-                        }
-                        checkRes = true;
-                        break;
+            if (!shadowed && !nodeContext.attributesMap["#await"]) {
+                const prevElementContext = getPrevElementContext(node);
+                const prevRawName = prevElementContext?.sortedDirectives[0]?.name.raw;
+                const prevInPlaceRawName = prevElementContext?.sortedDirectives[1]?.name.raw;
+                const prevHasInPlace =
+                    prevInPlaceRawName === "#then" || prevInPlaceRawName === "#catch";
+                const expectedList = rawName === "#then" ? ["#await"] : ["#await", "#then"];
+                if (prevRawName === "#await" && prevInPlaceRawName === rawName) {
+                    DuplicatePromiseBlockDirectives(directive.name.loc, rawName);
+                    DuplicatePromiseBlockDirectives(
+                        prevElementContext!.sortedDirectives[1].name.loc,
+                        rawName,
+                    );
+                } else {
+                    const canContinueChain =
+                        rawName === "#then"
+                            ? prevRawName === "#await" && !prevHasInPlace
+                            : prevRawName === "#then" ||
+                              (prevRawName === "#await" && prevInPlaceRawName !== "#catch");
+                    if (!canContinueChain) {
+                        MissingPrecedingDirective(
+                            directive.name.loc,
+                            rawName,
+                            expectedList,
+                            getNonPrimaryPrecedingAnchor(expectedList, prevElementContext),
+                        );
                     }
-                    prevElementContext = getPrevElementContext(prevElementContext.node);
-                }
-
-                if (extraMsg || !checkRes) {
-                    MissingPrecedingDirective(directive.name.loc, rawName, expectedList, extraMsg);
                 }
             }
 
@@ -341,18 +346,18 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (rawName === "#else" && directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 RedundantDirectiveValue(directive.loc, rawName);
             }
-
-            const expectedList = ["#if", "#elif"];
-            const prevElementContext = getPrevElementContext(node);
-            const prevElementFirstDirective = prevElementContext?.sortedDirectives[0];
-            const extraMsg =
-                prevElementContext &&
-                prevElementContext.node.parent?.componentTag &&
-                prevElementFirstDirective?.name.raw !== "#slot"
-                    ? ` Note that the preceding element has an implicit "#slot" directive.`
-                    : "";
-            if (extraMsg || !expectedList.includes(prevElementFirstDirective?.name.raw ?? "")) {
-                MissingPrecedingDirective(nameLoc, rawName, expectedList, extraMsg);
+            if (!shadowed) {
+                const expectedList = ["#if", "#elif"];
+                const prevElementContext = getPrevElementContext(node);
+                const prevElementFirstDirective = prevElementContext?.sortedDirectives[0];
+                if (!expectedList.includes(prevElementFirstDirective?.name.raw ?? "")) {
+                    MissingPrecedingDirective(
+                        nameLoc,
+                        rawName,
+                        expectedList,
+                        getNonPrimaryPrecedingAnchor(expectedList, prevElementContext),
+                    );
+                }
             }
             break;
         }
@@ -360,6 +365,33 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
 
     if (shouldAnalyzeAttributeValue(directive)) {
         localAnalyzeInterpolation(rawValue, valueStartSourceIndex);
+    }
+
+    // 在前置元素除最高优先级指令外的其余指令中查找期望的前驱指令；
+    // 找到时返回该指令名和前置元素的最高优先级指令名，供缺前置提示说明链为何接不上
+    //
+    // Looks for the expected preceding directive among the directives of the preceding element other
+    // than its highest-priority one; when found, returns its name and the highest-priority directive
+    // name so the missing-preceding message can explain why the chain cannot continue from it.
+    function getNonPrimaryPrecedingAnchor(
+        expectedList: string[],
+        prevElementContext: TemplateNodeContext | null,
+    ): NonPrimaryAnchor | undefined {
+        const directives = prevElementContext?.sortedDirectives;
+        if (!directives?.length) {
+            return;
+        }
+
+        const primaryDirective = directives[0];
+        const anchor = directives.find(item => {
+            return item !== primaryDirective && expectedList.includes(item.name.raw);
+        });
+        if (anchor) {
+            return {
+                anchor: anchor.name.raw,
+                primary: primaryDirective.name.raw,
+            };
+        }
     }
 
     function recordContextPatterns(

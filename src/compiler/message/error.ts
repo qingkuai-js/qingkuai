@@ -1,5 +1,5 @@
+import type { ASTLocation, CompileError, NonPrimaryAnchor } from "#type-declarations/compiler";
 import type { ArbitraryFunc } from "#type-declarations/tools";
-import type { ASTLocation, CompileError } from "#type-declarations/compiler";
 
 import { inputDescriptor, messages } from "../state";
 import { PRESERVED_IDPREFIX, SPREAD_TAG } from "../constants";
@@ -79,16 +79,19 @@ export const InvalidReferenceAttribute = withLocation(
 
 export const MissingPrecedingDirective = withLocation(
     1031,
-    (directive: string, expectedList: string[], extra = "") => {
+    (directive: string, expectedList: string[], nonPrimaryAnchor?: NonPrimaryAnchor) => {
         const expected = expectedList.reduce(
             (ret, cur, index) => `${ret}${index === 0 ? "" : ", "}"${cur}"`,
             "",
         );
-        if (expectedList[0] !== "#if") {
-            return `The "${directive}" directive requires one of the following preceding directives: ${expected}.${extra}`;
-        } else {
-            return `The "${directive}" directive requires a preceding sibling element with one of the following directives: ${expected}.${extra}`;
+        const base =
+            expectedList[0] !== "#if"
+                ? `The "${directive}" directive requires one of the following preceding directives: ${expected}.`
+                : `The "${directive}" directive requires a preceding sibling element with one of the following directives: ${expected}.`;
+        if (!nonPrimaryAnchor) {
+            return base;
         }
+        return `${base} Note that the preceding element's "${nonPrimaryAnchor.anchor}" directive is not its highest-priority directive ("${nonPrimaryAnchor.primary}" takes precedence); a chain can only continue from the highest-priority directive.`;
     },
 );
 
@@ -339,9 +342,12 @@ export const DuplicateSlotAssignment = withLocation(1051, (component: string, na
     return `Multiple nodes are assigned to the same slot("${name}") in <${component}>. Consider using a different slot name in the "#slot" directive.`;
 });
 
-export const ShadowedChainDirective = withLocation(1075, (directive: string, shadowing: string) => {
-    return `The "${directive}" directive cannot be used here because it is shadowed by the higher-priority "${shadowing}" directive on the same element.`;
-});
+export const ShadowedChainDirective = withLocation(
+    1075,
+    (directive: string, shadowing: string, implicit = false) => {
+        return `The "${directive}" directive cannot be used here because it is shadowed by the ${implicit ? "implicit" : "higher-priority"} "${shadowing}" directive on the same element.`;
+    },
+);
 
 export const ConstReactiveDisallowedByOption = withLocation(1070, (intrinsic: string) => {
     return `Marking a \`const\` declaration with the "${intrinsic}" built-in method is disallowed when the "allowConstReactive" compile option is disabled.`;
