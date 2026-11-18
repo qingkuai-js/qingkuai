@@ -3,6 +3,10 @@ import type { Range, TemplateNode, ParsedExpression } from "#type-declarations/c
 
 import ts from "../../ts-api";
 
+import {
+    getParsedExpression,
+    getGeneratedStaticTextContent,
+} from "../../../util/compiler/template";
 import { decodeHTML } from "entities";
 import { CodeEditor } from "../editor";
 import { RawArgumentKind } from "../../enums";
@@ -11,10 +15,6 @@ import { traverseObject } from "../../../util/shared/sundry";
 import { analyzeResult, generateIdentifier } from "../../state";
 import { isArrayBindingNameIdentifier } from "../../ts-ast/assert";
 import { getMaybeReusedString, replaceReusedStringReferences } from "../../optimizer/compress";
-import {
-    getGeneratedStaticTextContent,
-    getParsedExpression,
-} from "../../../util/compiler/template";
 
 export function writeParsedExpression(
     writer: RuntimeCodeWriter,
@@ -56,7 +56,19 @@ export function writeParsedExpression(
         }
 
         const contextKey = parsedPattern === parsedDirective.patterns[0] ? "m" : "x";
-        const transformed = `${parsedDirective.context.argId}.${contextKey}.$`;
+        if (parsedDirective.context.plainRow) {
+            if (!outsideEffect) {
+                if (contextKey === "m") {
+                    parsedDirective.context.rowUsesItem = true;
+                } else {
+                    parsedDirective.context.rowUsesIndex = true;
+                }
+            }
+        }
+
+        const transformed = parsedDirective.context.plainRow
+            ? `${parsedDirective.context.argId}.${contextKey}`
+            : `${parsedDirective.context.argId}.${contextKey}.$`;
         if (reference.shorthand) {
             editor.insert(reference.range[1], `: ${transformed}`);
         } else {

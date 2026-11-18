@@ -28,16 +28,22 @@ import {
     flushMountCollector,
     createMountCollector,
 } from "../dom";
+import {
+    ROW_PLAIN,
+    ROW_USES_ITEM,
+    ROW_USES_INDEX,
+    DST_WHOLE_CONTENT,
+} from "../../util/shared/flags";
 import { invokeRender } from "./render";
-import { optc } from "../../util/shared/sundry";
 import { shallowReact } from "../reactivity/value";
-import { renderEffect } from "../reactivity/effect";
 import { arrayFrom } from "../../util/shared/arrays";
 import { walkNodes } from "../../util/runtime/sundry";
 import { destroy, createDestruction } from "../destroy";
-import { DST_WHOLE_CONTENT } from "../../util/shared/flags";
+import { notEqual, optc } from "../../util/shared/sundry";
+import { EFFECT_SCHEDULING } from "../reactivity/constants";
 import { NIL, REFLECT, UNDEF, DEV_MODE } from "../constants";
 import { DuplicateKey, NonTraverse } from "../messages/error";
+import { renderEffect, runAndUpdateEffect } from "../reactivity/effect";
 import { pauseTracking, resumeTracking } from "../reactivity/optimization";
 import { isArray, isNumber, isString, isUndefined } from "../../util/shared/assert";
 
@@ -46,7 +52,9 @@ export function keyedListBlock(
     getValue: Getter,
     getKey: ArbitraryFunc,
     render: ArbitraryFunc,
+    flags = 0,
 ) {
+    const plainRow = !!(flags & ROW_PLAIN);
     let holesCount = 0;
     let oldKeys: any[] = [];
     let traversable!: Traversable;
@@ -56,30 +64,21 @@ export function keyedListBlock(
     const parentDestruction = currentDestruction;
 
     const mountKeyedInfo = (
-        reference: ChildNode | MountCollector,
         key: any,
         index: number,
         runtimeRender: ArbitraryFunc,
+        reference: ChildNode | MountCollector,
     ) => {
-        const info = {
-            d: NIL,
-            m: shallowReact(NIL),
-            x: shallowReact(NIL),
-        } as unknown as TraverseInfo;
-        fillContext(traversable, index, info);
+        const info = newTraverseInfo(plainRow);
+        fillContext(index, plainRow, traversable, info);
 
-        // 内联 invokeRender：避免为每一行额外分配一个闭包
-        // Inlined `invokeRender` to avoid allocating one closure per row.
         const originalInstance = currentInstance;
         const destruction = createDestruction(parentDestruction, componentInstance);
         setCurrentInstance(componentInstance);
         pauseTracking();
 
         try {
-            const setter = runtimeRender(reference, info);
-            if (DEV_MODE) {
-                info.s = setter;
-            }
+            runtimeRender(reference, info);
         } finally {
             resumeTracking();
             setCurrentInstance(originalInstance);
@@ -125,6 +124,7 @@ export function keyedListBlock(
     };
 
     renderEffect(() => {
+        let firstError: unknown;
         traversable = normalizeTraversable(getValue());
 
         const oldLength = oldKeys.length;
@@ -151,14 +151,14 @@ export function keyedListBlock(
             if (oldKey !== newKeys[start]) {
                 break;
             }
-            updateBlock(infos.get(oldKey)!, traversable, start);
+            firstError ??= updateBlock(start, flags, infos.get(oldKey)!, traversable);
         }
         for (; oldEnd >= start && newEnd >= start; oldEnd--, newEnd--) {
             const oldKey = oldKeys[oldEnd];
             if (oldKey !== newKeys[newEnd]) {
                 break;
             }
-            updateBlock(infos.get(oldKey)!, traversable, newEnd);
+            firstError ??= updateBlock(newEnd, flags, infos.get(oldKey)!, traversable);
         }
         if (start > oldEnd && newEnd === newLength - 1) {
             const infoCountBefore = infos.size;
@@ -166,7 +166,7 @@ export function keyedListBlock(
             const collector = createMountCollector(anchor);
 
             for (let i = start; i < newLength; i++) {
-                mountKeyedInfo(collector, newKeys[i], i, render);
+                mountKeyedInfo(newKeys[i], i, render, collector);
             }
             flushMountCollector(collector);
             oldKeys = newKeys;
@@ -182,6 +182,9 @@ export function keyedListBlock(
                 infos = new Map(infos);
                 holesCount = 0;
             }
+            if (firstError) {
+                throw firstError;
+            }
             return;
         }
 
@@ -196,6 +199,9 @@ export function keyedListBlock(
             if (holesCount > 256 && holesCount > oldKeys.length) {
                 infos = new Map(infos);
                 holesCount = 0;
+            }
+            if (firstError) {
+                throw firstError;
             }
             return;
         }
@@ -254,7 +260,7 @@ export function keyedListBlock(
 
             const collector = createMountCollector(anchor);
             for (let i = newStart; i <= newEnd; i++) {
-                mountKeyedInfo(collector, newKeys[i], i, render);
+                mountKeyedInfo(newKeys[i], i, render, collector);
             }
             flushMountCollector(collector);
             oldKeys = newKeys;
@@ -262,6 +268,9 @@ export function keyedListBlock(
             if (holesCount > 256 && holesCount > oldKeys.length) {
                 infos = new Map(infos);
                 holesCount = 0;
+            }
+            if (firstError) {
+                throw firstError;
             }
             return;
         }
@@ -291,7 +300,7 @@ export function keyedListBlock(
             } else {
                 moved = true;
             }
-            updateBlock(infos.get(oldKey)!, traversable, newIndex);
+            firstError ??= updateBlock(newIndex, flags, infos.get(oldKey)!, traversable);
             patched++;
         }
 
@@ -306,7 +315,7 @@ export function keyedListBlock(
                     : anchor;
 
             if (newIndexToOldIndexMap[i] === 0) {
-                mountKeyedInfo(reference, newKey, newIndex, render);
+                mountKeyedInfo(newKey, newIndex, render, reference);
                 continue;
             }
 
@@ -328,6 +337,9 @@ export function keyedListBlock(
             infos = new Map(infos);
             holesCount = 0;
         }
+        if (firstError) {
+            throw firstError;
+        }
     });
 
     return (key: any) => {
@@ -339,25 +351,19 @@ export function keyedListBlock(
     };
 }
 
-export function listBlock(getValue: Getter, render: ArbitraryFunc) {
+export function listBlock(getValue: Getter, render: ArbitraryFunc, flags = 0) {
     let traversable!: Traversable;
     const infos: TraverseInfo[] = [];
+    const plainRow = !!(flags & ROW_PLAIN);
     const componentInstance = currentInstance!;
     const parentDestruction = currentDestruction;
 
     const mountListInfo = (index: number) => {
-        const info = {
-            d: NIL,
-            m: shallowReact(NIL),
-            x: shallowReact(NIL),
-        } as unknown as TraverseInfo;
-        fillContext(traversable, index, info);
+        const info = newTraverseInfo(plainRow);
+        fillContext(index, plainRow, traversable, info);
         info.d = invokeRender(
             () => {
-                const setter = render(info);
-                if (DEV_MODE) {
-                    info.s = setter;
-                }
+                render(info);
             },
             componentInstance,
             parentDestruction,
@@ -366,10 +372,12 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
     };
 
     renderEffect(() => {
-        const oldLength = infos.length;
+        let firstError: unknown;
         traversable = normalizeTraversable(getValue());
 
+        const oldLength = infos.length;
         const newLength = traversable.l;
+
         if (oldLength === 0) {
             for (let i = 0; i < newLength; i++) {
                 infos[i] = mountListInfo(i);
@@ -384,13 +392,16 @@ export function listBlock(getValue: Getter, render: ArbitraryFunc) {
 
         const updateLength = Math.min(oldLength, newLength);
         for (let i = 0; i < updateLength; i++) {
-            updateBlock(infos[i], traversable, i);
+            firstError ??= updateBlock(i, flags, infos[i], traversable);
         }
         for (let i = oldLength; i > newLength; i--) {
             destroy(infos.pop()!.d);
         }
         for (let i = oldLength; i < newLength; i++) {
             infos.push(mountListInfo(i));
+        }
+        if (firstError) {
+            throw firstError;
         }
     });
 }
@@ -539,26 +550,74 @@ function findDuplicateKey(keys: any[], appendedFrom: number) {
     return UNDEF;
 }
 
-function updateBlock(oldInfo: TraverseInfo, traversable: Traversable, index: number) {
-    fillContext(traversable, index, oldInfo);
+function updateBlock(
+    index: number,
+    flags: number,
+    oldInfo: TraverseInfo,
+    traversable: Traversable,
+): unknown {
+    if (!(flags & ROW_PLAIN)) {
+        fillContext(index, false, traversable, oldInfo);
+        return;
+    }
 
-    if (DEV_MODE) {
-        const setter = oldInfo.s;
-        if (setter) {
-            pauseTracking();
+    const oldM = oldInfo.m;
+    const oldX = oldInfo.x;
+    fillContext(index, true, traversable, oldInfo);
+
+    const changed =
+        ((flags & ROW_USES_ITEM) !== 0 && notEqual(oldM, oldInfo.m)) ||
+        ((flags & ROW_USES_INDEX) !== 0 && notEqual(oldX, oldInfo.x));
+    if (!changed) {
+        return;
+    }
+
+    try {
+        const effects = oldInfo.d.e;
+        if (effects) {
+            // 探测命中过响应式读取：走副作用，交给调度器驱动
+            // The probe found reactive reads: drive the retained effects
+            if (isArray(effects)) {
+                for (let i = 0; i < effects.length; i++) {
+                    const effect = effects[i];
+                    if (!(effect.l & EFFECT_SCHEDULING)) {
+                        runAndUpdateEffect(effect);
+                    }
+                }
+            } else if (!(effects.l & EFFECT_SCHEDULING)) {
+                runAndUpdateEffect(effects);
+            }
+        } else if (oldInfo.u) {
+            // 纯行：带追踪地重跑一次，顺带探测是否出现了响应式读取
+            //
+            // Pure row: rerun with tracking, which also probes for reactive reads
+            const parentDestruction = currentDestruction;
+            setCurrentDestruction(oldInfo.d);
             try {
-                setter(oldInfo);
+                renderEffect(oldInfo.u);
             } finally {
-                resumeTracking();
+                setCurrentDestruction(parentDestruction);
             }
         }
+    } catch (err) {
+        return err;
     }
 }
 
-function fillContext(traversable: Traversable, index: number, context: TraverseContext) {
+function fillContext(
+    index: number,
+    plain: boolean,
+    traversable: Traversable,
+    context: TraverseContext,
+) {
     resolveContext(traversable, index, resolvedContext);
-    context.m.$ = resolvedContext.m;
-    context.x.$ = resolvedContext.x;
+    if (plain) {
+        context.m = resolvedContext.m;
+        context.x = resolvedContext.x;
+    } else {
+        context.m.$ = resolvedContext.m;
+        context.x.$ = resolvedContext.x;
+    }
 }
 
 function resolveContext(traversable: Traversable, index: number, context: TraverseContext) {
@@ -593,4 +652,20 @@ function resolveContext(traversable: Traversable, index: number, context: Traver
         }
     }
     context.x = context.m = NIL;
+}
+
+function newTraverseInfo(plain: boolean): TraverseInfo {
+    if (plain) {
+        return {
+            d: NIL,
+            m: NIL,
+            x: NIL,
+            u: NIL,
+        } as unknown as TraverseInfo;
+    }
+    return {
+        d: NIL,
+        m: shallowReact(NIL),
+        x: shallowReact(NIL),
+    } as unknown as TraverseInfo;
 }

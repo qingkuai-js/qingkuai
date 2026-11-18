@@ -31,3 +31,7 @@ export const DST_ORPHAN_CONTENT = 1 << 5;
 export const COMP_MOUNTED = 1 << 0;
 export const COMP_UPDATING = 1 << 1;
 export const COMP_SVG_NS = 1 << 2;
+
+export const ROW_PLAIN = 1 << 0;
+export const ROW_USES_ITEM = 1 << 1;
+export const ROW_USES_INDEX = 1 << 2;

@@ -184,7 +184,10 @@ export interface ParsedPattern {
 export interface ParsedDirective {
     context?: {
         argId: string;
-        returnsId: string;
+        setterId?: string;
+        plainRow?: boolean;
+        rowUsesItem?: boolean;
+        rowUsesIndex?: boolean;
     };
     src: {
         directive: TemplateAttribute;
@@ -257,6 +260,7 @@ export interface TemplateNodeContext {
     anchorId: string;
     node: TemplateNode;
     inSlotContent: boolean;
+    rowPlainArgId: string;
     shouldBeSelected: boolean;
     namespaceMode: NamespaceMode;
     selectableChildCount: number;
@@ -270,6 +274,7 @@ export interface TemplateNodeContext {
     referenceAttributes: TemplateAttribute[];
     attributesMap: Record<string, TemplateAttribute>;
     contextIdentifiers: Record<string, ParsedDirective>;
+    rowSetterContext: ParsedDirective["context"] | null;
 }
 
 export interface TemplateAnalyzeRet {
@@ -385,7 +390,6 @@ export type CompileOptions = Partial<{
 export type DirectiveRenderInserts = Partial<{
     arg: GeneralFunc;
     context: GeneralFunc;
-    returns: GeneralFunc;
     enclosure: GeneralFunc;
 }>;
 

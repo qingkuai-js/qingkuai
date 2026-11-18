@@ -23,6 +23,14 @@ import {
     getForBlockSelectorInfos,
 } from "../../optimizer/selector";
 import {
+    ROW_PLAIN,
+    COMP_SVG_NS,
+    EVENT_NATIVE,
+    ROW_USES_ITEM,
+    ROW_USES_INDEX,
+    DST_LEADING_ANCHOR,
+} from "../../../util/shared/flags";
+import {
     getParsedEventInfo,
     getParsedDirective,
     getParsedExpression,
@@ -32,17 +40,17 @@ import {
     getTemplateNodeContext,
     getValidTextContentParts,
 } from "../../../util/compiler/template";
-import { DELEGATABLE_EVENTS } from "../../constants";
 import { writeFragmentSelections } from "./fragment";
 import { writeParsedExpression } from "./interpolation";
 import { kebab2Camel } from "../../../util/compiler/string";
+import { isPlainRowEligible } from "../../optimizer/plain-row";
 import { getMaybeReusedString } from "../../optimizer/compress";
 import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
 import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
+import { DELEGATABLE_EVENTS, ROW_FLAG_INTERPRETIVE_MAP } from "../../constants";
 import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
-import { DST_LEADING_ANCHOR, EVENT_NATIVE, COMP_SVG_NS } from "../../../util/shared/flags";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 
@@ -283,12 +291,18 @@ function generateDirectiveBlock(
         }
 
         case "#for": {
+            const plainRow = isPlainRowEligible(node);
             const parsedDirective = getParsedDirective(directive)!;
+            const context = parsedDirective.context!;
             const patterns = parsedDirective.patterns;
             const keyDirective = nodeContext.attributesMap["#key"];
             const fn = keyDirective ? "keyedListBlock" : "listBlock";
             const selectorInfos = keyDirective ? getForBlockSelectorInfos(nodeContext) : [];
             const nodeGetterId = selectorInfos.length ? ensureIdWithNumSuffix("_getNodeByKey") : "";
+
+            if ((context.plainRow = plainRow)) {
+                nodeContext.rowPlainArgId = context.argId;
+            }
 
             if (keyDirective) {
                 analyzeResult.template.keyedSelectorInfos.set(nodeContext, selectorInfos);
@@ -320,9 +334,28 @@ function generateDirectiveBlock(
             return generateDirectiveRender({
                 context() {
                     writeContextDeclaration(writer, directive);
+                    if (context.setterId) {
+                        nodeContext.rowSetterContext = context;
+                    }
                 },
                 enclosure() {
-                    writer.dedent().write(")");
+                    if (plainRow) {
+                        let flags = ROW_PLAIN;
+                        const flagNames = [ROW_FLAG_INTERPRETIVE_MAP[ROW_PLAIN]];
+                        if (context.rowUsesItem) {
+                            flags |= ROW_USES_ITEM;
+                            flagNames.push(ROW_FLAG_INTERPRETIVE_MAP[ROW_USES_ITEM]);
+                        }
+                        if (context.rowUsesIndex) {
+                            flags |= ROW_USES_INDEX;
+                            flagNames.push(ROW_FLAG_INTERPRETIVE_MAP[ROW_USES_INDEX]);
+                        }
+                        const interpretiveComment = inputDescriptor.options.interpretiveComments
+                            ? `/* ${flagNames.join(" | ")} */ `
+                            : "";
+                        writer.write(`, ${interpretiveComment}${flags}`);
+                    }
+                    writer.dedent(!plainRow).write(")");
 
                     if (nodeGetterId) {
                         for (const selectorInfo of selectorInfos) {
@@ -348,12 +381,7 @@ function generateDirectiveBlock(
                         if (keyDirective) {
                             writer.write(`(${nodeContext.anchorId}, `);
                         }
-                        writer.write(parsedDirective.context!.argId).write(keyDirective ? ")" : "");
-                    }
-                },
-                returns() {
-                    if (inputDescriptor.options.debug && parsedDirective.context?.returnsId) {
-                        writer.wrapLine().write(`return ${parsedDirective.context.returnsId}`);
+                        writer.write(context.argId).write(keyDirective ? ")" : "");
                     }
                 },
             });
@@ -373,7 +401,6 @@ function generateDirectiveBlock(
         const childEnclosure = generateNextDirective();
         return () => {
             childEnclosure?.();
-            insert?.returns?.();
             writer.dedent().write("}");
             insert?.enclosure?.();
         };
@@ -414,14 +441,25 @@ function generateRenderEffect(
     skipCheckNode: TemplateNode | null,
 ) {
     let withinRenderEffect = false;
+    let rowContext: TemplateNodeContext | undefined;
     const internalId = generateIdentifier.internal;
     const getterArgId = generateIdentifier.getterArg;
     const setterArgId = generateIdentifier.setterArg;
 
-    const generateRenderEffectCall = () => {
+    const generateRenderEffectCall = (currentNodeContext: TemplateNodeContext) => {
         if (!withinRenderEffect) {
             withinRenderEffect = true;
-            writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false);
+            rowContext = getRowCodegenContext(currentNodeContext.node);
+            if (rowContext?.rowPlainArgId) {
+                writer.wrapLine().write(`${rowContext.rowPlainArgId}.u = () => {`).indent(false);
+            } else {
+                writer.wrapLine().write(`${internalId}.renderEffect(() => {`).indent(false);
+            }
+            if (rowContext?.rowSetterContext) {
+                const setterContext = rowContext.rowSetterContext;
+                rowContext.rowSetterContext = null;
+                writer.wrapLine().write(`${setterContext.setterId!}(${setterContext.argId})`);
+            }
         }
         return writer;
     };
@@ -462,7 +500,7 @@ function generateRenderEffect(
                 : attribute.loc.start.index;
             const isSvgElement = isSvgElementContext(nodeContext);
             if (createRenderEffect) {
-                generateRenderEffectCall();
+                generateRenderEffectCall(nodeContext);
             }
             if (baseName === "class") {
                 const setClassMethod =
@@ -510,7 +548,7 @@ function generateRenderEffect(
         const writeSetTextCall = (outsideEffect: boolean) => {
             if (!isHtmlDirectiveChild(node) && node.content.some(part => part.isInterpolated)) {
                 if (createRenderEffect) {
-                    generateRenderEffectCall();
+                    generateRenderEffectCall(nodeContext);
                 }
 
                 const firstInterpolatedPart = node.content.find(part => {
@@ -678,7 +716,12 @@ function generateRenderEffect(
     }
 
     if (withinRenderEffect) {
-        writer.dedent().write("})");
+        if (rowContext?.rowPlainArgId) {
+            writer.dedent().write("}");
+            writer.wrapLine().write(`${internalId}.renderEffect(${rowContext.rowPlainArgId}.u)`);
+        } else {
+            writer.dedent().write("})");
+        }
     }
 }
 
@@ -1047,4 +1090,14 @@ function getActiveSelectorInfos(nodeContext: TemplateNodeContext) {
         currentNode = currentNode.parent;
     }
     return [];
+}
+
+function getRowCodegenContext(node: TemplateNode | null): TemplateNodeContext | undefined {
+    while (node) {
+        const nodeContext = getTemplateNodeContext(node);
+        if (nodeContext.attributesMap["#for"]) {
+            return nodeContext;
+        }
+        node = node.parent;
+    }
 }

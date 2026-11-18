@@ -183,7 +183,6 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                         nodeContext,
                     },
                     context: {
-                        returnsId: "",
                         argId: ensureIdWithNumSuffix("_ctx"),
                     },
                     base,

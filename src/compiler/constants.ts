@@ -24,6 +24,9 @@ import {
     EVENT_CAPTURE,
     EVENT_PASSIVE,
     EVENT_NATIVE,
+    ROW_PLAIN,
+    ROW_USES_ITEM,
+    ROW_USES_INDEX,
     DST_ROOT,
     DST_WITH_TARGET,
     DST_WHOLE_CONTENT,
@@ -124,6 +127,12 @@ export const DST_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
     [DST_LEADING_ANCHOR]: "LEADING_ANCHOR",
     [DST_ORPHAN_CONTENT]: "ORPHAN_CONTENT",
     [DST_WITH_TARGET]: "WITH_TARGET_DIRECTIVE",
+};
+
+export const ROW_FLAG_INTERPRETIVE_MAP: Readonly<Record<number, string>> = {
+    [ROW_PLAIN]: "PLAIN",
+    [ROW_USES_ITEM]: "USES_ITEM",
+    [ROW_USES_INDEX]: "USES_INDEX",
 };
 
 export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
@@ -428,6 +437,15 @@ export const HTML_ONLY_TAGS: ReadonlySet<string> = new Set([
     "dt",
     "dd",
 ]);
+
+export const ROW_UNSAFE_REFERENCE_ATTRS: ReadonlySet<string> = new Set([
+    "&value",
+    "&number",
+    "&checked",
+    "&group",
+]);
+
+export const ROW_ROOT_ALLOWED_DIRECTIVES: ReadonlySet<string> = new Set(["#for", "#key"]);
 
 export const OPTIONAL_END_TAG_FOLLOWERS: Readonly<Record<string, ReadonlySet<string>>> = {
     td: new Set(["td", "th"]),

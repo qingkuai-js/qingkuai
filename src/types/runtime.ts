@@ -36,7 +36,7 @@ export interface TraverseContext {
 
 export interface TraverseInfo extends TraverseContext {
     d: Destruction;
-    s?: Setter; // row context setter, returned only by debug builds
+    u?: GeneralFunc; // plain-context row updater
 }
 
 export interface ComponentInstanceBase {

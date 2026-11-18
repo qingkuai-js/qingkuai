@@ -819,3 +819,98 @@ test("a slot keeps the props placeholder when a fallback follows", () => {
     const code = compileRuntime(`<slot><span>fallback</span></slot>`);
     expect(code).toContain('_.renderSlot("default", _text1, _.UNDEF, () => {');
 });
+
+test("a plain row renders its bindings from plain context values", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #key={item.id} #for={item of items}>{item.label}</li></ul>
+    `);
+    expect(code).toContain("_ctx1.u = () => {");
+    expect(code).toContain("_.renderEffect(_ctx1.u)");
+    expect(code).toContain("_ctx1.m.label");
+    expect(code).not.toContain("_ctx1.m.$");
+    expect(code).toContain("}, 3)");
+});
+
+test("a plain-context row passes the used context values as interpretive flags", () => {
+    const code = compileRuntime(
+        `
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={item of items}>{item.label}</li></ul>
+    `,
+        true,
+    );
+    expect(code).toContain("/* PLAIN | USES_ITEM */ 3");
+});
+
+test("a row reading only the index reports only the index usage", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={item, index of items}>{index}</li></ul>
+    `);
+    expect(code).toContain("_ctx1.u = () => {");
+    expect(code).toContain("_ctx1.x");
+    expect(code).toContain("}, 5)");
+});
+
+test("a row without dynamic bindings emits no updater", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #key={item.id} #for={item of items}>{item.id}</li></ul>
+    `);
+    expect(code).not.toContain("_ctx1.u");
+    expect(code).toContain("}, 1)");
+});
+
+test("a row containing a nested directive keeps the wrapped context", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={item of items}><b #if={item.ok}>{item.label}</b></li></ul>
+    `);
+    expect(code).not.toContain("_ctx1.u");
+    expect(code).toContain("_ctx1.m.$.ok");
+});
+
+test("a row with a two-way binding keeps the wrapped context", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={item of items}><input &value={item.name}></li></ul>
+    `);
+    expect(code).not.toContain("_ctx1.u");
+    expect(code).toContain("_ctx1.m.$.name");
+});
+
+test("a destructured row re-destructures inside its updater", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ id, label } of items}>{id}:{label}</li></ul>
+    `);
+    expect(code).toContain("const _S1 = v => ({ id, label } = v.m)");
+    expect(code).toMatch(/\.u = \(\) => \{\s*_S1\(_ctx1\)/);
+    expect(code).not.toContain("v.m.$");
+});
+
+test("a destructured row with a nested directive re-destructures inside its effect", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ a, b } of items}><span>{b}</span><i #if={a}></i></li></ul>
+    `);
+    expect(code).toContain("const _S1 = v => ({ a, b } = v.m.$)");
+    expect(code).toMatch(/renderEffect\(\(\) => \{\s*_S1\(_ctx1\)/);
+});

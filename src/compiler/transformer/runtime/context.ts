@@ -13,49 +13,61 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
         return writer;
     }
 
+    let hasDestructuring = false;
     const declaredIds: string[] = [];
+    const context = parsedDirective.context;
     const patterns = parsedDirective.patterns;
     const multiPatterns = patterns.length > 1;
-    const contextId = parsedDirective.context.argId;
     const setterArgId = generateIdentifier.setterArg;
-    const isDebugMode = inputDescriptor.options.debug;
-    for (const pattern of patterns) {
-        if (isDebugMode || pattern.node) {
-            declaredIds.push(...pattern.declaredIdentifiers);
+    const [contextId, plainRow] = [context.argId, !!context.plainRow];
+    for (let i = 0; i < patterns.length; i++) {
+        const pattern = patterns[i];
+        declaredIds.push(...pattern.declaredIdentifiers);
+        if (!isArrayBindingNameIdentifier(pattern.node)) {
+            if (plainRow) {
+                if (i === 0) {
+                    context.rowUsesItem = true;
+                } else {
+                    context.rowUsesIndex = true;
+                }
+            }
+            hasDestructuring = true;
         }
     }
-    if (!declaredIds.length) {
+    if (!hasDestructuring) {
         return writer;
     }
 
-    if (!isDebugMode) {
-        const hasDestructuring = patterns.some(
-            pattern => !isArrayBindingNameIdentifier(pattern.node),
-        );
-        if (!hasDestructuring) {
-            return writer;
-        }
-    }
-
-    const setterId = (parsedDirective.context!.returnsId = ensureIdWithNumSuffix("_S"));
+    const setterId = (context.setterId = ensureIdWithNumSuffix("_S"));
     writer.wrapLine().write(`let ${declaredIds.join(", ")};`);
     writer.wrapLine().write(`const ${setterId} = ${setterArgId} => (`);
     writer.write(multiPatterns ? "[" : "");
-    writeContextPatterns(writer, patterns, true, !isDebugMode);
+    writeContextPatterns(writer, patterns, true, true);
     writer.write(multiPatterns ? "]" : "").write(` = `);
     writer.write(multiPatterns ? "[" : "");
 
     for (let i = 0; i < patterns.length; i++) {
-        const pattern = patterns[i];
-        const shouldWrite = isDebugMode || !isArrayBindingNameIdentifier(pattern.node);
-        if (i && shouldWrite) {
+        if (isArrayBindingNameIdentifier(patterns[i].node)) {
+            continue;
+        }
+        if (i) {
             writer.write(", ");
         }
-        if (shouldWrite) {
-            writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}.$`);
+        writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}`);
+
+        if (!plainRow) {
+            writer.write(".$");
         }
     }
-    return writer.writeLine(multiPatterns ? "])" : ")").writeLine(`${setterId}(${contextId})`);
+    writer.write(multiPatterns ? "])" : ")");
+
+    // 响应式包装的上下文需在挂载期初始化局部变量：行内可能只有嵌套指令读取它们
+    // The context wrapped in reactivity needs to initialize local variables during
+    // the mounting phase: inline there may only be nested directives reading them
+    if (!plainRow) {
+        writer.wrapLine().write(`${setterId}(${contextId})`);
+    }
+    return writer;
 }
 
 export function writeContextPatterns(

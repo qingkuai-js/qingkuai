@@ -10,10 +10,16 @@ const scenario: E2EScenarioInput = {
                 { id: 1, label: "Alpha" },
                 { id: 2, label: "Beta" }
             ]
+
+            const renameFirstItem = () => {
+                items[0].label = "Alpha2"
+            }
         </lang-js>
 
         <section data-page="for-directive-list">
             <h1 id="for-title">For directive</h1>
+
+            <button id="for-rename-first" @click={renameFirstItem}>Rename</button>
 
             <ul id="for-basic-list">
                 <li
@@ -64,5 +70,18 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
             "2-Beta",
         ]);
         await expect(page.locator("#for-repeat-host .for-repeat-item")).toHaveCount(3);
+    });
+
+    test("updates a destructured row after an item property changes", async ({
+        page,
+        visitScenario,
+    }) => {
+        await visitScenario(scenario);
+
+        await page.locator("#for-rename-first").click();
+        await expect(page.locator("#for-destructure-list .for-destructure-item")).toHaveText([
+            "1-Alpha2",
+            "2-Beta",
+        ]);
     });
 });
