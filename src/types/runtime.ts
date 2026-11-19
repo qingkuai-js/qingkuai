@@ -4,6 +4,7 @@ import type {
     AnyObject,
     ObjectKeys,
     GeneralFunc,
+    CompareFunc,
     ArbitraryFunc,
 } from "#type-declarations/tools";
 import type { CANCELABLE } from "../runtime/directives/constants";
@@ -97,6 +98,9 @@ export interface BaseWrapper {
 export interface AccessorWrapper extends BaseWrapper {
     s: Subscription | null; // sync subscription
     a: Subscription | null; // async subscription
+    c: CompareFunc; // value comparator
+    d: Setter | undefined; // debug setter
+    g: ArbitraryFunc | undefined; // getter for deep reactive values
 }
 
 export interface ProxyWrapper extends BaseWrapper {

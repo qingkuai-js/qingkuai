@@ -6,6 +6,7 @@ export type Pair<T> = FixedArray<T, 2>;
 export type Setter<T = any> = (v: T) => void;
 export type AnyObject = Record<ObjectKeys, any>;
 export type ObjectKeys = string | number | symbol;
+export type CompareFunc = (a: any, b: any) => boolean;
 export type RegExpExecRet = ReturnType<RegExp["exec"]>;
 export type ArbitraryFunc<R = any> = (...args: any) => R;
 
