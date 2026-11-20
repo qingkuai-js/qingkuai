@@ -118,6 +118,18 @@ export function generateTemplateRender(
             }
         }
 
+        // Plain 上下文行解构在行复用时由 updater 刷新；没有渲染绑定时，要补只重新解构的 updater
+        // Plain-context row destructuring is refreshed by the updater during row reuse;
+        // when there is no render binding, an updater that only re-destructures must be added.
+        if (nodeContext.rowPlainArgId && nodeContext.rowSetterContext) {
+            const setterContext = nodeContext.rowSetterContext;
+            const argId = nodeContext.rowPlainArgId;
+            nodeContext.rowSetterContext = null;
+            writer.wrapLine().write(`${argId}.u = () => {`).indent(false);
+            writer.wrapLine().write(`${setterContext.setterId!}(${argId})`).dedent().write("}");
+            writer.wrapLine().write(`${generateIdentifier.internal}.renderEffect(${argId}.u)`);
+        }
+
         /**
          * 当节点上除了 #html 指令还存在其他指令时，{@link generateDirectiveBlock}
          * 方法不会为它生成指令块调用语句，因为此情况下调用语句必须等待其他节点（锚点）选择完成后才能生成

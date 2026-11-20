@@ -60,14 +60,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
         }
     }
     writer.write(multiPatterns ? "])" : ")");
-
-    // 响应式包装的上下文需在挂载期初始化局部变量：行内可能只有嵌套指令读取它们
-    // The context wrapped in reactivity needs to initialize local variables during
-    // the mounting phase: inline there may only be nested directives reading them
-    if (!plainRow) {
-        writer.wrapLine().write(`${setterId}(${contextId})`);
-    }
-    return writer;
+    return writer.wrapLine().write(`${setterId}(${contextId})`);
 }
 
 export function writeContextPatterns(
