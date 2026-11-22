@@ -184,6 +184,7 @@ export interface ParsedPattern {
 export interface ParsedDirective {
     context?: {
         argId: string;
+        derivedId?: string;
         setterId?: string;
         plainRow?: boolean;
         rowUsesItem?: boolean;
@@ -213,6 +214,7 @@ export interface ParsedExpression {
     node: TS.Expression;
     reactive: boolean;
     startSourceIndex: number;
+    excludedDerivedId: string | undefined;
     contextReferences: ContextReference[];
     topLevelReferences: TopLevelReferences;
     rawCallExpressions: TS.CallExpression[];

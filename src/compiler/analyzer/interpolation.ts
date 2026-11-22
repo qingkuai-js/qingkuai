@@ -63,28 +63,8 @@ export function analyzeInterpolation(
         return ExpectedExpression(getLocByIndex(startSourceIndex));
     }
 
-    let parsedExpression: ParsedExpression | undefined;
-
-    const attrRawName = parsingInfoKey?.name?.raw;
-    const reactiveContextReferences: ContextReference[] = [];
-    const nodeContext = getTemplateNodeContext(templateNode);
-    const topLevelReferences: TopLevelReferences = newCleanObj();
     const expression = parseExpression(source, startSourceIndex);
-    const isReferenceAttr = attrRawName?.startsWith("&") && nodeContext.attributesMap[attrRawName];
-
-    if (expression) {
-        parsedExpression = {
-            source,
-            reactive: false,
-            node: expression,
-            startSourceIndex,
-            topLevelReferences,
-            rawCallExpressions: [],
-            reusedStringReferences: [],
-            contextReferences: reactiveContextReferences,
-        };
-        analyzeResult.template.parsedExpressions.set(parsingInfoKey, parsedExpression);
-    } else {
+    if (!expression) {
         InvalidExpression(
             getNonWhitespaceLocByIndex(startSourceIndex, startSourceIndex + source.length),
             endSemicolonRE.test(source)
@@ -93,6 +73,25 @@ export function analyzeInterpolation(
         );
         return null;
     }
+
+    const attrRawName = parsingInfoKey?.name?.raw;
+    const reactiveContextReferences: ContextReference[] = [];
+    const nodeContext = getTemplateNodeContext(templateNode);
+    const topLevelReferences: TopLevelReferences = newCleanObj();
+    const isReferenceAttr = attrRawName?.startsWith("&") && nodeContext.attributesMap[attrRawName];
+
+    const parsedExpression: ParsedExpression = {
+        source,
+        reactive: false,
+        node: expression,
+        startSourceIndex,
+        excludedDerivedId: undefined,
+        topLevelReferences,
+        rawCallExpressions: [],
+        reusedStringReferences: [],
+        contextReferences: reactiveContextReferences,
+    };
+    analyzeResult.template.parsedExpressions.set(parsingInfoKey, parsedExpression);
 
     // 判断标识符是否位于某个 raw 调用的参数子树内（此时其读取不计为模板访问）
     // Determine whether the identifier lies inside the argument subtree of a raw call

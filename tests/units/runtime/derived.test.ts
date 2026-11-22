@@ -65,6 +65,30 @@ describe("Not destructuring", () => {
         expect(warningMatcher.args[1].startsWith("An assignment to the derived")).toBeTruthy();
     });
 
+    test("Eager debugging setters run when the source changes without reading", () => {
+        const a = react(1);
+        let value: number | undefined;
+        let calls = 0;
+        const wrapper = derived(
+            () => a.$ * 2,
+            v => {
+                value = v;
+                calls++;
+            },
+            true,
+        )[0];
+
+        expect(value).toBe(2);
+        expect(calls).toBe(1);
+
+        a.$ = 2;
+        expect(value).toBe(4);
+        expect(calls).toBe(2);
+
+        expect(wrapper.$).toBe(4);
+        expect(calls).toBe(2);
+    });
+
     test("Whether debugging setter works", () => {
         const a = react(3);
         const b = react(4);

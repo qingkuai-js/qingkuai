@@ -14,24 +14,29 @@ export function destructuringDerived(
     getter: Getter,
     valuesLen: number,
     debugSetters?: Setter[],
+    eagerDebugSetters = false,
 ) {
     let initialized = false;
 
     const ret: any[] = [];
     const isDebugging = isUndefined(debugSetters);
     const targets = arrayFrom({ length: valuesLen }, () => ({ $: UNDEF }));
-
     const effect = derivedEffect(() => {
         const isReading = initialized && effect.l & EFFECT_DERIVED_READING;
-        if (isReading && effect.l & EFFECT_DERIVED_DIRTY) {
+        if (eagerDebugSetters || (isReading && effect.l & EFFECT_DERIVED_DIRTY)) {
             const values = dfn(getter());
             for (let i = 0; i < valuesLen; i++) {
                 targets[i].$ = values[i];
                 debugSetters?.[i](values[i]);
             }
         }
-        if (initialized && !isReading) {
-            effect.l |= EFFECT_DERIVED_DIRTY;
+        if (initialized) {
+            if (!isReading) {
+                effect.l |= EFFECT_DERIVED_DIRTY;
+            }
+            if (eagerDebugSetters) {
+                effect.l &= ~EFFECT_DERIVED_DIRTY;
+            }
         }
 
         // 这里不移除 EFFECT_DIREVED_READING 标志，因为依赖有效性检查需要访问它，并在结束后移除
@@ -69,6 +74,6 @@ export function destructuringDerived(
     return ((effect.g = getter), ret);
 }
 
-export function derived(fn: Getter, debugSetter?: Setter) {
-    return destructuringDerived(TOARRAY, fn, 1, debugSetter ? [debugSetter] : UNDEF)[0];
+export function derived(fn: Getter, debugSetter?: Setter, eagerDebugSetter = false) {
+    return destructuringDerived(TOARRAY, fn, 1, debugSetter && [debugSetter], eagerDebugSetter)[0];
 }

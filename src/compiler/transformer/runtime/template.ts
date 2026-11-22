@@ -341,7 +341,16 @@ function generateDirectiveBlock(
                     writeContextPatterns(writer, patterns).write(")");
                 }
                 writer.write(" => {").indent().write("return ");
-                writer.writeParsedExpression(keyDirective).dedent().writeLine("},");
+
+                const parsedKeyExpression = getParsedExpression(keyDirective);
+                if (parsedKeyExpression) {
+                    parsedKeyExpression.excludedDerivedId = context.derivedId;
+                }
+                writer.writeParsedExpression(keyDirective);
+                if (parsedKeyExpression) {
+                    parsedKeyExpression.excludedDerivedId = undefined;
+                }
+                writer.dedent().writeLine("},");
             }
             return generateDirectiveRender({
                 context() {

@@ -904,13 +904,63 @@ test("a destructured row re-destructures inside its updater", () => {
     expect(code).not.toContain("v.m.$");
 });
 
-test("a destructured row with a nested directive re-destructures inside its effect", () => {
+test("a destructured legacy row reads its values through a derived object", () => {
     const code = compileRuntime(`
         <lang-js>
             let items = []
         </lang-js>
         <ul><li #for={{ a, b } of items}><span>{b}</span><i #if={a}></i></li></ul>
     `);
-    expect(code).toContain("const _S1 = v => ({ a, b } = v.m.$)");
-    expect(code).toMatch(/renderEffect\(\(\) => \{\s*_S1\(_ctx1\)/);
+    expect(code).toContain("const _dctx1 = _.derived(");
+    expect(code).toContain("const { a, b } = _ctx1.m.$;");
+    expect(code).toContain("return { a, b };");
+    expect(code).toContain("_dctx1.$.b");
+    expect(code).toContain("_dctx1.$.a");
+    expect(code).not.toContain("_S1");
+});
+
+test("a keyed destructured row keeps current key params and rewrites outer refs", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+            let shared = []
+        </lang-js>
+        <ul><li #for={{ id, label } of items} #key={id}>
+            <Child !label={label} />
+            <span #for={item of shared} #key={label + ":" + item.id}>{item.id}</span>
+        </li></ul>
+    `);
+    expect(code).toContain("({ id, label }) => {");
+    expect(code).toContain("return id");
+    expect(code).toContain('_dctx1.$.label + ":" + item.id');
+});
+
+test("a destructured legacy row keeps debug locals and an eager setter", () => {
+    const code = compileRuntime(
+        `
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ a, b } of items}><span>{b}</span><i #if={a}></i></li></ul>
+    `,
+        true,
+    );
+    expect(code).toContain("let a, b;");
+    expect(code).toContain("const _dctx1 = _.derived(");
+    expect(code).toContain("v => ({ a, b } = v)");
+    expect(code).toContain("true)[0]");
+    expect(code).not.toContain("destructuringDerived");
+});
+
+test("a destructured legacy row uses the generated setter argument", () => {
+    const code = compileRuntime(
+        `
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ v, label } of items}><Child !label={label} />{v}</li></ul>
+    `,
+        true,
+    );
+    expect(code).toContain("_v => ({ v, label } = _v)");
 });

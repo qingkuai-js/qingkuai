@@ -15,6 +15,7 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
 
     let hasDestructuring = false;
     const declaredIds: string[] = [];
+    const destructuredIds: string[] = [];
     const context = parsedDirective.context;
     const patterns = parsedDirective.patterns;
     const multiPatterns = patterns.length > 1;
@@ -22,7 +23,6 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
     const [contextId, plainRow] = [context.argId, !!context.plainRow];
     for (let i = 0; i < patterns.length; i++) {
         const pattern = patterns[i];
-        declaredIds.push(...pattern.declaredIdentifiers);
         if (!isArrayBindingNameIdentifier(pattern.node)) {
             if (plainRow) {
                 if (i === 0) {
@@ -32,9 +32,46 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
                 }
             }
             hasDestructuring = true;
+            destructuredIds.push(...pattern.declaredIdentifiers);
         }
+        declaredIds.push(...pattern.declaredIdentifiers);
     }
     if (!hasDestructuring) {
+        return writer;
+    }
+    if (!plainRow) {
+        if (!destructuredIds.length) {
+            return writer;
+        }
+
+        const internalId = generateIdentifier.internal;
+        const debugMode = inputDescriptor.options.debug;
+        const joinedDerivedIds = destructuredIds.join(", ");
+        const derivedId = (context.derivedId = ensureIdWithNumSuffix("_dctx"));
+        if (debugMode) {
+            writer.wrapLine().write(`let ${joinedDerivedIds};`);
+        }
+        writer.wrapLine().write(`const ${derivedId} = ${internalId}.derived(`).indent();
+        writer.write("() => {").indent(false);
+
+        for (let i = 0; i < patterns.length; i++) {
+            const pattern = patterns[i];
+            if (isArrayBindingNameIdentifier(pattern.node)) {
+                continue;
+            }
+            writer.wrapLine().write("const ");
+            writeContextPatterns(writer, [pattern], true);
+            writer.write(` = ${contextId}.${i === 0 ? "m" : "x"}.$;`);
+        }
+        writer.wrapLine().write(`return { ${joinedDerivedIds} };`).dedent().write("}");
+
+        if (debugMode) {
+            writer.writeLine(",");
+            writer.write(`${setterArgId} => ({ ${joinedDerivedIds} } = ${setterArgId}),`);
+            writer.wrapLine().write(`true)[0];`).dedent();
+        } else {
+            writer.writeLine(")").dedent(false);
+        }
         return writer;
     }
 

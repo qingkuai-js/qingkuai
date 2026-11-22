@@ -46,29 +46,41 @@ export function writeParsedExpression(
     });
     for (const reference of parsedExpression.contextReferences) {
         const parsedPattern = reference.pattern;
+        const { context, patterns } = parsedPattern.directive;
+        if (!context) {
+            continue;
+        }
+
         if (!isArrayBindingNameIdentifier(parsedPattern.node)) {
+            if (context.plainRow || !context.derivedId) {
+                continue;
+            }
+            if (parsedExpression.excludedDerivedId === context.derivedId) {
+                continue;
+            }
+
+            const name = parsedExpression.source.slice(reference.range[0], reference.range[1]);
+            const transformed = `${context.derivedId}.$.${name}`;
+            if (reference.shorthand) {
+                editor.insert(reference.range[1], `: ${transformed}`);
+            } else {
+                editor.replace(...reference.range, transformed, true);
+            }
             continue;
         }
 
-        const parsedDirective = parsedPattern.directive;
-        if (!parsedDirective.context) {
-            continue;
-        }
-
-        const contextKey = parsedPattern === parsedDirective.patterns[0] ? "m" : "x";
-        if (parsedDirective.context.plainRow) {
+        const transformedPostfix = context.plainRow ? "" : ".$";
+        const contextKey = parsedPattern === patterns[0] ? "m" : "x";
+        const transformed = `${context.argId}.${contextKey}${transformedPostfix}`;
+        if (context.plainRow) {
             if (!outsideEffect) {
                 if (contextKey === "m") {
-                    parsedDirective.context.rowUsesItem = true;
+                    context.rowUsesItem = true;
                 } else {
-                    parsedDirective.context.rowUsesIndex = true;
+                    context.rowUsesIndex = true;
                 }
             }
         }
-
-        const transformed = parsedDirective.context.plainRow
-            ? `${parsedDirective.context.argId}.${contextKey}`
-            : `${parsedDirective.context.argId}.${contextKey}.$`;
         if (reference.shorthand) {
             editor.insert(reference.range[1], `: ${transformed}`);
         } else {
