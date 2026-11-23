@@ -214,7 +214,6 @@ export interface ParsedExpression {
     node: TS.Expression;
     reactive: boolean;
     startSourceIndex: number;
-    excludedDerivedId: string | undefined;
     contextReferences: ContextReference[];
     topLevelReferences: TopLevelReferences;
     rawCallExpressions: TS.CallExpression[];

@@ -91,10 +91,6 @@ export function writeContextDeclaration(writer: RuntimeCodeWriter, directive: Te
             writer.write(", ");
         }
         writer.write(`${setterArgId}.${i === 0 ? "m" : "x"}`);
-
-        if (!plainRow) {
-            writer.write(".$");
-        }
     }
     writer.write(multiPatterns ? "])" : ")");
     return writer.wrapLine().write(`${setterId}(${contextId})`);

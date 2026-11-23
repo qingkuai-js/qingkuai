@@ -55,10 +55,6 @@ export function writeParsedExpression(
             if (context.plainRow || !context.derivedId) {
                 continue;
             }
-            if (parsedExpression.excludedDerivedId === context.derivedId) {
-                continue;
-            }
-
             const name = parsedExpression.source.slice(reference.range[0], reference.range[1]);
             const transformed = `${context.derivedId}.$.${name}`;
             if (reference.shorthand) {

@@ -86,7 +86,6 @@ export function analyzeInterpolation(
         reactive: false,
         node: expression,
         startSourceIndex,
-        excludedDerivedId: undefined,
         topLevelReferences,
         rawCallExpressions: [],
         reusedStringReferences: [],
@@ -221,7 +220,7 @@ export function analyzeInterpolation(
                 reactiveContextReferences.push({
                     pattern,
                     range: nodeRange,
-                    shorthand: ts.isShorthandPropertyAssignment(node),
+                    shorthand: ts.isShorthandPropertyAssignment(node.parent),
                 });
             }
 

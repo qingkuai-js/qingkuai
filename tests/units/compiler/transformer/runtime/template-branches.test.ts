@@ -964,3 +964,45 @@ test("a destructured legacy row uses the generated setter argument", () => {
     );
     expect(code).toContain("_v => ({ v, label } = _v)");
 });
+
+test("a destructured legacy row rewrites shorthand references", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ a, b } of items}><Child !data={{ a }} />{b}</li></ul>
+    `);
+    expect(code).toContain("a: _dctx1.$.a");
+});
+
+test("a row rewrites shorthand array binding references", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={item of items}><Child !data={{ item }} /></li></ul>
+    `);
+    expect(code).toContain("item: _ctx1.m.$");
+});
+
+test("a legacy destructured row with an index keeps index reads on the context", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ a }, index of items}><Child !data={a} />{index}</li></ul>
+    `);
+    expect(code).toContain("_dctx1.$.a");
+    expect(code).toContain("_ctx1.x.$");
+});
+
+test("a plain destructured row with an index re-destructures only values", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let items = []
+        </lang-js>
+        <ul><li #for={{ a }, index of items}>{a}:{index}</li></ul>
+    `);
+    expect(code).toContain("const _S1 = v => ([{ a }] = [v.m])");
+    expect(code).toContain("_ctx1.x");
+});
