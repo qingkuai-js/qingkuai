@@ -281,6 +281,14 @@ describe("#slot", () => {
                 },
             ],
         );
+
+        analyzeTemplateAndMatchMessages(`<Comp><div #slot={ , from "xxx" }></div></Comp>`, [
+            {
+                type: "error",
+                range: [19, 20],
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
     });
 });
 
@@ -418,6 +426,26 @@ describe(`#for`, () => {
         ]);
     });
 
+    test("Omitted-only binding patterns are rejected", () => {
+        analyzeTemplateAndMatchMessages(`<div #for={ , of arr }></div>`, [
+            {
+                type: "error",
+                range: [12, 13],
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #for={ , , of arr }></div>`, [
+            {
+                type: "error",
+                range: [12, 15],
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #for={ , index of arr }></div>`, []);
+    });
+
     test(`Invalid expression at the first non-whitespace character after keyword`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ item of    ? }></div>`, [
             {
@@ -530,6 +558,14 @@ describe("#then", () => {
             {
                 type: "error",
                 range: [23, 32],
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #await={_} #then={ , }></div>`, [
+            {
+                type: "error",
+                range: [24, 25],
                 value: `The context pattern is empty and does not declare any binding identifiers.`,
             },
         ]);
@@ -688,6 +724,14 @@ describe("#catch", () => {
             {
                 type: "error",
                 range: [24, 37],
+                value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #await={_} #catch={ , }></div>`, [
+            {
+                type: "error",
+                range: [25, 26],
                 value: `The context pattern is empty and does not declare any binding identifiers.`,
             },
         ]);

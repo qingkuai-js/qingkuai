@@ -403,6 +403,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         parsedDirective: ParsedDirective,
         patternNodes: TS.ArrayBindingElement[],
     ) {
+        let reportedEmptyPattern = false;
         for (const patternNode of patternNodes) {
             const validIdentifiers = new Set<string>();
             const parsedPattern: ParsedPattern = {
@@ -441,8 +442,20 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                             valueStartSourceIndex + patternNode.getEnd(),
                         ),
                     );
+                    reportedEmptyPattern = true;
                 }
             }
+        }
+        if (
+            !reportedEmptyPattern &&
+            parsedDirective.patterns.length &&
+            !parsedDirective.patterns.some(pattern => pattern.declaredIdentifiers.size)
+        ) {
+            const patternEndIndex =
+                parsedDirective.keywordIndex === -1
+                    ? valueStartSourceIndex + rawValue.length
+                    : valueStartSourceIndex + parsedDirective.keywordIndex;
+            EmptyContextPattern(getNonWhitespaceLocByIndex(valueStartSourceIndex, patternEndIndex));
         }
     }
 }
