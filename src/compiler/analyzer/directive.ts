@@ -12,6 +12,12 @@ import type {
 import ts from "../ts-api";
 
 import {
+    TestingMode,
+    PositionFlag,
+    AttributeValueEnclosure,
+    HtmlDirectivePlacementKind,
+} from "../enums";
+import {
     InvalidSlotName,
     ConflictingDirectives,
     EmptyContextPattern,
@@ -32,6 +38,7 @@ import {
 } from "../message/error";
 import {
     getLocByIndex,
+    markPositionFlag,
     getNonWhiteSpaceLocByLoc,
     getNonWhitespaceLocByIndex,
 } from "../../util/compiler/position";
@@ -55,7 +62,6 @@ import { parseDirectiveValue } from "../parser/directive";
 import { analyzeResult, inputDescriptor } from "../state";
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry";
 import { walkBindingNameIdentifiers, walkTsNode } from "../ts-ast/walk";
-import { TestingMode, AttributeValueEnclosure, HtmlDirectivePlacementKind } from "../enums";
 import { getPrevElementContext, getTemplateNodeContext } from "../../util/compiler/template";
 import { isRequiredValueDirective, shouldAnalyzeAttributeValue } from "../../util/compiler/assert";
 
@@ -417,10 +423,15 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     valueStartSourceIndex + patternNode.getStart(),
                     valueStartSourceIndex + patternNode.getEnd(),
                 ];
-                walkBindingNameIdentifiers(patternNode.name, ({ text }) => {
-                    validIdentifiers.add(text);
-                    analyzeResult.script.fullIdentifiers.add(text);
-                    nodeContext.contextIdentifiers[text] = parsedDirective;
+                walkBindingNameIdentifiers(patternNode.name, identifier => {
+                    markPositionFlag(
+                        PositionFlag.ContextIdentifier,
+                        valueStartSourceIndex + identifier.getStart(),
+                        valueStartSourceIndex + identifier.getEnd(),
+                    );
+                    validIdentifiers.add(identifier.text);
+                    analyzeResult.script.fullIdentifiers.add(identifier.text);
+                    nodeContext.contextIdentifiers[identifier.text] = parsedDirective;
                 });
 
                 if (validIdentifiers.size === 0) {

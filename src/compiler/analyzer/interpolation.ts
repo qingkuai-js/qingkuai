@@ -129,7 +129,7 @@ export function analyzeInterpolation(
             const idName = node.text;
             const untracked = isInRawArgument(node);
             const nodeRange: Range = [node.getStart(), node.getEnd()];
-            const parsedDirective = nodeContext.contextIdentifiers[idName];
+            const contextDirective = nodeContext.contextIdentifiers[idName];
             const sourceRange = nodeRange.map(n => n + startSourceIndex) as Range;
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[idName];
             analyzeResult.script.fullIdentifiers.add(idName);
@@ -143,12 +143,15 @@ export function analyzeInterpolation(
 
             // 指令上下文标识符不能被修改
             // Directive context identifiers cannot be modified.
-            if (parsedDirective && node.isBindingReference && isIdentifierAssignmentTarget(node)) {
-                ContextIdentifierAssignment(getLocByIndex(...sourceRange), idName);
+            if (contextDirective && node.isBindingReference) {
+                if (isIdentifierAssignmentTarget(node)) {
+                    ContextIdentifierAssignment(getLocByIndex(...sourceRange), idName);
+                }
+                markPositionFlag(PositionFlag.ContextIdentifier, ...sourceRange);
             }
 
             if (
-                !parsedDirective &&
+                !contextDirective &&
                 !topLevelIdentifier &&
                 node.isBindingReference &&
                 intrinsicMethodsRE.test(idName)
@@ -168,7 +171,7 @@ export function analyzeInterpolation(
                     InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), idName);
                 }
             }
-            if (node.isBindingReference && !parsedDirective) {
+            if (node.isBindingReference && !contextDirective) {
                 if (intrinsicVariableRE.test(idName)) {
                     analyzeResult.script.usedIntrinsics.add(idName);
                 }
@@ -210,11 +213,11 @@ export function analyzeInterpolation(
                 }
             }
             if (
-                parsedDirective &&
+                contextDirective &&
                 node.isBindingReference &&
                 shouldContextIdentifierBeTransformed(idName, parsingInfoKey, nodeContext)
             ) {
-                const pattern = parsedDirective.patterns.find(parsedPattern => {
+                const pattern = contextDirective.patterns.find(parsedPattern => {
                     return parsedPattern.declaredIdentifiers.has(idName);
                 })!;
                 reactiveContextReferences.push({
@@ -251,8 +254,8 @@ export function analyzeInterpolation(
             // 3. 访问指令上下文标识符，且该指令上下文标识符所在的指令具有响应式表达式
             // 3. Accessing a directive context identifier whose directive has reactive expressions.
             else if (
-                parsedDirective &&
-                getParsedExpression(parsedDirective.src.directive)?.reactive
+                contextDirective &&
+                getParsedExpression(contextDirective.src.directive)?.reactive
             ) {
                 parsedExpression.reactive ||= true;
             }

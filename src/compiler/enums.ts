@@ -60,9 +60,10 @@ export enum PositionFlag {
     Sourcemap = 1 << 2,
     IsAttributeStart = 1 << 3,
     IsComponentStart = 1 << 4,
-    SourcemapEnd = (1 << 5) | PositionFlag.Sourcemap,
-    SourcemapStart = (1 << 6) | PositionFlag.Sourcemap,
-    isInterpolatedAttributeStart = (1 << 7) | PositionFlag.IsAttributeStart,
+    ContextIdentifier = 1 << 5,
+    SourcemapEnd = (1 << 6) | PositionFlag.Sourcemap,
+    SourcemapStart = (1 << 7) | PositionFlag.Sourcemap,
+    isInterpolatedAttributeStart = (1 << 8) | PositionFlag.IsAttributeStart,
 }
 
 export enum TestingMode {

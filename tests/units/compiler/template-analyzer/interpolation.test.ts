@@ -1,9 +1,11 @@
 import { expect, test } from "vitest";
 import { analyzeTemplateAndMatchMessages } from "./_match";
 import { analyzeResult } from "../../../../src/compiler/state";
+import { PositionFlag } from "../../../../src/compiler/enums";
 import { analyzeScript } from "../../../../src/compiler/analyzer/script";
 import { parseTemplateTesting } from "../../../../src/util/testing/sundry";
 import { analyzeTemplate } from "../../../../src/compiler/analyzer/template";
+import { isPositionFlagSetAtIndex } from "../../../../src/util/compiler/position";
 
 function analyzeTemplateOnly(source: string) {
     const nodes = parseTemplateTesting(source, {
@@ -364,4 +366,18 @@ test("Interpolation reactivity: non-reactive #for context access is not reactive
     );
     expect(parsedExpression).toBeTruthy();
     expect(parsedExpression?.reactive).toBe(false);
+});
+
+test("Context identifier positions are flagged", () => {
+    const source =
+        "<lang-js>let rows = []</lang-js><ul><li #for={{ label } of rows}>{label}</li></ul>";
+    analyzeTemplateOnly(source);
+
+    const declarationIndex = source.indexOf("label");
+    const referenceIndex = source.lastIndexOf("label");
+    expect(isPositionFlagSetAtIndex(PositionFlag.ContextIdentifier, declarationIndex)).toBe(true);
+    expect(isPositionFlagSetAtIndex(PositionFlag.ContextIdentifier, referenceIndex)).toBe(true);
+    expect(isPositionFlagSetAtIndex(PositionFlag.ContextIdentifier, source.indexOf("rows"))).toBe(
+        false,
+    );
 });
