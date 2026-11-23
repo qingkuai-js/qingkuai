@@ -379,7 +379,7 @@ test("Html directive with sibling directive is generated after node selection", 
     expect(code).toContain("_.htmlBlock(");
 });
 
-test("Keyed for without explicit pattern uses anchor argument branch", () => {
+test("Keyed for without explicit pattern passes anchor and row context arguments", () => {
     const code = compileRuntime(`
         <lang-js>
             let list = [1, 2]
@@ -388,7 +388,8 @@ test("Keyed for without explicit pattern uses anchor argument branch", () => {
         <div #for={list} #key={key}>{list.length}</div>
     `);
     expect(code).toContain("_.keyedListBlock(");
-    expect(code).toContain("(_anchor");
+    expect(code).toContain("(_anchor1, _ctx1) => {");
+    expect(code).toContain("_ctx1.u = () => {");
 });
 
 test("Class and select dynamic attributes use dedicated setters", () => {
@@ -503,7 +504,7 @@ test("Await with same-node then writes UNDEF no-render placeholder", () => {
     expect(code).toContain("_.UNDEF,");
 });
 
-test("For without explicit pattern and without key uses default getter arg", () => {
+test("For without explicit pattern receives the row context argument", () => {
     const code = compileRuntime(`
         <lang-js>
             let list = [1, 2, 3]
@@ -511,7 +512,23 @@ test("For without explicit pattern and without key uses default getter arg", () 
         <div #for={list}>x</div>
     `);
     expect(code).toContain("_.listBlock(");
-    expect(code).toContain("__ => {");
+    expect(code).toContain("_ctx1 => {");
+});
+
+test("For without explicit pattern updates from outer reactive values", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let count = 0
+            function inc() {
+                count++
+            }
+        </lang-js>
+        <span #for={count}>{count}</span>
+    `);
+    expect(code).toContain("_.listBlock(");
+    expect(code).toContain("_ctx1 => {");
+    expect(code).toContain("_ctx1.u = () => {");
+    expect(code).toContain("_.renderEffect(_ctx1.u)");
 });
 
 test("Interpretive comments annotate wrapper and general event flags", () => {

@@ -384,17 +384,13 @@ function generateDirectiveBlock(
                     }
                 },
                 arg() {
-                    if (!patterns.length) {
-                        if (!keyDirective) {
-                            writer.write(getterArgId);
-                        } else {
-                            writer.write(nodeContext.anchorId);
-                        }
-                    } else {
+                    if (patterns.length || plainRow) {
                         if (keyDirective) {
                             writer.write(`(${nodeContext.anchorId}, `);
                         }
                         writer.write(context.argId).write(keyDirective ? ")" : "");
+                    } else {
+                        writer.write(keyDirective ? nodeContext.anchorId : getterArgId);
                     }
                 },
             });

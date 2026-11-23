@@ -39,6 +39,10 @@ const scenario: E2EScenarioInput = {
                 <span #for={count} class="for-number-item">N</span>
             </div>
 
+            <div id="for-number-value-host">
+                <span #for={count} class="for-number-value-item">{count}</span>
+            </div>
+
             <div id="for-string-host">
                 <span
                     class="for-string-item"
@@ -86,6 +90,11 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
         await visitScenario(scenario);
 
         await expect(page.locator("#for-number-host .for-number-item")).toHaveCount(3);
+        await expect(page.locator("#for-number-value-host .for-number-value-item")).toHaveText([
+            "3",
+            "3",
+            "3",
+        ]);
         await expect(page.locator("#for-string-host .for-string-item")).toHaveText(["0:Q", "1:K"]);
         await expect(page.locator("#for-set-host .for-set-item")).toHaveText(["S1", "S2"]);
         await expect(page.locator("#for-map-host .for-map-item")).toHaveText([
@@ -99,6 +108,10 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await page.locator("#update-sources").click();
         await expect(page.locator("#for-number-host .for-number-item")).toHaveCount(2);
+        await expect(page.locator("#for-number-value-host .for-number-value-item")).toHaveText([
+            "2",
+            "2",
+        ]);
         await expect(page.locator("#for-string-host .for-string-item")).toHaveText(["0:T", "1:S"]);
         await expect(page.locator("#for-set-host .for-set-item")).toHaveText(["S2", "S3"]);
         await expect(page.locator("#for-map-host .for-map-item")).toHaveText([
