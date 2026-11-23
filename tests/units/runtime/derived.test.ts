@@ -3,13 +3,16 @@ import {
     getCurrentEffect,
     clearDestructionEffects,
 } from "../../../src/util/testing/sundry";
+import {
+    destructuringDerived,
+    derivedDebug as derived,
+} from "../../../src/runtime/reactivity/derived";
 import { arrayFrom } from "../../../src/util/shared/arrays";
 import { currentDestruction } from "../../../src/runtime/state";
 import { constReact, react } from "../../../src/runtime/internal";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { createWarningMatcher } from "../../../src/util/testing/sundry";
 import { EFFECT_DERIVED, WRAPPER } from "../../../src/runtime/reactivity/constants";
-import { derived, destructuringDerived } from "../../../src/runtime/reactivity/derived";
 
 const invokeMarker = vi.fn();
 const warningMatcher = createWarningMatcher();

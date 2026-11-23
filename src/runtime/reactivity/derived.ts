@@ -74,6 +74,10 @@ export function destructuringDerived(
     return ((effect.g = getter), ret);
 }
 
-export function derived(fn: Getter, debugSetter?: Setter, eagerDebugSetter = false) {
+export function derived(fn: Getter) {
+    return derivedDebug(fn);
+}
+
+export function derivedDebug(fn: Getter, debugSetter?: Setter, eagerDebugSetter = false) {
     return destructuringDerived(TOARRAY, fn, 1, debugSetter && [debugSetter], eagerDebugSetter)[0];
 }

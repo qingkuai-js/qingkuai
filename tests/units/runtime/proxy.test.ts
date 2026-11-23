@@ -1,11 +1,11 @@
 import {
-    react,
     constReact,
-    shallowReact,
     shallowConstReact,
     destructuringReact,
+    reactDebug as react,
     destructuringShallowReact,
     destructuringShallowConstReact,
+    shallowReactDebug as shallowReact,
 } from "../../../src/runtime/reactivity/value";
 import { describe, expect, test } from "vitest";
 import { NOOP } from "../../../src/runtime/constants";

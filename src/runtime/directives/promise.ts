@@ -3,8 +3,8 @@ import type { CancelablePromise, Destruction } from "#type-declarations/runtime"
 
 import { NIL } from "../constants";
 import { invokeRender } from "./render";
-import { shallowReact } from "../reactivity/value";
 import { NotPromise } from "../messages/error";
+import { shallowReact } from "../reactivity/value";
 import { renderEffect } from "../reactivity/effect";
 import { isThenable } from "../../util/shared/assert";
 import { objectAssign } from "../../util/shared/aliases";

@@ -2,8 +2,8 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { toRaw } from "../../../src/util/runtime/sundry";
 import { emptyArr } from "../../../src/util/shared/arrays";
 import { createTestInstance } from "../../../src/util/testing/sundry";
-import { constReact, react } from "../../../src/runtime/reactivity/value";
 import { syncEffect as _syncEffect } from "../../../src/runtime/reactivity/effect";
+import { constReact, reactDebug as react } from "../../../src/runtime/reactivity/value";
 
 const arr: any[] = [];
 const invokeMarker = vi.fn();

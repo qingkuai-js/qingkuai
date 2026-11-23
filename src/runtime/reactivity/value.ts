@@ -61,19 +61,27 @@ export const createShallowStore: createStoreFunc = value => {
     return shallowConstReact(value);
 };
 
+export function react(target: any) {
+    return reactDebug(target);
+}
+
 export function constReact(target: any) {
     return reactWithProxy(target);
+}
+
+export function shallowReact(target: any) {
+    return shallowReactDebug(target);
 }
 
 export function shallowConstReact(target: any) {
     return reactWithProxy(target, WRAPPER_SHALLOW);
 }
 
-export function react(target: any, debugSetter?: Setter) {
+export function reactDebug(target: any, debugSetter?: Setter) {
     return reactWithAncestor(target, 0, reactiveNotEqual, debugSetter, constReact);
 }
 
-export function shallowReact(target: any, debugSetter?: Setter) {
+export function shallowReactDebug(target: any, debugSetter?: Setter) {
     return reactWithAncestor(target, WRAPPER_SHALLOW, notEqual, debugSetter);
 }
 
@@ -82,7 +90,7 @@ export function destructuringShallowReact(
     target: any,
     debugSetters?: Setter[],
 ) {
-    return baseDestructuringReact(target, dfn, shallowReact, debugSetters);
+    return baseDestructuringReact(target, dfn, shallowReactDebug, debugSetters);
 }
 
 export function destructuringConstReact(dfn: DestructuringFunc, target: any) {
@@ -94,7 +102,7 @@ export function destructuringShallowConstReact(dfn: DestructuringFunc, target: a
 }
 
 export function destructuringReact(dfn: DestructuringFunc, target: any, debugSetters?: Setter[]) {
-    return baseDestructuringReact(target, dfn, react, debugSetters);
+    return baseDestructuringReact(target, dfn, reactDebug, debugSetters);
 }
 
 export function mutualLink(wrapper: ReactivityWrapper, property?: any, flag?: number) {

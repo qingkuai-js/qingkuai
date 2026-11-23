@@ -1,7 +1,5 @@
 export {
-    react,
     constReact,
-    shallowReact,
     shallowConstReact,
     destructuringReact,
     destructuringConstReact,
@@ -83,7 +81,10 @@ export { makeExpGetter } from "../util/runtime/sundry";
 export { conditionBlock } from "./directives/condition";
 export { noTrackingToRaw } from "./reactivity/optimization";
 export { objectAssign, call } from "../util/shared/aliases";
+export { destructuringDerived } from "./reactivity/derived";
 export { listBlock, keyedListBlock } from "./directives/list";
 export { NIL, UNDEF, NOOP, REFERENCE_VALUE } from "./constants";
-export { derived, destructuringDerived } from "./reactivity/derived";
 export { listen, createEventWrapper, initEvents, delegate } from "./event";
+
+export { derivedDebug as derived } from "./reactivity/derived";
+export { reactDebug as react, shallowReactDebug as shallowReact } from "./reactivity/value";
