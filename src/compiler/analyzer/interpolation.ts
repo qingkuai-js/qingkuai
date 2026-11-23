@@ -19,6 +19,7 @@ import {
     InvalidComponentTag,
     RawReadRequiresArgument,
     RawReadRequiresCallForm,
+    ContextIdentifierAssignment,
     RawReadRequiresSingleArgument,
     InvalidShorthandAttributeName,
     InvalidIntrinsicMethodPlacement,
@@ -141,6 +142,12 @@ export function analyzeInterpolation(
                 return;
             }
 
+            // 指令上下文标识符不能被修改
+            // Directive context identifiers cannot be modified.
+            if (parsedDirective && node.isBindingReference && isIdentifierAssignmentTarget(node)) {
+                ContextIdentifierAssignment(getLocByIndex(...sourceRange), idName);
+            }
+
             if (
                 !parsedDirective &&
                 !topLevelIdentifier &&
@@ -252,6 +259,25 @@ export function analyzeInterpolation(
             }
         }
     });
+
+    // 指令上下文标识符不可用作引用属性的写入目标
+    // Directive context identifiers cannot be used as write targets for reference attributes.
+    if (isReferenceAttr) {
+        const referenceNode = getStriptTypeOperationsNode(expression);
+        if (referenceNode && ts.isIdentifier(referenceNode)) {
+            const referenceName = referenceNode.text;
+            if (nodeContext.contextIdentifiers[referenceName]) {
+                ContextIdentifierAssignment(
+                    getLocByIndex(
+                        referenceNode.getStart() + startSourceIndex,
+                        referenceNode.getEnd() + startSourceIndex,
+                    ),
+                    referenceName,
+                );
+            }
+        }
+    }
+
     return expression;
 }
 

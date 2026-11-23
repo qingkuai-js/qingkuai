@@ -239,6 +239,10 @@ export const DuplicatePromiseBlockDirectives = withLocation(1056, (directive: st
     return `The "${directive}" directive can only appear once in a promise block.`;
 });
 
+export const ContextIdentifierAssignment = withLocation(1076, (name: string) => {
+    return `Cannot assign to context identifier "${name}" because it is a read-only binding.`;
+});
+
 export const UsedForbiddenIdentifierFormat = withLocation(1017, () => {
     return `Identifiers starting with "${PRESERVED_IDPREFIX}" are reserved for internal use.`;
 });

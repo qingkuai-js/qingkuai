@@ -80,12 +80,6 @@ const scenario: E2EScenarioInput = {
                 </li>
             </ul>
 
-            <ul id="binding-list">
-                <li #for={{ id, label } of rows} #key={id}>
-                    <input class="binding-input" &value={label} />
-                    <span class="binding-source">{label}</span>
-                </li>
-            </ul>
         </section>
     `,
     components: {
@@ -196,26 +190,5 @@ export default await defineE2ETestFile(import.meta.url, scenario, ({ test, expec
 
         await page.locator("#btn-replace").click();
         await expect(page.locator("#outer-key-list .outer-key-input").nth(0)).toHaveValue("");
-    });
-
-    test("two-way bindings on destructured values only update the local snapshot", async ({
-        page,
-        visitScenario,
-    }) => {
-        await visitScenario(scenario);
-
-        const input = page.locator("#binding-list .binding-input").nth(0);
-        const source = page.locator("#binding-list .binding-source").nth(0);
-
-        await expect(input).toHaveValue("alpha");
-        await expect(source).toHaveText("alpha");
-
-        await input.fill("typed");
-        await expect(input).toHaveValue("typed");
-        await expect(source).toHaveText("alpha");
-
-        await page.locator("#btn-replace").click();
-        await expect(input).toHaveValue("alpha2");
-        await expect(source).toHaveText("alpha2");
     });
 });
