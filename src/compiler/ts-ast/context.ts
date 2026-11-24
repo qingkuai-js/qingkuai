@@ -1,14 +1,17 @@
 import type { TsNodeWithContext } from "#type-declarations/ts-ast";
 
 import ts from "../ts-api";
+
 import { walkAncestors } from "./walk";
+import { NodeContextFlag } from "../enums";
+import { isNodeContextFlagSet } from "./assert";
 
 // 节点是否处于可提升的顶级作用域（含非函数块级作用域）
 // Whether the node is in a hoistable top-level scope (including non-function block scopes).
 export function isInHoistableTopLevel(node: TsNodeWithContext): boolean {
     let ret = true;
     walkAncestors(node, current => {
-        if (current.isNonHoistableScopeBoundary) {
+        if (isNodeContextFlagSet(NodeContextFlag.NonHoistableScopeBoundary, current)) {
             return ((ret = ts.isSourceFile(current)), true);
         }
     });
@@ -22,7 +25,7 @@ export function isInHoistableTopLevel(node: TsNodeWithContext): boolean {
 export function getScope(node: TsNodeWithContext): TsNodeWithContext | null {
     let ret: any = null;
     walkAncestors(node, current => {
-        if (current.isScopeBoundary) {
+        if (isNodeContextFlagSet(NodeContextFlag.ScopeBoundary, current)) {
             return ((ret = current), true);
         }
     });
@@ -34,7 +37,7 @@ export function getScope(node: TsNodeWithContext): TsNodeWithContext | null {
 export function getNonHoistableScope(node: TsNodeWithContext): TsNodeWithContext | null {
     let ret: any = null;
     walkAncestors(node, current => {
-        if (current.isNonHoistableScopeBoundary) {
+        if (isNodeContextFlagSet(NodeContextFlag.NonHoistableScopeBoundary, current)) {
             return ((ret = current), true);
         }
     });

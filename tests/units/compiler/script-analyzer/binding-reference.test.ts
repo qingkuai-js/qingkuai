@@ -7,6 +7,8 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { parseTsScript } from "../../../../src/util/testing/ts-ast";
 import { walkTsNodeWithContext } from "../../../../src/compiler/ts-ast/walk";
+import { isNodeContextFlagSet } from "../../../../src/compiler/ts-ast/assert";
+import { NodeContextFlag } from "../../../../src/compiler/enums";
 
 function collectIdentifiers(source: string): Map<string, TsNodeWithContext<TS.Identifier>[]> {
     const sourceFile = parseTsScript(source);
@@ -29,11 +31,15 @@ function collectIdentifiers(source: string): Map<string, TsNodeWithContext<TS.Id
 function expectBinding(source: string, truthy: string[], falsy: string[]) {
     const ids = collectIdentifiers(source);
 
+    const isBindingReference = (node: TsNodeWithContext<TS.Identifier>) => {
+        return isNodeContextFlagSet(NodeContextFlag.BindingReference, node);
+    };
+
     for (const name of truthy) {
         const nodes = ids.get(name);
         expect(nodes, `identifier "${name}" not found`).toBeTruthy();
         for (const node of nodes!) {
-            expect(node.isBindingReference, `"${name}" should be a binding reference`).toBe(true);
+            expect(isBindingReference(node), `"${name}" should be a binding reference`).toBe(true);
         }
     }
 
@@ -41,7 +47,7 @@ function expectBinding(source: string, truthy: string[], falsy: string[]) {
         const nodes = ids.get(name);
         expect(nodes, `identifier "${name}" not found`).toBeTruthy();
         for (const node of nodes!) {
-            expect(node.isBindingReference, `"${name}" should NOT be a binding reference`).toBe(
+            expect(isBindingReference(node), `"${name}" should NOT be a binding reference`).toBe(
                 false,
             );
         }

@@ -46,12 +46,8 @@ export type TopLevelDeclaratorNode =
     | Exclude<TopLevelDeclarationNode, TS.VariableDeclarationList>;
 
 export type TsNodeWithContext<T extends TS.Node = TS.Node> = T & {
-    inTopLevel: boolean;
-    inFunction: boolean;
-    isScopeBoundary: boolean;
-    isBindingReference: boolean;
+    contextFlags: number;
     parent: TsNodeWithContext | null;
-    isNonHoistableScopeBoundary: boolean;
     scopeIdentifiers: Set<string> | undefined;
 };
 

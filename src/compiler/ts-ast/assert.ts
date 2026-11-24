@@ -4,11 +4,13 @@ import type {
     NamedNode,
     ScopeBoundary,
     TypeOperation,
+    TsNodeWithContext,
     MemberAccessExpression,
 } from "#type-declarations/ts-ast";
 
 import ts from "../ts-api";
 
+import { NodeContextFlag } from "../enums";
 import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./sundry";
 
 // 判断节点是否为类型操作，如 as、<> 等
@@ -419,4 +421,8 @@ export function isLeftValue(node: TS.Node): boolean {
         return node.text !== "undefined";
     }
     return false;
+}
+
+export function isNodeContextFlagSet(flag: NodeContextFlag, node: TsNodeWithContext) {
+    return !!(node.contextFlags & flag);
 }

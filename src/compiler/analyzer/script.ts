@@ -10,8 +10,6 @@ import type { TopLevelIdentifierNodeInfo } from "#type-declarations/compiler";
 
 import ts from "../ts-api";
 
-import { IdentifierStatus, ReactivityMode } from "../enums";
-
 import {
     indentSpacesRE,
     intrinsicMethodsRE,
@@ -61,6 +59,7 @@ import {
     isLeftValue,
     isFunctionLiteral,
     isRawCallExpression,
+    isNodeContextFlagSet,
     isIdentifierAssignmentTarget,
 } from "../ts-ast/assert";
 import { analyzeExports } from "./exports";
@@ -72,6 +71,7 @@ import { analyzeResult, inputDescriptor } from "../state";
 import { parseExpression, parseScript } from "../parser/script";
 import { getScriptLocByNode } from "../../util/compiler/position";
 import { collectReusedStringReference } from "../optimizer/compress";
+import { IdentifierStatus, NodeContextFlag, ReactivityMode } from "../enums";
 import { isInHoistableTopLevel, isShadowedIdentifier } from "../ts-ast/context";
 import { walkBindingNameIdentifiers, walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk";
 
@@ -127,12 +127,12 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
             }
         }
 
-        if (ts.isReturnStatement(node) && !node.inFunction) {
+        if (ts.isReturnStatement(node) && !isNodeContextFlagSet(NodeContextFlag.InFunction, node)) {
             TopLevelReturnNotSupported(getScriptLocByNode(node));
             return;
         }
 
-        if (node.inTopLevel) {
+        if (isNodeContextFlagSet(NodeContextFlag.InTopLevel, node)) {
             switch (node.kind) {
                 case ts.SyntaxKind.AwaitExpression: {
                     TopLevelAwaitNotSupported(getScriptLocByNode(node));
@@ -266,8 +266,8 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
             }
             walkTsNodeWithContext(initNode.arguments[0], node => {
                 if (
+                    !isNodeContextFlagSet(NodeContextFlag.BindingReference, node) ||
                     !ts.isIdentifier(node) ||
-                    !node.isBindingReference ||
                     !topLevelIdentifiers[node.text] ||
                     isIdentifierAssignmentTarget(node) ||
                     isShadowedIdentifier(node, node.text)
@@ -291,7 +291,10 @@ function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
         return UsedForbiddenIdentifierFormat(getScriptLocByNode(node));
     }
 
-    if (!node.isBindingReference || isShadowedIdentifier(node, node.text)) {
+    if (
+        !isNodeContextFlagSet(NodeContextFlag.BindingReference, node) ||
+        isShadowedIdentifier(node, node.text)
+    ) {
         return;
     }
 
@@ -336,7 +339,11 @@ function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {
 
 function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDeclarationList>) {
     const declareKeyword = getVariableDeclareKeyword(node);
-    if (declareKeyword === "var" ? !isInHoistableTopLevel(node) : !node.inTopLevel) {
+    if (
+        declareKeyword === "var"
+            ? !isInHoistableTopLevel(node)
+            : !isNodeContextFlagSet(NodeContextFlag.InTopLevel, node)
+    ) {
         return;
     }
 
@@ -743,7 +750,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
 
     switch (intrinsicName) {
         case "defaults": {
-            if (!parent.inTopLevel) {
+            if (!isNodeContextFlagSet(NodeContextFlag.InTopLevel, parent)) {
                 throwInvalidUageError();
             }
             if (!inputDescriptor.options.checkMode) {
@@ -800,7 +807,10 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
             }
 
             const grandParentNode = getStriptTypeOperationsParent(parent)!;
-            if (!parent.inTopLevel || !ts.isVariableDeclaration(grandParentNode)) {
+            if (
+                !isNodeContextFlagSet(NodeContextFlag.InTopLevel, parent) ||
+                !ts.isVariableDeclaration(grandParentNode)
+            ) {
                 if (isRaw) {
                     if (getStriptTypeOperationsNode(parent.expression) === node) {
                         recordNonReactiveRead(parent);

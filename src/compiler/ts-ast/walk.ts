@@ -13,8 +13,10 @@ import {
     isScopeBoundary,
     isBindingReference,
     isParameterProperty,
+    isNodeContextFlagSet,
     isNonHoistableScopeBoundary,
 } from "./assert";
+import { NodeContextFlag } from "../enums";
 import { getNonHoistableScope } from "./context";
 import { objectAssign } from "../../util/shared/aliases";
 import { getStriptTypeOperationsParent, getVariableDeclareKeyword } from "./sundry";
@@ -124,24 +126,41 @@ export function walkBindingNameIdentifiers(
 }
 
 function attchContextToNode(node: TS.Node) {
-    let inTopLevel: boolean;
+    let contextFlags = 0;
     const nodeWithContext = node as TsNodeWithContext;
     const currentIsScopeBoundary = isScopeBoundary(node);
     const contextedParent = nodeWithContext.parent as TsNodeWithContext | null;
-    if (!contextedParent || ts.isSourceFile(contextedParent)) {
-        inTopLevel = true;
-    } else {
-        inTopLevel = contextedParent.inTopLevel && !contextedParent.isScopeBoundary;
+    // prettier-ignore
+    if (
+        !contextedParent ||
+        ts.isSourceFile(contextedParent) ||
+        (
+            isNodeContextFlagSet(NodeContextFlag.InTopLevel, contextedParent) &&
+            !isNodeContextFlagSet(NodeContextFlag.ScopeBoundary, contextedParent)
+        )
+    ) {
+        contextFlags |= NodeContextFlag.InTopLevel;
     }
-    objectAssign(nodeWithContext, {
-        inTopLevel,
-        scopeIdentifiers: undefined,
-        isScopeBoundary: currentIsScopeBoundary,
-        isBindingReference: isBindingReference(nodeWithContext),
-        isNonHoistableScopeBoundary: isNonHoistableScopeBoundary(nodeWithContext),
-        inFunction:
-            contextedParent && (contextedParent.inFunction || ts.isFunctionLike(contextedParent)),
-    });
+    //prettier-ignore
+    if (
+        contextedParent &&
+        (
+            ts.isFunctionLike(contextedParent) ||
+            isNodeContextFlagSet(NodeContextFlag.InFunction, contextedParent)
+        )
+    ) {
+        contextFlags |= NodeContextFlag.InFunction;
+    }
+    if (currentIsScopeBoundary) {
+        contextFlags |= NodeContextFlag.ScopeBoundary;
+    }
+    if (isBindingReference(nodeWithContext)) {
+        contextFlags |= NodeContextFlag.BindingReference;
+    }
+    if (isNonHoistableScopeBoundary(nodeWithContext)) {
+        contextFlags |= NodeContextFlag.NonHoistableScopeBoundary;
+    }
+    objectAssign(nodeWithContext, { contextFlags });
 
     if (currentIsScopeBoundary && !ts.isSourceFile(nodeWithContext)) {
         recordScopeIdentifiers(nodeWithContext as TsNodeWithContext<ScopeBoundary>);
@@ -238,7 +257,10 @@ function recordScopeIdentifiers(node: TsNodeWithContext<ScopeBoundary>) {
             const declareKeyword = getVariableDeclareKeyword(
                 declaration.parent as TS.VariableDeclarationList,
             );
-            if (declareKeyword === "var" && !node.isNonHoistableScopeBoundary) {
+            if (
+                declareKeyword === "var" &&
+                !isNodeContextFlagSet(NodeContextFlag.NonHoistableScopeBoundary, node)
+            ) {
                 scopeNode = getNonHoistableScope(node)!;
             }
             if (!ts.isSourceFile(scopeNode)) {

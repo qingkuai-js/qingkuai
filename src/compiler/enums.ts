@@ -1,3 +1,41 @@
+export enum TestingMode {
+    None,
+    Unit,
+    E2e,
+}
+
+export enum RawArgumentKind {
+    Unwrap,
+    Plain,
+}
+
+export enum ParseDiatnosticDealtKind {
+    Record,
+    Ignore,
+    Thrown,
+}
+
+export enum AnalyzeExpressionType {
+    Component,
+    Attribute,
+}
+
+export enum HtmlDirectivePlacementKind {
+    Slot,
+    Component,
+}
+
+export enum ReferenceBindingType {
+    Getter,
+    Setter,
+    Both,
+}
+
+export enum SelectorExpressionType {
+    Prev,
+    Next,
+}
+
 export enum CompileMessageType {
     Error = "error",
     Warning = "warning",
@@ -54,6 +92,14 @@ export enum SelectorOperationMethod {
     SetClassAttribute = "setClassAttribute",
 }
 
+export enum NodeContextFlag {
+    InTopLevel = 1 << 0,
+    InFunction = 1 << 1,
+    ScopeBoundary = 1 << 2,
+    BindingReference = 1 << 3,
+    NonHoistableScopeBoundary = 1 << 4,
+}
+
 export enum PositionFlag {
     InScript = 1 << 0,
     InStyle = 1 << 1,
@@ -64,42 +110,4 @@ export enum PositionFlag {
     SourcemapEnd = (1 << 6) | PositionFlag.Sourcemap,
     SourcemapStart = (1 << 7) | PositionFlag.Sourcemap,
     isInterpolatedAttributeStart = (1 << 8) | PositionFlag.IsAttributeStart,
-}
-
-export enum TestingMode {
-    None,
-    Unit,
-    E2e,
-}
-
-export enum RawArgumentKind {
-    Unwrap,
-    Plain,
-}
-
-export enum ParseDiatnosticDealtKind {
-    Record,
-    Ignore,
-    Thrown,
-}
-
-export enum AnalyzeExpressionType {
-    Component,
-    Attribute,
-}
-
-export enum HtmlDirectivePlacementKind {
-    Slot,
-    Component,
-}
-
-export enum ReferenceBindingType {
-    Getter,
-    Setter,
-    Both,
-}
-
-export enum SelectorExpressionType {
-    Prev,
-    Next,
 }

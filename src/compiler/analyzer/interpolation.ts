@@ -14,6 +14,18 @@ import type {
 import ts from "../ts-api";
 
 import {
+    PositionFlag,
+    ReactivityMode,
+    NodeContextFlag,
+    IdentifierStatus,
+    AnalyzeExpressionType,
+} from "../enums";
+import {
+    isRawCallExpression,
+    isNodeContextFlagSet,
+    isIdentifierAssignmentTarget,
+} from "../ts-ast/assert";
+import {
     InvalidExpression,
     ExpectedExpression,
     InvalidComponentTag,
@@ -42,15 +54,13 @@ import {
 import { parseExpression } from "../parser/script";
 import { newCleanObj } from "../../util/shared/sundry";
 import { kebab2Camel } from "../../util/compiler/string";
+import { isShadowedIdentifier } from "../ts-ast/context";
 import { RedundantNestedRawCall } from "../message/warn";
 import { getAttributeBaseName } from "../../util/compiler/sundry";
-import { isShadowedIdentifier } from "../ts-ast/context";
 import { walkTsNode, walkTsNodeWithContext } from "../ts-ast/walk";
 import { analyzeResult, inputDescriptor, messages } from "../state";
 import { collectReusedStringReference } from "../optimizer/compress";
-import { isRawCallExpression, isIdentifierAssignmentTarget } from "../ts-ast/assert";
 import { endSemicolonRE, intrinsicMethodsRE, intrinsicVariableRE } from "../regular";
-import { PositionFlag, IdentifierStatus, ReactivityMode, AnalyzeExpressionType } from "../enums";
 
 // 分析插值表达式：此方法会将成功解析的语法树节点缓存进 parsedExpressions
 // Analyze interpolations: this method caches successfully parsed AST nodes into `parsedExpressions`.
@@ -132,18 +142,19 @@ export function analyzeInterpolation(
             const contextDirective = nodeContext.contextIdentifiers[idName];
             const sourceRange = nodeRange.map(n => n + startSourceIndex) as Range;
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[idName];
+            const isBindingReference = isNodeContextFlagSet(NodeContextFlag.BindingReference, node);
             analyzeResult.script.fullIdentifiers.add(idName);
 
             // 被嵌套作用域遮蔽的引用：跳过 intrinsic 检测、顶层引用记录与响应性推断
             // References shadowed by a nested scope: skip intrinsic detection,
             // top-level reference recording and reactivity inference.
-            if (node.isBindingReference && isShadowedIdentifier(node, idName)) {
+            if (isBindingReference && isShadowedIdentifier(node, idName)) {
                 return;
             }
 
             // 指令上下文标识符不能被修改
             // Directive context identifiers cannot be modified.
-            if (contextDirective && node.isBindingReference) {
+            if (contextDirective && isBindingReference) {
                 if (isIdentifierAssignmentTarget(node)) {
                     ContextIdentifierAssignment(getLocByIndex(...sourceRange), idName);
                 }
@@ -153,7 +164,7 @@ export function analyzeInterpolation(
             if (
                 !contextDirective &&
                 !topLevelIdentifier &&
-                node.isBindingReference &&
+                isBindingReference &&
                 intrinsicMethodsRE.test(idName)
             ) {
                 if (idName === "raw") {
@@ -171,7 +182,7 @@ export function analyzeInterpolation(
                     InvalidIntrinsicMethodPlacement(getLocByIndex(...sourceRange), idName);
                 }
             }
-            if (node.isBindingReference && !contextDirective) {
+            if (isBindingReference && !contextDirective) {
                 if (intrinsicVariableRE.test(idName)) {
                     analyzeResult.script.usedIntrinsics.add(idName);
                 }
@@ -214,7 +225,7 @@ export function analyzeInterpolation(
             }
             if (
                 contextDirective &&
-                node.isBindingReference &&
+                isBindingReference &&
                 shouldContextIdentifierBeTransformed(idName, parsingInfoKey, nodeContext)
             ) {
                 const pattern = contextDirective.patterns.find(parsedPattern => {
