@@ -77,7 +77,7 @@ describe("Non-component tag", () => {
             {
                 type: "error",
                 range: [20, 23],
-                value: `The <span> tag only supports "&handle" as a reference attribute, but got: "&id".`,
+                value: `The <span> tag does not support the reference attribute "&id"; supported reference attributes: "&handle".`,
             },
         ]);
 
@@ -253,7 +253,8 @@ describe("Component tag", () => {
 
 test("Embedded language tag only allowed static attributes", () => {
     for (const lang of ["js", "ts", "css", "scss", "sass", "less", "stylus", "postcss"]) {
-        analyzeTemplateAndMatchMessages(`<lang-${lang} custom=""></lang-${lang}>`);
+        const attribute = lang === "js" || lang === "ts" ? "reactive" : "global";
+        analyzeTemplateAndMatchMessages(`<lang-${lang} ${attribute}></lang-${lang}>`);
         analyzeTemplateAndMatchMessages(
             `<lang-${lang} !id={_} @click={_} #custom={_} &custom={_}></lang-${lang}>`,
             [
@@ -280,6 +281,53 @@ test("Embedded language tag only allowed static attributes", () => {
             ],
         );
     }
+});
+
+test("Embedded language tags reject unsupported static attributes", () => {
+    analyzeTemplateAndMatchMessages(`<lang-js src="./x.js">let a = 1</lang-js>`, [
+        {
+            type: "error",
+            range: [9, 12],
+            value: `The <lang-js> tag does not support the "src" attribute; supported attributes: "reactive", "shallow".`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<lang-js foo="bar">let a = 1</lang-js>`, [
+        {
+            type: "error",
+            range: [9, 12],
+            value: `The <lang-js> tag does not support the "foo" attribute; supported attributes: "reactive", "shallow".`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<lang-js global>let a = 1</lang-js>`, [
+        {
+            type: "error",
+            range: [9, 15],
+            value: `The <lang-js> tag does not support the "global" attribute; supported attributes: "reactive", "shallow".`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<lang-css foo="bar">a {}</lang-css>`, [
+        {
+            type: "error",
+            range: [10, 13],
+            value: `The <lang-css> tag does not support the "foo" attribute; supported attributes: "global", "src".`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<lang-scss reactive>a {}</lang-scss>`, [
+        {
+            type: "error",
+            range: [11, 19],
+            value: `The <lang-scss> tag does not support the "reactive" attribute; supported attributes: "global", "src".`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<lang-js reactive>let a = 1</lang-js>`);
+    analyzeTemplateAndMatchMessages(`<lang-js shallow>let a = 1</lang-js>`);
+    analyzeTemplateAndMatchMessages(`<lang-css src="./x.css" />`);
+    analyzeTemplateAndMatchMessages(`<lang-css global>a {}</lang-css>`);
 });
 
 test("The name attribute on slot tag must be static", () => {

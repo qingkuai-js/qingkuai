@@ -3,6 +3,7 @@ import type { TemplateAttribute, TemplateNode } from "#type-declarations/compile
 import {
     DuplicateAttributes,
     DisallowedAttributeKind,
+    UnsupportedLangAttribute,
     ConflictingReactivityModes,
     SlotNameAttributeMustBeStatic,
 } from "../message/error";
@@ -26,6 +27,7 @@ export function analyzeAttributes(node: TemplateNode) {
     const isEmbeddedScript = node.tag === "lang-js" || node.tag === "lang-ts";
     const duplicateCheckAttrsMap: Record<string, TemplateAttribute> = newCleanObj();
     const isEbeddedStyle = node.isEmbedded && embeddedStyleLangRE.test(node.tag.slice(5));
+    const embeddedLangAttributes = isEmbeddedScript ? ["reactive", "shallow"] : ["global", "src"];
 
     // 根据 ATTRIBUTE_PRIORITY_MAP 对属性进行排序
     // Sort attributes according to `ATTRIBUTE_PRIORITY_MAP`.
@@ -55,6 +57,13 @@ export function analyzeAttributes(node: TemplateNode) {
         // Only static attributes are allowed on embedded language tags.
         if (node.isEmbedded && interpolatedAttrStartCharRE.test(rawName[0])) {
             DisallowedAttributeKind(attribute.loc, node.tag, rawName);
+            continue;
+        }
+
+        // 嵌入语言标签只支持特定的静态属性
+        // Embedded language tags only support specific static attributes.
+        if (node.isEmbedded && !embeddedLangAttributes.includes(rawName)) {
+            UnsupportedLangAttribute(nameLoc, node.tag, rawName, embeddedLangAttributes);
             continue;
         }
 

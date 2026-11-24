@@ -13,7 +13,7 @@ test("input", () => {
         {
             type: "error",
             range: [7, 12],
-            value: `Invalid reference attribute "&type" on <input>.`,
+            value: `The <input> tag does not support the reference attribute "&type"; supported reference attributes: "&handle", "&value", "&number", "&checked", "&group".`,
         },
     ]);
 
@@ -21,7 +21,7 @@ test("input", () => {
         {
             type: "error",
             range: [7, 14],
-            value: `Invalid reference attribute "&custom" on <input>.`,
+            value: `The <input> tag does not support the reference attribute "&custom"; supported reference attributes: "&handle", "&value", "&number", "&checked", "&group".`,
         },
     ]);
 });
@@ -34,7 +34,7 @@ test("select", () => {
         {
             type: "error",
             range: [8, 16],
-            value: `Invalid reference attribute "&checked" on <select>.`,
+            value: `The <select> tag does not support the reference attribute "&checked"; supported reference attributes: "&handle", "&value".`,
         },
     ]);
 });

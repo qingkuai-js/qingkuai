@@ -70,20 +70,14 @@ export const InvalidUsageForIntrinsicMethods = withLocation(1021, (name: string)
 export const InvalidReferenceAttribute = withLocation(
     1047,
     (tag: string, name: string, allowedList: string[]) => {
-        if (allowedList.length !== 1) {
-            return `Invalid reference attribute "${name}" on <${tag}>.`;
-        }
-        return `The <${tag}> tag only supports "${allowedList[0]}" as a reference attribute, but got: "${name}".`;
+        return `The <${tag}> tag does not support the reference attribute "${name}"; supported reference attributes: ${quotedList(allowedList)}.`;
     },
 );
 
 export const MissingPrecedingDirective = withLocation(
     1031,
     (directive: string, expectedList: string[], nonPrimaryAnchor?: NonPrimaryAnchor) => {
-        const expected = expectedList.reduce(
-            (ret, cur, index) => `${ret}${index === 0 ? "" : ", "}"${cur}"`,
-            "",
-        );
+        const expected = quotedList(expectedList);
         const base =
             expectedList[0] !== "#if"
                 ? `The "${directive}" directive requires one of the following preceding directives: ${expected}.`
@@ -323,6 +317,13 @@ export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: st
     return `Invalid component tag <${tag}>: hyphens are not allowed when using a member expression as a component tag.`;
 });
 
+export const UnsupportedLangAttribute = withLocation(
+    1079,
+    (tag: string, name: string, allowed: string[]) => {
+        return `The <${tag}> tag does not support the "${name}" attribute; supported attributes: ${quotedList(allowed)}.`;
+    },
+);
+
 export const UnrecognizedDirective = withLocation(1033, (directive: string) => {
     return `An attribute name beginning with "#" is treated as a directive, but "${directive}" is not a recognized directive.`;
 });
@@ -399,6 +400,10 @@ class QingkuaiCompileError extends Error implements CompileError {
     ) {
         super(msg);
     }
+}
+
+function quotedList(items: string[]) {
+    return items.map(item => `"${item}"`).join(", ");
 }
 
 // 为原始方法添加一个位置信息参数，且进行包装：非检查模式下直接抛出错误，检查模式下存放错误对象
