@@ -531,6 +531,28 @@ test("For without explicit pattern updates from outer reactive values", () => {
     expect(code).toContain("_.renderEffect(_ctx1.u)");
 });
 
+test("A context pattern name is avoided when generating the row argument", () => {
+    const destructured = compileRuntime(`
+        <lang-js>
+            let rows = [{ _ctx1: 1 }]
+        </lang-js>
+        <div #for={{ _ctx1 } of rows}>{_ctx1}</div>
+    `);
+    expect(destructured).toContain("_ctx2 => {");
+    expect(destructured).toContain("let _ctx1;");
+    expect(destructured).not.toContain("_ctx1 => {");
+
+    const identifier = compileRuntime(`
+        <lang-js>
+            let rows = [{ _ctx1: 1 }]
+        </lang-js>
+        <div #for={_ctx1 of rows}>{_ctx1}</div>
+    `);
+    expect(identifier).toContain("_ctx2 => {");
+    expect(identifier).toContain("_ctx2.m");
+    expect(identifier).not.toContain("_ctx1 => {");
+});
+
 test("Interpretive comments annotate wrapper and general event flags", () => {
     const code = compileRuntimeWithOptions(
         `

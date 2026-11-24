@@ -184,6 +184,14 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             if (directive.valueEnclosure !== AttributeValueEnclosure.None) {
                 const { patterns, keywordIndex, base, baseStartSourceIndex } =
                     parseDirectiveValue(directive)!;
+                for (const patternNode of patterns) {
+                    if (!ts.isOmittedExpression(patternNode)) {
+                        walkBindingNameIdentifiers(patternNode.name, identifier => {
+                            analyzeResult.script.fullIdentifiers.add(identifier.text);
+                        });
+                    }
+                }
+
                 const parsedDirective: ParsedDirective = {
                     src: {
                         directive,
