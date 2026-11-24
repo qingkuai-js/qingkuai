@@ -30,6 +30,7 @@ import {
     MissingPrecedingDirective,
     DuplicateContextIdentifier,
     InvalidKeyDirectivePlacement,
+    UsedForbiddenIdentifierFormat,
     InvalidHtmlDirectivePlacement,
     InvalidSlotDirectivePlacement,
     InvalidScopeDirectivePlacement,
@@ -51,6 +52,7 @@ import {
 } from "../message/warn";
 import {
     DIRECTIVE_LIST,
+    PRESERVED_IDPREFIX,
     CONFLICTING_DIRECTIVES_MAP,
     CHAIN_CONTINUATION_DIRECTIVES,
 } from "../constants";
@@ -438,6 +440,14 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     const text = identifier.text;
                     const end = identifier.getEnd();
                     const start = identifier.getStart();
+                    if (text.startsWith(PRESERVED_IDPREFIX)) {
+                        UsedForbiddenIdentifierFormat(
+                            getLocByIndex(
+                                valueStartSourceIndex + start,
+                                valueStartSourceIndex + end,
+                            ),
+                        );
+                    }
                     if (declaredNames.has(text)) {
                         DuplicateContextIdentifier(
                             getLocByIndex(

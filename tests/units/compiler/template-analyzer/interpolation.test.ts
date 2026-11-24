@@ -405,3 +405,13 @@ test("Await in nested template expressions is rejected", () => {
 test("Await inside async functions in template expressions is allowed", () => {
     analyzeTemplateAndMatchMessages(`<div>{list.map(async x => await x)}</div>`);
 });
+
+test("Identifiers with the reserved prefix are rejected", () => {
+    analyzeTemplateAndMatchMessages(`<div>{__qk__x}</div>`, [
+        {
+            type: "error",
+            range: [6, 13],
+            value: `Identifiers starting with "__qk__" are reserved for internal use.`,
+        },
+    ]);
+});

@@ -34,6 +34,7 @@ import {
     RawReadRequiresCallForm,
     ContextIdentifierAssignment,
     RawReadRequiresSingleArgument,
+    UsedForbiddenIdentifierFormat,
     InvalidShorthandAttributeName,
     InvalidIntrinsicMethodPlacement,
 } from "../message/error";
@@ -52,6 +53,7 @@ import {
     getStriptTypeOperationsNode,
     getStriptTypeOperationsParent,
 } from "../ts-ast/sundry";
+import { PRESERVED_IDPREFIX } from "../constants";
 import { parseExpression } from "../parser/script";
 import { newCleanObj } from "../../util/shared/sundry";
 import { kebab2Camel } from "../../util/compiler/string";
@@ -152,6 +154,10 @@ export function analyzeInterpolation(
             const topLevelIdentifier = analyzeResult.script.topLevelIdentifiers[idName];
             const isBindingReference = isNodeContextFlagSet(NodeContextFlag.BindingReference, node);
             analyzeResult.script.fullIdentifiers.add(idName);
+
+            if (idName.startsWith(PRESERVED_IDPREFIX)) {
+                return UsedForbiddenIdentifierFormat(getLocByIndex(...sourceRange));
+            }
 
             // 被嵌套作用域遮蔽的引用：跳过 intrinsic 检测、顶层引用记录与响应性推断
             // References shadowed by a nested scope: skip intrinsic detection,

@@ -484,6 +484,24 @@ describe(`#for`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ a, b of arr }></div>`, []);
     });
 
+    test("Identifiers with the reserved prefix are rejected", () => {
+        analyzeTemplateAndMatchMessages(`<div #for={__qk__item of arr}></div>`, [
+            {
+                type: "error",
+                range: [11, 21],
+                value: `Identifiers starting with "__qk__" are reserved for internal use.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #for={{ __qk__item } of arr}></div>`, [
+            {
+                type: "error",
+                range: [13, 23],
+                value: `Identifiers starting with "__qk__" are reserved for internal use.`,
+            },
+        ]);
+    });
+
     test(`Invalid expression at the first non-whitespace character after keyword`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ item of    ? }></div>`, [
             {
