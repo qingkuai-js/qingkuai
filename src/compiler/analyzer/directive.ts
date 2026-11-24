@@ -28,12 +28,13 @@ import {
     ShadowedChainDirective,
     TooManyBindingPatterns,
     MissingPrecedingDirective,
-    InvalidHtmlDirectivePlacement,
+    DuplicateContextIdentifier,
     InvalidKeyDirectivePlacement,
-    DuplicatePromiseBlockDirectives,
+    InvalidHtmlDirectivePlacement,
     InvalidSlotDirectivePlacement,
     InvalidScopeDirectivePlacement,
     InvalidTargetDirectivePlacement,
+    DuplicatePromiseBlockDirectives,
     HtmlDirectiveRequiresSingleTextChild,
 } from "../message/error";
 import {
@@ -404,6 +405,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         patternNodes: TS.ArrayBindingElement[],
     ) {
         let reportedEmptyPattern = false;
+        const declaredNames = new Set<string>();
         for (const patternNode of patternNodes) {
             const validIdentifiers = new Set<string>();
             const parsedPattern: ParsedPattern = {
@@ -425,14 +427,29 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                     valueStartSourceIndex + patternNode.getEnd(),
                 ];
                 walkBindingNameIdentifiers(patternNode.name, identifier => {
+                    const text = identifier.text;
+                    const end = identifier.getEnd();
+                    const start = identifier.getStart();
+                    if (declaredNames.has(text)) {
+                        DuplicateContextIdentifier(
+                            getLocByIndex(
+                                valueStartSourceIndex + start,
+                                valueStartSourceIndex + end,
+                            ),
+                            text,
+                            rawName,
+                        );
+                    } else {
+                        declaredNames.add(text);
+                    }
                     markPositionFlag(
                         PositionFlag.ContextIdentifier,
-                        valueStartSourceIndex + identifier.getStart(),
-                        valueStartSourceIndex + identifier.getEnd(),
+                        valueStartSourceIndex + start,
+                        valueStartSourceIndex + end,
                     );
-                    validIdentifiers.add(identifier.text);
-                    analyzeResult.script.fullIdentifiers.add(identifier.text);
-                    nodeContext.contextIdentifiers[identifier.text] = parsedDirective;
+                    validIdentifiers.add(text);
+                    analyzeResult.script.fullIdentifiers.add(text);
+                    nodeContext.contextIdentifiers[text] = parsedDirective;
                 });
 
                 if (validIdentifiers.size === 0) {

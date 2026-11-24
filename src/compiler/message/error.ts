@@ -311,6 +311,10 @@ export const RawReadRequiresCallForm = withLocation(1073, () => {
     return `The built-in method "raw" must be used as a function call when used as a non-reactive read.`;
 });
 
+export const DuplicateContextIdentifier = withLocation(1077, (name: string, directive: string) => {
+    return `The context identifier "${name}" is declared more than once in the "${directive}" directive.`;
+});
+
 export const HyphenNotAllowedInMemberExpressionTag = withLocation(1065, (tag: string) => {
     return `Invalid component tag <${tag}>: hyphens are not allowed when using a member expression as a component tag.`;
 });

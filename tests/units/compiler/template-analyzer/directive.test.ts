@@ -290,6 +290,16 @@ describe("#slot", () => {
             },
         ]);
     });
+
+    test("Duplicate context identifiers are rejected", () => {
+        analyzeTemplateAndMatchMessages(`<Comp><div #slot={{ a, a } from "xxx" }></div></Comp>`, [
+            {
+                type: "error",
+                range: [23, 24],
+                value: `The context identifier "a" is declared more than once in the "#slot" directive.`,
+            },
+        ]);
+    });
 });
 
 describe("#scope", () => {
@@ -446,6 +456,34 @@ describe(`#for`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ , index of arr }></div>`, []);
     });
 
+    test("Duplicate context identifiers are rejected", () => {
+        analyzeTemplateAndMatchMessages(`<div #for={ a, a of arr }></div>`, [
+            {
+                type: "error",
+                range: [15, 16],
+                value: `The context identifier "a" is declared more than once in the "#for" directive.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #for={{ a, a } of arr }></div>`, [
+            {
+                type: "error",
+                range: [16, 17],
+                value: `The context identifier "a" is declared more than once in the "#for" directive.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #for={{ a }, { a } of arr }></div>`, [
+            {
+                type: "error",
+                range: [20, 21],
+                value: `The context identifier "a" is declared more than once in the "#for" directive.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div #for={ a, b of arr }></div>`, []);
+    });
+
     test(`Invalid expression at the first non-whitespace character after keyword`, () => {
         analyzeTemplateAndMatchMessages(`<div #for={ item of    ? }></div>`, [
             {
@@ -567,6 +605,16 @@ describe("#then", () => {
                 type: "error",
                 range: [24, 25],
                 value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
+
+    test("Duplicate context identifiers are rejected", () => {
+        analyzeTemplateAndMatchMessages(`<div #await={_} #then={{ a, a }}></div>`, [
+            {
+                type: "error",
+                range: [28, 29],
+                value: `The context identifier "a" is declared more than once in the "#then" directive.`,
             },
         ]);
     });
@@ -733,6 +781,16 @@ describe("#catch", () => {
                 type: "error",
                 range: [25, 26],
                 value: `The context pattern is empty and does not declare any binding identifiers.`,
+            },
+        ]);
+    });
+
+    test("Duplicate context identifiers are rejected", () => {
+        analyzeTemplateAndMatchMessages(`<div #await={_} #catch={{ a, a }}></div>`, [
+            {
+                type: "error",
+                range: [29, 30],
+                value: `The context identifier "a" is declared more than once in the "#catch" directive.`,
             },
         ]);
     });
