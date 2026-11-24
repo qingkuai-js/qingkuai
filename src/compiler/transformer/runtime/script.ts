@@ -124,9 +124,11 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
     // The first argument of the watcher function with the `Exp` suffix is
     // an expression, which is always wrapped as a getter function at compile time.
     for (const call of analyzeResult.script.watchExpCalls) {
-        const firstArg = call.arguments[0];
-        editor.insert(firstArg.getEnd(), ")");
-        editor.insert(firstArg.getStart(), `() => (`);
+        if (call.arguments.length) {
+            const firstArg = call.arguments[0];
+            editor.insert(firstArg.getEnd(), ")");
+            editor.insert(firstArg.getStart(), `() => (`);
+        }
 
         const callee = getStriptTypeOperationsNode(call.expression);
         editor.replace(...getNodeRange(callee), callee.getText().slice(0, -3), true);
@@ -134,9 +136,11 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
     // setContextExp("key", exp) -> setContextGetter("key", () => (exp))
     for (const call of analyzeResult.script.setContextExpCalls) {
-        const valueArg = call.arguments[1];
-        editor.insert(valueArg.getEnd(), ")");
-        editor.insert(valueArg.getStart(), `() => (`);
+        if (call.arguments.length > 1) {
+            const valueArg = call.arguments[1];
+            editor.insert(valueArg.getEnd(), ")");
+            editor.insert(valueArg.getStart(), `() => (`);
+        }
         editor.replace(...getNodeRange(call.expression), "setContextGetter", true);
     }
 

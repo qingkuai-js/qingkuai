@@ -75,6 +75,28 @@ test("Runtime script: watchExp with type assertion still rewrites to base watch"
     expect(code).toContain("(watch as any)(() => (count + 1), () => {})");
 });
 
+test("Runtime script: watchExp without arguments is left to the runtime", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            watchExp()
+        </lang-js>
+        <div></div>
+    `);
+    expect(code).toContain("watch()");
+    expect(code).toContain("const watch = (...args) => _.watch(instance, ...args)");
+});
+
+test("Runtime script: watchExp with only an expression still wraps it", () => {
+    const code = compileRuntime(`
+        <lang-js>
+            let count = 1
+            watchExp(count)
+        </lang-js>
+        <div>{count}</div>
+    `);
+    expect(code).toContain("watch(() => (count))");
+});
+
 test("Runtime script: destructuring derivedExp in debug emits setter tuple suffix", () => {
     const code = compileRuntime(
         `
@@ -184,6 +206,24 @@ test("Runtime script: setContextExp without setContext still injects setContextG
     );
     expect(code).not.toContain("const setContext = (...args) => _.setContext(instance, ...args)");
     expect(code).toContain('setContextGetter("theme", () => (mode))');
+});
+
+test("Runtime script: setContextExp without a value is left to the runtime", () => {
+    const missingValue = compileRuntime(`
+        <lang-js>
+            setContextExp("theme")
+        </lang-js>
+        <div></div>
+    `);
+    expect(missingValue).toContain('setContextGetter("theme")');
+
+    const missingArgs = compileRuntime(`
+        <lang-js>
+            setContextExp()
+        </lang-js>
+        <div></div>
+    `);
+    expect(missingArgs).toContain("setContextGetter()");
 });
 
 test("Runtime script: setContextGetter injects dedicated closure", () => {
