@@ -11,6 +11,7 @@ import { analyzeDirective } from "./directive";
 import { AnalyzeExpressionType } from "../enums";
 import { newCleanObj } from "../../util/shared/sundry";
 import { analyzeReferenceAttribute } from "./reference";
+import { kebab2Camel } from "../../util/compiler/string";
 import { RedundantBooleanAttributeValue } from "../message/warn";
 import { getAttributeBaseName } from "../../util/compiler/sundry";
 import { ATTRIBUTE_PRIORITY_MAP, SPREAD_TAG } from "../constants";
@@ -114,6 +115,9 @@ export function analyzeAttributes(node: TemplateNode) {
             mappedKey = rawName;
         } else {
             mappedKey ??= baseName;
+        }
+        if (isComponent) {
+            mappedKey = kebab2Camel(mappedKey);
         }
 
         // 重复的属性

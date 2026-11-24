@@ -176,6 +176,49 @@ describe("Component tag", () => {
         ]);
     });
 
+    test("kebab-case and camelCase names resolve to the same prop", () => {
+        analyzeTemplateAndMatchMessages(`<Comp foo-bar="" fooBar="" />`, [
+            {
+                type: "error",
+                range: [17, 23],
+                value: `Duplicate attributes: the static attribute "foo-bar" and the static attribute "fooBar" resolve to the same prop.`,
+            },
+            {
+                type: "error",
+                range: [6, 13],
+                value: `Duplicate attributes: the static attribute "foo-bar" and the static attribute "fooBar" resolve to the same prop.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<Comp foo-bar="" @fooBar={_} />`, [
+            {
+                type: "error",
+                range: [17, 24],
+                value: `Duplicate attributes: the static attribute "foo-bar" and the event listener "@fooBar" resolve to the same prop.`,
+            },
+            {
+                type: "error",
+                range: [6, 13],
+                value: `Duplicate attributes: the static attribute "foo-bar" and the event listener "@fooBar" resolve to the same prop.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<Comp &foo-bar={_} &fooBar={_} />`, [
+            {
+                type: "error",
+                range: [19, 26],
+                value: `Duplicate attributes: the reference attribute "&foo-bar" and the reference attribute "&fooBar" resolve to the same prop.`,
+            },
+            {
+                type: "error",
+                range: [6, 14],
+                value: `Duplicate attributes: the reference attribute "&foo-bar" and the reference attribute "&fooBar" resolve to the same prop.`,
+            },
+        ]);
+
+        analyzeTemplateAndMatchMessages(`<div foo-bar="" fooBar=""></div>`);
+    });
+
     test("Dynamic and static class attribute cannot coexist", () => {
         analyzeTemplateAndMatchMessages(`<Comp class="" !class={_} />`, [
             {
