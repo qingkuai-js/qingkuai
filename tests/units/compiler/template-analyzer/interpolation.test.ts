@@ -381,3 +381,27 @@ test("Context identifier positions are flagged", () => {
         false,
     );
 });
+
+test("Await cannot be used in template expressions", () => {
+    analyzeTemplateAndMatchMessages(`<div>{await p}</div>`, [
+        {
+            type: "error",
+            range: [6, 13],
+            value: "Top-level await is not supported.",
+        },
+    ]);
+});
+
+test("Await in nested template expressions is rejected", () => {
+    analyzeTemplateAndMatchMessages(`<div>{fn(await p)}</div>`, [
+        {
+            type: "error",
+            range: [9, 16],
+            value: "Top-level await is not supported.",
+        },
+    ]);
+});
+
+test("Await inside async functions in template expressions is allowed", () => {
+    analyzeTemplateAndMatchMessages(`<div>{list.map(async x => await x)}</div>`);
+});

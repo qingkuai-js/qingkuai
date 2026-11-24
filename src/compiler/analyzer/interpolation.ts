@@ -30,6 +30,7 @@ import {
     ExpectedExpression,
     InvalidComponentTag,
     RawReadRequiresArgument,
+    TopLevelAwaitNotSupported,
     RawReadRequiresCallForm,
     ContextIdentifierAssignment,
     RawReadRequiresSingleArgument,
@@ -121,6 +122,13 @@ export function analyzeInterpolation(
     walkTsNodeWithContext(expression, node => {
         markNeedSourcemap(node, startSourceIndex);
         collectReusedStringReference(node, parsedExpression.reusedStringReferences);
+
+        if (ts.isAwaitExpression(node) && !isNodeContextFlagSet(NodeContextFlag.InFunction, node)) {
+            TopLevelAwaitNotSupported(
+                getLocByIndex(node.getStart() + startSourceIndex, node.getEnd() + startSourceIndex),
+            );
+            return;
+        }
 
         // 属性访问、调用表达式未被 raw 包裹时，插值块具有响应性
         // The interpolation block is reactive when property access or call expressions are not wrapped by `raw`.

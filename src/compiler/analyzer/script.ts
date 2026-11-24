@@ -101,6 +101,13 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
             return;
         }
 
+        if (!isNodeContextFlagSet(NodeContextFlag.InFunction, node)) {
+            const awaitNode = getTopLevelAwaitNode(node);
+            if (awaitNode) {
+                TopLevelAwaitNotSupported(getScriptLocByNode(awaitNode));
+            }
+        }
+
         if (ts.isVariableDeclarationList(node)) {
             analyzeVariableDeclarationList(node as TsNodeWithContext<TS.VariableDeclarationList>);
             return;
@@ -134,11 +141,6 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
 
         if (isNodeContextFlagSet(NodeContextFlag.InTopLevel, node)) {
             switch (node.kind) {
-                case ts.SyntaxKind.AwaitExpression: {
-                    TopLevelAwaitNotSupported(getScriptLocByNode(node));
-                    return;
-                }
-
                 case ts.SyntaxKind.ModuleDeclaration: {
                     TSModuleDeclarationsAreNotSupported(getScriptLocByNode(node));
                     return;
@@ -282,6 +284,21 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
             });
         }
     });
+}
+
+function getTopLevelAwaitNode(node: TS.Node): TS.Node | undefined {
+    if (ts.isAwaitExpression(node)) {
+        return node;
+    }
+    if (ts.isForOfStatement(node) && node.awaitModifier) {
+        return node.awaitModifier;
+    }
+    if (
+        ts.isVariableDeclarationList(node) &&
+        (node.flags & ts.NodeFlags.AwaitUsing) === ts.NodeFlags.AwaitUsing
+    ) {
+        return node;
+    }
 }
 
 function analyzeIdentifier(node: TsNodeWithContext<TS.Identifier>): void {

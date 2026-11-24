@@ -132,7 +132,7 @@ export const UnclosedInterpolationBlock = withLocation(1003, () => {
 });
 
 export const TopLevelAwaitNotSupported = withLocation(1018, () => {
-    return "Top-level await expressions are not supported.";
+    return "Top-level await is not supported.";
 });
 
 export const TopLevelReturnNotSupported = withLocation(1078, () => {

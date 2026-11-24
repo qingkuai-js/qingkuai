@@ -558,6 +558,46 @@ test("Analyzer rejects return statements outside functions", () => {
     ]);
 });
 
+test("Analyzer rejects top-level await in embedded scripts", () => {
+    localAnalyze(`
+        await Promise.resolve(1)
+        for await (const item of items) {}
+        await using resource = getResource()
+        {
+            await Promise.resolve(2)
+        }
+        async function fn() {
+            await Promise.resolve(3)
+            for await (const item of items) {}
+            await using resource = getResource()
+        }
+        const arrow = async () => await Promise.resolve(4)
+    `);
+
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [0, 24],
+            value: "Top-level await is not supported.",
+        },
+        {
+            type: "error",
+            range: [29, 34],
+            value: "Top-level await is not supported.",
+        },
+        {
+            type: "error",
+            range: [60, 96],
+            value: "Top-level await is not supported.",
+        },
+        {
+            type: "error",
+            range: [103, 127],
+            value: "Top-level await is not supported.",
+        },
+    ]);
+});
+
 test("Analyzer validates intrinsic usage in non-variable-declaration calls", () => {
     localAnalyze(`
         watchExp(1, 2, 3)
