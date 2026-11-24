@@ -4,6 +4,7 @@ import type {
     NamedNode,
     ScopeBoundary,
     TypeOperation,
+    ForStatementLike,
     TsNodeWithContext,
     MemberAccessExpression,
 } from "#type-declarations/ts-ast";
@@ -425,4 +426,23 @@ export function isLeftValue(node: TS.Node): boolean {
 
 export function isNodeContextFlagSet(flag: NodeContextFlag, node: TsNodeWithContext) {
     return !!(node.contextFlags & flag);
+}
+
+export function isAmbientDeclaration(node: TS.Node): boolean {
+    const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
+    return !!modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DeclareKeyword);
+}
+
+export function isInsideLoopInitializer(node: TS.Node): boolean {
+    for (let current: TS.Node | undefined = node; current; current = current.parent) {
+        const parent: TS.Node = current.parent;
+        if (parent && isForStatementLike(parent) && parent.initializer === current) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function isForStatementLike(node: TS.Node): node is ForStatementLike {
+    return ts.isForStatement(node) || ts.isForInStatement(node) || ts.isForOfStatement(node);
 }

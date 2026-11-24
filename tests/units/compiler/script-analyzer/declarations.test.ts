@@ -563,6 +563,48 @@ test("requireReactivityMark: unmarked top-level variable declarations raise 1074
     ]);
 });
 
+test("requireReactivityMark: unmarked declarations without initializers also raise 1074", () => {
+    localAnalyzeWithOptions(
+        `
+            let a
+
+            var b
+
+            let c: number
+
+            declare const d: number
+
+            for (const x of [1]) {}
+
+            for (let k in {})
+
+            for (let i = 0; i < 1; i++) {}
+
+            for (let j = getStart(); j < 1; j++) {}
+        `,
+        {
+            requireReactivityMark: true,
+        },
+    );
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [4, 5],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
+        },
+        {
+            type: "error",
+            range: [11, 12],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
+        },
+        {
+            type: "error",
+            range: [18, 27],
+            value: `Top-level variable declarations must be explicitly marked with a reactivity built-in method ("raw", "reactive", "shallow", "derived" or "alias") when the "requireReactivityMark" compile option is enabled.`,
+        },
+    ]);
+});
+
 test("requireReactivityMark: raw mark on a const literal is the canonical form", () => {
     localAnalyzeWithOptions(
         `

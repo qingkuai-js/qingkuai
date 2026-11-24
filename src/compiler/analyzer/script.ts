@@ -59,7 +59,9 @@ import {
     isLeftValue,
     isFunctionLiteral,
     isRawCallExpression,
+    isAmbientDeclaration,
     isNodeContextFlagSet,
+    isInsideLoopInitializer,
     isIdentifierAssignmentTarget,
 } from "../ts-ast/assert";
 import { analyzeExports } from "./exports";
@@ -504,8 +506,6 @@ function analyzeVariableDeclarationList(node: TsNodeWithContext<TS.VariableDecla
     }
 }
 
-// 推断顶级作用域标识符的响应式状态
-// Infer the reactive status of top-level scope identifiers.
 function inferStatusByVariableDeclaration(
     declaration: TS.VariableDeclaration,
     declarationList: TS.VariableDeclarationList,
@@ -520,18 +520,23 @@ function inferStatusByVariableDeclaration(
     const isDestructuring = !ts.isIdentifier(declaration.name);
     const allowConstReactive = inputDescriptor.options.allowConstReactive;
     const shallowMode = inputDescriptor.options.reactivityMode === ReactivityMode.Shallow;
+    const requireMark = inputDescriptor.options.requireReactivityMark;
+
+    // 循环变量与 ambient 声明不要求响应式标记
+    // Loop variables and ambient declarations do not require reactive marks.
+    const isLoopBinding = isInsideLoopInitializer(declarationList);
     const initNode =
         declaration.initializer && getStriptTypeOperationsNode(declaration.initializer);
-
     if (!initNode) {
+        if (requireMark && !isLoopBinding && !isAmbientDeclaration(declarationList.parent)) {
+            return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw);
+        }
         return isConst ? IdentifierStatus.Raw : IdentifierStatus.Literal;
     }
 
     const isLiteralInit = isLiteral(initNode);
-    const requireMark = inputDescriptor.options.requireReactivityMark;
-
     if (!ts.isCallExpression(initNode)) {
-        if (requireMark) {
+        if (requireMark && !isLoopBinding) {
             return (ExplicitReactivityMarkRequired(declarationLoc), IdentifierStatus.Raw);
         }
 
@@ -555,7 +560,7 @@ function inferStatusByVariableDeclaration(
 
     const callee = getStriptTypeOperationsNode(initNode.expression)!;
     if (!ts.isIdentifier(callee) || !intrinsicReactiveMethodsRE.test(callee.text)) {
-        if (!requireMark) {
+        if (!requireMark || isLoopBinding) {
             if (isConst) {
                 return IdentifierStatus.Pending;
             }
