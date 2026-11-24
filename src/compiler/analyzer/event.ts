@@ -50,7 +50,7 @@ export function analyzeEvent(node: TemplateNode, event: TemplateAttribute) {
 
     // 同名简写语法，更新顶级作用域标识符的响应性状态
     // For shorthand properties with the same name, update the reactive status of the corresponding top-level scope identifier.
-    if (!event.equalSign) {
+    if (!event.equalSign && parseResult.eventName.length > 1) {
         const eventNameLoc = getLocByIndex(
             nameLoc.start.index,
             nameLoc.start.index + parseResult.eventName.length,

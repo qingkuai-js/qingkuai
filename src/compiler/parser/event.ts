@@ -10,6 +10,7 @@ import {
     ConflictingEventFlags,
     ExpectedEventFlagName,
     UnrecognizedEventFlag,
+    NoNameForInterpolatedAttribute,
 } from "../message/error";
 import { keyboardEventNamesRE } from "../regular";
 import { inputDescriptor, messages } from "../state";
@@ -34,6 +35,15 @@ export const parseEventFlag: ParseEventFlagFunc = (event: TemplateAttribute) => 
     const existingFlags: Record<string, ASTLocation> = newCleanObj();
     const eventName = -1 === flagStartIndex ? source : source.slice(0, flagStartIndex);
     const sourceFlagsArr = -1 === flagStartIndex ? [] : source.slice(flagStartIndex + 1).split("|");
+
+    // 仅指定了事件标志而没有事件名
+    // Only event flags are specified but the event name is missing.
+    if (flagStartIndex !== -1 && eventName.length <= 1) {
+        NoNameForInterpolatedAttribute(
+            getLocByIndex(startSourceIndex, startSourceIndex + eventName.length),
+            eventName,
+        );
+    }
 
     const updateFlag = (flagName: string, flagNameLoc: ASTLocation, wrapper = false) => {
         const target = wrapper ? wrapperFlag : generalFlag;

@@ -198,3 +198,37 @@ test("The key related event flag can only be used on keyboard events", () => {
         },
     ]);
 });
+
+test("Event name must be specified when flags are used", () => {
+    analyzeTemplateAndMatchMessages(`<div @|prevent={f}></div>`, [
+        {
+            type: "error",
+            range: [5, 6],
+            value: `The event listener must be specified a name.`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<div @={() => {}}></div>`, [
+        {
+            type: "error",
+            range: [5, 6],
+            value: `The event listener must be specified a name.`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<div @|prevent></div>`, [
+        {
+            type: "error",
+            range: [5, 6],
+            value: `The event listener must be specified a name.`,
+        },
+    ]);
+
+    analyzeTemplateAndMatchMessages(`<div @></div>`, [
+        {
+            type: "error",
+            range: [5, 6],
+            value: `The event listener must be specified a name.`,
+        },
+    ]);
+});
