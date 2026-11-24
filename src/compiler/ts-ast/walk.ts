@@ -139,6 +139,8 @@ function attchContextToNode(node: TS.Node) {
         isScopeBoundary: currentIsScopeBoundary,
         isBindingReference: isBindingReference(nodeWithContext),
         isNonHoistableScopeBoundary: isNonHoistableScopeBoundary(nodeWithContext),
+        inFunction:
+            contextedParent && (contextedParent.inFunction || ts.isFunctionLike(contextedParent)),
     });
 
     if (currentIsScopeBoundary && !ts.isSourceFile(nodeWithContext)) {

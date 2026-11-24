@@ -27,7 +27,8 @@ import {
     DuplicateDefaultsCall,
     RawReadRequiresArgument,
     RawReadRequiresCallForm,
-    TopLevelAwaitNotBeSupported,
+    TopLevelAwaitNotSupported,
+    TopLevelReturnNotSupported,
     RawReadRequiresSingleArgument,
     UsedForbiddenIdentifierFormat,
     IdentifierCannotBeRedeclared,
@@ -126,10 +127,15 @@ function analyzeSourceFile(sourceFile: TS.SourceFile): void {
             }
         }
 
+        if (ts.isReturnStatement(node) && !node.inFunction) {
+            TopLevelReturnNotSupported(getScriptLocByNode(node));
+            return;
+        }
+
         if (node.inTopLevel) {
             switch (node.kind) {
                 case ts.SyntaxKind.AwaitExpression: {
-                    TopLevelAwaitNotBeSupported(getScriptLocByNode(node));
+                    TopLevelAwaitNotSupported(getScriptLocByNode(node));
                     return;
                 }
 

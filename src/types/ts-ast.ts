@@ -47,6 +47,7 @@ export type TopLevelDeclaratorNode =
 
 export type TsNodeWithContext<T extends TS.Node = TS.Node> = T & {
     inTopLevel: boolean;
+    inFunction: boolean;
     isScopeBoundary: boolean;
     isBindingReference: boolean;
     parent: TsNodeWithContext | null;

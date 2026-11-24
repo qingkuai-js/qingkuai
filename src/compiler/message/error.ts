@@ -131,8 +131,12 @@ export const UnclosedInterpolationBlock = withLocation(1003, () => {
     return "Unclosed interpolation expression block.";
 });
 
-export const TopLevelAwaitNotBeSupported = withLocation(1018, () => {
+export const TopLevelAwaitNotSupported = withLocation(1018, () => {
     return "Top-level await expressions are not supported.";
+});
+
+export const TopLevelReturnNotSupported = withLocation(1078, () => {
+    return "Top-level return statements are not supported.";
 });
 
 export const UnclosedStaticAttributeValue = withLocation(1008, () => {

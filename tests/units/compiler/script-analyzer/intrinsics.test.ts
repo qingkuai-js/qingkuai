@@ -517,6 +517,47 @@ test("Analyzer emits errors for top-level await, namespace and reserved identifi
     expect(messages.length).toBeGreaterThanOrEqual(3);
 });
 
+test("Analyzer rejects return statements outside functions", () => {
+    localAnalyze(`
+        return 1
+        if (ok) {
+            return 2
+        }
+        function fn() {
+            return 3
+        }
+        const arrow = () => {
+            return 4
+        }
+        for (const item of items) {
+            if (item) return 5
+        }
+        const obj = {
+            get value() {
+                return 6
+            }
+        }
+    `);
+
+    localMatchCompileMessages([
+        {
+            type: "error",
+            range: [0, 8],
+            value: `Top-level return statements are not supported.`,
+        },
+        {
+            type: "error",
+            range: [23, 31],
+            value: `Top-level return statements are not supported.`,
+        },
+        {
+            type: "error",
+            range: [144, 152],
+            value: `Top-level return statements are not supported.`,
+        },
+    ]);
+});
+
 test("Analyzer validates intrinsic usage in non-variable-declaration calls", () => {
     localAnalyze(`
         watchExp(1, 2, 3)
