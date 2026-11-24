@@ -73,6 +73,51 @@ describe("Invalid usages of built-in methods", () => {
         ]);
     });
 
+    test("In loop initializers", () => {
+        localAnalyze(`
+            for (let a = reactive(0); a < 1; a++) {}
+
+            for (let b = shallow(0); b < 1; b++) {}
+
+            for (const c = derived(() => 1); c < 1; c++) {}
+
+            let target = { value: 0 }
+
+            for (let d = alias(target.value); d < 1; d++) {}
+
+            for (let e = raw(0); e < 1; e++) {}
+
+            for (let f = defaults(); f < 1; f++) {}
+        `);
+        localMatchCompileMessages([
+            {
+                type: "error",
+                range: [13, 21],
+                value: `The built-in method "reactive" must be called at top-level scope to mark the variable initializer.`,
+            },
+            {
+                type: "error",
+                range: [55, 62],
+                value: `The built-in method "shallow" must be called at top-level scope to mark the variable initializer.`,
+            },
+            {
+                type: "error",
+                range: [98, 105],
+                value: `The built-in method "derived" must be called at top-level scope to mark the variable initializer.`,
+            },
+            {
+                type: "error",
+                range: [172, 177],
+                value: `The built-in method "alias" must be called at top-level scope to mark the variable initializer.`,
+            },
+            {
+                type: "error",
+                range: [259, 267],
+                value: `The built-in method "defaults" must be a function call at the top-level scope.`,
+            },
+        ]);
+    });
+
     test("Not standalone calls", () => {
         localAnalyze(`
             const a = defaults

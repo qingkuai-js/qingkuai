@@ -758,6 +758,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
     const intrinsicName = node.text;
     const isRaw = intrinsicName === "raw";
     const parent = getStriptTypeOperationsParent(node)!;
+    const isParentInTopLevel = isNodeContextFlagSet(NodeContextFlag.InTopLevel, parent);
 
     const throwInvalidUageError = () => {
         InvalidUsageForIntrinsicMethods(getScriptLocByNode(node), intrinsicName);
@@ -772,7 +773,7 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
 
     switch (intrinsicName) {
         case "defaults": {
-            if (!isNodeContextFlagSet(NodeContextFlag.InTopLevel, parent)) {
+            if (!isParentInTopLevel || isInsideLoopInitializer(parent)) {
                 throwInvalidUageError();
             }
             if (!inputDescriptor.options.checkMode) {
@@ -830,7 +831,8 @@ function checkUsageOfIntrinsicMethods(node: TsNodeWithContext<TS.Identifier>): v
 
             const grandParentNode = getStriptTypeOperationsParent(parent)!;
             if (
-                !isNodeContextFlagSet(NodeContextFlag.InTopLevel, parent) ||
+                !isParentInTopLevel ||
+                isInsideLoopInitializer(parent) ||
                 !ts.isVariableDeclaration(grandParentNode)
             ) {
                 if (isRaw) {
