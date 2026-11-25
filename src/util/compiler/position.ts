@@ -51,6 +51,10 @@ export function getScriptLocByNode(node: TS.Node) {
     return getScriptLocByIndex(node.getStart(), node.getEnd());
 }
 
+export function getScriptRangeByNode(node: TS.Node): Range {
+    return getRangeByLocation(getScriptLocByNode(node));
+}
+
 export function getLocWithDefaultEnd(index: number): ASTLocation {
     return { start: getPosByIndex(index), end: newASTPosition() };
 }

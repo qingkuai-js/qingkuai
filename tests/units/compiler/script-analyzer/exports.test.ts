@@ -22,6 +22,13 @@ function localMatchCompileMessages(expected: ExpectedCompileMessage[]) {
     matchCompileMessages(expected);
 }
 
+function getExportedBindings() {
+    return analyzeResult.script.exportedBindings.map(({ local, exported }) => ({
+        local,
+        exported,
+    }));
+}
+
 test("Named export: allows named exports in embedded script", () => {
     localAnalyze(`
         export let count = reactive(0)
@@ -30,7 +37,7 @@ test("Named export: allows named exports in embedded script", () => {
         }
         export { inc as increase }
     `);
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "count",
             exported: "count",
@@ -104,7 +111,7 @@ test("Type export: rejects type specifier in mixed named exports", () => {
             value: "Type export is not supported in embedded script block.",
         },
     ]);
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "a",
             exported: "a",
@@ -124,7 +131,7 @@ test("Type export: rejects exported type alias declarations", () => {
             value: "Type export is not supported in embedded script block.",
         },
     ]);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Type export: rejects exported interface declarations", () => {
@@ -139,7 +146,7 @@ test("Type export: rejects exported interface declarations", () => {
             value: "Type export is not supported in embedded script block.",
         },
     ]);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Type export: multiple type specifiers produce multiple errors", () => {
@@ -147,7 +154,7 @@ test("Type export: multiple type specifiers produce multiple errors", () => {
         export type { A, B, C }
     `);
     expect(messages.length).toBe(1);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Named export: supports string literal export names", () => {
@@ -157,7 +164,7 @@ test("Named export: supports string literal export names", () => {
     `);
 
     expect(messages.length).toBe(0);
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "a",
             exported: "x-y",
@@ -173,7 +180,7 @@ test("Named export: repeated exported names are preserved in order", () => {
     `);
 
     expect(messages.length).toBe(0);
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "a",
             exported: "x",
@@ -191,7 +198,7 @@ test("Declaration export: enum exports are supported as values", () => {
     `);
 
     expect(messages.length).toBe(0);
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "Foo",
             exported: "Foo",
@@ -217,7 +224,7 @@ test("Type export: no exported bindings when all exports are rejected", () => {
             value: "Type export is not supported in embedded script block.",
         },
     ]);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Named export: empty export clause is allowed and produces no bindings", () => {
@@ -227,7 +234,7 @@ test("Named export: empty export clause is allowed and produces no bindings", ()
     `);
 
     expect(messages.length).toBe(0);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Declaration export: function, class and namespace exports are collected", () => {
@@ -239,7 +246,7 @@ test("Declaration export: function, class and namespace exports are collected", 
         }
     `);
 
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "a",
             exported: "a",
@@ -269,7 +276,7 @@ test("Declaration export: variable statement exports collect all destructured bi
     `);
 
     expect(messages.length).toBe(0);
-    expect(analyzeResult.script.exportedBindings).toEqual([
+    expect(getExportedBindings()).toEqual([
         {
             local: "a",
             exported: "a",
@@ -307,7 +314,7 @@ test("Unsupported export: default export declarations are rejected", () => {
             value: "Default export is not supported in embedded script block.",
         },
     ]);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Export declaration: incomplete bare export has no clause and no invalid-export error", () => {
@@ -316,7 +323,7 @@ test("Export declaration: incomplete bare export has no clause and no invalid-ex
     `);
 
     expect(messages.length).toBe(0);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });
 
 test("Unsupported export: incomplete namespace export is rejected", () => {
@@ -331,5 +338,5 @@ test("Unsupported export: incomplete namespace export is rejected", () => {
             value: "Namespace export is not supported in embedded script block.",
         },
     ]);
-    expect(analyzeResult.script.exportedBindings).toEqual([]);
+    expect(getExportedBindings()).toEqual([]);
 });

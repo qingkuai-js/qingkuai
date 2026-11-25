@@ -165,6 +165,8 @@ export interface EventFlagInfo {
 export interface ExportBinding {
     local: string;
     exported: string;
+    localRange: Range;
+    exportedRange: Range;
 }
 export interface ContextReference {
     range: Range;

@@ -1,6 +1,5 @@
 import type {
     Range,
-    ASTLocation,
     TemplateNode,
     ParsedExpression,
     TemplateAttribute,
@@ -25,6 +24,7 @@ import { stringify } from "../../../util/shared/aliases";
 import { isInlineEventHandler } from "../../ts-ast/assert";
 import { traverseObject } from "../../../util/shared/sundry";
 import { analyzeResult, inputDescriptor } from "../../state";
+import { getRangeByLocation } from "../../../util/compiler/position";
 import { kebab2Camel, toPropertyKey } from "../../../util/compiler/string";
 
 export function generateIntermediateCode(nodes: TemplateNode[]) {
@@ -46,15 +46,9 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         inputDescriptor.script.loc.start.index,
     );
     const defaultsCall = analyzeResult.script.defaultsCall;
+    const exportBindings = analyzeResult.script.exportedBindings;
     const importDeclarations = analyzeResult.script.importDeclarations;
     const scriptTagOpenRange = inputDescriptor.script.startTagOpenRange;
-    const topLevelIdentifiers = analyzeResult.script.topLevelIdentifiers;
-    const exportBindings = analyzeResult.script.exportedBindings.filter(item => {
-        if (item.local !== item.exported) {
-            return !!topLevelIdentifiers[item.exported];
-        }
-        return !!topLevelIdentifiers[item.local];
-    });
     const exportSourceRange: Range | undefined = inputDescriptor.script.existing
         ? [scriptTagOpenRange[0] + 1, scriptTagOpenRange[1]]
         : undefined;
@@ -137,12 +131,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             const nodeContext = getTemplateNodeContext(node);
             const startTagOpenLoc = getStartTagOpenLoc(node);
             const componentInvalidExps: [string, Range][] = [];
-            const slotNameRange = getRangeByLoc(
+            const slotNameRange = getRangeByLocation(
                 nodeContext.attributesMap.name?.value.raw
                     ? nodeContext.attributesMap.name.loc
                     : startTagOpenLoc,
             );
-            const startTagNameRange = getRangeByLoc(getStartTagNameLoc(node));
+            const startTagNameRange = getRangeByLocation(getStartTagNameLoc(node));
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default";
             const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName];
 
@@ -159,7 +153,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
             if (node.tag && node.parent?.componentTag && !nodeContext.attributesMap["#slot"]) {
                 writer.wrapLine();
-                writer.write("default", getRangeByLoc(startTagOpenLoc));
+                writer.write("default", getRangeByLocation(startTagOpenLoc));
                 writer.write(": () => ");
                 endInserts.push(() => writer.write(","));
                 indentAndWriteStartEnclosure(false, false);
@@ -172,7 +166,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
 
                 const rawValue = directive.value.raw;
                 const valueEnd = directive.value.loc.end.index;
-                const valueRange = getRangeByLoc(directive.value.loc);
+                const valueRange = getRangeByLocation(directive.value.loc);
                 const parsedExpression = getParsedExpression(directive);
                 const expressionLen = parsedExpression?.source.length ?? 0;
                 const directiveInfo = analyzeResult.template.parsedDirectives.get(directive);
@@ -264,7 +258,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                             if (parsedExpression) {
                                 writeParsedExpression(writer, parsedExpression);
                             } else {
-                                writer.write("default", getRangeByLoc(startTagOpenLoc));
+                                writer.write("default", getRangeByLocation(startTagOpenLoc));
                             }
                             writer.write(": (");
                             generatePatterns(writer, directive);
@@ -320,7 +314,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.write(node.componentTag, startTagNameRange).write(")");
                 }
                 if (node.typeArgument) {
-                    const typeArgumentRange = getRangeByLoc(node.typeArgument.loc);
+                    const typeArgumentRange = getRangeByLocation(node.typeArgument.loc);
                     writer.write("<").write(node.typeArgument.raw, typeArgumentRange).write(">");
                 }
                 writer.write("(").write("{").indent();
@@ -336,8 +330,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     const rawName = attribute.name.raw;
                     const camelName = kebab2Camel(rawName);
                     const property = toPropertyKey(camelName);
-                    const nameRange = getRangeByLoc(attribute.name.loc);
-                    const valueRange = getRangeByLoc(attribute.value.loc);
+                    const nameRange = getRangeByLocation(attribute.name.loc);
+                    const valueRange = getRangeByLocation(attribute.value.loc);
                     const writeValue = attribute.equalSign
                         ? stringify(attribute.value.raw)
                         : "true";
@@ -361,8 +355,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const property = toPropertyKey(camelName);
                 const rawValue = attribute.value.raw;
                 const expression = getParsedExpression(attribute);
-                const nameRange = getRangeByLoc(attribute.name.loc);
-                const valueRange = getRangeByLoc(attribute.value.loc);
+                const nameRange = getRangeByLocation(attribute.name.loc);
+                const valueRange = getRangeByLocation(attribute.value.loc);
                 const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly;
 
                 if (!attribute.equalSign) {
@@ -421,7 +415,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const eventInfo = getParsedEventInfo(event)!;
                 const baseName = eventInfo.eventName.slice(1);
                 const expression = getParsedExpression(event);
-                const valueRange = getRangeByLoc(event.value.loc);
+                const valueRange = getRangeByLocation(event.value.loc);
                 const isValueValid = event.valueEnclosure === AttributeValueEnclosure.Curly;
                 const property = toPropertyKey(kebab2Camel(baseName));
                 const nameRange: Range = [
@@ -501,8 +495,8 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             for (const attribute of nodeContext.referenceAttributes) {
                 const rawName = attribute.name.raw;
                 const rawValue = attribute.value.raw;
-                const nameRange = getRangeByLoc(attribute.name.loc);
-                const valueRange = getRangeByLoc(attribute.value.loc);
+                const nameRange = getRangeByLocation(attribute.name.loc);
+                const valueRange = getRangeByLocation(attribute.value.loc);
                 const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly;
                 const property = toPropertyKey(kebab2Camel(rawName.slice(1)));
                 const isAttributeValid =
@@ -627,18 +621,22 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
         }
     })(nodes);
 
-    // 生成组件函数和导出语句
-    // Generate component function and export statement
+    // 生成组件函数和导出语句；返回对象同时是组件导出的语义来源和导出绑定的校验点
+    // Generate component function and export statement; the returned object is both the
+    // semantic source of the component export and the validation point of the export binding.
     writer.write(`\n\nconst ${LSC.COMPONENT} = (meta) => {`);
 
     if (exportBindings.length) {
         writer.indent().write(`return {`).indent(false);
 
         for (const item of exportBindings) {
-            writer.wrapLine().write(item.exported);
+            writer.wrapLine();
 
-            if (item.local !== item.exported) {
-                writer.write(": ").write(item.local);
+            if (item.local === item.exported) {
+                writer.write(item.local, item.localRange);
+            } else {
+                writer.write(toPropertyKey(item.exported), item.exportedRange).write(": ");
+                writer.write(item.local, item.localRange);
             }
             writer.write(",");
         }
@@ -654,10 +652,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
     writer.write(`/** @type { ${COMPONENT_TYPE} } */\nexport `);
     writer.write("default", exportSourceRange);
     return writer.write(` 0;`);
-}
-
-function getRangeByLoc(loc: ASTLocation): Range {
-    return [loc.start.index, loc.end.index];
 }
 
 function forEachRight(arr: any[], cb: ArbitraryFunc) {

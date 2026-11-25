@@ -5,7 +5,7 @@ import ts from "../ts-api";
 import { analyzeResult } from "../state";
 import { InvalidExportStatement } from "../message/error";
 import { walkBindingNameIdentifiers } from "../ts-ast/walk";
-import { getScriptLocByNode } from "../../util/compiler/position";
+import { getScriptLocByNode, getScriptRangeByNode } from "../../util/compiler/position";
 
 export function analyzeExports(sourceFile: TS.SourceFile) {
     for (const statement of sourceFile.statements) {
@@ -62,9 +62,13 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
                         InvalidExportStatement(getScriptLocByNode(element), "Type export");
                         continue;
                     }
+
+                    const localId = element.propertyName ?? element.name;
                     analyzeResult.script.exportedBindings.push({
-                        local: element.propertyName?.text ?? element.name.text,
+                        local: localId.text,
                         exported: element.name.text,
+                        localRange: getScriptRangeByNode(localId),
+                        exportedRange: getScriptRangeByNode(element.name),
                     });
                 }
                 break;
@@ -108,6 +112,8 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
                         analyzeResult.script.exportedBindings.push({
                             local: statement.name.text,
                             exported: statement.name.text,
+                            localRange: getScriptRangeByNode(statement.name),
+                            exportedRange: getScriptRangeByNode(statement.name),
                         });
                     }
                     break;
@@ -119,6 +125,8 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
                             analyzeResult.script.exportedBindings.push({
                                 local: id.text,
                                 exported: id.text,
+                                localRange: getScriptRangeByNode(id),
+                                exportedRange: getScriptRangeByNode(id),
                             });
                         });
                     }
