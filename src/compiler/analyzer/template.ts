@@ -126,7 +126,10 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             }
             default: {
                 if (node.tag === SPREAD_TAG) {
-                    if (!node.children.length) {
+                    // 具有 slot 指令的空 spread 用于声明插槽存在但无默认内容，不能视为多余
+                    // An empty spread with a slot directive is used to declare that the slot
+                    // exists but has no default content, and cannot be considered redundant.
+                    if (!node.children.length && !nodeContext.attributesMap["#slot"]) {
                         UnnecessarySpreadTag(getStartTagOpenLoc(node), "children");
                     }
                     if (!node.parent?.componentTag && !nodeContext.sortedDirectives.length) {

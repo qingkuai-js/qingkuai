@@ -77,6 +77,26 @@ describe("qk:spread", () => {
             `),
         );
     });
+
+    test("No children warning for empty slot spread", () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <qk:spread #slot={"empty"}></qk:spread>
+                </Comp>
+            `),
+        );
+    });
+
+    test("Warn without children for empty spread with other directives", () => {
+        analyzeTemplateAndMatchMessages(`<qk:spread #if={ok}></qk:spread>`, [
+            {
+                type: "warning",
+                range: [0, 10],
+                value: `The <qk:spread> tag without children is unnecessary.`,
+            },
+        ]);
+    });
 });
 
 describe("Boundary checks", () => {
