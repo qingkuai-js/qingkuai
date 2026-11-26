@@ -334,6 +334,38 @@ describe("#scope", () => {
         );
     });
 
+    test("Only global styles", () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp #scope></Comp>
+                <lang-css global>
+                    div {}
+                </lang-css>
+            `),
+            [
+                {
+                    type: "warning",
+                    range: [6, 12],
+                    value: `The "#scope" directive has no effect because the current component has no scoped styles.`,
+                },
+            ],
+        );
+    });
+
+    test("Global styles with scoped styles", () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp #scope></Comp>
+                <lang-css global>
+                    div {}
+                </lang-css>
+                <lang-css>
+                    span {}
+                </lang-css>
+            `),
+        );
+    });
+
     test("Redundant value", () => {
         analyzeTemplateAndMatchMessages(`<Comp #scope={1}></Comp>`, [
             {

@@ -330,8 +330,8 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
             } else if (node.hasActualAncestor) {
                 ScopeDirectiveHasActualAncestor(nameLoc);
             } else if (
-                !inputDescriptor.styles.length &&
-                inputDescriptor.options.testing !== TestingMode.E2e
+                inputDescriptor.options.testing !== TestingMode.E2e &&
+                !inputDescriptor.styles.some(style => !style.global)
             ) {
                 UnnecessaryScopeDirective(directive.loc);
             }
