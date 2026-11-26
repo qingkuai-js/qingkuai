@@ -3,6 +3,7 @@ import type TS from "typescript";
 import ts from "../ts-api";
 
 import { analyzeResult } from "../state";
+import { hasParseErrorInNode } from "../ts-ast/assert";
 import { InvalidExportStatement } from "../message/error";
 import { walkBindingNameIdentifiers } from "../ts-ast/walk";
 import { getScriptLocByNode, getScriptRangeByNode } from "../../util/compiler/position";
@@ -24,7 +25,14 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
 
             case ts.SyntaxKind.ExportDeclaration: {
                 const exportDeclaration = statement as TS.ExportDeclaration;
-                analyzeResult.script.exportStatements.push(exportDeclaration);
+
+                // 含语法错误的声明保留在中间代码中，交由 TypeScript 语言服务器报告语法错误；不收集绑定
+                // Declarations with syntax errors are retained in the intermediate code and
+                // reported by the TypeScript language server; bindings are not collected
+                const hasParseError = hasParseErrorInNode(exportDeclaration, sourceFile);
+                if (!hasParseError) {
+                    analyzeResult.script.exportStatements.push(exportDeclaration);
+                }
 
                 const moduleSpecifier = exportDeclaration.moduleSpecifier;
                 const hasValidModuleSpecifier =
@@ -54,6 +62,10 @@ export function analyzeExports(sourceFile: TS.SourceFile) {
 
                 if (exportDeclaration.isTypeOnly) {
                     InvalidExportStatement(getScriptLocByNode(statement), "Type export");
+                    break;
+                }
+
+                if (hasParseError) {
                     break;
                 }
 

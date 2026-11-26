@@ -200,3 +200,51 @@ test("String-literal export names are mapped back to the export specifier", () =
         formatted.indexOf('"x-y"', formatted.indexOf("export {")),
     );
 });
+
+test("Export declarations with syntax errors are kept for the type checker", () => {
+    const result = compileIntermediate(
+        compileSource(`
+            <lang-ts>
+                const value = 1
+                export { value as }
+            </lang-ts>
+            <div>{value}</div>
+        `),
+    );
+    expect(result.code).toContain("export { value as }");
+    expect(result.code).toContain("const __qk__component = (meta) => {}");
+    expect(result.messages).toEqual([]);
+});
+
+test("Malformed export clauses produce no bindings from the recovered AST", () => {
+    const result = compileIntermediate(
+        compileSource(`
+            <lang-ts>
+                const value = 1
+                export { value as alias: extra }
+            </lang-ts>
+            <div>{value}</div>
+        `),
+    );
+    expect(result.code).toContain("export { value as alias: extra }");
+    expect(result.code).toContain("const __qk__component = (meta) => {}");
+});
+
+test("Malformed default exports keep the compiler message and are still stripped", () => {
+    const result = compileIntermediate(
+        compileSource(`
+            <lang-ts>
+                export default (
+            </lang-ts>
+            <div>hi</div>
+        `),
+    );
+    expect(
+        result.messages.some(
+            m =>
+                m.type === "error" &&
+                String((m.value as { message?: string }).message ?? "").includes("Default export"),
+        ),
+    ).toBe(true);
+    expect(result.code).not.toContain("export default (");
+});

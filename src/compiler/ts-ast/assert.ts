@@ -12,6 +12,7 @@ import type {
 import ts from "../ts-api";
 
 import { NodeContextFlag } from "../enums";
+import { isUndefined } from "../../util/shared/assert";
 import { getStriptTypeOperationsNode, getStriptTypeOperationsParent } from "./sundry";
 
 // 判断节点是否为类型操作，如 as、<> 等
@@ -387,6 +388,19 @@ export function isExpressionEqual(a: TS.Node, b: TS.Node): boolean {
             return false;
         }
     }
+}
+
+// 判断指定语法节点范围内是否存在解析错误
+// Determine whether there is a parse error within the specified syntax node range.
+export function hasParseErrorInNode(node: TS.Node, sourceFile: TS.SourceFile) {
+    const diagnostics: TS.Diagnostic[] | undefined = (sourceFile as any).parseDiagnostics;
+    const [start, end] = [node.getFullStart(), node.getEnd()];
+    return !!diagnostics?.some(diagnostic => {
+        if (isUndefined(diagnostic.start)) {
+            return false;
+        }
+        return diagnostic.start >= start && diagnostic.start < end;
+    });
 }
 
 export function isRawCallExpression(node: TS.Node): node is TS.CallExpression {
