@@ -28,7 +28,7 @@ import { trimClosingTags } from "../../optimizer/closing-tags";
 import { AttributeValueEnclosure, NamespaceMode } from "../../enums";
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { analyzeResult, generateIdentifiers, inputDescriptor } from "../../state";
 import { CREATE_ANCHOR_DIRECTIVES, DST_FLAG_INTERPRETIVE_MAP, SPREAD_TAG } from "../../constants";
 
 export function getTemplateFragments(nodes: TemplateNode[]) {
@@ -374,8 +374,8 @@ export function writeFragmentGetterDeclarations(
         if (fragment.getWith) {
             fragment.getterId = fragment.getWith!.getterId;
         } else {
-            const internalId = generateIdentifier.internal;
-            const compressStringsId = generateIdentifier.compressStrings;
+            const internalId = generateIdentifiers.internal;
+            const compressStringsId = generateIdentifiers.compressStrings;
             const fragmentGetterId = ensureIdWithNumSuffix("_getFragment");
             const joinedContent = fragment.content.map(item => item.value).join("");
             fragment.getterId = fragmentGetterId;
@@ -432,7 +432,7 @@ export function writeFragmentSelections(
         }
     });
 
-    const internalId = generateIdentifier.internal;
+    const internalId = generateIdentifiers.internal;
     const interpretiveComment =
         fragment.flag && inputDescriptor.options.interpretiveComments
             ? `/* ${flagInterpretives.join(" | ")} */ `

@@ -50,7 +50,7 @@ import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
 import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
 import { DELEGATABLE_EVENTS, ROW_FLAG_INTERPRETIVE_MAP } from "../../constants";
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { analyzeResult, generateIdentifiers, inputDescriptor } from "../../state";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 
@@ -127,7 +127,7 @@ export function generateTemplateRender(
             nodeContext.rowSetterContext = null;
             writer.wrapLine().write(`${argId}.u = () => {`).indent(false);
             writer.wrapLine().write(`${setterContext.setterId!}(${argId})`).dedent().write("}");
-            writer.wrapLine().write(`${generateIdentifier.internal}.renderEffect(${argId}.u)`);
+            writer.wrapLine().write(`${generateIdentifiers.internal}.renderEffect(${argId}.u)`);
         }
 
         /**
@@ -146,7 +146,7 @@ export function generateTemplateRender(
         }
 
         if ((generateTemplateRender(writer, node.children, false, slotNsId), hasFragmentContent)) {
-            writer.write(`\n${generateIdentifier.internal}.insertBefore(`);
+            writer.write(`\n${generateIdentifiers.internal}.insertBefore(`);
             writer.write(`${nodeContext.anchorId}, ${nodeContext.fragment!.id})`);
         }
 
@@ -154,9 +154,9 @@ export function generateTemplateRender(
     }
 
     if (isRoot) {
-        const anchorId = generateIdentifier.anchor;
-        const internalId = generateIdentifier.internal;
-        const getterArgId = generateIdentifier.getterArg;
+        const anchorId = generateIdentifiers.anchor;
+        const internalId = generateIdentifiers.internal;
+        const getterArgId = generateIdentifiers.getterArg;
         const exportedBindings = new Map<string, string>();
         const hasComponentFragment = !!componentFragment?.content.length;
         for (const binding of analyzeResult.script.exportedBindings) {
@@ -197,8 +197,8 @@ function generateDirectiveBlock(
     nodeContext: TemplateNodeContext,
 ): GeneralFunc | undefined {
     const node = nodeContext.node;
-    const internalId = generateIdentifier.internal;
-    const getterArgId = generateIdentifier.getterArg;
+    const internalId = generateIdentifiers.internal;
+    const getterArgId = generateIdentifiers.getterArg;
     const directive = nodeContext.sortedDirectives[directiveIndex];
 
     switch (directive?.name.raw) {
@@ -430,7 +430,7 @@ function writeAnchorBracket(writer: RuntimeCodeWriter, nodeContext: TemplateNode
         return;
     }
 
-    const internalId = generateIdentifier.internal;
+    const internalId = generateIdentifiers.internal;
     const outerAnchorId = nodeContext.anchorId;
     const trailingAnchorId = bracket.selections[0].id;
     const interpretive = inputDescriptor.options.interpretiveComments
@@ -451,9 +451,9 @@ function generateRenderEffect(
 ) {
     let withinRenderEffect = false;
     let rowContext: TemplateNodeContext | undefined;
-    const internalId = generateIdentifier.internal;
-    const getterArgId = generateIdentifier.getterArg;
-    const setterArgId = generateIdentifier.setterArg;
+    const internalId = generateIdentifiers.internal;
+    const getterArgId = generateIdentifiers.getterArg;
+    const setterArgId = generateIdentifiers.setterArg;
 
     const generateRenderEffectCall = (currentNodeContext: TemplateNodeContext) => {
         if (!withinRenderEffect) {
@@ -761,8 +761,8 @@ function generateSlotCall(writer: RuntimeCodeWriter, nodeContext: TemplateNodeCo
     let needInsertComma = false;
     const nsFlags = getNamespaceFlags(nodeContext);
 
-    const internalId = generateIdentifier.internal;
-    const getterArgId = generateIdentifier.getterArg;
+    const internalId = generateIdentifiers.internal;
+    const getterArgId = generateIdentifiers.getterArg;
     const hasDefaultContent = !!nodeContext.fragment?.content.length;
     const slotName = nodeContext.attributesMap.name?.value.raw ?? "default";
 
@@ -832,10 +832,10 @@ function generateComponentCall(
     const parsedExpr = getParsedExpression(node);
     const maybeDynamic = parsedExpr?.reactive;
     const nsId = ensureIdWithNumSuffix("_ns");
-    const internalId = generateIdentifier.internal;
-    const componentId = generateIdentifier.component;
-    const getterArgId = generateIdentifier.getterArg;
-    const setterArgId = generateIdentifier.setterArg;
+    const internalId = generateIdentifiers.internal;
+    const componentId = generateIdentifiers.component;
+    const getterArgId = generateIdentifiers.getterArg;
+    const setterArgId = generateIdentifiers.setterArg;
     const scopeDirective = nodeContext.attributesMap["#scope"];
     const referenceHandleAttribute = nodeContext.attributesMap["&handle"];
     const isE2eTesting = inputDescriptor.options.testing === TestingMode.E2e;

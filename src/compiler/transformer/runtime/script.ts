@@ -22,14 +22,14 @@ import { findOutOfComment } from "../../../util/compiler/string";
 import { ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
 import { replaceReusedStringReferences } from "../../optimizer/compress";
 import { newCleanObj, traverseObject } from "../../../util/shared/sundry";
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { analyzeResult, generateIdentifiers, inputDescriptor } from "../../state";
 
 export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: CodeEditor) {
     const shadowEnclosures = new Set<string>();
-    const internalId = generateIdentifier.internal;
+    const internalId = generateIdentifiers.internal;
     const debugMode = inputDescriptor.options.debug;
     const scriptSource = inputDescriptor.script.code;
-    const undefId = `${generateIdentifier.internal}.UNDEF`;
+    const undefId = `${generateIdentifiers.internal}.UNDEF`;
     const identifierMap: Record<string, string> = newCleanObj();
     const rawArgumentBitmap = new Uint8Array(editor.sourceLength);
     const { declaratorToIntrinsic, topLevelIdentifiers, topLevelReferences } = analyzeResult.script;
@@ -636,7 +636,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 
     function generateHoistGetter(returns: string) {
         const getterId = ensureIdWithNumSuffix("_G");
-        const getterArgId = generateIdentifier.getterArg;
+        const getterArgId = generateIdentifiers.getterArg;
         return (
             hoistWriter.write(`const ${getterId} = ${getterArgId} => (${returns})\n`),
             getterId
@@ -678,7 +678,7 @@ export function transformEmbeddedScript(hoistWriter: RuntimeCodeWriter, editor: 
 }
 
 function generateSetterCode(target: string) {
-    const setterArgId = generateIdentifier.setterArg;
+    const setterArgId = generateIdentifiers.setterArg;
     return `${setterArgId} => (${target} = ${setterArgId})`;
 }
 

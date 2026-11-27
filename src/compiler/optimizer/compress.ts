@@ -12,7 +12,7 @@ import { isUndefined } from "../../util/shared/assert";
 import { ensureIdWithNumSuffix } from "../../util/compiler/sundry";
 import { isValidIdentifierName } from "../../util/compiler/assert";
 import { newCleanObj, traverseObject } from "../../util/shared/sundry";
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../state";
+import { analyzeResult, generateIdentifiers, inputDescriptor } from "../state";
 
 export function writeStringLiteralsDeclarations(
     writer: RuntimeCodeWriter,
@@ -81,7 +81,7 @@ export function writeStringLiteralsDeclarations(
     }
 
     const shouldWrapLine = compressStringIndexMap.size > 8;
-    writer.write(`const ${generateIdentifier.compressStrings} = [`);
+    writer.write(`const ${generateIdentifiers.compressStrings} = [`);
 
     if (shouldWrapLine) {
         writer.indent();

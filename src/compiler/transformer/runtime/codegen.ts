@@ -9,7 +9,7 @@ import { replaceQkImportSpecifiers } from "./import";
 import { objectAssign } from "../../../util/shared/aliases";
 import { ensureIdWithPrefix } from "../../../util/compiler/sundry";
 import { traverseObject, upperFirst } from "../../../util/shared/sundry";
-import { analyzeResult, generateIdentifier, inputDescriptor } from "../../state";
+import { analyzeResult, generateIdentifiers, inputDescriptor } from "../../state";
 import { getTemplateFragments, writeFragmentGetterDeclarations } from "./fragment";
 import { writeStringLiteralsDeclarations, getMaybeReusedString } from "../../optimizer/compress";
 
@@ -17,7 +17,7 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
     const { usedIntrinsics } = analyzeResult.script;
     const { code: scriptSource, loc: scriptLoc } = inputDescriptor.script;
 
-    objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifier, {
+    objectAssign<GenerateIdentifier, Partial<GenerateIdentifier>>(generateIdentifiers, {
         internal: ensureIdWithPrefix("_"),
         getterArg: ensureIdWithPrefix("_"),
         setterArg: ensureIdWithPrefix("v"),
@@ -29,9 +29,9 @@ export function generateRuntimeCode(nodes: TemplateNode[]) {
 
     const writer = new RuntimeCodeWriter(true);
     const hoistWriter = new RuntimeCodeWriter();
-    const metaId = generateIdentifier.meta;
-    const anchorId = generateIdentifier.anchor;
-    const internalId = generateIdentifier.internal;
+    const metaId = generateIdentifiers.meta;
+    const anchorId = generateIdentifiers.anchor;
+    const internalId = generateIdentifiers.internal;
     const templateFragments = getTemplateFragments(nodes);
     const embeddedScriptEditor = new CodeEditor(scriptSource, scriptLoc.start.index);
 
@@ -89,7 +89,7 @@ function generateDelegateEventsRegistration(writer: RuntimeCodeWriter) {
     const shouldWrapLine = passiveLen + nonPassiveLen > 8;
     const seperator = ", " + (shouldWrapLine ? "\n" : "");
     const concatSeperatorCount = passiveLen ? (nonPassiveLen ? 2 : 1) : 0;
-    writer.wrapLine().write(`${generateIdentifier.internal}.initEvents([`);
+    writer.wrapLine().write(`${generateIdentifiers.internal}.initEvents([`);
 
     if (shouldWrapLine) {
         writer.indent();

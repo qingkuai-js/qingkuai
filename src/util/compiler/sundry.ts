@@ -1,4 +1,4 @@
-import { analyzeResult, generateIdentifier } from "../../compiler/state";
+import { analyzeResult, generateIdentifiers } from "../../compiler/state";
 
 export const createHashId = /*#__PURE__*/ (function () {
     const existing = new Set<string>();
@@ -36,19 +36,19 @@ export function getAttributeBaseName(name: string) {
 
 export function ensureIdWithPrefix(name: string, prefix = "_") {
     const { fullIdentifiers } = analyzeResult.script;
-    const startIndex = (generateIdentifier.prefix[name] ??= 0);
+    const startIndex = (generateIdentifiers.prefix[name] ??= 0);
     name = prefix.repeat(startIndex) + name;
 
     while (fullIdentifiers.has(name)) {
         name = prefix + name;
-        generateIdentifier.prefix[name]++;
+        generateIdentifiers.prefix[name]++;
     }
     return (fullIdentifiers.add(name), name);
 }
 
 export function ensureIdWithNumSuffix(name: string, useOrigin = false) {
     const { fullIdentifiers } = analyzeResult.script;
-    const generateInfo = (generateIdentifier.suffix[name] ??= {
+    const generateInfo = (generateIdentifiers.suffix[name] ??= {
         last: 1,
         originUsed: false,
     });

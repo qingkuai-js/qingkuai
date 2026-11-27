@@ -4,7 +4,7 @@ import { expect } from "vitest";
 import {
     analyzeResult,
     inputDescriptor,
-    generateIdentifier,
+    generateIdentifiers,
     resetCompilerState,
 } from "../../../../../src/compiler/state";
 import {
@@ -76,9 +76,9 @@ function localTransform(source: string, options: CompileOptions) {
         scriptDescriptor.loc.start.index,
     );
     const hoistEmbeddedScriptWriter = new RuntimeCodeWriter();
-    generateIdentifier.internal = "_";
-    generateIdentifier.setterArg = "v";
-    generateIdentifier.getterArg = "__";
+    generateIdentifiers.internal = "_";
+    generateIdentifiers.setterArg = "v";
+    generateIdentifiers.getterArg = "__";
     eliminate(embeddedScriptEditor);
     transformEmbeddedScript(hoistEmbeddedScriptWriter, embeddedScriptEditor);
 
@@ -94,8 +94,8 @@ function localMatchGeneratedFragment(source: string, expected: string, options: 
     const writer = new RuntimeCodeWriter();
     const templateNodes = parseTemplate(source, PARSER_TEMPLATE_OPTIONS);
     (analyzeScript(), analyzeTemplate(templateNodes));
-    generateIdentifier.internal = "_";
-    generateIdentifier.compressStrings = "_compressStrings";
+    generateIdentifiers.internal = "_";
+    generateIdentifiers.compressStrings = "_compressStrings";
 
     const fragments = getTemplateFragments(templateNodes);
     writeStringLiteralsDeclarations(writer, fragments);

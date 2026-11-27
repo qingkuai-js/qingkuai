@@ -22,7 +22,7 @@ import {
 import { walkTsNode } from "../ts-ast/walk";
 import { getMaybeReusedString } from "./compress";
 import { CodeEditor } from "../transformer/editor";
-import { analyzeResult, generateIdentifier } from "../state";
+import { analyzeResult, generateIdentifiers } from "../state";
 import { getStriptTypeOperationsNode } from "../ts-ast/sundry";
 import { SelectorExpressionType, SelectorOperationMethod } from "../enums";
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../util/compiler/sundry";
@@ -289,7 +289,7 @@ function writeDomOperationCall(
             ? info.targetAttribute.value.loc.start.index
             : info.targetAttribute.loc.start.index
         : info.targetTextPart?.loc.start.index;
-    const internalId = generateIdentifier.internal;
+    const internalId = generateIdentifiers.internal;
 
     switch (info.operation.method) {
         case SelectorOperationMethod.SetHtmlClassName:

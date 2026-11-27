@@ -19,13 +19,13 @@ export let messages: CompileMessage[] = [];
 export let analyzeResult = newAnalyzeResult();
 export let inputDescriptor = newInputDescriptor({});
 export let tsParsingDiagnostics: TS.Diagnostic[] = [];
-export let generateIdentifier = newGenerateIdentifier();
+export let generateIdentifiers = newGenerateIdentifier();
 
 export function resetCompilerState(options: Partial<InputOptions>) {
     messages = [];
     tsParsingDiagnostics = [];
     analyzeResult = newAnalyzeResult();
-    generateIdentifier = newGenerateIdentifier();
+    generateIdentifiers = newGenerateIdentifier();
     inputDescriptor = newInputDescriptor({ ...options });
 }
 

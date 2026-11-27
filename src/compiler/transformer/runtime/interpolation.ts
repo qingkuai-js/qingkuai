@@ -12,7 +12,7 @@ import { CodeEditor } from "../editor";
 import { RawArgumentKind } from "../../enums";
 import { getRawArgumentInfo } from "../../optimizer/raw";
 import { traverseObject } from "../../../util/shared/sundry";
-import { analyzeResult, generateIdentifier } from "../../state";
+import { analyzeResult, generateIdentifiers } from "../../state";
 import { isArrayBindingNameIdentifier } from "../../ts-ast/assert";
 import { getMaybeReusedString, replaceReusedStringReferences } from "../../optimizer/compress";
 
@@ -192,7 +192,7 @@ function transformRawCalls(
         // Reads the raw identifier and unwraps it with toRaw.
         if (argumentInfo?.kind === RawArgumentKind.Unwrap) {
             overridden.fill(1, argumentInfo.range[0], argumentInfo.range[1]);
-            editor.replace(...calleeRange, `${generateIdentifier.internal}.toRaw`, true);
+            editor.replace(...calleeRange, `${generateIdentifiers.internal}.toRaw`, true);
         }
 
         // 不带响应性能力的标识符：直接读取即可
@@ -209,13 +209,13 @@ function transformRawCalls(
             if (!outsideEffect) {
                 editor.replace(
                     ...calleeRange,
-                    `${generateIdentifier.internal}.noTrackingToRaw`,
+                    `${generateIdentifiers.internal}.noTrackingToRaw`,
                     true,
                 );
                 editor.insert(argRange[0], "() => (");
                 editor.insert(callRange[1] - 1, ")");
             } else {
-                editor.replace(...calleeRange, `${generateIdentifier.internal}.toRaw`, true);
+                editor.replace(...calleeRange, `${generateIdentifiers.internal}.toRaw`, true);
             }
         }
     }
