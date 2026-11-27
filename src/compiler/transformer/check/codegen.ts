@@ -14,6 +14,7 @@ import {
     getParsedDirective,
     getPrevElementContext,
     getTemplateNodeContext,
+    doesNodeHasValidTextContentPart,
 } from "../../../util/compiler/template";
 import { CodeEditor } from "../editor";
 import { eliminate } from "../eliminate";
@@ -155,6 +156,16 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 writer.wrapLine();
                 writer.write("default", getRangeByLocation(startTagOpenLoc));
                 writer.write(": () => ");
+                endInserts.push(() => writer.write(","));
+                indentAndWriteStartEnclosure(false, false);
+            } else if (
+                !node.tag &&
+                node.parent?.componentTag &&
+                doesNodeHasValidTextContentPart(node)
+            ) {
+                // 无标签的文本/插值子节点同样是默认插槽内容，需要包成函数
+                writer.wrapLine();
+                writer.write("default: () => ");
                 endInserts.push(() => writer.write(","));
                 indentAndWriteStartEnclosure(false, false);
             }
