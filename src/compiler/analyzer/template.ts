@@ -71,6 +71,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
                 rowPlainArgId: "",
                 fragment: null,
                 anchorBracket: null,
+                exclusiveChain: null,
                 rowSetterContext: null,
                 eventListeners: [],
                 sortedDirectives: [],

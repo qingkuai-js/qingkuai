@@ -268,6 +268,7 @@ export interface TemplateNodeContext {
     namespaceMode: NamespaceMode;
     selectableChildCount: number;
     fragment: TemplateFragment | null;
+    exclusiveChain: TemplateNode | null;
     anchorBracket: TemplateFragment | null;
     listAncestors: TemplateNode[];
     eventListeners: TemplateAttribute[];

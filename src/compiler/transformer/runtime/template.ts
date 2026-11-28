@@ -12,6 +12,11 @@ import type { GeneralFunc } from "#type-declarations/tools";
 import ts from "../../ts-api";
 
 import {
+    DELEGATABLE_EVENTS,
+    CHAIN_CONTINUATIONS,
+    ROW_FLAG_INTERPRETIVE_MAP,
+} from "../../constants";
+import {
     isFunctionLiteral,
     isInlineEventHandler,
     isSimpleHandlerReference,
@@ -49,7 +54,6 @@ import { getStriptTypeOperationsNode } from "../../ts-ast/sundry";
 import { equalsWithKeyDirectiveValue } from "../../optimizer/render";
 import { writeContextDeclaration, writeContextPatterns } from "./context";
 import { TestingMode, NamespaceMode, ReferenceBindingType } from "../../enums";
-import { DELEGATABLE_EVENTS, ROW_FLAG_INTERPRETIVE_MAP } from "../../constants";
 import { analyzeResult, generateIdentifiers, inputDescriptor } from "../../state";
 import { isHtmlDirectiveChild, isValidIdentifierName } from "../../../util/compiler/assert";
 import { getAttributeBaseName, ensureIdWithNumSuffix } from "../../../util/compiler/sundry";
@@ -1023,36 +1027,6 @@ function generateComponentCall(
     }
 }
 
-function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateAttribute) {
-    const expectedContinuousDirective: string[] = [];
-    switch (directive.name.raw) {
-        case "#if":
-        case "#elif": {
-            expectedContinuousDirective.push("#elif", "#else");
-            break;
-        }
-        case "#await": {
-            expectedContinuousDirective.push("#then", "#catch");
-            break;
-        }
-        case "#then": {
-            expectedContinuousDirective.push("#catch");
-            break;
-        }
-        default: {
-            return false;
-        }
-    }
-
-    const nextElementContext = getNextElementContent(node);
-    if (nextElementContext) {
-        return expectedContinuousDirective.includes(
-            nextElementContext.sortedDirectives[0]?.name.raw,
-        );
-    }
-    return false;
-}
-
 function writeMetaKey(str: string, writer: RuntimeCodeWriter, toCamel = false) {
     if (toCamel) {
         str = kebab2Camel(str);
@@ -1109,4 +1083,9 @@ function getRowCodegenContext(node: TemplateNode | null): TemplateNodeContext | 
         }
         node = node.parent;
     }
+}
+
+function doesDirectiveHasContinuousItem(node: TemplateNode, directive: TemplateAttribute) {
+    const nextPrimary = getNextElementContent(node)?.sortedDirectives[0]?.name.raw;
+    return !!(nextPrimary && CHAIN_CONTINUATIONS[directive.name.raw]?.includes(nextPrimary));
 }

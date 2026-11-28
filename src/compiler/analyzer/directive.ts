@@ -225,6 +225,7 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
         case "#then":
         case "#catch": {
             if (!shadowed && !nodeContext.attributesMap["#await"]) {
+                let couldContinueChain = false;
                 const prevElementContext = getPrevElementContext(node);
                 const prevRawName = prevElementContext?.sortedDirectives[0]?.name.raw;
                 const prevInPlaceRawName = prevElementContext?.sortedDirectives[1]?.name.raw;
@@ -238,12 +239,12 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                         rawName,
                     );
                 } else {
-                    const canContinueChain =
+                    couldContinueChain =
                         rawName === "#then"
                             ? prevRawName === "#await" && !prevHasInPlace
                             : prevRawName === "#then" ||
                               (prevRawName === "#await" && prevInPlaceRawName !== "#catch");
-                    if (!canContinueChain) {
+                    if (!couldContinueChain) {
                         MissingPrecedingDirective(
                             directive.name.loc,
                             rawName,
@@ -251,6 +252,9 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                             getNonPrimaryPrecedingAnchor(expectedList, prevElementContext),
                         );
                     }
+                }
+                if (couldContinueChain) {
+                    nodeContext.exclusiveChain ??= prevElementContext?.exclusiveChain ?? node;
                 }
             }
 
@@ -366,7 +370,10 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                 const expectedList = ["#if", "#elif"];
                 const prevElementContext = getPrevElementContext(node);
                 const prevElementFirstDirective = prevElementContext?.sortedDirectives[0];
-                if (!expectedList.includes(prevElementFirstDirective?.name.raw ?? "")) {
+                const couldContinueChain = expectedList.includes(
+                    prevElementFirstDirective?.name.raw ?? "",
+                );
+                if (!couldContinueChain) {
                     MissingPrecedingDirective(
                         nameLoc,
                         rawName,
@@ -374,7 +381,16 @@ export function analyzeDirective(node: TemplateNode, directive: TemplateAttribut
                         getNonPrimaryPrecedingAnchor(expectedList, prevElementContext),
                     );
                 }
+                if (couldContinueChain) {
+                    nodeContext.exclusiveChain ??= prevElementContext?.exclusiveChain ?? node;
+                }
             }
+            break;
+        }
+
+        case "#if":
+        case "#await": {
+            nodeContext.exclusiveChain ??= node;
             break;
         }
     }

@@ -1,7 +1,5 @@
 import type { StandaloneParseTemplateOptions } from "#type-declarations/compiler";
 
-import { AttributeValueEnclosure } from "./enums";
-
 import {
     KEY_UP,
     KEY_DOWN,
@@ -33,6 +31,7 @@ import {
     DST_ORPHAN_CONTENT,
     DST_LEADING_ANCHOR,
 } from "../util/shared/flags";
+import { AttributeValueEnclosure } from "./enums";
 import { objectAssign } from "../util/shared/aliases";
 
 export const SPREAD_TAG = "qk:spread";
@@ -140,12 +139,16 @@ export const CONFLICTING_EVENT_FLAG_MAP: Readonly<Record<string, string[]>> = {
     prevent: ["passive"],
 };
 
-export const CHAIN_CONTINUATION_DIRECTIVES: ReadonlySet<string> = new Set([
-    "#then",
-    "#catch",
-    "#elif",
-    "#else",
-]);
+export const CHAIN_CONTINUATIONS: Readonly<Record<string, readonly string[]>> = {
+    "#if": ["#elif", "#else"],
+    "#elif": ["#elif", "#else"],
+    "#await": ["#then", "#catch"],
+    "#then": ["#catch"],
+};
+
+export const CHAIN_CONTINUATION_DIRECTIVES: ReadonlySet<string> = new Set(
+    Object.values(CHAIN_CONTINUATIONS).flat(),
+);
 
 export const CONFLICTING_DIRECTIVES_MAP: Readonly<Record<string, string[]>> = {
     "#then": ["#catch"],

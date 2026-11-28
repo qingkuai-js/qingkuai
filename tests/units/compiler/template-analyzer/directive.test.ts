@@ -710,6 +710,43 @@ describe("#then", () => {
         ]);
     });
 
+    test("Previous element's highest-priority directive is not a chain directive", () => {
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <div #slot={"a"} #await={_}></div>
+                <div #then={_}></div>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [5, 10],
+                    value: `The "#slot" directive can only be used on direct child elements of a component node.`,
+                },
+                {
+                    type: "error",
+                    range: [40, 45],
+                    value: `The "#then" directive requires one of the following preceding directives: "#await".`,
+                },
+            ],
+        );
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #slot={"a"} #await={_}></div>
+                    <div #then={_}></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [55, 60],
+                    value: `The "#then" directive cannot be used here because it is shadowed by the implicit "#slot" directive on the same element.`,
+                },
+            ],
+        );
+    });
+
     test("Shadowed by the implicit slot of a component child", () => {
         analyzeTemplateAndMatchMessages(`<Comp><div #then></div></Comp>`, [
             {
@@ -954,6 +991,41 @@ describe("#else", () => {
                 value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif". Note that the preceding element's "#if" directive is not its highest-priority directive ("#await" takes precedence); a chain can only continue from the highest-priority directive.`,
             },
         ]);
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <div #slot={"a"} #if={_}></div>
+                <div #else></div>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [5, 10],
+                    value: `The "#slot" directive can only be used on direct child elements of a component node.`,
+                },
+                {
+                    type: "error",
+                    range: [37, 42],
+                    value: `The "#else" directive requires a preceding sibling element with one of the following directives: "#if", "#elif".`,
+                },
+            ],
+        );
+
+        analyzeTemplateAndMatchMessages(
+            formatSourceCode(`
+                <Comp>
+                    <div #slot={"a"} #if={_}></div>
+                    <div #else></div>
+                </Comp>
+            `),
+            [
+                {
+                    type: "error",
+                    range: [52, 57],
+                    value: `The "#else" directive cannot be used here because it is shadowed by the implicit "#slot" directive on the same element.`,
+                },
+            ],
+        );
     });
 });
 
