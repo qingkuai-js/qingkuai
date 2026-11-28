@@ -78,3 +78,59 @@ test("Text-only default slot is wrapped inside conditional blocks", () => {
     `);
     expect(normalize(result.code)).toContain("slots: { default: () => { n; }");
 });
+
+test("Same-named slots in exclusive branches emit one context object each", () => {
+    const result = compileSource(`
+        <lang-js>let ok = true; let a = 1; let b = 2</lang-js>
+        <slot #if={ok} !value={a}></slot>
+        <slot #else !value={b}></slot>
+    `);
+    const code = normalize(result.code);
+    expect(code.match(/getTypeDelayMarking\("default", \{/g)?.length).toBe(2);
+    expect(code).toContain('getTypeDelayMarking("default", { value: a })');
+    expect(code).toContain('getTypeDelayMarking("default", { value: b })');
+    expect(result.slotNames).toEqual(["default"]);
+    expect(result.getTypeDelayInterIndexes.length).toBe(2);
+});
+
+test("Single slot with context emits one context object", () => {
+    const result = compileSource(`
+        <lang-js>let n = 1</lang-js>
+        <slot !value={n} title="x"></slot>
+    `);
+    const code = normalize(result.code);
+    expect(code).toContain('getTypeDelayMarking("default", { title: "x", value: n })');
+    expect(result.getTypeDelayInterIndexes.length).toBe(1);
+});
+
+test("Slots without context still register their outlet names", () => {
+    const result = compileSource(`
+        <lang-js>let ok = true</lang-js>
+        <slot #if={ok}></slot>
+        <slot #else></slot>
+    `);
+    const code = normalize(result.code);
+    expect(code.match(/getTypeDelayMarking\("default", \{\}\)/g)?.length).toBe(2);
+    expect(result.slotNames).toEqual(["default"]);
+    expect(result.getTypeDelayInterIndexes.length).toBe(2);
+});
+
+test("Named slot without context registers its outlet name", () => {
+    const result = compileSource(`
+        <slot name="footer"></slot>
+    `);
+    const code = normalize(result.code);
+    expect(code).toContain('getTypeDelayMarking("footer", {})');
+    expect(result.getTypeDelayInterIndexes.length).toBe(1);
+});
+
+test("Slot registry keeps every same-named slot node", () => {
+    const result = compileSource(`
+        <lang-js>let ok = true; let a = 1</lang-js>
+        <slot #if={ok} !value={a}></slot>
+        <slot #else></slot>
+    `);
+    expect(result.getSlotTemplateNodes("default").length).toBe(2);
+    expect(result.getSlotTemplateNodes("unknown")).toEqual([]);
+    expect(result.getSlotTemplateNodes("default")[0].tag).toBe("slot");
+});

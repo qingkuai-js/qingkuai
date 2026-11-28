@@ -262,6 +262,7 @@ export interface TemplateNodeContext {
     id: string;
     anchorId: string;
     node: TemplateNode;
+    inSlotOutlet: boolean;
     inSlotContent: boolean;
     rowPlainArgId: string;
     shouldBeSelected: boolean;
@@ -294,7 +295,7 @@ export interface TemplateAnalyzeRet {
             wrapperFlag: EventFlagInfo;
         }
     >;
-    slots: Record<string, TemplateNode>;
+    slots: Record<string, TemplateNode[]>;
     componentFragment: TemplateFragment | null;
     parsedExpressions: Map<any, ParsedExpression>;
     staticTextContents: Map<TextContentPart, string>;

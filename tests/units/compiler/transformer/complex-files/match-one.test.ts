@@ -178,7 +178,7 @@ test("Intermediate regression: component branch input stays parseable in interme
 
 test("Intermediate: complex file broad syntax coverage and metadata sanity", () => {
     const result = compileIntermediateAndAssertNoErrors(input, "complex");
-    const mainSlotNode = result.getSlotTemplateNode("main");
+    const mainSlotNodes = result.getSlotTemplateNodes("main");
 
     expect(result.code).toContain("import { __qk__lsu");
     expect(result.code).toContain('from "qingkuai/language-service"');
@@ -225,10 +225,19 @@ test("Intermediate: complex file broad syntax coverage and metadata sanity", () 
             description: "raw (never mutated)",
         },
     });
-    expect(result.getTypeDelayInterIndexes).toEqual([]);
+    // 没有上下文属性的出口也会发一次标记，用于在语言服务中注册插槽名
+    // An outlet without context attributes still emits one marking to register the slot
+    // name in the language service.
+    expect(result.getTypeDelayInterIndexes.length).toBe(1);
+    expect(result.code.slice(result.getTypeDelayInterIndexes[0])).toContain(
+        `__qk__lsu.getTypeDelayMarking("main", {});`,
+    );
     expect(result.templateNodes.length).toBeGreaterThan(0);
-    expect(mainSlotNode?.tag).toBe("slot");
-    expect(result.getTemplateNodeContext(mainSlotNode!).attributesMap.name?.value.raw).toBe("main");
+    expect(mainSlotNodes.length).toBe(1);
+    expect(mainSlotNodes[0].tag).toBe("slot");
+    expect(result.getTemplateNodeContext(mainSlotNodes[0]).attributesMap.name?.value.raw).toBe(
+        "main",
+    );
     expect(result.getSourceIndex(0)).toBe(-1);
     expect(result.getInterIndex(0)).toBe(-1);
 });

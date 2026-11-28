@@ -41,15 +41,15 @@ test("Slot dynamic attribute writes getTypeDelayMarking call", () => {
         </lang-js>
         <slot name="main" !label={v}></slot>
     `);
-    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "label", v);`);
+    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", { label: v });`);
 });
 
 test("Slot static name attribute is skipped in type-delay marking", () => {
     const result = compileIntermediateResult(`
         <slot name="main" title="hello"></slot>
     `);
-    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "title", "hello");`);
-    expect(result.code).not.toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "name"`);
+    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", { title: "hello" });`);
+    expect(result.code).not.toContain('name: "main"');
 });
 
 test("#then without #await emits fallback wrapper", () => {
@@ -208,7 +208,7 @@ test("Slot shorthand dynamic attribute writes type-delay identifier", () => {
     const result = compileIntermediateResult(`
         <slot name="main" !flag></slot>
     `);
-    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", "flag", flag);`);
+    expect(result.code).toContain(`${LSC.GET_TYPE_DELAY_MARKING}("main", { flag: flag });`);
 });
 
 test("Component invalid dynamic expression is flushed", () => {

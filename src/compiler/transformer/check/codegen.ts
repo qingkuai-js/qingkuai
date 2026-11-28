@@ -3,6 +3,7 @@ import type {
     TemplateNode,
     ParsedExpression,
     TemplateAttribute,
+    TemplateNodeContext,
 } from "#type-declarations/compiler";
 import type { ArbitraryFunc, GeneralFunc } from "#type-declarations/tools";
 
@@ -139,7 +140,7 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
             );
             const startTagNameRange = getRangeByLocation(getStartTagNameLoc(node));
             const slotName = nodeContext.attributesMap.name?.value.raw ?? "default";
-            const isSlot = "slot" === node.tag && node === analyzeResult.template.slots[slotName];
+            const isSlot = "slot" === node.tag && !!analyzeResult.template.slots[slotName];
 
             const indentAndWriteStartEnclosure = (
                 shouldWrapLine = true,
@@ -332,35 +333,32 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 writer.write("props: ").write("{", startTagNameRange[0]).indent(false);
             }
 
-            if (isComponent || isSlot) {
-                for (const attribute of nodeContext.staticAttributes) {
-                    if (isSlot && "name" === attribute.name.raw) {
-                        continue;
-                    }
+            // 标记插槽 outlet 的上下文属性，供类型检查器推断使用
+            // Mark the context attributes of the slot outlet for type checker inference.
+            if (isSlot) {
+                writeSlotContextMarking(slotName, slotNameRange, writer, nodeContext);
+            }
 
+            if (isComponent) {
+                for (const attribute of nodeContext.staticAttributes) {
+                    const writeValue = attribute.equalSign
+                        ? stringify(attribute.value.raw)
+                        : "true";
                     const rawName = attribute.name.raw;
                     const camelName = kebab2Camel(rawName);
                     const property = toPropertyKey(camelName);
                     const nameRange = getRangeByLocation(attribute.name.loc);
                     const valueRange = getRangeByLocation(attribute.value.loc);
-                    const writeValue = attribute.equalSign
-                        ? stringify(attribute.value.raw)
-                        : "true";
-
-                    if (isComponent) {
-                        writer.wrapLine().write(property, nameRange);
-                        writer.write(": ").write(writeValue, valueRange).write(",");
-                    } else {
-                        writer.wrapLine();
-                        startGetTypeDelayMarkingCall(writer);
-                        writer.write(stringify(slotName), slotNameRange).write(", ");
-                        writer.write(stringify(camelName), nameRange).write(`, `);
-                        writer.write(writeValue, valueRange).write(");");
-                    }
+                    writer.wrapLine().write(property, nameRange);
+                    writer.write(": ").write(writeValue, valueRange).write(",");
                 }
             }
 
             for (const attribute of nodeContext.dynamicAttributes) {
+                if (isSlot) {
+                    continue;
+                }
+
                 const baseName = attribute.name.raw.slice(1);
                 const camelName = kebab2Camel(baseName);
                 const property = toPropertyKey(camelName);
@@ -371,20 +369,12 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                 const isValueValid = attribute.valueEnclosure === AttributeValueEnclosure.Curly;
 
                 if (!attribute.equalSign) {
-                    if ((isSlot || isComponent) && !expression) {
+                    if (isComponent && !expression) {
                         continue;
                     }
                     if (property) {
-                        if (!isSlot) {
-                            writer.wrapLine().write(property, nameRange);
-                            writer.write(isComponent ? "," : ";");
-                        } else {
-                            writer.wrapLine();
-                            startGetTypeDelayMarkingCall(writer);
-                            writer.write(stringify(slotName), slotNameRange).write(", ");
-                            writer.write(stringify(camelName), nameRange).write(", ");
-                            writer.write(camelName, valueRange).write(");");
-                        }
+                        writer.wrapLine().write(property, nameRange);
+                        writer.write(isComponent ? "," : ";");
                     }
                     continue;
                 }
@@ -406,15 +396,6 @@ export function generateIntermediateCode(nodes: TemplateNode[]) {
                     writer.wrapLine();
                     writer.write(property, nameRange).write(": ");
                     writer.write(rawValue, valueRange).write(",");
-                    continue;
-                }
-
-                if (isSlot) {
-                    writer.wrapLine();
-                    startGetTypeDelayMarkingCall(writer);
-                    writer.write(stringify(slotName), slotNameRange).write(", ");
-                    writer.write(stringify(camelName), nameRange).write(`, `);
-                    writer.write(rawValue, valueRange).write(");");
                     continue;
                 }
 
@@ -671,9 +652,55 @@ function forEachRight(arr: any[], cb: ArbitraryFunc) {
     }
 }
 
-function startGetTypeDelayMarkingCall(writer: IntermediateCodeWriter) {
+// 插槽 outlet 的上下文属性统一写入一个对象字面量，属性名与值都保留源位置映射
+// Write the context attributes of a slot outlet as one object literal,
+// keeping source mappings for both the property names and values.
+function writeSlotContextMarking(
+    slotName: string,
+    slotNameRange: Range,
+    writer: IntermediateCodeWriter,
+    nodeContext: TemplateNodeContext,
+) {
+    let hasItem = false;
+    writer.wrapLine();
     writer.gtdii.push(writer.length);
     writer.write(`${LSC.GET_TYPE_DELAY_MARKING}(`);
+    writer.write(stringify(slotName), slotNameRange).write(", {");
+
+    for (const attribute of nodeContext.staticAttributes) {
+        if ("name" === attribute.name.raw) {
+            continue;
+        }
+
+        const prefix = hasItem ? ", " : " ";
+        const keyRange = getRangeByLocation(attribute.name.loc);
+        const key = toPropertyKey(kebab2Camel(attribute.name.raw));
+        const valueRange = getRangeByLocation(attribute.value.loc);
+        const value = attribute.equalSign ? attribute.value.raw : true;
+        hasItem = true;
+        writer.write(prefix).write(key, keyRange);
+        writer.write(": ").write(stringify(value), valueRange);
+    }
+
+    for (const attribute of nodeContext.dynamicAttributes) {
+        const value = attribute.value.raw;
+        const prefix = hasItem ? ", " : " ";
+        const expression = getParsedExpression(attribute);
+        const keyRange = getRangeByLocation(attribute.name.loc);
+        const valueRange = getRangeByLocation(attribute.value.loc);
+        const key = toPropertyKey(kebab2Camel(attribute.name.raw.slice(1)));
+        if (!attribute.equalSign) {
+            if (!expression) {
+                continue;
+            }
+        } else if (attribute.valueEnclosure !== AttributeValueEnclosure.Curly) {
+            continue;
+        }
+        hasItem = true;
+        writer.write(prefix).write(key, keyRange).write(": ");
+        writer.write(attribute.equalSign ? value : key, valueRange);
+    }
+    return writer.write(`${hasItem ? " " : ""}});`);
 }
 
 function writeOrphanExpression(

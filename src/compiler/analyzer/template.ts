@@ -7,6 +7,7 @@ import type {
 } from "#type-declarations/compiler";
 
 import {
+    getNodePath,
     walkTemplateNodes,
     getStartTagNameLoc,
     getStartTagOpenLoc,
@@ -35,6 +36,7 @@ import { getLocByIndex, getNonWhiteSpaceLocByLoc } from "../../util/compiler/pos
 
 export function analyzeTemplate(nodes: TemplateNode[]) {
     const reportedUnkeyedLists = new Set<TemplateNode>();
+    const reportedDuplicateSlotNodes = new Set<TemplateNode>();
 
     const checkStatefulUnkeyedForList = (listAncestors: TemplateNode[]) => {
         for (const listNode of listAncestors) {
@@ -48,6 +50,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
     };
 
     walkTemplateNodes(nodes, node => {
+        let inSlotOutlet = false;
         let inSlotContent = false;
         let nodeContext: TemplateNodeContext;
         let namespaceMode = NamespaceMode.Inherited;
@@ -57,6 +60,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             const parentContext = getTemplateNodeContext(node.parent);
             parentListAncestors = parentContext.listAncestors;
             parentContextIdentifiers = parentContext.contextIdentifiers;
+            inSlotOutlet = node.parent.tag === "slot" || parentContext.inSlotOutlet;
             inSlotContent = !!node.parent.componentTag || parentContext.inSlotContent;
             namespaceMode = getChildNamespaceMode(node.parent, parentContext.namespaceMode);
         }
@@ -65,6 +69,7 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
             (nodeContext = {
                 node,
                 id: "",
+                inSlotOutlet,
                 namespaceMode,
                 inSlotContent,
                 anchorId: "",
@@ -107,12 +112,14 @@ export function analyzeTemplate(nodes: TemplateNode[]) {
 
         switch ((analyzeAttributes(node), node.tag)) {
             case "slot": {
-                for (let current = node.parent; current; current = current.parent) {
-                    if (current.tag === "slot") {
-                        NestedSlotElement(getStartTagOpenLoc(current));
-                    }
+                if (nodeContext.inSlotOutlet) {
+                    NestedSlotElement(getStartTagOpenLoc(node));
                 }
-                recordSlotName(node, getTemplateNodeContext(node).attributesMap.name);
+                recordSlotName(
+                    node,
+                    reportedDuplicateSlotNodes,
+                    getTemplateNodeContext(node).attributesMap.name,
+                );
                 break;
             }
             case "": {
@@ -265,18 +272,45 @@ function checkSlotAssignment(node: TemplateNode) {
     }
 }
 
-function recordSlotName(node: TemplateNode, attribute?: TemplateAttribute) {
+function recordSlotName(
+    node: TemplateNode,
+    reportedNodes: Set<TemplateNode>,
+    attribute: TemplateAttribute | undefined,
+) {
     // 没有 name 属性的 slot 节点，默认插槽名称为 default
     // For a `slot` node without a `name` attribute, the default slot name is `default`.
     const name = attribute?.value.raw ?? "default";
-    const existing = analyzeResult.template.slots[name];
-    if (((analyzeResult.template.slots[name] = node), !existing)) {
-        return;
+    const existingNodes = (analyzeResult.template.slots[name] ??= []);
+
+    // 互斥分支中的 slot 节点可以具有相同的 name
+    // Slot nodes in mutually exclusive branches can have the same name.
+    const conflicts = existingNodes.filter(existing => {
+        return !areNodesMutuallyExclusive(existing, node);
+    });
+    if (conflicts.length) {
+        for (const target of [node, ...conflicts]) {
+            if (reportedNodes.has(target)) {
+                continue;
+            }
+            reportedNodes.add(target);
+            const targetAttr = getTemplateNodeContext(target).attributesMap.name;
+            DuplicateSlotName(targetAttr?.loc ?? getStartTagOpenLoc(target), name);
+        }
+    }
+    existingNodes.push(node);
+}
+
+function areNodesMutuallyExclusive(a: TemplateNode, b: TemplateNode) {
+    let i = 0;
+    const pathA = getNodePath(a);
+    const pathB = getNodePath(b);
+    while (i < pathA.length && i < pathB.length && pathA[i] === pathB[i]) {
+        i++;
+    }
+    if (i === pathA.length || i === pathB.length) {
+        return false;
     }
 
-    // 多个 slot 节点具有相同的 name 属性值
-    // Multiple `slot` nodes share the same `name` attribute value.
-    const existringAttr = getTemplateNodeContext(existing).attributesMap.name;
-    DuplicateSlotName(attribute?.loc ?? getStartTagOpenLoc(node), name);
-    DuplicateSlotName(existringAttr?.loc ?? getStartTagOpenLoc(existing), name);
+    const chain = getTemplateNodeContext(pathA[i]).exclusiveChain;
+    return !!chain && chain === getTemplateNodeContext(pathB[i]).exclusiveChain;
 }

@@ -130,8 +130,8 @@ export class CompileIntermediateResult {
         return this.nodeContexts.get(node)!;
     }
 
-    getSlotTemplateNode(name: string): TemplateNode | undefined {
-        return this.slots[name];
+    getSlotTemplateNodes(name: string): TemplateNode[] {
+        return this.slots[name] ?? [];
     }
 
     isPositionFlagSetAtIndex(flag: PositionFlag, index: number) {

@@ -29,7 +29,7 @@ export namespace __qk__lsu {
         <K extends string | number | symbol, V>(value: Record<K, V>): [V, K];
     };
     export const getReturnType: <T extends ArbitraryFunc>(fn: T) => ReturnType<T>;
-    export const getTypeDelayMarking: (slotName: string, attrName: string, value: any) => void;
+    export const getTypeDelayMarking: (slotName: string, context: Record<string, any>) => void;
 
     export const validateString: <T extends string>(value: T) => void;
     export const validateNumber: <T extends number>(value: T) => void;

@@ -88,6 +88,16 @@ export function getParentTag(node: TemplateNode) {
     return getParentTag(node.parent);
 }
 
+// 获取从根节点到指定节点的路径
+// Get the path from the root node to the specified node
+export function getNodePath(node: TemplateNode) {
+    const path: TemplateNode[] = [];
+    for (let current: TemplateNode | null = node; current; current = current.parent) {
+        path.push(current);
+    }
+    return path.reverse();
+}
+
 // 获取 TemplateNode 开始标签起始标记（<div、<span、<input、<!--等）的源码位置信息
 // Get the source location of a TemplateNode's start tag marker (e.g., <div, <span, <input, <!--)
 export function getStartTagOpenLoc(node: TemplateNode) {
